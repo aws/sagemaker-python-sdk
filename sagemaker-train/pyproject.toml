@@ -33,7 +33,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.1.0",
+    "sagemaker-core>=2.3.1",
     "graphene>=3,<4",
     "typing_extensions>=4.9.0",
     "tblib>=1.7.0",
@@ -42,6 +42,7 @@ dependencies = [
     "jinja2>=3.0,<4.0",
     "sagemaker-mlflow>=0.0.1,<1.0.0",
     "mlflow>=3.0.0,<4.0.0",
+    "nest_asyncio>=1.5.0",
 ]
 
 [project.urls]
@@ -57,7 +58,8 @@ test = [
     "pandas",
     "scipy",
     "omegaconf",
-    "graphene"
+    "graphene",
+    "IPython"
 ]
 
 [tool.setuptools.packages.find]
@@ -71,6 +73,9 @@ version = { file = "VERSION"}
 [tool.pytest.ini_options]
 addopts = ["-vv"]
 testpaths = ["tests"]
+markers = [
+    "serial: marks tests that must run serially (not in parallel)",
+]
 
 [tool.black]
 line-length = 100

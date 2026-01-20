@@ -1,0 +1,25 @@
+# Changelog
+
+## v1.3.1 (2026-01-12)
+
+* sagemaker-mlops bug fix - Correct source code 'dependencies' parameter to 'requirements'
+  
+## v1.3.0 (2025-12-19)
+
+* Update module dependencies
+
+## v1.2.0 (2025-12-18)
+
+* Update module dependencies
+
+## v1.1.1 (2025-12-10)
+
+* Update project dependencies to include submodules latest versions: sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops
+  
+## v1.1.0 (2025-12-03)
+
+* Update project dependencies to include submodules latest versions: sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops
+  
+## v1.0.1 (2025-11-19)
+
+* Update project dependencies to include submodules: sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops

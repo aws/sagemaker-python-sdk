@@ -62,6 +62,28 @@ class TestDataSetValidation:
         finally:
             os.unlink(temp_file)
     
+    @patch('sagemaker.ai_registry.dataset.DatasetFormatDetector')
+    def test_validate_dataset_format_success(self, mock_detector_class):
+        """Test dataset format validation succeeds when format is detected."""
+        mock_detector = Mock()
+        mock_detector.validate_dataset.return_value = "jsonl"
+        mock_detector_class.return_value = mock_detector
+        
+        # Should not raise any exception
+        DataSet._validate_dataset_format("/path/to/file.jsonl")
+        mock_detector.validate_dataset.assert_called_once_with("/path/to/file.jsonl")
+    
+    @patch('sagemaker.ai_registry.dataset.DatasetFormatDetector')
+    def test_validate_dataset_format_failure(self, mock_detector_class):
+        """Test dataset format validation fails when format cannot be detected."""
+        mock_detector = Mock()
+        mock_detector.validate_dataset.return_value = False
+        mock_detector_class.return_value = mock_detector
+        
+        with pytest.raises(ValueError, match="Unable to detect format for /path/to/file.jsonl"):
+            DataSet._validate_dataset_format("/path/to/file.jsonl")
+        mock_detector.validate_dataset.assert_called_once_with("/path/to/file.jsonl")
+    
     def test_validate_dataset_file_unsupported_extension(self):
         """Test validation fails for unsupported file extensions."""
         # Test various unsupported extensions
@@ -160,9 +182,9 @@ class TestDataSet:
     @patch('sagemaker.core.helper.session_helper.Session')
     @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
     @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.validate_dataset')
+    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
     @patch('sagemaker.ai_registry.dataset.AIRHub')
-    def test_create_with_s3_location(self, mock_air_hub, mock_validate, mock_validate_file, mock_get_domain_id, mock_session, mock_boto_client):
+    def test_create_with_s3_location(self, mock_air_hub, mock_validate_format, mock_validate_file, mock_get_domain_id, mock_session, mock_boto_client):
         mock_get_domain_id.return_value = None
         mock_session_instance = Mock()
         mock_session_instance.get_caller_identity_arn.return_value = "arn:aws:iam::123456789012:role/SageMakerRole"
@@ -182,7 +204,7 @@ class TestDataSet:
             "LastModifiedTime": "2024-01-01"
         }
         mock_air_hub.download_from_s3 = Mock()
-        mock_validate.return_value = None
+        mock_validate_format.return_value = None
         mock_validate_file.return_value = None
         
         def mock_exists(path):
@@ -215,9 +237,9 @@ class TestDataSet:
     @patch('sagemaker.core.helper.session_helper.Session')
     @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
     @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.validate_dataset')
+    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
     @patch('sagemaker.ai_registry.dataset.AIRHub')
-    def test_create_with_s3_location_preserves_full_path(self, mock_air_hub, mock_validate, mock_validate_file, mock_get_domain_id, mock_session, mock_boto_client):
+    def test_create_with_s3_location_preserves_full_path(self, mock_air_hub, mock_validate_format, mock_validate_file, mock_get_domain_id, mock_session, mock_boto_client):
         """Test that S3 path includes filename, not just directory."""
         mock_get_domain_id.return_value = None
         mock_session_instance = Mock()
@@ -238,7 +260,7 @@ class TestDataSet:
             "LastModifiedTime": "2024-01-01"
         }
         mock_air_hub.download_from_s3 = Mock()
-        mock_validate.return_value = None
+        mock_validate_format.return_value = None
         mock_validate_file.return_value = None
         
         def mock_exists(path):
@@ -273,9 +295,9 @@ class TestDataSet:
             assert document['DatasetS3Bucket'] == 'test-bucket'
 
     @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
-    @patch('sagemaker.ai_registry.dataset.validate_dataset')
+    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
     @patch('sagemaker.ai_registry.dataset.AIRHub')
-    def test_create_with_local_file(self, mock_air_hub, mock_validate, mock_validate_file):
+    def test_create_with_local_file(self, mock_air_hub, mock_validate_format, mock_validate_file):
         mock_air_hub.upload_to_s3.return_value = "s3://bucket/path"
         mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
         mock_air_hub.describe_hub_content.return_value = {
@@ -284,7 +306,7 @@ class TestDataSet:
             "CreationTime": "2024-01-01",
             "LastModifiedTime": "2024-01-01"
         }
-        mock_validate.return_value = None
+        mock_validate_format.return_value = None
         mock_validate_file.return_value = None
         
         dataset = DataSet.create(
@@ -297,7 +319,7 @@ class TestDataSet:
         assert dataset.name == "test-dataset"
         assert dataset.method == DataSetMethod.UPLOADED
         mock_air_hub.upload_to_s3.assert_called_once()
-        mock_validate.assert_called_once_with("/local/path/file.jsonl", "dpo")
+        mock_validate_format.assert_called_once_with("/local/path/file.jsonl")
         mock_validate_file.assert_called_once_with("/local/path/file.jsonl")
 
     @patch('sagemaker.ai_registry.dataset.AIRHub')

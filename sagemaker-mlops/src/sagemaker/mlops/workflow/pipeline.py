@@ -34,7 +34,13 @@ from sagemaker.core.remote_function.errors import RemoteFunctionError
 from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.core.s3 import s3_path_join
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.common_utils import resolve_value_from_config, retry_with_backoff, format_tags, Tags
+from sagemaker.core.common_utils import (
+    resolve_value_from_config,
+    retry_with_backoff,
+    format_tags,
+    Tags,
+)
+
 # Orchestration imports (now in mlops)
 from sagemaker.mlops.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.mlops.workflow._event_bridge_client_helper import (
@@ -44,19 +50,24 @@ from sagemaker.mlops.workflow._event_bridge_client_helper import (
     EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT,
 )
 from sagemaker.mlops.workflow.lambda_step import LambdaOutput, LambdaStep
+from sagemaker.core.shapes.shapes import MlflowConfig
 from sagemaker.core.helper.pipeline_variable import (
     RequestType,
     PipelineVariable,
 )
+
 # Primitive imports (stay in core)
 from sagemaker.core.workflow.execution_variables import ExecutionVariables
 from sagemaker.core.workflow.parameters import Parameter
+
 # Orchestration imports (now in mlops)
 from sagemaker.core.workflow.pipeline_definition_config import PipelineDefinitionConfig
 from sagemaker.mlops.workflow.pipeline_experiment_config import PipelineExperimentConfig
 from sagemaker.mlops.workflow.parallelism_config import ParallelismConfiguration
+
 # Primitive imports (stay in core)
 from sagemaker.core.workflow.properties import Properties
+
 # Orchestration imports (now in mlops)
 from sagemaker.mlops.workflow.selective_execution_config import SelectiveExecutionConfig
 from sagemaker.core.workflow.step_outputs import StepOutput
@@ -69,6 +80,8 @@ from sagemaker.mlops.workflow.triggers import (
 )
 from sagemaker.core.workflow.utilities import list_to_request
 from sagemaker.mlops.workflow._steps_compiler import StepsCompiler
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +100,7 @@ class Pipeline:
         name: str = "",
         parameters: Optional[Sequence[Parameter]] = None,
         pipeline_experiment_config: Optional[PipelineExperimentConfig] = _DEFAULT_EXPERIMENT_CFG,
+        mlflow_config: Optional[MlflowConfig] = None,
         steps: Optional[Sequence[Union[Step, StepOutput]]] = None,
         sagemaker_session: Optional[Session] = None,
         pipeline_definition_config: Optional[PipelineDefinitionConfig] = _DEFAULT_DEFINITION_CFG,
@@ -102,6 +116,8 @@ class Pipeline:
                 the same name already exists. By default, pipeline name is used as
                 experiment name and execution id is used as the trial name.
                 If set to None, no experiment or trial will be created automatically.
+            mlflow_config (Optional[MlflowConfig]): If set, the pipeline will be configured
+                with MLflow tracking for experiment tracking and model versioning.
             steps (Sequence[Union[Step, StepOutput]]): The list of the
                 non-conditional steps associated with the pipeline. Any steps that are within the
                 `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
@@ -118,6 +134,7 @@ class Pipeline:
         self.name = name
         self.parameters = parameters if parameters else []
         self.pipeline_experiment_config = pipeline_experiment_config
+        self.mlflow_config = mlflow_config
         self.steps = steps if steps else []
         self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
         self.pipeline_definition_config = pipeline_definition_config
@@ -130,6 +147,16 @@ class Pipeline:
             self.sagemaker_session.boto_session.client("scheduler"),
         )
 
+    @property
+    def latest_pipeline_version_id(self):
+        """Retrieves the latest version id of this pipeline"""
+        summaries = self.list_pipeline_versions(max_results=1)["PipelineVersionSummaries"]
+        if not summaries:
+            return None
+        else:
+            return summaries[0].get("PipelineVersionId")
+
+    @_telemetry_emitter(feature=Feature.MLOPS, func_name="pipeline.create")
     def create(
         self,
         role_arn: str = None,
@@ -162,6 +189,7 @@ class Pipeline:
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
+            # TODO: replace with sagemaker-core methods
             return self.sagemaker_session.sagemaker_client.create_pipeline(self, description)
         tags = format_tags(tags)
         tags = _append_project_tags(tags)
@@ -171,6 +199,7 @@ class Pipeline:
             kwargs,
             Tags=tags,
         )
+        # TODO: replace with sagemaker-core methods
         return self.sagemaker_session.sagemaker_client.create_pipeline(**kwargs)
 
     def _create_args(
@@ -219,15 +248,22 @@ class Pipeline:
         )
         return kwargs
 
-    def describe(self) -> Dict[str, Any]:
+    def describe(self, pipeline_version_id: int = None) -> Dict[str, Any]:
         """Describes a Pipeline in the Workflow service.
+
+        Args:
+            pipeline_version_id (Optional[str]): version ID of the pipeline to describe.
 
         Returns:
             Response dict from the service. See `boto3 client documentation
             <https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/\
 sagemaker.html#SageMaker.Client.describe_pipeline>`_
         """
-        return self.sagemaker_session.sagemaker_client.describe_pipeline(PipelineName=self.name)
+        kwargs = dict(PipelineName=self.name)
+        if pipeline_version_id:
+            kwargs["PipelineVersionId"] = pipeline_version_id
+
+        return self.sagemaker_session.sagemaker_client.describe_pipeline(**kwargs)
 
     def update(
         self,
@@ -330,6 +366,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         )
         return self.sagemaker_session.sagemaker_client.delete_pipeline(PipelineName=self.name)
 
+    @_telemetry_emitter(feature=Feature.MLOPS, func_name="pipeline.start")
     def start(
         self,
         parameters: Dict[str, Union[str, bool, int, float]] = None,
@@ -337,6 +374,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         execution_description: str = None,
         parallelism_config: ParallelismConfiguration = None,
         selective_execution_config: SelectiveExecutionConfig = None,
+        mlflow_experiment_name: str = None,
+        pipeline_version_id: int = None,
     ):
         """Starts a Pipeline execution in the Workflow service.
 
@@ -350,6 +389,12 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 over the parallelism configuration of the parent pipeline.
             selective_execution_config (Optional[SelectiveExecutionConfig]): The configuration for
                 selective step execution.
+            mlflow_experiment_name (str): Optional MLflow experiment name to override
+                the experiment name specified in the pipeline's mlflow_config.
+                If provided, this will override the experiment name for this specific
+                pipeline execution only, without modifying the pipeline definition.
+            pipeline_version_id (Optional[str]): version ID of the pipeline to start the execution from. If not
+                specified, uses the latest version ID.
 
         Returns:
             A `_PipelineExecution` instance, if successful.
@@ -371,6 +416,8 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             PipelineExecutionDisplayName=execution_display_name,
             ParallelismConfiguration=parallelism_config,
             SelectiveExecutionConfig=selective_execution_config,
+            MlflowExperimentName=mlflow_experiment_name,
+            PipelineVersionId=pipeline_version_id,
         )
         if self.sagemaker_session.local_mode:
             update_args(kwargs, PipelineParameters=parameters)
@@ -409,14 +456,23 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 if self.pipeline_experiment_config is not None
                 else None
             ),
+            "MlflowConfig": _convert_mlflow_config_to_request(self.mlflow_config),
             "Steps": list_to_request(compiled_steps),
         }
-
-        request_dict["PipelineExperimentConfig"] = interpolate(
-            request_dict["PipelineExperimentConfig"], {}, {}, pipeline_name=self.name
-        )
         callback_output_to_step_map = _map_callback_outputs(self.steps)
         lambda_output_to_step_name = _map_lambda_outputs(self.steps)
+        request_dict["PipelineExperimentConfig"] = interpolate(
+            request_dict["PipelineExperimentConfig"],
+            callback_output_to_step_map=callback_output_to_step_map,
+            lambda_output_to_step_map=lambda_output_to_step_name,
+            pipeline_name=self.name,
+        )
+        request_dict["MlflowConfig"] = interpolate(
+            request_dict["MlflowConfig"],
+            callback_output_to_step_map=callback_output_to_step_map,
+            lambda_output_to_step_map=lambda_output_to_step_name,
+            pipeline_name=self.name,
+        )
         request_dict["Steps"] = interpolate(
             request_dict["Steps"],
             callback_output_to_step_map=callback_output_to_step_map,
@@ -465,6 +521,34 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             for key in ["PipelineExecutionSummaries", "NextToken"]
             if key in response
         }
+
+    def list_pipeline_versions(
+        self, sort_order: str = None, max_results: int = None, next_token: str = None
+    ) -> str:
+        """Lists a pipeline's versions.
+
+        Args:
+            sort_order (str): The sort order for results (Ascending/Descending).
+            max_results (int): The maximum number of pipeline executions to return in the response.
+            next_token (str):  If the result of the previous `ListPipelineExecutions` request was
+                truncated, the response includes a `NextToken`. To retrieve the next set of pipeline
+                executions, use the token in the next request.
+
+        Returns:
+            List of Pipeline Version Summaries. See
+            boto3 client list_pipeline_versions
+            https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/sagemaker/client/list_pipeline_versions.html#
+        """
+        kwargs = dict(PipelineName=self.name)
+        update_args(
+            kwargs,
+            SortOrder=sort_order,
+            NextToken=next_token,
+            MaxResults=max_results,
+        )
+
+        # TODO: replace with sagemaker-core methods
+        return self.sagemaker_session.sagemaker_client.list_pipeline_versions(**kwargs)
 
     def _get_latest_execution_arn(self):
         """Retrieves the latest execution of this pipeline"""
@@ -674,6 +758,34 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                     continue
                 raise e
             logger.info("Deleted Pipeline Schedule: %s ...", trigger_name)
+
+
+def _convert_mlflow_config_to_request(mlflow_config: MlflowConfig) -> dict:
+    """Convert sagemaker-core MlflowConfig to pipeline request format.
+
+    Args:
+        mlflow_config: MlflowConfig instance from sagemaker.core.shapes.shapes
+
+    Returns:
+        dict: Request format for pipeline MLflow configuration
+    """
+    if mlflow_config is None:
+        return None
+
+    from sagemaker.core.utils.utils import Unassigned
+
+    resource_arn = mlflow_config.mlflow_resource_arn
+    if isinstance(resource_arn, Unassigned):
+        resource_arn = None
+
+    experiment_name = mlflow_config.mlflow_experiment_name
+    if isinstance(experiment_name, Unassigned):
+        experiment_name = None
+
+    return {
+        "MlflowResourceArn": resource_arn,
+        "MlflowExperimentName": experiment_name,
+    }
 
 
 def format_start_parameters(parameters: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -1036,7 +1148,6 @@ def get_function_step_result(
         return deserialize_obj_from_s3(
             sagemaker_session=sagemaker_session,
             s3_uri=s3_uri,
-            hmac_key=describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
         )
 
     raise RemoteFunctionError(_ERROR_MSG_OF_STEP_INCOMPLETE)
@@ -1082,7 +1193,6 @@ class PipelineGraph:
                     if isinstance(child_step, Step):
                         dependency_list[child_step.name].add(step.name)
 
-
         adjacency_list = {}
         for step in dependency_list:
             for step_dependency in dependency_list[step]:
@@ -1120,9 +1230,7 @@ class PipelineGraph:
                     return True
         return False
 
-    def get_steps_in_sub_dag(
-        self, current_step: Step, sub_dag_steps: Set[str] = None
-    ) -> Set[str]:
+    def get_steps_in_sub_dag(self, current_step: Step, sub_dag_steps: Set[str] = None) -> Set[str]:
         """Get names of all steps (including current step) in the sub dag of current step.
 
         Returns a set of step names in the sub dag.

@@ -17,7 +17,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_serverless_config,
     _create_mlflow_config,
     _create_model_package_config,
-    _validate_eula_for_gated_model
+    _validate_eula_for_gated_model,
+    _validate_hyperparameter_values
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
@@ -40,7 +41,7 @@ class DPOTrainer(BaseTrainer):
         trainer = DPOTrainer(
             model="meta-llama/Llama-2-7b-hf",
             training_type=TrainingType.LORA,
-            model_package_group_name="my-model-group",
+            model_package_group="my-model-group",
             training_dataset="s3://bucket/preference_data.jsonl"
         )
 
@@ -49,7 +50,7 @@ class DPOTrainer(BaseTrainer):
         # Complete workflow: create -> wait -> get model package ARN
         trainer = DPOTrainer(
             model="meta-llama/Llama-2-7b-hf",
-            model_package_group_name="my-dpo-models"
+            model_package_group="my-dpo-models"
         )
         
         # Create training job (non-blocking)
@@ -74,7 +75,7 @@ class DPOTrainer(BaseTrainer):
         training_type (Union[TrainingType, str]):
             The fine-tuning approach. Valid values are TrainingType.LORA (default),
             TrainingType.FULL.
-        model_package_group_name (Optional[Union[str, ModelPackageGroup]]):
+        model_package_group (Optional[Union[str, ModelPackageGroup]]):
             The model package group for storing the fine-tuned model. Can be a group name,
             ARN, or ModelPackageGroup object. Required when model is not a ModelPackage.
         mlflow_resource_arn (Optional[str]):
@@ -85,9 +86,9 @@ class DPOTrainer(BaseTrainer):
         mlflow_run_name (Optional[str]):
             The MLflow run name for this training job.
         training_dataset (Optional[Union[str, DataSet]]):
-            The training dataset with preference pairs. Can be an S3 URI, dataset ARN, or DataSet object.
+            The training dataset with preference pairs. Can be a dataset ARN, or DataSet object.
         validation_dataset (Optional[Union[str, DataSet]]):
-            The validation dataset. Can be an S3 URI, dataset ARN, or DataSet object.
+            The validation dataset. Can be a dataset ARN, or DataSet object.
         s3_output_path (Optional[str]):
             The S3 path for training job outputs.
             If not specified, defaults to s3://sagemaker-<region>-<account>/output.
@@ -100,7 +101,7 @@ class DPOTrainer(BaseTrainer):
             self,
             model: Union[str, ModelPackage],
             training_type: Union[TrainingType, str] = TrainingType.LORA,
-            model_package_group_name: Optional[Union[str, ModelPackageGroup]] = None,
+            model_package_group: Optional[Union[str, ModelPackageGroup]] = None,
             mlflow_resource_arn: Optional[str] = None,
             mlflow_experiment_name: Optional[str] = None,
             mlflow_run_name: Optional[str] = None,
@@ -117,8 +118,8 @@ class DPOTrainer(BaseTrainer):
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
         self.training_type = training_type
 
-        self.model_package_group_name = _validate_and_resolve_model_package_group(model,
-                                                                                 model_package_group_name)
+        self.model_package_group = _validate_and_resolve_model_package_group(model,
+                                                                                 model_package_group)
         self.mlflow_resource_arn = mlflow_resource_arn
         self.mlflow_experiment_name = mlflow_experiment_name
         self.mlflow_run_name = mlflow_run_name
@@ -137,8 +138,38 @@ class DPOTrainer(BaseTrainer):
        
                                                                                     ))
         
+        # Process hyperparameters
+        self._process_hyperparameters()
+        
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
+
+    def _process_hyperparameters(self):
+        """Remove hyperparameter keys that are handled by constructor inputs."""
+        if self.hyperparameters:
+            # Remove keys that are handled by constructor inputs
+            if hasattr(self.hyperparameters, 'data_path'):
+                delattr(self.hyperparameters, 'data_path')
+                self.hyperparameters._specs.pop('data_path', None)
+            if hasattr(self.hyperparameters, 'output_path'):
+                delattr(self.hyperparameters, 'output_path')
+                self.hyperparameters._specs.pop('output_path', None)
+            if hasattr(self.hyperparameters, 'data_s3_path'):
+                delattr(self.hyperparameters, 'data_s3_path')
+                self.hyperparameters._specs.pop('data_s3_path', None)
+            if hasattr(self.hyperparameters, 'output_s3_path'):
+                delattr(self.hyperparameters, 'output_s3_path')
+                self.hyperparameters._specs.pop('output_s3_path', None)
+            if hasattr(self.hyperparameters, 'training_data_name'):
+                delattr(self.hyperparameters, 'training_data_name')
+                self.hyperparameters._specs.pop('training_data_name', None)
+            if hasattr(self.hyperparameters, 'validation_data_name'):
+                delattr(self.hyperparameters, 'validation_data_name')
+                self.hyperparameters._specs.pop('validation_data_name', None)
+            if hasattr(self.hyperparameters, 'validation_data_path'):
+                delattr(self.hyperparameters, 'validation_data_path')
+                self.hyperparameters._specs.pop('validation_data_path', None)
+
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="DPOTrainer.train")
     def train(self,
               training_dataset: Optional[Union[str, DataSet]] = None,
@@ -198,9 +229,10 @@ class DPOTrainer(BaseTrainer):
         )
 
         final_hyperparameters = self.hyperparameters.to_dict()
+        _validate_hyperparameter_values(final_hyperparameters)
 
         model_package_config = _create_model_package_config(
-            model_package_group_name=self.model_package_group_name,
+            model_package_group_name=self.model_package_group,
             model=self.model,
             sagemaker_session=sagemaker_session
         )
@@ -229,7 +261,11 @@ class DPOTrainer(BaseTrainer):
 
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
-            _wait(training_job)
+            from sagemaker.core.utils.exceptions import TimeoutExceededError
+            try :
+                _wait(training_job)
+            except TimeoutExceededError as e:
+                logger.error("Error: %s", e)
 
         self.latest_training_job = training_job
         return training_job

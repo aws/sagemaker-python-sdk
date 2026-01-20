@@ -303,6 +303,9 @@ def remote(
     """
 
     def _remote(func):
+        
+        if job_conda_env:
+            RemoteExecutor._validate_env_name(job_conda_env)
 
         job_settings = _JobSettings(
             dependencies=dependencies,
@@ -366,7 +369,7 @@ def remote(
                             s3_uri=s3_path_join(
                                 job_settings.s3_root_uri, job.job_name, EXCEPTION_FOLDER
                             ),
-                            hmac_key=job.hmac_key,
+                            
                         )
                     except ServiceError as serr:
                         chained_e = serr.__cause__
@@ -403,7 +406,7 @@ def remote(
                 return serialization.deserialize_obj_from_s3(
                     sagemaker_session=job_settings.sagemaker_session,
                     s3_uri=s3_path_join(job_settings.s3_root_uri, job.job_name, RESULTS_FOLDER),
-                    hmac_key=job.hmac_key,
+                    
                 )
 
             if job.describe()["TrainingJobStatus"] == "Stopped":
@@ -774,6 +777,9 @@ class RemoteExecutor(object):
                 + "without spark_config or use_torchrun or use_mpirun. "
                 + "Please provide instance_count = 1"
             )
+        
+        if job_conda_env:
+            self._validate_env_name(job_conda_env)
 
         self.job_settings = _JobSettings(
             dependencies=dependencies,
@@ -951,6 +957,25 @@ class RemoteExecutor(object):
                 + f"{'arguments' if len(missing_kwargs) > 1 else 'argument'}: "
                 + f"{missing_kwargs_string}"
             )
+    
+    @staticmethod
+    def _validate_env_name(env_name: str) -> None:
+        """Validate conda environment name to prevent command injection.
+        
+        Args:
+            env_name (str): The environment name to validate
+            
+        Raises:
+            ValueError: If the environment name contains invalid characters
+        """
+        
+        # Allow only alphanumeric, underscore, and hyphen
+        import re
+        if not re.match(r'^[a-zA-Z0-9_-]+$', env_name):
+            raise ValueError(
+                f"Invalid environment name '{env_name}'. "
+                "Only alphanumeric characters, underscores, and hyphens are allowed."
+            )
 
 
 class Future(object):
@@ -983,7 +1008,7 @@ class Future(object):
                 job_return = serialization.deserialize_obj_from_s3(
                     sagemaker_session=sagemaker_session,
                     s3_uri=s3_path_join(job.s3_uri, RESULTS_FOLDER),
-                    hmac_key=job.hmac_key,
+                    
                 )
             except DeserializationError as e:
                 client_exception = e
@@ -995,7 +1020,7 @@ class Future(object):
                 job_exception = serialization.deserialize_exception_from_s3(
                     sagemaker_session=sagemaker_session,
                     s3_uri=s3_path_join(job.s3_uri, EXCEPTION_FOLDER),
-                    hmac_key=job.hmac_key,
+                    
                 )
             except ServiceError as serr:
                 chained_e = serr.__cause__
@@ -1085,7 +1110,7 @@ class Future(object):
                     self._return = serialization.deserialize_obj_from_s3(
                         sagemaker_session=self._job.sagemaker_session,
                         s3_uri=s3_path_join(self._job.s3_uri, RESULTS_FOLDER),
-                        hmac_key=self._job.hmac_key,
+                        
                     )
                     self._state = _FINISHED
                     return self._return
@@ -1094,7 +1119,7 @@ class Future(object):
                         self._exception = serialization.deserialize_exception_from_s3(
                             sagemaker_session=self._job.sagemaker_session,
                             s3_uri=s3_path_join(self._job.s3_uri, EXCEPTION_FOLDER),
-                            hmac_key=self._job.hmac_key,
+                            
                         )
                     except ServiceError as serr:
                         chained_e = serr.__cause__

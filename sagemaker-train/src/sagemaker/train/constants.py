@@ -41,3 +41,24 @@ DEFAULT_CONTAINER_ARGUMENTS = [
 ]
 
 HUB_NAME = "SageMakerPublicHub"
+
+# Allowed reward model IDs for RLAIF trainer with region restrictions
+_ALLOWED_REWARD_MODEL_IDS = {
+    "openai.gpt-oss-120b-1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "openai.gpt-oss-20b-1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "qwen.qwen3-32b-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "qwen.qwen3-coder-30b-a3b-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "qwen.qwen3-coder-480b-a35b-v1:0": ["us-west-2", "ap-northeast-1"],
+    "qwen.qwen3-235b-a22b-2507-v1:0": ["us-west-2", "ap-northeast-1"]
+}
+
+# Allowed evaluator models for LLM as Judge evaluator with region restrictions
+_ALLOWED_EVALUATOR_MODELS = {
+    "anthropic.claude-3-5-sonnet-20240620-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1"],
+    "anthropic.claude-3-5-sonnet-20241022-v2:0": ["us-west-2"],
+    "anthropic.claude-3-haiku-20240307-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "anthropic.claude-3-5-haiku-20241022-v1:0": ["us-west-2"],
+    "meta.llama3-1-70b-instruct-v1:0": ["us-west-2"],
+    "mistral.mistral-large-2402-v1:0": ["us-west-2", "us-east-1", "eu-west-1"],
+    "amazon.nova-pro-v1:0": ["us-east-1"]
+}

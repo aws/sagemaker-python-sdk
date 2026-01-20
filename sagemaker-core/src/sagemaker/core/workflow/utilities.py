@@ -21,7 +21,14 @@ from typing import List, Sequence, Union, Set, TYPE_CHECKING, Optional
 import hashlib
 from urllib.parse import unquote, urlparse
 from contextlib import contextmanager
-from _hashlib import HASH as Hash
+
+try:
+    # _hashlib is an internal python module, and is not present in
+    # statically linked interpreters.
+    from _hashlib import HASH as Hash
+except ImportError:
+    import typing
+    Hash = typing.Any
 
 from sagemaker.core.common_utils import base_from_name
 from sagemaker.core.workflow.parameters import Parameter
@@ -165,9 +172,9 @@ def get_code_hash(step: Entity) -> str:
         source_code = model_trainer.source_code
         if source_code:
             source_dir = source_code.source_dir
-            dependencies = source_code.dependencies
+            requirements = source_code.requirements
             entry_point = source_code.entry_script
-            return get_training_code_hash(entry_point, source_dir, dependencies)
+            return get_training_code_hash(entry_point, source_dir, requirements)
     return None
 
 

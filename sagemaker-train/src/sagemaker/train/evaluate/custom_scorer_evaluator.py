@@ -137,7 +137,7 @@ class CustomScorerEvaluator(BaseEvaluator):
     _hyperparameters: Optional[Any] = None
     
     # Template-required fields
-    evaluate_base_model: bool = True
+    evaluate_base_model: bool = False
     
     @validator('dataset', pre=True)
     def _resolve_dataset(cls, v):
@@ -307,6 +307,10 @@ class CustomScorerEvaluator(BaseEvaluator):
             'evaluate_base_model': self.evaluate_base_model,
             'evaluator_arn': evaluator_config['evaluator_arn'],
         }
+        
+        # Add lambda_type for Nova models
+        if is_nova:
+            custom_scorer_context['lambda_type'] = 'rft'
         
         # Add preset_reward_function if present
         if evaluator_config['preset_reward_function']:
