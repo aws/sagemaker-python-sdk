@@ -1,6 +1,6 @@
 import re
 import logging
-from typing import List, Iterator, Optional, Union, Any
+from typing import List, Iterator, Optional
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.resources import HubContent
 
@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class _ExpressionNode:
     """Base class for expression AST nodes."""
-    
+
     def evaluate(self, keywords: List[str]) -> bool:
         """Evaluate this node against the given keywords."""
         raise NotImplementedError
@@ -17,49 +17,49 @@ class _ExpressionNode:
 
 class _AndNode(_ExpressionNode):
     """AND logical operator node."""
-    
+
     def __init__(self, left: _ExpressionNode, right: _ExpressionNode):
         self.left = left
         self.right = right
-    
+
     def evaluate(self, keywords: List[str]) -> bool:
         return self.left.evaluate(keywords) and self.right.evaluate(keywords)
 
 
 class _OrNode(_ExpressionNode):
     """OR logical operator node."""
-    
+
     def __init__(self, left: _ExpressionNode, right: _ExpressionNode):
         self.left = left
         self.right = right
-    
+
     def evaluate(self, keywords: List[str]) -> bool:
         return self.left.evaluate(keywords) or self.right.evaluate(keywords)
 
 
 class _NotNode(_ExpressionNode):
     """NOT logical operator node."""
-    
+
     def __init__(self, operand: _ExpressionNode):
         self.operand = operand
-    
+
     def evaluate(self, keywords: List[str]) -> bool:
         return not self.operand.evaluate(keywords)
 
 
 class _PatternNode(_ExpressionNode):
     """Pattern matching node for keywords with wildcard support."""
-    
+
     def __init__(self, pattern: str):
         self.pattern = pattern.strip('"').strip("'")
-    
+
     def evaluate(self, keywords: List[str]) -> bool:
         """Check if any keyword matches this pattern."""
         for keyword in keywords:
             if self._matches_pattern(keyword, self.pattern):
                 return True
         return False
-    
+
     def _matches_pattern(self, keyword: str, pattern: str) -> bool:
         """Check if a keyword matches a pattern with wildcard support."""
         if pattern.startswith("*") and pattern.endswith("*"):
@@ -140,23 +140,23 @@ class _Filter:
     def _parse_or_expression(self, tokens: List[str], pos: int) -> tuple[_ExpressionNode, int]:
         """Parse OR expression (lowest precedence)."""
         left, pos = self._parse_and_expression(tokens, pos)
-        
+
         while pos < len(tokens) and tokens[pos].upper() == "OR":
             pos += 1  # Skip OR token
             right, pos = self._parse_and_expression(tokens, pos)
             left = _OrNode(left, right)
-        
+
         return left, pos
 
     def _parse_and_expression(self, tokens: List[str], pos: int) -> tuple[_ExpressionNode, int]:
         """Parse AND expression (medium precedence)."""
         left, pos = self._parse_not_expression(tokens, pos)
-        
+
         while pos < len(tokens) and tokens[pos].upper() == "AND":
             pos += 1  # Skip AND token
             right, pos = self._parse_not_expression(tokens, pos)
             left = _AndNode(left, right)
-        
+
         return left, pos
 
     def _parse_not_expression(self, tokens: List[str], pos: int) -> tuple[_ExpressionNode, int]:
@@ -172,9 +172,9 @@ class _Filter:
         """Parse primary expression (parentheses or pattern)."""
         if pos >= len(tokens):
             raise ValueError("Unexpected end of expression")
-        
+
         token = tokens[pos]
-        
+
         if token == "(":
             pos += 1  # Skip opening parenthesis
             expr, pos = self._parse_or_expression(tokens, pos)
