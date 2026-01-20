@@ -1,8 +1,6 @@
 """Validates the integrity of pickled file with HMAC signing."""
 
 from __future__ import absolute_import
-import secrets
-import hmac
 import hashlib
 import os
 import logging
