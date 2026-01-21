@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.256.1 (2026-01-21)
+
+### Bug fixes and Other Changes
+* Bug fixes remote function
+
 ## v2.256.0 (2026-01-08)
 
 ### Features
