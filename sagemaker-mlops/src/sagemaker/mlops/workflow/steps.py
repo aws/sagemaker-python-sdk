@@ -20,6 +20,7 @@ from typing import Dict, List, Set, Union, Optional, Any, TYPE_CHECKING
 import attr
 
 from sagemaker.core.local.local_session import LocalSagemakerClient
+
 # Primitive imports (stay in core)
 from sagemaker.core.workflow.entities import Entity
 from sagemaker.core.helper.pipeline_variable import RequestType
@@ -30,6 +31,7 @@ from sagemaker.core.workflow.properties import (
 )
 from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core.workflow.functions import Join, JsonGet
+
 # Orchestration imports (now in mlops)
 from sagemaker.mlops.workflow.retry import RetryPolicy
 from sagemaker.core.workflow.step_outputs import StepOutput
@@ -57,6 +59,7 @@ class StepTypeEnum(Enum):
     QUALITY_CHECK = "QualityCheck"
     CLARIFY_CHECK = "ClarifyCheck"
     EMR = "EMR"
+    EMR_SERVERLESS = "EMRServerless"
     FAIL = "Fail"
     AUTOML = "AutoML"
 
@@ -417,6 +420,7 @@ class TrainingStep(ConfigurableRetryStep):
 
         if step_args:
             from sagemaker.core.workflow.utilities import validate_step_args_input
+
             # Lazy import to avoid circular dependency
             from sagemaker.train.model_trainer import ModelTrainer
 
@@ -436,7 +440,7 @@ class TrainingStep(ConfigurableRetryStep):
     def arguments(self) -> RequestType:
         """The arguments dictionary that is used to call `create_training_job`.
 
-        NOTE: The `CreateTrainingJob` request is not quite the args list that workflow needs. 
+        NOTE: The `CreateTrainingJob` request is not quite the args list that workflow needs.
         """
         from sagemaker.core.workflow.utilities import execute_job_functions
         from sagemaker.core.workflow.utilities import _pipeline_config
@@ -451,7 +455,7 @@ class TrainingStep(ConfigurableRetryStep):
             request_dict = model_trainer.sagemaker_session.context.args
         else:
             raise ValueError("step_args input is required.")
-        
+
         if "HyperParameters" in request_dict:
             request_dict["HyperParameters"].pop("sagemaker_job_name", None)
 
@@ -606,11 +610,13 @@ class ProcessingStep(ConfigurableRetryStep):
             raise ValueError("step_args is required for ProcessingStep.")
 
         from sagemaker.core.workflow.utilities import validate_step_args_input
-        
 
         validate_step_args_input(
             step_args=step_args,
-            expected_caller={Processor.run.__name__, LocalSagemakerClient().create_processing_job.__name__},
+            expected_caller={
+                Processor.run.__name__,
+                LocalSagemakerClient().create_processing_job.__name__,
+            },
             error_message=f"The step_args of ProcessingStep must be obtained from processor.run() or in local mode, not {step_args.caller_name}",
         )
 
@@ -638,7 +644,7 @@ class ProcessingStep(ConfigurableRetryStep):
         # populate request dict with args
         processor = self.step_args.func_args[0]
         request_dict = processor.sagemaker_session.context.args
-            
+
         # Continue to pop job name if not explicitly opted-in via config
         request_dict = trim_request_dict(request_dict, "ProcessingJobName", _pipeline_config)
 
@@ -661,8 +667,6 @@ class ProcessingStep(ConfigurableRetryStep):
                 property_file.expr for property_file in self.property_files
             ]
         return request_dict
-
-
 
 
 class TuningStep(ConfigurableRetryStep):
@@ -698,7 +702,7 @@ class TuningStep(ConfigurableRetryStep):
             name, StepTypeEnum.TUNING, display_name, description, depends_on, retry_policies
         )
 
-        if not step_args :
+        if not step_args:
             raise ValueError("step_args is required for TuningStep.")
 
         from sagemaker.core.workflow.utilities import validate_step_args_input
@@ -737,7 +741,6 @@ class TuningStep(ConfigurableRetryStep):
         # populate request dict with args
         tuner = self.step_args.func_args[0]
         request_dict = tuner.sagemaker_session.context.args
-        
 
         # Continue to pop job name if not explicitly opted-in via config
         request_dict = trim_request_dict(
