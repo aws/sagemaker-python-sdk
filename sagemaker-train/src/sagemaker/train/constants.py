@@ -29,6 +29,10 @@ SM_DRIVERS_LOCAL_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "container_drivers"
 )
 
+SM_RECIPE = "recipe"
+SM_RECIPE_YAML = "recipe.yaml"
+SM_RECIPE_CONTAINER_PATH = f"/opt/ml/input/data/recipe/{SM_RECIPE_YAML}"
+    
 SOURCE_CODE_JSON = "sourcecode.json"
 DISTRIBUTED_JSON = "distributed.json"
 TRAIN_SCRIPT = "sm_train.sh"
