@@ -1391,12 +1391,14 @@ class _ModelBuilderUtils:
             if "@" in mlflow_model_path:
                 _, model_name_and_alias, artifact_uri = mlflow_model_path.split("/", 2)
                 model_name, model_alias = model_name_and_alias.split("@")
-                model_metadata = mlflow_client.get_model_version_by_alias(model_name, model_alias)
+                model_version_info = mlflow_client.get_model_version_by_alias(model_name, model_alias)
+                source = mlflow_client.get_model_version_download_uri(
+                    model_name, model_version_info.version
+                )
             else:
                 _, model_name, model_version, artifact_uri = mlflow_model_path.split("/", 3)
-                model_metadata = mlflow_client.get_model_version(model_name, model_version)
+                source = mlflow_client.get_model_version_download_uri(model_name, model_version)
 
-            source = model_metadata.source
             if not source.endswith("/"):
                 source += "/"
             return source + artifact_uri
