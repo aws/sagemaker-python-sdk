@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.4.0 (2026-01-22)
+
+* Update Module dependencies
+
 ## v1.3.1 (2026-01-12)
 
 * Update Module dependencies
