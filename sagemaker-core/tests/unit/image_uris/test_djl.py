@@ -86,7 +86,12 @@ EXPECTED_DJL_LMI_REGIONS = {
 # Known missing framework:version:region combinations that don't exist in ECR
 KNOWN_MISSING_COMBINATIONS = {
     "djl-lmi": {
-        "0.36.0": {"ap-east-2"},
+        "0.36.0-lmi18.0.0-cu128": {"ap-east-2"},
+        "0.35.0-lmi17.0.0-cu128": {"ap-east-2"},
+        "0.34.0-lmi16.0.0-cu128": {"ap-east-2"},
+        "0.33.0-lmi15.0.0-cu128": {"ap-east-2"},
+        "0.32.0-lmi14.0.0-cu126": {"ap-east-2"},
+        "0.31.0-lmi13.0.0-cu124": {"ap-east-2"},
         "0.30.0-lmi12.0.0-cu124": {"ap-east-2"},
         "0.29.0-lmi11.0.0-cu124": {"ap-east-2"},
         "0.28.0-lmi10.0.0-cu124": {"ap-east-2"},
@@ -206,7 +211,8 @@ KNOWN_MISSING_COMBINATIONS = {
         },
     },
     "djl-tensorrtllm": {
-        "0.33.0": {"ap-east-2"},
+        "0.33.0-tensorrtllm0.21.0-cu128": {"ap-east-2"},
+        "0.32.0-tensorrtllm0.12.0-cu125": {"ap-east-2"},
         "0.30.0-tensorrtllm0.12.0-cu125": {"ap-east-2"},
         "0.29.0-tensorrtllm0.11.0-cu124": {"ap-east-2"},
         "0.28.0-tensorrtllm0.9.0-cu122": {"ap-east-2"},
