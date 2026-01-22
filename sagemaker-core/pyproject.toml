@@ -27,7 +27,7 @@ dependencies = [
     "packaging>=20.0",
     "protobuf>=3.12,<5.0",
     "pandas>=1.0.0",
-    "numpy>=1.9.0",
+    "numpy>=1.23.0",
     # Dependencies migrated from sagemaker_utils
     "smdebug_rulesconfig>=1.0.1",
     "schema>=0.7.5",
