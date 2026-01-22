@@ -1,5 +1,11 @@
 # Changelog
 
+## v1.4.0 (2026-01-22)
+
+### Bug fixes and Other Changes
+
+* Add Nova training support in Model Trainer
+
 ## v1.3.1 (2026-01-12)
 
 ### Bug fixes and Other Changes

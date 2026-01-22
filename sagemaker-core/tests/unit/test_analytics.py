@@ -17,11 +17,7 @@ import datetime
 import pytest
 from unittest.mock import Mock, patch, MagicMock, mock_open
 from collections import OrderedDict
-
-# Mock pandas before importing analytics
 import sys
-
-sys.modules["pandas"] = MagicMock()
 
 from sagemaker.core.analytics import (
     AnalyticsMetricsBase,
@@ -31,6 +27,19 @@ from sagemaker.core.analytics import (
     ExperimentAnalytics,
     METRICS_PERIOD_DEFAULT,
 )
+
+
+@pytest.fixture(autouse=True)
+def mock_pandas_for_analytics():
+    """Mock pandas for analytics tests only, with proper cleanup."""
+    original_pandas = sys.modules.get("pandas")
+    sys.modules["pandas"] = MagicMock()
+    yield
+    # Restore original pandas after each test
+    if original_pandas is not None:
+        sys.modules["pandas"] = original_pandas
+    elif "pandas" in sys.modules:
+        del sys.modules["pandas"]
 
 
 class TestAnalyticsMetricsBase:
