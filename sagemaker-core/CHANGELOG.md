@@ -1,5 +1,12 @@
 # Changelog
 
+## v2.4.0 (2026-01-22)
+
+### Bug fixes and Other Changes
+
+  - Add Partner-app Auth provider
+  - Add sagemaker dependency for remote function by default V3
+
 ## v2.3.1 (2026-01-12)
 
 ### Bug Fixes

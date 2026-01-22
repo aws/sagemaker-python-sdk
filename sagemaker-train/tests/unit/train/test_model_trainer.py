@@ -18,9 +18,11 @@ import tempfile
 import json
 import os
 import yaml
+from omegaconf import OmegaConf
 import pytest
 from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
+from tempfile import NamedTemporaryFile
 
 from sagemaker.core.resources import TrainingJob
 from sagemaker.core.shapes import (
@@ -43,6 +45,7 @@ from sagemaker.train.constants import (
     DISTRIBUTED_JSON,
     SOURCE_CODE_JSON,
     TRAIN_SCRIPT,
+    SM_RECIPE_CONTAINER_PATH,
 )
 from sagemaker.train.configs import (
     Compute,
@@ -67,7 +70,7 @@ from sagemaker.train.configs import (
     MetricDefinition,
 )
 from sagemaker.train.distributed import Torchrun, SMP, MPI
-from sagemaker.train.sm_recipes.utils import _load_recipes_cfg
+from sagemaker.train.sm_recipes.utils import _load_recipes_cfg, _is_nova_recipe, _get_args_from_nova_recipe
 from sagemaker.train.templates import EXEUCTE_DISTRIBUTED_DRIVER
 from tests.unit import DATA_DIR
 
@@ -1347,3 +1350,183 @@ def test_metric_definitions(mock_training_job, modules_session):
             mock_training_job.create.call_args.kwargs["algorithm_specification"].metric_definitions
             == metric_definitions
         )
+
+
+@patch("sagemaker.train.model_trainer._get_unique_name")
+@patch("sagemaker.core.resources.TrainingJob")
+def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
+    def mock_upload_data(path, bucket, key_prefix):
+        if os.path.isfile(path):
+            file_name = os.path.basename(path)
+            return f"s3://{bucket}/{key_prefix}/{file_name}"
+        else:
+            return f"s3://{bucket}/{key_prefix}"
+
+    unique_name = "base-job-0123456789"
+    base_name = "base-job"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+    mock_unique_name.return_value = unique_name
+
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        # Patch TrainingJob.create to avoid Pydantic validation on session
+        with patch.object(TrainingJob, 'create', return_value=mock_training_job) as mock_create:
+            trainer = ModelTrainer.from_recipe(
+                training_recipe=recipe.name,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                training_image=DEFAULT_IMAGE,
+                base_job_name=base_name,
+            )
+
+            assert trainer._is_nova_recipe
+
+            trainer.train()
+            mock_create.assert_called_once()
+            assert mock_create.call_args.kwargs["hyper_parameters"] == {
+                "base_model": "dummy-model",
+                "sagemaker_recipe_local_path": SM_RECIPE_CONTAINER_PATH,
+            }
+
+            default_base_path = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{base_name}"
+            assert mock_create.call_args.kwargs["input_data_config"] == [
+                Channel(
+                    channel_name="recipe",
+                    data_source=DataSource(
+                        s3_data_source=S3DataSource(
+                            s3_data_type="S3Prefix",
+                            s3_uri=f"{default_base_path}/{unique_name}/input/recipe/recipe.yaml",
+                            s3_data_distribution_type="FullyReplicated",
+                        )
+                    ),
+                    input_mode="File",
+                )
+            ]
+
+
+def test_nova_recipe_with_distillation(modules_session):
+    recipe_data = {"training_config": {"distillation_data": "true", "kms_key": "alias/my-kms-key"}}
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        # Create ModelTrainer from recipe
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+        )
+
+        # Verify that the hyperparameters were set correctly
+        assert trainer.hyperparameters == {
+            "distillation_data": "true",
+            "role_arn": DEFAULT_ROLE,
+            "kms_key": "alias/my-kms-key",
+        }
+
+        # Clean up the temporary file
+        os.unlink(recipe.name)
+
+
+@patch("sagemaker.train.model_trainer._get_unique_name")
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_llmft_recipe(mock_training_job, mock_unique_name, modules_session):
+    def mock_upload_data(path, bucket, key_prefix):
+        if os.path.isfile(path):
+            file_name = os.path.basename(path)
+            return f"s3://{bucket}/{key_prefix}/{file_name}"
+        else:
+            return f"s3://{bucket}/{key_prefix}"
+
+    unique_name = "base-job-0123456789"
+    base_name = "base-job"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+    mock_unique_name.return_value = unique_name
+
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "llm_finetuning_aws",
+        },
+        "trainer": {"num_nodes": "12"},
+        "training_config": {"model_save_name": "xyz"},
+    }
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+            base_job_name=base_name,
+        )
+
+        assert trainer._is_llmft_recipe
+
+        trainer.train()
+        mock_training_job.create.assert_called_once()
+
+        default_base_path = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{base_name}"
+        assert mock_training_job.create.call_args.kwargs["input_data_config"] == [
+            Channel(
+                channel_name="recipe",
+                data_source=DataSource(
+                    s3_data_source=S3DataSource(
+                        s3_data_type="S3Prefix",
+                        s3_uri=f"{default_base_path}/{unique_name}/input/recipe/recipe.yaml",
+                        s3_data_distribution_type="FullyReplicated",
+                    )
+                ),
+                input_mode="File",
+            )
+        ]
+
+
+def test_llmft_recipe_missing_training_image_error(modules_session):
+    """Test that LLMFT recipe throws an error when training_image is not provided."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "llm_finetuning_aws",
+        },
+        "trainer": {"num_nodes": "12"},
+        "training_config": {"model_save_name": "xyz"},
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        # Test that ValueError is raised when training_image is not provided for LLMFT recipe
+        with pytest.raises(
+            ValueError, match="training_image must be provided when using recipe for Nova or LLMFT"
+        ):
+            ModelTrainer.from_recipe(
+                training_recipe=recipe.name,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                # Note: training_image is intentionally not provided
+                base_job_name="base-job",
+            )
+
+        # Clean up the temporary file
+        os.unlink(recipe.name)

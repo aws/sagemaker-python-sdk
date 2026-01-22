@@ -1,4 +1,14 @@
 # Changelog
+## v3.4.0 (2026-01-22)
+
+### Features
+  - feat: add emr-serverless step for SageMaker Pipelines
+
+### Bug fixes and Other Changes
+  - Add Nova recipe training support in ModelTrainer 
+  - Add Partner-app Auth provider
+  - Add sagemaker dependency for remote function by default V3
+
 
 ## v3.3.1 (2026-01-12)
 ### Bug fixes and Other Changes
