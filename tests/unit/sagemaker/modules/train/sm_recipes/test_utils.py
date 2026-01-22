@@ -545,12 +545,34 @@ def test_get_args_from_nova_recipe_with_evaluation(test_case):
             },
             "is_llmft": False,
         },
+        {
+            "recipe": {
+                "run": {
+                    "name": "verl-grpo-llama",
+                    "model_type": "verl",
+                },
+                "trainer": {"num_nodes": "1"},
+                "training_config": {"trainer": {"total_epochs": 2}},
+            },
+            "is_llmft": True,
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "verl-grpo-llama",
+                    "model_type": "verl",
+                },
+            },
+            "is_llmft": False,
+        },
     ],
     ids=[
         "llmft_model",
         "llmft_model_subtype",
         "llmft_missing_training_config",
         "non_llmft_model",
+        "verl_model",
+        "verl_missing_training_config",
     ],
 )
 def test_is_llmft_recipe(test_case):
