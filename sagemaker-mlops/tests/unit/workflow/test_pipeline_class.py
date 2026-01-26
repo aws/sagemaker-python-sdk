@@ -33,6 +33,7 @@ def mock_session():
     session.sagemaker_client = Mock()
     session.boto_session = Mock()
     session.boto_session.client = Mock(return_value=Mock())
+    session.boto_region_name = "us-east-1"
     session.local_mode = False
     session.sagemaker_config = {}
     session._append_sagemaker_config_tags = Mock(return_value=[])
@@ -59,8 +60,12 @@ class TestPipelineInit:
     def test_init_minimal(self):
         """Test Pipeline initialization with minimal parameters."""
         with patch('sagemaker.mlops.workflow.pipeline.Session') as mock_session_class:
-            mock_session_class.return_value = Mock()
-            
+            mock_session = Mock()
+            mock_session.boto_region_name = "us-east-1"
+            mock_session.boto_session = Mock()
+            mock_session.boto_session.client = Mock(return_value=Mock())
+            mock_session_class.return_value = mock_session
+
             pipeline = Pipeline(name="test-pipeline")
 
             assert pipeline.name == "test-pipeline"
