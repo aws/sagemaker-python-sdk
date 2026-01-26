@@ -26,6 +26,7 @@ def mock_session():
     """Create a mock SageMaker session for testing."""
     session = Mock()
     session.boto_session.client.return_value = Mock()
+    session.boto_region_name = "us-east-1"
     session.sagemaker_client = Mock()
     session.local_mode = False
     session.sagemaker_config = {}
