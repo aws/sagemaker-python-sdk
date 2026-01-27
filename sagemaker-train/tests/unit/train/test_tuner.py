@@ -38,9 +38,10 @@ from sagemaker.core.shapes import (
 # Factory functions for creating test objects (reduces fixture duplication)
 # ---------------------------------------------------------------------------
 
+
 def _create_mock_model_trainer(with_internal_channels=False):
     """Create a mock ModelTrainer with common attributes.
-    
+
     Args:
         with_internal_channels: If True, adds internal channels (code, sm_drivers)
             to input_data_config for testing channel inclusion in tuning jobs.
@@ -89,17 +90,16 @@ def _create_channel(name: str, uri: str) -> Channel:
         channel_name=name,
         data_source=DataSource(
             s3_data_source=S3DataSource(
-                s3_data_type="S3Prefix",
-                s3_uri=uri,
-                s3_data_distribution_type="FullyReplicated"
+                s3_data_type="S3Prefix", s3_uri=uri, s3_data_distribution_type="FullyReplicated"
             )
-        )
+        ),
     )
 
 
 # ---------------------------------------------------------------------------
 # Test Classes
 # ---------------------------------------------------------------------------
+
 
 class TestWarmStartTypes:
     """Test WarmStartTypes enum."""
@@ -427,7 +427,9 @@ class TestHyperparameterTunerMethods:
             # Analytics is called with positional args
             assert mock_analytics.called
             call_args = mock_analytics.call_args
-            assert call_args[0][0] == tuner_with_job.latest_tuning_job.hyper_parameter_tuning_job_name
+            assert (
+                call_args[0][0] == tuner_with_job.latest_tuning_job.hyper_parameter_tuning_job_name
+            )
 
 
 class TestHyperparameterTunerValidation:
@@ -446,9 +448,7 @@ class TestHyperparameterTunerValidation:
     def test_validate_dict_argument_with_none(self):
         """Test _validate_dict_argument with None returns without error."""
         # None is allowed and returns without raising
-        HyperparameterTuner._validate_dict_argument(
-            "test_arg", None, ["key1", "key2"]
-        )
+        HyperparameterTuner._validate_dict_argument("test_arg", None, ["key1", "key2"])
 
     def test_validate_dict_argument_with_invalid_keys(self):
         """Test _validate_dict_argument with invalid keys."""
@@ -492,9 +492,7 @@ class TestHyperparameterTunerStaticMethods:
             "ContinuousParameterRanges": [
                 {"Name": "learning_rate", "MinValue": "0.001", "MaxValue": "0.1"}
             ],
-            "IntegerParameterRanges": [
-                {"Name": "batch_size", "MinValue": "32", "MaxValue": "256"}
-            ],
+            "IntegerParameterRanges": [{"Name": "batch_size", "MinValue": "32", "MaxValue": "256"}],
             "CategoricalParameterRanges": [
                 {"Name": "optimizer", "Values": ["sgd", "adam", "rmsprop"]}
             ],
@@ -517,9 +515,7 @@ class TestHyperparameterTunerStaticMethods:
             "ContinuousParameterRanges": [
                 {"Name": "learning_rate", "MinValue": "0.001", "MaxValue": "0.1"}
             ],
-            "IntegerParameterRanges": [
-                {"Name": "batch_size", "MinValue": "32", "MaxValue": "256"}
-            ],
+            "IntegerParameterRanges": [{"Name": "batch_size", "MinValue": "32", "MaxValue": "256"}],
             "CategoricalParameterRanges": [],
         }
 
@@ -547,7 +543,7 @@ class TestHyperparameterTunerStaticMethods:
 
     def test_build_training_job_definition_includes_internal_channels(self):
         """Test that _build_training_job_definition includes ModelTrainer's internal channels.
-        
+
         This test verifies the fix for GitHub issue #5508 where tuning jobs were missing
         internal channels (code, sm_drivers) that ModelTrainer creates for custom training.
         """
@@ -559,7 +555,7 @@ class TestHyperparameterTunerStaticMethods:
         # User-provided inputs
         user_inputs = [
             InputData(channel_name="train", data_source="s3://bucket/train"),
-            InputData(channel_name="validation", data_source="s3://bucket/val")
+            InputData(channel_name="validation", data_source="s3://bucket/val"),
         ]
 
         tuner = HyperparameterTuner(
