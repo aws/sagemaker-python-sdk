@@ -20,13 +20,11 @@ class TestSageMakerSmdServer(unittest.TestCase):
         s3_path, env_vars = server._upload_smd_artifacts(
             model_path="s3://bucket/model",
             sagemaker_session=mock_session,
-            secret_key="test-key",
             should_upload_artifacts=False
         )
         
         self.assertEqual(s3_path, "s3://bucket/model")
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
-        self.assertEqual(env_vars["SAGEMAKER_SERVE_SECRET_KEY"], "test-key")
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
         self.assertIn("SAGEMAKER_INFERENCE_CODE_DIRECTORY", env_vars)
 
     @patch('sagemaker.serve.model_server.smd.server.upload')
@@ -51,14 +49,13 @@ class TestSageMakerSmdServer(unittest.TestCase):
         s3_path, env_vars = server._upload_smd_artifacts(
             model_path="/local/model",
             sagemaker_session=mock_session,
-            secret_key="test-key",
             s3_model_data_url="s3://bucket/prefix",
             image="test-image",
             should_upload_artifacts=True
         )
         
         self.assertEqual(s3_path, "s3://bucket/code_prefix/model.tar.gz")
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
         self.assertIn("SAGEMAKER_INFERENCE_CODE", env_vars)
         mock_upload.assert_called_once()
 
@@ -75,12 +72,11 @@ class TestSageMakerSmdServer(unittest.TestCase):
         s3_path, env_vars = server._upload_smd_artifacts(
             model_path="/local/model",
             sagemaker_session=mock_session,
-            secret_key="test-key",
             should_upload_artifacts=False
         )
         
         self.assertIsNone(s3_path)
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
 
 
 if __name__ == "__main__":

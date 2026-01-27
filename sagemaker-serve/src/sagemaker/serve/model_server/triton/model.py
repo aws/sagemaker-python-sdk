@@ -29,8 +29,6 @@ class TritonPythonModel:
         with open(str(serve_path), mode="rb") as f:
             inference_spec, schema_builder = cloudpickle.load(f)
 
-        # TODO: HMAC signing for integrity check
-
         self.inference_spec = inference_spec
         self.schema_builder = schema_builder
         self.model = inference_spec.load(model_dir=TRITON_MODEL_DIR)

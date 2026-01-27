@@ -27,7 +27,6 @@ class TestLocalTgiServing(unittest.TestCase):
             client=mock_client,
             image="test-image:latest",
             model_path="/path/to/model",
-            secret_key="test-secret",
             env_vars={"CUSTOM_VAR": "value"},
             jumpstart=True
         )
@@ -59,7 +58,6 @@ class TestLocalTgiServing(unittest.TestCase):
             client=mock_client,
             image="test-image:latest",
             model_path="/path/to/model",
-            secret_key="test-secret",
             env_vars={"CUSTOM_VAR": "value"},
             jumpstart=False
         )
