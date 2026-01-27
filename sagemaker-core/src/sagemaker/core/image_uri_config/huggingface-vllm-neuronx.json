@@ -82,7 +82,7 @@
                     "neuronx": "ubuntu22.04"
                 },
                 "sdk_versions": [
-                    "sdk2.26.0"
+                    "sdk2.26.1"
                 ]
             }
         }
