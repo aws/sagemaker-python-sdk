@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import MagicMock, patch, PropertyMock
+from unittest.mock import MagicMock, patch
 
 from sagemaker.train.tuner import (
     HyperparameterTuner,
@@ -26,8 +26,80 @@ from sagemaker.core.parameter import (
     ContinuousParameter,
     IntegerParameter,
 )
-from sagemaker.core.shapes import HyperParameterTuningJobWarmStartConfig
+from sagemaker.core.shapes import (
+    HyperParameterTuningJobWarmStartConfig,
+    Channel,
+    DataSource,
+    S3DataSource,
+)
 
+
+# ---------------------------------------------------------------------------
+# Factory functions for creating test objects (reduces fixture duplication)
+# ---------------------------------------------------------------------------
+
+def _create_mock_model_trainer(with_internal_channels=False):
+    """Create a mock ModelTrainer with common attributes.
+    
+    Args:
+        with_internal_channels: If True, adds internal channels (code, sm_drivers)
+            to input_data_config for testing channel inclusion in tuning jobs.
+    """
+    trainer = MagicMock()
+    trainer.sagemaker_session = MagicMock()
+    trainer.hyperparameters = {"learning_rate": 0.1, "batch_size": 32, "optimizer": "adam"}
+    trainer.training_image = "test-image:latest"
+    trainer.training_input_mode = "File"
+    trainer.role = "arn:aws:iam::123456789012:role/SageMakerRole"
+    trainer.output_data_config = MagicMock()
+    trainer.output_data_config.s3_output_path = "s3://bucket/output"
+    trainer.compute = MagicMock()
+    trainer.compute.instance_type = "ml.m5.xlarge"
+    trainer.compute.instance_count = 1
+    trainer.compute.volume_size_in_gb = 30
+    trainer.stopping_condition = MagicMock()
+    trainer.stopping_condition.max_runtime_in_seconds = 3600
+    trainer.input_data_config = None
+
+    if with_internal_channels:
+        trainer.input_data_config = [
+            _create_channel("code", "s3://bucket/code"),
+            _create_channel("sm_drivers", "s3://bucket/drivers"),
+        ]
+    return trainer
+
+
+def _create_hyperparameter_ranges():
+    """Create sample hyperparameter ranges."""
+    return {
+        "learning_rate": ContinuousParameter(0.001, 0.1),
+        "batch_size": IntegerParameter(32, 256),
+        "optimizer": CategoricalParameter(["sgd", "adam"]),
+    }
+
+
+def _create_single_hp_range():
+    """Create a single hyperparameter range for simple tests."""
+    return {"learning_rate": ContinuousParameter(0.001, 0.1)}
+
+
+def _create_channel(name: str, uri: str) -> Channel:
+    """Create a Channel with S3 data source."""
+    return Channel(
+        channel_name=name,
+        data_source=DataSource(
+            s3_data_source=S3DataSource(
+                s3_data_type="S3Prefix",
+                s3_uri=uri,
+                s3_data_distribution_type="FullyReplicated"
+            )
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
+# Test Classes
+# ---------------------------------------------------------------------------
 
 class TestWarmStartTypes:
     """Test WarmStartTypes enum."""
@@ -47,19 +119,12 @@ class TestHyperparameterTunerInit:
     @pytest.fixture
     def mock_model_trainer(self):
         """Create a mock ModelTrainer."""
-        trainer = MagicMock()
-        trainer.sagemaker_session = MagicMock()
-        trainer.hyperparameters = {"learning_rate": 0.1}
-        return trainer
+        return _create_mock_model_trainer()
 
     @pytest.fixture
     def hyperparameter_ranges(self):
         """Create sample hyperparameter ranges."""
-        return {
-            "learning_rate": ContinuousParameter(0.001, 0.1),
-            "batch_size": IntegerParameter(32, 256),
-            "optimizer": CategoricalParameter(["sgd", "adam"]),
-        }
+        return _create_hyperparameter_ranges()
 
     def test_init_with_basic_params(self, mock_model_trainer, hyperparameter_ranges):
         """Test initialization with basic parameters."""
@@ -266,14 +331,10 @@ class TestHyperparameterTunerProperties:
     @pytest.fixture
     def tuner(self):
         """Create a basic tuner instance."""
-        mock_trainer = MagicMock()
-        mock_trainer.sagemaker_session = MagicMock()
         return HyperparameterTuner(
-            model_trainer=mock_trainer,
+            model_trainer=_create_mock_model_trainer(),
             objective_metric_name="accuracy",
-            hyperparameter_ranges={
-                "learning_rate": ContinuousParameter(0.001, 0.1),
-            },
+            hyperparameter_ranges=_create_single_hp_range(),
         )
 
     def test_sagemaker_session_property(self, tuner):
@@ -293,15 +354,10 @@ class TestHyperparameterTunerProperties:
 
     def test_hyperparameter_ranges_dict_property_with_dict(self):
         """Test hyperparameter_ranges_dict property with model_trainer_dict."""
-        mock_trainer = MagicMock()
-        mock_trainer.sagemaker_session = MagicMock()
-        
         tuner = HyperparameterTuner(
-            model_trainer=mock_trainer,
+            model_trainer=_create_mock_model_trainer(),
             objective_metric_name="accuracy",
-            hyperparameter_ranges={
-                "learning_rate": ContinuousParameter(0.001, 0.1),
-            },
+            hyperparameter_ranges=_create_single_hp_range(),
             model_trainer_name="trainer1",
         )
 
@@ -316,14 +372,10 @@ class TestHyperparameterTunerMethods:
     @pytest.fixture
     def tuner_with_job(self):
         """Create a tuner with a latest_tuning_job."""
-        mock_trainer = MagicMock()
-        mock_trainer.sagemaker_session = MagicMock()
         tuner = HyperparameterTuner(
-            model_trainer=mock_trainer,
+            model_trainer=_create_mock_model_trainer(),
             objective_metric_name="accuracy",
-            hyperparameter_ranges={
-                "learning_rate": ContinuousParameter(0.001, 0.1),
-            },
+            hyperparameter_ranges=_create_single_hp_range(),
         )
         tuner.latest_tuning_job = MagicMock()
         tuner._current_job_name = "test-tuning-job"
@@ -331,13 +383,10 @@ class TestHyperparameterTunerMethods:
 
     def test_ensure_last_tuning_job_raises_error_when_none(self):
         """Test _ensure_last_tuning_job raises error when no job exists."""
-        mock_trainer = MagicMock()
         tuner = HyperparameterTuner(
-            model_trainer=mock_trainer,
+            model_trainer=_create_mock_model_trainer(),
             objective_metric_name="accuracy",
-            hyperparameter_ranges={
-                "learning_rate": ContinuousParameter(0.001, 0.1),
-            },
+            hyperparameter_ranges=_create_single_hp_range(),
         )
 
         with pytest.raises(ValueError):
@@ -363,7 +412,7 @@ class TestHyperparameterTunerMethods:
         mock_best_job = MagicMock()
         mock_best_job.training_job_name = "best-job-123"
         mock_best_job.training_job_definition_name = "training-def"
-        
+
         mock_tuning_job = MagicMock()
         mock_tuning_job.best_training_job = mock_best_job
         tuner_with_job.latest_tuning_job.refresh.return_value = mock_tuning_job
@@ -426,16 +475,8 @@ class TestHyperparameterTunerStaticMethods:
 
     def test_prepare_static_hyperparameters(self):
         """Test _prepare_static_hyperparameters method."""
-        mock_trainer = MagicMock()
-        mock_trainer.hyperparameters = {
-            "learning_rate": 0.1,
-            "batch_size": 32,
-            "optimizer": "adam",
-        }
-
-        hyperparameter_ranges = {
-            "learning_rate": ContinuousParameter(0.001, 0.1),
-        }
+        mock_trainer = _create_mock_model_trainer()
+        hyperparameter_ranges = _create_single_hp_range()
 
         static_hps = HyperparameterTuner._prepare_static_hyperparameters(
             mock_trainer, hyperparameter_ranges
@@ -491,11 +532,7 @@ class TestHyperparameterTunerStaticMethods:
 
     def test_prepare_parameter_ranges_for_tuning(self):
         """Test _prepare_parameter_ranges_for_tuning method."""
-        parameter_ranges = {
-            "learning_rate": ContinuousParameter(0.001, 0.1),
-            "batch_size": IntegerParameter(32, 256),
-            "optimizer": CategoricalParameter(["sgd", "adam"]),
-        }
+        parameter_ranges = _create_hyperparameter_ranges()
 
         processed_ranges = HyperparameterTuner._prepare_parameter_ranges_for_tuning(
             parameter_ranges
@@ -507,3 +544,37 @@ class TestHyperparameterTunerStaticMethods:
         assert len(processed_ranges["ContinuousParameterRanges"]) == 1
         assert len(processed_ranges["IntegerParameterRanges"]) == 1
         assert len(processed_ranges["CategoricalParameterRanges"]) == 1
+
+    def test_build_training_job_definition_includes_internal_channels(self):
+        """Test that _build_training_job_definition includes ModelTrainer's internal channels.
+        
+        This test verifies the fix for GitHub issue #5508 where tuning jobs were missing
+        internal channels (code, sm_drivers) that ModelTrainer creates for custom training.
+        """
+        from sagemaker.core.training.configs import InputData
+
+        # Create mock ModelTrainer with internal channels (code, sm_drivers)
+        mock_trainer = _create_mock_model_trainer(with_internal_channels=True)
+
+        # User-provided inputs
+        user_inputs = [
+            InputData(channel_name="train", data_source="s3://bucket/train"),
+            InputData(channel_name="validation", data_source="s3://bucket/val")
+        ]
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        # Build training job definition
+        definition = tuner._build_training_job_definition(user_inputs)
+
+        # Verify all channels are included
+        channel_names = [ch.channel_name for ch in definition.input_data_config]
+        assert "code" in channel_names, "Internal 'code' channel should be included"
+        assert "sm_drivers" in channel_names, "Internal 'sm_drivers' channel should be included"
+        assert "train" in channel_names, "User 'train' channel should be included"
+        assert "validation" in channel_names, "User 'validation' channel should be included"
+        assert len(channel_names) == 4, "Should have exactly 4 channels"

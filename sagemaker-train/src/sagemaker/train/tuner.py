@@ -1388,6 +1388,14 @@ class HyperparameterTuner(object):
                         )
                     ))
         
+        # Include ModelTrainer's internal channels (code, sm_drivers, etc.)
+        # These are created by ModelTrainer and are required for custom training logic
+        if hasattr(model_trainer, 'input_data_config') and model_trainer.input_data_config:
+            for channel in model_trainer.input_data_config:
+                # Add internal channels that aren't already in input_data_config
+                if not any(c.channel_name == channel.channel_name for c in input_data_config):
+                    input_data_config.append(channel)
+        
         # Build output data config
         output_config = OutputDataConfig(
             s3_output_path=model_trainer.output_data_config.s3_output_path if model_trainer.output_data_config else None
@@ -1412,7 +1420,7 @@ class HyperparameterTuner(object):
             output_data_config=output_config,
             resource_config=resource_config,
             stopping_condition=stopping_condition,
-            static_hyper_parameters=self.static_hyperparameters or {}
+            static_hyper_parameters=self.static_hyperparameters_dict or {}
         )
         
         return definition
