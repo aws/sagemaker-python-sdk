@@ -221,6 +221,7 @@ class HyperparameterTuner(object):
             self.objective_metric_name_dict = None
             self._hyperparameter_ranges_dict = None
             self.metric_definitions_dict = None
+            self.static_hyperparameters = None
             self.static_hyperparameters_dict = None
             self.auto_parameters = None
             self.auto_parameters_dict = None
@@ -1458,7 +1459,7 @@ class HyperparameterTuner(object):
             output_data_config=output_config,
             resource_config=resource_config,
             stopping_condition=stopping_condition,
-            static_hyper_parameters=self.static_hyperparameters_dict or {},
+            static_hyper_parameters=self.static_hyperparameters or {},
         )
 
         return definition
