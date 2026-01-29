@@ -457,18 +457,22 @@ class HyperparameterTuner(object):
     @classmethod
     def _upload_source_code_and_configure_hyperparameters(cls, model_trainer):
         """Upload source code to S3 and add script mode hyperparameters.
-        
+
         Framework containers (PyTorch, TensorFlow) expect sagemaker_program and
         sagemaker_submit_directory hyperparameters for script mode execution. This method:
         1. Checks if source_dir is a local path or S3 URI
-        2. Creates a tar.gz archive and uploads to S3
+        2. Creates a tar.gz archive and uploads to S3 (respecting ignore_patterns)
         3. Adds required script mode hyperparameters to model_trainer.hyperparameters
-        
+
+        Files and directories matching patterns in source_code.ignore_patterns
+        will be excluded from the tarball.
+
         This follows V2's pattern of creating sourcedir.tar.gz files.
-        
+
         Args:
             model_trainer: ModelTrainer instance with source_code configured
         """
+        import fnmatch
         import os
         import tarfile
         import tempfile
@@ -500,9 +504,21 @@ class HyperparameterTuner(object):
             try:
                 # Create tar.gz archive
                 with tarfile.open(tar_path, 'w:gz') as tar:
-                    # Add all files from source_dir
+                    # Get ignore patterns from source_code (default to empty list if None)
+                    ignore_pats = source_code.ignore_patterns or []
+
+                    # Helper to check if a name matches any ignore pattern
+                    def should_ignore(name):
+                        return any(fnmatch.fnmatch(name, pat) for pat in ignore_pats)
+
+                    # Add files from source_dir, respecting ignore_patterns
                     for root, dirs, files in os.walk(source_dir):
+                        # Filter directories in-place to skip ignored dirs
+                        dirs[:] = [d for d in dirs if not should_ignore(d)]
+
                         for file in files:
+                            if should_ignore(file):
+                                continue
                             file_path = os.path.join(root, file)
                             # Calculate arcname to preserve directory structure
                             arcname = os.path.relpath(file_path, source_dir)

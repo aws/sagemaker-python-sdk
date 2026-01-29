@@ -507,3 +507,201 @@ class TestHyperparameterTunerStaticMethods:
         assert len(processed_ranges["ContinuousParameterRanges"]) == 1
         assert len(processed_ranges["IntegerParameterRanges"]) == 1
         assert len(processed_ranges["CategoricalParameterRanges"]) == 1
+
+
+class TestUploadSourceCodeIgnorePatterns:
+    """Test _upload_source_code_and_configure_hyperparameters respects ignore_patterns."""
+
+    @pytest.fixture
+    def mock_model_trainer_with_source(self, tmp_path):
+        """Create a mock ModelTrainer with source_code configured."""
+        # Create test source directory with files that should be included/ignored
+        source_dir = tmp_path / "source"
+        source_dir.mkdir()
+
+        # Create files that should be included
+        (source_dir / "train.py").write_text("# training script")
+        (source_dir / "utils.py").write_text("# utils")
+
+        # Create files that should be ignored
+        (source_dir / ".env").write_text("SECRET=123")
+        (source_dir / "model.pt").write_text("fake model weights")
+
+        # Create directories that should be ignored
+        pycache_dir = source_dir / "__pycache__"
+        pycache_dir.mkdir()
+        (pycache_dir / "train.cpython-310.pyc").write_text("bytecode")
+
+        git_dir = source_dir / ".git"
+        git_dir.mkdir()
+        (git_dir / "config").write_text("git config")
+
+        # Create subdirectory with mixed files
+        sub_dir = source_dir / "subdir"
+        sub_dir.mkdir()
+        (sub_dir / "helper.py").write_text("# helper")
+        (sub_dir / "cache.pyc").write_text("bytecode")
+
+        # Create mock model trainer
+        trainer = MagicMock()
+        trainer.sagemaker_session = MagicMock()
+        trainer.sagemaker_session.boto_session = MagicMock()
+        trainer.sagemaker_session.boto_session.client.return_value = MagicMock()
+        trainer.sagemaker_session.boto_region_name = "us-west-2"
+        trainer.sagemaker_session.default_bucket.return_value = "test-bucket"
+        trainer.base_job_name = "test-job"
+        trainer.hyperparameters = {}
+
+        # Create source_code mock
+        source_code = MagicMock()
+        source_code.source_dir = str(source_dir)
+        source_code.entry_script = "train.py"
+        source_code.ignore_patterns = [".env", ".git", "__pycache__", "*.pt", "*.pyc"]
+        trainer.source_code = source_code
+
+        return trainer, source_dir
+
+    def test_upload_source_code_respects_ignore_patterns(self, mock_model_trainer_with_source):
+        """Test that files matching ignore_patterns are excluded from tarball."""
+        import tarfile
+        import tempfile
+
+        trainer, source_dir = mock_model_trainer_with_source
+
+        # Call the method
+        HyperparameterTuner._upload_source_code_and_configure_hyperparameters(trainer)
+
+        # Get the uploaded tarball path from the mock call
+        s3_client = trainer.sagemaker_session.boto_session.client.return_value
+        upload_call = s3_client.upload_file.call_args
+        assert upload_call is not None
+
+        # The tarball was already deleted, so we need to test by recreating the scenario
+        # Let's verify the logic by checking what would have been uploaded
+        # We do this by examining the method behavior directly
+
+        # For a more thorough test, let's capture what files were added
+        # by patching tarfile.open
+        with patch("tarfile.open") as mock_tarfile:
+            mock_tar = MagicMock()
+            mock_tarfile.return_value.__enter__.return_value = mock_tar
+
+            # Reset the mock to test again
+            trainer.hyperparameters = {}
+
+            HyperparameterTuner._upload_source_code_and_configure_hyperparameters(trainer)
+
+            # Check which files were added to the tarball
+            added_files = [call[0][0] for call in mock_tar.add.call_args_list]
+            added_arcnames = [call[1]["arcname"] for call in mock_tar.add.call_args_list]
+
+            # Should include these files
+            assert any("train.py" in f for f in added_files)
+            assert any("utils.py" in f for f in added_files)
+            assert any("helper.py" in f for f in added_files)
+
+            # Should NOT include these files (ignored patterns)
+            assert not any(".env" in f for f in added_files)
+            assert not any("model.pt" in f for f in added_files)
+            assert not any("__pycache__" in f for f in added_files)
+            assert not any(".git" in f for f in added_files)
+            assert not any(".pyc" in f for f in added_files)
+
+    def test_upload_source_code_ignores_directories(self, mock_model_trainer_with_source):
+        """Test that directories matching ignore_patterns are completely skipped."""
+        trainer, source_dir = mock_model_trainer_with_source
+
+        with patch("tarfile.open") as mock_tarfile:
+            mock_tar = MagicMock()
+            mock_tarfile.return_value.__enter__.return_value = mock_tar
+
+            HyperparameterTuner._upload_source_code_and_configure_hyperparameters(trainer)
+
+            added_files = [call[0][0] for call in mock_tar.add.call_args_list]
+
+            # No files from __pycache__ directory should be added
+            assert not any("__pycache__" in f for f in added_files)
+            # No files from .git directory should be added
+            assert not any(".git" in f for f in added_files)
+
+    def test_upload_source_code_with_empty_ignore_patterns(self, tmp_path):
+        """Test backward compatibility with None/empty ignore_patterns."""
+        # Create simple source directory
+        source_dir = tmp_path / "source"
+        source_dir.mkdir()
+        (source_dir / "train.py").write_text("# training script")
+        (source_dir / ".env").write_text("SECRET=123")
+
+        # Create mock trainer with no ignore_patterns
+        trainer = MagicMock()
+        trainer.sagemaker_session = MagicMock()
+        trainer.sagemaker_session.boto_session = MagicMock()
+        trainer.sagemaker_session.boto_session.client.return_value = MagicMock()
+        trainer.sagemaker_session.boto_region_name = "us-west-2"
+        trainer.sagemaker_session.default_bucket.return_value = "test-bucket"
+        trainer.base_job_name = "test-job"
+        trainer.hyperparameters = {}
+
+        source_code = MagicMock()
+        source_code.source_dir = str(source_dir)
+        source_code.entry_script = "train.py"
+        source_code.ignore_patterns = None  # No ignore patterns
+        trainer.source_code = source_code
+
+        with patch("tarfile.open") as mock_tarfile:
+            mock_tar = MagicMock()
+            mock_tarfile.return_value.__enter__.return_value = mock_tar
+
+            HyperparameterTuner._upload_source_code_and_configure_hyperparameters(trainer)
+
+            added_files = [call[0][0] for call in mock_tar.add.call_args_list]
+
+            # Both files should be added when no ignore_patterns
+            assert any("train.py" in f for f in added_files)
+            assert any(".env" in f for f in added_files)
+
+    def test_upload_source_code_with_default_ignore_patterns(self, tmp_path):
+        """Test that default ignore patterns from SourceCode class work."""
+        # Create source directory with default-ignored files
+        source_dir = tmp_path / "source"
+        source_dir.mkdir()
+        (source_dir / "train.py").write_text("# training script")
+        (source_dir / ".DS_Store").write_text("mac file")
+
+        cache_dir = source_dir / ".cache"
+        cache_dir.mkdir()
+        (cache_dir / "data.json").write_text("{}")
+
+        # Create mock trainer with default ignore_patterns
+        trainer = MagicMock()
+        trainer.sagemaker_session = MagicMock()
+        trainer.sagemaker_session.boto_session = MagicMock()
+        trainer.sagemaker_session.boto_session.client.return_value = MagicMock()
+        trainer.sagemaker_session.boto_region_name = "us-west-2"
+        trainer.sagemaker_session.default_bucket.return_value = "test-bucket"
+        trainer.base_job_name = "test-job"
+        trainer.hyperparameters = {}
+
+        source_code = MagicMock()
+        source_code.source_dir = str(source_dir)
+        source_code.entry_script = "train.py"
+        # Default patterns as defined in SourceCode class
+        source_code.ignore_patterns = [
+            ".env", ".git", "__pycache__", ".DS_Store", ".cache", ".ipynb_checkpoints"
+        ]
+        trainer.source_code = source_code
+
+        with patch("tarfile.open") as mock_tarfile:
+            mock_tar = MagicMock()
+            mock_tarfile.return_value.__enter__.return_value = mock_tar
+
+            HyperparameterTuner._upload_source_code_and_configure_hyperparameters(trainer)
+
+            added_files = [call[0][0] for call in mock_tar.add.call_args_list]
+
+            # train.py should be included
+            assert any("train.py" in f for f in added_files)
+            # .DS_Store should be ignored
+            assert not any(".DS_Store" in f for f in added_files)
+            # .cache directory should be ignored
+            assert not any(".cache" in f for f in added_files)
