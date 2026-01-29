@@ -49,6 +49,7 @@ from sagemaker.mlops.workflow._event_bridge_client_helper import (
     RESOURCE_NOT_FOUND_EXCEPTION,
     EXECUTION_TIME_PIPELINE_PARAMETER_FORMAT,
 )
+from sagemaker.mlops.workflow._utils import EUREKA_GA_REGIONS
 from sagemaker.mlops.workflow.lambda_step import LambdaOutput, LambdaStep
 from sagemaker.core.shapes.shapes import MlflowConfig
 from sagemaker.core.helper.pipeline_variable import (
@@ -116,6 +117,8 @@ class Pipeline:
                 the same name already exists. By default, pipeline name is used as
                 experiment name and execution id is used as the trial name.
                 If set to None, no experiment or trial will be created automatically.
+                Note: The default experiment config is only applied in regions where
+                Experiments (Eureka) is Generally Available.
             mlflow_config (Optional[MlflowConfig]): If set, the pipeline will be configured
                 with MLflow tracking for experiment tracking and model versioning.
             steps (Sequence[Union[Step, StepOutput]]): The list of the
@@ -133,7 +136,6 @@ class Pipeline:
         """
         self.name = name
         self.parameters = parameters if parameters else []
-        self.pipeline_experiment_config = pipeline_experiment_config
         self.mlflow_config = mlflow_config
         self.steps = steps if steps else []
         self.sagemaker_session = sagemaker_session if sagemaker_session else Session()
@@ -146,6 +148,13 @@ class Pipeline:
         self._event_bridge_scheduler_helper = EventBridgeSchedulerHelper(
             self.sagemaker_session.boto_session.client("scheduler"),
         )
+        self.pipeline_experiment_config = pipeline_experiment_config
+
+        # Apply default experiment config only in Eureka GA regions
+        if pipeline_experiment_config is _DEFAULT_EXPERIMENT_CFG:
+            region = self.sagemaker_session.boto_region_name
+            if region not in EUREKA_GA_REGIONS:
+                self.pipeline_experiment_config = None
 
     @property
     def latest_pipeline_version_id(self):
