@@ -200,7 +200,9 @@ def test_pipeline_with_train_and_registry(sagemaker_session, pipeline_session, r
         name=pipeline_name,
         parameters=[
             processing_instance_count,
+            processing_image_uri,
             training_instance_count,
+            training_image_uri,
             instance_type,
             input_data,
             hyper_parameter_objective,
