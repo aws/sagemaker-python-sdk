@@ -14,6 +14,15 @@
 from __future__ import absolute_import
 
 from typing import Optional, Dict, Any, Union
+import os
+try:
+    from botocore.exceptions import ClientError
+except Exception:
+    # Minimal local fallback for environments without botocore (tests/dev).
+    class ClientError(Exception):
+        def __init__(self, error_response, operation_name=None):
+            self.response = error_response
+            super().__init__(str(error_response))
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.resources import TrainingJob, ModelPackage
@@ -198,49 +207,80 @@ class BedrockModelBuilder:
         import json
         from urllib.parse import urlparse
         import logging
-        
+
         logger = logging.getLogger(__name__)
-        
+
         if not isinstance(self.model, TrainingJob):
             raise ValueError("Model must be a TrainingJob instance for Nova models")
-        
+
         # Step 1: Get S3 model artifacts from training job
         s3_artifacts = self.model.model_artifacts.s3_model_artifacts
         if not s3_artifacts:
             raise ValueError("No S3 model artifacts found in training job")
-        
+
         logger.info(f"S3 artifacts path: {s3_artifacts}")
-        
-        # Step 2: Construct manifest path (same directory as model artifacts)
-        # s3://bucket/path/output/model.tar.gz -> s3://bucket/path/output/output/manifest.json
-        parts = s3_artifacts.rstrip('/').rsplit('/', 1)
-        manifest_path = parts[0] + '/output/manifest.json'
-        
-        logger.info(f"Manifest path: {manifest_path}")
-        
-        # Step 3: Find and read manifest.json
-        parsed = urlparse(manifest_path)
-        bucket = parsed.netloc
-        manifest_key = parsed.path.lstrip('/')
-        
-        logger.info(f"Looking for manifest at s3://{bucket}/{manifest_key}")
-        
+
+        # Parse S3 URI and build candidate manifest keys. The manifest may be located
+        # beside the model artifact or in an `output/` subdirectory depending on
+        # how training jobs write artifacts. Try multiple reasonable candidates.
+        parsed_artifacts = urlparse(s3_artifacts)
+        bucket = parsed_artifacts.netloc
+        key = parsed_artifacts.path.lstrip('/')
+        base_dir = os.path.dirname(key)
+
+        candidate_keys = [
+            f"{base_dir}/manifest.json",
+            f"{base_dir}/output/manifest.json",
+            f"{os.path.dirname(base_dir)}/manifest.json",
+        ]
+
         s3_client = self.boto_session.client('s3')
-        try:
-            response = s3_client.get_object(Bucket=bucket, Key=manifest_key)
-            manifest = json.loads(response['Body'].read().decode('utf-8'))
-            logger.info(f"Manifest content: {manifest}")
-            
-            # Step 4: Fetch checkpoint_s3_bucket from manifest
-            checkpoint_uri = manifest.get('checkpoint_s3_bucket')
-            if not checkpoint_uri:
-                raise ValueError(f"'checkpoint_s3_bucket' not found in manifest. Available keys: {list(manifest.keys())}")
-            
-            logger.info(f"Checkpoint URI: {checkpoint_uri}")
-            return checkpoint_uri
-        except s3_client.exceptions.NoSuchKey:
-            raise ValueError(f"manifest.json not found at s3://{bucket}/{manifest_key}")
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse manifest.json: {e}")
-        except Exception as e:
-            raise ValueError(f"Error reading manifest.json: {e}")
+        last_manifest = None
+        for manifest_key in candidate_keys:
+            logger.debug(f"Looking for manifest at s3://{bucket}/{manifest_key}")
+            try:
+                response = s3_client.get_object(Bucket=bucket, Key=manifest_key)
+            except ClientError as e:
+                code = e.response.get('Error', {}).get('Code', '')
+                # Continue searching if the key/bucket was not found; re-raise unexpected errors
+                if code in ("NoSuchKey", "NoSuchBucket", "404"):
+                    logger.debug(f"manifest not found at {manifest_key}: {code}")
+                    continue
+                raise
+
+            try:
+                body = response['Body'].read().decode('utf-8')
+                manifest = json.loads(body)
+                last_manifest = manifest
+                logger.debug(f"Manifest content keys: {list(manifest.keys())}")
+
+                # Try to find any manifest entry that looks like a checkpoint URI
+                checkpoint_uri = None
+                for k, v in manifest.items():
+                    if 'checkpoint' in k.lower():
+                        checkpoint_uri = v
+                        break
+
+                # Fallback to common keys
+                if not checkpoint_uri:
+                    checkpoint_uri = (
+                        manifest.get('checkpoint_s3_bucket')
+                        or manifest.get('checkpoint_s3_uri')
+                        or manifest.get('checkpoint_s3_path')
+                    )
+
+                if not checkpoint_uri:
+                    # If manifest present but no checkpoint-like key, keep searching other candidates
+                    logger.debug(f"No checkpoint key in manifest at {manifest_key}")
+                    continue
+
+                logger.info(f"Checkpoint URI: {checkpoint_uri}")
+                return checkpoint_uri
+
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Failed to parse manifest.json at s3://{bucket}/{manifest_key}: {e}")
+
+        # If we exhausted candidates without finding a checkpoint, raise a clear error
+        tried = ", ".join([f"s3://{bucket}/{k}" for k in candidate_keys])
+        extra = f" Available manifest keys: {list(last_manifest.keys())}" if last_manifest else ""
+        raise ValueError(f"manifest.json with checkpoint not found. Tried: {tried}.{extra}")
