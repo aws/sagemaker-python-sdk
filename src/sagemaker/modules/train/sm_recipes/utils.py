@@ -289,7 +289,7 @@ def _is_llmft_recipe(
 
     A recipe is considered a LLMFT recipe if it meets the following conditions:
         1. Having a run section
-        2. The model_type in run is llmft
+        2. The model_type in run is llm_finetuning_aws or verl
         3. Having a training_config section
 
     Args:
@@ -299,8 +299,10 @@ def _is_llmft_recipe(
         bool: True if the recipe is a LLMFT recipe, False otherwise
     """
     run_config = recipe.get("run", {})
-    has_llmft_model = run_config.get("model_type", "").lower() == "llm_finetuning_aws"
-    return bool(has_llmft_model) and bool(recipe.get("training_config"))
+    model_type = run_config.get("model_type", "").lower()
+    has_llmft_model = model_type == "llm_finetuning_aws"
+    has_verl_model = model_type == "verl"
+    return (bool(has_llmft_model) or bool(has_verl_model)) and bool(recipe.get("training_config"))
 
 
 def _get_args_from_nova_recipe(
