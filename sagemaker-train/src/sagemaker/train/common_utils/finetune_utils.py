@@ -400,7 +400,7 @@ def _create_input_channels(dataset: str, content_type: Optional[str] = None,
         data_source = DataSource(
             s3_data_source={
                 "s3_uri": dataset,
-                "s3_data_type": "S3Prefix",
+                "s3_data_type": "Converse",
                 "s3_data_distribution_type": "FullyReplicated"
             }
         )
@@ -639,7 +639,7 @@ def _convert_input_data_to_channels(input_data_config ):
             data_source = DataSource(
                 s3_data_source={
                     "s3_uri": input_data.data_source,
-                    "s3_data_type": "S3Prefix",
+                    "s3_data_type": "Converse",
                     "s3_data_distribution_type": "FullyReplicated"
                 }
             )
