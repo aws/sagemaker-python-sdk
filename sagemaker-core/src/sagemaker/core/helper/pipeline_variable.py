@@ -80,3 +80,7 @@ class PipelineVariable(abc.ABC):
 
 # This is a type that could be either string or pipeline variable
 StrPipeVar = Union[str, PipelineVariable]
+# This is a type that could be either integer or pipeline variable
+IntPipeVar = Union[int, PipelineVariable]
+# This is a type that could be either boolean or pipeline variable
+BoolPipeVar = Union[bool, PipelineVariable]
