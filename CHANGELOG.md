@@ -1,5 +1,10 @@
 # Changelog
 
+## v2.257.0 (2026-02-03)
+
+### Features
+* Update image URIs for DJL 0.36.0 release
+
 ## v2.256.1 (2026-01-21)
 
 ### Bug fixes and Other Changes
