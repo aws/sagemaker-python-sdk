@@ -423,7 +423,7 @@ class FeatureGroup(CoreFeatureGroup):
         """
         # Get region from session if not provided
         if region is None and session is not None:
-            region = session.region_name()
+            region = session.region_name
 
         # Wait for Created status if requested
         if wait_for_active:
