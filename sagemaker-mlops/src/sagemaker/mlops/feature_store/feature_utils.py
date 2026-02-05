@@ -5,7 +5,8 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, Sequence, Union, re
+import re
+from typing import Any, Dict, Sequence, Union
 
 import boto3
 import pandas
