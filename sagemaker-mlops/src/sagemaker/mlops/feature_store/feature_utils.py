@@ -670,8 +670,6 @@ def prepare_fg_from_dataframe_or_file(
         raise exc
 
     if event_id not in data.columns:
-        import time
-
         current_time_sec = int(round(time.time()))
         data[event_id] = Series([current_time_sec] * lg_id, dtype="float64")
 
