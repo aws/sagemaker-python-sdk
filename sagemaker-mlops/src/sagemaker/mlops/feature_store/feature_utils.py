@@ -11,7 +11,7 @@ from typing import Any, Dict, Sequence, Union
 import boto3
 import pandas
 import pandas as pd
-from pandas import DataFrame, Series, read_csv
+from pandas import DataFrame, Series, read_csv\
 
 from sagemaker.mlops.feature_store import FeatureGroup as CoreFeatureGroup, FeatureGroup
 from sagemaker.core.helper.session_helper import Session
@@ -670,7 +670,7 @@ def prepare_fg_from_dataframe_or_file(
         raise exc
 
     if event_id not in data.columns:
-        current_time_sec = int(round(time.time()))
+        current_time_sec = int(time.time() + 0.5)
         data[event_id] = Series([current_time_sec] * lg_id, dtype="float64")
 
     if session is not None:
