@@ -591,7 +591,7 @@ class TestPrepareFgFromDataframeOrFile:
         )
         
         assert "data_as_of_date" in df.columns
-        assert all(df["data_as_of_date"] == 1234567891)
+        assert all(df["data_as_of_date"] == 1234567891.0)
 
     @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
     def test_uses_existing_event_id(self, mock_fg_class):
