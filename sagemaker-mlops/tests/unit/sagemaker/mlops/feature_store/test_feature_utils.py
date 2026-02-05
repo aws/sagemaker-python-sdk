@@ -309,7 +309,7 @@ class TestGetFeatureGroupAsDataframe:
         mock_fg = MagicMock()
         mock_athena_query = MagicMock()
         mock_athena_query.table_name = "my_table"
-        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1], "event_time": [123]})
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1, 2], "event_time": [123, 123]})
         mock_fg.athena_query.return_value = mock_athena_query
         mock_fg_class.return_value = mock_fg
 
