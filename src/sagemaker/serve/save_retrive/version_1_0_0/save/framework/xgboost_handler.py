@@ -6,7 +6,6 @@ import logging
 from pathlib import Path
 from typing import Type
 from sagemaker.serve.save_retrive.version_1_0_0.save.utils import (
-    generate_secret_key,
     compute_hash,
     save_pkl,
     save_yaml,
@@ -124,26 +123,26 @@ class XGBoostHandler(FrameworkHandler):
 
     def _xgboost_generate_hmac(self) -> None:
         """Placeholder docstring"""
-        logger.info("Generating XGBoost model hmac...")
-        self.secret_key = generate_secret_key()
+        logger.info("Generating XGBoost model hash...")
+        self.secret_key = ""
 
         if self.model:
             with open(Path(f"{self.model_path}.{self.model_format}").absolute(), "rb") as f:
                 buffer = f.read()
-                self.model_hmac = compute_hash(buffer=buffer, secret_key=self.secret_key)
+                self.model_hmac = compute_hash(buffer=buffer)
 
         with open(Path(f"{self.schema_path}.{self.schema_format}").absolute(), "rb") as f:
             buffer = f.read()
-            self.schema_hmac = compute_hash(buffer=buffer, secret_key=self.secret_key)
+            self.schema_hmac = compute_hash(buffer=buffer)
 
         if self.inference_spec:
             with open(
                 Path(f"{self.inference_spec_path}.{self.inference_spec_format}").absolute(), "rb"
             ) as f:
                 buffer = f.read()
-                self.inference_spec_hmac = compute_hash(buffer=buffer, secret_key=self.secret_key)
+                self.inference_spec_hmac = compute_hash(buffer=buffer)
 
-        logger.info("XGBoost model hmac generated successfully")
+        logger.info("XGBoost model hash generated successfully")
 
     def get_pysdk_model(
         self, s3_path: str, role_arn: str, sagemaker_session: Session
@@ -152,7 +151,6 @@ class XGBoostHandler(FrameworkHandler):
         self.env_vars = {
             "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
-            "SAGEMAKER_SERVE_SECRET_KEY": self.secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
 
