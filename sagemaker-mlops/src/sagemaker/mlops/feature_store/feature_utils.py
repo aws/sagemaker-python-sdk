@@ -11,8 +11,8 @@ from typing import Any, Dict, Sequence, Union
 import boto3
 import pandas
 import pandas as pd
-from pandas import DataFrame, Series, read_csv\
-
+from pandas import DataFrame, Series, read_csv
+from sagemaker.core.utils.utils import Unassigned
 from sagemaker.mlops.feature_store import FeatureGroup as CoreFeatureGroup, FeatureGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.client import S3Uploader, S3Downloader
@@ -369,7 +369,7 @@ def create_athena_query(feature_group_name: str, session: Session):
         raise RuntimeError("No metastore is configured with this feature group.")
 
     catalog_config = fg.offline_store_config.data_catalog_config
-    disable_glue = catalog_config.disable_glue_table_creation or False
+    disable_glue = getattr(catalog_config, "disable_glue_table_creation", False) or False
 
     return AthenaQuery(
         catalog=catalog_config.catalog if disable_glue else "AwsDataCatalog",
@@ -451,7 +451,16 @@ def ingest_dataframe(
         raise ValueError("max_workers must be greater than 0.")
 
     fg = CoreFeatureGroup.get(feature_group_name=feature_group_name)
-    feature_definitions = {fd.feature_name: fd.feature_type for fd in fg.feature_definitions}
+    feature_definitions = {}
+    for fd in fg.feature_definitions:
+        collection_type = getattr(fd, "collection_type", None)
+        # Handle Unassigned, empty string, or None as None
+        if isinstance(collection_type, Unassigned) or collection_type == "" or collection_type is None:
+            collection_type = None
+        feature_definitions[fd.feature_name] = {
+            "FeatureType": fd.feature_type,
+            "CollectionType": collection_type,
+        }
 
     manager = IngestionManagerPandas(
         feature_group_name=feature_group_name,

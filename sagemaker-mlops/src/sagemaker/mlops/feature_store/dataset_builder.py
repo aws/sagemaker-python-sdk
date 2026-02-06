@@ -143,7 +143,7 @@ def construct_feature_group_to_be_merged(
         raise RuntimeError(f"No metastore configured for FeatureGroup {fg.feature_group_name}.")
 
     catalog_config = fg.offline_store_config.data_catalog_config
-    disable_glue = catalog_config.disable_glue_table_creation or False
+    disable_glue = getattr(catalog_config, "disable_glue_table_creation", False) or False
 
     features = [fd.feature_name for fd in fg.feature_definitions]
     record_id = fg.record_identifier_feature_name

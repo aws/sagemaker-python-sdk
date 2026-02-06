@@ -15,6 +15,7 @@ from pandas.api.types import is_list_like
 
 from sagemaker.core.resources import FeatureGroup as CoreFeatureGroup
 from sagemaker.core.shapes import FeatureValue
+from sagemaker.core.utils.utils import Unassigned
 
 logger = logging.getLogger(__name__)
 
@@ -293,7 +294,10 @@ class IngestionManagerPandas:
         """Check if the feature is a collection type."""
         feature_def = feature_definitions.get(feature_name)
         if feature_def:
-            return feature_def.get("CollectionType") is not None
+            collection_type = feature_def.get("CollectionType")
+            if isinstance(collection_type, Unassigned) or collection_type is None or collection_type == "":
+                return False
+            return True
         return False
 
     @staticmethod
