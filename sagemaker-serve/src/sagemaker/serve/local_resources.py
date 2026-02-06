@@ -68,7 +68,6 @@ class LocalEndpoint:
         local_container_mode_obj=None,
         in_process_mode_obj=None,
         model_server=None,
-        secret_key=None,
         serializer=None,
         deserializer=None,
         container_config="auto",
@@ -89,7 +88,6 @@ class LocalEndpoint:
         self.local_container_mode_obj=local_container_mode_obj
         self.in_process_mode_obj=in_process_mode_obj
         self.model_server=model_server
-        self.secret_key=secret_key
         self.serializer=serializer
         self.deserializer=deserializer
         self.container_config=container_config
@@ -295,7 +293,6 @@ class LocalEndpoint:
         local_container_mode_obj=None,
         in_process_mode_obj=None,
         model_server=None,
-        secret_key=None,
         serializer=None,
         deserializer=None,
         container_config="auto",
@@ -317,7 +314,6 @@ class LocalEndpoint:
                 local_container_mode_obj=local_container_mode_obj,
                 in_process_mode_obj=in_process_mode_obj,
                 model_server=model_server,
-                secret_key=secret_key,
                 serializer=serializer,
                 deserializer=deserializer,
                 container_config=container_config,
@@ -342,7 +338,6 @@ class LocalEndpoint:
                 local_container_mode_obj=local_container_mode_obj,
                 in_process_mode_obj=in_process_mode_obj,
                 model_server=model_server,
-                secret_key=secret_key,
                 serializer=serializer,
                 deserializer=deserializer,
                 container_config=container_config,
@@ -353,7 +348,6 @@ class LocalEndpoint:
             endpoint.local_container_mode_obj.create_server(
                 image=local_model.primary_container.image,
                 container_timeout_seconds=kwargs.get("container_timeout_seconds", 300),
-                secret_key=endpoint.secret_key,
                 ping_fn=endpoint._universal_deep_ping,
                 env_vars=local_model.primary_container.environment or {},
                 model_path=endpoint.local_container_mode_obj.model_path,
