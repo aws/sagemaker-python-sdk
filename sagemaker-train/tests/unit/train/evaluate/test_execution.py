@@ -254,7 +254,7 @@ class TestExtractEvalTypeFromArn:
 class TestGetOrCreatePipeline:
     """Tests for _get_or_create_pipeline function."""
 
-    @patch("sagemaker.train.evaluate.execution.Tag")
+    @patch("sagemaker.train.evaluate.execution.ResourceTag")
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     def test_get_existing_pipeline_and_update(self, mock_pipeline_class, mock_tag_class, mock_session):
         """Test getting and updating existing pipeline via Pipeline.get_all with prefix."""
@@ -764,7 +764,7 @@ class TestEvaluationPipelineExecutionGet:
 class TestEvaluationPipelineExecutionGetAll:
     """Tests for EvaluationPipelineExecution.get_all() method."""
 
-    @patch("sagemaker.train.evaluate.execution.Tag")
+    @patch("sagemaker.train.evaluate.execution.ResourceTag")
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
     def test_get_all_executions(self, mock_pe_class, mock_pipeline_class, mock_tag_class, mock_session):
@@ -807,7 +807,7 @@ class TestEvaluationPipelineExecutionGetAll:
         # Verify PipelineExecution.get_all was called with the pipeline name
         mock_pe_class.get_all.assert_called_once()
 
-    @patch("sagemaker.train.evaluate.execution.Tag")
+    @patch("sagemaker.train.evaluate.execution.ResourceTag")
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
     def test_get_all_multiple_eval_types(self, mock_pe_class, mock_pipeline_class, mock_tag_class, mock_session):
