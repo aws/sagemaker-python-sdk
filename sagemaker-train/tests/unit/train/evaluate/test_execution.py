@@ -57,10 +57,17 @@ class MockUnassigned:
 
 @pytest.fixture
 def mock_session():
-    """Mock SageMaker session."""
+    """Mock SageMaker session that passes isinstance checks."""
+    from sagemaker.core.helper.session_helper import Session
+    
+    # Create a mock that will pass isinstance(obj, Session) checks
     session = MagicMock()
     session.boto_region_name = DEFAULT_REGION
     session.client.return_value = MagicMock()
+    
+    # Make isinstance check pass
+    session.__class__ = type('MockSession', (Session,), {})
+    
     return session
 
 
