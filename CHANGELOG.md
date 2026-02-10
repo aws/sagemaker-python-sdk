@@ -1,4 +1,21 @@
 # Changelog
+## v3.4.1 (2026-02-10)
+
+### Fixes
+- **Pipelines**: Correct Tag class usage in pipeline creation (#5526)
+- **ModelTrainer**: Support PipelineVariables in hyperparameters (#5519)
+- **HyperparameterTuner**: Include ModelTrainer internal channels (#5516)
+- **Experiments**: Don't apply default experiment config for pipelines in non-Eureka GA
+regions (#5500)
+
+### Features
+- **JumpStart**: Added ISO regions support (#5505)
+- **JumpStart**: Added version 1.4 and 1.5 (#5538)
+
+### Chores
+- Added unit and integration tests for JumpStart search functionality (#5544)
+- Removed java-kotlin from CodeQL workflow (#5517)
+
 ## v3.4.0 (2026-01-22)
 
 ### Features
