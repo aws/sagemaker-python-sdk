@@ -1,4 +1,8 @@
 # Changelog
+## v1.4.1 (2026-02-10)
+
+- fix: Don't apply default experiment config for pipelines in non-Eureka GA regions (#5500)
+- test: Added integration test for pipeline train registry (#5519)
 
 ## v1.4.0 (2026-01-22)
 
