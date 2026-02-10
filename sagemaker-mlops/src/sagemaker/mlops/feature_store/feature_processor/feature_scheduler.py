@@ -40,7 +40,6 @@ from sagemaker.mlops.feature_store.feature_processor.lineage._feature_processor_
 )
 from sagemaker.core.lineage import context
 from sagemaker.core.lineage._utils import get_resource_name_from_arn
-from sagemaker.core.resources import FeatureGroup
 from sagemaker.core.remote_function.runtime_environment.runtime_environment_manager import (
     RuntimeEnvironmentManager,
 )
@@ -771,12 +770,8 @@ def _validate_fg_lineage_resources(feature_group_name: str, sagemaker_session: S
         groups.
     """
 
-    # TODO: Add describe_feature_group to V3 sagemaker_session so we can use
-    # sagemaker_session.describe_feature_group() directly instead of FeatureGroup.get().
-    feature_group = FeatureGroup.get(
-        feature_group_name=feature_group_name, session=sagemaker_session.boto_session
-    )
-    feature_group_creation_time = feature_group.creation_time.strftime("%s")
+    feature_group = sagemaker_session.describe_feature_group(feature_group_name=feature_group_name)
+    feature_group_creation_time = feature_group["CreationTime"].strftime("%s")
     feature_group_context = _get_feature_group_lineage_context_name(
         feature_group_name=feature_group_name,
         feature_group_creation_time=feature_group_creation_time,

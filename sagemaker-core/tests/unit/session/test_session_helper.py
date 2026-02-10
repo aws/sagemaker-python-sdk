@@ -29,6 +29,11 @@ from sagemaker.core.helper.session_helper import (
     update_args,
     NOTEBOOK_METADATA_FILE,
 )
+from sagemaker.core.config.config_schema import (
+    FEATURE_GROUP_ROLE_ARN_PATH,
+    FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH,
+    FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH,
+)
 
 
 class TestSession:
@@ -451,3 +456,543 @@ class TestUpdateArgs:
         assert args["existing"] == "value"
         assert "new_key" not in args
         assert args["another_key"] == "another_value"
+
+class TestFeatureGroupSessionMethods:
+    """Test cases for Feature Group session methods"""
+
+    @pytest.fixture
+    def session_with_mock_client(self):
+        """Create a Session with a mocked sagemaker_client."""
+        mock_boto_session = Mock()
+        mock_boto_session.region_name = "us-west-2"
+        mock_boto_session.client.return_value = Mock()
+        mock_boto_session.resource.return_value = Mock()
+        session = Session(boto_session=mock_boto_session)
+        session.sagemaker_client = Mock()
+        return session
+
+    # --- delete_feature_group ---
+
+    def test_delete_feature_group(self, session_with_mock_client):
+        """Test delete_feature_group delegates to sagemaker_client."""
+        session = session_with_mock_client
+        session.delete_feature_group("my-feature-group")
+
+        session.sagemaker_client.delete_feature_group.assert_called_once_with(
+            FeatureGroupName="my-feature-group"
+        )
+
+    # --- describe_feature_group ---
+
+    def test_describe_feature_group(self, session_with_mock_client):
+        """Test describe_feature_group delegates and returns response."""
+        session = session_with_mock_client
+        expected = {"FeatureGroupName": "my-fg", "CreationTime": "2024-01-01"}
+        session.sagemaker_client.describe_feature_group.return_value = expected
+
+        result = session.describe_feature_group("my-fg")
+
+        session.sagemaker_client.describe_feature_group.assert_called_once_with(
+            FeatureGroupName="my-fg"
+        )
+        assert result == expected
+
+    def test_describe_feature_group_with_next_token(self, session_with_mock_client):
+        """Test describe_feature_group includes NextToken when provided."""
+        session = session_with_mock_client
+        session.sagemaker_client.describe_feature_group.return_value = {}
+
+        session.describe_feature_group("my-fg", next_token="abc123")
+
+        session.sagemaker_client.describe_feature_group.assert_called_once_with(
+            FeatureGroupName="my-fg", NextToken="abc123"
+        )
+
+    def test_describe_feature_group_omits_none_next_token(self, session_with_mock_client):
+        """Test describe_feature_group omits NextToken when None."""
+        session = session_with_mock_client
+        session.sagemaker_client.describe_feature_group.return_value = {}
+
+        session.describe_feature_group("my-fg", next_token=None)
+
+        call_kwargs = session.sagemaker_client.describe_feature_group.call_args[1]
+        assert "NextToken" not in call_kwargs
+
+    # --- update_feature_group ---
+
+    def test_update_feature_group_all_params(self, session_with_mock_client):
+        """Test update_feature_group with all optional params provided."""
+        session = session_with_mock_client
+        expected = {"FeatureGroupArn": "arn:aws:sagemaker:us-west-2:123:feature-group/my-fg"}
+        session.sagemaker_client.update_feature_group.return_value = expected
+
+        additions = [{"FeatureName": "new_feat", "FeatureType": "String"}]
+        online_cfg = {"EnableOnlineStore": True}
+        throughput_cfg = {"ThroughputMode": "OnDemand"}
+
+        result = session.update_feature_group(
+            "my-fg",
+            feature_additions=additions,
+            online_store_config=online_cfg,
+            throughput_config=throughput_cfg,
+        )
+
+        session.sagemaker_client.update_feature_group.assert_called_once_with(
+            FeatureGroupName="my-fg",
+            FeatureAdditions=additions,
+            OnlineStoreConfig=online_cfg,
+            ThroughputConfig=throughput_cfg,
+        )
+        assert result == expected
+
+    def test_update_feature_group_omits_none_params(self, session_with_mock_client):
+        """Test update_feature_group omits None optional params."""
+        session = session_with_mock_client
+        session.sagemaker_client.update_feature_group.return_value = {}
+
+        session.update_feature_group("my-fg")
+
+        call_kwargs = session.sagemaker_client.update_feature_group.call_args[1]
+        assert call_kwargs == {"FeatureGroupName": "my-fg"}
+
+    def test_update_feature_group_partial_params(self, session_with_mock_client):
+        """Test update_feature_group with only some optional params."""
+        session = session_with_mock_client
+        session.sagemaker_client.update_feature_group.return_value = {}
+
+        throughput_cfg = {"ThroughputMode": "Provisioned"}
+        session.update_feature_group("my-fg", throughput_config=throughput_cfg)
+
+        call_kwargs = session.sagemaker_client.update_feature_group.call_args[1]
+        assert call_kwargs == {
+            "FeatureGroupName": "my-fg",
+            "ThroughputConfig": throughput_cfg,
+        }
+
+    # --- list_feature_groups ---
+
+    def test_list_feature_groups_no_params(self, session_with_mock_client):
+        """Test list_feature_groups with no filters delegates with empty args."""
+        session = session_with_mock_client
+        expected = {"FeatureGroupSummaries": []}
+        session.sagemaker_client.list_feature_groups.return_value = expected
+
+        result = session.list_feature_groups()
+
+        session.sagemaker_client.list_feature_groups.assert_called_once_with()
+        assert result == expected
+
+    def test_list_feature_groups_all_params(self, session_with_mock_client):
+        """Test list_feature_groups with all params provided."""
+        session = session_with_mock_client
+        session.sagemaker_client.list_feature_groups.return_value = {}
+
+        session.list_feature_groups(
+            name_contains="test",
+            feature_group_status_equals="Created",
+            offline_store_status_equals="Active",
+            creation_time_after="2024-01-01",
+            creation_time_before="2024-12-31",
+            sort_order="Ascending",
+            sort_by="Name",
+            max_results=10,
+            next_token="token123",
+        )
+
+        session.sagemaker_client.list_feature_groups.assert_called_once_with(
+            NameContains="test",
+            FeatureGroupStatusEquals="Created",
+            OfflineStoreStatusEquals="Active",
+            CreationTimeAfter="2024-01-01",
+            CreationTimeBefore="2024-12-31",
+            SortOrder="Ascending",
+            SortBy="Name",
+            MaxResults=10,
+            NextToken="token123",
+        )
+
+    def test_list_feature_groups_omits_none_params(self, session_with_mock_client):
+        """Test list_feature_groups omits None params."""
+        session = session_with_mock_client
+        session.sagemaker_client.list_feature_groups.return_value = {}
+
+        session.list_feature_groups(name_contains="test", max_results=5)
+
+        call_kwargs = session.sagemaker_client.list_feature_groups.call_args[1]
+        assert call_kwargs == {"NameContains": "test", "MaxResults": 5}
+
+    # --- update_feature_metadata ---
+
+    def test_update_feature_metadata_all_params(self, session_with_mock_client):
+        """Test update_feature_metadata with all optional params."""
+        session = session_with_mock_client
+        session.sagemaker_client.update_feature_metadata.return_value = {}
+
+        additions = [{"Key": "team", "Value": "ml"}]
+        removals = [{"Key": "deprecated"}]
+
+        result = session.update_feature_metadata(
+            "my-fg",
+            "my-feature",
+            description="Updated desc",
+            parameter_additions=additions,
+            parameter_removals=removals,
+        )
+
+        session.sagemaker_client.update_feature_metadata.assert_called_once_with(
+            FeatureGroupName="my-fg",
+            FeatureName="my-feature",
+            Description="Updated desc",
+            ParameterAdditions=additions,
+            ParameterRemovals=removals,
+        )
+        assert result == {}
+
+    def test_update_feature_metadata_omits_none_params(self, session_with_mock_client):
+        """Test update_feature_metadata omits None optional params."""
+        session = session_with_mock_client
+        session.sagemaker_client.update_feature_metadata.return_value = {}
+
+        session.update_feature_metadata("my-fg", "my-feature")
+
+        call_kwargs = session.sagemaker_client.update_feature_metadata.call_args[1]
+        assert call_kwargs == {
+            "FeatureGroupName": "my-fg",
+            "FeatureName": "my-feature",
+        }
+
+    def test_update_feature_metadata_partial_params(self, session_with_mock_client):
+        """Test update_feature_metadata with only description."""
+        session = session_with_mock_client
+        session.sagemaker_client.update_feature_metadata.return_value = {}
+
+        session.update_feature_metadata("my-fg", "my-feature", description="New desc")
+
+        call_kwargs = session.sagemaker_client.update_feature_metadata.call_args[1]
+        assert call_kwargs == {
+            "FeatureGroupName": "my-fg",
+            "FeatureName": "my-feature",
+            "Description": "New desc",
+        }
+
+    # --- describe_feature_metadata ---
+
+    def test_describe_feature_metadata(self, session_with_mock_client):
+        """Test describe_feature_metadata delegates and returns response."""
+        session = session_with_mock_client
+        expected = {"FeatureGroupName": "my-fg", "FeatureName": "my-feature"}
+        session.sagemaker_client.describe_feature_metadata.return_value = expected
+
+        result = session.describe_feature_metadata("my-fg", "my-feature")
+
+        session.sagemaker_client.describe_feature_metadata.assert_called_once_with(
+            FeatureGroupName="my-fg", FeatureName="my-feature"
+        )
+        assert result == expected
+
+MODULE = "sagemaker.core.helper.session_helper"
+
+
+class TestCreateFeatureGroup:
+    """Test cases for create_feature_group session method."""
+
+    @pytest.fixture
+    def session(self):
+        """Create a Session with a mocked sagemaker_client."""
+        mock_boto_session = Mock()
+        mock_boto_session.region_name = "us-west-2"
+        mock_boto_session.client.return_value = Mock()
+        mock_boto_session.resource.return_value = Mock()
+        session = Session(boto_session=mock_boto_session)
+        session.sagemaker_client = Mock()
+        return session
+
+    @pytest.fixture
+    def base_args(self):
+        """Minimal required arguments for create_feature_group."""
+        return dict(
+            feature_group_name="my-fg",
+            record_identifier_name="record_id",
+            event_time_feature_name="event_time",
+            feature_definitions=[{"FeatureName": "f1", "FeatureType": "String"}],
+        )
+
+    # --- Full parameter pass-through ---
+
+    def test_create_feature_group_all_params(self, session, base_args):
+        """Test that all parameters are passed through to sagemaker_client."""
+        role = "arn:aws:iam::123456789012:role/Role"
+        online_cfg = {"SecurityConfig": {"KmsKeyId": "key-123"}}
+        offline_cfg = {"S3StorageConfig": {"S3Uri": "s3://bucket"}}
+        throughput_cfg = {"ThroughputMode": "ON_DEMAND"}
+        description = "My feature group"
+        tags = [{"Key": "team", "Value": "ml"}]
+
+        expected_response = {"FeatureGroupArn": "arn:aws:sagemaker:us-west-2:123456789012:feature-group/my-fg"}
+        session.sagemaker_client.create_feature_group.return_value = expected_response
+
+        with patch(f"{MODULE}.format_tags", return_value=tags) as mock_format, \
+             patch(f"{MODULE}._append_project_tags", return_value=tags) as mock_proj, \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=tags), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value=role), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", side_effect=[online_cfg, offline_cfg]):
+
+            result = session.create_feature_group(
+                **base_args,
+                role_arn=role,
+                online_store_config=online_cfg,
+                offline_store_config=offline_cfg,
+                throughput_config=throughput_cfg,
+                description=description,
+                tags=tags,
+            )
+
+        assert result == expected_response
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert call_kwargs["FeatureGroupName"] == "my-fg"
+        assert call_kwargs["RecordIdentifierFeatureName"] == "record_id"
+        assert call_kwargs["EventTimeFeatureName"] == "event_time"
+        assert call_kwargs["FeatureDefinitions"] == base_args["feature_definitions"]
+        assert call_kwargs["RoleArn"] == role
+        # EnableOnlineStore is set to True when online config is inferred
+        assert call_kwargs["OnlineStoreConfig"]["EnableOnlineStore"] is True
+        assert call_kwargs["OfflineStoreConfig"] == offline_cfg
+        assert call_kwargs["ThroughputConfig"] == throughput_cfg
+        assert call_kwargs["Description"] == description
+        assert call_kwargs["Tags"] == tags
+
+    # --- Tag processing pipeline ---
+
+    def test_tag_processing_pipeline_order(self, session, base_args):
+        """Test that tags go through format_tags -> _append_project_tags -> _append_sagemaker_config_tags."""
+        raw_tags = {"team": "ml"}
+        formatted = [{"Key": "team", "Value": "ml"}]
+        with_project = [{"Key": "team", "Value": "ml"}, {"Key": "project", "Value": "p1"}]
+        with_config = [{"Key": "team", "Value": "ml"}, {"Key": "project", "Value": "p1"}, {"Key": "cfg", "Value": "v"}]
+
+        with patch(f"{MODULE}.format_tags", return_value=formatted) as mock_format, \
+             patch(f"{MODULE}._append_project_tags", return_value=with_project) as mock_proj, \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=with_config) as mock_cfg, \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", return_value=None):
+
+            session.create_feature_group(**base_args, tags=raw_tags)
+
+        # format_tags is called with the raw input
+        mock_format.assert_called_once_with(raw_tags)
+        # _append_project_tags receives the formatted tags
+        mock_proj.assert_called_once_with(formatted)
+        # _append_sagemaker_config_tags receives the project-appended tags
+        mock_cfg.assert_called_once_with(with_project, "SageMaker.FeatureGroup.Tags")
+
+        # Final tags in the API call should be the config-appended tags
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert call_kwargs["Tags"] == with_config
+
+    def test_tags_none_still_processed(self, session, base_args):
+        """Test that None tags still go through the pipeline (format_tags handles None)."""
+        with patch(f"{MODULE}.format_tags", return_value=None) as mock_format, \
+             patch(f"{MODULE}._append_project_tags", return_value=None) as mock_proj, \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", return_value=None):
+
+            session.create_feature_group(**base_args, tags=None)
+
+        mock_format.assert_called_once_with(None)
+        mock_proj.assert_called_once_with(None)
+        # Tags=None should be omitted from the API call via update_args
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert "Tags" not in call_kwargs
+
+    # --- role_arn resolution from config ---
+
+    def test_role_arn_resolved_from_config_when_none(self, session, base_args):
+        """Test that role_arn is resolved from SageMaker Config when not provided."""
+        config_role = "arn:aws:iam::123456789012:role/ConfigRole"
+
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value=config_role) as mock_resolve, \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", return_value=None):
+
+            session.create_feature_group(**base_args, role_arn=None)
+
+        mock_resolve.assert_called_once_with(
+            None, FEATURE_GROUP_ROLE_ARN_PATH, sagemaker_session=session
+        )
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert call_kwargs["RoleArn"] == config_role
+
+    def test_role_arn_passed_through_when_provided(self, session, base_args):
+        """Test that an explicit role_arn is passed to resolve_value_from_config (which returns it)."""
+        explicit_role = "arn:aws:iam::123456789012:role/ExplicitRole"
+
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value=explicit_role) as mock_resolve, \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", return_value=None):
+
+            session.create_feature_group(**base_args, role_arn=explicit_role)
+
+        mock_resolve.assert_called_once_with(
+            explicit_role, FEATURE_GROUP_ROLE_ARN_PATH, sagemaker_session=session
+        )
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert call_kwargs["RoleArn"] == explicit_role
+
+    # --- online_store_config merging and EnableOnlineStore ---
+
+    def test_online_store_config_merged_and_enable_set(self, session, base_args):
+        """Test that online_store_config is merged from config and EnableOnlineStore=True is set."""
+        inferred_online = {"SecurityConfig": {"KmsKeyId": "config-key"}}
+
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config",
+                   side_effect=[inferred_online, None]) as mock_update:
+
+            session.create_feature_group(**base_args, online_store_config=None)
+
+        # First call is for online store config
+        mock_update.assert_any_call(
+            None, FEATURE_GROUP_ONLINE_STORE_CONFIG_PATH, sagemaker_session=session
+        )
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert call_kwargs["OnlineStoreConfig"]["EnableOnlineStore"] is True
+        assert call_kwargs["OnlineStoreConfig"]["SecurityConfig"]["KmsKeyId"] == "config-key"
+
+    def test_online_store_config_none_when_no_config(self, session, base_args):
+        """Test that OnlineStoreConfig is omitted when config returns None."""
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", return_value=None):
+
+            session.create_feature_group(**base_args)
+
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert "OnlineStoreConfig" not in call_kwargs
+
+    def test_online_store_config_explicit_gets_enable_set(self, session, base_args):
+        """Test that explicitly provided online_store_config also gets EnableOnlineStore=True."""
+        explicit_online = {"SecurityConfig": {"KmsKeyId": "my-key"}}
+        # update_nested_dictionary returns the merged result
+        merged_online = {"SecurityConfig": {"KmsKeyId": "my-key"}}
+
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config",
+                   side_effect=[merged_online, None]):
+
+            session.create_feature_group(**base_args, online_store_config=explicit_online)
+
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert call_kwargs["OnlineStoreConfig"]["EnableOnlineStore"] is True
+
+    # --- offline_store_config merging ---
+
+    def test_offline_store_config_merged_from_config(self, session, base_args):
+        """Test that offline_store_config is merged from SageMaker Config."""
+        inferred_offline = {"S3StorageConfig": {"S3Uri": "s3://config-bucket"}}
+
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config",
+                   side_effect=[None, inferred_offline]) as mock_update:
+
+            session.create_feature_group(**base_args, offline_store_config=None)
+
+        # Second call is for offline store config
+        mock_update.assert_any_call(
+            None, FEATURE_GROUP_OFFLINE_STORE_CONFIG_PATH, sagemaker_session=session
+        )
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert call_kwargs["OfflineStoreConfig"] == inferred_offline
+
+    def test_offline_store_config_none_when_no_config(self, session, base_args):
+        """Test that OfflineStoreConfig is omitted when config returns None."""
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", return_value=None):
+
+            session.create_feature_group(**base_args)
+
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert "OfflineStoreConfig" not in call_kwargs
+
+    # --- None optional parameters omitted ---
+
+    def test_none_optional_params_omitted(self, session, base_args):
+        """Test that None optional params (throughput, description, tags) are omitted from API call."""
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", return_value=None):
+
+            session.create_feature_group(**base_args)
+
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert "ThroughputConfig" not in call_kwargs
+        assert "Description" not in call_kwargs
+        assert "Tags" not in call_kwargs
+        assert "OnlineStoreConfig" not in call_kwargs
+        assert "OfflineStoreConfig" not in call_kwargs
+        # Required params should still be present
+        assert "FeatureGroupName" in call_kwargs
+        assert "RecordIdentifierFeatureName" in call_kwargs
+        assert "EventTimeFeatureName" in call_kwargs
+        assert "FeatureDefinitions" in call_kwargs
+        assert "RoleArn" in call_kwargs
+
+    def test_partial_optional_params(self, session, base_args):
+        """Test that only provided optional params appear in the API call."""
+        throughput = {"ThroughputMode": "ON_DEMAND"}
+
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", return_value=None):
+
+            session.create_feature_group(
+                **base_args,
+                throughput_config=throughput,
+                description="test desc",
+            )
+
+        call_kwargs = session.sagemaker_client.create_feature_group.call_args[1]
+        assert call_kwargs["ThroughputConfig"] == throughput
+        assert call_kwargs["Description"] == "test desc"
+        assert "Tags" not in call_kwargs
+        assert "OnlineStoreConfig" not in call_kwargs
+        assert "OfflineStoreConfig" not in call_kwargs
+
+    # --- Return value ---
+
+    def test_returns_api_response(self, session, base_args):
+        """Test that the method returns the sagemaker_client response."""
+        expected = {"FeatureGroupArn": "arn:fg"}
+        session.sagemaker_client.create_feature_group.return_value = expected
+
+        with patch(f"{MODULE}.format_tags", return_value=None), \
+             patch(f"{MODULE}._append_project_tags", return_value=None), \
+             patch.object(session, "_append_sagemaker_config_tags", return_value=None), \
+             patch(f"{MODULE}.resolve_value_from_config", return_value="arn:role"), \
+             patch(f"{MODULE}.update_nested_dictionary_with_values_from_config", return_value=None):
+
+            result = session.create_feature_group(**base_args)
+
+        assert result == expected

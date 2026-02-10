@@ -96,8 +96,8 @@ class SparkDataFrameInputLoader(InputLoader[DataFrame]):
         sagemaker_session: Session = self.sagemaker_session or Session()
 
         feature_group_name = feature_group_data_source.name
-        feature_group = sagemaker_session.sagemaker_client.describe_feature_group(
-            FeatureGroupName=self._parse_name_from_arn(feature_group_name)
+        feature_group = sagemaker_session.describe_feature_group(
+            self._parse_name_from_arn(feature_group_name)
         )
         logger.debug(
             "Called describe_feature_group with %s and received: %s",

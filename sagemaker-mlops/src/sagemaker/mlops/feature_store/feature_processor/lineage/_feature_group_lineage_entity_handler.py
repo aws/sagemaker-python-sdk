@@ -99,9 +99,7 @@ class FeatureGroupLineageEntityHandler:
         Returns:
             Dict[str, Any]: The Feature Group details.
         """
-        feature_group = sagemaker_session.sagemaker_client.describe_feature_group(
-            FeatureGroupName=feature_group_name
-        )
+        feature_group = sagemaker_session.describe_feature_group(feature_group_name)
         logger.debug(
             "Called describe_feature_group with %s and received: %s",
             feature_group_name,
