@@ -16,6 +16,7 @@ from pandas.api.types import is_list_like
 from sagemaker.core.resources import FeatureGroup as CoreFeatureGroup
 from sagemaker.core.shapes import FeatureValue
 from sagemaker.core.utils.utils import Unassigned
+from sagemaker.core.telemetry import Feature, _telemetry_emitter
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +68,7 @@ class IngestionManagerPandas:
         """
         return self._failed_indices
 
+    @_telemetry_emitter(Feature.FEATURE_STORE, "IngestionManagerPandas.run")
     def run(
         self,
         data_frame: DataFrame,
