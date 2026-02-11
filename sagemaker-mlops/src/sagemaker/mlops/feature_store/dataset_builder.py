@@ -9,6 +9,7 @@ import datetime
 import pandas as pd
 
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.telemetry import Feature, _telemetry_emitter
 from sagemaker.mlops.feature_store import FeatureGroup
 from sagemaker.mlops.feature_store.feature_definition import FeatureDefinition, FeatureTypeEnum
 from sagemaker.mlops.feature_store.feature_utils import (
@@ -422,6 +423,7 @@ class DatasetBuilder:
         self._event_time_ending_timestamp = ending_timestamp
         return self
 
+    @_telemetry_emitter(Feature.FEATURE_STORE, "DatasetBuilder.to_csv_file")
     def to_csv_file(self) -> tuple[str, str]:
         """Get query string and result in .csv format file.
 
@@ -435,6 +437,7 @@ class DatasetBuilder:
             return self._to_csv_from_feature_group()
         raise ValueError("Base must be either a FeatureGroup or a DataFrame.")
 
+    @_telemetry_emitter(Feature.FEATURE_STORE, "DatasetBuilder.to_dataframe")
     def to_dataframe(self) -> tuple[pd.DataFrame, str]:
         """Get query string and result in pandas.DataFrame.
 

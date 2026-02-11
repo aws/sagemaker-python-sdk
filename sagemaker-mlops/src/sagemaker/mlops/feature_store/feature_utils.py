@@ -16,6 +16,7 @@ from sagemaker.core.utils.utils import Unassigned
 from sagemaker.mlops.feature_store import FeatureGroup as CoreFeatureGroup, FeatureGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.client import S3Uploader, S3Downloader
+from sagemaker.core.telemetry import Feature, _telemetry_emitter
 from sagemaker.mlops.feature_store.feature_definition import (
     FeatureDefinition,
     FractionalFeatureDefinition,
@@ -420,6 +421,7 @@ def as_hive_ddl(
     return ddl
 
 
+@_telemetry_emitter(Feature.FEATURE_STORE, "ingest_dataframe")
 def ingest_dataframe(
     feature_group_name: str,
     data_frame: DataFrame,
@@ -471,6 +473,7 @@ def ingest_dataframe(
     manager.run(data_frame=data_frame, wait=wait, timeout=timeout)
     return manager
 
+@_telemetry_emitter(Feature.FEATURE_STORE, "get_feature_group_as_dataframe")
 def get_feature_group_as_dataframe(
     feature_group_name: str,
     athena_bucket: str,
