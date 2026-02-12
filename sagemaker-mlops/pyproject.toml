@@ -6,7 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "sagemaker-mlops"
 dynamic = ["version"]
 description = "SageMaker MLOps package for workflow orchestration and model building"
-readme = "README.md" 
+readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.9"
 authors = [
     {name = "Amazon Web Services"},
