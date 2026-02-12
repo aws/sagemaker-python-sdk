@@ -640,9 +640,9 @@
             },
             "4.55.4": {
                 "version_aliases": {
-                    "pytorch2.7": "pytorch2.7.1"
+                    "pytorch2.8": "pytorch2.8.0"
                 },
-                "pytorch2.7.1": {
+                "pytorch2.8.0": {
                     "py_versions": [
                         "py310"
                     ],
