@@ -17,6 +17,7 @@ import pytest
 
 from sagemaker.mlops.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.mlops.workflow.steps import StepTypeEnum
+from sagemaker.core.workflow.properties import Properties
 
 
 def test_emr_step_config_init():
@@ -39,7 +40,7 @@ def test_emr_step_with_cluster_id():
         display_name="EMR Step",
         description="Test EMR step",
         cluster_id="j-123456",
-        step_config=config
+        step_config=config,
     )
     assert step.name == "emr-step"
     assert step.step_type == StepTypeEnum.EMR
@@ -48,9 +49,7 @@ def test_emr_step_with_cluster_id():
 def test_emr_step_with_cluster_config():
     config = EMRStepConfig(jar="s3://bucket/my.jar")
     cluster_config = {
-        "Instances": {
-            "InstanceGroups": [{"InstanceType": "m5.xlarge", "InstanceCount": 1}]
-        }
+        "Instances": {"InstanceGroups": [{"InstanceType": "m5.xlarge", "InstanceCount": 1}]}
     }
     step = EMRStep(
         name="emr-step",
@@ -58,7 +57,7 @@ def test_emr_step_with_cluster_config():
         description="Test EMR step",
         cluster_id=None,
         step_config=config,
-        cluster_config=cluster_config
+        cluster_config=cluster_config,
     )
     assert step.name == "emr-step"
 
@@ -71,7 +70,7 @@ def test_emr_step_without_cluster_id_or_config_raises_error():
             display_name="EMR Step",
             description="Test EMR step",
             cluster_id=None,
-            step_config=config
+            step_config=config,
         )
 
 
@@ -84,5 +83,17 @@ def test_emr_step_with_both_cluster_id_and_config_raises_error():
             description="Test EMR step",
             cluster_id="j-123456",
             step_config=config,
-            cluster_config={"Instances": {}}
+            cluster_config={"Instances": {}},
         )
+
+def test_emr_step_with_output_args():
+    config = EMRStepConfig(jar="s3://bucket/my.jar", args=["arg1"], output_args={"output": "s3://bucket/my/output/path"})
+    step = EMRStep(
+        name="emr-step",
+        display_name="EMR Step",
+        description="Test EMR step",
+        cluster_id="j-123456",
+        step_config=config,
+    )
+    assert "output" in step.emr_outputs
+    assert isinstance(step.emr_outputs["output"], Properties)
