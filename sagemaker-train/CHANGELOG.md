@@ -1,4 +1,11 @@
 # Changelog
+## v1.4.1 (2026-02-10)
+
+### Bug fixes and Other Changes
+
+- **Fix**: Correct Tag class usage in pipeline creation (#5526)
+- **Fix**: HyperparameterTuner now includes ModelTrainer internal channels (#5516)
+- **Fix**: Support PipelineVariables in hyperparameters (#5519)
 
 ## v1.4.0 (2026-01-22)
 
