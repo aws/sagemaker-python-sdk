@@ -506,6 +506,160 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             )
         logger.info(f"Fetching Instance Type from Hosting Configs - {default_instance_type}")
         return default_instance_type
+    def _resolve_model_artifact_uri(self) -> Optional[str]:
+        """Resolve the correct model artifact URI based on deployment type.
+
+        This method determines the appropriate S3 URI for model artifacts depending on
+        whether we're deploying a base model, a fine-tuned adapter (LORA), or a fully
+        fine-tuned model.
+
+        Returns:
+            Optional[str]: S3 URI to model artifacts, or None for LORA adapters
+
+        Logic:
+            - For LORA adapters: Returns None (adapter weights are separate)
+            - For base models: Uses HostingArtifactUri from JumpStart hub metadata
+            - For full fine-tuned models: Uses ModelPackage artifact location
+
+        Raises:
+            ValueError: If model package or hub metadata is unavailable when needed
+        """
+        # Check if this is a LORA adapter deployment
+        peft_type = self._fetch_peft()
+        if peft_type == "LORA":
+            # LORA adapters don't need artifact_url - they reference base component
+            return None
+
+        # For model customization deployments, check if we have a model package
+        if self._is_model_customization():
+            model_package = self._fetch_model_package()
+            if model_package:
+                # Check if this is a full fine-tuned model (has its own artifacts)
+                if (hasattr(model_package, 'inference_specification') and
+                    model_package.inference_specification and
+                    hasattr(model_package.inference_specification, 'containers') and
+                    model_package.inference_specification.containers):
+
+                    container = model_package.inference_specification.containers[0]
+
+                    # If container has model_data_source, use it (full fine-tuned model)
+                    if (hasattr(container, 'model_data_source') and
+                        container.model_data_source and
+                        hasattr(container.model_data_source, 's3_data_source') and
+                        container.model_data_source.s3_data_source):
+                        return container.model_data_source.s3_data_source.s3_uri
+
+                    # Otherwise, this is a base model - get HostingArtifactUri from JumpStart
+                    if hasattr(container, 'base_model') and container.base_model:
+                        try:
+                            hub_document = self._fetch_hub_document_for_custom_model()
+                            hosting_artifact_uri = hub_document.get('HostingArtifactUri')
+                            if hosting_artifact_uri:
+                                return hosting_artifact_uri
+                            else:
+                                logger.warning(
+                                    "HostingArtifactUri not found in JumpStart hub metadata. "
+                                    "Deployment may fail if artifact URI is required."
+                                )
+                                return None
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to retrieve HostingArtifactUri from JumpStart metadata: {e}. "
+                                f"Proceeding without artifact URI."
+                            )
+                            return None
+
+        # For non-model-customization deployments, return None
+        # (artifact handling is done differently for those cases)
+        return None
+
+    def _infer_instance_type_from_jumpstart(self) -> str:
+        """Infer the appropriate instance type from JumpStart model metadata.
+
+        Queries JumpStart metadata for the base model and selects an appropriate
+        instance type from the supported list. Prefers GPU instance types for
+        models that require GPU acceleration.
+
+        Returns:
+            str: The inferred instance type (e.g., 'ml.g5.12xlarge')
+
+        Raises:
+            ValueError: If instance type cannot be inferred from metadata
+        """
+        try:
+            # Get the hub document which contains hosting configurations
+            hub_document = self._fetch_hub_document_for_custom_model()
+            hosting_configs = hub_document.get("HostingConfigs")
+
+            if not hosting_configs:
+                raise ValueError(
+                    "Unable to infer instance type: Model does not have hosting configuration. "
+                    "Please specify instance_type explicitly."
+                )
+
+            # Get the default hosting config
+            config = next(
+                (cfg for cfg in hosting_configs if cfg.get("Profile") == "Default"),
+                hosting_configs[0]
+            )
+
+            # Extract supported instance types
+            supported_instance_types = config.get("SupportedInstanceTypes", [])
+            default_instance_type = config.get("InstanceType") or config.get("DefaultInstanceType")
+
+            if not supported_instance_types and not default_instance_type:
+                raise ValueError(
+                    "Unable to infer instance type: Model metadata does not specify "
+                    "supported instance types. Please specify instance_type explicitly."
+                )
+
+            # If default instance type is specified, use it
+            if default_instance_type:
+                logger.info(f"Inferred instance type from JumpStart metadata: {default_instance_type}")
+                return default_instance_type
+
+            # Otherwise, select from supported instance types
+            # Prefer GPU instance types (g5, p4, p5) for models that support them
+            gpu_instance_types = [
+                it for it in supported_instance_types
+                if any(gpu_family in it for gpu_family in ['g5', 'g4dn', 'p4', 'p5', 'p3'])
+            ]
+
+            if gpu_instance_types:
+                # Select the first GPU instance type (typically the smallest/cheapest)
+                selected_type = gpu_instance_types[0]
+                logger.info(f"Inferred GPU instance type from JumpStart metadata: {selected_type}")
+                return selected_type
+
+            # Fallback to first supported instance type
+            selected_type = supported_instance_types[0]
+            logger.info(f"Inferred instance type from JumpStart metadata: {selected_type}")
+            return selected_type
+
+        except Exception as e:
+            # Provide helpful error message with context
+            error_msg = (
+                f"Unable to infer instance type for model customization deployment: {str(e)}. "
+                "Please specify instance_type explicitly when creating ModelBuilder."
+            )
+
+            # Try to provide available instance types in error message if possible
+            try:
+                hub_document = self._fetch_hub_document_for_custom_model()
+                hosting_configs = hub_document.get("HostingConfigs", [])
+                if hosting_configs:
+                    config = next(
+                        (cfg for cfg in hosting_configs if cfg.get("Profile") == "Default"),
+                        hosting_configs[0]
+                    )
+                    supported_types = config.get("SupportedInstanceTypes", [])
+                    if supported_types:
+                        error_msg += f"\nSupported instance types for this model: {supported_types}"
+            except Exception:
+                pass
+
+            raise ValueError(error_msg)
+
 
     def _fetch_hub_document_for_custom_model(self) -> dict:
         from sagemaker.core.shapes import BaseModel as CoreBaseModel
@@ -546,6 +700,238 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 f"Unable to validate CPU requirements. Proceeding with recipe defaults."
             )
         return None, None
+    def _get_instance_resources(self, instance_type: str) -> tuple:
+        """Get CPU and memory for an instance type by querying EC2."""
+        try:
+            ec2_client = self.sagemaker_session.boto_session.client('ec2')
+            ec2_instance_type = instance_type.replace('ml.', '')
+            response = ec2_client.describe_instance_types(InstanceTypes=[ec2_instance_type])
+            if response['InstanceTypes']:
+                instance_info = response['InstanceTypes'][0]
+                cpus = instance_info['VCpuInfo']['DefaultVCpus']
+                memory_mb = instance_info['MemoryInfo']['SizeInMiB']
+                return cpus, memory_mb
+        except Exception as e:
+            logger.warning(
+                f"Could not query instance type {instance_type}: {e}. "
+                f"Unable to validate CPU requirements. Proceeding with recipe defaults."
+            )
+        return None, None
+
+    def _resolve_compute_requirements(
+        self,
+        instance_type: str,
+        user_resource_requirements: Optional[ResourceRequirements] = None
+    ) -> InferenceComponentComputeResourceRequirements:
+        """Resolve compute requirements by merging JumpStart metadata with user config.
+
+        Retrieves default compute requirements from JumpStart model metadata and merges
+        them with user-provided ResourceRequirements. User-provided values take precedence
+        over defaults. Automatically determines number_of_accelerator_devices_required for
+        GPU instances when not explicitly provided.
+
+        Args:
+            instance_type: The EC2 instance type for deployment (e.g., 'ml.g5.12xlarge')
+            user_resource_requirements: Optional user-provided resource requirements
+
+        Returns:
+            InferenceComponentComputeResourceRequirements with all fields populated
+
+        Raises:
+            ValueError: If requirements are incompatible with instance_type or if
+                       accelerator count cannot be determined for GPU instances
+
+        Requirements: 2.1, 3.1, 3.2, 3.4
+        """
+        # Start with defaults from JumpStart metadata
+        hub_document = self._fetch_hub_document_for_custom_model()
+        hosting_configs = hub_document.get("HostingConfigs", [])
+
+        if not hosting_configs:
+            raise ValueError(
+                "Unable to resolve compute requirements: Model does not have hosting configuration. "
+                "Please provide resource requirements explicitly."
+            )
+
+        # Get the default hosting config
+        config = next(
+            (cfg for cfg in hosting_configs if cfg.get("Profile") == "Default"),
+            hosting_configs[0]
+        )
+
+        return self._resolve_compute_requirements_from_config(
+            instance_type=instance_type,
+            config=config,
+            user_resource_requirements=user_resource_requirements
+        )
+
+    def _resolve_compute_requirements_from_config(
+        self,
+        instance_type: str,
+        config: dict,
+        user_resource_requirements: Optional[ResourceRequirements] = None
+    ) -> InferenceComponentComputeResourceRequirements:
+        """Resolve compute requirements from a hosting config dictionary.
+
+        Helper method that extracts compute requirements from an already-fetched
+        hosting config and merges with user-provided requirements.
+
+        Args:
+            instance_type: The EC2 instance type for deployment
+            config: The hosting config dictionary from JumpStart metadata
+            user_resource_requirements: Optional user-provided resource requirements
+
+        Returns:
+            InferenceComponentComputeResourceRequirements with all fields populated
+
+        Raises:
+            ValueError: If requirements are incompatible with instance_type
+        """
+        # Extract default compute requirements from metadata
+        compute_resource_requirements = config.get("ComputeResourceRequirements", {})
+        default_cpus = compute_resource_requirements.get("NumberOfCpuCoresRequired", 1)
+        default_memory_mb = compute_resource_requirements.get("MinMemoryRequiredInMb", 1024)
+        default_accelerators = compute_resource_requirements.get("NumberOfAcceleratorDevicesRequired")
+
+        # Get actual instance resources for validation
+        actual_cpus, actual_memory_mb = self._get_instance_resources(instance_type)
+
+        # Adjust CPU count if it exceeds instance capacity
+        if actual_cpus and default_cpus > actual_cpus:
+            logger.warning(
+                f"Default requirements request {default_cpus} CPUs but {instance_type} has {actual_cpus}. "
+                f"Adjusting to {actual_cpus}."
+            )
+            default_cpus = actual_cpus
+
+        # Initialize with defaults
+        final_cpus = default_cpus
+        final_min_memory = default_memory_mb
+        final_max_memory = None
+        final_accelerators = default_accelerators
+
+        # Merge with user-provided requirements (user values take precedence)
+        if user_resource_requirements:
+            if user_resource_requirements.num_cpus is not None:
+                final_cpus = user_resource_requirements.num_cpus
+            if user_resource_requirements.min_memory is not None:
+                final_min_memory = user_resource_requirements.min_memory
+            if user_resource_requirements.max_memory is not None:
+                final_max_memory = user_resource_requirements.max_memory
+            if user_resource_requirements.num_accelerators is not None:
+                final_accelerators = user_resource_requirements.num_accelerators
+
+        # Determine accelerator count for GPU instances if not provided
+        if final_accelerators is None:
+            # Check if this is a GPU instance type
+            # GPU families: g5, g4dn, g6, p3, p4d, p4de, p5
+            gpu_patterns = ['.g5.', '.g4dn.', '.g6.', '.p3.', '.p4d.', '.p4de.', '.p5.']
+            is_gpu_instance = any(pattern in instance_type for pattern in gpu_patterns)
+
+            if is_gpu_instance:
+                # Try to infer accelerator count from instance type
+                accelerator_count = self._infer_accelerator_count_from_instance_type(instance_type)
+                if accelerator_count is not None:
+                    final_accelerators = accelerator_count
+                    logger.info(
+                        f"Inferred {final_accelerators} accelerator device(s) for instance type {instance_type}"
+                    )
+                else:
+                    # Cannot determine accelerator count - raise descriptive error
+                    raise ValueError(
+                        f"Instance type '{instance_type}' requires accelerator device count specification.\n"
+                        f"Please provide ResourceRequirements with number of accelerators:\n\n"
+                        f"    from sagemaker.core.inference_config import ResourceRequirements\n\n"
+                        f"    resource_requirements = ResourceRequirements(\n"
+                        f"        requests={{\n"
+                        f"            'num_accelerators': <number_of_gpus>,\n"
+                        f"            'memory': {final_min_memory}\n"
+                        f"        }}\n"
+                        f"    )\n\n"
+                        f"For {instance_type}, check AWS documentation for the number of GPUs available."
+                    )
+
+        # Validate requirements are compatible with instance type
+        if actual_cpus and final_cpus > actual_cpus:
+            raise ValueError(
+                f"Resource requirements incompatible with instance type '{instance_type}'.\n"
+                f"Requested: {final_cpus} CPUs\n"
+                f"Available: {actual_cpus} CPUs\n"
+                f"Please reduce CPU requirements or select a larger instance type."
+            )
+
+        if actual_memory_mb and final_min_memory > actual_memory_mb:
+            raise ValueError(
+                f"Resource requirements incompatible with instance type '{instance_type}'.\n"
+                f"Requested: {final_min_memory} MB memory\n"
+                f"Available: {actual_memory_mb} MB memory\n"
+                f"Please reduce memory requirements or select a larger instance type."
+            )
+
+        # Create and return InferenceComponentComputeResourceRequirements
+        requirements = InferenceComponentComputeResourceRequirements(
+            min_memory_required_in_mb=final_min_memory,
+            number_of_cpu_cores_required=final_cpus
+        )
+
+        if final_max_memory is not None:
+            requirements.max_memory_required_in_mb = final_max_memory
+
+        if final_accelerators is not None:
+            requirements.number_of_accelerator_devices_required = final_accelerators
+
+        return requirements
+
+    def _infer_accelerator_count_from_instance_type(self, instance_type: str) -> Optional[int]:
+        """Infer the number of accelerator devices from instance type.
+
+        Maps common GPU instance types to their accelerator counts based on AWS documentation.
+
+        Args:
+            instance_type: The EC2 instance type (e.g., 'ml.g5.12xlarge')
+
+        Returns:
+            Number of accelerator devices, or None if cannot be determined
+        """
+        # Common GPU instance type to accelerator count mapping
+        # Based on AWS SageMaker instance types documentation
+        gpu_count_map = {
+            # G5 instances
+            'ml.g5.xlarge': 1,
+            'ml.g5.2xlarge': 1,
+            'ml.g5.4xlarge': 1,
+            'ml.g5.8xlarge': 1,
+            'ml.g5.12xlarge': 4,
+            'ml.g5.16xlarge': 1,
+            'ml.g5.24xlarge': 4,
+            'ml.g5.48xlarge': 8,
+            # G4dn instances
+            'ml.g4dn.xlarge': 1,
+            'ml.g4dn.2xlarge': 1,
+            'ml.g4dn.4xlarge': 1,
+            'ml.g4dn.8xlarge': 1,
+            'ml.g4dn.12xlarge': 4,
+            'ml.g4dn.16xlarge': 1,
+            # P3 instances
+            'ml.p3.2xlarge': 1,
+            'ml.p3.8xlarge': 4,
+            'ml.p3.16xlarge': 8,
+            # P4 instances
+            'ml.p4d.24xlarge': 8,
+            # P5 instances
+            'ml.p5.48xlarge': 8,
+            # G6 instances
+            'ml.g6.xlarge': 1,
+            'ml.g6.2xlarge': 1,
+            'ml.g6.4xlarge': 1,
+            'ml.g6.8xlarge': 1,
+            'ml.g6.12xlarge': 4,
+            'ml.g6.16xlarge': 1,
+            'ml.g6.24xlarge': 4,
+            'ml.g6.48xlarge': 8,
+        }
+
+        return gpu_count_map.get(instance_type)
 
     def _fetch_and_cache_recipe_config(self):
         """Fetch and cache image URI, compute requirements, and s3_upload_path from recipe during build."""
@@ -566,24 +952,24 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     )
                     if not self.image_uri:
                         self.image_uri = config.get("EcrAddress")
+                    
+                    # Infer instance type from JumpStart metadata if not provided
+                    # This is only called for model_customization deployments
                     if not self.instance_type:
+                        # Try to get from recipe config first
                         self.instance_type = config.get("InstanceType") or config.get("DefaultInstanceType")
+                        
+                        # If still not available, use the inference method
+                        if not self.instance_type:
+                            self.instance_type = self._infer_instance_type_from_jumpstart()
                     
-                    compute_resource_requirements = config.get("ComputeResourceRequirements", {})
-                    requested_cpus = compute_resource_requirements.get("NumberOfCpuCoresRequired", 1)
-                    
-                    # Get actual CPU count from instance type
-                    actual_cpus, _ = self._get_instance_resources(self.instance_type)
-                    if actual_cpus and requested_cpus > actual_cpus:
-                        logger.warning(
-                            f"Recipe requests {requested_cpus} CPUs but {self.instance_type} has {actual_cpus}. "
-                            f"Adjusting to {actual_cpus}."
-                        )
-                        requested_cpus = actual_cpus
-                    
-                    self._cached_compute_requirements = InferenceComponentComputeResourceRequirements(
-                        min_memory_required_in_mb=1024,
-                        number_of_cpu_cores_required=requested_cpus
+                    # Resolve compute requirements using the already-fetched hub document
+                    # This ensures requirements are determined through public methods
+                    # and properly merged with any user-provided configuration
+                    self._cached_compute_requirements = self._resolve_compute_requirements_from_config(
+                        instance_type=self.instance_type,
+                        config=config,
+                        user_resource_requirements=None  # No user config at build time
                     )
                     return
 
@@ -3415,12 +3801,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             logger.info("Deploying Model Customization model")
             if not self.instance_type and not instance_type:
                 self.instance_type = self._fetch_default_instance_type_for_custom_model()
+            
+            # Pass inference_config if it's ResourceRequirements
+            inference_config_param = None
+            if isinstance(inference_config, ResourceRequirements):
+                inference_config_param = inference_config
+            
             return self._deploy_model_customization(
                 endpoint_name=endpoint_name,
                 instance_type=instance_type or self.instance_type,
                 initial_instance_count=initial_instance_count,
                 wait=wait,
                 container_timeout_in_seconds=container_timeout_in_seconds,
+                inference_config=inference_config_param,
                 **kwargs
             )
 
@@ -3560,6 +3953,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         endpoint_name: str,
         initial_instance_count: int = 1,
         inference_component_name: Optional[str] = None,
+        inference_config: Optional[ResourceRequirements] = None,
         **kwargs
     ) -> Endpoint:
         """Deploy a model customization (fine-tuned) model to an endpoint with inference components.
@@ -3577,6 +3971,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             wait (bool): Whether to wait for deployment to complete (default: True)
             container_timeout_in_seconds (int): Container timeout in seconds (default: 300)
             inference_component_name (Optional[str]): Name for the inference component
+            inference_config (Optional[ResourceRequirements]): Inference configuration including
+                resource requirements (accelerator count, memory, CPU cores)
             **kwargs: Additional deployment parameters
 
         Returns:
@@ -3633,19 +4029,34 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         base_inference_component_name = None
         tag = None
 
+        # Resolve the correct model artifact URI based on deployment type
+        artifact_url = self._resolve_model_artifact_uri()
+
+        # Determine if this is a base model deployment
+        # A base model deployment uses HostingArtifactUri from JumpStart (not from model package)
+        is_base_model_deployment = False
+        if artifact_url and not peft_type:
+            # Check if artifact_url comes from JumpStart (not from model package)
+            # If model package has model_data_source, it's a full fine-tuned model
+            if (hasattr(model_package.inference_specification.containers[0], 'model_data_source') and
+                model_package.inference_specification.containers[0].model_data_source):
+                is_base_model_deployment = False  # Full fine-tuned model
+            else:
+                is_base_model_deployment = True  # Base model from JumpStart
+
         # Handle tagging and base component lookup
-        if not is_existing_endpoint:
+        if not is_existing_endpoint and is_base_model_deployment:
+            # Only tag as "Base" if we're actually deploying a base model
             from sagemaker.core.resources import Tag as CoreTag
             tag = CoreTag(key="Base", value=base_model_recipe_name)
         elif peft_type == "LORA":
+            # For LORA adapters, look up the existing base component
             from sagemaker.core.resources import Tag as CoreTag
             for component in InferenceComponent.get_all(endpoint_name_equals=endpoint_name, status_equals="InService"):
                 component_tags = CoreTag.get_all(resource_arn=component.inference_component_arn)
                 if any(t.key == "Base" and t.value == base_model_recipe_name for t in component_tags):
                     base_inference_component_name = component.inference_component_name
                     break
-
-        artifact_url = None #if peft_type == "LORA" else self._fetch_model_package().inference_specification.containers[0].model_data_source.s3_data_source.s3_uri
 
         ic_spec = InferenceComponentSpecification(
             container=InferenceComponentContainerSpecification(
@@ -3657,7 +4068,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if peft_type == "LORA":
             ic_spec.base_inference_component_name = base_inference_component_name
-        ic_spec.compute_resource_requirements = self._cached_compute_requirements
+        
+        # Use inference_config if provided, otherwise fall back to cached requirements
+        if inference_config is not None:
+            # Extract compute requirements from inference_config (ResourceRequirements)
+            ic_spec.compute_resource_requirements = InferenceComponentComputeResourceRequirements(
+                min_memory_required_in_mb=inference_config.min_memory,
+                max_memory_required_in_mb=inference_config.max_memory,
+                number_of_cpu_cores_required=inference_config.num_cpus,
+                number_of_accelerator_devices_required=inference_config.num_accelerators
+            )
+        else:
+            # Fall back to resolved compute requirements from build()
+            ic_spec.compute_resource_requirements = self._cached_compute_requirements
 
         InferenceComponent.create(
             inference_component_name=inference_component_name,
