@@ -150,9 +150,8 @@ class TestArtifactPathPropagation(unittest.TestCase):
         mock_is_model_customization.return_value = True
         mock_fetch_peft.return_value = "FULL"
         
-        # Setup: Artifact URI resolution returns model package S3 URI
-        expected_artifact_uri = 's3://my-bucket/fine-tuned-model/model.tar.gz'
-        mock_resolve_artifact.return_value = expected_artifact_uri
+        # Setup: Artifact URI resolution returns None for fine-tuned models
+        mock_resolve_artifact.return_value = None
         
         # Setup: Model package
         mock_package = Mock()
@@ -209,8 +208,8 @@ class TestArtifactPathPropagation(unittest.TestCase):
         # Extract the specification
         ic_spec = call_kwargs['specification']
         
-        # Verify artifact_url matches the resolved URI
-        assert ic_spec.container.artifact_url == expected_artifact_uri
+        # Verify artifact_url is None for fine-tuned models (model data handled by recipe)
+        assert ic_spec.container.artifact_url is None
 
     @patch('sagemaker.core.resources.InferenceComponent.create')
     @patch('sagemaker.core.resources.InferenceComponent.get_all')

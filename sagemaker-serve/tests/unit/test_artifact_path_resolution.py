@@ -95,7 +95,7 @@ class TestArtifactPathResolution(unittest.TestCase):
         mock_fetch_peft,
         mock_fetch_package
     ):
-        """Test fine-tuned adapter artifact location from ModelPackage."""
+        """Test fine-tuned model returns None (model data handled by recipe/container)."""
         # Setup: Full fine-tuned model (not LORA)
         mock_is_model_customization.return_value = True
         mock_fetch_peft.return_value = "FULL"
@@ -127,8 +127,8 @@ class TestArtifactPathResolution(unittest.TestCase):
         # Execute
         artifact_uri = builder._resolve_model_artifact_uri()
         
-        # Verify: Should return model_data_source S3 URI
-        assert artifact_uri == 's3://my-bucket/fine-tuned-model/model.tar.gz'
+        # Verify: Fine-tuned models return None - model data is handled by recipe/container
+        assert artifact_uri is None
 
     @patch('sagemaker.serve.model_builder.ModelBuilder._fetch_peft')
     @patch('sagemaker.serve.model_builder.ModelBuilder._is_model_customization')
@@ -434,7 +434,7 @@ class TestArtifactPathResolution(unittest.TestCase):
         mock_fetch_peft,
         mock_fetch_package
     ):
-        """Test fine-tuned model with properly nested s3_data_source structure."""
+        """Test fine-tuned model with nested s3_data_source returns None."""
         # Setup: Full fine-tuned model with nested structure
         mock_is_model_customization.return_value = True
         mock_fetch_peft.return_value = "FULL"
@@ -443,7 +443,6 @@ class TestArtifactPathResolution(unittest.TestCase):
         mock_package = Mock()
         mock_container = Mock()
         
-        # Create nested structure: container -> model_data_source -> s3_data_source -> s3_uri
         mock_s3_data_source = Mock()
         mock_s3_data_source.s3_uri = 's3://custom-bucket/my-fine-tuned-model/artifacts.tar.gz'
         
@@ -470,8 +469,8 @@ class TestArtifactPathResolution(unittest.TestCase):
         # Execute
         artifact_uri = builder._resolve_model_artifact_uri()
         
-        # Verify: Should return the nested S3 URI
-        assert artifact_uri == 's3://custom-bucket/my-fine-tuned-model/artifacts.tar.gz'
+        # Verify: Fine-tuned models return None - model data handled by recipe/container
+        assert artifact_uri is None
 
     @patch('sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model')
     @patch('sagemaker.serve.model_builder.ModelBuilder._fetch_model_package')

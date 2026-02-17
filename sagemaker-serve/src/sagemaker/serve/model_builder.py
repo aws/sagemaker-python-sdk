@@ -514,12 +514,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         fine-tuned model.
 
         Returns:
-            Optional[str]: S3 URI to model artifacts, or None for LORA adapters
+            Optional[str]: S3 URI to model artifacts, or None when not needed
 
         Logic:
             - For LORA adapters: Returns None (adapter weights are separate)
+            - For fine-tuned models: Returns None (model data is handled by the recipe/container)
             - For base models: Uses HostingArtifactUri from JumpStart hub metadata
-            - For full fine-tuned models: Uses ModelPackage artifact location
+            - For non-model-customization: Returns None
 
         Raises:
             ValueError: If model package or hub metadata is unavailable when needed
@@ -534,7 +535,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self._is_model_customization():
             model_package = self._fetch_model_package()
             if model_package:
-                # Check if this is a full fine-tuned model (has its own artifacts)
                 if (hasattr(model_package, 'inference_specification') and
                     model_package.inference_specification and
                     hasattr(model_package.inference_specification, 'containers') and
@@ -542,14 +542,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
                     container = model_package.inference_specification.containers[0]
 
-                    # If container has model_data_source, use it (full fine-tuned model)
+                    # For fine-tuned models (have model_data_source), return None.
+                    # The model data is handled by the recipe/container configuration,
+                    # not via artifact_url in CreateInferenceComponent.
                     if (hasattr(container, 'model_data_source') and
                         container.model_data_source and
                         hasattr(container.model_data_source, 's3_data_source') and
                         container.model_data_source.s3_data_source):
-                        return container.model_data_source.s3_data_source.s3_uri
+                        return None
 
-                    # Otherwise, this is a base model - get HostingArtifactUri from JumpStart
+                    # For base models, get HostingArtifactUri from JumpStart
                     if hasattr(container, 'base_model') and container.base_model:
                         try:
                             hub_document = self._fetch_hub_document_for_custom_model()
@@ -570,7 +572,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                             return None
 
         # For non-model-customization deployments, return None
-        # (artifact handling is done differently for those cases)
         return None
 
     def _infer_instance_type_from_jumpstart(self) -> str:
