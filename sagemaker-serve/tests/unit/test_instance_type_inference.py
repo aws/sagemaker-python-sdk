@@ -47,7 +47,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute and verify
@@ -76,7 +77,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute and verify
@@ -107,7 +109,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute and verify
@@ -145,7 +148,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -182,7 +186,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -217,7 +222,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -261,7 +267,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute and verify
@@ -298,7 +305,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -328,7 +336,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -351,7 +360,8 @@ class TestInstanceTypeInferenceEdgeCases(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute and verify
@@ -442,7 +452,8 @@ class TestInstanceTypeInferenceIntegration(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Manually set instance_type to None to simulate the scenario
@@ -499,7 +510,8 @@ class TestInstanceTypeInferenceIntegration(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         builder.instance_type = None
@@ -582,7 +594,8 @@ class TestInstanceTypeInferenceIntegration(unittest.TestCase):
             model="my-local-model",  # Not a model customization
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"  # Provide instance_type to avoid auto-detection
         )
         
         # Verify: _is_model_customization should return False

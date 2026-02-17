@@ -804,6 +804,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             )
             default_cpus = actual_cpus
 
+        # Adjust memory if it exceeds instance capacity
+        if actual_memory_mb and default_memory_mb > actual_memory_mb:
+            logger.warning(
+                f"Default requirements request {default_memory_mb} MB memory but {instance_type} has {actual_memory_mb} MB. "
+                f"Adjusting to {actual_memory_mb} MB."
+            )
+            default_memory_mb = actual_memory_mb
+
         # Initialize with defaults
         final_cpus = default_cpus
         final_min_memory = default_memory_mb
@@ -852,21 +860,23 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     )
 
         # Validate requirements are compatible with instance type
-        if actual_cpus and final_cpus > actual_cpus:
-            raise ValueError(
-                f"Resource requirements incompatible with instance type '{instance_type}'.\n"
-                f"Requested: {final_cpus} CPUs\n"
-                f"Available: {actual_cpus} CPUs\n"
-                f"Please reduce CPU requirements or select a larger instance type."
-            )
+        # Only validate user-provided requirements (defaults are already adjusted above)
+        if user_resource_requirements:
+            if actual_cpus and user_resource_requirements.num_cpus is not None and user_resource_requirements.num_cpus > actual_cpus:
+                raise ValueError(
+                    f"Resource requirements incompatible with instance type '{instance_type}'.\n"
+                    f"Requested: {user_resource_requirements.num_cpus} CPUs\n"
+                    f"Available: {actual_cpus} CPUs\n"
+                    f"Please reduce CPU requirements or select a larger instance type."
+                )
 
-        if actual_memory_mb and final_min_memory > actual_memory_mb:
-            raise ValueError(
-                f"Resource requirements incompatible with instance type '{instance_type}'.\n"
-                f"Requested: {final_min_memory} MB memory\n"
-                f"Available: {actual_memory_mb} MB memory\n"
-                f"Please reduce memory requirements or select a larger instance type."
-            )
+            if actual_memory_mb and user_resource_requirements.min_memory is not None and user_resource_requirements.min_memory > actual_memory_mb:
+                raise ValueError(
+                    f"Resource requirements incompatible with instance type '{instance_type}'.\n"
+                    f"Requested: {user_resource_requirements.min_memory} MB memory\n"
+                    f"Available: {actual_memory_mb} MB memory\n"
+                    f"Please reduce memory requirements or select a larger instance type."
+                )
 
         # Create and return InferenceComponentComputeResourceRequirements
         requirements = InferenceComponentComputeResourceRequirements(

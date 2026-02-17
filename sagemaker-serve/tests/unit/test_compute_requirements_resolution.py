@@ -61,7 +61,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -103,7 +104,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # User provides custom requirements
@@ -156,7 +158,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # User only overrides memory
@@ -203,7 +206,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -241,7 +245,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute with a real GPU instance type that's not in our mapping
@@ -284,7 +289,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # User requests more CPUs than available
@@ -333,7 +339,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # User requests more memory than available
@@ -382,7 +389,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"  # Provide instance_type to avoid auto-detection
         )
         
         # Execute
@@ -393,6 +401,45 @@ class TestComputeRequirementsResolution(unittest.TestCase):
         
         # Verify: Should adjust to instance capacity
         assert requirements.number_of_cpu_cores_required == 4
+
+    @patch('sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model')
+    @patch('sagemaker.serve.model_builder.ModelBuilder._get_instance_resources')
+    def test_adjust_memory_when_default_exceeds_capacity(self, mock_get_resources, mock_fetch_hub):
+        """Test automatic memory adjustment when default exceeds instance capacity."""
+        # Setup: Default requests 32GB but instance only has 8GB
+        mock_fetch_hub.return_value = {
+            "HostingConfigs": [
+                {
+                    "Profile": "Default",
+                    "ComputeResourceRequirements": {
+                        "NumberOfCpuCoresRequired": 4,
+                        "MinMemoryRequiredInMb": 32768  # 32GB requested
+                    }
+                }
+            ]
+        }
+        mock_get_resources.return_value = (8, 8192)  # Only 8GB RAM
+        
+        builder = ModelBuilder(
+            model="huggingface-llm-mistral-7b",
+            model_metadata={
+                "CUSTOM_MODEL_ID": "huggingface-llm-mistral-7b",
+                "CUSTOM_MODEL_VERSION": "1.0.0"
+            },
+            mode=Mode.SAGEMAKER_ENDPOINT,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.large"  # Provide instance_type to avoid auto-detection
+        )
+        
+        # Execute
+        requirements = builder._resolve_compute_requirements(
+            instance_type="ml.m5.large",
+            user_resource_requirements=None
+        )
+        
+        # Verify: Should adjust to instance capacity
+        assert requirements.min_memory_required_in_mb == 8192
 
     @patch('sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model')
     @patch('sagemaker.serve.model_builder.ModelBuilder._get_instance_resources')
@@ -409,7 +456,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute and verify
@@ -448,7 +496,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Test various GPU instance types
@@ -500,7 +549,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute with CPU instance
@@ -540,7 +590,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -580,7 +631,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute with a GPU instance not in the mapping
@@ -622,7 +674,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # User requests more accelerators than ml.g5.xlarge has (1 GPU)
@@ -669,7 +722,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # User requests more CPUs than available
@@ -721,7 +775,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # User requests more memory than available
@@ -773,7 +828,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute with unknown GPU instance
@@ -817,7 +873,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # User requests more than available
@@ -866,7 +923,8 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # User explicitly sets 0 accelerators

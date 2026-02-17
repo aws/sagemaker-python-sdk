@@ -75,7 +75,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -119,7 +120,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -148,7 +150,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -194,7 +197,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -240,7 +244,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute - should not raise exception
@@ -262,7 +267,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             model="my-model",
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"  # Provide instance_type to avoid auto-detection
         )
         
         # Execute
@@ -294,7 +300,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -329,7 +336,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -365,7 +373,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -406,7 +415,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -453,7 +463,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
@@ -502,7 +513,8 @@ class TestArtifactPathResolution(unittest.TestCase):
             },
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
-            sagemaker_session=self.mock_session
+            sagemaker_session=self.mock_session,
+            instance_type="ml.m5.xlarge"
         )
         
         # Execute
