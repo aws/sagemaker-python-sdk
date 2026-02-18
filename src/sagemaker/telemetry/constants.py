@@ -30,6 +30,7 @@ class Feature(Enum):
     # Note: HyperPod CLI uses codes 6 and 7
     JUMPSTART_V2 = 8  # Added to support JumpStart telemetry
     MLOPS_V2 = 9  # Added to support MLOps telemetry
+    FEATURE_STORE_V2 = 10
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""

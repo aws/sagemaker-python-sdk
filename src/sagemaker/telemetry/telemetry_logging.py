@@ -58,6 +58,7 @@ FEATURE_TO_CODE = {
     # Note: HyperPod CLI uses codes 6 and 7
     str(Feature.JUMPSTART_V2): 8,
     str(Feature.MLOPS_V2): 9,
+    str(Feature.FEATURE_STORE_V2): 10,
 }
 
 STATUS_TO_CODE = {

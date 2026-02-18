@@ -71,6 +71,8 @@ from sagemaker.feature_store.inputs import (
     TargetStoreEnum,
 )
 from sagemaker.utils import resolve_value_from_config, format_tags, Tags
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
 
@@ -672,6 +674,7 @@ class FeatureGroup:
         FeatureTypeEnum.STRING.value: "STRING",
     }
 
+    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.create")
     def create(
         self,
         s3_uri: Union[str, bool],
@@ -788,10 +791,12 @@ class FeatureGroup:
 
         return self.sagemaker_session.create_feature_group(**create_feature_store_args)
 
+    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.delete")
     def delete(self):
         """Delete a FeatureGroup."""
         self.sagemaker_session.delete_feature_group(feature_group_name=self.name)
 
+    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.describe")
     def describe(self, next_token: str = None) -> Dict[str, Any]:
         """Describe a FeatureGroup.
 
@@ -805,6 +810,7 @@ class FeatureGroup:
             feature_group_name=self.name, next_token=next_token
         )
 
+    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.update")
     def update(
         self,
         feature_additions: Sequence[FeatureDefinition] = None,
@@ -843,6 +849,9 @@ class FeatureGroup:
             throughput_config=throughput_config_parameter,
         )
 
+    @_telemetry_emitter(
+        feature=Feature.FEATURE_STORE_V2, func_name="feature_group.update_feature_metadata"
+    )
     def update_feature_metadata(
         self,
         feature_name: str,
@@ -871,6 +880,9 @@ class FeatureGroup:
             parameter_removals=(parameter_removals or []),
         )
 
+    @_telemetry_emitter(
+        feature=Feature.FEATURE_STORE_V2, func_name="feature_group.describe_feature_metadata"
+    )
     def describe_feature_metadata(self, feature_name: str) -> Dict[str, Any]:
         """Describe feature metadata by feature name.
 
@@ -1038,6 +1050,7 @@ class FeatureGroup:
         self.feature_definitions = feature_definitions
         return self.feature_definitions
 
+    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.get_record")
     def get_record(
         self,
         record_identifier_value_as_string: str,
@@ -1057,6 +1070,7 @@ class FeatureGroup:
             feature_names=feature_names,
         ).get("Record")
 
+    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.put_record")
     def put_record(
         self,
         record: Sequence[FeatureValue],
@@ -1080,6 +1094,7 @@ class FeatureGroup:
             ttl_duration=ttl_duration.to_dict() if ttl_duration is not None else None,
         )
 
+    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.delete_record")
     def delete_record(
         self,
         record_identifier_value_as_string: str,
