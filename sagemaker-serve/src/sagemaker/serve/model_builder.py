@@ -791,7 +791,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Extract default compute requirements from metadata
         compute_resource_requirements = config.get("ComputeResourceRequirements", {})
         default_cpus = compute_resource_requirements.get("NumberOfCpuCoresRequired", 1)
-        default_memory_mb = compute_resource_requirements.get("MinMemoryRequiredInMb", 1024)
+        # Use 1024 MB as safe default for min_memory - metadata values can exceed
+        # SageMaker inference component limits (which are lower than raw EC2 memory)
+        default_memory_mb = 1024
         default_accelerators = compute_resource_requirements.get("NumberOfAcceleratorDevicesRequired")
 
         # Get actual instance resources for validation
@@ -804,14 +806,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 f"Adjusting to {actual_cpus}."
             )
             default_cpus = actual_cpus
-
-        # Adjust memory if it exceeds instance capacity
-        if actual_memory_mb and default_memory_mb > actual_memory_mb:
-            logger.warning(
-                f"Default requirements request {default_memory_mb} MB memory but {instance_type} has {actual_memory_mb} MB. "
-                f"Adjusting to {actual_memory_mb} MB."
-            )
-            default_memory_mb = actual_memory_mb
 
         # Initialize with defaults
         final_cpus = default_cpus

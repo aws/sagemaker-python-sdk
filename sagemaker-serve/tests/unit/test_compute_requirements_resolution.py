@@ -71,9 +71,9 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             user_resource_requirements=None
         )
         
-        # Verify: Should use defaults from JumpStart
+        # Verify: Should use safe default memory (1024), CPUs from metadata
         assert requirements.number_of_cpu_cores_required == 4
-        assert requirements.min_memory_required_in_mb == 8192
+        assert requirements.min_memory_required_in_mb == 1024
         # Check that accelerator count is not set (should be Unassigned)
         from sagemaker.core.utils.utils import Unassigned
         assert isinstance(requirements.number_of_accelerator_devices_required, Unassigned)
@@ -405,21 +405,21 @@ class TestComputeRequirementsResolution(unittest.TestCase):
     @patch('sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model')
     @patch('sagemaker.serve.model_builder.ModelBuilder._get_instance_resources')
     def test_adjust_memory_when_default_exceeds_capacity(self, mock_get_resources, mock_fetch_hub):
-        """Test automatic memory adjustment when default exceeds instance capacity."""
-        # Setup: Default requests 32GB but instance only has 8GB
+        """Test that default memory is 1024 MB regardless of metadata value."""
+        # Setup: Metadata requests 32GB but we use safe default of 1024
         mock_fetch_hub.return_value = {
             "HostingConfigs": [
                 {
                     "Profile": "Default",
                     "ComputeResourceRequirements": {
                         "NumberOfCpuCoresRequired": 4,
-                        "MinMemoryRequiredInMb": 32768  # 32GB requested
+                        "MinMemoryRequiredInMb": 32768  # This is ignored for defaults
                     }
                 }
             ]
         }
         mock_get_resources.return_value = (8, 8192)  # Only 8GB RAM
-        
+
         builder = ModelBuilder(
             model="huggingface-llm-mistral-7b",
             model_metadata={
@@ -429,17 +429,17 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             mode=Mode.SAGEMAKER_ENDPOINT,
             role_arn="arn:aws:iam::123456789012:role/TestRole",
             sagemaker_session=self.mock_session,
-            instance_type="ml.m5.large"  # Provide instance_type to avoid auto-detection
+            instance_type="ml.m5.large"
         )
-        
+
         # Execute
         requirements = builder._resolve_compute_requirements(
             instance_type="ml.m5.large",
             user_resource_requirements=None
         )
-        
-        # Verify: Should adjust to instance capacity
-        assert requirements.min_memory_required_in_mb == 8192
+
+        # Verify: Uses safe default of 1024, not metadata value
+        assert requirements.min_memory_required_in_mb == 1024
 
     @patch('sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model')
     @patch('sagemaker.serve.model_builder.ModelBuilder._get_instance_resources')

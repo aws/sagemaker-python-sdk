@@ -345,7 +345,7 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
         
         # Verify cached requirements were used
         assert compute_reqs.number_of_cpu_cores_required == 4
-        assert compute_reqs.min_memory_required_in_mb == 8192
+        assert compute_reqs.min_memory_required_in_mb == 1024
         assert compute_reqs.number_of_accelerator_devices_required == 4
 
     @patch('sagemaker.core.resources.InferenceComponent.get')
