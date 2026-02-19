@@ -831,34 +831,39 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 final_accelerators = user_resource_requirements.num_accelerators
 
         # Determine accelerator count for GPU instances if not provided
-        if final_accelerators is None:
-            # Check if this is a GPU instance type
-            # GPU families: g5, g4dn, g6, p3, p4d, p4de, p5
-            gpu_patterns = ['.g5.', '.g4dn.', '.g6.', '.p3.', '.p4d.', '.p4de.', '.p5.']
-            is_gpu_instance = any(pattern in instance_type for pattern in gpu_patterns)
+        # Also strip accelerator count for CPU instances (AWS rejects it)
+        gpu_patterns = ['.g5.', '.g4dn.', '.g6.', '.p3.', '.p4d.', '.p4de.', '.p5.', '.trn', '.inf']
+        is_gpu_instance = any(pattern in instance_type for pattern in gpu_patterns)
 
-            if is_gpu_instance:
-                # Try to infer accelerator count from instance type
-                accelerator_count = self._infer_accelerator_count_from_instance_type(instance_type)
-                if accelerator_count is not None:
-                    final_accelerators = accelerator_count
-                    logger.info(
-                        f"Inferred {final_accelerators} accelerator device(s) for instance type {instance_type}"
-                    )
-                else:
-                    # Cannot determine accelerator count - raise descriptive error
-                    raise ValueError(
-                        f"Instance type '{instance_type}' requires accelerator device count specification.\n"
-                        f"Please provide ResourceRequirements with number of accelerators:\n\n"
-                        f"    from sagemaker.core.inference_config import ResourceRequirements\n\n"
-                        f"    resource_requirements = ResourceRequirements(\n"
-                        f"        requests={{\n"
-                        f"            'num_accelerators': <number_of_gpus>,\n"
-                        f"            'memory': {final_min_memory}\n"
-                        f"        }}\n"
-                        f"    )\n\n"
-                        f"For {instance_type}, check AWS documentation for the number of GPUs available."
-                    )
+        if not is_gpu_instance:
+            # CPU instance - must NOT include accelerator count
+            if final_accelerators is not None:
+                logger.info(
+                    f"Removing accelerator count ({final_accelerators}) for CPU instance type {instance_type}"
+                )
+            final_accelerators = None
+        elif final_accelerators is None:
+            # GPU instance without accelerator count - try to infer
+            accelerator_count = self._infer_accelerator_count_from_instance_type(instance_type)
+            if accelerator_count is not None:
+                final_accelerators = accelerator_count
+                logger.info(
+                    f"Inferred {final_accelerators} accelerator device(s) for instance type {instance_type}"
+                )
+            else:
+                # Cannot determine accelerator count - raise descriptive error
+                raise ValueError(
+                    f"Instance type '{instance_type}' requires accelerator device count specification.\n"
+                    f"Please provide ResourceRequirements with number of accelerators:\n\n"
+                    f"    from sagemaker.core.inference_config import ResourceRequirements\n\n"
+                    f"    resource_requirements = ResourceRequirements(\n"
+                    f"        requests={{\n"
+                    f"            'num_accelerators': <number_of_gpus>,\n"
+                    f"            'memory': {final_min_memory}\n"
+                    f"        }}\n"
+                    f"    )\n\n"
+                    f"For {instance_type}, check AWS documentation for the number of GPUs available."
+                )
 
         # Validate requirements are compatible with instance type
         # Only validate user-provided requirements (defaults are already adjusted above)

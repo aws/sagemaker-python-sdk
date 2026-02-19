@@ -900,7 +900,7 @@ class TestComputeRequirementsResolution(unittest.TestCase):
     @patch('sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model')
     @patch('sagemaker.serve.model_builder.ModelBuilder._get_instance_resources')
     def test_zero_accelerator_count_explicit(self, mock_get_resources, mock_fetch_hub):
-        """Test that explicitly setting 0 accelerators works for CPU instances."""
+        """Test that explicitly setting 0 accelerators on CPU instance is stripped."""
         # Setup
         mock_fetch_hub.return_value = {
             "HostingConfigs": [
@@ -927,7 +927,7 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             instance_type="ml.m5.xlarge"
         )
         
-        # User explicitly sets 0 accelerators
+        # User explicitly sets 0 accelerators on a CPU instance
         user_requirements = ResourceRequirements(
             requests={
                 "num_accelerators": 0,
@@ -942,8 +942,9 @@ class TestComputeRequirementsResolution(unittest.TestCase):
             user_resource_requirements=user_requirements
         )
         
-        # Verify: Should accept 0 accelerators
-        assert requirements.number_of_accelerator_devices_required == 0
+        # Verify: Accelerator count is stripped for CPU instances
+        from sagemaker.core.utils.utils import Unassigned
+        assert isinstance(requirements.number_of_accelerator_devices_required, Unassigned)
 
 
 if __name__ == "__main__":
