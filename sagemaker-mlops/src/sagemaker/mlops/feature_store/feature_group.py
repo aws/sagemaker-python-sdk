@@ -26,7 +26,7 @@ from boto3 import Session
 logger = logging.getLogger(__name__)
 
 
-class LakeFormationConfig:
+class LakeFormationConfig(Base):
     """Configuration for Lake Formation governance on Feature Group offline stores.
 
     Attributes:
