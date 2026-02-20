@@ -86,6 +86,7 @@ class Transformer(object):
         base_transform_job_name: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         volume_kms_key: Optional[Union[str, PipelineVariable]] = None,
+        transform_ami_version: Optional[Union[str, PipelineVariable]] = None,
     ):
         """Initialize a ``Transformer``.
 
@@ -126,6 +127,15 @@ class Transformer(object):
                 AWS services needed.
             volume_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting
                 the volume attached to the ML compute instance (default: None).
+            transform_ami_version (str or PipelineVariable): Optional. Specifies an option
+                from a collection of preconfigured Amazon Machine Image (AMI) images.
+                Each image is configured by Amazon Web Services with a set of software
+                and driver versions. Valid values include:
+
+                * 'al2-ami-sagemaker-batch-gpu-470' - GPU accelerator with NVIDIA driver 470
+                * 'al2-ami-sagemaker-batch-gpu-535' - GPU accelerator with NVIDIA driver 535
+
+                (default: None).
         """
         self.model_name = model_name
         self.strategy = strategy
@@ -162,6 +172,7 @@ class Transformer(object):
             TRANSFORM_JOB_ENVIRONMENT_PATH,
             sagemaker_session=self.sagemaker_session,
         )
+        self.transform_ami_version = transform_ami_version
 
     @runnable_by_pipeline
     def transform(
@@ -517,6 +528,9 @@ class Transformer(object):
             init_params["volume_kms_key"] = getattr(
                 job_details["transform_resources"], "volume_kms_key_id", None
             )
+            init_params["transform_ami_version"] = getattr(
+                job_details["transform_resources"], "transform_ami_version", None
+            )
         init_params["strategy"] = job_details.get("batch_strategy")
         if job_details.get("transform_output"):
             init_params["assemble_with"] = getattr(
@@ -584,7 +598,10 @@ class Transformer(object):
         )
 
         resource_config = self._prepare_resource_config(
-            self.instance_count, self.instance_type, self.volume_kms_key
+            self.instance_count,
+            self.instance_type,
+            self.volume_kms_key,
+            self.transform_ami_version,
         )
 
         return {
@@ -631,12 +648,17 @@ class Transformer(object):
 
         return config
 
-    def _prepare_resource_config(self, instance_count, instance_type, volume_kms_key):
+    def _prepare_resource_config(
+        self, instance_count, instance_type, volume_kms_key, transform_ami_version=None
+    ):
         """Prepare resource config."""
         config = {"instance_count": instance_count, "instance_type": instance_type}
 
         if volume_kms_key is not None:
             config["volume_kms_key_id"] = volume_kms_key
+
+        if transform_ami_version is not None:
+            config["transform_ami_version"] = transform_ami_version
 
         return config
 
