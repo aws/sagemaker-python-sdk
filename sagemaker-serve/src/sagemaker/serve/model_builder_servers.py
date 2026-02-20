@@ -851,11 +851,12 @@ class _ModelBuilderServers(object):
         # Get JumpStart model configuration
         init_kwargs = get_init_kwargs(
             model_id=self.model,
-            model_version=self.model_version or "*", 
+            model_version=self.model_version or "*",
             region=self.region,
             instance_type=self.instance_type,
             tolerate_vulnerable_model=getattr(self, 'tolerate_vulnerable_model', None),
-            tolerate_deprecated_model=getattr(self, 'tolerate_deprecated_model', None)
+            tolerate_deprecated_model=getattr(self, 'tolerate_deprecated_model', None),
+            config_name=getattr(self, 'config_name', None),
         )
         
         # Configure image URI and environment variables

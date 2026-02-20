@@ -347,10 +347,10 @@ class TestBuildForJumpStart(unittest.TestCase):
         mock_init_kwargs.image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.0-cu117"
         mock_init_kwargs.env = {}
         mock_get_kwargs.return_value = mock_init_kwargs
-        
+
         mock_model = Mock(spec=Model)
         mock_build_djl.return_value = mock_model
-        
+
         builder = ModelBuilder(
             model="huggingface-llm-falcon-7b",
             role_arn=MOCK_ROLE_ARN,
@@ -358,12 +358,40 @@ class TestBuildForJumpStart(unittest.TestCase):
             mode=Mode.SAGEMAKER_ENDPOINT
         )
         builder._optimizing = False
-        
+
         result = builder._build_for_jumpstart()
-        
+
         self.assertEqual(result, mock_model)
         self.assertEqual(builder.model_server, ModelServer.DJL_SERVING)
         mock_build_djl.assert_called_once()
+
+    @patch('sagemaker.core.jumpstart.factory.utils.get_init_kwargs')
+    @patch('sagemaker.serve.model_builder.ModelBuilder._build_for_djl_jumpstart')
+    @patch('sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode')
+    def test_build_for_jumpstart_passes_config_name(self, mock_prepare, mock_build_djl, mock_get_kwargs):
+        """Test that config_name is forwarded to get_init_kwargs."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.0-cu117"
+        mock_init_kwargs.env = {}
+        mock_get_kwargs.return_value = mock_init_kwargs
+
+        mock_model = Mock(spec=Model)
+        mock_build_djl.return_value = mock_model
+
+        builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-3-70b-instruct",
+            role_arn=MOCK_ROLE_ARN,
+            sagemaker_session=self.mock_session,
+            mode=Mode.SAGEMAKER_ENDPOINT
+        )
+        builder._optimizing = False
+        builder.config_name = "lmi-optimized"
+
+        builder._build_for_jumpstart()
+
+        mock_get_kwargs.assert_called_once()
+        call_kwargs = mock_get_kwargs.call_args
+        self.assertEqual(call_kwargs.kwargs.get("config_name") or call_kwargs[1].get("config_name"), "lmi-optimized")
 
     @patch('sagemaker.core.jumpstart.factory.utils.get_init_kwargs')
     @patch('sagemaker.serve.model_builder.ModelBuilder._build_for_tgi_jumpstart')
