@@ -18,7 +18,7 @@ model servers and deployment modes.
 from __future__ import absolute_import, annotations
 
 import json
-import re 
+import re
 import os
 import copy
 import logging
@@ -30,13 +30,21 @@ from typing import Any, Dict, List, Optional, Union, Set
 from botocore.exceptions import ClientError
 import packaging.version
 
-from sagemaker.core.resources import Model, Endpoint, TrainingJob, HubContent, InferenceComponent, EndpointConfig
+from sagemaker.core.resources import (
+    Model,
+    Endpoint,
+    TrainingJob,
+    HubContent,
+    InferenceComponent,
+    EndpointConfig,
+)
 from sagemaker.core.shapes import (
     ContainerDefinition,
     ModelMetrics,
     MetadataProperties,
     ModelLifeCycle,
-    DriftCheckBaselines, InferenceComponentComputeResourceRequirements,
+    DriftCheckBaselines,
+    InferenceComponentComputeResourceRequirements,
 )
 from sagemaker.core.resources import (
     ModelPackage,
@@ -46,7 +54,12 @@ from sagemaker.core.resources import (
 )
 from sagemaker.core.utils.utils import logger
 from sagemaker.core.helper import session_helper
-from sagemaker.core.helper.session_helper import Session, get_execution_role, _wait_until, _deploy_done
+from sagemaker.core.helper.session_helper import (
+    Session,
+    get_execution_role,
+    _wait_until,
+    _deploy_done,
+)
 from sagemaker.core.helper.pipeline_variable import StrPipeVar, PipelineVariable
 
 from sagemaker.train.model_trainer import ModelTrainer
@@ -62,9 +75,7 @@ from sagemaker.serve.mode.local_container_mode import LocalContainerMode
 from sagemaker.serve.mode.sagemaker_endpoint_mode import SageMakerEndpointMode
 from sagemaker.serve.mode.in_process_mode import InProcessMode
 from sagemaker.serve.utils.types import ModelServer, ModelHub
-from sagemaker.serve.detector.image_detector import (
-    _get_model_base, _detect_framework_and_version
-)
+from sagemaker.serve.detector.image_detector import _get_model_base, _detect_framework_and_version
 from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.core.inference_config import ResourceRequirements
@@ -84,7 +95,9 @@ from sagemaker.core.jumpstart.utils import add_jumpstart_uri_tags
 from sagemaker.core.jumpstart.artifacts.kwargs import _retrieve_model_deploy_kwargs
 
 from sagemaker.core.inference_config import AsyncInferenceConfig, ServerlessInferenceConfig
-from sagemaker.serve.batch_inference.batch_transform_inference_config import BatchTransformInferenceConfig
+from sagemaker.serve.batch_inference.batch_transform_inference_config import (
+    BatchTransformInferenceConfig,
+)
 
 from sagemaker.core.serializers import (
     NumpySerializer,
@@ -114,8 +127,11 @@ from sagemaker.core.common_utils import (
     update_container_with_inference_params,
 )
 from sagemaker.core.config.config_schema import (
-    MODEL_ENABLE_NETWORK_ISOLATION_PATH, MODEL_EXECUTION_ROLE_ARN_PATH,
-    MODEL_VPC_CONFIG_PATH, ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH, MODEL_CONTAINERS_PATH
+    MODEL_ENABLE_NETWORK_ISOLATION_PATH,
+    MODEL_EXECUTION_ROLE_ARN_PATH,
+    MODEL_VPC_CONFIG_PATH,
+    ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
+    MODEL_CONTAINERS_PATH,
 )
 from sagemaker.serve.constants import SUPPORTED_MODEL_SERVERS, Framework
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
@@ -138,40 +154,41 @@ MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
 SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
 SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
 
+
 @dataclass
 class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuilderUtils):
     """Unified interface for building and deploying machine learning models.
-    
+
     ModelBuilder provides a streamlined workflow for preparing and deploying ML models to
     Amazon SageMaker. It supports multiple frameworks (PyTorch, TensorFlow, HuggingFace, etc.),
     model servers (TorchServe, TGI, Triton, etc.), and deployment modes (SageMaker endpoints,
     local containers, in-process).
-    
+
     The typical workflow involves three steps:
     1. Initialize ModelBuilder with your model and configuration
     2. Call build() to create a deployable Model resource
     3. Call deploy() to create an Endpoint resource for inference
-    
+
     Example:
         >>> from sagemaker.serve.model_builder import ModelBuilder
         >>> from sagemaker.serve.mode.function_pointers import Mode
-        >>> 
+        >>>
         >>> # Initialize with a trained model
         >>> model_builder = ModelBuilder(
         ...     model=my_pytorch_model,
         ...     role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
         ...     instance_type="ml.m5.xlarge"
         ... )
-        >>> 
+        >>>
         >>> # Build the model (creates SageMaker Model resource)
         >>> model = model_builder.build()
-        >>> 
+        >>>
         >>> # Deploy to endpoint (creates SageMaker Endpoint resource)
         >>> endpoint = model_builder.deploy(endpoint_name="my-endpoint")
-        >>> 
+        >>>
         >>> # Make predictions
         >>> result = endpoint.invoke(data=input_data)
-    
+
     Args:
         model: The model to deploy. Can be a trained model object, ModelTrainer, TrainingJob,
             ModelPackage, or JumpStart model ID string. Either model or inference_spec is required.
@@ -195,16 +212,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         network: Network configuration including VPC settings and network isolation.
         instance_type: EC2 instance type for deployment (e.g., 'ml.m5.large').
         mode: Deployment mode (SAGEMAKER_ENDPOINT, LOCAL_CONTAINER, or IN_PROCESS).
-    
+
     Note:
         ModelBuilder returns sagemaker.core.resources.Model and sagemaker.core.resources.Endpoint
         objects, not the deprecated PySDK Model and Predictor classes. Use endpoint.invoke()
         instead of predictor.predict() for inference.
     """
+
     # ========================================
     # Core Model Definition
     # ========================================
-    model: Optional[Union[object, str, ModelTrainer, BaseTrainer, TrainingJob, ModelPackage, List[Model]]] = field(
+    model: Optional[
+        Union[object, str, ModelTrainer, BaseTrainer, TrainingJob, ModelPackage, List[Model]]
+    ] = field(
         default=None,
         metadata={
             "help": "The model object, JumpStart model ID, or training job from which to extract "
@@ -361,7 +381,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     _optimizing: bool = field(default=False, init=False)
     _deployment_config: Optional[Dict[str, Any]] = field(default=None, init=False)
 
-
     shared_libs: List[str] = field(
         default_factory=list,
         metadata={"help": "DEPRECATED: Use configure_for_torchserve() instead"},
@@ -379,6 +398,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         """Create a SageMaker session with the correct region."""
         if hasattr(self, "region") and self.region:
             import boto3
+
             boto_session = boto3.Session(region_name=self.region)
             return Session(boto_session=boto_session)
         return Session()
@@ -407,21 +427,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             warnings.warn(
                 "The 'shared_libs' parameter is deprecated. Use configure_for_torchserve() instead.",
                 DeprecationWarning,
-                stacklevel=3
+                stacklevel=3,
             )
 
         if self.dependencies and self.dependencies != {"auto": False}:
             warnings.warn(
                 "The 'dependencies' parameter is deprecated. Use configure_for_torchserve() instead.",
                 DeprecationWarning,
-                stacklevel=3
+                stacklevel=3,
             )
 
         if self.image_config is not None:
             warnings.warn(
                 "The 'image_config' parameter is deprecated. Use configure_for_torchserve() instead.",
                 DeprecationWarning,
-                stacklevel=3
+                stacklevel=3,
             )
 
     def _initialize_compute_config(self) -> None:
@@ -430,9 +450,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.instance_type = self.compute.instance_type
             self.instance_count = self.compute.instance_count or 1
         else:
-            if not hasattr(self, 'instance_type') or self.instance_type is None:
+            if not hasattr(self, "instance_type") or self.instance_type is None:
                 self.instance_type = None
-            if not hasattr(self, 'instance_count') or self.instance_count is None:
+            if not hasattr(self, "instance_count") or self.instance_count is None:
                 self.instance_count = 1
 
         self._user_provided_instance_type = bool(self.compute and self.compute.instance_type)
@@ -446,26 +466,30 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if self.network.vpc_config:
                 self.vpc_config = self.network.vpc_config
             else:
-                self.vpc_config = {
-                    'Subnets': self.network.subnets or [],
-                    'SecurityGroupIds': self.network.security_group_ids or []
-                } if (self.network.subnets or self.network.security_group_ids) else None
+                self.vpc_config = (
+                    {
+                        "Subnets": self.network.subnets or [],
+                        "SecurityGroupIds": self.network.security_group_ids or [],
+                    }
+                    if (self.network.subnets or self.network.security_group_ids)
+                    else None
+                )
             self._enable_network_isolation = self.network.enable_network_isolation
         else:
-            if not hasattr(self, 'vpc_config'):
+            if not hasattr(self, "vpc_config"):
                 self.vpc_config = None
-            if not hasattr(self, '_enable_network_isolation'):
+            if not hasattr(self, "_enable_network_isolation"):
                 self._enable_network_isolation = False
 
     def _initialize_defaults(self) -> None:
         """Initialize default values for unset parameters."""
-        if not hasattr(self, 'model_name') or self.model_name is None:
+        if not hasattr(self, "model_name") or self.model_name is None:
             self.model_name = "model-" + str(uuid.uuid4())[:8]
 
-        if not hasattr(self, 'mode') or self.mode is None:
+        if not hasattr(self, "mode") or self.mode is None:
             self.mode = Mode.SAGEMAKER_ENDPOINT
 
-        if not hasattr(self, 'env_vars') or self.env_vars is None:
+        if not hasattr(self, "env_vars") or self.env_vars is None:
             self.env_vars = {}
 
         # Set region with priority: user input > sagemaker session > AWS account region > default
@@ -476,6 +500,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 # Try to get region from boto3 session (AWS account config)
                 try:
                     import boto3
+
                     self.region = boto3.Session().region_name or None
                 except Exception:
                     self.region = None  # Default fallback
@@ -489,10 +514,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.container_config = "host"
         self.inference_recommender_job_results = None
         self.container_log_level = logging.INFO
-        
-        if not hasattr(self, 'framework'):
+
+        if not hasattr(self, "framework"):
             self.framework = None
-        if not hasattr(self, 'framework_version'):
+        if not hasattr(self, "framework_version"):
             self.framework_version = None
 
     def _fetch_default_instance_type_for_custom_model(self) -> str:
@@ -507,9 +532,160 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         logger.info(f"Fetching Instance Type from Hosting Configs - {default_instance_type}")
         return default_instance_type
 
+    def _resolve_model_artifact_uri(self) -> Optional[str]:
+        """Resolve the correct model artifact URI based on deployment type.
+
+        This method determines the appropriate S3 URI for model artifacts depending on
+        whether we're deploying a base model, a fine-tuned adapter (LORA), or a fully
+        fine-tuned model.
+
+        Returns:
+            Optional[str]: S3 URI to model artifacts, or None when not needed
+
+        Logic:
+            - For LORA adapters: Returns None (adapter weights are separate)
+            - For fine-tuned models: Returns None (model data is handled by the recipe/container)
+            - For base models: Uses HostingArtifactUri from JumpStart hub metadata
+            - For non-model-customization: Returns None
+
+        Raises:
+            ValueError: If model package or hub metadata is unavailable when needed
+        """
+        # Check if this is a LORA adapter deployment
+        peft_type = self._fetch_peft()
+        if peft_type == "LORA":
+            # LORA adapters don't need artifact_url - they reference base component
+            return None
+
+        # For model customization deployments, check if we have a model package
+        if self._is_model_customization():
+            model_package = self._fetch_model_package()
+            if model_package:
+                if (
+                    hasattr(model_package, "inference_specification")
+                    and model_package.inference_specification
+                    and hasattr(model_package.inference_specification, "containers")
+                    and model_package.inference_specification.containers
+                ):
+
+                    container = model_package.inference_specification.containers[0]
+
+                    # For fine-tuned models (have model_data_source), return None.
+                    # The model data is handled by the recipe/container configuration,
+                    # not via artifact_url in CreateInferenceComponent.
+                    if (
+                        hasattr(container, "model_data_source")
+                        and container.model_data_source
+                        and hasattr(container.model_data_source, "s3_data_source")
+                        and container.model_data_source.s3_data_source
+                    ):
+                        return None
+
+                    # For base models, get HostingArtifactUri from JumpStart
+                    if hasattr(container, "base_model") and container.base_model:
+                        try:
+                            hub_document = self._fetch_hub_document_for_custom_model()
+                            hosting_artifact_uri = hub_document.get("HostingArtifactUri")
+                            if hosting_artifact_uri:
+                                return hosting_artifact_uri
+                            else:
+                                logger.warning(
+                                    "HostingArtifactUri not found in JumpStart hub metadata. "
+                                    "Deployment may fail if artifact URI is required."
+                                )
+                                return None
+                        except Exception as e:
+                            logger.warning(
+                                f"Failed to retrieve HostingArtifactUri from JumpStart metadata: {e}. "
+                                f"Proceeding without artifact URI."
+                            )
+                            return None
+
+        # For non-model-customization deployments, return None
+        return None
+
+    def _infer_instance_type_from_jumpstart(self) -> str:
+        """Infer the appropriate instance type from JumpStart model metadata.
+
+        Queries JumpStart metadata for the base model and selects an appropriate
+        instance type from the supported list. Prefers GPU instance types for
+        models that require GPU acceleration.
+
+        Returns:
+            str: The inferred instance type (e.g., 'ml.g5.12xlarge')
+
+        Raises:
+            ValueError: If instance type cannot be inferred from metadata
+        """
+        try:
+            # Get the hub document which contains hosting configurations
+            hub_document = self._fetch_hub_document_for_custom_model()
+            hosting_configs = hub_document.get("HostingConfigs")
+
+            if not hosting_configs:
+                raise ValueError(
+                    "Unable to infer instance type: Model does not have hosting configuration. "
+                    "Please specify instance_type explicitly."
+                )
+
+            # Get the default hosting config
+            config = next(
+                (cfg for cfg in hosting_configs if cfg.get("Profile") == "Default"),
+                hosting_configs[0],
+            )
+
+            # Extract supported instance types
+            supported_instance_types = config.get("SupportedInstanceTypes", [])
+            default_instance_type = config.get("InstanceType") or config.get("DefaultInstanceType")
+
+            if not supported_instance_types and not default_instance_type:
+                raise ValueError(
+                    "Unable to infer instance type: Model metadata does not specify "
+                    "supported instance types. Please specify instance_type explicitly."
+                )
+
+            # If default instance type is specified, use it
+            if default_instance_type:
+                logger.info(
+                    f"Inferred instance type from JumpStart metadata: {default_instance_type}"
+                )
+                return default_instance_type
+
+            # Fallback to first supported instance type
+            selected_type = supported_instance_types[0]
+            logger.info(f"Inferred instance type from JumpStart metadata: {selected_type}")
+            return selected_type
+
+        except Exception as e:
+            # Provide helpful error message with context
+            error_msg = (
+                f"Unable to infer instance type for model customization deployment: {str(e)}. "
+                "Please specify instance_type explicitly when creating ModelBuilder."
+            )
+
+            # Try to provide available instance types in error message if possible
+            try:
+                hub_document = self._fetch_hub_document_for_custom_model()
+                hosting_configs = hub_document.get("HostingConfigs", [])
+                if hosting_configs:
+                    config = next(
+                        (cfg for cfg in hosting_configs if cfg.get("Profile") == "Default"),
+                        hosting_configs[0],
+                    )
+                    supported_types = config.get("SupportedInstanceTypes", [])
+                    if supported_types:
+                        error_msg += f"\nSupported instance types for this model: {supported_types}"
+            except Exception:
+                pass
+
+            raise ValueError(error_msg)
+
     def _fetch_hub_document_for_custom_model(self) -> dict:
         from sagemaker.core.shapes import BaseModel as CoreBaseModel
-        base_model: CoreBaseModel = self._fetch_model_package().inference_specification.containers[0].base_model
+
+        base_model: CoreBaseModel = (
+            self._fetch_model_package().inference_specification.containers[0].base_model
+        )
         hub_content = HubContent.get(
             hub_content_type="Model",
             hub_name="SageMakerPublicHub",
@@ -528,17 +704,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             )
         return hosting_configs
 
-
     def _get_instance_resources(self, instance_type: str) -> tuple:
         """Get CPU and memory for an instance type by querying EC2."""
         try:
-            ec2_client = self.sagemaker_session.boto_session.client('ec2')
-            ec2_instance_type = instance_type.replace('ml.', '')
+            ec2_client = self.sagemaker_session.boto_session.client("ec2")
+            ec2_instance_type = instance_type.replace("ml.", "")
             response = ec2_client.describe_instance_types(InstanceTypes=[ec2_instance_type])
-            if response['InstanceTypes']:
-                instance_info = response['InstanceTypes'][0]
-                cpus = instance_info['VCpuInfo']['DefaultVCpus']
-                memory_mb = instance_info['MemoryInfo']['SizeInMiB']
+            if response["InstanceTypes"]:
+                instance_info = response["InstanceTypes"][0]
+                cpus = instance_info["VCpuInfo"]["DefaultVCpus"]
+                memory_mb = instance_info["MemoryInfo"]["SizeInMiB"]
                 return cpus, memory_mb
         except Exception as e:
             logger.warning(
@@ -547,6 +722,219 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             )
         return None, None
 
+    def _resolve_compute_requirements(
+        self, instance_type: str, user_resource_requirements: Optional[ResourceRequirements] = None
+    ) -> InferenceComponentComputeResourceRequirements:
+        """Resolve compute requirements by merging JumpStart metadata with user config.
+
+        Retrieves default compute requirements from JumpStart model metadata and merges
+        them with user-provided ResourceRequirements. User-provided values take precedence
+        over defaults. Automatically determines number_of_accelerator_devices_required for
+        GPU instances when not explicitly provided.
+
+        Args:
+            instance_type: The EC2 instance type for deployment (e.g., 'ml.g5.12xlarge')
+            user_resource_requirements: Optional user-provided resource requirements
+
+        Returns:
+            InferenceComponentComputeResourceRequirements with all fields populated
+
+        Raises:
+            ValueError: If requirements are incompatible with instance_type or if
+                       accelerator count cannot be determined for GPU instances
+
+        Requirements: 2.1, 3.1, 3.2, 3.4
+        """
+        # Start with defaults from JumpStart metadata
+        hub_document = self._fetch_hub_document_for_custom_model()
+        hosting_configs = hub_document.get("HostingConfigs", [])
+
+        if not hosting_configs:
+            raise ValueError(
+                "Unable to resolve compute requirements: Model does not have hosting configuration. "
+                "Please provide resource requirements explicitly."
+            )
+
+        # Get the default hosting config
+        config = next(
+            (cfg for cfg in hosting_configs if cfg.get("Profile") == "Default"), hosting_configs[0]
+        )
+
+        return self._resolve_compute_requirements_from_config(
+            instance_type=instance_type,
+            config=config,
+            user_resource_requirements=user_resource_requirements,
+        )
+
+    def _resolve_compute_requirements_from_config(
+        self,
+        instance_type: str,
+        config: dict,
+        user_resource_requirements: Optional[ResourceRequirements] = None,
+    ) -> InferenceComponentComputeResourceRequirements:
+        """Resolve compute requirements from a hosting config dictionary.
+
+        Helper method that extracts compute requirements from an already-fetched
+        hosting config and merges with user-provided requirements.
+
+        Args:
+            instance_type: The EC2 instance type for deployment
+            config: The hosting config dictionary from JumpStart metadata
+            user_resource_requirements: Optional user-provided resource requirements
+
+        Returns:
+            InferenceComponentComputeResourceRequirements with all fields populated
+
+        Raises:
+            ValueError: If requirements are incompatible with instance_type
+        """
+        # Extract default compute requirements from metadata
+        compute_resource_requirements = config.get("ComputeResourceRequirements", {})
+        default_cpus = compute_resource_requirements.get("NumberOfCpuCoresRequired", 1)
+        # Use 1024 MB as safe default for min_memory - metadata values can exceed
+        # SageMaker inference component limits (which are lower than raw EC2 memory)
+        default_memory_mb = 1024
+        default_accelerators = compute_resource_requirements.get(
+            "NumberOfAcceleratorDevicesRequired"
+        )
+
+        # Get actual instance resources for validation
+        actual_cpus, actual_memory_mb = self._get_instance_resources(instance_type)
+
+        # Adjust CPU count if it exceeds instance capacity
+        if actual_cpus and default_cpus > actual_cpus:
+            logger.warning(
+                f"Default requirements request {default_cpus} CPUs but {instance_type} has {actual_cpus}. "
+                f"Adjusting to {actual_cpus}."
+            )
+            default_cpus = actual_cpus
+
+        # Initialize with defaults
+        final_cpus = default_cpus
+        final_min_memory = default_memory_mb
+        final_max_memory = None
+        final_accelerators = default_accelerators
+
+        # Merge with user-provided requirements (user values take precedence)
+        if user_resource_requirements:
+            if user_resource_requirements.num_cpus is not None:
+                final_cpus = user_resource_requirements.num_cpus
+            if user_resource_requirements.min_memory is not None:
+                final_min_memory = user_resource_requirements.min_memory
+            if user_resource_requirements.max_memory is not None:
+                final_max_memory = user_resource_requirements.max_memory
+            if user_resource_requirements.num_accelerators is not None:
+                final_accelerators = user_resource_requirements.num_accelerators
+
+        # Determine accelerator count for GPU instances if not provided
+        # Also strip accelerator count for CPU instances (AWS rejects it)
+        is_gpu_instance = self._is_gpu_instance(instance_type)
+
+        if not is_gpu_instance:
+            # CPU instance - must NOT include accelerator count
+            if final_accelerators is not None:
+                logger.info(
+                    f"Removing accelerator count ({final_accelerators}) for CPU instance type {instance_type}"
+                )
+            final_accelerators = None
+        elif final_accelerators is None:
+            # GPU instance without accelerator count - try to infer
+            accelerator_count = self._infer_accelerator_count_from_instance_type(instance_type)
+            if accelerator_count is not None:
+                final_accelerators = accelerator_count
+                logger.info(
+                    f"Inferred {final_accelerators} accelerator device(s) for instance type {instance_type}"
+                )
+            else:
+                # Cannot determine accelerator count - raise descriptive error
+                raise ValueError(
+                    f"Instance type '{instance_type}' requires accelerator device count specification.\n"
+                    f"Please provide ResourceRequirements with number of accelerators:\n\n"
+                    f"    from sagemaker.core.inference_config import ResourceRequirements\n\n"
+                    f"    resource_requirements = ResourceRequirements(\n"
+                    f"        requests={{\n"
+                    f"            'num_accelerators': <number_of_gpus>,\n"
+                    f"            'memory': {final_min_memory}\n"
+                    f"        }}\n"
+                    f"    )\n\n"
+                    f"For {instance_type}, check AWS documentation for the number of GPUs available."
+                )
+
+        # Validate requirements are compatible with instance type
+        # Only validate user-provided requirements (defaults are already adjusted above)
+        if user_resource_requirements:
+            if (
+                actual_cpus
+                and user_resource_requirements.num_cpus is not None
+                and user_resource_requirements.num_cpus > actual_cpus
+            ):
+                raise ValueError(
+                    f"Resource requirements incompatible with instance type '{instance_type}'.\n"
+                    f"Requested: {user_resource_requirements.num_cpus} CPUs\n"
+                    f"Available: {actual_cpus} CPUs\n"
+                    f"Please reduce CPU requirements or select a larger instance type."
+                )
+
+            if (
+                actual_memory_mb
+                and user_resource_requirements.min_memory is not None
+                and user_resource_requirements.min_memory > actual_memory_mb
+            ):
+                raise ValueError(
+                    f"Resource requirements incompatible with instance type '{instance_type}'.\n"
+                    f"Requested: {user_resource_requirements.min_memory} MB memory\n"
+                    f"Available: {actual_memory_mb} MB memory\n"
+                    f"Please reduce memory requirements or select a larger instance type."
+                )
+
+        # Create and return InferenceComponentComputeResourceRequirements
+        requirements = InferenceComponentComputeResourceRequirements(
+            min_memory_required_in_mb=final_min_memory, number_of_cpu_cores_required=final_cpus
+        )
+
+        if final_max_memory is not None:
+            requirements.max_memory_required_in_mb = final_max_memory
+
+        if final_accelerators is not None:
+            requirements.number_of_accelerator_devices_required = final_accelerators
+
+        return requirements
+
+    def _infer_accelerator_count_from_instance_type(self, instance_type: str) -> Optional[int]:
+        """Infer the number of accelerator devices by querying EC2 instance type info.
+
+        Args:
+            instance_type: The EC2 instance type (e.g., 'ml.g5.12xlarge')
+
+        Returns:
+            Number of accelerator devices, or None if cannot be determined
+        """
+        try:
+            ec2_client = self.sagemaker_session.boto_session.client("ec2")
+            ec2_instance_type = instance_type.replace("ml.", "")
+            response = ec2_client.describe_instance_types(InstanceTypes=[ec2_instance_type])
+            if response["InstanceTypes"]:
+                gpu_info = response["InstanceTypes"][0].get("GpuInfo")
+                if gpu_info and gpu_info.get("Gpus"):
+                    total_gpus = sum(g.get("Count", 0) for g in gpu_info["Gpus"])
+                    if total_gpus > 0:
+                        return total_gpus
+        except Exception as e:
+            logger.warning(f"Could not query GPU count for {instance_type}: {e}.")
+        return None
+
+    def _is_gpu_instance(self, instance_type: str) -> bool:
+        """Check if an instance type has GPUs by querying EC2.
+
+        Args:
+            instance_type: The EC2 instance type (e.g., 'ml.g5.12xlarge')
+
+        Returns:
+            True if the instance type has GPUs, False otherwise
+        """
+        gpu_count = self._infer_accelerator_count_from_instance_type(instance_type)
+        return gpu_count is not None and gpu_count > 0
+
     def _fetch_and_cache_recipe_config(self):
         """Fetch and cache image URI, compute requirements, and s3_upload_path from recipe during build."""
         hub_document = self._fetch_hub_document_for_custom_model()
@@ -554,7 +942,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         recipe_name = model_package.inference_specification.containers[0].base_model.recipe_name
 
         if not self.s3_upload_path:
-            self.s3_upload_path = model_package.inference_specification.containers[0].model_data_source.s3_data_source.s3_uri
+            self.s3_upload_path = model_package.inference_specification.containers[
+                0
+            ].model_data_source.s3_data_source.s3_uri
 
         for recipe in hub_document.get("RecipeCollection", []):
             if recipe.get("Name") == recipe_name:
@@ -562,28 +952,32 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 if hosting_configs:
                     config = next(
                         (cfg for cfg in hosting_configs if cfg.get("Profile") == "Default"),
-                        hosting_configs[0]
+                        hosting_configs[0],
                     )
                     if not self.image_uri:
                         self.image_uri = config.get("EcrAddress")
+
+                    # Infer instance type from JumpStart metadata if not provided
+                    # This is only called for model_customization deployments
                     if not self.instance_type:
-                        self.instance_type = config.get("InstanceType") or config.get("DefaultInstanceType")
-                    
-                    compute_resource_requirements = config.get("ComputeResourceRequirements", {})
-                    requested_cpus = compute_resource_requirements.get("NumberOfCpuCoresRequired", 1)
-                    
-                    # Get actual CPU count from instance type
-                    actual_cpus, _ = self._get_instance_resources(self.instance_type)
-                    if actual_cpus and requested_cpus > actual_cpus:
-                        logger.warning(
-                            f"Recipe requests {requested_cpus} CPUs but {self.instance_type} has {actual_cpus}. "
-                            f"Adjusting to {actual_cpus}."
+                        # Try to get from recipe config first
+                        self.instance_type = config.get("InstanceType") or config.get(
+                            "DefaultInstanceType"
                         )
-                        requested_cpus = actual_cpus
-                    
-                    self._cached_compute_requirements = InferenceComponentComputeResourceRequirements(
-                        min_memory_required_in_mb=1024,
-                        number_of_cpu_cores_required=requested_cpus
+
+                        # If still not available, use the inference method
+                        if not self.instance_type:
+                            self.instance_type = self._infer_instance_type_from_jumpstart()
+
+                    # Resolve compute requirements using the already-fetched hub document
+                    # This ensures requirements are determined through public methods
+                    # and properly merged with any user-provided configuration
+                    self._cached_compute_requirements = (
+                        self._resolve_compute_requirements_from_config(
+                            instance_type=self.instance_type,
+                            config=config,
+                            user_resource_requirements=None,  # No user config at build time
+                        )
                     )
                     return
 
@@ -597,10 +991,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         """Initialize JumpStart-specific configuration."""
         if hasattr(self, "hub_name") and self.hub_name and not self.hub_arn:
             from sagemaker.core.jumpstart.hub.utils import generate_hub_arn_for_init_kwargs
+
             self.hub_arn = generate_hub_arn_for_init_kwargs(
-                hub_name=self.hub_name,
-                region=self.region,
-                session=self.sagemaker_session
+                hub_name=self.hub_name, region=self.region, session=self.sagemaker_session
             )
         else:
             self.hub_name = None
@@ -608,6 +1001,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if isinstance(self.model, str) and (not hasattr(self, "model_type") or not self.model_type):
             from sagemaker.core.jumpstart.utils import validate_model_id_and_get_type
+
             try:
                 self.model_type = validate_model_id_and_get_type(
                     model_id=self.model,
@@ -622,6 +1016,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             # Add tags for the JumpStart model
             from sagemaker.core.jumpstart.utils import add_jumpstart_model_info_tags
             from sagemaker.core.jumpstart.enums import JumpStartScriptScope
+
             self._tags = add_jumpstart_model_info_tags(
                 self._tags,
                 self.model,
@@ -654,15 +1049,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if not hasattr(self, "accept_eula"):
             self.accept_eula = None
 
-
     def _initialize_script_mode_variables(self) -> None:
         """Initialize script mode variables from source_code or defaults."""
 
         # Map SourceCode to model.py equivalents
         if self.source_code:
             self.entry_point = self.source_code.entry_script
-            if hasattr(self.source_code, 'requirements'):
-                self.script_dependencies = [self.source_code.requirements] if self.source_code.requirements else []
+            if hasattr(self.source_code, "requirements"):
+                self.script_dependencies = (
+                    [self.source_code.requirements] if self.source_code.requirements else []
+                )
             else:
                 self.script_dependencies = []
                 logger.warning(
@@ -708,15 +1104,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         elif self.schema_builder:
             deserializer = self.schema_builder.output_deserializer
 
-
         if serializer is None or deserializer is None:
-            auto_serializer, auto_deserializer = self._fetch_serializer_and_deserializer_for_framework(self.framework)
+            auto_serializer, auto_deserializer = (
+                self._fetch_serializer_and_deserializer_for_framework(self.framework)
+            )
 
             if serializer is None:
                 serializer = auto_serializer
             if deserializer is None:
                 deserializer = auto_deserializer
-
 
         if serializer is None:
             raise ValueError("Cannot determine serializer. Try providing a SchemaBuilder.")
@@ -724,7 +1120,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             raise ValueError("Cannot determine deserializer. Try providing a SchemaBuilder.")
 
         return serializer, deserializer
-
 
     def _save_model_inference_spec(self) -> None:
         """Save model or inference specification to the model path."""
@@ -743,16 +1138,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         elif self.model:
             if isinstance(self.model, str):
                 self.framework = None
-                self.env_vars.update({
-                    "MODEL_CLASS_NAME": self.model
-                })
+                self.env_vars.update({"MODEL_CLASS_NAME": self.model})
             else:
                 fw, _ = _detect_framework_and_version(str(_get_model_base(self.model)))
                 self.framework = self._normalize_framework_to_enum(fw)
-                self.env_vars.update({
-                    "MODEL_CLASS_NAME": f"{self.model.__class__.__module__}.{self.model.__class__.__name__}"
-                })
-
+                self.env_vars.update(
+                    {
+                        "MODEL_CLASS_NAME": f"{self.model.__class__.__module__}.{self.model.__class__.__name__}"
+                    }
+                )
 
             if self.framework == Framework.XGBOOST:
                 save_xgboost(code_path, self.model)
@@ -763,7 +1157,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             save_pkl(code_path, self.schema_builder)
         else:
             raise ValueError("Cannot detect required model or inference spec")
-
 
     def _prepare_for_mode(
         self, model_path: Optional[str] = None, should_upload_artifacts: Optional[bool] = False
@@ -823,19 +1216,24 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             f"Supported modes: {Mode.LOCAL_CONTAINER}, {Mode.SAGEMAKER_ENDPOINT}, {Mode.IN_PROCESS}"
         )
 
-
     def _build_validations(self) -> None:
         """Validate ModelBuilder configuration before building."""
         if isinstance(self.model, ModelTrainer) and not self.inference_spec:
             # Check if this is a JumpStart ModelTrainer (which doesn't need InferenceSpec)
-            if not (hasattr(self.model, '_jumpstart_config') and self.model._jumpstart_config is not None):
+            if not (
+                hasattr(self.model, "_jumpstart_config")
+                and self.model._jumpstart_config is not None
+            ):
                 raise ValueError(
                     "InferenceSpec is required when using ModelTrainer, "
                     "unless it's a JumpStart ModelTrainer created with from_jumpstart_config()"
                 )
 
         if isinstance(self.model, ModelTrainer):
-            is_jumpstart = hasattr(self.model, '_jumpstart_config') and self.model._jumpstart_config is not None
+            is_jumpstart = (
+                hasattr(self.model, "_jumpstart_config")
+                and self.model._jumpstart_config is not None
+            )
 
             if not is_jumpstart and not self.image_uri:
                 logger.warning(
@@ -857,13 +1255,23 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self.inference_spec and self.model and not isinstance(self.model, ModelTrainer):
             raise ValueError("Can only set one of the following: model, inference_spec.")
 
-
-        if self.image_uri and is_1p_image_uri(self.image_uri) and not self.model and not self.inference_spec and not getattr(self, '_is_mlflow_model', False):
+        if (
+            self.image_uri
+            and is_1p_image_uri(self.image_uri)
+            and not self.model
+            and not self.inference_spec
+            and not getattr(self, "_is_mlflow_model", False)
+        ):
             self._passthrough = True
             return
 
-
-        if self.image_uri and not is_1p_image_uri(self.image_uri) and not self.model and not self.inference_spec and not getattr(self, '_is_mlflow_model', False):
+        if (
+            self.image_uri
+            and not is_1p_image_uri(self.image_uri)
+            and not self.model
+            and not self.inference_spec
+            and not getattr(self, "_is_mlflow_model", False)
+        ):
             self._passthrough = True
             return
 
@@ -874,7 +1282,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 f"Supported model servers: {SUPPORTED_MODEL_SERVERS}"
             )
 
-
     def _build_for_passthrough(self) -> Model:
         """Build model for pass-through cases with image-only deployment."""
         if not self.image_uri:
@@ -882,7 +1289,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         self.s3_upload_path = None
         return self._create_model()
-
 
     def _build_default_async_inference_config(self, async_inference_config):
         """Build default async inference config and return ``AsyncInferenceConfig``"""
@@ -908,7 +1314,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             async_inference_config.failure_path = async_failure_s3uri
 
         return async_inference_config
-
 
     def enable_network_isolation(self):
         """Whether to enable network isolation when creating this Model
@@ -937,34 +1342,66 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Check both model_package_config (new location) and serverless_job_config (legacy)
         if isinstance(self.model, TrainingJob):
             # Check model_package_config first (new location)
-            if (hasattr(self.model, 'model_package_config') and self.model.model_package_config != Unassigned
-                    and getattr(self.model.model_package_config, 'source_model_package_arn', Unassigned) != Unassigned):
+            if (
+                hasattr(self.model, "model_package_config")
+                and self.model.model_package_config != Unassigned
+                and getattr(self.model.model_package_config, "source_model_package_arn", Unassigned)
+                != Unassigned
+            ):
                 return True
             # Fallback to serverless_job_config (legacy location)
-            if (hasattr(self.model, 'serverless_job_config') and self.model.serverless_job_config != Unassigned
-                    and hasattr(self.model, 'output_model_package_arn') and self.model.output_model_package_arn!= Unassigned):
+            if (
+                hasattr(self.model, "serverless_job_config")
+                and self.model.serverless_job_config != Unassigned
+                and hasattr(self.model, "output_model_package_arn")
+                and self.model.output_model_package_arn != Unassigned
+            ):
                 return True
 
         # ModelTrainer with model customization
-        if isinstance(self.model, ModelTrainer) and hasattr(self.model, '_latest_training_job'):
+        if isinstance(self.model, ModelTrainer) and hasattr(self.model, "_latest_training_job"):
             # Check model_package_config first (new location)
-            if (hasattr(self.model._latest_training_job, 'model_package_config') and self.model._latest_training_job.model_package_config != Unassigned()
-                    and getattr(self.model._latest_training_job.model_package_config, 'source_model_package_arn', Unassigned()) != Unassigned()):
+            if (
+                hasattr(self.model._latest_training_job, "model_package_config")
+                and self.model._latest_training_job.model_package_config != Unassigned()
+                and getattr(
+                    self.model._latest_training_job.model_package_config,
+                    "source_model_package_arn",
+                    Unassigned(),
+                )
+                != Unassigned()
+            ):
                 return True
             # Fallback to serverless_job_config (legacy location)
-            if (hasattr(self.model._latest_training_job, 'serverless_job_config') and self.model._latest_training_job.serverless_job_config != Unassigned()
-                    and hasattr(self.model._latest_training_job, 'output_model_package_arn') and self.model._latest_training_job.output_model_package_arn!= Unassigned()):
+            if (
+                hasattr(self.model._latest_training_job, "serverless_job_config")
+                and self.model._latest_training_job.serverless_job_config != Unassigned()
+                and hasattr(self.model._latest_training_job, "output_model_package_arn")
+                and self.model._latest_training_job.output_model_package_arn != Unassigned()
+            ):
                 return True
 
         # BaseTrainer with model customization
-        if isinstance(self.model, BaseTrainer) and hasattr(self.model, '_latest_training_job'):
+        if isinstance(self.model, BaseTrainer) and hasattr(self.model, "_latest_training_job"):
             # Check model_package_config first (new location)
-            if (hasattr(self.model._latest_training_job, 'model_package_config') and self.model._latest_training_job.model_package_config != Unassigned()
-                    and getattr(self.model._latest_training_job.model_package_config, 'source_model_package_arn', Unassigned()) != Unassigned()):
+            if (
+                hasattr(self.model._latest_training_job, "model_package_config")
+                and self.model._latest_training_job.model_package_config != Unassigned()
+                and getattr(
+                    self.model._latest_training_job.model_package_config,
+                    "source_model_package_arn",
+                    Unassigned(),
+                )
+                != Unassigned()
+            ):
                 return True
             # Fallback to serverless_job_config (legacy location)
-            if (hasattr(self.model._latest_training_job, 'serverless_job_config') and self.model._latest_training_job.serverless_job_config != Unassigned()
-                    and hasattr(self.model._latest_training_job, 'output_model_package_arn') and self.model._latest_training_job.output_model_package_arn!= Unassigned()):
+            if (
+                hasattr(self.model._latest_training_job, "serverless_job_config")
+                and self.model._latest_training_job.serverless_job_config != Unassigned()
+                and hasattr(self.model._latest_training_job, "output_model_package_arn")
+                and self.model._latest_training_job.output_model_package_arn != Unassigned()
+            ):
                 return True
 
         return False
@@ -976,51 +1413,74 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             Optional[str]: The model package ARN, or None if not available.
         """
         from sagemaker.core.utils.utils import Unassigned
-        
+
         if isinstance(self.model, ModelPackage):
             return self.model.model_package_arn
         if isinstance(self.model, TrainingJob):
             # Try output_model_package_arn first (preferred)
-            if hasattr(self.model, 'output_model_package_arn'):
+            if hasattr(self.model, "output_model_package_arn"):
                 arn = self.model.output_model_package_arn
                 if not isinstance(arn, Unassigned):
                     return arn
-            
+
             # Fallback to model_package_config.source_model_package_arn
-            if hasattr(self.model, 'model_package_config') and self.model.model_package_config != Unassigned and hasattr(self.model.model_package_config, 'source_model_package_arn'):
+            if (
+                hasattr(self.model, "model_package_config")
+                and self.model.model_package_config != Unassigned
+                and hasattr(self.model.model_package_config, "source_model_package_arn")
+            ):
                 arn = self.model.model_package_config.source_model_package_arn
                 if not isinstance(arn, Unassigned):
                     return arn
-            
+
             # Fallback to serverless_job_config.source_model_package_arn (legacy)
-            if hasattr(self.model, 'serverless_job_config') and self.model.serverless_job_config != Unassigned and hasattr(self.model.serverless_job_config, 'source_model_package_arn'):
+            if (
+                hasattr(self.model, "serverless_job_config")
+                and self.model.serverless_job_config != Unassigned
+                and hasattr(self.model.serverless_job_config, "source_model_package_arn")
+            ):
                 arn = self.model.serverless_job_config.source_model_package_arn
                 if not isinstance(arn, Unassigned):
                     return arn
-            
+
             return None
-        
-        if isinstance(self.model, (ModelTrainer, BaseTrainer)) and hasattr(self.model, '_latest_training_job'):
+
+        if isinstance(self.model, (ModelTrainer, BaseTrainer)) and hasattr(
+            self.model, "_latest_training_job"
+        ):
             # Try output_model_package_arn first (preferred)
-            if hasattr(self.model._latest_training_job, 'output_model_package_arn'):
+            if hasattr(self.model._latest_training_job, "output_model_package_arn"):
                 arn = self.model._latest_training_job.output_model_package_arn
                 if not isinstance(arn, Unassigned):
                     return arn
-            
+
             # Fallback to model_package_config.source_model_package_arn
-            if hasattr(self.model._latest_training_job, 'model_package_config') and self.model._latest_training_job.model_package_config != Unassigned and hasattr(self.model._latest_training_job.model_package_config, 'source_model_package_arn'):
+            if (
+                hasattr(self.model._latest_training_job, "model_package_config")
+                and self.model._latest_training_job.model_package_config != Unassigned
+                and hasattr(
+                    self.model._latest_training_job.model_package_config, "source_model_package_arn"
+                )
+            ):
                 arn = self.model._latest_training_job.model_package_config.source_model_package_arn
                 if not isinstance(arn, Unassigned):
                     return arn
-            
+
             # Fallback to serverless_job_config.source_model_package_arn (legacy)
-            if hasattr(self.model._latest_training_job, 'serverless_job_config') and self.model._latest_training_job.serverless_job_config != Unassigned and hasattr(self.model._latest_training_job.serverless_job_config, 'source_model_package_arn'):
+            if (
+                hasattr(self.model._latest_training_job, "serverless_job_config")
+                and self.model._latest_training_job.serverless_job_config != Unassigned
+                and hasattr(
+                    self.model._latest_training_job.serverless_job_config,
+                    "source_model_package_arn",
+                )
+            ):
                 arn = self.model._latest_training_job.serverless_job_config.source_model_package_arn
                 if not isinstance(arn, Unassigned):
                     return arn
-            
+
             return None
-        
+
         return None
 
     def _fetch_model_package(self) -> Optional[ModelPackage]:
@@ -1031,7 +1491,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         """
         if isinstance(self.model, ModelPackage):
             return self.model
-        
+
         # Get the ARN and check if it's valid
         arn = self._fetch_model_package_arn()
         if arn:
@@ -1044,7 +1504,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return None
 
         result = {}
-        if hasattr(model_data_source, 's3_data_source') and model_data_source.s3_data_source:
+        if hasattr(model_data_source, "s3_data_source") and model_data_source.s3_data_source:
             s3_source = model_data_source.s3_data_source
             result["S3DataSource"] = {
                 "S3Uri": s3_source.s3_uri,
@@ -1053,7 +1513,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             }
 
             # Handle ModelAccessConfig if present
-            if hasattr(s3_source, 'model_access_config') and s3_source.model_access_config:
+            if hasattr(s3_source, "model_access_config") and s3_source.model_access_config:
                 result["S3DataSource"]["ModelAccessConfig"] = {
                     "AcceptEula": s3_source.model_access_config.accept_eula
                 }
@@ -1071,7 +1531,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "ChannelName": source.channel_name,
             }
 
-            if hasattr(source, 's3_data_source') and source.s3_data_source:
+            if hasattr(source, "s3_data_source") and source.s3_data_source:
                 s3_source = source.s3_data_source
                 source_dict["S3DataSource"] = {
                     "S3Uri": s3_source.s3_uri,
@@ -1080,7 +1540,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 }
 
                 # Handle ModelAccessConfig if present
-                if hasattr(s3_source, 'model_access_config') and s3_source.model_access_config:
+                if hasattr(s3_source, "model_access_config") and s3_source.model_access_config:
                     source_dict["S3DataSource"]["ModelAccessConfig"] = {
                         "AcceptEula": s3_source.model_access_config.accept_eula
                     }
@@ -1093,7 +1553,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         """Convert SourceCode to Local Mode style for environment variables."""
         if not self.source_code:
             return {}
-
 
         script_name = self.source_code.entry_script
         dir_name = (
@@ -1108,7 +1567,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "20",  # INFO level
             "SAGEMAKER_REGION": self.region,
         }
-
 
     def to_string(self, obj: object):
         """Convert an object to string
@@ -1133,7 +1591,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return False
 
         return self.source_dir and self.entry_point and not (self.key_prefix or self.git_config)
-
 
     def _upload_code(self, key_prefix: str, repack: bool = False) -> None:
         """Uploads code to S3 to be used with script mode with SageMaker inference.
@@ -1252,7 +1709,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             SAGEMAKER_REGION_PARAM_NAME.upper(): self.region,
         }
 
-
     def _is_mms_version(self):
         """Determines if the framework corresponds to an and using MMS.
 
@@ -1269,7 +1725,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         framework_version = packaging.version.Version(self.framework_version)
         return framework_version >= lowest_mms_version
 
-
     def _get_container_env(self):
         """Placeholder docstring."""
         if not self._container_log_level:
@@ -1283,11 +1738,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         env[self.LOG_LEVEL_PARAM_NAME] = self.LOG_LEVEL_MAP[self._container_log_level]
         return env
 
-
     def _prepare_container_def_base(self):
         """Base container definition logic from your prepare_container_def_base.
-            dict or list[dict]: A container definition object or list of container definitions
-                usable with the CreateModel API.
+        dict or list[dict]: A container definition object or list of container definitions
+            usable with the CreateModel API.
         """
         # Handle pipeline models with multiple containers
         if isinstance(self.model, list):
@@ -1299,62 +1753,63 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return self._prepare_pipeline_container_defs()
 
         deploy_key_prefix = fw_utils.model_code_key_prefix(
-            getattr(self, 'key_prefix', None),
-            self.model_name,
-            self.image_uri
+            getattr(self, "key_prefix", None), self.model_name, self.image_uri
         )
 
-        deploy_env = copy.deepcopy(getattr(self, 'env_vars', {}))
+        deploy_env = copy.deepcopy(getattr(self, "env_vars", {}))
 
-        if (getattr(self, 'source_dir', None) or
-            getattr(self, 'dependencies', None) or
-            getattr(self, 'entry_point', None) or
-            getattr(self, 'git_config', None)):
+        if (
+            getattr(self, "source_dir", None)
+            or getattr(self, "dependencies", None)
+            or getattr(self, "entry_point", None)
+            or getattr(self, "git_config", None)
+        ):
 
-            self._upload_code(deploy_key_prefix, repack=getattr(self, 'is_repack', lambda: False)())
+            self._upload_code(deploy_key_prefix, repack=getattr(self, "is_repack", lambda: False)())
             deploy_env.update(self._script_mode_env_vars())
 
         # Determine model data URL: prioritize repacked > s3_upload_path > s3_model_data_url
-        model_data_url = (getattr(self, 'repacked_model_data', None) or
-                        getattr(self, 's3_upload_path', None) or
-                        getattr(self, 's3_model_data_url', None))
+        model_data_url = (
+            getattr(self, "repacked_model_data", None)
+            or getattr(self, "s3_upload_path", None)
+            or getattr(self, "s3_model_data_url", None)
+        )
 
         return container_def(
             self.image_uri,
             model_data_url,
             deploy_env,
-            image_config=getattr(self, 'image_config', None),
-            accept_eula=getattr(self, 'accept_eula', None),
-            additional_model_data_sources=getattr(self, 'additional_model_data_sources', None),
-            model_reference_arn=getattr(self, 'model_reference_arn', None),
+            image_config=getattr(self, "image_config", None),
+            accept_eula=getattr(self, "accept_eula", None),
+            additional_model_data_sources=getattr(self, "additional_model_data_sources", None),
+            model_reference_arn=getattr(self, "model_reference_arn", None),
         )
-
 
     def _handle_tf_repack(self, deploy_key_prefix, instance_type, serverless_inference_config):
         """Handle TensorFlow-specific repack logic."""
         bucket, key_prefix = s3.determine_bucket_and_prefix(
-            bucket=getattr(self, 'bucket', None),
+            bucket=getattr(self, "bucket", None),
             key_prefix=deploy_key_prefix,
             sagemaker_session=self.sagemaker_session,
         )
 
-        if self.entry_point and not is_pipeline_variable(getattr(self, 'model_data', None)):
+        if self.entry_point and not is_pipeline_variable(getattr(self, "model_data", None)):
             model_data = s3.s3_path_join("s3://", bucket, key_prefix, "model.tar.gz")
 
             repack_model(
                 self.entry_point,
-                getattr(self, 'source_dir', None),
-                getattr(self, 'dependencies', None),
-                getattr(self, 'model_data', None),
+                getattr(self, "source_dir", None),
+                getattr(self, "dependencies", None),
+                getattr(self, "model_data", None),
                 model_data,
                 self.sagemaker_session,
-                kms_key=getattr(self, 'model_kms_key', None),
+                kms_key=getattr(self, "model_kms_key", None),
             )
 
             # Update model_data for container_def
             self.model_data = model_data
 
-        elif self.entry_point and is_pipeline_variable(getattr(self, 'model_data', None)):
+        elif self.entry_point and is_pipeline_variable(getattr(self, "model_data", None)):
             # Handle pipeline variable case
             if isinstance(self.sagemaker_session, PipelineSession):
                 self.sagemaker_session.context.need_runtime_repack.add(id(self))
@@ -1370,13 +1825,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "runtime repack may be missing. For more, see: "
                     "https://sagemaker.readthedocs.io/en/stable/"
                     "amazon_sagemaker_model_building_pipeline.html#model-step",
-                    type(getattr(self, 'model_data', None)),
+                    type(getattr(self, "model_data", None)),
                 )
-
 
     def _prepare_container_def(self):
         """Unified container definition preparation for all frameworks."""
-        if self.framework in [Framework.LDA, Framework.NTM, Framework.DJL, Framework.SPARKML] or self.framework is None:
+        if (
+            self.framework in [Framework.LDA, Framework.NTM, Framework.DJL, Framework.SPARKML]
+            or self.framework is None
+        ):
             return self._prepare_container_def_base()
 
         # Framework-specific validations
@@ -1407,68 +1864,84 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             # Add framework-specific parameters
             if self.framework in [Framework.PYTORCH, Framework.MXNET, Framework.CHAINER]:
-                image_params["py_version"] = getattr(self, 'py_version', 'py3')
+                image_params["py_version"] = getattr(self, "py_version", "py3")
             elif self.framework == Framework.HUGGINGFACE:
-                image_params["py_version"] = getattr(self, 'py_version', 'py3')
+                image_params["py_version"] = getattr(self, "py_version", "py3")
                 # Use framework_version for both TensorFlow and PyTorch base versions
                 if "tensorflow" in self.framework_version.lower():
                     image_params["base_framework_version"] = f"tensorflow{self.framework_version}"
                 else:
                     image_params["base_framework_version"] = f"pytorch{self.framework_version}"
-                if hasattr(self, 'inference_tool') and self.inference_tool:
+                if hasattr(self, "inference_tool") and self.inference_tool:
                     image_params["inference_tool"] = self.inference_tool
             elif self.framework == Framework.SKLEARN:
-                image_params["py_version"] = getattr(self, 'py_version', 'py3')
+                image_params["py_version"] = getattr(self, "py_version", "py3")
 
             deploy_image = image_uris.retrieve(**image_params)
 
         # Code upload logic
         deploy_key_prefix = model_code_key_prefix(
-            getattr(self, 'key_prefix', None),
-            self.model_name,
-            deploy_image
+            getattr(self, "key_prefix", None), self.model_name, deploy_image
         )
 
         # Framework-specific repack logic
         repack_logic = {
-            Framework.PYTORCH: lambda: getattr(self, '_is_mms_version', lambda: False)(),
-            Framework.MXNET: lambda: getattr(self, '_is_mms_version', lambda: False)(),
+            Framework.PYTORCH: lambda: getattr(self, "_is_mms_version", lambda: False)(),
+            Framework.MXNET: lambda: getattr(self, "_is_mms_version", lambda: False)(),
             Framework.CHAINER: lambda: True,
-            Framework.XGBOOST: lambda: getattr(self, 'enable_network_isolation', lambda: False)(),
-            Framework.SKLEARN: lambda: getattr(self, 'enable_network_isolation', lambda: False)(),
+            Framework.XGBOOST: lambda: getattr(self, "enable_network_isolation", lambda: False)(),
+            Framework.SKLEARN: lambda: getattr(self, "enable_network_isolation", lambda: False)(),
             Framework.HUGGINGFACE: lambda: True,
             Framework.TENSORFLOW: lambda: False,  # TF has special logic
         }
 
         if self.framework == Framework.TENSORFLOW:
             # TensorFlow has special repack logic
-            self._handle_tf_repack(deploy_key_prefix, self.instance_type, self.serverless_inference_config)
+            self._handle_tf_repack(
+                deploy_key_prefix, self.instance_type, self.serverless_inference_config
+            )
         else:
             should_repack = repack_logic.get(self.framework, lambda: False)()
             self._upload_code(deploy_key_prefix, repack=should_repack)
 
         # Environment variables
-        deploy_env = dict(getattr(self, 'env_vars', getattr(self, 'env', {})))
+        deploy_env = dict(getattr(self, "env_vars", getattr(self, "env", {})))
 
         # Add script mode env vars for frameworks that support it
         if self.framework != Framework.TENSORFLOW:  # TF handles this differently
             deploy_env.update(self._script_mode_env_vars())
         elif self.framework == Framework.TENSORFLOW:
-            deploy_env = getattr(self, '_get_container_env', lambda: deploy_env)()
+            deploy_env = getattr(self, "_get_container_env", lambda: deploy_env)()
 
         # Add model server workers if supported
-        if hasattr(self, 'model_server_workers') and self.model_server_workers:
-            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = to_string(self.model_server_workers)
+        if hasattr(self, "model_server_workers") and self.model_server_workers:
+            deploy_env[MODEL_SERVER_WORKERS_PARAM_NAME.upper()] = to_string(
+                self.model_server_workers
+            )
 
         # Model data resolution
         model_data_resolvers = {
-            Framework.PYTORCH: lambda: getattr(self, 'repacked_model_data', None) or getattr(self, 's3_upload_path', None) or getattr(self, 's3_model_data_url', None),
-            Framework.MXNET: lambda: getattr(self, 'repacked_model_data', None) or getattr(self, 's3_upload_path', None) or getattr(self, 's3_model_data_url', None),
-            Framework.CHAINER: lambda: getattr(self, 'repacked_model_data', None) or getattr(self, 's3_upload_path', None) or getattr(self, 's3_model_data_url', None),
-            Framework.XGBOOST: lambda: getattr(self, 'repacked_model_data', None) or getattr(self, 's3_upload_path', None) or getattr(self, 's3_model_data_url', None),
-            Framework.SKLEARN: lambda: getattr(self, 'repacked_model_data', None) or getattr(self, 's3_upload_path', None) or getattr(self, 's3_model_data_url', None),
-            Framework.HUGGINGFACE: lambda: getattr(self, 'repacked_model_data', None) or getattr(self, 's3_upload_path', None) or getattr(self, 's3_model_data_url', None),
-            Framework.TENSORFLOW: lambda: getattr(self, 'model_data', None),  # TF still has special handling
+            Framework.PYTORCH: lambda: getattr(self, "repacked_model_data", None)
+            or getattr(self, "s3_upload_path", None)
+            or getattr(self, "s3_model_data_url", None),
+            Framework.MXNET: lambda: getattr(self, "repacked_model_data", None)
+            or getattr(self, "s3_upload_path", None)
+            or getattr(self, "s3_model_data_url", None),
+            Framework.CHAINER: lambda: getattr(self, "repacked_model_data", None)
+            or getattr(self, "s3_upload_path", None)
+            or getattr(self, "s3_model_data_url", None),
+            Framework.XGBOOST: lambda: getattr(self, "repacked_model_data", None)
+            or getattr(self, "s3_upload_path", None)
+            or getattr(self, "s3_model_data_url", None),
+            Framework.SKLEARN: lambda: getattr(self, "repacked_model_data", None)
+            or getattr(self, "s3_upload_path", None)
+            or getattr(self, "s3_model_data_url", None),
+            Framework.HUGGINGFACE: lambda: getattr(self, "repacked_model_data", None)
+            or getattr(self, "s3_upload_path", None)
+            or getattr(self, "s3_model_data_url", None),
+            Framework.TENSORFLOW: lambda: getattr(
+                self, "model_data", None
+            ),  # TF still has special handling
         }
 
         model_data = model_data_resolvers[self.framework]()
@@ -1478,14 +1951,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             "image_uri": deploy_image,
             "model_data_url": model_data,
             "env": deploy_env,
-            "accept_eula": getattr(self, 'accept_eula', None),
-            "model_reference_arn": getattr(self, 'model_reference_arn', None),
+            "accept_eula": getattr(self, "accept_eula", None),
+            "model_reference_arn": getattr(self, "model_reference_arn", None),
         }
 
         # Add optional parameters if they exist
-        if hasattr(self, 'image_config'):
+        if hasattr(self, "image_config"):
             container_params["image_config"] = self.image_config
-        if hasattr(self, 'additional_model_data_sources'):
+        if hasattr(self, "additional_model_data_sources"):
             container_params["additional_model_data_sources"] = self.additional_model_data_sources
 
         return container_def(**container_params)
@@ -1501,10 +1974,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         containers = []
         for core_model in self.model:
             # Check if containers is set and is a list (not Unassigned)
-            if hasattr(core_model, 'containers') and isinstance(core_model.containers, list):
+            if hasattr(core_model, "containers") and isinstance(core_model.containers, list):
                 for c in core_model.containers:
                     containers.append(self._core_container_to_dict(c))
-            elif hasattr(core_model, 'primary_container') and core_model.primary_container:
+            elif hasattr(core_model, "primary_container") and core_model.primary_container:
                 containers.append(self._core_container_to_dict(core_model.primary_container))
         return containers
 
@@ -1521,9 +1994,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         return container_def(
             container.image,
-            get_value(container, 'model_data_url'),
-            get_value(container, 'environment', {}),
-            image_config=get_value(container, 'image_config'),
+            get_value(container, "model_data_url"),
+            get_value(container, "environment", {}),
+            image_config=get_value(container, "image_config"),
         )
 
     def _create_sagemaker_model(self):
@@ -1534,7 +2007,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             # _base_name, model_name are not needed under PipelineSession.
             # the model_data may be Pipeline variable
             # which may break the _base_name generation
-            image_uri = container_def["Image"] if isinstance(container_def, dict) else container_def[0]["Image"]
+            image_uri = (
+                container_def["Image"]
+                if isinstance(container_def, dict)
+                else container_def[0]["Image"]
+            )
             self._ensure_base_name_if_needed(
                 image_uri=image_uri,
                 script_uri=self.source_dir,
@@ -1577,7 +2054,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return
         return Model.get(model_name=self.model_name, region=self.region)
 
-
     def _create_model(self):
         """Create a SageMaker Model instance from the current configuration."""
         if self._optimizing:
@@ -1590,21 +2066,22 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if self.mode == Mode.LOCAL_CONTAINER:
             from sagemaker.core.local.local_session import LocalSession
+
             local_session = LocalSession()
 
             primary_container = self._prepare_container_def()
             local_session.sagemaker_client.create_model(
                 ModelName=self.model_name,
                 PrimaryContainer=primary_container,
-                ExecutionRoleArn=execution_role
+                ExecutionRoleArn=execution_role,
             )
 
             return Model(
                 model_name=self.model_name,
                 primary_container=ContainerDefinition(
-                    image=primary_container['Image'],
-                    model_data_url=primary_container['ModelDataUrl'],
-                    environment=primary_container['Environment']
+                    image=primary_container["Image"],
+                    model_data_url=primary_container["ModelDataUrl"],
+                    environment=primary_container["Environment"],
                 ),
                 execution_role_arn=execution_role,
             )
@@ -1647,7 +2124,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 self._tags = add_jumpstart_uri_tags(
                     tags=self._tags,
                     inference_model_uri=(
-                        self.s3_model_data_url if isinstance(self.s3_model_data_url, (str, dict)) else None
+                        self.s3_model_data_url
+                        if isinstance(self.s3_model_data_url, (str, dict))
+                        else None
                     ),
                     inference_script_uri=self.source_dir,
                 )
@@ -1659,7 +2138,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         else:
             raise ValueError(f"Invalid mode: {self.mode}")
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.fetch_endpoint_names_for_base_model")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="model_builder.fetch_endpoint_names_for_base_model",
+    )
     def fetch_endpoint_names_for_base_model(self) -> Set[str]:
         """Fetches endpoint names for the base model.
 
@@ -1667,9 +2149,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             Set of endpoint names for the base model.
         """
         from sagemaker.core.resources import Tag as CoreTag
+
         if not self._is_model_customization():
-            raise ValueError("This functionality is only supported for Model Customization use cases")
-        recipe_name = self._fetch_model_package().inference_specification.containers[0].base_model.recipe_name
+            raise ValueError(
+                "This functionality is only supported for Model Customization use cases"
+            )
+        recipe_name = (
+            self._fetch_model_package().inference_specification.containers[0].base_model.recipe_name
+        )
         endpoint_names = set()
         logger.error(f"recipe_name: {recipe_name}")
         for inference_component in InferenceComponent.get_all():
@@ -1711,27 +2198,29 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Handle model customization (fine-tuned models)
         if self._is_model_customization():
             if mode is not None and mode != Mode.SAGEMAKER_ENDPOINT:
-                raise ValueError("Only SageMaker Endpoint Mode is supported for Model Customization use cases")
+                raise ValueError(
+                    "Only SageMaker Endpoint Mode is supported for Model Customization use cases"
+                )
             model_package = self._fetch_model_package()
             # Fetch recipe config first to set image_uri, instance_type, and s3_upload_path
             self._fetch_and_cache_recipe_config()
-            self.s3_upload_path = model_package.inference_specification.containers[0].model_data_source.s3_data_source.s3_uri
+            self.s3_upload_path = model_package.inference_specification.containers[
+                0
+            ].model_data_source.s3_data_source.s3_uri
             container_def = ContainerDefinition(
                 image=self.image_uri,
                 model_data_source={
                     "s3_data_source": {
                         "s3_uri": f"{self.s3_upload_path}/",
                         "s3_data_type": "S3Prefix",
-                        "compression_type": "None"
+                        "compression_type": "None",
                     }
-                }
+                },
             )
             model_name = self.model_name or f"model-{uuid.uuid4().hex[:10]}"
             # Create model
             self.built_model = Model.create(
-                execution_role_arn=self.role_arn,
-                model_name=model_name,
-                containers=[container_def]
+                execution_role_arn=self.role_arn, model_name=model_name, containers=[container_def]
             )
             return self.built_model
 
@@ -1743,7 +2232,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.model = None
         elif isinstance(self.model, ModelTrainer):
             # Check if this is a JumpStart ModelTrainer
-            if hasattr(self.model, '_jumpstart_config') and self.model._jumpstart_config is not None:
+            if (
+                hasattr(self.model, "_jumpstart_config")
+                and self.model._jumpstart_config is not None
+            ):
                 # For JumpStart ModelTrainer, extract model_id and route to JumpStart flow
                 jumpstart_config = self.model._jumpstart_config
                 self.model_path = self.model._latest_training_job.model_artifacts.s3_model_artifacts
@@ -1757,7 +2249,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 self.model_path = self.model._latest_training_job.model_artifacts.s3_model_artifacts
                 self.model = None
 
-        self.sagemaker_session = sagemaker_session or self.sagemaker_session or self._create_session_with_region()
+        self.sagemaker_session = (
+            sagemaker_session or self.sagemaker_session or self._create_session_with_region()
+        )
         self.sagemaker_session.settings._local_download_dir = self.model_path
 
         client = self.sagemaker_session.sagemaker_client
@@ -1767,25 +2261,23 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         self._is_custom_image_uri = self.image_uri is not None
 
-
         self._handle_mlflow_input()
         self._build_validations()
-
 
         if self.env_vars.get("HUGGING_FACE_HUB_TOKEN") and not self.env_vars.get("HF_TOKEN"):
             self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
         elif self.env_vars.get("HF_TOKEN") and not self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
             self.env_vars["HUGGING_FACE_HUB_TOKEN"] = self.env_vars.get("HF_TOKEN")
 
-
-        if getattr(self, '_passthrough', False):
+        if getattr(self, "_passthrough", False):
             self.built_model = self._build_for_passthrough()
             return self.built_model
 
-        if self.model_server and not (isinstance(self.model, str) and self._is_jumpstart_model_id()):
+        if self.model_server and not (
+            isinstance(self.model, str) and self._is_jumpstart_model_id()
+        ):
             self.built_model = self._build_for_model_server()
             return self.built_model
-
 
         if isinstance(self.model, str):
             model_task = None
@@ -1800,7 +2292,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 logger.debug("Building for JumpStart model ID...")
                 self.built_model = self._build_for_jumpstart()
                 return self.built_model
-
 
             if self.mode != Mode.IN_PROCESS and self._use_jumpstart_equivalent():
                 self.model_hub = ModelHub.JUMPSTART
@@ -1825,10 +2316,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     if model_task is None:
                         model_task = hf_model_md.get("pipeline_tag")
 
-
                     if self.schema_builder is None and model_task is not None:
                         self._hf_schema_builder_init(model_task)
-
 
                     if model_task == "text-generation":
                         self.built_model = self._build_for_tgi()
@@ -1840,8 +2329,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         self.built_model = self._build_for_transformers()
                         return self.built_model
 
-            raise ValueError(f"Model {self.model} is not detected as HuggingFace or JumpStart model")
-
+            raise ValueError(
+                f"Model {self.model} is not detected as HuggingFace or JumpStart model"
+            )
 
         if not self.model_server:
             if self.image_uri and is_1p_image_uri(self.image_uri):
@@ -1859,22 +2349,23 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return
 
         # Check if tags attribute exists and is not None
-        if not hasattr(self.model, 'tags') or not self.model.tags:
+        if not hasattr(self.model, "tags") or not self.model.tags:
             return
 
         jumpstart_tags = [
-            tag for tag in self.model.tags
-            if tag.key in ["sagemaker-sdk:jumpstart-model-id", "sagemaker-sdk:jumpstart-model-version"]
+            tag
+            for tag in self.model.tags
+            if tag.key
+            in ["sagemaker-sdk:jumpstart-model-id", "sagemaker-sdk:jumpstart-model-version"]
         ]
 
         self._tags.extend(jumpstart_tags)
-
 
     def _deploy_local_endpoint(self, **kwargs):
         """Deploy the built model to a local endpoint."""
 
         # Extract parameters
-        endpoint_name = kwargs.get("endpoint_name", getattr(self, 'endpoint_name', None))
+        endpoint_name = kwargs.get("endpoint_name", getattr(self, "endpoint_name", None))
         if "endpoint_name" in kwargs:
             self.endpoint_name = endpoint_name
 
@@ -1883,13 +2374,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         endpoint_name = endpoint_name or self.endpoint_name
 
         from sagemaker.core.local.local_session import LocalSession
+
         local_session = LocalSession()
         endpoint_exists = False
 
         try:
-            _ = local_session.sagemaker_client.describe_endpoint(
-                EndpointName=endpoint_name
-            )
+            _ = local_session.sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
             endpoint_exists = True
         except Exception:
             endpoint_exists = False
@@ -1906,22 +2396,27 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 local_container_mode_obj=self.modes[str(Mode.LOCAL_CONTAINER)],
                 serializer=self._serializer,
                 deserializer=self._deserializer,
-                container_config=self.container_config
-                )
+                container_config=self.container_config,
+            )
         else:
             if update_endpoint:
-                raise NotImplementedError("Update endpoint is not supported in local mode (V2 parity)")
-            else:
-                return LocalEndpoint.get(
-                    endpoint_name=endpoint_name,
-                    local_session=local_session
+                raise NotImplementedError(
+                    "Update endpoint is not supported in local mode (V2 parity)"
                 )
+            else:
+                return LocalEndpoint.get(endpoint_name=endpoint_name, local_session=local_session)
 
-    def _wait_for_endpoint(self, endpoint, poll=30, live_logging=False, show_progress=True, wait=True):
+    def _wait_for_endpoint(
+        self, endpoint, poll=30, live_logging=False, show_progress=True, wait=True
+    ):
         """Enhanced wait with rich progress bar and status logging"""
         if not wait:
-            logger.info("🚀 Deployment started: Endpoint '%s' using %s in %s mode (deployment in progress)",
-                       endpoint, self.model_server, self.mode)
+            logger.info(
+                "🚀 Deployment started: Endpoint '%s' using %s in %s mode (deployment in progress)",
+                endpoint,
+                self.model_server,
+                self.mode,
+            )
             return
 
         # Use the ModelBuilder's sagemaker_session client (which has correct region)
@@ -1931,21 +2426,31 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             from sagemaker.serve.deployment_progress import (
                 EndpointDeploymentProgress,
                 _deploy_done_with_progress,
-                _live_logging_deploy_done_with_progress
+                _live_logging_deploy_done_with_progress,
             )
 
             with EndpointDeploymentProgress(endpoint) as progress:
                 # Check if we have permission for live logging
                 from sagemaker.core.helper.session_helper import _has_permission_for_live_logging
+
                 if _has_permission_for_live_logging(self.sagemaker_session.boto_session, endpoint):
                     # Use live logging with Rich progress tracker
                     cloudwatch_client = self.sagemaker_session.boto_session.client("logs")
                     paginator = cloudwatch_client.get_paginator("filter_log_events")
-                    from sagemaker.core.helper.session_helper import create_paginator_config, EP_LOGGER_POLL
+                    from sagemaker.core.helper.session_helper import (
+                        create_paginator_config,
+                        EP_LOGGER_POLL,
+                    )
+
                     paginator_config = create_paginator_config()
                     desc = _wait_until(
                         lambda: _live_logging_deploy_done_with_progress(
-                            sagemaker_client, endpoint, paginator, paginator_config, EP_LOGGER_POLL, progress
+                            sagemaker_client,
+                            endpoint,
+                            paginator,
+                            paginator_config,
+                            EP_LOGGER_POLL,
+                            progress,
                         ),
                         poll=EP_LOGGER_POLL,
                     )
@@ -1953,7 +2458,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     # Fallback to status-only progress
                     desc = _wait_until(
                         lambda: _deploy_done_with_progress(sagemaker_client, endpoint, progress),
-                        poll
+                        poll,
                     )
         else:
             # Existing implementation
@@ -1962,67 +2467,92 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Check final endpoint status and log accordingly
         try:
             endpoint_desc = sagemaker_client.describe_endpoint(EndpointName=endpoint)
-            endpoint_status = endpoint_desc['EndpointStatus']
-            if endpoint_status == 'InService':
-                endpoint_arn_info = f" (ARN: {endpoint_desc['EndpointArn']})" if self.mode == Mode.SAGEMAKER_ENDPOINT else ""
-                logger.info("✅ Deployment successful: Endpoint '%s' using %s in %s mode%s",
-                           endpoint, self.model_server, self.mode, endpoint_arn_info)
+            endpoint_status = endpoint_desc["EndpointStatus"]
+            if endpoint_status == "InService":
+                endpoint_arn_info = (
+                    f" (ARN: {endpoint_desc['EndpointArn']})"
+                    if self.mode == Mode.SAGEMAKER_ENDPOINT
+                    else ""
+                )
+                logger.info(
+                    "✅ Deployment successful: Endpoint '%s' using %s in %s mode%s",
+                    endpoint,
+                    self.model_server,
+                    self.mode,
+                    endpoint_arn_info,
+                )
             else:
-                logger.error("❌ Deployment failed: Endpoint '%s' status is '%s'", endpoint, endpoint_status)
+                logger.error(
+                    "❌ Deployment failed: Endpoint '%s' status is '%s'", endpoint, endpoint_status
+                )
         except Exception as e:
             logger.error("❌ Deployment failed: Unable to verify endpoint status - %s", str(e))
 
         return desc
 
-
     def _deploy_core_endpoint(self, **kwargs):
         # Extract and update self parameters
-        initial_instance_count = kwargs.get("initial_instance_count", getattr(self, 'instance_count', None))
+        initial_instance_count = kwargs.get(
+            "initial_instance_count", getattr(self, "instance_count", None)
+        )
         if "initial_instance_count" in kwargs:
             self.instance_count = initial_instance_count
 
-        instance_type = kwargs.get("instance_type", getattr(self, 'instance_type', None))
+        instance_type = kwargs.get("instance_type", getattr(self, "instance_type", None))
         if "instance_type" in kwargs:
             self.instance_type = instance_type
 
-        accelerator_type = kwargs.get("accelerator_type", getattr(self, 'accelerator_type', None))
+        accelerator_type = kwargs.get("accelerator_type", getattr(self, "accelerator_type", None))
         if "accelerator_type" in kwargs:
             self.accelerator_type = accelerator_type
 
-        endpoint_name = kwargs.get("endpoint_name", getattr(self, 'endpoint_name', None))
+        endpoint_name = kwargs.get("endpoint_name", getattr(self, "endpoint_name", None))
         if "endpoint_name" in kwargs:
             self.endpoint_name = endpoint_name
 
-        tags = kwargs.get("tags", getattr(self, '_tags', None))
+        tags = kwargs.get("tags", getattr(self, "_tags", None))
         if "tags" in kwargs:
             self._tags = tags
 
-        kms_key = kwargs.get("kms_key", getattr(self, 'kms_key', None))
+        kms_key = kwargs.get("kms_key", getattr(self, "kms_key", None))
         if "kms_key" in kwargs:
             self.kms_key = kms_key
 
-        async_inference_config = kwargs.get("async_inference_config", getattr(self, 'async_inference_config', None))
+        async_inference_config = kwargs.get(
+            "async_inference_config", getattr(self, "async_inference_config", None)
+        )
         if "async_inference_config" in kwargs:
             self.async_inference_config = async_inference_config
 
-        serverless_inference_config = kwargs.get("serverless_inference_config", getattr(self, 'serverless_inference_config', None))
+        serverless_inference_config = kwargs.get(
+            "serverless_inference_config", getattr(self, "serverless_inference_config", None)
+        )
         if "serverless_inference_config" in kwargs:
             self.serverless_inference_config = serverless_inference_config
 
-        model_data_download_timeout = kwargs.get("model_data_download_timeout", getattr(self, 'model_data_download_timeout', None))
+        model_data_download_timeout = kwargs.get(
+            "model_data_download_timeout", getattr(self, "model_data_download_timeout", None)
+        )
         if "model_data_download_timeout" in kwargs:
             self.model_data_download_timeout = model_data_download_timeout
 
-        resources = kwargs.get("resources", getattr(self, 'resource_requirements', None))
+        resources = kwargs.get("resources", getattr(self, "resource_requirements", None))
         if "resources" in kwargs:
             self.resource_requirements = resources
 
-        inference_component_name = kwargs.get("inference_component_name", getattr(self, 'inference_component_name', None))
+        inference_component_name = kwargs.get(
+            "inference_component_name", getattr(self, "inference_component_name", None)
+        )
         if "inference_component_name" in kwargs:
             self.inference_component_name = inference_component_name
 
-        container_startup_health_check_timeout = kwargs.get("container_startup_health_check_timeout", getattr(self, 'container_startup_health_check_timeout', None))
-        inference_ami_version = kwargs.get("inference_ami_version", getattr(self, 'inference_ami_version', None))
+        container_startup_health_check_timeout = kwargs.get(
+            "container_startup_health_check_timeout",
+            getattr(self, "container_startup_health_check_timeout", None),
+        )
+        inference_ami_version = kwargs.get(
+            "inference_ami_version", getattr(self, "inference_ami_version", None)
+        )
 
         serializer = kwargs.get("serializer", None)
         deserializer = kwargs.get("deserializer", None)
@@ -2052,8 +2582,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         routing_config = _resolve_routing_config(routing_config)
 
-
-        if (inference_recommendation_id is not None or self.inference_recommender_job_results is not None):
+        if (
+            inference_recommendation_id is not None
+            or self.inference_recommender_job_results is not None
+        ):
             instance_type, initial_instance_count = self._update_params(
                 instance_type=instance_type,
                 initial_instance_count=initial_instance_count,
@@ -2065,7 +2597,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 inference_recommender_job_results=self.inference_recommender_job_results,
             )
 
-
         is_async = async_inference_config is not None
         if is_async and not isinstance(async_inference_config, AsyncInferenceConfig):
             raise ValueError("async_inference_config needs to be a AsyncInferenceConfig object")
@@ -2076,11 +2607,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         is_serverless = serverless_inference_config is not None
         if not is_serverless and not (instance_type and initial_instance_count):
-            raise ValueError("Must specify instance type and instance count unless using serverless inference")
+            raise ValueError(
+                "Must specify instance type and instance count unless using serverless inference"
+            )
 
         if is_serverless and not isinstance(serverless_inference_config, ServerlessInferenceConfig):
-            raise ValueError("serverless_inference_config needs to be a ServerlessInferenceConfig object")
-
+            raise ValueError(
+                "serverless_inference_config needs to be a ServerlessInferenceConfig object"
+            )
 
         if self._is_sharded_model:
             if endpoint_type != EndpointType.INFERENCE_COMPONENT_BASED:
@@ -2161,7 +2695,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "Fast Model Loading. Configure by setting `num_cpus` to 0 in `resources`."
                 )
 
-
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
             if update_endpoint:
                 raise ValueError(
@@ -2188,7 +2721,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 else:
                     managed_instance_scaling_config["MinInstanceCount"] = initial_instance_count
 
-
             if not self.sagemaker_session.endpoint_in_service_or_not(self.endpoint_name):
                 production_variant = session_helper.production_variant(
                     instance_type=instance_type,
@@ -2214,11 +2746,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 )
                 self._wait_for_endpoint(endpoint=self.endpoint_name, show_progress=True, wait=wait)
 
-
             core_endpoint = Endpoint.get(
                 endpoint_name=self.endpoint_name,
                 session=self.sagemaker_session.boto_session,
-                region=self.region
+                region=self.region,
             )
 
             # [TODO]: Refactor to a module
@@ -2343,20 +2874,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             core_endpoint = Endpoint.get(
                 endpoint_name=self.endpoint_name,
                 session=self.sagemaker_session.boto_session,
-                region=self.region
+                region=self.region,
             )
 
             return core_endpoint
 
-
     def _deploy(self, **kwargs):
-        self.accept_eula = kwargs.get("accept_eula", getattr(self, 'accept_eula', False))
-        self.built_model = kwargs.get("built_model", getattr(self, 'built_model', None))
+        self.accept_eula = kwargs.get("accept_eula", getattr(self, "accept_eula", False))
+        self.built_model = kwargs.get("built_model", getattr(self, "built_model", None))
 
-        if not hasattr(self, 'built_model') or self.built_model is None:
+        if not hasattr(self, "built_model") or self.built_model is None:
             raise ValueError("Must call build() before deploy()")
 
-        if hasattr(self, 'model_server') and self.model_server:
+        if hasattr(self, "model_server") and self.model_server:
             wrapper_method = self._get_deploy_wrapper()
             if wrapper_method:
                 endpoint = wrapper_method(**kwargs)
@@ -2377,13 +2907,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 in_process_mode_obj=self.modes[str(Mode.IN_PROCESS)],
                 serializer=self._serializer,
                 deserializer=self._deserializer,
-                container_config=self.container_config
-                )
+                container_config=self.container_config,
+            )
         else:
             raise ValueError(f"Deployment mode {self.mode} not supported")
 
         return endpoint
-
 
     def _get_deploy_wrapper(self):
         """Get the appropriate deploy wrapper method for the current model server."""
@@ -2409,14 +2938,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         except ClientError as e:
             return "Could not find inference component" not in e.response["Error"]["Message"]
 
-
-    def _update_inference_component(self, ic_name: str, resource_requirements: ResourceRequirements, **kwargs):
+    def _update_inference_component(
+        self, ic_name: str, resource_requirements: ResourceRequirements, **kwargs
+    ):
         """Update existing inference component."""
         startup_parameters = {}
         if kwargs.get("model_data_download_timeout"):
-            startup_parameters["ModelDataDownloadTimeoutInSeconds"] = kwargs["model_data_download_timeout"]
+            startup_parameters["ModelDataDownloadTimeoutInSeconds"] = kwargs[
+                "model_data_download_timeout"
+            ]
         if kwargs.get("container_timeout_in_seconds"):
-            startup_parameters["ContainerStartupHealthCheckTimeoutInSeconds"] = kwargs["container_timeout_in_seconds"]
+            startup_parameters["ContainerStartupHealthCheckTimeoutInSeconds"] = kwargs[
+                "container_timeout_in_seconds"
+            ]
 
         compute_rr = resource_requirements.get_compute_resource_requirements()
         inference_component_spec = {
@@ -2429,15 +2963,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return self.sagemaker_session.update_inference_component(
             inference_component_name=ic_name,
             specification=inference_component_spec,
-            runtime_config=runtime_config
+            runtime_config=runtime_config,
         )
 
-    def _deploy_for_ic(
-        self,
-        ic_data: Dict[str, Any],
-        endpoint_name: str,
-        **kwargs
-    ) -> Endpoint:
+    def _deploy_for_ic(self, ic_data: Dict[str, Any], endpoint_name: str, **kwargs) -> Endpoint:
         """Deploy/update inference component and return V3 Endpoint."""
         ic_name = ic_data.get("Name")
         resource_requirements = ic_data.get("ResourceRequirements")
@@ -2450,7 +2979,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return Endpoint.get(
                 endpoint_name=endpoint_name,
                 session=self.sagemaker_session.boto_session,
-                region=self.region
+                region=self.region,
             )
         else:
             # Create new IC via _deploy()
@@ -2460,9 +2989,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
                 resources=resource_requirements,
                 inference_component_name=ic_name,
-                instance_type=kwargs.get('instance_type', self.instance_type),
-                initial_instance_count=kwargs.get('initial_instance_count', 1),
-                **kwargs
+                instance_type=kwargs.get("instance_type", self.instance_type),
+                initial_instance_count=kwargs.get("initial_instance_count", 1),
+                **kwargs,
             )
 
     def _reset_build_state(self):
@@ -2472,39 +3001,44 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.secret_key = ""
 
         # JumpStart preparation flags
-        for attr in ['prepared_for_djl', 'prepared_for_tgi', 'prepared_for_mms']:
+        for attr in ["prepared_for_djl", "prepared_for_tgi", "prepared_for_mms"]:
             if hasattr(self, attr):
                 delattr(self, attr)
 
         # JumpStart cached data
-        for attr in ['js_model_config', 'existing_properties', '_cached_js_model_specs', '_cached_is_jumpstart']:
+        for attr in [
+            "js_model_config",
+            "existing_properties",
+            "_cached_js_model_specs",
+            "_cached_is_jumpstart",
+        ]:
             if hasattr(self, attr):
                 delattr(self, attr)
 
         # HuggingFace cached data
-        if hasattr(self, 'hf_model_config'):
-            delattr(self, 'hf_model_config')
+        if hasattr(self, "hf_model_config"):
+            delattr(self, "hf_model_config")
 
         # Mode and serving state
-        if hasattr(self, 'modes'):
-            delattr(self, 'modes')
-        if hasattr(self, 'serve_settings'):
-            delattr(self, 'serve_settings')
+        if hasattr(self, "modes"):
+            delattr(self, "modes")
+        if hasattr(self, "serve_settings"):
+            delattr(self, "serve_settings")
 
         # Serialization state
-        for attr in ['_serializer', '_deserializer']:
+        for attr in ["_serializer", "_deserializer"]:
             if hasattr(self, attr):
                 delattr(self, attr)
 
         # Upload/packaging state
         self.s3_model_data_url = None
         self.s3_upload_path = None
-        for attr in ['uploaded_code', 'repacked_model_data']:
+        for attr in ["uploaded_code", "repacked_model_data"]:
             if hasattr(self, attr):
                 delattr(self, attr)
 
         # Image and passthrough flags
-        for attr in ['_is_custom_image_uri', '_passthrough']:
+        for attr in ["_is_custom_image_uri", "_passthrough"]:
             if hasattr(self, attr):
                 delattr(self, attr)
 
@@ -2552,7 +3086,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             >>> endpoint = model_builder.deploy()  # Creates Endpoint resource
             >>> result = endpoint.invoke(data=input_data)
         """
-        if hasattr(self, 'built_model') and self.built_model is not None:
+        if hasattr(self, "built_model") and self.built_model is not None:
             logger.warning(
                 "ModelBuilder.build() has already been called. "
                 "Reusing ModelBuilder objects is not recommended and may cause issues. "
@@ -2574,21 +3108,25 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             logger.debug("Updating role_arn during build()")
             self.role_arn = role_arn
 
-        self.model_name = model_name or getattr(self, 'model_name', None)
-        self.mode = mode or getattr(self, 'mode', None)
-        self.instance_type = getattr(self, 'instance_type', None)
-        self.s3_model_data_url = getattr(self, 's3_model_data_url', None)
-        self.sagemaker_session = sagemaker_session or getattr(self, 'sagemaker_session', None) or self._create_session_with_region()
-        self.framework = getattr(self, 'framework', None)
-        self.framework_version = getattr(self, 'framework_version', None)
-        self.git_config = getattr(self, 'git_config', None)
-        self.model_kms_key = getattr(self, 'model_kms_key', None)
-        self.model_server_workers = getattr(self, 'model_server_workers', None)
-        self.serverless_inference_config = getattr(self, 'serverless_inference_config', None)
-        self.accelerator_type = getattr(self, 'accelerator_type', None)
-        self.model_reference_arn = getattr(self, 'model_reference_arn', None)
-        self.accept_eula = getattr(self, 'accept_eula', None)
-        self.container_log_level = getattr(self, 'container_log_level', None)
+        self.model_name = model_name or getattr(self, "model_name", None)
+        self.mode = mode or getattr(self, "mode", None)
+        self.instance_type = getattr(self, "instance_type", None)
+        self.s3_model_data_url = getattr(self, "s3_model_data_url", None)
+        self.sagemaker_session = (
+            sagemaker_session
+            or getattr(self, "sagemaker_session", None)
+            or self._create_session_with_region()
+        )
+        self.framework = getattr(self, "framework", None)
+        self.framework_version = getattr(self, "framework_version", None)
+        self.git_config = getattr(self, "git_config", None)
+        self.model_kms_key = getattr(self, "model_kms_key", None)
+        self.model_server_workers = getattr(self, "model_server_workers", None)
+        self.serverless_inference_config = getattr(self, "serverless_inference_config", None)
+        self.accelerator_type = getattr(self, "accelerator_type", None)
+        self.model_reference_arn = getattr(self, "model_reference_arn", None)
+        self.accept_eula = getattr(self, "accept_eula", None)
+        self.container_log_level = getattr(self, "container_log_level", None)
 
         deployables = {}
 
@@ -2601,15 +3139,23 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 role_arn=self.role_arn,
                 sagemaker_session=self.sagemaker_session,
             )
-            model_arn_info = f" (ARN: {self.built_model.model_arn})" if self.mode == Mode.SAGEMAKER_ENDPOINT and hasattr(self.built_model, 'model_arn') else ""
-            logger.info("✅ Model has been created: '%s' using server %s in %s mode%s", self.model_name, self.model_server, self.mode, model_arn_info)
+            model_arn_info = (
+                f" (ARN: {self.built_model.model_arn})"
+                if self.mode == Mode.SAGEMAKER_ENDPOINT and hasattr(self.built_model, "model_arn")
+                else ""
+            )
+            logger.info(
+                "✅ Model has been created: '%s' using server %s in %s mode%s",
+                self.model_name,
+                self.model_server,
+                self.mode,
+                model_arn_info,
+            )
             return model
-
 
         built_ic_models = []
         if self.modelbuilder_list:
             logger.debug("Detected ModelBuilders in modelbuilder_list.")
-
 
             for mb in self.modelbuilder_list:
                 if mb.mode == Mode.IN_PROCESS or mb.mode == Mode.LOCAL_CONTAINER:
@@ -2628,13 +3174,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         + "and custom orchestrators."
                     )
 
-
             for mb in self.modelbuilder_list:
 
                 mb.serve_settings = mb._get_serve_setting()
 
                 logger.debug("Building ModelBuilder %s.", mb.model_name)
-
 
                 mb = mb._get_inference_component_resource_requirements(mb=mb)
 
@@ -2648,10 +3192,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         "Model": built_model,
                     }
                 )
-                model_arn_info = f" (ARN: {mb.built_model.model_arn})" if mb.mode == Mode.SAGEMAKER_ENDPOINT and hasattr(mb.built_model, 'model_arn') else ""
-                logger.info("✅ Model build successful: '%s' using server %s in %s mode%s", mb.model_name, mb.model_server, mb.mode, model_arn_info)
+                model_arn_info = (
+                    f" (ARN: {mb.built_model.model_arn})"
+                    if mb.mode == Mode.SAGEMAKER_ENDPOINT and hasattr(mb.built_model, "model_arn")
+                    else ""
+                )
+                logger.info(
+                    "✅ Model build successful: '%s' using server %s in %s mode%s",
+                    mb.model_name,
+                    mb.model_server,
+                    mb.mode,
+                    model_arn_info,
+                )
             deployables["InferenceComponents"] = built_ic_models
-
 
         if isinstance(self.inference_spec, (CustomOrchestrator, AsyncCustomOrchestrator)):
             logger.debug("Building custom orchestrator.")
@@ -2702,12 +3255,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "Model": built_orchestrator,
                 }
 
-            logger.info("✅ Custom orchestrator build successful: '%s' using server %s in %s mode", self.model_name, self.model_server, self.mode)
+            logger.info(
+                "✅ Custom orchestrator build successful: '%s' using server %s in %s mode",
+                self.model_name,
+                self.model_server,
+                self.mode,
+            )
 
         self._deployables = deployables
         return self
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.configure_for_torchserve")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.configure_for_torchserve"
+    )
     def configure_for_torchserve(
         self,
         shared_libs: Optional[List[str]] = None,
@@ -2725,9 +3285,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.model_server = ModelServer.TORCHSERVE
         return self
 
-
     @classmethod
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.from_jumpstart_config")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.from_jumpstart_config"
+    )
     def from_jumpstart_config(
         cls,
         jumpstart_config: JumpStartConfig,
@@ -2840,16 +3401,17 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         mb_instance.resource_requirements = resource_requirements
         mb_instance.model_kms_key = model_kms_key
         mb_instance.hub_name = jumpstart_config.hub_name
-        mb_instance.config_name=jumpstart_config.inference_config_name
+        mb_instance.config_name = jumpstart_config.inference_config_name
         mb_instance.accept_eula = jumpstart_config.accept_eula
-        mb_instance.tolerate_vulnerable_model=tolerate_vulnerable_model
-        mb_instance.tolerate_deprecated_model=tolerate_deprecated_model
-        mb_instance.model_data_download_timeout=deploy_kwargs.get("model_data_download_timeout")
-        mb_instance.container_startup_health_check_timeout=deploy_kwargs.get("container_startup_health_check_timeout")
-        mb_instance.inference_ami_version=deploy_kwargs.get("inference_ami_version")
+        mb_instance.tolerate_vulnerable_model = tolerate_vulnerable_model
+        mb_instance.tolerate_deprecated_model = tolerate_deprecated_model
+        mb_instance.model_data_download_timeout = deploy_kwargs.get("model_data_download_timeout")
+        mb_instance.container_startup_health_check_timeout = deploy_kwargs.get(
+            "container_startup_health_check_timeout"
+        )
+        mb_instance.inference_ami_version = deploy_kwargs.get("inference_ami_version")
 
         return mb_instance
-
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.transformer")
     def transformer(
@@ -2901,7 +3463,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         tags = format_tags(tags)
 
         # Ensure model has been built
-        if not hasattr(self, 'built_model') or self.built_model is None:
+        if not hasattr(self, "built_model") or self.built_model is None:
             raise ValueError("Must call build() before creating transformer")
 
         # Network isolation disables custom environment variables
@@ -2926,8 +3488,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             sagemaker_session=self.sagemaker_session,
         )
 
-
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.display_benchmark_metrics")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.display_benchmark_metrics"
+    )
     def display_benchmark_metrics(self, **kwargs) -> None:
         """Display benchmark metrics for JumpStart models."""
         if not isinstance(self.model, str):
@@ -2943,32 +3506,30 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         else:
             raise ValueError("This model does not have benchmark metrics available")
 
-
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.set_deployment_config")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.set_deployment_config"
+    )
     def set_deployment_config(self, config_name: str, instance_type: str) -> None:
         """Sets the deployment config to apply to the model."""
         if not isinstance(self.model, str):
-            raise ValueError("Deployment config is only supported for JumpStart or HuggingFace models")
+            raise ValueError(
+                "Deployment config is only supported for JumpStart or HuggingFace models"
+            )
 
         if not (self._is_jumpstart_model_id() or self._use_jumpstart_equivalent()):
             raise ValueError(f"The deployment config {config_name} cannot be set on this model")
 
-
         self.config_name = config_name
         self.instance_type = instance_type
 
-
         self._deployment_config = None
 
-
         self._deployment_config = self.get_deployment_config()
-
 
         if self._deployment_config:
             deployment_args = self._deployment_config.get("DeploymentArgs", {})
             if deployment_args.get("AdditionalDataSources"):
                 self.additional_model_data_sources = deployment_args["AdditionalDataSources"]
-
 
         if self.additional_model_data_sources:
             self.speculative_decoding_draft_model_source = "sagemaker"
@@ -2977,20 +3538,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.remove_tag_with_key(Tag.FINE_TUNING_MODEL_PATH)
             self.remove_tag_with_key(Tag.FINE_TUNING_JOB_NAME)
 
-
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.get_deployment_config")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.get_deployment_config"
+    )
     def get_deployment_config(self) -> Optional[Dict[str, Any]]:
         """Gets the deployment config to apply to the model."""
         if not isinstance(self.model, str):
-            raise ValueError("Deployment config is only supported for JumpStart or HuggingFace models")
+            raise ValueError(
+                "Deployment config is only supported for JumpStart or HuggingFace models"
+            )
 
         if not (self._is_jumpstart_model_id() or self._use_jumpstart_equivalent()):
             raise ValueError("This model does not have any deployment config yet")
 
-
         if self.config_name is None:
             return None
-
 
         if self._deployment_config is None:
 
@@ -3001,22 +3563,22 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         return self._deployment_config
 
-
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.list_deployment_configs")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.list_deployment_configs"
+    )
     def list_deployment_configs(self) -> List[Dict[str, Any]]:
         """List deployment configs for the model in the current region."""
         if not isinstance(self.model, str):
-            raise ValueError("Deployment config is only supported for JumpStart or HuggingFace models")
+            raise ValueError(
+                "Deployment config is only supported for JumpStart or HuggingFace models"
+            )
 
         if not (self._is_jumpstart_model_id() or self._use_jumpstart_equivalent()):
             raise ValueError("Deployment config is only supported for JumpStart models")
 
-
         return self.deployment_config_response_data(
             self._get_deployment_configs(self.config_name, self.instance_type)
         )  # Delegate to JumpStart builder
-
-
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.optimize")
     # Add these methods to the current V3 ModelBuilder class:
@@ -3107,7 +3669,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         # Update parameters if provided
         if region and region != self.region:
-            logger.warning("Changing region from '%s' to '%s' during optimize()", self.region, region)
+            logger.warning(
+                "Changing region from '%s' to '%s' during optimize()", self.region, region
+            )
             self.region = region
             self.sagemaker_session = self._create_session_with_region()
 
@@ -3119,12 +3683,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if sagemaker_session:
             self.sagemaker_session = sagemaker_session
 
-        self.model_name = model_name or getattr(self, 'model_name', None)
-        self.framework = getattr(self, 'framework', None)
-        self.framework_version = getattr(self, 'framework_version', None)
-        self.accept_eula = accept_eula or getattr(self, 'accept_eula', None)
-        self.instance_type = instance_type or getattr(self, 'instance_type', None)
-        self.container_log_level = getattr(self, 'container_log_level', None)
+        self.model_name = model_name or getattr(self, "model_name", None)
+        self.framework = getattr(self, "framework", None)
+        self.framework_version = getattr(self, "framework_version", None)
+        self.accept_eula = accept_eula or getattr(self, "accept_eula", None)
+        self.instance_type = instance_type or getattr(self, "instance_type", None)
+        self.container_log_level = getattr(self, "container_log_level", None)
         self.serve_settings = self._get_serve_setting()
 
         self._optimizing = True
@@ -3147,7 +3711,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             max_runtime_in_sec=max_runtime_in_sec,
             sagemaker_session=sagemaker_session,
         )
-
 
     def _model_builder_optimize_wrapper(
         self,
@@ -3191,8 +3754,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         self.is_compiled = compilation_config is not None
         self.is_quantized = quantization_config is not None
-        self.speculative_decoding_draft_model_source = self._extract_speculative_draft_model_provider(
-            speculative_decoding_config
+        self.speculative_decoding_draft_model_source = (
+            self._extract_speculative_draft_model_provider(speculative_decoding_config)
         )
 
         if self.mode != Mode.SAGEMAKER_ENDPOINT:
@@ -3230,7 +3793,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         # Validate and set region
         if region and region != self.region:
-            logger.warning("Changing region from '%s' to '%s' during optimize()", self.region, region)
+            logger.warning(
+                "Changing region from '%s' to '%s' during optimize()", self.region, region
+            )
             self.region = region
             # Recreate session with new region
             self.sagemaker_session = self._create_session_with_region()
@@ -3240,7 +3805,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             logger.debug("Updating role_arn during optimize()")
             self.role_arn = role_arn
 
-        self.sagemaker_session = sagemaker_session or self.sagemaker_session or self._create_session_with_region()
+        self.sagemaker_session = (
+            sagemaker_session or self.sagemaker_session or self._create_session_with_region()
+        )
         self.instance_type = instance_type or self.instance_type
 
         job_name = job_name or f"modelbuilderjob-{uuid.uuid4().hex}"
@@ -3248,8 +3815,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self._is_jumpstart_model_id():
             # Build using V3 method instead of self.build()
             self.built_model = self._build_single_modelbuilder(
-                mode=self.mode,
-                sagemaker_session=self.sagemaker_session
+                mode=self.mode, sagemaker_session=self.sagemaker_session
             )
             # Set deployment config on built_model if needed
             input_args = self._optimize_for_jumpstart(
@@ -3275,8 +3841,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             # Build using V3 method instead of self.build()
             self.built_model = self._build_single_modelbuilder(
-                mode=self.mode,
-                sagemaker_session=self.sagemaker_session
+                mode=self.mode, sagemaker_session=self.sagemaker_session
             )
             input_args = self._optimize_for_hf(
                 output_path=output_path,
@@ -3298,13 +3863,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if input_args:
             optimization_instance_type = input_args["DeploymentInstanceType"]
 
-
             gpu_instance_families = ["g5", "g6", "p4d", "p4de", "p5"]
             is_gpu_instance = optimization_instance_type and any(
                 gpu_instance_family in optimization_instance_type
                 for gpu_instance_family in gpu_instance_families
             )
-
 
             is_llama_3_plus = self.model and bool(
                 re.search(r"llama-3[\.\-][1-9]\d*", self.model.lower())
@@ -3334,7 +3897,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self._optimizing = False
         self.built_model = self._create_model()
         return self.built_model
-
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.deploy")
     def deploy(
@@ -3399,7 +3961,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             >>> endpoint = model_builder.deploy(endpoint_name="my-endpoint")  # Creates Endpoint resource
             >>> result = endpoint.invoke(data=input_data)  # Make predictions
         """
-        if hasattr(self, '_deployed') and self._deployed:
+        if hasattr(self, "_deployed") and self._deployed:
             logger.warning(
                 "ModelBuilder.deploy() has already been called. "
                 "Reusing ModelBuilder objects for multiple deployments is not recommended. "
@@ -3415,13 +3977,20 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             logger.info("Deploying Model Customization model")
             if not self.instance_type and not instance_type:
                 self.instance_type = self._fetch_default_instance_type_for_custom_model()
+
+            # Pass inference_config if it's ResourceRequirements
+            inference_config_param = None
+            if isinstance(inference_config, ResourceRequirements):
+                inference_config_param = inference_config
+
             return self._deploy_model_customization(
                 endpoint_name=endpoint_name,
                 instance_type=instance_type or self.instance_type,
                 initial_instance_count=initial_instance_count,
                 wait=wait,
                 container_timeout_in_seconds=container_timeout_in_seconds,
-                **kwargs
+                inference_config=inference_config_param,
+                **kwargs,
             )
 
         if not update_endpoint:
@@ -3500,8 +4069,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             deploy_kwargs.update(kwargs)
             return self._deploy(**deploy_kwargs)
 
-
-        if hasattr(self, '_deployables') and self._deployables:
+        if hasattr(self, "_deployables") and self._deployables:
             endpoints = []
             for ic in self._deployables.get("InferenceComponents", []):
                 endpoints.append(self._deploy_for_ic(ic_data=ic, endpoint_name=endpoint_name))
@@ -3554,13 +4122,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         raise ValueError("Deployment Options not supported")
 
-
     def _deploy_model_customization(
         self,
         endpoint_name: str,
         initial_instance_count: int = 1,
         inference_component_name: Optional[str] = None,
-        **kwargs
+        inference_config: Optional[ResourceRequirements] = None,
+        **kwargs,
     ) -> Endpoint:
         """Deploy a model customization (fine-tuned) model to an endpoint with inference components.
 
@@ -3577,12 +4145,17 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             wait (bool): Whether to wait for deployment to complete (default: True)
             container_timeout_in_seconds (int): Container timeout in seconds (default: 300)
             inference_component_name (Optional[str]): Name for the inference component
+            inference_config (Optional[ResourceRequirements]): Inference configuration including
+                resource requirements (accelerator count, memory, CPU cores)
             **kwargs: Additional deployment parameters
 
         Returns:
             Endpoint: The deployed sagemaker.core.resources.Endpoint
         """
-        from sagemaker.core.resources import Model as CoreModel, EndpointConfig as CoreEndpointConfig
+        from sagemaker.core.resources import (
+            Model as CoreModel,
+            EndpointConfig as CoreEndpointConfig,
+        )
         from sagemaker.core.shapes import ContainerDefinition, ProductionVariant
         from sagemaker.core.shapes import (
             InferenceComponentSpecification,
@@ -3590,7 +4163,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             InferenceComponentRuntimeConfig,
             InferenceComponentComputeResourceRequirements,
             ModelDataSource,
-            S3ModelDataSource
+            S3ModelDataSource,
         )
         from sagemaker.core.resources import InferenceComponent
         from sagemaker.core.utils.utils import Unassigned
@@ -3607,15 +4180,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if not is_existing_endpoint:
             EndpointConfig.create(
                 endpoint_config_name=endpoint_name,
-                production_variants=[ProductionVariant(
-                    variant_name=endpoint_name,
-                    instance_type=self.instance_type,
-                    initial_instance_count=initial_instance_count or 1
-                )],
-                execution_role_arn=self.role_arn
+                production_variants=[
+                    ProductionVariant(
+                        variant_name=endpoint_name,
+                        instance_type=self.instance_type,
+                        initial_instance_count=initial_instance_count or 1,
+                    )
+                ],
+                execution_role_arn=self.role_arn,
             )
             logger.info("Endpoint core call starting")
-            endpoint = Endpoint.create(endpoint_name=endpoint_name, endpoint_config_name=endpoint_name)
+            endpoint = Endpoint.create(
+                endpoint_name=endpoint_name, endpoint_config_name=endpoint_name
+            )
             endpoint.wait_for_status("InService")
         else:
             endpoint = Endpoint.get(endpoint_name=endpoint_name)
@@ -3629,35 +4206,70 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         # Get PEFT type and base model recipe name
         peft_type = self._fetch_peft()
-        base_model_recipe_name = model_package.inference_specification.containers[0].base_model.recipe_name
+        base_model_recipe_name = model_package.inference_specification.containers[
+            0
+        ].base_model.recipe_name
         base_inference_component_name = None
         tag = None
 
+        # Resolve the correct model artifact URI based on deployment type
+        artifact_url = self._resolve_model_artifact_uri()
+
+        # Determine if this is a base model deployment
+        # A base model deployment uses HostingArtifactUri from JumpStart (not from model package)
+        is_base_model_deployment = False
+        if artifact_url and not peft_type:
+            # Check if artifact_url comes from JumpStart (not from model package)
+            # If model package has model_data_source, it's a full fine-tuned model
+            if (
+                hasattr(model_package.inference_specification.containers[0], "model_data_source")
+                and model_package.inference_specification.containers[0].model_data_source
+            ):
+                is_base_model_deployment = False  # Full fine-tuned model
+            else:
+                is_base_model_deployment = True  # Base model from JumpStart
+
         # Handle tagging and base component lookup
-        if not is_existing_endpoint:
+        if not is_existing_endpoint and is_base_model_deployment:
+            # Only tag as "Base" if we're actually deploying a base model
             from sagemaker.core.resources import Tag as CoreTag
+
             tag = CoreTag(key="Base", value=base_model_recipe_name)
         elif peft_type == "LORA":
+            # For LORA adapters, look up the existing base component
             from sagemaker.core.resources import Tag as CoreTag
-            for component in InferenceComponent.get_all(endpoint_name_equals=endpoint_name, status_equals="InService"):
+
+            for component in InferenceComponent.get_all(
+                endpoint_name_equals=endpoint_name, status_equals="InService"
+            ):
                 component_tags = CoreTag.get_all(resource_arn=component.inference_component_arn)
-                if any(t.key == "Base" and t.value == base_model_recipe_name for t in component_tags):
+                if any(
+                    t.key == "Base" and t.value == base_model_recipe_name for t in component_tags
+                ):
                     base_inference_component_name = component.inference_component_name
                     break
 
-        artifact_url = None #if peft_type == "LORA" else self._fetch_model_package().inference_specification.containers[0].model_data_source.s3_data_source.s3_uri
-
         ic_spec = InferenceComponentSpecification(
             container=InferenceComponentContainerSpecification(
-                image=self.image_uri,
-                artifact_url=artifact_url,
-                environment=self.env_vars
+                image=self.image_uri, artifact_url=artifact_url, environment=self.env_vars
             )
         )
 
         if peft_type == "LORA":
             ic_spec.base_inference_component_name = base_inference_component_name
-        ic_spec.compute_resource_requirements = self._cached_compute_requirements
+
+        # Use inference_config if provided, otherwise fall back to cached requirements
+        if inference_config is not None:
+            # Extract compute requirements from inference_config (ResourceRequirements)
+            ic_spec.compute_resource_requirements = InferenceComponentComputeResourceRequirements(
+                min_memory_required_in_mb=inference_config.min_memory,
+                max_memory_required_in_mb=inference_config.max_memory,
+                number_of_cpu_cores_required=inference_config.num_cpus,
+                number_of_accelerator_devices_required=inference_config.num_accelerators,
+            )
+        else:
+            # Fall back to resolved compute requirements from build()
+            ic_spec.compute_resource_requirements = self._cached_compute_requirements
 
         InferenceComponent.create(
             inference_component_name=inference_component_name,
@@ -3665,7 +4277,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             variant_name=endpoint_name,
             specification=ic_spec,
             runtime_config=InferenceComponentRuntimeConfig(copy_count=1),
-            tags=[{"key": tag.key, "value": tag.value}] if tag else []
+            tags=[{"key": tag.key, "value": tag.value}] if tag else [],
         )
 
         # Create lineage tracking for new endpoints
@@ -3673,15 +4285,20 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             from sagemaker.core.resources import Action, Association, Artifact
             from sagemaker.core.shapes import ActionSource, MetadataProperties
 
-            inference_component = InferenceComponent.get(inference_component_name=inference_component_name)
+            inference_component = InferenceComponent.get(
+                inference_component_name=inference_component_name
+            )
 
             action = Action.create(
-                source=ActionSource(source_uri=self._fetch_model_package_arn(),
-                                    source_type="SageMaker"),
+                source=ActionSource(
+                    source_uri=self._fetch_model_package_arn(), source_type="SageMaker"
+                ),
                 action_name=f"{endpoint_name}-action",
                 action_type="ModelDeployment",
                 properties={"EndpointConfigName": endpoint_name},
-                metadata_properties=MetadataProperties(generated_by=inference_component.inference_component_arn)
+                metadata_properties=MetadataProperties(
+                    generated_by=inference_component.inference_component_arn
+                ),
             )
 
             artifacts = Artifact.get_all(source_uri=model_package.model_package_arn)
@@ -3702,7 +4319,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return None
 
         from sagemaker.core.utils.utils import Unassigned
-        if training_job.serverless_job_config != Unassigned() and training_job.serverless_job_config.job_spec != Unassigned():
+
+        if (
+            training_job.serverless_job_config != Unassigned()
+            and training_job.serverless_job_config.job_spec != Unassigned()
+        ):
             return training_job.serverless_job_config.job_spec.get("PEFT")
         return None
 
@@ -3712,24 +4333,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             Endpoint.get(endpoint_name=endpoint_name)
             return True
         except ClientError as e:
-            if e.response['Error']['Code'] == 'ValidationException':
+            if e.response["Error"]["Code"] == "ValidationException":
                 return False
             raise
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.deploy_local")
     def deploy_local(
-        self,
-        endpoint_name: str = "endpoint", 
-        container_timeout_in_seconds: int = 300,
-        **kwargs
+        self, endpoint_name: str = "endpoint", container_timeout_in_seconds: int = 300, **kwargs
     ) -> LocalEndpoint:
         """Deploy the built model to local mode for testing.
-        
+
         Deploys the model locally using either LOCAL_CONTAINER mode (runs in a Docker container)
         or IN_PROCESS mode (runs in the current Python process). This is useful for testing and
         development before deploying to SageMaker endpoints. The model must be built with
         mode=Mode.LOCAL_CONTAINER or mode=Mode.IN_PROCESS before calling this method.
-        
+
         Note: This returns a ``LocalEndpoint`` object for local inference, not a SageMaker
         Endpoint resource. Use local_endpoint.invoke() to make predictions.
 
@@ -3739,10 +4357,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 to respond to requests. (Default: 300).
         Returns:
             LocalEndpoint: A ``LocalEndpoint`` object for making local predictions.
-            
+
         Raises:
             ValueError: If the model was not built with LOCAL_CONTAINER or IN_PROCESS mode.
-            
+
         Example:
             >>> model_builder = ModelBuilder(
             ...     model=my_model,
@@ -3754,14 +4372,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             >>> result = local_endpoint.invoke(data=input_data)
         """
         if self.mode not in [Mode.LOCAL_CONTAINER, Mode.IN_PROCESS]:
-            raise ValueError(f"deploy_local() only supports LOCAL_CONTAINER and IN_PROCESS modes, got {self.mode}")
-        
+            raise ValueError(
+                f"deploy_local() only supports LOCAL_CONTAINER and IN_PROCESS modes, got {self.mode}"
+            )
+
         return self.deploy(
             endpoint_name=endpoint_name,
             container_timeout_in_seconds=container_timeout_in_seconds,
-            **kwargs
+            **kwargs,
         )
-    
+
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.register")
     @runnable_by_pipeline
     def register(
@@ -3847,7 +4467,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             A `sagemaker.model.ModelPackage` instance or pipeline step arguments
             in case the Model instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
-        
+
         Note:
             The following parameters are inherited from ModelBuilder.__init__ and do not need
             to be passed to register():
@@ -3905,7 +4525,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         # Ensure container_def_list is always a list
         container_def_list = container_def if isinstance(container_def, list) else [container_def]
-        
+
         model_pkg_args = get_model_package_args(
             self.content_types,
             self.response_types,
@@ -3932,8 +4552,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         )
 
         model_package_response = create_model_package_from_containers(
-            self.sagemaker_session,
-            **model_pkg_args
+            self.sagemaker_session, **model_pkg_args
         )
 
         if isinstance(self.sagemaker_session, PipelineSession):
@@ -3947,4 +4566,3 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         )
 
         return model_package_response.get("ModelPackageArn")
-
