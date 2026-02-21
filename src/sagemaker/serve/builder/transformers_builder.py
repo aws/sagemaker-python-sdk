@@ -267,12 +267,6 @@ class Transformers(ABC):
             self.env_vars.update(env_vars)
             self.pysdk_model.env.update(self.env_vars)
 
-        if (
-            "SAGEMAKER_SERVE_SECRET_KEY" in self.pysdk_model.env
-            and not self.pysdk_model.env["SAGEMAKER_SERVE_SECRET_KEY"]
-        ):
-            del self.pysdk_model.env["SAGEMAKER_SERVE_SECRET_KEY"]
-
         if "endpoint_logging" not in kwargs:
             kwargs["endpoint_logging"] = True
 
@@ -402,7 +396,7 @@ class Transformers(ABC):
 
             self._auto_detect_container()
 
-            self.secret_key = prepare_for_mms(
+            prepare_for_mms(
                 model_path=self.model_path,
                 shared_libs=self.shared_libs,
                 dependencies=self.dependencies,

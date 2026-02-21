@@ -60,7 +60,6 @@ class TritonServerTests(TestCase):
         local_triton_server._start_triton_server(
             docker_client=mock_docker_client,
             model_path=MODEL_PATH,
-            secret_key=SECRET_KEY,
             image_uri=GPU_TRITON_IMAGE,
             env_vars=ENV_VAR,
         )
@@ -118,7 +117,6 @@ class TritonServerTests(TestCase):
         local_triton_server._start_triton_server(
             docker_client=mock_docker_client,
             model_path=MODEL_PATH,
-            secret_key=SECRET_KEY,
             image_uri=CPU_TRITON_IMAGE,
             env_vars=ENV_VAR,
         )
@@ -169,7 +167,6 @@ class TritonServerTests(TestCase):
         s3_upload_path, env_vars = SageMakerTritonServer()._upload_triton_artifacts(
             model_path=MODEL_PATH,
             sagemaker_session=mock_session,
-            secret_key=SECRET_KEY,
             s3_model_data_url=S3_URI,
             image=GPU_TRITON_IMAGE,
             should_upload_artifacts=True,
@@ -179,5 +176,5 @@ class TritonServerTests(TestCase):
         self.assertEqual(s3_upload_path, S3_URI)
         self.assertEqual(env_vars.get("SAGEMAKER_TRITON_DEFAULT_MODEL_NAME"), "model")
         self.assertEqual(env_vars.get("TRITON_MODEL_DIR"), "/opt/ml/model/model")
-        self.assertEqual(env_vars.get("SAGEMAKER_SERVE_SECRET_KEY"), SECRET_KEY)
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
         self.assertEqual(env_vars.get("LOCAL_PYTHON"), "3.8")

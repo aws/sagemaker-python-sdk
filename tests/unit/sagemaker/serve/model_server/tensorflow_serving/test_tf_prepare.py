@@ -43,7 +43,6 @@ class PrepareForTensorflowServingTests(TestCase):
     )
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare._MetaData")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.compute_hash")
-    @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.generate_secret_key")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.capture_dependencies")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.shutil")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.Path")
@@ -52,7 +51,6 @@ class PrepareForTensorflowServingTests(TestCase):
         mock_path,
         mock_shutil,
         mock_capture_dependencies,
-        mock_generate_secret_key,
         mock_compute_hash,
         mock_metadata,
         mock_get_saved_model_path,
@@ -65,8 +63,6 @@ class PrepareForTensorflowServingTests(TestCase):
         mock_path_instance.joinpath.return_value = Mock()
         mock_get_saved_model_path.return_value = MODEL_PATH + "/1/"
 
-        mock_generate_secret_key.return_value = SECRET_KEY
-
         secret_key = prepare_for_tf_serving(
             model_path=MODEL_PATH,
             shared_libs=SHARED_LIBS,
@@ -74,7 +70,7 @@ class PrepareForTensorflowServingTests(TestCase):
         )
 
         mock_path_instance.mkdir.assert_not_called()
-        self.assertEqual(secret_key, SECRET_KEY)
+        self.assertEqual(secret_key, "")
 
     @patch("builtins.open", new_callable=mock_open, read_data=b"{}")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare._move_contents")
@@ -84,7 +80,6 @@ class PrepareForTensorflowServingTests(TestCase):
     )
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare._MetaData")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.compute_hash")
-    @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.generate_secret_key")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.capture_dependencies")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.shutil")
     @patch("sagemaker.serve.model_server.tensorflow_serving.prepare.Path")
@@ -93,7 +88,6 @@ class PrepareForTensorflowServingTests(TestCase):
         mock_path,
         mock_shutil,
         mock_capture_dependencies,
-        mock_generate_secret_key,
         mock_compute_hash,
         mock_metadata,
         mock_get_saved_model_path,

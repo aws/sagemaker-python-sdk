@@ -54,7 +54,6 @@ class TestLocalTgiServing(TestCase):
             mock_container_client,
             MOCK_IMAGE,
             MOCK_MODEL_PATH,
-            MOCK_SECRET_KEY,
             MOCK_ENV_VARS,
             False,
         )
@@ -94,7 +93,7 @@ class TestLocalTgiServing(TestCase):
 
         # WHEN
         localTgiServing._start_tgi_serving(
-            mock_container_client, MOCK_IMAGE, MOCK_MODEL_PATH, MOCK_SECRET_KEY, MOCK_ENV_VARS, True
+            mock_container_client, MOCK_IMAGE, MOCK_MODEL_PATH, MOCK_ENV_VARS, True
         )
 
         # THEN

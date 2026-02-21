@@ -1,8 +1,6 @@
 """Validates the integrity of pickled file with HMAC signing."""
 
 from __future__ import absolute_import
-import secrets
-import hmac
 import hashlib
 import os
 import logging
@@ -127,14 +125,16 @@ def capture_optimization_metadata(model: Model, framework) -> dict:
     return optimizer_metadata
 
 
-def generate_secret_key(nbytes: int = 32) -> str:
-    """Generates secret key"""
-    return secrets.token_hex(nbytes)
+def compute_hash(buffer: bytes) -> str:
+    """Compute SHA256 hash value of buffer.
 
+    Args:
+        buffer: Bytes to hash
 
-def compute_hash(buffer: bytes, secret_key: str) -> str:
-    """Compute hash value using HMAC"""
-    return hmac.new(secret_key.encode(), msg=buffer, digestmod=hashlib.sha256).hexdigest()
+    Returns:
+        Hexadecimal SHA256 hash string
+    """
+    return hashlib.sha256(buffer).hexdigest()
 
 
 def perform_integrity_check(buffer: bytes):  # pylint: disable=W0613
