@@ -340,7 +340,16 @@ class _SageMakerContainer(object):
         self.container_root = self._create_tmp_folder()
         logger.info("creating hosting dir in %s", self.container_root)
 
-        volumes = self._prepare_serving_volumes(model_dir)
+        if model_dir is not None: 
+            volumes = self._prepare_serving_volumes(model_dir)
+        else:
+            volumes = None
+            # if model_data is None, then force create ../sagemaker-local under 
+            # contianer root
+            os.makedirs(
+                os.path.join(self.container_root, self.hosts[0]), 
+                exist_ok=True
+            )
 
         # If the user script was passed as a file:// mount it to the container.
         if sagemaker.estimator.DIR_PARAM_NAME.upper() in environment:
@@ -869,7 +878,7 @@ class _SageMakerContainer(object):
         if self.instance_type == "local_gpu":
             host_config["deploy"] = {
                 "resources": {
-                    "reservations": {"devices": [{"count": "all", "capabilities": ["gpu"]}]}
+                    "reservations": {"devices": [{"driver": "nvidia", "count": "all", "capabilities": ["gpu"]}]}
                 }
             }
 
