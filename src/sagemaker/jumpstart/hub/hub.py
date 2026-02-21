@@ -43,6 +43,8 @@ from sagemaker.jumpstart.hub.constants import (
     LATEST_VERSION_WILDCARD,
 )
 from sagemaker.jumpstart import utils
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 
 class Hub:
@@ -84,6 +86,7 @@ class Hub:
         )
         return model_specs.version
 
+    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="hub.create")
     def create(
         self,
         description: str,
@@ -213,6 +216,7 @@ class Hub:
         """Deletes this SageMaker Hub."""
         return self._sagemaker_session.delete_hub(self.hub_name)
 
+    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="hub.create_model_reference")
     def create_model_reference(
         self, model_arn: str, model_name: Optional[str] = None, min_version: Optional[str] = None
     ):
