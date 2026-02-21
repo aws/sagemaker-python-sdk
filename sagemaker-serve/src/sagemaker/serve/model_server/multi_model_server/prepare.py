@@ -25,10 +25,7 @@ from typing import List
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.detector.dependency_manager import capture_dependencies
-from sagemaker.serve.validations.check_integrity import (
-    generate_secret_key,
-    compute_hash,
-)
+from sagemaker.serve.validations.check_integrity import compute_hash
 from sagemaker.core.remote_function.core.serialization import _MetaData
 
 logger = logging.getLogger(__name__)
@@ -84,7 +81,7 @@ def prepare_for_mms(
     image_uri: str,
     inference_spec: InferenceSpec = None,
 ) -> str:
-    """Prepares for InferenceSpec using model_path, writes inference.py, and captures dependencies to generate secret_key.
+    """Prepares for InferenceSpec using model_path, writes inference.py, and captures dependencies.
 
     Args:to
         model_path (str) : Argument
@@ -94,7 +91,7 @@ def prepare_for_mms(
         inference_spec (InferenceSpec, optional) : Argument
             (default is None)
     Returns:
-        ( str ) : secret_key
+        ( str ) : Empty string for backward compatibility
     """
     model_path = Path(model_path)
     if not model_path.exists():
@@ -119,11 +116,8 @@ def prepare_for_mms(
 
     capture_dependencies(dependencies=dependencies, work_dir=code_dir)
 
-    secret_key = generate_secret_key()
     with open(str(code_dir.joinpath("serve.pkl")), "rb") as f:
         buffer = f.read()
-    hash_value = compute_hash(buffer=buffer, secret_key=secret_key)
+    hash_value = compute_hash(buffer=buffer)
     with open(str(code_dir.joinpath("metadata.json")), "wb") as metadata:
         metadata.write(_MetaData(hash_value).to_json())
-
-    return secret_key

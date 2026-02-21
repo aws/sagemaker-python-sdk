@@ -31,7 +31,6 @@ class LocalTgiServing:
         client: object,
         image: str,
         model_path: str,
-        secret_key: str,
         env_vars: dict,
         jumpstart: bool,
     ):

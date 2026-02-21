@@ -219,7 +219,6 @@ class TestResetBuildState(unittest.TestCase):
         mb._reset_build_state()
         
         self.assertIsNone(mb.built_model)
-        self.assertEqual(mb.secret_key, "")
         self.assertFalse(hasattr(mb, 'prepared_for_djl'))
         self.assertFalse(hasattr(mb, 'modes'))
 

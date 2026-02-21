@@ -544,7 +544,6 @@ class TestModelBuilderResetState(unittest.TestCase):
         builder._reset_build_state()
         
         self.assertIsNone(builder.built_model)
-        self.assertEqual(builder.secret_key, "")
 
     def test_reset_build_state_clears_jumpstart_flags(self):
         """Test _reset_build_state clears JumpStart preparation flags."""

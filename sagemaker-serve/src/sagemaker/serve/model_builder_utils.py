@@ -130,10 +130,7 @@ from sagemaker.core.base_serializers import JSONSerializer
 from sagemaker.core.deserializers import JSONDeserializer
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.builder.requirements_manager import RequirementsManager
-from sagemaker.serve.validations.check_integrity import (
-    generate_secret_key,
-    compute_hash,
-)
+from sagemaker.serve.validations.check_integrity import compute_hash
 from sagemaker.core.remote_function.core.serialization import _MetaData
 from sagemaker.serve.model_server.triton.config_template import CONFIG_TEMPLATE
 
@@ -2884,20 +2881,6 @@ class _ModelBuilderUtils:
             pkl_path = Path(self.model_path).joinpath("model_repository").joinpath("model")
             save_pkl(pkl_path, (self.inference_spec, self.schema_builder))
     
-    def _hmac_signing(self):
-        """Perform HMAC signing on picke file for integrity check"""
-        secret_key = generate_secret_key()
-        pkl_path = Path(self.model_path).joinpath("model_repository").joinpath("model")
-
-        with open(str(pkl_path.joinpath("serve.pkl")), "rb") as f:
-            buffer = f.read()
-        hash_value = compute_hash(buffer=buffer, secret_key=secret_key)
-
-        with open(str(pkl_path.joinpath("metadata.json")), "wb") as metadata:
-            metadata.write(_MetaData(hash_value).to_json())
-
-        self.secret_key = secret_key
-
     def _generate_config_pbtxt(self, pkl_path: Path):
         """Generate Triton config.pbtxt file."""
         config_path = pkl_path.joinpath("config.pbtxt")
@@ -3075,8 +3058,6 @@ class _ModelBuilderUtils:
             export_path.mkdir(parents=True)
 
         if self.model:
-            self.secret_key = "dummy secret key for onnx backend"
-
             if self.framework == Framework.PYTORCH:
                 self._export_pytorch_to_onnx(
                     export_path=export_path, model=self.model, schema_builder=self.schema_builder
@@ -3099,7 +3080,12 @@ class _ModelBuilderUtils:
 
             self._pack_conda_env(pkl_path=pkl_path)
 
-            self._hmac_signing()
+            # Compute SHA256 hash for integrity check
+            with open(str(pkl_path.joinpath("serve.pkl")), "rb") as f:
+                buffer = f.read()
+            hash_value = compute_hash(buffer=buffer)
+            with open(str(pkl_path.joinpath("metadata.json")), "wb") as metadata:
+                metadata.write(_MetaData(hash_value).to_json())
 
             return
 
