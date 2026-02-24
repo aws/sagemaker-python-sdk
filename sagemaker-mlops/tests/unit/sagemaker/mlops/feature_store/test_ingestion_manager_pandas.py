@@ -254,3 +254,83 @@ class TestIngestionManagerIngestRow:
         # Only id should be in record, name is None
         assert len(record) == 1
         assert record[0].feature_name == "id"
+
+
+class TestAsyncIngestionValidation:
+    """Test async ingestion validation with max_processes=1.
+    
+    Bug fix: Error message unclear when trying to use async ingestion with 1 process.
+    """
+
+    def test_async_with_single_process_single_worker_raises_clear_error(self):
+        """Test that wait=False with max_processes=1 and max_workers=1 raises clear error."""
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions={"id": {"FeatureType": "String", "CollectionType": None}},
+            max_workers=1,
+            max_processes=1,
+        )
+        
+        df = pd.DataFrame({"id": ["1", "2", "3"]})
+        
+        with pytest.raises(ValueError) as exc_info:
+            manager.run(data_frame=df, wait=False)
+        
+        error_message = str(exc_info.value)
+        assert "Async ingestion (wait=False)" in error_message
+        assert "max_processes > 1 or max_workers > 1" in error_message
+        assert "wait=True" in error_message
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
+    def test_sync_with_single_process_single_worker_works(self, mock_fg_class):
+        """Test that wait=True with max_processes=1 and max_workers=1 works."""
+        mock_fg = Mock()
+        mock_fg_class.return_value = mock_fg
+        
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions={"id": {"FeatureType": "String", "CollectionType": None}},
+            max_workers=1,
+            max_processes=1,
+        )
+        
+        df = pd.DataFrame({"id": ["1", "2", "3"]})
+        
+        # Should not raise validation error
+        manager.run(data_frame=df, wait=True)
+
+    def test_async_with_multiple_workers_no_validation_error(self):
+        """Test that wait=False with max_workers > 1 doesn't raise validation error."""
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions={"id": {"FeatureType": "String", "CollectionType": None}},
+            max_workers=2,
+            max_processes=1,
+        )
+        
+        df = pd.DataFrame({"id": ["1", "2", "3"]})
+        
+        # Should not raise validation error (will fail on actual ingestion, but that's expected)
+        with pytest.raises(Exception) as exc_info:
+            manager.run(data_frame=df, wait=False)
+        
+        # Make sure it's not the validation error
+        assert "Async ingestion (wait=False)" not in str(exc_info.value)
+
+    def test_async_with_multiple_processes_no_validation_error(self):
+        """Test that wait=False with max_processes > 1 doesn't raise validation error."""
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions={"id": {"FeatureType": "String", "CollectionType": None}},
+            max_workers=1,
+            max_processes=2,
+        )
+        
+        df = pd.DataFrame({"id": ["1", "2", "3"]})
+        
+        # Should not raise validation error (will fail on actual ingestion, but that's expected)
+        with pytest.raises(Exception) as exc_info:
+            manager.run(data_frame=df, wait=False)
+        
+        # Make sure it's not the validation error
+        assert "Async ingestion (wait=False)" not in str(exc_info.value)
