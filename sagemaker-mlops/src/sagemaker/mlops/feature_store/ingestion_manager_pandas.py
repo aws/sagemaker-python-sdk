@@ -85,7 +85,17 @@ class IngestionManagerPandas:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
+        
+        Raises:
+            ValueError: If wait=False with max_workers=1 and max_processes=1.
         """
+        # Validate async ingestion requirements
+        if not wait and self.max_workers == 1 and self.max_processes == 1:
+            raise ValueError(
+                "Async ingestion (wait=False) requires max_processes > 1 or max_workers > 1. "
+                "Single-threaded ingestion only supports synchronous mode (wait=True)."
+            )
+        
         if self.max_workers == 1 and self.max_processes == 1:
             self._run_single_process_single_thread(data_frame=data_frame, target_stores=target_stores)
         else:
