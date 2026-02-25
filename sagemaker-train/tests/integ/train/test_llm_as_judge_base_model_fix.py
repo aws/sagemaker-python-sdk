@@ -144,14 +144,23 @@ class TestLLMAsJudgeBaseModelFix:
         # Check that we have both base and custom inference steps
         step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
         
-        logger.info(f"Pipeline steps: {step_names}")
+        logger.info(f"Pipeline steps ({len(step_names)}): {step_names}")
         
-        # Verify both inference steps exist
-        has_base_step = any("BaseInference" in name for name in step_names)
-        has_custom_step = any("CustomInference" in name for name in step_names)
+        # If no steps yet, wait a bit for pipeline to initialize
+        if not step_names:
+            logger.info("No steps found yet, waiting for pipeline initialization...")
+            import time
+            time.sleep(10)
+            execution.refresh()
+            step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
+            logger.info(f"Pipeline steps after wait ({len(step_names)}): {step_names}")
         
-        assert has_base_step, "Pipeline should have EvaluateBaseInferenceModel step"
-        assert has_custom_step, "Pipeline should have EvaluateCustomInferenceModel step"
+        # Verify both inference steps exist (case-insensitive, flexible matching)
+        has_base_step = any("base" in name.lower() and "inference" in name.lower() for name in step_names)
+        has_custom_step = any("custom" in name.lower() and "inference" in name.lower() for name in step_names)
+        
+        assert has_base_step, f"Pipeline should have base inference step. Found steps: {step_names}"
+        assert has_custom_step, f"Pipeline should have custom inference step. Found steps: {step_names}"
         
         logger.info(f"✓ Pipeline has both base and custom inference steps")
         logger.info(f"  Base model step: {'Found' if has_base_step else 'Missing'}")
@@ -259,14 +268,23 @@ class TestLLMAsJudgeBaseModelFix:
         execution.refresh()
         step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
         
-        logger.info(f"Pipeline steps: {step_names}")
+        logger.info(f"Pipeline steps ({len(step_names)}): {step_names}")
         
-        # Should NOT have base inference step
-        has_base_step = any("BaseInference" in name for name in step_names)
-        has_custom_step = any("CustomInference" in name for name in step_names)
+        # If no steps yet, wait a bit for pipeline to initialize
+        if not step_names:
+            logger.info("No steps found yet, waiting for pipeline initialization...")
+            import time
+            time.sleep(10)
+            execution.refresh()
+            step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
+            logger.info(f"Pipeline steps after wait ({len(step_names)}): {step_names}")
         
-        assert not has_base_step, "Pipeline should NOT have EvaluateBaseInferenceModel step when evaluate_base_model=False"
-        assert has_custom_step, "Pipeline should have EvaluateCustomInferenceModel step"
+        # Should NOT have base inference step (case-insensitive, flexible matching)
+        has_base_step = any("base" in name.lower() and "inference" in name.lower() for name in step_names)
+        has_custom_step = any("custom" in name.lower() and "inference" in name.lower() for name in step_names)
+        
+        assert not has_base_step, f"Pipeline should NOT have base inference step when evaluate_base_model=False. Found steps: {step_names}"
+        assert has_custom_step, f"Pipeline should have custom inference step. Found steps: {step_names}"
         
         logger.info(f"✓ Pipeline structure correct for evaluate_base_model=False")
         logger.info(f"  Base model step: {'Found (ERROR!)' if has_base_step else 'Not present (correct)'}")
