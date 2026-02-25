@@ -532,3 +532,25 @@ class TestRLAIFTrainer:
         
         result = trainer._validate_reward_model_id(None)
         assert result is None
+
+    @patch('sagemaker.train.rlaif_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.rlaif_trainer._get_fine_tuning_options_and_model_arn')
+    def test_accepts_stopping_condition(self, mock_finetuning, mock_validate):
+        """Test RLAIFTrainer accepts stopping_condition parameter."""
+        from sagemaker.train.configs import StoppingCondition
+        
+        mock_validate.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning.return_value = (mock_hyperparams, "model-arn", False)
+        
+        stopping_condition = StoppingCondition(max_runtime_in_seconds=86400)
+        trainer = RLAIFTrainer(
+            model="test-model",
+            model_package_group="test-group",
+            reward_model_id="openai.gpt-oss-120b-1:0",
+            stopping_condition=stopping_condition
+        )
+        
+        assert trainer.stopping_condition == stopping_condition
+        assert trainer.stopping_condition.max_runtime_in_seconds == 86400
