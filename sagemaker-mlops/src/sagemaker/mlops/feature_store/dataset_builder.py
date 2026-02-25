@@ -428,8 +428,13 @@ class DatasetBuilder:
         """Get query string and result in .csv format file.
 
         Returns:
-            The S3 path of the .csv file.
-            The query string executed.
+            tuple: A tuple containing:
+                - str: The S3 path of the .csv file
+                - str: The query string executed
+        
+        Note:
+            This method returns a tuple (csv_path, query_string).
+            To get just the CSV path: csv_path, _ = builder.to_csv_file()
         """
         if isinstance(self._base, pd.DataFrame):
             return self._to_csv_from_dataframe()
@@ -442,8 +447,13 @@ class DatasetBuilder:
         """Get query string and result in pandas.DataFrame.
 
         Returns:
-            The pandas.DataFrame object.
-            The query string executed.
+            tuple: A tuple containing:
+                - pd.DataFrame: The pandas DataFrame object
+                - str: The query string executed
+        
+        Note:
+            This method returns a tuple (dataframe, query_string).
+            To get just the DataFrame: df, _ = builder.to_dataframe()
         """
         csv_file, query_string = self.to_csv_file()
         df = download_csv_from_s3(csv_file, self._sagemaker_session, self._kms_key_id)
@@ -474,8 +484,8 @@ class DatasetBuilder:
             table_name=temp_table_name,
             record_identifier_feature_name=self._record_identifier_feature_name,
             event_time_identifier_feature=FeatureDefinition(
-                self._event_time_identifier_feature_name,
-                self._event_time_identifier_feature_type,
+                feature_name=self._event_time_identifier_feature_name,
+                feature_type=self._event_time_identifier_feature_type,
             ),
             table_type=TableType.DATA_FRAME,
         )
