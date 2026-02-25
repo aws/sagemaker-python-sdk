@@ -299,38 +299,25 @@ class TestAsyncIngestionValidation:
         # Should not raise validation error
         manager.run(data_frame=df, wait=True)
 
-    def test_async_with_multiple_workers_no_validation_error(self):
-        """Test that wait=False with max_workers > 1 doesn't raise validation error."""
+    @pytest.mark.parametrize("max_workers,max_processes", [
+        (2, 1),  # Multiple workers, single process
+        (1, 2),  # Single worker, multiple processes
+        (2, 2),  # Multiple workers and processes
+    ])
+    @patch.object(IngestionManagerPandas, '_run_multi_process')
+    def test_async_with_parallelism_no_validation_error(self, mock_run, max_workers, max_processes):
+        """Test that wait=False works with any parallelism configuration where max_workers > 1 OR max_processes > 1."""
         manager = IngestionManagerPandas(
             feature_group_name="test-fg",
             feature_definitions={"id": {"FeatureType": "String", "CollectionType": None}},
-            max_workers=2,
-            max_processes=1,
+            max_workers=max_workers,
+            max_processes=max_processes,
         )
         
         df = pd.DataFrame({"id": ["1", "2", "3"]})
         
-        # Should not raise validation error (will fail on actual ingestion, but that's expected)
-        with pytest.raises(Exception) as exc_info:
-            manager.run(data_frame=df, wait=False)
+        # Should not raise validation error
+        manager.run(data_frame=df, wait=False)
         
-        # Make sure it's not the validation error
-        assert "Async ingestion (wait=False)" not in str(exc_info.value)
-
-    def test_async_with_multiple_processes_no_validation_error(self):
-        """Test that wait=False with max_processes > 1 doesn't raise validation error."""
-        manager = IngestionManagerPandas(
-            feature_group_name="test-fg",
-            feature_definitions={"id": {"FeatureType": "String", "CollectionType": None}},
-            max_workers=1,
-            max_processes=2,
-        )
-        
-        df = pd.DataFrame({"id": ["1", "2", "3"]})
-        
-        # Should not raise validation error (will fail on actual ingestion, but that's expected)
-        with pytest.raises(Exception) as exc_info:
-            manager.run(data_frame=df, wait=False)
-        
-        # Make sure it's not the validation error
-        assert "Async ingestion (wait=False)" not in str(exc_info.value)
+        # Verify it called the multi-process method (positive assertion)
+        mock_run.assert_called_once()
