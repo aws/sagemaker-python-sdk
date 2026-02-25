@@ -790,6 +790,80 @@ def test_pipeline_disable_experiment_config(sagemaker_session_mock):
         }
     )
 
+@patch("sagemaker.workflow.pipeline.EXPERIMENTS_REGIONS", {"us-east-1", "us-west-2"})
+def test_pipeline_init_with_default_experiment_config_in_supported_region(sagemaker_session_mock):
+    """Test that default experiment config is preserved in regions where Experiments is available."""
+    sagemaker_session_mock.boto_region_name = "us-east-1"
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    # Default experiment config should be preserved
+    assert pipeline.pipeline_experiment_config is not None
+    assert (
+        pipeline.pipeline_experiment_config.experiment_name == ExecutionVariables.PIPELINE_NAME
+    )
+    assert (
+        pipeline.pipeline_experiment_config.trial_name
+        == ExecutionVariables.PIPELINE_EXECUTION_ID
+    )
+
+
+@patch("sagemaker.workflow.pipeline.EXPERIMENTS_REGIONS", {"us-east-1", "us-west-2"})
+def test_pipeline_init_with_default_experiment_config_in_unsupported_region(
+    sagemaker_session_mock,
+):
+    """Test that default experiment config is disabled in regions where Experiments is not available."""
+    sagemaker_session_mock.boto_region_name = "ap-southeast-4"  # Not in EXPERIMENTS_REGIONS
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    # Default experiment config should be set to None
+    assert pipeline.pipeline_experiment_config is None
+
+
+@patch("sagemaker.workflow.pipeline.EXPERIMENTS_REGIONS", {"us-east-1", "us-west-2"})
+def test_pipeline_init_with_explicit_experiment_config_in_unsupported_region(
+    sagemaker_session_mock,
+):
+    """Test that explicitly set experiment config is preserved even in unsupported regions."""
+    sagemaker_session_mock.boto_region_name = "ap-southeast-4"  # Not in EXPERIMENTS_REGIONS
+
+    explicit_config = PipelineExperimentConfig("MyExperiment", "MyTrial")
+    pipeline = Pipeline(
+        name="MyPipeline",
+        pipeline_experiment_config=explicit_config,
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    # Explicitly set experiment config should be preserved
+    assert pipeline.pipeline_experiment_config is not None
+    assert pipeline.pipeline_experiment_config.experiment_name == "MyExperiment"
+    assert pipeline.pipeline_experiment_config.trial_name == "MyTrial"
+
+
+@patch("sagemaker.workflow.pipeline.EXPERIMENTS_REGIONS", {"us-east-1", "us-west-2"})
+def test_pipeline_init_with_none_experiment_config_in_supported_region(sagemaker_session_mock):
+    """Test that explicitly setting experiment config to None is respected in supported regions."""
+    sagemaker_session_mock.boto_region_name = "us-east-1"
+
+    pipeline = Pipeline(
+        name="MyPipeline",
+        pipeline_experiment_config=None,
+        steps=[CustomStep(name="MyStep", input_data="input")],
+        sagemaker_session=sagemaker_session_mock,
+    )
+
+    # Explicitly set None should be preserved
+    assert pipeline.pipeline_experiment_config is None
 
 def test_pipeline_list_executions(sagemaker_session_mock):
     sagemaker_session_mock.sagemaker_client.list_pipeline_executions.return_value = {

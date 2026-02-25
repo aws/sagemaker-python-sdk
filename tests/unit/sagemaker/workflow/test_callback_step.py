@@ -28,6 +28,7 @@ from tests.unit.sagemaker.workflow.helpers import CustomStep, ordered
 def sagemaker_session_mock():
     session_mock = Mock()
     session_mock.boto_session.client = Mock()
+    session_mock.boto_region_name = "us-west-2"
     return session_mock
 
 
