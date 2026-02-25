@@ -200,3 +200,519 @@ class TestGetSessionFromRole:
 
         mock_sts.assume_role.assert_called_once()
         assert mock_boto3.Session.call_count == 2  # Initial + after assume
+
+
+class TestGetFeatureGroupAsDataframe:
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.get_session_from_role")
+    def test_with_session_provided(self, mock_get_session, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_athena_query = MagicMock()
+        mock_athena_query.table_name = "my_table"
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1, 2]})
+        mock_fg.athena_query.return_value = mock_athena_query
+        mock_fg_class.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+
+        result = get_feature_group_as_dataframe(
+            feature_group_name="test-fg",
+            athena_bucket="s3://bucket/path",
+            session=mock_session,
+            latest_ingestion=False,
+            verbose=False,
+        )
+
+        mock_fg_class.assert_called_once_with(name="test-fg", sagemaker_session=mock_session)
+        mock_get_session.assert_not_called()
+        mock_athena_query.run.assert_called_once()
+        mock_athena_query.wait.assert_called_once()
+        assert len(result) == 2
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.get_session_from_role")
+    def test_with_region_provided(self, mock_get_session, mock_fg_class):
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        mock_fg = MagicMock()
+        mock_athena_query = MagicMock()
+        mock_athena_query.table_name = "my_table"
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1]})
+        mock_fg.athena_query.return_value = mock_athena_query
+        mock_fg_class.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+
+        result = get_feature_group_as_dataframe(
+            feature_group_name="test-fg",
+            athena_bucket="s3://bucket/path",
+            region="us-east-1",
+            latest_ingestion=False,
+        )
+
+        mock_get_session.assert_called_once_with(region="us-east-1", assume_role=None)
+        assert len(result) == 1
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.get_session_from_role")
+    def test_with_region_and_role(self, mock_get_session, mock_fg_class):
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        mock_fg = MagicMock()
+        mock_athena_query = MagicMock()
+        mock_athena_query.table_name = "my_table"
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1]})
+        mock_fg.athena_query.return_value = mock_athena_query
+        mock_fg_class.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+
+        result = get_feature_group_as_dataframe(
+            feature_group_name="test-fg",
+            athena_bucket="s3://bucket/path",
+            region="us-east-1",
+            role="arn:aws:iam::123:role/MyRole",
+            latest_ingestion=False,
+        )
+
+        mock_get_session.assert_called_once_with(region="us-east-1", assume_role="arn:aws:iam::123:role/MyRole")
+
+    def test_raises_when_no_session_or_region(self):
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+
+        with pytest.raises(Exception, match="Session or role and region must be specified"):
+            get_feature_group_as_dataframe(
+                feature_group_name="test-fg",
+                athena_bucket="s3://bucket/path",
+                latest_ingestion=False,
+            )
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_raises_when_latest_ingestion_without_event_time(self, mock_fg_class):
+        mock_session = MagicMock()
+
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+
+        with pytest.raises(Exception, match="event_time_feature_name must be specified"):
+            get_feature_group_as_dataframe(
+                feature_group_name="test-fg",
+                athena_bucket="s3://bucket/path",
+                session=mock_session,
+                latest_ingestion=True,
+                event_time_feature_name=None,
+            )
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_with_latest_ingestion_and_event_time(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_athena_query = MagicMock()
+        mock_athena_query.table_name = "my_table"
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1, 2], "event_time": [123, 123]})
+        mock_fg.athena_query.return_value = mock_athena_query
+        mock_fg_class.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+
+        result = get_feature_group_as_dataframe(
+            feature_group_name="test-fg",
+            athena_bucket="s3://bucket/path",
+            session=mock_session,
+            latest_ingestion=True,
+            event_time_feature_name="event_time",
+            verbose=False,
+        )
+
+        call_args = mock_athena_query.run.call_args
+        query_string = call_args[1]["query_string"]
+        assert "event_time=(SELECT MAX(event_time)" in query_string
+        assert len(result) == 2
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_custom_query_with_table_placeholder(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_athena_query = MagicMock()
+        mock_athena_query.table_name = "actual_table_name"
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1]})
+        mock_fg.athena_query.return_value = mock_athena_query
+        mock_fg_class.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+
+        result = get_feature_group_as_dataframe(
+            feature_group_name="test-fg",
+            athena_bucket="s3://bucket/path",
+            session=mock_session,
+            query='SELECT * FROM "sagemaker_featurestore"."#{table}" WHERE id > 0 ',
+            latest_ingestion=False,
+        )
+
+        call_args = mock_athena_query.run.call_args
+        query_string = call_args[1]["query_string"]
+        assert "actual_table_name" in query_string
+        assert "#{table}" not in query_string
+        assert query_string.endswith(";")
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_verbose_logging(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_athena_query = MagicMock()
+        mock_athena_query.table_name = "my_table"
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1]})
+        mock_fg.athena_query.return_value = mock_athena_query
+        mock_fg_class.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+        import logging
+
+        with patch("sagemaker.mlops.feature_store.feature_utils.logger") as mock_logger:
+            get_feature_group_as_dataframe(
+                feature_group_name="test-fg",
+                athena_bucket="s3://bucket/path",
+                session=mock_session,
+                latest_ingestion=False,
+                verbose=True,
+            )
+
+            mock_logger.setLevel.assert_called_with(logging.INFO)
+            assert mock_logger.info.call_count >= 1
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_silent_mode(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_athena_query = MagicMock()
+        mock_athena_query.table_name = "my_table"
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1]})
+        mock_fg.athena_query.return_value = mock_athena_query
+        mock_fg_class.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+        import logging
+
+        with patch("sagemaker.mlops.feature_store.feature_utils.logger") as mock_logger:
+            get_feature_group_as_dataframe(
+                feature_group_name="test-fg",
+                athena_bucket="s3://bucket/path",
+                session=mock_session,
+                latest_ingestion=False,
+                verbose=False,
+            )
+
+            mock_logger.setLevel.assert_called_with(logging.WARNING)
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_passes_kwargs_to_as_dataframe(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_athena_query = MagicMock()
+        mock_athena_query.table_name = "my_table"
+        mock_athena_query.as_dataframe.return_value = pd.DataFrame({"id": [1]})
+        mock_fg.athena_query.return_value = mock_athena_query
+        mock_fg_class.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import get_feature_group_as_dataframe
+
+        get_feature_group_as_dataframe(
+            feature_group_name="test-fg",
+            athena_bucket="s3://bucket/path",
+            session=mock_session,
+            latest_ingestion=False,
+            dtype={"id": "int32"},
+            na_values=["NA"],
+        )
+
+        mock_athena_query.as_dataframe.assert_called_once_with(dtype={"id": "int32"}, na_values=["NA"])
+
+
+class TestPrepareFgFromDataframeOrFile:
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_with_dataframe_and_session(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({
+            "id": [1, 2, 3],
+            "value": [1.1, 2.2, 3.3],
+        })
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        result = prepare_fg_from_dataframe_or_file(
+            dataframe_or_path=df,
+            feature_group_name="test-fg",
+            session=mock_session,
+            verbose=False,
+        )
+        
+        mock_fg_class.assert_called_once()
+        assert result == mock_fg
+        assert "record_id" in df.columns
+        assert "data_as_of_date" in df.columns
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.read_csv")
+    def test_with_file_path(self, mock_read_csv, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"id": [1, 2], "value": [1.1, 2.2]})
+        mock_read_csv.return_value = df
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        result = prepare_fg_from_dataframe_or_file(
+            dataframe_or_path="/path/to/file.csv",
+            feature_group_name="test-fg",
+            session=mock_session,
+        )
+        
+        mock_read_csv.assert_called_once()
+        assert result == mock_fg
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.get_session_from_role")
+    def test_with_region_and_role(self, mock_get_session, mock_fg_class):
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"id": [1, 2]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path=df,
+            feature_group_name="test-fg",
+            region="us-east-1",
+            role="arn:aws:iam::123:role/MyRole",
+        )
+        
+        mock_get_session.assert_called_once_with(region="us-east-1")
+
+    def test_raises_on_invalid_type(self):
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        with pytest.raises(Exception, match="Invalid type"):
+            prepare_fg_from_dataframe_or_file(
+                dataframe_or_path=123,
+                feature_group_name="test-fg",
+                session=MagicMock(),
+            )
+
+    def test_raises_when_no_session_or_region(self):
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        df = pd.DataFrame({"id": [1, 2]})
+        
+        with pytest.raises(Exception, match="Session or role and region must be specified"):
+            prepare_fg_from_dataframe_or_file(
+                dataframe_or_path=df,
+                feature_group_name="test-fg",
+            )
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_creates_record_id_from_index(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"value": [1.1, 2.2, 3.3]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path=df,
+            feature_group_name="test-fg",
+            session=mock_session,
+        )
+        
+        assert "record_id" in df.columns
+        assert list(df["record_id"]) == [0, 1, 2]
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_uses_existing_record_id(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"my_id": [10, 20, 30], "value": [1.1, 2.2, 3.3]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path=df,
+            feature_group_name="test-fg",
+            session=mock_session,
+            record_id="my_id",
+        )
+        
+        assert "my_id" in df.columns
+        assert "record_id" not in df.columns
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_raises_on_duplicate_record_ids(self, mock_fg_class):
+        mock_session = MagicMock()
+        
+        df = pd.DataFrame({"my_id": [1, 1, 2], "value": [1.1, 2.2, 3.3]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        with pytest.raises(Exception, match="duplicated rows"):
+            prepare_fg_from_dataframe_or_file(
+                dataframe_or_path=df,
+                feature_group_name="test-fg",
+                session=mock_session,
+                record_id="my_id",
+            )
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.time")
+    def test_creates_event_id_with_timestamp(self, mock_time, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        mock_time.time.return_value = 1234567890.5
+        
+        df = pd.DataFrame({"id": [1, 2]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path=df,
+            feature_group_name="test-fg",
+            session=mock_session,
+        )
+        
+        assert "data_as_of_date" in df.columns
+        assert all(df["data_as_of_date"] == 1234567891.0)
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_uses_existing_event_id(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"id": [1, 2], "timestamp": [100, 200]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path=df,
+            feature_group_name="test-fg",
+            session=mock_session,
+            event_id="timestamp",
+        )
+        
+        assert "timestamp" in df.columns
+        assert "data_as_of_date" not in df.columns
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_formats_column_names(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"My Column": [1, 2], "Value.Test": [1.1, 2.2]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path=df,
+            feature_group_name="test-fg",
+            session=mock_session,
+        )
+        
+        assert "my_column" in df.columns
+        assert "valuetest" in df.columns
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_verbose_logging(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"id": [1, 2]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        import logging
+        
+        with patch("sagemaker.mlops.feature_store.feature_utils.logger") as mock_logger:
+            prepare_fg_from_dataframe_or_file(
+                dataframe_or_path=df,
+                feature_group_name="test-fg",
+                session=mock_session,
+                verbose=True,
+            )
+            
+            mock_logger.setLevel.assert_called_with(logging.INFO)
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_silent_mode(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"id": [1, 2]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        import logging
+        
+        with patch("sagemaker.mlops.feature_store.feature_utils.logger") as mock_logger:
+            prepare_fg_from_dataframe_or_file(
+                dataframe_or_path=df,
+                feature_group_name="test-fg",
+                session=mock_session,
+                verbose=False,
+            )
+            
+            mock_logger.setLevel.assert_called_with(logging.WARNING)
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    @patch("sagemaker.mlops.feature_store.feature_utils.read_csv")
+    def test_passes_kwargs_to_read_csv(self, mock_read_csv, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"id": [1, 2]})
+        mock_read_csv.return_value = df
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path="/path/to/file.csv",
+            feature_group_name="test-fg",
+            session=mock_session,
+            sep=";",
+            encoding="utf-8",
+        )
+        
+        mock_read_csv.assert_called_once()
+        call_kwargs = mock_read_csv.call_args[1]
+        assert call_kwargs["sep"] == ";"
+        assert call_kwargs["encoding"] == "utf-8"
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.FeatureGroup")
+    def test_calls_load_feature_definitions(self, mock_fg_class):
+        mock_session = MagicMock()
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+        
+        df = pd.DataFrame({"id": [1, 2]})
+        
+        from sagemaker.mlops.feature_store.feature_utils import prepare_fg_from_dataframe_or_file
+        
+        prepare_fg_from_dataframe_or_file(
+            dataframe_or_path=df,
+            feature_group_name="test-fg",
+            session=mock_session,
+        )
+        
+        mock_fg.load_feature_definitions.assert_called_once()
