@@ -1,4 +1,12 @@
 # Changelog
+## v2.4.1 (2026-02-10)
+
+### Bug fixes and Other Changes
+
+- fix: Support PipelineVariables in ModelTrainer hyperparameters (#5519)
+- enhancement: Added ISO regions for JumpStart (#5505)
+- enhancement: Added AutoGluon versions 1.4 and 1.5 (#5538)
+- test: Added unit and integration tests for JumpStart search functionality (#5544)
 
 ## v2.4.0 (2026-01-22)
 
