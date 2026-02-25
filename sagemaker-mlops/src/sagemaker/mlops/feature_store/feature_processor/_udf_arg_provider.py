@@ -222,7 +222,8 @@ class SparkArgProvider(UDFArgProvider[DataFrame]):
             return data_source.read_data(spark=spark_session, params=params)
 
         if isinstance(data_source, BaseDataSource):
-            return data_source.read_data(params=params)
+            spark_session = self.spark_session_factory.spark_session
+            return data_source.read_data(spark=spark_session, params=params)
 
         raise ValueError(f"Unknown data source type: {type(data_source)}")
 
