@@ -39,12 +39,14 @@ from sagemaker.core.shapes import (
 # ---------------------------------------------------------------------------
 
 
-def _create_mock_model_trainer(with_internal_channels=False):
+def _create_mock_model_trainer(with_internal_channels=False, with_spot_training=False):
     """Create a mock ModelTrainer with common attributes.
 
     Args:
         with_internal_channels: If True, adds internal channels (code, sm_drivers)
             to input_data_config for testing channel inclusion in tuning jobs.
+        with_spot_training: If True, sets spot parameters (enable_managed_spot_training,
+            max_wait_time_in_seconds)
     """
     trainer = MagicMock()
     trainer.sagemaker_session = MagicMock()
@@ -67,6 +69,9 @@ def _create_mock_model_trainer(with_internal_channels=False):
             _create_channel("code", "s3://bucket/code"),
             _create_channel("sm_drivers", "s3://bucket/drivers"),
         ]
+    if with_spot_training:
+        trainer.compute.enable_managed_spot_training = True
+        trainer.stopping_condition.max_wait_time_in_seconds = 3600
     return trainer
 
 
@@ -574,3 +579,19 @@ class TestHyperparameterTunerStaticMethods:
         assert "train" in channel_names, "User 'train' channel should be included"
         assert "validation" in channel_names, "User 'validation' channel should be included"
         assert len(channel_names) == 4, "Should have exactly 4 channels"
+
+    def test_build_training_job_definition_includes_spot_params(self):
+        """Test that _build_training_job_definition includes spot parameters.
+        """
+        tuner = HyperparameterTuner(
+            model_trainer=_create_mock_model_trainer(with_spot_training=True),
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        # Build training job definition
+        definition = tuner._build_training_job_definition(None)
+
+        # Verify managed spot training enabled
+        assert definition.enable_managed_spot_training is True, "Spot should be enabled"
+        assert isinstance(definition.stopping_condition.max_wait_time_in_seconds, int), "Max wait time should be set"
