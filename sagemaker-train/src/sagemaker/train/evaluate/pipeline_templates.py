@@ -337,7 +337,8 @@ LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
             "Name": "EvaluateBaseInferenceModel",
             "Type": "Training",
             "Arguments": {
-                "TrainingJobName": "BaseInference",
+                "TrainingJobName": "BaseInference",{% if mlflow_experiment_name %}
+                "MlflowExperimentName": "{{ mlflow_experiment_name }}",{% endif %}
                 "RoleArn": "{{ role_arn }}",
                 "ServerlessJobConfig": {
                     "BaseModelArn": "{{ base_model_arn }}",
@@ -1007,7 +1008,8 @@ LLMAJ_TEMPLATE = """{
             "Name": "EvaluateBaseInferenceModel",
             "Type": "Training",
             "Arguments": {
-                "TrainingJobName": "BaseInference",
+                "TrainingJobName": "BaseInference",{% if mlflow_experiment_name %}
+                "MlflowExperimentName": "{{ mlflow_experiment_name }}",{% endif %}
                 "RoleArn": "{{ role_arn }}",
                 "ServerlessJobConfig": {
                     "BaseModelArn": "{{ base_model_arn }}",

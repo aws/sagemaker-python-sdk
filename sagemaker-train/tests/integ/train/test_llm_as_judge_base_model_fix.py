@@ -112,6 +112,7 @@ class TestLLMAsJudgeBaseModelFix:
             builtin_metrics=TEST_CONFIG["builtin_metrics"],
             custom_metrics=TEST_CONFIG["custom_metrics_json"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
         )
         
@@ -247,6 +248,7 @@ class TestLLMAsJudgeBaseModelFix:
             dataset=TEST_CONFIG["dataset_s3_uri"],
             builtin_metrics=TEST_CONFIG["builtin_metrics"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             evaluate_base_model=False,  # Only evaluate custom model
         )
         
