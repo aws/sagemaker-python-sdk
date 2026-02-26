@@ -113,7 +113,7 @@ class RLAIFTrainer(BaseTrainer):
             The VPC configuration for the training job.
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
-            If not specified, defaults to 1 hour max runtime.
+            If not specified, uses SageMaker service default (24 hours for serverless training).
     """
 
     def __init__(
@@ -221,10 +221,6 @@ class RLAIFTrainer(BaseTrainer):
         current_training_job_name = _get_unique_name(
             self.base_job_name or f"{self._model_name}-rlaif"
         )
-        
-        stopping_condition = TrainDefaults.get_stopping_condition(
-            stopping_condition=self.stopping_condition
-        )
 
         logger.info(f"Training Job Name: {current_training_job_name}")
 
@@ -269,22 +265,28 @@ class RLAIFTrainer(BaseTrainer):
         vpc_config = self.networking if self.networking else None
         tags = _get_studio_tags(self._model_name, HUB_NAME)
 
+        # Build TrainingJob.create() arguments
+        create_args = {
+            "training_job_name": current_training_job_name,
+            "role_arn": role,
+            "input_data_config": channels,
+            "output_data_config": output_config,
+            "serverless_job_config": serverless_config,
+            "mlflow_config": mlflow_config,
+            "hyper_parameters": final_hyperparameters,
+            "model_package_config": model_package_config,
+            "vpc_config": vpc_config,
+            "session": sagemaker_session.boto_session,
+            "region": sagemaker_session.boto_session.region_name,
+            "tags": tags,
+        }
+        
+        # Only pass stopping_condition if explicitly provided by user
+        if self.stopping_condition is not None:
+            create_args["stopping_condition"] = self.stopping_condition
+
         try:
-            training_job = TrainingJob.create(
-                training_job_name=current_training_job_name,
-                role_arn=role,
-                input_data_config=channels,
-                output_data_config=output_config,
-                serverless_job_config=serverless_config,
-                mlflow_config=mlflow_config,
-                hyper_parameters=final_hyperparameters,
-                model_package_config=model_package_config,
-                vpc_config=vpc_config,
-                stopping_condition=stopping_condition,
-                session=sagemaker_session.boto_session,
-                region=sagemaker_session.boto_session.region_name,
-                tags=tags,
-            )
+            training_job = TrainingJob.create(**create_args)
         except Exception as e:
             logger.error("Error: %s", e)
             raise e
