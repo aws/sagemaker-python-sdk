@@ -359,3 +359,36 @@ class TestSFTTrainer:
         
         # Should not raise an exception
         trainer._process_hyperparameters()
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def test_accepts_stopping_condition(self, mock_finetuning, mock_validate):
+        """Test SFTTrainer accepts stopping_condition parameter."""
+        from sagemaker.train.configs import StoppingCondition
+        
+        mock_validate.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning.return_value = (mock_hyperparams, "model-arn", False)
+        
+        stopping_condition = StoppingCondition(max_runtime_in_seconds=7200)
+        trainer = SFTTrainer(
+            model="test-model",
+            model_package_group="test-group",
+            stopping_condition=stopping_condition
+        )
+        
+        assert trainer.stopping_condition == stopping_condition
+        assert trainer.stopping_condition.max_runtime_in_seconds == 7200
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def test_default_stopping_condition_is_none(self, mock_finetuning, mock_validate):
+        """Test SFTTrainer defaults stopping_condition to None."""
+        mock_validate.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning.return_value = (mock_hyperparams, "model-arn", False)
+        
+        trainer = SFTTrainer(model="test-model", model_package_group="test-group")
+        assert trainer.stopping_condition is None
