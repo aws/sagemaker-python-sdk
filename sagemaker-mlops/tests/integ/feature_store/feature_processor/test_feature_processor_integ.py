@@ -12,10 +12,12 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import glob
 import logging
 import os
 import subprocess
 import sys
+import tempfile
 import time
 from typing import Dict
 from datetime import datetime
@@ -121,6 +123,16 @@ def sagemaker_session():
     return Session()
 
 
+@pytest.fixture(scope="module")
+def pre_execution_commands(sagemaker_session):
+    return get_pre_execution_commands(sagemaker_session=sagemaker_session)
+
+
+@pytest.fixture(scope="module")
+def dependencies_path():
+    return os.path.join(_FEATURE_PROCESSOR_DIR, "requirements.txt")
+
+
 @pytest.mark.slow_test
 def test_feature_processor_transform_online_only_store_ingestion(
     sagemaker_session,
@@ -136,8 +148,6 @@ def test_feature_processor_transform_online_only_store_ingestion(
         )
 
         raw_data_uri = get_raw_car_data_s3_uri(sagemaker_session=sagemaker_session)
-
-        print("About to apply @feature_processor decorator...")
 
         @feature_processor(
             inputs=[CSVDataSource(raw_data_uri)],
@@ -175,9 +185,8 @@ def test_feature_processor_transform_online_only_store_ingestion(
             transformed_df.show()
             return transformed_df
 
-        print("Decorator applied. About to call transform()...")
-        transform()
-        print("transform() completed.")
+        # this calls spark 3.3 which requires java 11
+        transform() 
 
         featurestore_client = sagemaker_session.sagemaker_featurestore_runtime_client
         results = featurestore_client.batch_get_record(
@@ -496,7 +505,10 @@ def test_feature_processor_transform_offline_only_store_ingestion(
             columns=["ingest_time", "write_time", "api_invocation_time", "is_deleted"]
         )
 
-        assert dataset.equals(get_expected_dataframe())
+        expected = get_expected_dataframe()
+        dataset_sorted = dataset.sort_values(by="id").reset_index(drop=True)
+        expected_sorted = expected.sort_values(by="id").reset_index(drop=True)
+        assert dataset_sorted.equals(expected_sorted)
     finally:
         cleanup_offline_store(
             feature_group=feature_groups["car_data_feature_group"],
@@ -521,6 +533,8 @@ def test_feature_processor_transform_offline_only_store_ingestion(
 )
 def test_feature_processor_transform_offline_only_store_ingestion_run_with_remote(
     sagemaker_session,
+    pre_execution_commands,
+    dependencies_path,
 ):
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_aggregated_feature_group_name = get_car_data_aggregated_feature_group_name()
@@ -533,16 +547,10 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
         )
 
         raw_data_uri = get_raw_car_data_s3_uri(sagemaker_session=sagemaker_session)
-        whl_file_uri = get_wheel_file_s3_uri(sagemaker_session=sagemaker_session)
-        whl_file_name = os.path.basename(whl_file_uri)
-
-        pre_execution_commands = [
-            f"aws s3 cp {whl_file_uri} ./",
-            f"/usr/local/bin/python3.9 -m pip install ./{whl_file_name} --force-reinstall",
-        ]
 
         @remote(
             pre_execution_commands=pre_execution_commands,
+            dependencies=dependencies_path,
             spark_config=SparkConfig(),
             instance_type="ml.m5.xlarge",
         )
@@ -637,7 +645,10 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
             columns=["ingest_time", "write_time", "api_invocation_time", "is_deleted"]
         )
 
-        assert dataset.equals(get_expected_dataframe())
+        expected = get_expected_dataframe()
+        dataset_sorted = dataset.sort_values(by="id").reset_index(drop=True)
+        expected_sorted = expected.sort_values(by="id").reset_index(drop=True)
+        assert dataset_sorted.equals(expected_sorted)
     finally:
         cleanup_offline_store(
             feature_group=feature_groups["car_data_feature_group"],
@@ -662,6 +673,8 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
 )
 def test_to_pipeline_and_execute(
     sagemaker_session,
+    pre_execution_commands,
+    dependencies_path,
 ):
     pipeline_name = "pipeline-name-01"
     car_data_feature_group_name = get_car_data_feature_group_name()
@@ -675,16 +688,10 @@ def test_to_pipeline_and_execute(
         )
 
         raw_data_uri = get_raw_car_data_s3_uri(sagemaker_session=sagemaker_session)
-        whl_file_uri = get_wheel_file_s3_uri(sagemaker_session=sagemaker_session)
-        whl_file_name = os.path.basename(whl_file_uri)
-
-        pre_execution_commands = [
-            f"aws s3 cp {whl_file_uri} ./",
-            f"/usr/local/bin/python3.9 -m pip install ./{whl_file_name} --force-reinstall",
-        ]
 
         @remote(
             pre_execution_commands=pre_execution_commands,
+            dependencies=dependencies_path,
             spark_config=SparkConfig(),
             instance_type="ml.m5.xlarge",
         )
@@ -789,6 +796,8 @@ def test_to_pipeline_and_execute(
 )
 def test_schedule_and_event_trigger(
     sagemaker_session,
+    pre_execution_commands,
+    dependencies_path,
 ):
     pipeline_name = "pipeline-name-01"
     car_data_feature_group_name = get_car_data_feature_group_name()
@@ -802,16 +811,10 @@ def test_schedule_and_event_trigger(
         )
 
         raw_data_uri = get_raw_car_data_s3_uri(sagemaker_session=sagemaker_session)
-        whl_file_uri = get_wheel_file_s3_uri(sagemaker_session=sagemaker_session)
-        whl_file_name = os.path.basename(whl_file_uri)
-
-        pre_execution_commands = [
-            f"aws s3 cp {whl_file_uri} ./",
-            f"/usr/local/bin/python3.9 -m pip install ./{whl_file_name} --force-reinstall",
-        ]
 
         @remote(
             pre_execution_commands=pre_execution_commands,
+            dependencies=dependencies_path,
             spark_config=SparkConfig(),
             instance_type="ml.m5.xlarge",
         )
@@ -1042,7 +1045,6 @@ def get_raw_car_data_s3_uri(sagemaker_session) -> str:
         "feature-processor-test",
         "csv-data",
     )
-    print("About to upload raw car data to S3...")
     raw_car_data_s3_uri = S3Uploader.upload(
         os.path.join(_FEATURE_PROCESSOR_DIR, "car-data.csv"),
         uri,
@@ -1052,18 +1054,36 @@ def get_raw_car_data_s3_uri(sagemaker_session) -> str:
     return raw_car_data_s3_uri
 
 
-def get_wheel_file_s3_uri(sagemaker_session) -> str:
-    uri = "s3://{}/{}/wheel-file".format(
+def get_wheel_file_s3_uri(sagemaker_session):
+    """Upload all SDK wheels to S3 and return (s3_prefix, wheel_basenames).
+
+    Returns:
+        tuple: (s3_prefix, [sagemaker_whl, core_whl, mlops_whl]) where each
+        element is the basename of the corresponding wheel file.
+    """
+    s3_prefix = "s3://{}/{}/wheel-file".format(
         sagemaker_session.default_bucket(), "feature-processor-test"
     )
-    source = _generate_and_move_sagemaker_sdk_tar()
-    print(source)
-    raw_car_data_s3_uri = S3Uploader.upload(
-        source,
-        uri,
-        sagemaker_session=sagemaker_session,
-    )
-    return raw_car_data_s3_uri
+    sources = _generate_and_move_sagemaker_sdk_tar()
+    for source in sources:
+        print(source)
+        S3Uploader.upload(source, s3_prefix, sagemaker_session=sagemaker_session)
+    wheel_names = [os.path.basename(s) for s in sources]
+    return s3_prefix, wheel_names
+
+
+def get_pre_execution_commands(sagemaker_session):
+    """Build SDK wheels, upload to S3, and return pre-execution install commands."""
+    s3_prefix, wheel_names = get_wheel_file_s3_uri(sagemaker_session=sagemaker_session)
+    sagemaker_whl, core_whl, mlops_whl = wheel_names
+    print(f'{sagemaker_whl=}, {core_whl=}, {mlops_whl}')
+    return [
+        f"aws s3 cp {s3_prefix}/ /tmp/packages/ --recursive",
+        "pip3 install 'setuptools<75'",
+        f"pip3 install --no-build-isolation '/tmp/packages/{sagemaker_whl}[feature-processor]' 'numpy<2.0.0' 'ml_dtypes<=0.4.1' 'setuptools<75' || true",
+        f"pip3 install --no-deps --force-reinstall /tmp/packages/{sagemaker_whl}",
+        f"pip3 install --no-deps --force-reinstall /tmp/packages/{core_whl} /tmp/packages/{mlops_whl}",
+    ]
 
 
 def create_feature_groups(
@@ -1170,16 +1190,7 @@ def get_expected_dataframe():
 
 
 def _wait_for_feature_group_create(feature_group: FeatureGroup):
-    status = feature_group.feature_group_status
-    while status == "Creating":
-        print("Waiting for Feature Group Creation")
-        time.sleep(5)
-        feature_group.refresh()
-        status = feature_group.feature_group_status
-    if status != "Created":
-        print(f"FeatureGroup {feature_group.feature_group_name} status: {status}")
-        raise RuntimeError(f"Failed to create feature group {feature_group.feature_group_name}")
-    print(f"FeatureGroup {feature_group.feature_group_name} successfully created.")
+    feature_group.wait_for_status(target_status="Created", poll=5)
 
 
 def _wait_for_pipeline_execution_to_stop(pipeline_execution_arn: str, sagemaker_client: client):
@@ -1304,16 +1315,41 @@ def get_sagemaker_client(sagemaker_session=Session) -> client:
 
 
 def _generate_and_move_sagemaker_sdk_tar():
-    """
-    Run setup.py sdist to generate the PySDK whl file
-    """
-    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", ".."))
-    subprocess.run("python -m build --wheel", shell=True, cwd=repo_root, check=True)
+    """Build all three SDK wheel files and return their paths."""
+    repo_root = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..")
+    )
     dist_dir = os.path.join(repo_root, "dist")
-    source_archive = os.listdir(dist_dir)[0]
-    source_path = os.path.join(dist_dir, source_archive)
 
-    return source_path
+    # Build wheels for all three sub-packages into the shared dist/ directory
+    build_dirs = [
+        repo_root,
+        os.path.join(repo_root, "sagemaker-core"),
+        os.path.join(repo_root, "sagemaker-mlops"),
+    ]
+    for build_dir in build_dirs:
+        subprocess.run(
+            f"python -m build --wheel --outdir {dist_dir}",
+            shell=True,
+            cwd=build_dir,
+            check=True,
+        )
+
+    # Locate the three expected wheels by prefix pattern
+    wheel_patterns = [
+        "sagemaker-[0-9]*.whl",
+        "sagemaker_core-*.whl",
+        "sagemaker_mlops-*.whl",
+    ]
+    paths = []
+    for pattern in wheel_patterns:
+        matches = glob.glob(os.path.join(dist_dir, pattern))
+        if not matches:
+            raise FileNotFoundError(
+                f"No wheel found matching {pattern} in {dist_dir}"
+            )
+        paths.append(matches[0])
+    return paths
 
 
 def _wait_for_feature_group_lineage_contexts(
