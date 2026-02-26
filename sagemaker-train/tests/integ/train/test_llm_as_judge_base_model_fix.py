@@ -112,7 +112,6 @@ class TestLLMAsJudgeBaseModelFix:
             builtin_metrics=TEST_CONFIG["builtin_metrics"],
             custom_metrics=TEST_CONFIG["custom_metrics_json"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
         )
         
@@ -216,14 +215,19 @@ class TestLLMAsJudgeBaseModelFix:
             if execution.status.failure_reason:
                 logger.error(f"  Failure reason: {execution.status.failure_reason}")
             
-            # Log step failures
+            # Log step failures with detailed information
             if execution.status.step_details:
-                logger.error("\nFailed steps:")
+                logger.error("\n" + "=" * 80)
+                logger.error("DETAILED STEP FAILURE INFORMATION:")
+                logger.error("=" * 80)
                 for step in execution.status.step_details:
-                    if "failed" in step.status.lower():
-                        logger.error(f"  {step.name}: {step.status}")
-                        if step.failure_reason:
-                            logger.error(f"    Reason: {step.failure_reason}")
+                    logger.error(f"\nStep: {step.name}")
+                    logger.error(f"  Status: {step.status}")
+                    logger.error(f"  Start Time: {step.start_time}")
+                    logger.error(f"  End Time: {step.end_time}")
+                    if step.failure_reason:
+                        logger.error(f"  ❌ FAILURE REASON: {step.failure_reason}")
+                logger.error("=" * 80)
             
             # Re-raise to fail the test
             raise
@@ -248,7 +252,6 @@ class TestLLMAsJudgeBaseModelFix:
             dataset=TEST_CONFIG["dataset_s3_uri"],
             builtin_metrics=TEST_CONFIG["builtin_metrics"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             evaluate_base_model=False,  # Only evaluate custom model
         )
         
