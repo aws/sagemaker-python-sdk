@@ -8,6 +8,7 @@ from sagemaker.core.shapes import VpcConfig
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name, _get_studio_tags
 from sagemaker.ai_registry.dataset import DataSet
+from sagemaker.train.configs import StoppingCondition
 from sagemaker.train.common_utils.finetune_utils import (
     _get_fine_tuning_options_and_model_arn,
     _validate_and_resolve_model_package_group,
@@ -98,6 +99,9 @@ class SFTTrainer(BaseTrainer):
             The KMS key ID for encrypting training job outputs.
         networking (Optional[VpcConfig]):
             The VPC configuration for the training job.
+        stopping_condition (Optional[StoppingCondition]):
+            The stopping condition to override training runtime limit.
+            If not specified, defaults to 1 hour max runtime.
     """
 
     def __init__(
@@ -114,6 +118,7 @@ class SFTTrainer(BaseTrainer):
         kms_key_id: Optional[str] = None,
         networking: Optional[VpcConfig] = None,
         accept_eula: Optional[bool] = False,
+        stopping_condition: Optional[StoppingCondition] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -132,6 +137,7 @@ class SFTTrainer(BaseTrainer):
         self.s3_output_path = s3_output_path
         self.kms_key_id = kms_key_id
         self.networking = networking
+        self.stopping_condition = stopping_condition
 
         # Initialize fine-tuning options with beta session fallback
         self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
@@ -199,6 +205,10 @@ class SFTTrainer(BaseTrainer):
         current_training_job_name = _get_unique_name(
             self.base_job_name or f"{self._model_name}-sft"
         )
+        
+        stopping_condition = TrainDefaults.get_stopping_condition(
+            stopping_condition=self.stopping_condition
+        )
 
         logger.info(f"Training Job Name: {current_training_job_name}")
 
@@ -252,6 +262,7 @@ class SFTTrainer(BaseTrainer):
                 hyper_parameters=final_hyperparameters,
                 model_package_config=model_package_config,
                 vpc_config=vpc_config,
+                stopping_condition=stopping_condition,
                 session=sagemaker_session.boto_session,
                 region=sagemaker_session.boto_session.region_name,
                 tags=tags,
