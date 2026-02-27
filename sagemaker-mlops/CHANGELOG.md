@@ -1,5 +1,5 @@
 # Changelog
-## v1.5.0 (2026-02-27)
+## v1.5.0 (2026-03-02)
 
 - feat: Add Feature Store Support to V3 (#5539)
 - feat: EMRStep smart output with `output_args` (#5535)
