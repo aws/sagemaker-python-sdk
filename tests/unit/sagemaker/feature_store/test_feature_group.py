@@ -68,7 +68,7 @@ def s3_uri():
 @pytest.fixture
 def sagemaker_session_mock():
     sagemaker_session_mock = Mock()
-    sagemaker_session_mock.sagemaker_config = {}
+    sagemaker_session_mock.sagemaker_config = None
     return sagemaker_session_mock
 
 
