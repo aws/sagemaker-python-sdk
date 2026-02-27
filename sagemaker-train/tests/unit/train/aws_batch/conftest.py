@@ -141,6 +141,24 @@ LIST_SERVICE_JOB_RESP_WITH_JOBS = {
     "nextToken": None,
 }
 
+LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS = {
+    "jobSummaryList": [
+        {
+            "jobName": JOB_NAME,
+            "jobArn": JOB_ARN,
+            "jobId": JOB_ID,
+            "shareIdentifier": SHARE_IDENTIFIER,
+        },
+        {
+            "jobName": "another-job",
+            "jobArn": "arn:aws:batch:us-west-2:123456789012:job/another-id",
+            "jobId": "another-id",
+            "shareIdentifier": "another-share-identifier",
+        },
+    ],
+    "nextToken": None,
+}
+
 LIST_SERVICE_JOB_RESP_WITH_NEXT_TOKEN = {
     "jobSummaryList": [
         {"jobName": JOB_NAME, "jobArn": JOB_ARN, "jobId": JOB_ID},
