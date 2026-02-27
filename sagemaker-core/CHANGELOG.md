@@ -1,4 +1,16 @@
 # Changelog
+## v2.5.0 (2026-03-02)
+
+### Features
+
+- Feature Store V3 support (#5539)
+- Support transform AMI version in SageMaker transform jobs (#5521)
+
+### Bug Fixes
+
+- Update inference processor from 'inf2' to 'neuronx' (#5488)
+- Correct HF neuronx pytorch version (#5501)
+
 ## v2.4.1 (2026-02-10)
 
 ### Bug fixes and Other Changes

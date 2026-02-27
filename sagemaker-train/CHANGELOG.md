@@ -1,4 +1,17 @@
 # Changelog
+## v1.5.0 (2026-03-02)
+
+### Features
+
+- **Feature**: Add support for listing Batch jobs by share identifier (#5585)
+- **Feature**: Add stop condition to model customization trainers (#5579)
+
+### Bug fixes and Other Changes
+
+- **Fix**: Remove default for stopping condition for MC trainer (#5586)
+- **Fix**: Skip default instance_type/instance_count when instance_groups is set (#5564)
+- **Fix**: Bug fixes for Model Customization (#5558)
+
 ## v1.4.1 (2026-02-10)
 
 ### Bug fixes and Other Changes
