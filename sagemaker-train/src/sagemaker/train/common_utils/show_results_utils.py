@@ -341,6 +341,8 @@ def _parse_response(response_str: str) -> str:
 
 def _format_score(score: float) -> str:
     """Format score as percentage: 0.8333 -> '83.3%' """
+    if score is None:
+        return "N/A"
     return f"{score * 100:.1f}%"
 
 
