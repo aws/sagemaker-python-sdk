@@ -1,5 +1,5 @@
 # Changelog
-## v3.4.2 (2026-02-27)
+## v3.5.0 (2026-02-27)
 
 ### Features
 - **Feature Store v3**: New version of Feature Store functionality
