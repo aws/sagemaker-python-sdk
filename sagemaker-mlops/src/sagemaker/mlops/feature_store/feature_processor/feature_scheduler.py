@@ -116,7 +116,7 @@ logger = logging.getLogger("sagemaker")
 def to_pipeline(
     pipeline_name: str,
     step: Callable,
-    role: Optional[str] = None,
+    role_arn: Optional[str] = None,
     transformation_code: Optional[TransformationCode] = None,
     max_retries: Optional[int] = None,
     tags: Optional[List[Tuple[str, str]]] = None,
@@ -133,7 +133,7 @@ def to_pipeline(
         pipeline_name (str): The name of the pipeline.
         step (Callable): A user provided function wrapped by feature_processor and optionally
             wrapped by remote_decorator.
-        role (Optional[str]): The Amazon Resource Name (ARN) of the role used by the pipeline to
+        role_arn (Optional[str]): The Amazon Resource Name (ARN) of the role used by the pipeline to
             access and create resources. If not specified, it will default to the credentials
             provided by the AWS configuration chain.
         transformation_code (Optional[str]): The data source for a reference to the transformation
@@ -162,7 +162,7 @@ def to_pipeline(
     remote_decorator_config = _get_remote_decorator_config_from_input(
         wrapped_func=step, sagemaker_session=_sagemaker_session
     )
-    _role = role or get_execution_role(_sagemaker_session)
+    _role = role_arn or get_execution_role(_sagemaker_session)
 
     runtime_env_manager = RuntimeEnvironmentManager()
     client_python_version = runtime_env_manager._current_python_version()
@@ -863,7 +863,7 @@ def _prepare_model_trainer_from_remote_decorator_config(
     """
     logger.info("Mapping remote decorator config to ModelTrainer params")
 
-    # Build environment dict from remote_decorator_config (strings only for Pydantic validation)
+    # Build environment dict from remote_decorator_config
     environment = dict(remote_decorator_config.environment_variables or {})
 
     # Build command from container entry point and arguments
@@ -946,9 +946,6 @@ def _prepare_model_trainer_from_remote_decorator_config(
         tags=tags,
     )
 
-    # Inject SCHEDULED_TIME_PIPELINE_PARAMETER after construction to bypass Pydantic
-    # validation (Parameter is not a string). The @runnable_by_pipeline decorator resolves
-    # Parameter objects to strings during pipeline definition serialization.
     model_trainer.environment[EXECUTION_TIME_PIPELINE_PARAMETER] = SCHEDULED_TIME_PIPELINE_PARAMETER
 
     logger.info(

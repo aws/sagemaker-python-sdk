@@ -738,7 +738,7 @@ def test_to_pipeline_and_execute(
         pipeline_arn = to_pipeline(
             pipeline_name=pipeline_name,
             step=transform,
-            role=get_execution_role(sagemaker_session),
+            role_arn=get_execution_role(sagemaker_session),
             max_retries=2,
             tags=[("integ_test_tag_key_1", "integ_test_tag_key_2")],
             sagemaker_session=sagemaker_session,
@@ -861,7 +861,7 @@ def test_schedule_and_event_trigger(
         pipeline_arn = to_pipeline(
             pipeline_name=pipeline_name,
             step=transform,
-            role=get_execution_role(sagemaker_session),
+            role_arn=get_execution_role(sagemaker_session),
             max_retries=2,
             sagemaker_session=sagemaker_session,
         )

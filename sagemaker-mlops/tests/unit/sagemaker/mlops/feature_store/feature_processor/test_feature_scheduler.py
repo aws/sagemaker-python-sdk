@@ -275,7 +275,7 @@ def test_to_pipeline(
     pipeline_arn = to_pipeline(
         pipeline_name="pipeline_name",
         step=wrapped_func,
-        role=EXECUTION_ROLE_ARN,
+        role_arn=EXECUTION_ROLE_ARN,
         max_retries=1,
         tags=[("tag_key_1", "tag_value_1"), ("tag_key_2", "tag_value_2")],
         sagemaker_session=session,
@@ -437,7 +437,7 @@ def test_to_pipeline_not_wrapped_by_feature_processor(get_execution_role, sessio
         to_pipeline(
             pipeline_name="pipeline_name",
             step=wrapped_func,
-            role=EXECUTION_ROLE_ARN,
+            role_arn=EXECUTION_ROLE_ARN,
             max_retries=1,
         )
 
@@ -461,7 +461,7 @@ def test_to_pipeline_not_wrapped_by_remote(get_execution_role, session):
         to_pipeline(
             pipeline_name="pipeline_name",
             step=wrapped_func,
-            role=EXECUTION_ROLE_ARN,
+            role_arn=EXECUTION_ROLE_ARN,
             max_retries=1,
         )
 
@@ -513,7 +513,7 @@ def test_to_pipeline_wrong_mode(get_execution_role, mock_spark_image, session):
         to_pipeline(
             pipeline_name="pipeline_name",
             step=wrapped_func,
-            role=EXECUTION_ROLE_ARN,
+            role_arn=EXECUTION_ROLE_ARN,
             max_retries=1,
         )
 
@@ -568,7 +568,7 @@ def test_to_pipeline_pipeline_name_length_limit_exceeds(
         to_pipeline(
             pipeline_name="".join(["a" for _ in range(PIPELINE_NAME_MAXIMUM_LENGTH + 1)]),
             step=wrapped_func,
-            role=EXECUTION_ROLE_ARN,
+            role_arn=EXECUTION_ROLE_ARN,
             max_retries=1,
         )
 
@@ -626,7 +626,7 @@ def test_to_pipeline_used_reserved_tags(get_execution_role, mock_spark_image, se
         to_pipeline(
             pipeline_name="pipeline_name",
             step=wrapped_func,
-            role=EXECUTION_ROLE_ARN,
+            role_arn=EXECUTION_ROLE_ARN,
             max_retries=1,
             tags=[("sm-fs-fe:created-from", "random")],
             sagemaker_session=session,
