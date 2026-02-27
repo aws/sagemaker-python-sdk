@@ -35,6 +35,7 @@ test = [
     "pytest",
     "pytest-cov",
     "mock",
+    "pyspark==3.3.2"
 ]
 dev = [
     "pytest",
