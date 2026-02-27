@@ -23,8 +23,8 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.4.1",
-    "sagemaker-train>=1.4.1",
+    "sagemaker-core>=2.4.2",
+    "sagemaker-train>=1.4.2",
     "boto3>=1.42.2,<2.0",
     "botocore>=1.35.75,<2.0",
     "deepdiff",
