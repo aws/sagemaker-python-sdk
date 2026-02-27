@@ -34,8 +34,8 @@ classifiers = [
 ]
 dependencies = [
   "sagemaker-core>=2.5.0,<3.0.0",
-  "sagemaker-train>=1.4.2,<2.0.0",
-  "sagemaker-serve>=1.4.2,<2.0.0",
+  "sagemaker-train>=1.5.0,<2.0.0",
+  "sagemaker-serve>=1.5.0,<2.0.0",
   "sagemaker-mlops>=1.5.0,<2.0.0",
 ]
 
