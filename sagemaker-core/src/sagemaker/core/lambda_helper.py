@@ -171,7 +171,7 @@ class Lambda:
 
                     # get function name to be used in S3 upload path
                     if self.function_arn:
-                        versioned_function_name = self.function_arn.split("funtion:")[-1]
+                        versioned_function_name = self.function_arn.split("function:")[-1]
                         if ":" in versioned_function_name:
                             function_name_for_s3 = versioned_function_name.split(":")[0]
                         else:
@@ -201,6 +201,52 @@ class Lambda:
                     time.sleep(2**i)
                 else:
                     raise ValueError(error)
+
+    def update_configuration(self):
+        """Method to update a Lambda function's configuration.
+
+        Updates configuration properties such as timeout, memory_size, runtime,
+        handler, execution_role_arn, vpc_config, environment, and layers.
+
+        Returns: boto3 response from Lambda's update_function_configuration method.
+        """
+        lambda_client = _get_lambda_client(self.session)
+        function_identifier = self.function_name or self.function_arn
+
+        kwargs = {"FunctionName": function_identifier}
+
+        if self.handler is not None:
+            kwargs["Handler"] = self.handler
+        if self.runtime is not None:
+            kwargs["Runtime"] = self.runtime
+        if self.execution_role_arn is not None:
+            kwargs["Role"] = self.execution_role_arn
+        if self.timeout is not None:
+            kwargs["Timeout"] = self.timeout
+        if self.memory_size is not None:
+            kwargs["MemorySize"] = self.memory_size
+        if self.vpc_config:
+            kwargs["VpcConfig"] = self.vpc_config
+        if self.environment:
+            kwargs["Environment"] = self.environment
+        if self.layers:
+            kwargs["Layers"] = self.layers
+
+        retry_attempts = 7
+        for i in range(retry_attempts):
+            try:
+                response = lambda_client.update_function_configuration(**kwargs)
+                return response
+            except ClientError as e:
+                error = e.response["Error"]
+                code = error["Code"]
+                if code == "ResourceConflictException":
+                    if i == retry_attempts - 1:
+                        raise ValueError(error)
+                    time.sleep(2**i)
+                else:
+                    raise ValueError(error)
+
 
     def upsert(self):
         """Method to create a lambda function or update it if it already exists
