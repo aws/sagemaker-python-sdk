@@ -43,6 +43,7 @@ dependencies = [
 train = ["sagemaker-train"]
 serve = ["sagemaker-serve"]
 mlops = ["sagemaker-mlops"]
+feature-processor = ["sagemaker-mlops", "pyspark==3.3.2", "sagemaker-feature-store-pyspark-3.3"]
 all = ["sagemaker-train", "sagemaker-serve", "sagemaker-mlops"]
 
 [project.urls]

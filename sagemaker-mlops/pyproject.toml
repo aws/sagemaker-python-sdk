@@ -35,6 +35,10 @@ test = [
     "pytest",
     "pytest-cov",
     "mock",
+    "pyspark==3.3.2",
+    "sagemaker-feature-store-pyspark-3.3",
+    "pandas",
+    "numpy",
 ]
 dev = [
     "pytest",
