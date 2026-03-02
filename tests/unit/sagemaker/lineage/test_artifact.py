@@ -323,7 +323,12 @@ def test_create_delete_with_association(sagemaker_session):
     )
 
 
-def test_downstream_trials(sagemaker_session):
+@unittest.mock.patch("sagemaker.lineage.artifact.get_module")
+def test_downstream_trials(mock_get_module, sagemaker_session):
+    # Mock smexperiments module
+    mock_smexperiments = unittest.mock.MagicMock()
+    mock_get_module.return_value = mock_smexperiments
+
     sagemaker_session.sagemaker_client.list_associations.side_effect = [
         {
             "AssociationSummaries": [
@@ -379,7 +384,12 @@ def test_downstream_trials(sagemaker_session):
     assert expected_calls == sagemaker_session.sagemaker_client.list_associations.mock_calls
 
 
-def test_downstream_trials_v2(sagemaker_session):
+@unittest.mock.patch("sagemaker.lineage.artifact.get_module")
+def test_downstream_trials_v2(mock_get_module, sagemaker_session):
+    # Mock smexperiments module
+    mock_smexperiments = unittest.mock.MagicMock()
+    mock_get_module.return_value = mock_smexperiments
+
     sagemaker_session.sagemaker_client.query_lineage.return_value = {
         "Vertices": [
             {"Arn": "B" + str(i), "Type": "DataSet", "LineageType": "Artifact"} for i in range(10)
@@ -425,7 +435,12 @@ def test_downstream_trials_v2(sagemaker_session):
     assert expected_calls == sagemaker_session.sagemaker_client.query_lineage.mock_calls
 
 
-def test_upstream_trials(sagemaker_session):
+@unittest.mock.patch("sagemaker.lineage.artifact.get_module")
+def test_upstream_trials(mock_get_module, sagemaker_session):
+    # Mock smexperiments module
+    mock_smexperiments = unittest.mock.MagicMock()
+    mock_get_module.return_value = mock_smexperiments
+
     sagemaker_session.sagemaker_client.query_lineage.return_value = {
         "Vertices": [
             {"Arn": "B" + str(i), "Type": "DataSet", "LineageType": "Artifact"} for i in range(10)
