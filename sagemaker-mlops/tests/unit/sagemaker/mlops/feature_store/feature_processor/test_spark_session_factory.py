@@ -117,19 +117,20 @@ def test_spark_session_factory_with_iceberg_config(mock_spark_context):
     spark_session_factory = SparkSessionFactory(mock_env_helper)
 
     spark_session = spark_session_factory.spark_session
+    mock_conf = Mock()
 
-    spark_session_with_iceberg_config = spark_session_factory.get_spark_session_with_iceberg_config(
-        "warehouse", "catalog"
-    )
+    with patch.object(type(spark_session), "conf", new_callable=lambda: property(lambda self: mock_conf)):
+        spark_session_with_iceberg_config = spark_session_factory.get_spark_session_with_iceberg_config(
+            "warehouse", "catalog"
+        )
 
-    assert spark_session is spark_session_with_iceberg_config
-    mock_spark_conf = spark_session._jvm.SparkSession().conf()
-    expected_calls = [
-        call.set(cfg[0], cfg[1])
-        for cfg in spark_session_factory._get_iceberg_configs("warehouse", "catalog")
-    ]
+        assert spark_session is spark_session_with_iceberg_config
+        expected_calls = [
+            call.set(cfg[0], cfg[1])
+            for cfg in spark_session_factory._get_iceberg_configs("warehouse", "catalog")
+        ]
 
-    mock_spark_conf.assert_has_calls(expected_calls, any_order=False)
+        mock_conf.assert_has_calls(expected_calls, any_order=False)
 
 
 @patch("pyspark.context.SparkContext.getOrCreate")

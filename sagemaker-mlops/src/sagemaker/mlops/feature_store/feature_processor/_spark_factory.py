@@ -180,7 +180,7 @@ class SparkSessionFactory:
             SparkSession: A SparkSession ready to support reading and writing data from an Iceberg
                 Table.
         """
-        conf = self.spark_session._jvm.SparkSession().conf()
+        conf = self.spark_session.conf
 
         for cfg in self._get_iceberg_configs(warehouse_s3_uri, catalog):
             conf.set(cfg[0], cfg[1])
