@@ -79,6 +79,9 @@ def test_spark_session_factory_configuration():
         ]
     ) in spark_configs.get("spark.jars.packages")
 
+    assert spark_configs.get("spark.jars.ivy") is not None
+    assert ".ivy2" in spark_configs.get("spark.jars.ivy")
+
 
 def test_spark_session_factory_configuration_on_training_job():
     env_helper = Mock()
@@ -90,6 +93,7 @@ def test_spark_session_factory_configuration_on_training_job():
 
     assert all(tup[0] != "spark.jars" for tup in spark_config)
     assert all(tup[0] != "spark.jars.packages" for tup in spark_config)
+    assert all(tup[0] != "spark.jars.ivy" for tup in spark_config)
 
 
 @patch("pyspark.context.SparkContext.getOrCreate")
