@@ -42,7 +42,9 @@ class PicklableMock(Mock):
 @pytest.fixture
 def sagemaker_session_mock():
     """Fixture Mock class"""
-    return Mock()
+    mock = Mock()
+    mock.sagemaker_config = None
+    return mock
 
 
 def test_convert_unsupported_types_to_supported(sagemaker_session_mock):

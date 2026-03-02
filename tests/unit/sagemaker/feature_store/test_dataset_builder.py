@@ -31,7 +31,9 @@ from sagemaker.feature_store.feature_group import FeatureDefinition, FeatureGrou
 
 @pytest.fixture
 def sagemaker_session_mock():
-    return Mock()
+    mock = Mock()
+    mock.sagemaker_config = None
+    return mock
 
 
 @pytest.fixture
