@@ -21,11 +21,13 @@ from sagemaker.train.aws_batch.batch_api_helper import (
     _describe_service_job,
     _terminate_service_job,
     _list_service_job,
+    _update_service_job,
 )
 from .conftest import (
     JOB_NAME,
     JOB_QUEUE,
     JOB_ID,
+    JOB_ARN,
     REASON,
     BATCH_TAGS,
     TRAINING_TAGS,
@@ -43,6 +45,8 @@ from .conftest import (
     TRAINING_JOB_PAYLOAD,
     NEXT_TOKEN,
     JOB_STATUS_RUNNING,
+    QUOTA_SHARE_NAME,
+    PREEMPTION_CONFIG,
 )
 
 
@@ -258,3 +262,56 @@ class TestListServiceJob:
 
         call_kwargs = mock_client.list_service_jobs.call_args[1]
         assert call_kwargs["jobStatus"] == JOB_STATUS_RUNNING
+
+
+class TestSubmitServiceJobWithQuotaManagement:
+    """Tests for submit_service_job with quota management parameters"""
+
+    @patch("sagemaker.train.aws_batch.batch_api_helper.get_batch_boto_client")
+    def test_submit_service_job_with_quota_share_name_and_preemption_config(self, mock_get_client):
+        """Test submit_service_job with quota_share_name and preemption_config"""
+        mock_client = Mock()
+        mock_client.submit_service_job.return_value = SUBMIT_SERVICE_JOB_RESP
+        mock_get_client.return_value = mock_client
+
+        result = _submit_service_job(
+            TRAINING_JOB_PAYLOAD.copy(),
+            JOB_NAME,
+            JOB_QUEUE,
+            DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
+            SCHEDULING_PRIORITY,
+            TIMEOUT_CONFIG,
+            None,
+            BATCH_TAGS,
+            QUOTA_SHARE_NAME,
+            PREEMPTION_CONFIG,
+        )
+
+        assert result["jobName"] == JOB_NAME
+        call_kwargs = mock_client.submit_service_job.call_args[1]
+        assert call_kwargs["quotaShareName"] == QUOTA_SHARE_NAME
+        assert call_kwargs["preemptionConfiguration"] == PREEMPTION_CONFIG
+
+
+class TestUpdateServiceJob:
+    """Tests for update_service_job function"""
+
+    @patch("sagemaker.train.aws_batch.batch_api_helper.get_batch_boto_client")
+    def test_update_service_job(self, mock_get_client):
+        """Test update_service_job calls update API"""
+        mock_client = Mock()
+        mock_client.update_service_job.return_value = {
+            "jobArn": JOB_ARN,
+            "jobName": JOB_NAME,
+            "jobId": JOB_ID,
+        }
+        mock_get_client.return_value = mock_client
+
+        result = _update_service_job(JOB_ID, SCHEDULING_PRIORITY)
+
+        assert result["jobArn"] == JOB_ARN
+        assert result["jobName"] == JOB_NAME
+        assert result["jobId"] == JOB_ID
+        mock_client.update_service_job.assert_called_once_with(
+            jobId=JOB_ID, schedulingPriority=SCHEDULING_PRIORITY
+        )

@@ -32,6 +32,8 @@ from .conftest import (
     LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS,
     LIST_SERVICE_JOB_RESP_EMPTY,
     TRAINING_JOB_PAYLOAD,
+    QUOTA_SHARE_NAME,
+    PREEMPTION_CONFIG,
 )
 
 
@@ -377,3 +379,46 @@ class TestTrainingQueueGet:
 
         with pytest.raises(ValueError, match="Cannot find job"):
             queue.get_job(JOB_NAME)
+
+
+class TestTrainingQueueSubmitWithQuotaManagement:
+    """Tests for TrainingQueue.submit with quota management parameters"""
+
+    @patch("sagemaker.train.aws_batch.training_queue._submit_service_job")
+    def test_submit_with_quota_share_name_and_preemption_config(self, mock_submit_service_job):
+        """Test submit with quota_share_name and preemption_config"""
+        mock_submit_service_job.return_value = SUBMIT_SERVICE_JOB_RESP
+
+        trainer = Mock(spec=ModelTrainer)
+        trainer.training_mode = Mode.SAGEMAKER_TRAINING_JOB
+        trainer._create_training_job_args.return_value = TRAINING_JOB_PAYLOAD
+
+        queue = TrainingQueue(JOB_QUEUE)
+        queued_job = queue.submit(
+            trainer,
+            [],
+            JOB_NAME,
+            DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
+            SCHEDULING_PRIORITY,
+            SHARE_IDENTIFIER,
+            TIMEOUT_CONFIG,
+            BATCH_TAGS,
+            None,
+            quota_share_name=QUOTA_SHARE_NAME,
+            preemption_config=PREEMPTION_CONFIG,
+        )
+
+        assert queued_job.job_name == JOB_NAME
+        assert queued_job.job_arn == JOB_ARN
+        mock_submit_service_job.assert_called_once_with(
+            TRAINING_JOB_PAYLOAD,
+            JOB_NAME,
+            JOB_QUEUE,
+            DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
+            SCHEDULING_PRIORITY,
+            TIMEOUT_CONFIG,
+            SHARE_IDENTIFIER,
+            BATCH_TAGS,
+            QUOTA_SHARE_NAME,
+            PREEMPTION_CONFIG,
+        )
