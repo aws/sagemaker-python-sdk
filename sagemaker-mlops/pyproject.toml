@@ -38,8 +38,8 @@ test = [
     "setuptools<82",
     "pyspark==3.3.2",
     "sagemaker-feature-store-pyspark-3.3",
-    "pandas",
-    "numpy",
+    "pandas<3.0",
+    "numpy<3.0",
 ]
 dev = [
     "pytest",
