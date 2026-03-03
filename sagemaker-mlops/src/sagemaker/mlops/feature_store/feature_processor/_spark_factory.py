@@ -13,8 +13,6 @@
 """Contains factory classes for instantiating Spark objects."""
 from __future__ import absolute_import
 
-import os
-import tempfile
 from functools import lru_cache
 from typing import List, Tuple, Dict
 
@@ -135,10 +133,6 @@ class SparkSessionFactory:
                     (
                         "spark.jars.packages",
                         ",".join(fp_spark_packages),
-                    ),
-                    (
-                        "spark.jars.ivy",
-                        os.path.join(tempfile.mkdtemp(), ".ivy2"),
                     ),
                 )
             )
