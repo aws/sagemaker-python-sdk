@@ -85,7 +85,13 @@
                 "ap-southeast-7": "590183813437",
                 "ap-southeast-4": "457447274322",
                 "ap-southeast-5": "550225433462",
-                "mx-central-1": "637423239942"
+                "mx-central-1": "637423239942",
+                "us-iso-east-1": "763104351884",
+                "us-iso-west-1": "763104351884",
+                "us-isb-east-1": "763104351884",
+                "us-isob-west-1": "763104351884",
+                "us-isof-east-1": "763104351884",
+                "us-isof-south-1": "763104351884"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.35.0-lmi17.0.0-cu128"
@@ -127,7 +133,13 @@
                 "ap-southeast-7": "590183813437",
                 "ap-southeast-4": "457447274322",
                 "ap-southeast-5": "550225433462",
-                "mx-central-1": "637423239942"
+                "mx-central-1": "637423239942",
+                "us-iso-east-1": "763104351884",
+                "us-iso-west-1": "763104351884",
+                "us-isb-east-1": "763104351884",
+                "us-isob-west-1": "763104351884",
+                "us-isof-east-1": "763104351884",
+                "us-isof-south-1": "763104351884"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.34.0-lmi16.0.0-cu128"
@@ -169,7 +181,13 @@
                 "ap-southeast-7": "590183813437",
                 "ap-southeast-4": "457447274322",
                 "ap-southeast-5": "550225433462",
-                "mx-central-1": "637423239942"
+                "mx-central-1": "637423239942",
+                "us-iso-east-1": "763104351884",
+                "us-iso-west-1": "763104351884",
+                "us-isb-east-1": "763104351884",
+                "us-isob-west-1": "763104351884",
+                "us-isof-east-1": "763104351884",
+                "us-isof-south-1": "763104351884"
             },
             "repository": "djl-inference",
             "tag_prefix": "0.33.0-lmi15.0.0-cu128"
