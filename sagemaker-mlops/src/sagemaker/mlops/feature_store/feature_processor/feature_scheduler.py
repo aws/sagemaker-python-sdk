@@ -73,6 +73,7 @@ from sagemaker.mlops.feature_store.feature_processor._feature_processor_config i
 )
 
 from sagemaker.core.s3 import s3_path_join
+from sagemaker.core.resources import FeatureGroup
 
 from sagemaker.core.helper.session_helper import Session, get_execution_role
 from sagemaker.mlops.feature_store.feature_processor._event_bridge_scheduler_helper import (
@@ -770,8 +771,8 @@ def _validate_fg_lineage_resources(feature_group_name: str, sagemaker_session: S
         groups.
     """
 
-    feature_group = sagemaker_session.describe_feature_group(feature_group_name=feature_group_name)
-    feature_group_creation_time = feature_group["CreationTime"].strftime("%s")
+    feature_group = FeatureGroup.get(feature_group_name=feature_group_name, session=sagemaker_session.boto_session)
+    feature_group_creation_time = feature_group.creation_time.strftime("%s")
     feature_group_context = _get_feature_group_lineage_context_name(
         feature_group_name=feature_group_name,
         feature_group_creation_time=feature_group_creation_time,

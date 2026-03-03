@@ -29,6 +29,7 @@ from sagemaker.mlops.feature_store.feature_processor import (
 )
 from sagemaker.core.lineage.context import Context
 from sagemaker.core.remote_function.spark_config import SparkConfig
+from sagemaker.core.resources import FeatureGroup
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.mlops.feature_store.feature_processor._enums import FeatureProcessorMode
@@ -89,10 +90,13 @@ PIPELINE_CONTEXT_NAME_TAG_KEY = "sm-fs-fe:feature-engineering-pipeline-context-n
 PIPELINE_VERSION_CONTEXT_NAME_TAG_KEY = "sm-fs-fe:feature-engineering-pipeline-version-context-name"
 NOW = datetime.now()
 SAGEMAKER_SESSION_MOCK = Mock(Session)
+SAGEMAKER_SESSION_MOCK.boto_session = Mock()
 CONTEXT_MOCK_01 = Mock(Context)
 CONTEXT_MOCK_02 = Mock(Context)
 CONTEXT_MOCK_03 = Mock(Context)
 FEATURE_GROUP = tdh.DESCRIBE_FEATURE_GROUP_RESPONSE.copy()
+FEATURE_GROUP_MOCK = Mock()
+FEATURE_GROUP_MOCK.creation_time = FEATURE_GROUP["CreationTime"]
 PIPELINE = tdh.PIPELINE.copy()
 TAGS = [dict(Key="key_1", Value="value_1"), dict(Key="key_2", Value="value_2")]
 
@@ -783,8 +787,8 @@ def test_execute(validation):
 
 def test_validate_fg_lineage_resources_happy_case():
     with patch.object(
-        SAGEMAKER_SESSION_MOCK, "describe_feature_group", return_value=FEATURE_GROUP
-    ) as fg_describe_method:
+        FeatureGroup, "get", return_value=FEATURE_GROUP_MOCK
+    ) as fg_get_method:
         with patch.object(
             Context, "load", side_effect=[CONTEXT_MOCK_01, CONTEXT_MOCK_02, CONTEXT_MOCK_03]
         ) as context_load:
@@ -795,16 +799,17 @@ def test_validate_fg_lineage_resources_happy_case():
                 feature_group_name="some_fg",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             )
-    fg_describe_method.assert_called_once_with(feature_group_name="some_fg")
+    fg_get_method.assert_called_once_with(feature_group_name="some_fg", session=SAGEMAKER_SESSION_MOCK.boto_session)
+    creation_time_str = FEATURE_GROUP_MOCK.creation_time.strftime("%s")
     context_load.assert_has_calls(
         [
             call(
-                context_name=f'{"some_fg"}-{FEATURE_GROUP["CreationTime"].strftime("%s")}'
+                context_name=f'{"some_fg"}-{creation_time_str}'
                 f"-feature-group-pipeline",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             ),
             call(
-                context_name=f'{"some_fg"}-{FEATURE_GROUP["CreationTime"].strftime("%s")}'
+                context_name=f'{"some_fg"}-{creation_time_str}'
                 f"-feature-group-pipeline-version",
                 sagemaker_session=SAGEMAKER_SESSION_MOCK,
             ),
@@ -814,7 +819,7 @@ def test_validate_fg_lineage_resources_happy_case():
 
 
 def test_validete_fg_lineage_resources_rnf():
-    with patch.object(SAGEMAKER_SESSION_MOCK, "describe_feature_group", return_value=FEATURE_GROUP):
+    with patch.object(FeatureGroup, "get", return_value=FEATURE_GROUP_MOCK):
         with patch.object(
             Context,
             "load",
@@ -824,7 +829,7 @@ def test_validete_fg_lineage_resources_rnf():
             ),
         ):
             feature_group_name = "some_fg"
-            feature_group_creation_time = FEATURE_GROUP["CreationTime"].strftime("%s")
+            feature_group_creation_time = FEATURE_GROUP_MOCK.creation_time.strftime("%s")
             context_name = f"{feature_group_name}-{feature_group_creation_time}"
             with pytest.raises(
                 ValueError,

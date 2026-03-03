@@ -46,6 +46,7 @@ PIPELINE_ARN = "arn:aws:sagemaker:us-west-2:12345789012:pipeline/test-pipeline-0
 CREATION_TIME = "123123123"
 LAST_UPDATE_TIME = "234234234"
 SAGEMAKER_SESSION_MOCK = Mock(Session)
+SAGEMAKER_SESSION_MOCK.boto_session = Mock()
 CONTEXT_MOCK_01 = Mock(Context)
 CONTEXT_MOCK_02 = Mock(Context)
 

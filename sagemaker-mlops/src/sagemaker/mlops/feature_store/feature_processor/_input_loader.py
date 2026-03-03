@@ -34,6 +34,7 @@ from sagemaker.mlops.feature_store.feature_processor._input_offset_parser import
     InputOffsetParser,
 )
 from sagemaker.mlops.feature_store.feature_processor._env import EnvironmentHelper
+from sagemaker.core.resources import FeatureGroup
 
 T = TypeVar("T")
 
@@ -96,8 +97,9 @@ class SparkDataFrameInputLoader(InputLoader[DataFrame]):
         sagemaker_session: Session = self.sagemaker_session or Session()
 
         feature_group_name = feature_group_data_source.name
-        feature_group = sagemaker_session.describe_feature_group(
-            self._parse_name_from_arn(feature_group_name)
+        feature_group = FeatureGroup.get(
+            feature_group_name=self._parse_name_from_arn(feature_group_name),
+            session=sagemaker_session.boto_session,
         )
         logger.debug(
             "Called describe_feature_group with %s and received: %s",
@@ -105,17 +107,20 @@ class SparkDataFrameInputLoader(InputLoader[DataFrame]):
             feature_group,
         )
 
-        if "OfflineStoreConfig" not in feature_group:
+        if not feature_group.offline_store_config:
             raise ValueError(
                 f"Input Feature Groups must have an enabled Offline Store."
                 f" Feature Group: {feature_group_name} does not have an Offline Store enabled."
             )
 
-        offline_store_uri = feature_group["OfflineStoreConfig"]["S3StorageConfig"][
-            "ResolvedOutputS3Uri"
-        ]
+        offline_store_config = feature_group.offline_store_config
+        offline_store_uri = offline_store_config.s3_storage_config.resolved_output_s3_uri
 
-        table_format = feature_group["OfflineStoreConfig"].get("TableFormat", None)
+        table_format = (
+            offline_store_config.table_format
+            if offline_store_config.table_format
+            else None
+        )
 
         if table_format not in self._supported_table_format:
             raise ValueError(
@@ -127,15 +132,15 @@ class SparkDataFrameInputLoader(InputLoader[DataFrame]):
         end_offset = feature_group_data_source.input_end_offset
 
         if table_format == "Iceberg":
-            data_catalog_config = feature_group["OfflineStoreConfig"]["DataCatalogConfig"]
+            data_catalog_config = offline_store_config.data_catalog_config
             return self.load_from_iceberg_table(
                 IcebergTableDataSource(
                     offline_store_uri,
-                    data_catalog_config["Catalog"],
-                    data_catalog_config["Database"],
-                    data_catalog_config["TableName"],
+                    data_catalog_config.catalog,
+                    data_catalog_config.database,
+                    data_catalog_config.table_name,
                 ),
-                feature_group["EventTimeFeatureName"],
+                feature_group.event_time_feature_name,
                 start_offset,
                 end_offset,
             )

@@ -29,16 +29,53 @@ from sagemaker.mlops.feature_store.feature_processor._input_loader import (
 from sagemaker.mlops.feature_store.feature_processor._spark_factory import SparkSessionFactory
 from sagemaker.mlops.feature_store.feature_processor._env import EnvironmentHelper
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.resources import FeatureGroup
+
+
+def _build_fg_mock(response=None):
+    """Build a mock FeatureGroup object from a describe response dict."""
+    if response is None:
+        response = tdh.DESCRIBE_FEATURE_GROUP_RESPONSE.copy()
+    fg_mock = Mock()
+    fg_mock.feature_group_name = response["FeatureGroupName"]
+    fg_mock.event_time_feature_name = response["EventTimeFeatureName"]
+    fg_mock.creation_time = response["CreationTime"]
+
+    if "OfflineStoreConfig" in response:
+        osc = response["OfflineStoreConfig"]
+        fg_mock.offline_store_config = Mock()
+        fg_mock.offline_store_config.s3_storage_config = Mock()
+        fg_mock.offline_store_config.s3_storage_config.resolved_output_s3_uri = (
+            osc["S3StorageConfig"]["ResolvedOutputS3Uri"]
+        )
+        fg_mock.offline_store_config.table_format = osc.get("TableFormat", None)
+        if "DataCatalogConfig" in osc:
+            fg_mock.offline_store_config.data_catalog_config = Mock()
+            fg_mock.offline_store_config.data_catalog_config.catalog = osc["DataCatalogConfig"]["Catalog"]
+            fg_mock.offline_store_config.data_catalog_config.database = osc["DataCatalogConfig"]["Database"]
+            fg_mock.offline_store_config.data_catalog_config.table_name = osc["DataCatalogConfig"]["TableName"]
+    else:
+        fg_mock.offline_store_config = None
+
+    return fg_mock
 
 
 @pytest.fixture
-def describe_fg_response():
-    return tdh.DESCRIBE_FEATURE_GROUP_RESPONSE.copy()
+def fg_mock():
+    return _build_fg_mock()
 
 
 @pytest.fixture
-def sagemaker_session(describe_fg_response):
-    return Mock(Session, describe_feature_group=Mock(return_value=describe_fg_response))
+def sagemaker_session():
+    session = Mock(Session)
+    session.boto_session = Mock()
+    return session
+
+
+@pytest.fixture
+def mock_fg_get(fg_mock):
+    with patch.object(FeatureGroup, "get", return_value=fg_mock) as mock_get:
+        yield mock_get
 
 
 @pytest.fixture
@@ -152,7 +189,7 @@ def test_load_from_iceberg_table(
     "sagemaker.mlops.feature_store.feature_processor._input_loader.SparkDataFrameInputLoader.load_from_date_partitioned_s3"
 )
 def test_load_from_feature_group_with_arn(
-    mock_load_from_date_partitioned_s3, sagemaker_session, input_loader
+    mock_load_from_date_partitioned_s3, sagemaker_session, input_loader, mock_fg_get
 ):
     fg_arn = tdh.INPUT_FEATURE_GROUP_ARN
     fg_name = tdh.INPUT_FEATURE_GROUP_NAME
@@ -162,7 +199,7 @@ def test_load_from_feature_group_with_arn(
 
     input_loader.load_from_feature_group(fg_data_source)
 
-    sagemaker_session.describe_feature_group.assert_called_with(fg_name)
+    mock_fg_get.assert_called_with(feature_group_name=fg_name, session=sagemaker_session.boto_session)
     mock_load_from_date_partitioned_s3.assert_called_with(
         ParquetDataSource(tdh.INPUT_FEATURE_GROUP_RESOLVED_OUTPUT_S3_URI),
         "start",
@@ -170,50 +207,56 @@ def test_load_from_feature_group_with_arn(
     )
 
 
-def test_load_from_feature_group_offline_store_not_enabled(input_loader, describe_fg_response):
+def test_load_from_feature_group_offline_store_not_enabled(input_loader):
     fg_name = tdh.INPUT_FEATURE_GROUP_NAME
     fg_data_source = FeatureGroupDataSource(name=fg_name)
-    with pytest.raises(
-        ValueError,
-        match=(
-            f"Input Feature Groups must have an enabled Offline Store."
-            f" Feature Group: {fg_name} does not have an Offline Store enabled."
-        ),
-    ):
-        del describe_fg_response["OfflineStoreConfig"]
-        input_loader.load_from_feature_group(fg_data_source)
+    no_offline_response = tdh.DESCRIBE_FEATURE_GROUP_RESPONSE.copy()
+    del no_offline_response["OfflineStoreConfig"]
+    no_offline_mock = _build_fg_mock(no_offline_response)
+    with patch.object(FeatureGroup, "get", return_value=no_offline_mock):
+        with pytest.raises(
+            ValueError,
+            match=(
+                f"Input Feature Groups must have an enabled Offline Store."
+                f" Feature Group: {fg_name} does not have an Offline Store enabled."
+            ),
+        ):
+            input_loader.load_from_feature_group(fg_data_source)
 
 
 def test_load_from_feature_group_with_default_table_format(
-    sagemaker_session, input_loader, spark_session
+    sagemaker_session, input_loader, spark_session, mock_fg_get
 ):
     fg_name = tdh.INPUT_FEATURE_GROUP_NAME
     fg_data_source = FeatureGroupDataSource(name=fg_name)
     input_loader.load_from_feature_group(fg_data_source)
 
-    sagemaker_session.describe_feature_group.assert_called_with(fg_name)
+    mock_fg_get.assert_called_with(feature_group_name=fg_name, session=sagemaker_session.boto_session)
     spark_session.read.parquet.assert_called_with(
         tdh.INPUT_FEATURE_GROUP_RESOLVED_OUTPUT_S3_URI.replace("s3:", "s3a:")
     )
 
 
 def test_load_from_feature_group_with_iceberg_table_format(
-    describe_fg_response, spark_session_factory, spark_session, environment_helper
+    spark_session_factory, spark_session, environment_helper
 ):
-    describe_iceberg_fg_response = describe_fg_response.copy()
+    describe_iceberg_fg_response = tdh.DESCRIBE_FEATURE_GROUP_RESPONSE.copy()
     describe_iceberg_fg_response["OfflineStoreConfig"]["TableFormat"] = "Iceberg"
-    mocked_session = Mock(
-        Session, describe_feature_group=Mock(return_value=describe_iceberg_fg_response)
-    )
+    iceberg_fg_mock = _build_fg_mock(describe_iceberg_fg_response)
+    mocked_session = Mock(Session)
+    mocked_session.boto_session = Mock()
     mock_input_loader = SparkDataFrameInputLoader(
         spark_session_factory, environment_helper, mocked_session
     )
 
     fg_name = tdh.INPUT_FEATURE_GROUP_NAME
     fg_data_source = FeatureGroupDataSource(name=fg_name)
-    mock_input_loader.load_from_feature_group(fg_data_source)
+    with patch.object(
+        FeatureGroup, "get", return_value=iceberg_fg_mock
+    ) as mock_get:
+        mock_input_loader.load_from_feature_group(fg_data_source)
 
-    mocked_session.describe_feature_group.assert_called_with(fg_name)
+        mock_get.assert_called_with(feature_group_name=fg_name, session=mocked_session.boto_session)
     spark_session.table.assert_called_with(
         "awsdatacatalog.sagemaker_featurestore.input_fg_1680142547"
     )

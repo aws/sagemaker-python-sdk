@@ -14,7 +14,6 @@
 from __future__ import absolute_import
 
 import re
-from typing import Dict, Any
 import logging
 
 from sagemaker.core.helper.session_helper import Session
@@ -24,10 +23,9 @@ from sagemaker.mlops.feature_store.feature_processor.lineage._feature_group_cont
 )
 from sagemaker.mlops.feature_store.feature_processor.lineage.constants import (
     SAGEMAKER,
-    FEATURE_GROUP,
-    CREATION_TIME,
 )
 from sagemaker.core.lineage.context import Context
+from sagemaker.core.resources import FeatureGroup
 
 # pylint: disable=C0301
 from sagemaker.mlops.feature_store.feature_processor.lineage._feature_processor_lineage_name_helper import (
@@ -62,8 +60,8 @@ class FeatureGroupLineageEntityHandler:
             ),
             sagemaker_session=sagemaker_session,
         )
-        feature_group_name = feature_group[FEATURE_GROUP]
-        feature_group_creation_time = feature_group[CREATION_TIME].strftime("%s")
+        feature_group_name = feature_group.feature_group_name
+        feature_group_creation_time = feature_group.creation_time.strftime("%s")
         feature_group_pipeline_context = (
             FeatureGroupLineageEntityHandler._load_feature_group_pipeline_context(
                 feature_group_name=feature_group_name,
@@ -87,7 +85,7 @@ class FeatureGroupLineageEntityHandler:
     @staticmethod
     def _describe_feature_group(
         feature_group_name: str, sagemaker_session: Session
-    ) -> Dict[str, Any]:
+    ) -> FeatureGroup:
         """Retrieve the Feature Group.
 
         Arguments:
@@ -97,9 +95,9 @@ class FeatureGroupLineageEntityHandler:
                 function creates one using the default AWS configuration chain.
 
         Returns:
-            Dict[str, Any]: The Feature Group details.
+            FeatureGroup: The Feature Group resource.
         """
-        feature_group = sagemaker_session.describe_feature_group(feature_group_name)
+        feature_group = FeatureGroup.get(feature_group_name=feature_group_name, session=sagemaker_session.boto_session)
         logger.debug(
             "Called describe_feature_group with %s and received: %s",
             feature_group_name,
