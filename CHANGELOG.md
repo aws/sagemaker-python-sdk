@@ -1,4 +1,26 @@
 # Changelog
+## v3.5.0 (2026-03-02)
+
+### Features
+- **Feature Store v3**: New version of Feature Store functionality
+- **Batch job listing by share identifier**: Added support for listing Batch jobs filtered by share identifier
+- **Stop condition for model customization trainers**: Added stopping condition support to model customization trainers
+- **EMRStep smart output**: Enhanced EMR step output handling with smart output capabilities
+- **Transform AMI version support**: Added support for specifying AMI version in SageMaker transform jobs
+
+### Enhancements
+- **Inference pipeline notebook example**: Added example notebook demonstrating inference pipeline usage
+- **Migration documentation**: Added migration documentation
+
+### Bug Fixes
+- **Model Customization bugs**: Fixed multiple issues in Model Customization functionality
+- **Default stopping condition removal**: Removed default stopping condition for MC trainer to prevent conflicts
+- **Instance groups parameter handling**: Fixed issue where default instance_type/instance_count were incorrectly applied when instance_groups was set
+- **JumpStart alt config resolution**: Resolved alternative configuration resolution for JumpStart models
+- **Inference processor naming**: Updated inference processor identifier from 'inf2' to 'neuronx'
+- **HuggingFace Neuronx PyTorch version**: Corrected the PyTorch version for HuggingFace Neuronx
+- **License additions**: Added license to sagemaker-mlops and sagemaker-serve packages
+
 ## v3.4.1 (2026-02-10)
 
 ### Fixes
