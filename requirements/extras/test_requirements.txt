@@ -1,10 +1,11 @@
 tox==3.24.5
+setuptools<72.0.0
 numpy>=2.0.0, <3.0
 build[virtualenv]==1.2.1
 flake8==7.1.2
 pytest==6.2.5
 pytest-cov==3.0.0
-pytest-rerunfailures==10.2
+pytest-rerunfailures<14.0,>=11.0
 pytest-timeout==2.1.0
 pytest-xdist==2.4.0
 coverage>=5.2, <6.2

@@ -19,7 +19,7 @@ import os
 import pytest
 from mock import MagicMock, Mock, ANY
 from mock import patch
-from pkg_resources import parse_version
+from packaging.version import parse as parse_version
 
 from sagemaker.fw_utils import UploadedCode
 from sagemaker.drift_check_baselines import DriftCheckBaselines

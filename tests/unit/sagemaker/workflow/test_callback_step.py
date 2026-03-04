@@ -29,6 +29,7 @@ def sagemaker_session_mock():
     session_mock = Mock()
     session_mock.boto_session.client = Mock()
     session_mock.boto_region_name = "us-west-2"
+    session_mock.sagemaker_config = None
     return session_mock
 
 
