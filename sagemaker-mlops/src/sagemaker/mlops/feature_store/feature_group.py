@@ -2,6 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 """FeatureGroup with Lake Formation support."""
 
+import json
 import logging
 from typing import List, Optional
 
@@ -132,6 +133,7 @@ class FeatureGroup(CoreFeatureGroup):
         s3_prefix: str,
         lake_formation_role_arn: str,
         feature_store_role_arn: str,
+        region: Optional[str] = None,
     ) -> dict:
         """
         Generate an S3 deny policy for Lake Formation governance.
@@ -144,6 +146,8 @@ class FeatureGroup(CoreFeatureGroup):
             s3_prefix: S3 prefix path (without bucket name).
             lake_formation_role_arn: Lake Formation registration role ARN.
             feature_store_role_arn: Feature Store execution role ARN.
+            region: AWS region name (e.g., 'us-west-2'). Used to determine the correct
+                partition for S3 ARNs. If not provided, defaults to 'aws' partition.
 
         Returns:
             S3 bucket policy as a dict with valid JSON structure containing:
@@ -152,6 +156,8 @@ class FeatureGroup(CoreFeatureGroup):
               1. Deny GetObject, PutObject, DeleteObject on data prefix except allowed principals
               2. Deny ListBucket on bucket with prefix condition except allowed principals
         """
+        partition = aws_partition(region) if region else "aws"
+
         policy = {
             "Version": "2012-10-17",
             "Statement": [
@@ -160,7 +166,7 @@ class FeatureGroup(CoreFeatureGroup):
                     "Effect": "Deny",
                     "Principal": "*",
                     "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-                    "Resource": f"arn:aws:s3:::{bucket_name}/{s3_prefix}/*",
+                    "Resource": f"arn:{partition}:s3:::{bucket_name}/{s3_prefix}/*",
                     "Condition": {
                         "StringNotEquals": {
                             "aws:PrincipalArn": [
@@ -175,7 +181,7 @@ class FeatureGroup(CoreFeatureGroup):
                     "Effect": "Deny",
                     "Principal": "*",
                     "Action": "s3:ListBucket",
-                    "Resource": f"arn:aws:s3:::{bucket_name}",
+                    "Resource": f"arn:{partition}:s3:::{bucket_name}",
                     "Condition": {
                         "StringLike": {"s3:prefix": f"{s3_prefix}/*"},
                         "StringNotEquals": {
@@ -196,7 +202,11 @@ class FeatureGroup(CoreFeatureGroup):
         region: Optional[str] = None,
     ):
         """
-        Get a Lake Formation client.
+        Get a Lake Formation client, reusing a cached client when possible.
+
+        The client is cached on the instance keyed by (session, region). Subsequent
+        calls with the same arguments return the existing client instead of creating
+        a new one.
 
         Args:
             session: Boto3 session. If not provided, a new session will be created.
@@ -205,9 +215,17 @@ class FeatureGroup(CoreFeatureGroup):
         Returns:
             A boto3 Lake Formation client.
         """
-        # TODO: don't create w new client for each call
-        boto_session = session or Session()
-        return boto_session.client("lakeformation", region_name=region)
+        cache_key = (id(session), region)
+        if not hasattr(self, "_lf_client_cache"):
+            self._lf_client_cache: dict = {}
+
+        if cache_key not in self._lf_client_cache:
+            boto_session = session or Session()
+            self._lf_client_cache[cache_key] = boto_session.client(
+                "lakeformation", region_name=region
+            )
+
+        return self._lf_client_cache[cache_key]
 
     def _register_s3_with_lake_formation(
         self,
@@ -242,7 +260,7 @@ class FeatureGroup(CoreFeatureGroup):
 
         # Get region from session if not provided
         if region is None and session is not None:
-            region = session.region_name()
+            region = session.region_name
 
         client = self._get_lake_formation_client(session, region)
         resource_arn = self._s3_uri_to_arn(s3_location, region)
@@ -288,7 +306,7 @@ class FeatureGroup(CoreFeatureGroup):
         """
         # Get region from session if not provided
         if region is None and session is not None:
-            region = session.region_name()
+            region = session.region_name
 
         client = self._get_lake_formation_client(session, region)
 
@@ -341,7 +359,7 @@ class FeatureGroup(CoreFeatureGroup):
         """
         # Get region from session if not provided
         if region is None and session is not None:
-            region = session.region_name()
+            region = session.region_name
 
         client = self._get_lake_formation_client(session, region)
         permissions = ["SELECT", "INSERT", "DELETE", "DESCRIBE", "ALTER"]
@@ -569,11 +587,10 @@ class FeatureGroup(CoreFeatureGroup):
                 s3_prefix=s3_prefix,
                 lake_formation_role_arn=lf_role_arn,
                 feature_store_role_arn=role_arn_str,
+                region=region,
             )
 
             # Print policy with clear instructions
-            import json
-
             print("\n" + "=" * 80)
             print("S3 Bucket Policy Update recommended")
             print("=" * 80)
