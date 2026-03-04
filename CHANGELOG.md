@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.257.1 (2026-03-04)
+
+### Bug Fixes
+* Fix test failures with pytest and setuptools compatibility (#5574)
+
+### Dependency Updates
+* Relax protobuf version constraint to <7.0 (#5573)
+
+### Enhancements
+* Add telemetry for Feature Store (#5557)
+* Add VERL (Versatile Reinforcement Learning) support (#5498)
+
+
 ## v2.257.0 (2026-02-03)
 
 ### Features
