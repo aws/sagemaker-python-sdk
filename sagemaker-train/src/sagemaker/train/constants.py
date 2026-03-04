@@ -62,3 +62,7 @@ _ALLOWED_EVALUATOR_MODELS = {
     "mistral.mistral-large-2402-v1:0": ["us-west-2", "us-east-1", "eu-west-1"],
     "amazon.nova-pro-v1:0": ["us-east-1"]
 }
+
+SM_RECIPE = "recipe"
+SM_RECIPE_YAML = "recipe.yaml"
+SM_RECIPE_CONTAINER_PATH = f"/opt/ml/input/data/recipe/{SM_RECIPE_YAML}"

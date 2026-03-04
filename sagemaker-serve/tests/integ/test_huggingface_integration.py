@@ -25,7 +25,7 @@ from sagemaker.core.resources import EndpointConfig
 logger = logging.getLogger(__name__)
 
 # Configuration - easily customizable
-MODEL_ID = "t5-small"  # Small text generation model
+MODEL_ID = "gpt2"  # Small causal language model compatible with DJL 0.36.0 vLLM
 MODEL_NAME_PREFIX = "hf-test-model"
 ENDPOINT_NAME_PREFIX = "hf-test-endpoint"
 

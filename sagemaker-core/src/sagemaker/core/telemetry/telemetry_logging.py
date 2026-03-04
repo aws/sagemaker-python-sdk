@@ -56,6 +56,7 @@ FEATURE_TO_CODE = {
     str(Feature.MODEL_TRAINER): 14,
     str(Feature.MODEL_CUSTOMIZATION): 15,
     str(Feature.MLOPS): 16,
+    str(Feature.FEATURE_STORE): 17,
 }
 
 STATUS_TO_CODE = {
@@ -81,6 +82,9 @@ def _telemetry_emitter(feature: str, func_name: str):
             if len(args) > 0 and hasattr(args[0], "sagemaker_session"):
                 # Get the sagemaker_session from the instance method args
                 sagemaker_session = args[0].sagemaker_session
+            elif len(args) > 0 and hasattr(args[0], "_sagemaker_session"):
+                # Get the sagemaker_session from the instance method args (private attribute)
+                sagemaker_session = args[0]._sagemaker_session
             elif feature == Feature.REMOTE_FUNCTION:
                 # Get the sagemaker_session from the function keyword arguments for remote function
                 sagemaker_session = kwargs.get(

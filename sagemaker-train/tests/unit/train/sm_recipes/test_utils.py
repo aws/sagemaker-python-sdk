@@ -17,6 +17,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 import yaml
+from omegaconf import OmegaConf
 from urllib.request import urlretrieve
 from tempfile import NamedTemporaryFile
 
@@ -27,6 +28,10 @@ from sagemaker.train.sm_recipes.utils import (
     _configure_gpu_args,
     _configure_trainium_args,
     _get_trainining_recipe_gpu_model_name_and_script,
+    _is_nova_recipe,
+    _is_llmft_recipe,
+    _get_args_from_nova_recipe,
+    _get_args_from_llmft_recipe,
 )
 from sagemaker.train.utils import _run_clone_command_silent
 from sagemaker.train.configs import Compute
@@ -270,3 +275,158 @@ def test_get_args_from_recipe_with_evaluation(temporary_recipe):
                 assert args["hyperparameters"]["lambda_arn"] == "arn:aws:lambda:us-east-1:123456789012:function:MyFunc"
     finally:
         os.unlink(recipe_path)
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+                "trainer": {"num_nodes": "12"},
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "is_llmft": True,
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "is_llmft": True,
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+            },
+            "is_llmft": False,
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "xyz",
+                },
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "is_llmft": False,
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "verl-grpo-llama",
+                    "model_type": "verl",
+                },
+                "trainer": {"num_nodes": "1"},
+                "training_config": {"trainer": {"total_epochs": 2}},
+            },
+            "is_llmft": True,
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "verl-grpo-llama",
+                    "model_type": "verl",
+                },
+            },
+            "is_llmft": False,
+        },
+    ],
+    ids=[
+        "llmft_model",
+        "llmft_model_subtype",
+        "llmft_missing_training_config",
+        "non_llmft_model",
+        "verl_model",
+        "verl_missing_training_config",
+    ],
+)
+def test_is_llmft_recipe(test_case):
+    recipe = OmegaConf.create(test_case["recipe"])
+    is_llmft = _is_llmft_recipe(recipe)
+    assert is_llmft == test_case["is_llmft"]
+
+
+@patch("sagemaker.train.sm_recipes.utils._get_args_from_llmft_recipe")
+def test_get_args_from_recipe_with_llmft_and_role(mock_get_args_from_llmft_recipe):
+    # Set up mock return value
+    mock_args = {}
+    mock_dir = MagicMock()
+    mock_get_args_from_llmft_recipe.return_value = (mock_args, mock_dir)
+
+    recipe = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "llm_finetuning_aws",
+        },
+        "trainer": {"num_nodes": "12"},
+        "training_config": {"model_save_name": "xyz"},
+    }
+    compute = Compute(instance_type="ml.g5.xlarge")
+    role = "arn:aws:iam::123456789012:role/SageMakerRole"
+
+    # Mock the LLMFT recipe detection to return True
+    with patch("sagemaker.train.sm_recipes.utils._is_llmft_recipe", return_value=True):
+        _get_args_from_recipe(
+            training_recipe=recipe,
+            compute=compute,
+            region_name="us-west-2",
+            recipe_overrides=None,
+            requirements=None,
+            role=role,
+        )
+
+        # Verify _get_args_from_llmft_recipe was called
+        mock_get_args_from_llmft_recipe.assert_called_once_with(recipe, compute)
+
+
+@pytest.mark.parametrize(
+    "test_case",
+    [
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+                "trainer": {"num_nodes": "12"},
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+            "expected_args": {
+                "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+                "training_image": None,
+                "source_code": None,
+                "distributed": None,
+            },
+        },
+        {
+            "recipe": {
+                "run": {
+                    "name": "dummy-model",
+                    "model_type": "llm_finetuning_aws",
+                },
+                "training_config": {"model_save_name": "xyz"},
+            },
+            "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+            "expected_args": {
+                "compute": Compute(instance_type="ml.m5.xlarge", instance_count=2),
+                "training_image": None,
+                "source_code": None,
+                "distributed": None,
+            },
+        },
+    ],
+)
+def test_get_args_from_llmft_recipe(test_case):
+    recipe = OmegaConf.create(test_case["recipe"])
+    args, _ = _get_args_from_llmft_recipe(recipe=recipe, compute=test_case["compute"])
+    assert args == test_case["expected_args"]

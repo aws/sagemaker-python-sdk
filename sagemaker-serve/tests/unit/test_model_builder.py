@@ -515,3 +515,203 @@ class ModelCustomizationTest(unittest.TestCase):
                                                 )
         
         self.assertEqual(result, mock_endpoint)
+
+    def test_deploy_model_customization_with_inference_config(self):
+        """Test _deploy_model_customization with inference_config parameter."""
+        from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
+        from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent, Action, Association, Artifact
+        from sagemaker.core.inference_config import ResourceRequirements
+        
+        # Setup mocks
+        mock_endpoint_config = Mock()
+        mock_endpoint = Mock()
+        mock_endpoint.wait_for_status = Mock()
+        mock_ic = Mock()
+        mock_ic.inference_component_arn = "arn:aws:sagemaker:us-east-1:123456789012:inference-component/test-ic"
+        mock_action = Mock()
+        mock_action.action_arn = "arn:aws:sagemaker:us-east-1:123456789012:action/test-action"
+        mock_artifact = Mock()
+        mock_artifact.artifact_arn = "arn:aws:sagemaker:us-east-1:123456789012:artifact/test-artifact"
+        
+        mock_model_package = Mock()
+        mock_model_package.inference_specification.containers = [Mock()]
+        mock_model_package.inference_specification.containers[0].base_model.recipe_name = "test-recipe"
+        mock_model_package.inference_specification.containers[0].model_data_source.s3_data_source.s3_uri = "s3://bucket/model"
+        
+        builder = ModelBuilder(
+            model=self.mock_training_job,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+            image_uri="test-image:latest",
+            instance_type="ml.g5.12xlarge"
+        )
+        
+        # Set cached compute requirements (should be overridden by inference_config)
+        builder._cached_compute_requirements = InferenceComponentComputeResourceRequirements(
+            min_memory_required_in_mb=1024,
+            number_of_cpu_cores_required=1,
+            number_of_accelerator_devices_required=1
+        )
+        
+        # Create inference_config with different values
+        inference_config = ResourceRequirements(
+            requests={
+                "num_accelerators": 4,
+                "num_cpus": 8,
+                "memory": 49152
+            },
+            limits={
+                "memory": 98304
+            }
+        )
+        
+        # Track the InferenceComponent.create call to verify compute requirements
+        created_ic_spec = None
+        def capture_ic_create(**kwargs):
+            nonlocal created_ic_spec
+            created_ic_spec = kwargs.get('specification')
+            return mock_ic
+        
+        with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
+            with patch.object(builder, '_fetch_peft', return_value=None):
+                with patch.object(EndpointConfig, 'create', return_value=mock_endpoint_config):
+                    with patch.object(Endpoint, 'get', side_effect=ClientError({'Error': {'Code': 'ValidationException'}}, 'GetEndpoint')):
+                        with patch.object(Endpoint, 'create', return_value=mock_endpoint):
+                            with patch.object(InferenceComponent, 'create', side_effect=capture_ic_create):
+                                with patch.object(InferenceComponent, 'get', return_value=mock_ic):
+                                    with patch.object(Action, 'create', return_value=mock_action):
+                                        with patch.object(Artifact, 'get_all', return_value=[mock_artifact]):
+                                            with patch.object(Association, 'add', return_value=None):
+                                                result = builder._deploy_model_customization(
+                                                    endpoint_name="test-endpoint",
+                                                    instance_type="ml.g5.12xlarge",
+                                                    initial_instance_count=1,
+                                                    inference_config=inference_config
+                                                )
+        
+        # Verify the result
+        self.assertEqual(result, mock_endpoint)
+        
+        # Verify that inference_config values were used (not cached values)
+        self.assertIsNotNone(created_ic_spec)
+        compute_reqs = created_ic_spec.compute_resource_requirements
+        self.assertEqual(compute_reqs.min_memory_required_in_mb, 49152)
+        self.assertEqual(compute_reqs.max_memory_required_in_mb, 98304)
+        self.assertEqual(compute_reqs.number_of_cpu_cores_required, 8)
+        self.assertEqual(compute_reqs.number_of_accelerator_devices_required, 4)
+
+    def test_deploy_model_customization_without_inference_config_uses_cached(self):
+        """Test _deploy_model_customization falls back to cached requirements when inference_config not provided."""
+        from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
+        from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent, Action, Association, Artifact
+        
+        # Setup mocks
+        mock_endpoint_config = Mock()
+        mock_endpoint = Mock()
+        mock_endpoint.wait_for_status = Mock()
+        mock_ic = Mock()
+        mock_ic.inference_component_arn = "arn:aws:sagemaker:us-east-1:123456789012:inference-component/test-ic"
+        mock_action = Mock()
+        mock_action.action_arn = "arn:aws:sagemaker:us-east-1:123456789012:action/test-action"
+        mock_artifact = Mock()
+        mock_artifact.artifact_arn = "arn:aws:sagemaker:us-east-1:123456789012:artifact/test-artifact"
+        
+        mock_model_package = Mock()
+        mock_model_package.inference_specification.containers = [Mock()]
+        mock_model_package.inference_specification.containers[0].base_model.recipe_name = "test-recipe"
+        mock_model_package.inference_specification.containers[0].model_data_source.s3_data_source.s3_uri = "s3://bucket/model"
+        
+        builder = ModelBuilder(
+            model=self.mock_training_job,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+            image_uri="test-image:latest",
+            instance_type="ml.g5.2xlarge"
+        )
+        
+        # Set cached compute requirements
+        cached_reqs = InferenceComponentComputeResourceRequirements(
+            min_memory_required_in_mb=2048,
+            number_of_cpu_cores_required=2,
+            number_of_accelerator_devices_required=1
+        )
+        builder._cached_compute_requirements = cached_reqs
+        
+        # Track the InferenceComponent.create call to verify compute requirements
+        created_ic_spec = None
+        def capture_ic_create(**kwargs):
+            nonlocal created_ic_spec
+            created_ic_spec = kwargs.get('specification')
+            return mock_ic
+        
+        with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
+            with patch.object(builder, '_fetch_peft', return_value=None):
+                with patch.object(EndpointConfig, 'create', return_value=mock_endpoint_config):
+                    with patch.object(Endpoint, 'get', side_effect=ClientError({'Error': {'Code': 'ValidationException'}}, 'GetEndpoint')):
+                        with patch.object(Endpoint, 'create', return_value=mock_endpoint):
+                            with patch.object(InferenceComponent, 'create', side_effect=capture_ic_create):
+                                with patch.object(InferenceComponent, 'get', return_value=mock_ic):
+                                    with patch.object(Action, 'create', return_value=mock_action):
+                                        with patch.object(Artifact, 'get_all', return_value=[mock_artifact]):
+                                            with patch.object(Association, 'add', return_value=None):
+                                                result = builder._deploy_model_customization(
+                                                    endpoint_name="test-endpoint",
+                                                    instance_type="ml.g5.2xlarge",
+                                                    initial_instance_count=1
+                                                    # Note: no inference_config parameter
+                                                )
+        
+        # Verify the result
+        self.assertEqual(result, mock_endpoint)
+        
+        # Verify that cached requirements were used
+        self.assertIsNotNone(created_ic_spec)
+        compute_reqs = created_ic_spec.compute_resource_requirements
+        self.assertIs(compute_reqs, cached_reqs)
+
+    def test_deploy_passes_inference_config_to_model_customization(self):
+        """Test that deploy() passes inference_config to _deploy_model_customization for model customization deployments."""
+        from sagemaker.core.inference_config import ResourceRequirements
+        
+        # Create a mock training job that will be recognized as model customization
+        mock_training_job = Mock()
+        mock_training_job.training_job_name = "test-training-job"
+        
+        builder = ModelBuilder(
+            model=mock_training_job,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+            image_uri="test-image:latest",
+            instance_type="ml.g5.12xlarge"
+        )
+        
+        # Mark as built
+        builder.built_model = Mock()
+        
+        # Create inference_config
+        inference_config = ResourceRequirements(
+            requests={
+                "num_accelerators": 4,
+                "num_cpus": 8,
+                "memory": 49152
+            }
+        )
+        
+        # Mock _is_model_customization to return True
+        with patch.object(builder, '_is_model_customization', return_value=True):
+            # Mock _deploy_model_customization to capture the call
+            with patch.object(builder, '_deploy_model_customization') as mock_deploy_mc:
+                mock_endpoint = Mock()
+                mock_deploy_mc.return_value = mock_endpoint
+                
+                # Call deploy with inference_config
+                result = builder.deploy(
+                    endpoint_name="test-endpoint",
+                    inference_config=inference_config
+                )
+                
+                # Verify _deploy_model_customization was called with inference_config
+                mock_deploy_mc.assert_called_once()
+                call_kwargs = mock_deploy_mc.call_args[1]
+                self.assertEqual(call_kwargs['inference_config'], inference_config)
+                self.assertEqual(result, mock_endpoint)

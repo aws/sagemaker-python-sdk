@@ -390,7 +390,6 @@ class DataSet(AIRHubEntity):
         return datasets
 
     @classmethod
-    @classmethod
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="DataSet.get_all")
     def get_all(cls, max_results: Optional[int] = None, sagemaker_session=None):
         """List all entities of this type.

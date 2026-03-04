@@ -1,4 +1,53 @@
 # Changelog
+## v3.5.0 (2026-03-02)
+
+### Features
+- **Feature Store v3**: New version of Feature Store functionality
+- **Batch job listing by share identifier**: Added support for listing Batch jobs filtered by share identifier
+- **Stop condition for model customization trainers**: Added stopping condition support to model customization trainers
+- **EMRStep smart output**: Enhanced EMR step output handling with smart output capabilities
+- **Transform AMI version support**: Added support for specifying AMI version in SageMaker transform jobs
+
+### Enhancements
+- **Inference pipeline notebook example**: Added example notebook demonstrating inference pipeline usage
+- **Migration documentation**: Added migration documentation
+
+### Bug Fixes
+- **Model Customization bugs**: Fixed multiple issues in Model Customization functionality
+- **Default stopping condition removal**: Removed default stopping condition for MC trainer to prevent conflicts
+- **Instance groups parameter handling**: Fixed issue where default instance_type/instance_count were incorrectly applied when instance_groups was set
+- **JumpStart alt config resolution**: Resolved alternative configuration resolution for JumpStart models
+- **Inference processor naming**: Updated inference processor identifier from 'inf2' to 'neuronx'
+- **HuggingFace Neuronx PyTorch version**: Corrected the PyTorch version for HuggingFace Neuronx
+- **License additions**: Added license to sagemaker-mlops and sagemaker-serve packages
+
+## v3.4.1 (2026-02-10)
+
+### Fixes
+- **Pipelines**: Correct Tag class usage in pipeline creation (#5526)
+- **ModelTrainer**: Support PipelineVariables in hyperparameters (#5519)
+- **HyperparameterTuner**: Include ModelTrainer internal channels (#5516)
+- **Experiments**: Don't apply default experiment config for pipelines in non-Eureka GA
+regions (#5500)
+
+### Features
+- **JumpStart**: Added ISO regions support (#5505)
+- **JumpStart**: Added version 1.4 and 1.5 (#5538)
+
+### Chores
+- Added unit and integration tests for JumpStart search functionality (#5544)
+- Removed java-kotlin from CodeQL workflow (#5517)
+
+## v3.4.0 (2026-01-22)
+
+### Features
+  - feat: add emr-serverless step for SageMaker Pipelines
+
+### Bug fixes and Other Changes
+  - Add Nova recipe training support in ModelTrainer 
+  - Add Partner-app Auth provider
+  - Add sagemaker dependency for remote function by default V3
+
 
 ## v3.3.1 (2026-01-12)
 ### Bug fixes and Other Changes

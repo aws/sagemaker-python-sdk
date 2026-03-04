@@ -45,6 +45,7 @@ class MockModelBuilderServers(_ModelBuilderServers):
         self.framework = None
         self.framework_version = None
         self._is_mlflow_model = False
+        self.config_name = None
     
     def _deploy_local_endpoint(self, **kwargs):
         return Mock()
@@ -816,6 +817,64 @@ class TestBuildForJumpStart(unittest.TestCase):
             self.builder._build_for_jumpstart()
         self.assertIn("Unsupported", str(ctx.exception))
     
+    @patch('sagemaker.core.jumpstart.factory.utils.get_init_kwargs')
+    @patch('sagemaker.serve.model_builder_servers.prepare_djl_js_resources')
+    @patch.object(MockModelBuilderServers, '_prepare_for_mode')
+    @patch.object(MockModelBuilderServers, '_create_model')
+    def test_build_passes_config_name_to_get_init_kwargs(self, mock_create, mock_prepare_mode, mock_djl_res, mock_init):
+        """Test that config_name is forwarded to get_init_kwargs."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {"TEST": "value"}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init.return_value = mock_init_kwargs
+        mock_djl_res.return_value = ({"config": "value"}, True)
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.LOCAL_CONTAINER
+        self.builder.image_uri = None
+        self.builder.config_name = "lmi-optimized"
+
+        self.builder._build_for_jumpstart()
+
+        mock_init.assert_called_once_with(
+            model_id=self.builder.model,
+            model_version="*",
+            region=self.builder.region,
+            instance_type=self.builder.instance_type,
+            tolerate_vulnerable_model=None,
+            tolerate_deprecated_model=None,
+            config_name="lmi-optimized",
+        )
+
+    @patch('sagemaker.core.jumpstart.factory.utils.get_init_kwargs')
+    @patch('sagemaker.serve.model_builder_servers.prepare_djl_js_resources')
+    @patch.object(MockModelBuilderServers, '_prepare_for_mode')
+    @patch.object(MockModelBuilderServers, '_create_model')
+    def test_build_passes_none_config_name_when_not_set(self, mock_create, mock_prepare_mode, mock_djl_res, mock_init):
+        """Test that config_name defaults to None when not set."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init.return_value = mock_init_kwargs
+        mock_djl_res.return_value = ({"config": "value"}, True)
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.LOCAL_CONTAINER
+        self.builder.image_uri = None
+        self.builder.config_name = None
+
+        self.builder._build_for_jumpstart()
+
+        mock_init.assert_called_once_with(
+            model_id=self.builder.model,
+            model_version="*",
+            region=self.builder.region,
+            instance_type=self.builder.instance_type,
+            tolerate_vulnerable_model=None,
+            tolerate_deprecated_model=None,
+            config_name=None,
+        )
+
     @patch('sagemaker.core.jumpstart.factory.utils.get_init_kwargs')
     @patch.object(MockModelBuilderServers, '_prepare_for_mode')
     @patch.object(MockModelBuilderServers, '_build_for_djl_jumpstart')

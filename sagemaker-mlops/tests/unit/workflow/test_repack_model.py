@@ -105,7 +105,7 @@ def test_get_safe_members_all_safe():
     mock_member2.islnk = Mock(return_value=False)
     
     members = [mock_member1, mock_member2]
-    safe_members = list(_get_safe_members(members))
+    safe_members = list(_get_safe_members(members, "/tmp/extract"))
     
     assert len(safe_members) == 2
     assert mock_member1 in safe_members
@@ -128,7 +128,7 @@ def test_get_safe_members_filters_bad_path():
         mock_is_bad.side_effect = lambda name, base: name == "/etc/passwd"
         
         members = [mock_member_safe, mock_member_bad]
-        safe_members = list(_get_safe_members(members))
+        safe_members = list(_get_safe_members(members, "/tmp/extract"))
         
         assert len(safe_members) == 1
         assert mock_member_safe in safe_members
@@ -152,7 +152,7 @@ def test_get_safe_members_filters_bad_symlink():
             mock_is_bad_link.return_value = True
             
             members = [mock_member_safe, mock_member_symlink]
-            safe_members = list(_get_safe_members(members))
+            safe_members = list(_get_safe_members(members, "/tmp/extract"))
             
             assert len(safe_members) == 1
             assert mock_member_safe in safe_members
@@ -176,7 +176,7 @@ def test_get_safe_members_filters_bad_hardlink():
             mock_is_bad_link.return_value = True
             
             members = [mock_member_safe, mock_member_hardlink]
-            safe_members = list(_get_safe_members(members))
+            safe_members = list(_get_safe_members(members, "/tmp/extract"))
             
             assert len(safe_members) == 1
             assert mock_member_safe in safe_members

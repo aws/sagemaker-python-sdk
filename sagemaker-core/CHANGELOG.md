@@ -1,4 +1,31 @@
 # Changelog
+## v2.5.0 (2026-03-02)
+
+### Features
+
+- Feature Store V3 support (#5539)
+- Support transform AMI version in SageMaker transform jobs (#5521)
+
+### Bug Fixes
+
+- Update inference processor from 'inf2' to 'neuronx' (#5488)
+- Correct HF neuronx pytorch version (#5501)
+
+## v2.4.1 (2026-02-10)
+
+### Bug fixes and Other Changes
+
+- fix: Support PipelineVariables in ModelTrainer hyperparameters (#5519)
+- enhancement: Added ISO regions for JumpStart (#5505)
+- enhancement: Added AutoGluon versions 1.4 and 1.5 (#5538)
+- test: Added unit and integration tests for JumpStart search functionality (#5544)
+
+## v2.4.0 (2026-01-22)
+
+### Bug fixes and Other Changes
+
+  - Add Partner-app Auth provider
+  - Add sagemaker dependency for remote function by default V3
 
 ## v2.3.1 (2026-01-12)
 

@@ -1030,8 +1030,7 @@ LLMAJ_TEMPLATE = """{
                 {% endif %}
                 },
                 "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
+                    "ModelPackageGroupArn": "{{ model_package_group_arn }}"
                 }{% if dataset_uri %},
                 "InputDataConfig": [
                     {

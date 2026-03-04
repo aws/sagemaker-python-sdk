@@ -19,6 +19,14 @@ python:
   install:
     - requirements: docs/requirements.txt
     - method: pip
+      path: ./sagemaker-core
+    - method: pip
+      path: ./sagemaker-train
+    - method: pip
+      path: ./sagemaker-serve
+    - method: pip
+      path: ./sagemaker-mlops
+    - method: pip
       path: .
       extra_requirements:
         - docs

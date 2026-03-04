@@ -119,6 +119,10 @@
         "gated_content_bucket": "jumpstart-private-cache-prod-eu-west-3",
         "neo_content_bucket": "sagemaker-sd-models-prod-eu-west-3"
     },
+    "eu-isoe-west-1": {
+        "content_bucket": "jumpstart-cache-prod-eu-isoe-west-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eu-isoe-west-1"
+    },
     "il-central-1": {
         "content_bucket": "jumpstart-cache-prod-il-central-1",
         "gated_content_bucket": "jumpstart-private-cache-prod-il-central-1"
@@ -157,6 +161,22 @@
     "us-gov-west-1": {
         "content_bucket": "jumpstart-cache-prod-us-gov-west-1",
         "gated_content_bucket": "jumpstart-private-cache-prod-us-gov-west-1"
+    },
+    "us-iso-east-1": {
+        "content_bucket": "jumpstart-cache-prod-us-iso-east-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-iso-east-1"
+    },
+    "us-isob-east-1": {
+        "content_bucket": "jumpstart-cache-prod-us-isob-east-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-isob-east-1"
+    },
+    "us-isof-east-1": {
+        "content_bucket": "jumpstart-cache-prod-us-isof-east-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-isof-east-1"
+    },
+    "us-isof-south-1": {
+        "content_bucket": "jumpstart-cache-prod-us-isof-south-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-us-isof-south-1"
     },
     "us-west-1": {
         "content_bucket": "jumpstart-cache-prod-us-west-1",

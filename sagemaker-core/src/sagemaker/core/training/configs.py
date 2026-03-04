@@ -25,7 +25,7 @@ from typing import Optional, Union, List
 from pydantic import BaseModel, model_validator, ConfigDict
 
 import sagemaker.core.shapes as shapes
-from sagemaker.core.helper.pipeline_variable import StrPipeVar
+from sagemaker.core.helper.pipeline_variable import StrPipeVar, IntPipeVar, BoolPipeVar
 
 # TODO: Can we add custom logic to some of these to set better defaults?
 from sagemaker.core.shapes import (
@@ -158,23 +158,23 @@ class Compute(shapes.ResourceConfig):
         instance_type (Optional[StrPipeVar]):
             The ML compute instance type. For information about available instance types,
             see https://aws.amazon.com/sagemaker/pricing/.
-        instance_count (Optional[int]): The number of ML compute instances to use. For distributed
+        instance_count (Optional[IntPipeVar]): The number of ML compute instances to use. For distributed
             training, provide a value greater than 1.
-        volume_size_in_gb (Optional[int]):
+        volume_size_in_gb (Optional[IntPipeVar]):
             The size of the ML storage volume that you want to provision.  ML storage volumes store
             model artifacts and incremental states. Training algorithms might also use the ML
             storage volume for scratch space. Default: 30
         volume_kms_key_id (Optional[StrPipeVar]):
             The Amazon Web Services KMS key that SageMaker uses to encrypt data on the storage
             volume attached to the ML compute instance(s) that run the training job.
-        keep_alive_period_in_seconds (Optional[int]):
+        keep_alive_period_in_seconds (Optional[IntPipeVar]):
             The duration of time in seconds to retain configured resources in a warm pool for
             subsequent training jobs.
         instance_groups (Optional[List[InstanceGroup]]):
             A list of instance groups for heterogeneous clusters to be used in the training job.
         training_plan_arn (Optional[StrPipeVar]):
             The Amazon Resource Name (ARN) of the training plan to use for this resource configuration.
-        enable_managed_spot_training (Optional[bool]):
+        enable_managed_spot_training (Optional[BoolPipeVar]):
             To train models using managed spot training, choose True. Managed spot training
             provides a fully managed and scalable infrastructure for training machine learning
             models. this option is useful when training jobs can be interrupted and when there

@@ -165,7 +165,38 @@ class TrainingQueue:
             for job_result in job_result_dict.get("jobSummaryList", []):
                 if "jobArn" in job_result and "jobName" in job_result:
                     jobs_to_return.append(
-                        TrainingQueuedJob(job_result["jobArn"], job_result["jobName"])
+                        TrainingQueuedJob(job_result["jobArn"], job_result["jobName"], job_result.get("shareIdentifier", None))
+                    )
+                else:
+                    logging.warning("Missing JobArn or JobName in Batch ListJobs API")
+                    continue
+        return jobs_to_return
+
+    def list_jobs_by_share(
+        self,
+        status: Optional[str] = JOB_STATUS_RUNNING,
+        share_identifier: Optional[str] = None,
+    ) -> List[TrainingQueuedJob]:
+        """List Batch jobs according to status and share.
+
+        Args:
+            status: Batch job status.
+            share_identifier: Batch fairshare share identifier.
+
+        Returns: A list of QueuedJob.
+
+        """
+        filters = None
+        if share_identifier:
+            filters = [{"name": "SHARE_IDENTIFIER", "values": [share_identifier]}]
+
+        jobs_to_return = []
+        next_token = None
+        for job_result_dict in _list_service_job(self.queue_name, status, filters, next_token):
+            for job_result in job_result_dict.get("jobSummaryList", []):
+                if "jobArn" in job_result and "jobName" in job_result:
+                    jobs_to_return.append(
+                        TrainingQueuedJob(job_result["jobArn"], job_result["jobName"], job_result.get("shareIdentifier", None))
                     )
                 else:
                     logging.warning("Missing JobArn or JobName in Batch ListJobs API")

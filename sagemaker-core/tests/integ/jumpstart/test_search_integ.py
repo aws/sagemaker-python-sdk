@@ -66,3 +66,19 @@ def test_search_public_hub_models_all_args():
 
     assert isinstance(results, list)
     assert all(isinstance(m, HubContent) for m in results)
+
+
+@pytest.mark.serial
+@pytest.mark.integ
+def test_search_public_hub_models_safe_from_injection():
+    """Integration test to verify malicious queries don't execute code."""
+    # This would have executed code with the old eval() implementation
+    malicious_query = "__import__('os').system('echo test')"
+    
+    # Should safely return empty results without executing code
+    results = search_public_hub_models(malicious_query)
+    
+    # Verify it returns a list (even if empty) and doesn't crash
+    assert isinstance(results, list)
+    # Should not match any models since it's not a valid filter expression
+    assert len(results) == 0
