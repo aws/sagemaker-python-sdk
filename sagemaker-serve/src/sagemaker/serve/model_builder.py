@@ -1289,10 +1289,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         self.secret_key = ""
 
-        if not self.model_path:
-            self.s3_upload_path = None
-        else:
+        if self.model_path and self.model_path.startswith("s3://"):
             self.s3_upload_path = self.model_path
+        else:
+            self.s3_upload_path = None
 
         if self.mode in LOCAL_MODES:
             self._prepare_for_mode()
