@@ -1028,9 +1028,6 @@ LLMAJ_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}"
                 }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
@@ -1182,10 +1179,6 @@ LLMAJ_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
                 }
             }
         },{% endif %}
