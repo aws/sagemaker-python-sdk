@@ -57,6 +57,7 @@ class StoredFunction:
         s3_base_uri: str,
         s3_kms_key: str = None,
         context: Context = Context(),
+        job_name: str = None,
     ):
         """Construct a StoredFunction object.
 
@@ -66,11 +67,13 @@ class StoredFunction:
             s3_base_uri: the base uri to which serialized artifacts will be uploaded.
             s3_kms_key: KMS key used to encrypt artifacts uploaded to S3.
             context: Build or run context of a pipeline step.
+            job_name: Remote function job name for secret management.
         """
         self.sagemaker_session = sagemaker_session
         self.s3_base_uri = s3_base_uri
         self.s3_kms_key = s3_kms_key
         self.context = context
+        self.job_name = job_name or os.environ.get("TRAINING_JOB_NAME")
 
         # For pipeline steps, function code is at: base/step_name/build_timestamp/
         # For results, path is: base/step_name/build_timestamp/execution_id/
@@ -110,6 +113,7 @@ class StoredFunction:
             func=func,
             sagemaker_session=self.sagemaker_session,
             s3_uri=s3_path_join(self.func_upload_path, FUNCTION_FOLDER),
+            job_name=self.job_name,
             s3_kms_key=self.s3_kms_key,
             
         )
@@ -123,7 +127,7 @@ class StoredFunction:
             obj=(args, kwargs),
             sagemaker_session=self.sagemaker_session,
             s3_uri=s3_path_join(self.func_upload_path, ARGUMENTS_FOLDER),
-            
+            job_name=self.job_name,
             s3_kms_key=self.s3_kms_key,
         )
 
@@ -144,6 +148,7 @@ class StoredFunction:
             
             s3_uri=s3_path_join(self.func_upload_path, FUNCTION_FOLDER),
             sagemaker_session=self.sagemaker_session,
+            job_name=self.job_name,
             s3_kms_key=self.s3_kms_key,
         )
 
@@ -156,6 +161,7 @@ class StoredFunction:
             
             s3_uri=s3_path_join(self.func_upload_path, ARGUMENTS_FOLDER),
             sagemaker_session=self.sagemaker_session,
+            job_name=self.job_name,
             s3_kms_key=self.s3_kms_key,
         )
 
@@ -203,7 +209,7 @@ class StoredFunction:
             obj=result,
             sagemaker_session=self.sagemaker_session,
             s3_uri=s3_path_join(self.results_upload_path, RESULTS_FOLDER),
-            
+            job_name=self.job_name,
             s3_kms_key=self.s3_kms_key,
         )
 

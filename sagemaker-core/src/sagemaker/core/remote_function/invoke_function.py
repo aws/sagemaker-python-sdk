@@ -108,6 +108,7 @@ def _execute_remote_function(
         s3_base_uri=s3_base_uri,
         s3_kms_key=s3_kms_key,
         context=context,
+        job_name=os.environ.get("TRAINING_JOB_NAME"),
     )
 
     if run_in_context:
