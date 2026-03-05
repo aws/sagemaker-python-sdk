@@ -69,6 +69,37 @@ class TestGetLakeFormationClient:
         mock_session.client.assert_called_with("lakeformation", region_name="us-west-2")
         assert client == mock_client
 
+    def test_caches_client_for_same_session_and_region(self):
+        """Test that repeated calls with the same session and region reuse the cached client."""
+        mock_session = MagicMock()
+        mock_client = MagicMock()
+        mock_session.client.return_value = mock_client
+
+        fg = MagicMock(spec=FeatureGroup)
+        fg._get_lake_formation_client = FeatureGroup._get_lake_formation_client.__get__(fg)
+
+        client1 = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
+        client2 = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
+
+        assert client1 is client2
+        mock_session.client.assert_called_once()
+
+    def test_creates_new_client_for_different_region(self):
+        """Test that a different region produces a new client."""
+        mock_session = MagicMock()
+        mock_client_west = MagicMock()
+        mock_client_east = MagicMock()
+        mock_session.client.side_effect = [mock_client_west, mock_client_east]
+
+        fg = MagicMock(spec=FeatureGroup)
+        fg._get_lake_formation_client = FeatureGroup._get_lake_formation_client.__get__(fg)
+
+        client1 = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
+        client2 = fg._get_lake_formation_client(session=mock_session, region="us-east-1")
+
+        assert client1 is not client2
+        assert mock_session.client.call_count == 2
+
 
 class TestRegisterS3WithLakeFormation:
     """Tests for _register_s3_with_lake_formation method."""
@@ -942,6 +973,7 @@ class TestCreateWithLakeFormation:
             use_service_linked_role=True,
             registration_role_arn=None,
             show_s3_policy=False,
+            disable_hybrid_access_mode=True,
         )
         # Verify the feature group was returned
         assert result == mock_fg
@@ -1150,9 +1182,155 @@ class TestCreateWithLakeFormation:
             use_service_linked_role=use_slr,
             registration_role_arn=expected_registration_role,
             show_s3_policy=False,
+            disable_hybrid_access_mode=True,
         )
         # Verify the feature group was returned
         assert result == mock_fg
+
+
+class TestDisableHybridAccessMode:
+    """Tests for disable_hybrid_access_mode parameter in enable_lake_formation."""
+
+    def setup_method(self):
+        """Set up test fixtures."""
+        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
+
+        self.fg = FeatureGroup(feature_group_name="test-fg")
+        self.fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(
+                s3_uri="s3://test-bucket/path",
+                resolved_output_s3_uri="s3://test-bucket/resolved-path",
+            ),
+            data_catalog_config=DataCatalogConfig(
+                catalog="AwsDataCatalog", database="test_db", table_name="test_table"
+            ),
+        )
+        self.fg.role_arn = "arn:aws:iam::123456789012:role/TestRole"
+        self.fg.feature_group_arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test-fg"
+        self.fg.feature_group_status = "Created"
+
+    @patch.object(FeatureGroup, "refresh")
+    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
+    def test_revoke_called_when_disable_hybrid_access_mode_true(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
+    ):
+        """Test that IAMAllowedPrincipal is revoked when disable_hybrid_access_mode=True (default)."""
+        mock_register.return_value = True
+        mock_grant.return_value = True
+        mock_revoke.return_value = True
+
+        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=True)
+
+        mock_revoke.assert_called_once()
+        assert result["iam_principal_revoked"] is True
+
+    @patch.object(FeatureGroup, "refresh")
+    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
+    def test_revoke_skipped_when_disable_hybrid_access_mode_false(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
+    ):
+        """Test that IAMAllowedPrincipal revocation is skipped when disable_hybrid_access_mode=False."""
+        mock_register.return_value = True
+        mock_grant.return_value = True
+
+        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=False)
+
+        mock_revoke.assert_not_called()
+        assert result["iam_principal_revoked"] is None
+        assert result["s3_registration"] is True
+        assert result["permissions_granted"] is True
+
+    @patch.object(FeatureGroup, "refresh")
+    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
+    def test_default_disable_hybrid_access_mode_is_true(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
+    ):
+        """Test that disable_hybrid_access_mode defaults to True (revoke is called by default)."""
+        mock_register.return_value = True
+        mock_grant.return_value = True
+        mock_revoke.return_value = True
+
+        # Call without specifying disable_hybrid_access_mode
+        result = self.fg.enable_lake_formation()
+
+        mock_revoke.assert_called_once()
+        assert result["iam_principal_revoked"] is True
+
+
+class TestCreateWithLakeFormationDisableHybridAccessMode:
+    """Tests for disable_hybrid_access_mode passed through create() via LakeFormationConfig."""
+
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    @patch.object(FeatureGroup, "get")
+    @patch.object(FeatureGroup, "wait_for_status")
+    @patch.object(FeatureGroup, "enable_lake_formation")
+    def test_disable_hybrid_access_mode_false_passed_through_create(
+        self, mock_enable_lf, mock_wait, mock_get, mock_get_client
+    ):
+        """Test that disable_hybrid_access_mode=False is passed through create() to enable_lake_formation."""
+        from sagemaker.core.shapes import FeatureDefinition, OfflineStoreConfig, S3StorageConfig
+
+        mock_client = MagicMock()
+        mock_client.create_feature_group.return_value = {
+            "FeatureGroupArn": "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test"
+        }
+        mock_get_client.return_value = mock_client
+
+        mock_fg = MagicMock(spec=FeatureGroup)
+        mock_fg.wait_for_status = mock_wait
+        mock_fg.enable_lake_formation = mock_enable_lf
+        mock_get.return_value = mock_fg
+
+        feature_definitions = [
+            FeatureDefinition(feature_name="record_id", feature_type="String"),
+            FeatureDefinition(feature_name="event_time", feature_type="String"),
+        ]
+
+        lf_config = LakeFormationConfig()
+        lf_config.enabled = True
+        lf_config.disable_hybrid_access_mode = False
+
+        FeatureGroup.create(
+            feature_group_name="test-fg",
+            record_identifier_feature_name="record_id",
+            event_time_feature_name="event_time",
+            feature_definitions=feature_definitions,
+            offline_store_config=OfflineStoreConfig(
+                s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path")
+            ),
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            lake_formation_config=lf_config,
+        )
+
+        mock_enable_lf.assert_called_once_with(
+            session=None,
+            region=None,
+            use_service_linked_role=True,
+            registration_role_arn=None,
+            show_s3_policy=False,
+            disable_hybrid_access_mode=False,
+        )
+
+
+class TestLakeFormationConfigDefaults:
+    """Tests for LakeFormationConfig default values."""
+
+    def test_disable_hybrid_access_mode_defaults_to_true(self):
+        """Test that LakeFormationConfig.disable_hybrid_access_mode defaults to True."""
+        config = LakeFormationConfig()
+        assert config.disable_hybrid_access_mode is True
+
+    def test_disable_hybrid_access_mode_can_be_set_to_false(self):
+        """Test that LakeFormationConfig.disable_hybrid_access_mode can be set to False."""
+        config = LakeFormationConfig()
+        config.disable_hybrid_access_mode = False
+        assert config.disable_hybrid_access_mode is False
 
 
 class TestExtractAccountIdFromArn:
