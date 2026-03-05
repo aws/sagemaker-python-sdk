@@ -42,12 +42,17 @@ class LakeFormationConfig(Base):
         show_s3_policy: If True, prints the S3 deny policy to the console after successful
             Lake Formation setup. This policy should be added to your S3 bucket to restrict
             access to only the allowed principals. Default is False.
+        disable_hybrid_access_mode: If True, revokes IAMAllowedPrincipal permissions from
+            the Glue table, moving it to Lake Formation-only access mode. If False, keeps
+            hybrid access mode where both IAM and Lake Formation control access.
+            Default is True (LF-only mode).
     """
 
     enabled: bool = False
     use_service_linked_role: bool = True
     registration_role_arn: Optional[str] = None
     show_s3_policy: bool = False
+    disable_hybrid_access_mode: bool = True
 
 
 class FeatureGroup(CoreFeatureGroup):
@@ -395,6 +400,7 @@ class FeatureGroup(CoreFeatureGroup):
         registration_role_arn: Optional[str] = None,
         wait_for_active: bool = False,
         show_s3_policy: bool = False,
+        disable_hybrid_access_mode: bool = True,
     ) -> dict:
         """
         Enable Lake Formation governance for this Feature Group's offline store.
@@ -404,7 +410,8 @@ class FeatureGroup(CoreFeatureGroup):
         2. Validates Feature Group status is 'Created'
         3. Registers the offline store S3 location as data lake location
         4. Grants the execution role permissions on the Glue table
-        5. Revokes IAMAllowedPrincipal permissions from the Glue table
+        5. Optionally revokes IAMAllowedPrincipal permissions from the Glue table
+           (controlled by disable_hybrid_access_mode)
 
         The role ARN is automatically extracted from the Feature Group's configuration.
         Each phase depends on the success of the previous phase - if any phase fails,
@@ -424,11 +431,15 @@ class FeatureGroup(CoreFeatureGroup):
             show_s3_policy: If True, prints the S3 deny policy to the console after successful
                 Lake Formation setup. This policy should be added to your S3 bucket to restrict
                 access to only the allowed principals. Default is False.
+            disable_hybrid_access_mode: If True, revokes IAMAllowedPrincipal permissions from
+                the Glue table, moving it to Lake Formation-only access mode. If False, keeps
+                hybrid access mode where both IAM and Lake Formation control access.
+                Default is True.
 
         Returns:
             Dict with status of each Lake Formation operation:
             - s3_registration: bool
-            - iam_principal_revoked: bool
+            - iam_principal_revoked: bool or None (None when disable_hybrid_access_mode=False)
             - permissions_granted: bool
 
         Raises:
@@ -548,19 +559,25 @@ class FeatureGroup(CoreFeatureGroup):
                 f"Subsequent phases skipped. Results: {results}"
             )
 
-        # Phase 3: Revoke IAMAllowedPrincipal permissions
-        try:
-            results["iam_principal_revoked"] = self._revoke_iam_allowed_principal(
-                database_name_str, table_name_str, session, region
-            )
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}. Error: {e}"
-            ) from e
+        # Phase 3: Revoke IAMAllowedPrincipal permissions (if disabling hybrid access mode)
+        if disable_hybrid_access_mode:
+            try:
+                results["iam_principal_revoked"] = self._revoke_iam_allowed_principal(
+                    database_name_str, table_name_str, session, region
+                )
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}. Error: {e}"
+                ) from e
 
-        if not results["iam_principal_revoked"]:
-            raise RuntimeError(
-                f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}"
+            if not results["iam_principal_revoked"]:
+                raise RuntimeError(
+                    f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}"
+                )
+        else:
+            results["iam_principal_revoked"] = None
+            logger.info(
+                "Skipping IAMAllowedPrincipal revocation - hybrid access mode preserved."
             )
 
         logger.info(f"Lake Formation setup complete for {self.feature_group_name}: {results}")
@@ -724,5 +741,6 @@ class FeatureGroup(CoreFeatureGroup):
                 use_service_linked_role=lake_formation_config.use_service_linked_role,
                 registration_role_arn=lake_formation_config.registration_role_arn,
                 show_s3_policy=lake_formation_config.show_s3_policy,
+                disable_hybrid_access_mode=lake_formation_config.disable_hybrid_access_mode,
             )
         return feature_group
