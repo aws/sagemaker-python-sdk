@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sagemaker-rft"
+dynamic = ["version"]
+description = "Integration SDK for multi-turn reinforcement fine-tuning on Amazon SageMaker."
+readme = "README.md"
+requires-python = ">=3.9"
+authors = [
+  { name = "Amazon Web Services" },
+]
+keywords = ["AI", "AWS", "Amazon", "ML", "RFT", "reinforcement-learning"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Natural Language :: English",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+    "requests>=2.28.0",
+    "pydantic>=2.0.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/aws/sagemaker-python-sdk"
+
+[project.optional-dependencies]
+strands = ["strands-agents"]
+langchain = ["httpx>=0.24.0"]
+test = [
+    "pytest",
+    "pytest-cov",
+    "mock",
+]
+
+[tool.setuptools.packages.find]
+where = ["src/"]
+include = ["sagemaker*"]
+namespaces = true
+
+[tool.setuptools.dynamic]
+version = { file = "VERSION" }
+
+[tool.pytest.ini_options]
+addopts = ["-vv"]
+testpaths = ["tests"]
+
+[tool.black]
+line-length = 100
