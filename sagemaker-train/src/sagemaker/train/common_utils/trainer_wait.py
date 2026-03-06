@@ -40,6 +40,10 @@ def _setup_mlflow_integration(training_job: TrainingJob) -> Tuple[
     try:
         import boto3
 
+        # Check if mlflow_config exists and is assigned
+        if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
+            return None, None, None
+
         sm_client = boto3.client('sagemaker')
         mlflow_arn = training_job.mlflow_config.mlflow_resource_arn
 
@@ -56,7 +60,11 @@ def _setup_mlflow_integration(training_job: TrainingJob) -> Tuple[
 
         return mlflow_url, metrics_util, mlflow_run_name
 
-    except Exception:
+    except Exception as e:
+        # Log the exception for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"MLflow integration setup failed: {e}")
         return None, None, None
 
 
@@ -154,6 +162,59 @@ def _calculate_transition_duration(trans) -> Tuple[str, str]:
     return duration, check
 
 
+def get_mlflow_url(training_job) -> str:
+    """Get presigned MLflow URL for training job experiment.
+    
+    Args:
+        training_job: SageMaker TrainingJob object or job name string
+        
+    Returns:
+        Presigned MLflow URL to experiment (valid for 5 minutes)
+        
+    Example:
+        >>> from sagemaker.train import get_mlflow_url
+        >>> url = get_mlflow_url('my-training-job')
+        >>> print(url)
+    """
+    if isinstance(training_job, str):
+        training_job = TrainingJob.get(training_job_name=training_job)
+    
+    if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
+        raise ValueError("Training job does not have MLflow configured")
+    
+    import boto3
+    import os
+    from mlflow.tracking import MlflowClient
+    import mlflow
+    
+    mlflow_arn = training_job.mlflow_config.mlflow_resource_arn
+    exp_name = training_job.mlflow_config.mlflow_experiment_name
+    
+    # Get presigned base URL
+    sm_client = boto3.client('sagemaker')
+    response = sm_client.create_presigned_mlflow_app_url(Arn=mlflow_arn)
+    base_url = response.get('AuthorizedUrl')
+    
+    # Try to get experiment ID and append to URL
+    try:
+        os.environ['MLFLOW_TRACKING_URI'] = mlflow_arn
+        mlflow.set_tracking_uri(mlflow_arn)
+        
+        mlflow_client = MlflowClient(tracking_uri=mlflow_arn)
+        experiment = mlflow_client.get_experiment_by_name(exp_name)
+        
+        if experiment:
+            # Format: base_url#/experiments/{id}
+            # The base_url already has /auth?authToken=...
+            return f"{base_url}#/experiments/{experiment.experiment_id}"
+    except Exception:
+        pass
+    
+    return base_url
+
+
+
+
 def wait(
         training_job: TrainingJob,
         poll: int = 5,
@@ -188,28 +249,84 @@ def wait(
             from rich.console import Group
             with _suppress_info_logging():
                 console = Console(force_jupyter=True)
+                
+                # MLflow link caching
+                mlflow_link_cache = {'url': None, 'timestamp': 0, 'error': None}
+                has_mlflow_config = (hasattr(training_job, 'mlflow_config') and 
+                                     not _is_unassigned_attribute(training_job.mlflow_config))
+                
+                def get_cached_mlflow_url():
+                    """Get cached MLflow URL or generate new one if expired."""
+                    current_time = time.time()
+                    # Regenerate every 4 minutes (before 5-minute expiration)
+                    if mlflow_link_cache['url'] is None or (current_time - mlflow_link_cache['timestamp']) > 240:
+                        try:
+                            mlflow_link_cache['url'] = get_mlflow_url(training_job)
+                            mlflow_link_cache['error'] = None
+                        except Exception as e:
+                            mlflow_link_cache['error'] = str(e)
+                        mlflow_link_cache['timestamp'] = current_time
+                    return mlflow_link_cache['url']
+                
+                # Track last rendered state to avoid unnecessary refreshes
+                last_status = None
+                last_secondary_status = None
 
                 iteration = 0
                 while True:
                     iteration += 1
-                    time.sleep(1)
-                    if iteration == poll:
+                    time.sleep(0.5)
+                    if iteration >= poll * 2:
                         training_job.refresh()
                         iteration = 0
-                    clear_output(wait=True)
-
+                    
                     status = training_job.training_job_status
                     secondary_status = training_job.secondary_status
                     elapsed = time.time() - start_time
+                    
+                    # Only re-render if status changed or every 2 seconds (for elapsed time)
+                    should_render = (
+                        status != last_status or 
+                        secondary_status != last_secondary_status or
+                        iteration % 4 == 0  # Every 2 seconds (4 * 0.5s)
+                    )
+                    
+                    if not should_render:
+                        continue
+                    
+                    last_status = status
+                    last_secondary_status = secondary_status
+                    
+                    clear_output(wait=True)
 
-                    # Header section with training job name and MLFlow URL
+                    # Header section with training job name
                     header_table = Table(show_header=False, box=None, padding=(0, 1))
                     header_table.add_column("Property", style="cyan bold", width=20)
-                    header_table.add_column("Value", style="white")
-                    header_table.add_row("TrainingJob Name", f"[bold green]{training_job.training_job_name}[/bold green]")
-                    if mlflow_url:
-                        header_table.add_row("MLFlow URL",
-                                             f"[link={mlflow_url}][bold bright_blue underline]{mlflow_run_name}(link valid for 5 mins)[/bright_blue bold underline][/link]")
+                    header_table.add_column("Value", style="white", overflow="fold")
+                    
+                    # Add Studio job link
+                    try:
+                        from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
+                        studio_url = get_studio_url(training_job)
+                        header_table.add_row("TrainingJob Name", f"[link={studio_url}]🔗 {training_job.training_job_name}[/link]")
+                    except Exception:
+                        header_table.add_row("TrainingJob Name", f"[bold green]{training_job.training_job_name}[/bold green]")
+                    
+                    header_table.add_row("TrainingJob ARN", f"[dim]{training_job.training_job_arn}[/dim]")
+                    
+                    # Add MLflow link to header if available
+                    if has_mlflow_config:
+                        cached_url = get_cached_mlflow_url()
+                        if cached_url:
+                            exp_name = training_job.mlflow_config.mlflow_experiment_name if hasattr(training_job, 'mlflow_config') else None
+                            if exp_name and not _is_unassigned_attribute(exp_name):
+                                link_text = exp_name
+                            else:
+                                link_text = "MLflow Experiment"
+                            
+                            header_table.add_row("MLflow Experiment", f"[link={cached_url}]🔗 {link_text}[/link]")
+                        elif mlflow_link_cache['error']:
+                            header_table.add_row("MLflow Experiment", f"[red]{mlflow_link_cache['error']}[/red]")
 
                     status_table = Table(show_header=False, box=None, padding=(0, 1))
                     status_table.add_column("Property", style="cyan bold", width=20)
