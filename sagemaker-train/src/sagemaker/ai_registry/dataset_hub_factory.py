@@ -17,13 +17,14 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, TYPE_CHECKING, Union
 
-from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.dataset_transformation import DatasetFormat
 from sagemaker.ai_registry.dataset_utils import CustomizationTechnique
-from sagemaker.ai_registry.air_hub import AIRHub
 from sagemaker.core.helper.session_helper import Session
+
+if TYPE_CHECKING:
+    from sagemaker.ai_registry.dataset import DataSet
 
 logger = logging.getLogger(__name__)
 
@@ -52,9 +53,10 @@ class DataSetHubFactory:
         Returns:
             A hydrated DataSet instance.
         """
-        if isinstance(dataset, DataSet):
-            return dataset
-        return DataSet.get(name=dataset, sagemaker_session=sagemaker_session)
+        if isinstance(dataset, str):
+            from sagemaker.ai_registry.dataset import DataSet
+            return DataSet.get(name=dataset, sagemaker_session=sagemaker_session)
+        return dataset
 
     @classmethod
     def _download_to_local(cls, s3_uri: str) -> str:
@@ -69,6 +71,7 @@ class DataSetHubFactory:
         suffix = os.path.splitext(s3_uri)[-1] or ".jsonl"
         tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
         tmp.close()
+        from sagemaker.ai_registry.air_hub import AIRHub
         AIRHub.download_from_s3(s3_uri, tmp.name)
         return tmp.name
 
@@ -106,6 +109,7 @@ class DataSetHubFactory:
             ValueError: If neither or both of source and dataset are provided.
         """
         from sagemaker.ai_registry.dataset_transformation import DatasetTransformation
+        from sagemaker.ai_registry.dataset import DataSet
 
         if (source is None) == (dataset is None):
             raise ValueError(

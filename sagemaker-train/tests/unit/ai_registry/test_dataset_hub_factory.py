@@ -11,31 +11,27 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-import json
 import os
 import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.ai_registry.dataset_hub_factory import DataSetHubFactory
-from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.dataset_transformation import DatasetFormat
 from sagemaker.ai_registry.dataset_utils import CustomizationTechnique
 from sagemaker.ai_registry.air_constants import HubContentStatus
 
 
 def _make_dataset(**overrides):
-    """Helper to create a DataSet instance with sensible defaults."""
-    defaults = dict(
-        name="test-ds",
-        arn="arn:aws:sagemaker:us-east-1:123456789012:hub-content/test-ds",
-        version="1.0.0",
-        status=HubContentStatus.AVAILABLE,
-        source="s3://bucket/datasets/test-ds/data.jsonl",
-        description="test",
-        customization_technique=CustomizationTechnique.SFT,
-    )
-    defaults.update(overrides)
-    return DataSet(**defaults)
+    """Helper to create a mock DataSet with sensible defaults."""
+    ds = Mock()
+    ds.name = overrides.get("name", "test-ds")
+    ds.arn = overrides.get("arn", "arn:aws:sagemaker:us-east-1:123456789012:hub-content/test-ds")
+    ds.version = overrides.get("version", "1.0.0")
+    ds.status = overrides.get("status", HubContentStatus.AVAILABLE)
+    ds.source = overrides.get("source", "s3://bucket/datasets/test-ds/data.jsonl")
+    ds.description = overrides.get("description", "test")
+    ds.customization_technique = overrides.get("customization_technique", CustomizationTechnique.SFT)
+    return ds
 
 
 class TestResolveDataset:
@@ -44,14 +40,14 @@ class TestResolveDataset:
         result = DataSetHubFactory._resolve_dataset(ds)
         assert result is ds
 
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSet.get")
+    @patch("sagemaker.ai_registry.dataset.DataSet.get")
     def test_resolve_with_name_string(self, mock_get):
         mock_get.return_value = _make_dataset()
         result = DataSetHubFactory._resolve_dataset("my-dataset")
         mock_get.assert_called_once_with(name="my-dataset", sagemaker_session=None)
         assert result.name == "test-ds"
 
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSet.get")
+    @patch("sagemaker.ai_registry.dataset.DataSet.get")
     def test_resolve_with_session(self, mock_get):
         mock_session = Mock()
         mock_get.return_value = _make_dataset()
@@ -60,7 +56,7 @@ class TestResolveDataset:
 
 
 class TestDownloadToLocal:
-    @patch("sagemaker.ai_registry.dataset_hub_factory.AIRHub.download_from_s3")
+    @patch("sagemaker.ai_registry.air_hub.AIRHub.download_from_s3")
     def test_download_creates_temp_file(self, mock_download):
         path = DataSetHubFactory._download_to_local("s3://bucket/data.jsonl")
         try:
@@ -70,7 +66,7 @@ class TestDownloadToLocal:
             if os.path.exists(path):
                 os.unlink(path)
 
-    @patch("sagemaker.ai_registry.dataset_hub_factory.AIRHub.download_from_s3")
+    @patch("sagemaker.ai_registry.air_hub.AIRHub.download_from_s3")
     def test_download_default_suffix(self, mock_download):
         path = DataSetHubFactory._download_to_local("s3://bucket/data")
         try:
@@ -81,11 +77,15 @@ class TestDownloadToLocal:
 
 
 class TestTransformDatasetValidation:
-    def test_neither_source_nor_dataset_raises(self):
+    @patch("sagemaker.ai_registry.dataset_transformation.DatasetTransformation")
+    @patch("sagemaker.ai_registry.dataset.DataSet")
+    def test_neither_source_nor_dataset_raises(self, mock_ds, mock_transform):
         with pytest.raises(ValueError, match="Exactly one of"):
             DataSetHubFactory.transform_dataset(name="test", target_format=DatasetFormat.GENQA)
 
-    def test_both_source_and_dataset_raises(self):
+    @patch("sagemaker.ai_registry.dataset_transformation.DatasetTransformation")
+    @patch("sagemaker.ai_registry.dataset.DataSet")
+    def test_both_source_and_dataset_raises(self, mock_ds, mock_transform):
         with pytest.raises(ValueError, match="Exactly one of"):
             DataSetHubFactory.transform_dataset(
                 name="test",
@@ -96,12 +96,12 @@ class TestTransformDatasetValidation:
 
 
 class TestTransformDatasetFromSource:
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSet.create")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DatasetTransformation")
-    def test_local_file_source(self, mock_transformation_cls, mock_create):
+    @patch("sagemaker.ai_registry.dataset.DataSet")
+    @patch("sagemaker.ai_registry.dataset_transformation.DatasetTransformation")
+    def test_local_file_source(self, mock_transformation_cls, mock_dataset_cls):
         mock_transformation_cls.detect_format.return_value = DatasetFormat.OPENAI_CHAT
         mock_transformation_cls.transform_file.return_value = "/tmp/transformed.jsonl"
-        mock_create.return_value = _make_dataset()
+        mock_dataset_cls.create.return_value = _make_dataset()
 
         result = DataSetHubFactory.transform_dataset(
             name="new-ds",
@@ -116,7 +116,7 @@ class TestTransformDatasetFromSource:
             source_format=DatasetFormat.OPENAI_CHAT,
             target_format=DatasetFormat.GENQA,
         )
-        mock_create.assert_called_once_with(
+        mock_dataset_cls.create.assert_called_once_with(
             name="new-ds",
             source="/tmp/transformed.jsonl",
             customization_technique=CustomizationTechnique.SFT,
@@ -124,18 +124,18 @@ class TestTransformDatasetFromSource:
         )
         assert result.name == "test-ds"
 
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSet.create")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DatasetTransformation")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSetHubFactory._download_to_local")
+    @patch("sagemaker.ai_registry.dataset.DataSet")
+    @patch("sagemaker.ai_registry.dataset_transformation.DatasetTransformation")
+    @patch.object(DataSetHubFactory, "_download_to_local")
     @patch("os.path.exists", return_value=True)
     @patch("os.remove")
     def test_s3_source_downloads_and_cleans_up(
-        self, mock_remove, mock_exists, mock_download, mock_transformation_cls, mock_create
+        self, mock_remove, mock_exists, mock_download, mock_transformation_cls, mock_dataset_cls
     ):
         mock_download.return_value = "/tmp/downloaded.jsonl"
         mock_transformation_cls.detect_format.return_value = DatasetFormat.HF_PROMPT_COMPLETION
         mock_transformation_cls.transform_file.return_value = "/tmp/transformed.jsonl"
-        mock_create.return_value = _make_dataset()
+        mock_dataset_cls.create.return_value = _make_dataset()
 
         result = DataSetHubFactory.transform_dataset(
             name="new-ds",
@@ -147,12 +147,13 @@ class TestTransformDatasetFromSource:
         mock_transformation_cls.detect_format.assert_called_once_with("/tmp/downloaded.jsonl")
         mock_remove.assert_called_once_with("/tmp/downloaded.jsonl")
 
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DatasetTransformation")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSetHubFactory._download_to_local")
+    @patch("sagemaker.ai_registry.dataset_transformation.DatasetTransformation")
+    @patch("sagemaker.ai_registry.dataset.DataSet")
+    @patch.object(DataSetHubFactory, "_download_to_local")
     @patch("os.path.exists", return_value=True)
     @patch("os.remove")
     def test_s3_source_cleans_up_on_error(
-        self, mock_remove, mock_exists, mock_download, mock_transformation_cls
+        self, mock_remove, mock_exists, mock_download, mock_ds, mock_transformation_cls
     ):
         mock_download.return_value = "/tmp/downloaded.jsonl"
         mock_transformation_cls.detect_format.side_effect = ValueError("bad format")
@@ -168,19 +169,19 @@ class TestTransformDatasetFromSource:
 
 
 class TestTransformDatasetFromExisting:
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSet.get")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DatasetTransformation")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSetHubFactory._download_to_local")
+    @patch("sagemaker.ai_registry.dataset.DataSet")
+    @patch("sagemaker.ai_registry.dataset_transformation.DatasetTransformation")
+    @patch.object(DataSetHubFactory, "_download_to_local")
     @patch("os.path.exists", return_value=True)
     @patch("os.remove")
     def test_existing_dataset_instance(
-        self, mock_remove, mock_exists, mock_download, mock_transformation_cls, mock_get
+        self, mock_remove, mock_exists, mock_download, mock_transformation_cls, mock_dataset_cls
     ):
         ds = _make_dataset()
         mock_download.return_value = "/tmp/downloaded.jsonl"
         mock_transformation_cls.detect_format.return_value = DatasetFormat.VERL
         mock_transformation_cls.transform_file.return_value = "/tmp/transformed.jsonl"
-        mock_get.return_value = _make_dataset(version="2.0.0")
+        mock_dataset_cls.get.return_value = _make_dataset(version="2.0.0")
 
         result = DataSetHubFactory.transform_dataset(
             name="test-ds",
@@ -197,10 +198,10 @@ class TestTransformDatasetFromExisting:
         )
         assert result.version == "2.0.0"
 
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSet.get")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DatasetTransformation")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSetHubFactory._download_to_local")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSetHubFactory._resolve_dataset")
+    @patch("sagemaker.ai_registry.dataset.DataSet")
+    @patch("sagemaker.ai_registry.dataset_transformation.DatasetTransformation")
+    @patch.object(DataSetHubFactory, "_download_to_local")
+    @patch.object(DataSetHubFactory, "_resolve_dataset")
     @patch("os.path.exists", return_value=True)
     @patch("os.remove")
     def test_existing_dataset_by_name(
@@ -210,14 +211,14 @@ class TestTransformDatasetFromExisting:
         mock_resolve,
         mock_download,
         mock_transformation_cls,
-        mock_get,
+        mock_dataset_cls,
     ):
         resolved_ds = _make_dataset()
         mock_resolve.return_value = resolved_ds
         mock_download.return_value = "/tmp/downloaded.jsonl"
         mock_transformation_cls.detect_format.return_value = DatasetFormat.OPENAI_CHAT
         mock_transformation_cls.transform_file.return_value = "/tmp/transformed.jsonl"
-        mock_get.return_value = _make_dataset(version="2.0.0")
+        mock_dataset_cls.get.return_value = _make_dataset(version="2.0.0")
 
         result = DataSetHubFactory.transform_dataset(
             name="test-ds",
@@ -228,12 +229,13 @@ class TestTransformDatasetFromExisting:
         mock_resolve.assert_called_once_with("test-ds", None)
         mock_download.assert_called_once_with(resolved_ds.source)
 
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DatasetTransformation")
-    @patch("sagemaker.ai_registry.dataset_hub_factory.DataSetHubFactory._download_to_local")
+    @patch("sagemaker.ai_registry.dataset_transformation.DatasetTransformation")
+    @patch("sagemaker.ai_registry.dataset.DataSet")
+    @patch.object(DataSetHubFactory, "_download_to_local")
     @patch("os.path.exists", return_value=True)
     @patch("os.remove")
     def test_existing_dataset_cleans_up_on_error(
-        self, mock_remove, mock_exists, mock_download, mock_transformation_cls
+        self, mock_remove, mock_exists, mock_download, mock_ds, mock_transformation_cls
     ):
         ds = _make_dataset()
         mock_download.return_value = "/tmp/downloaded.jsonl"

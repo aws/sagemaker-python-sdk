@@ -332,7 +332,7 @@ class TestConvertToGenqa:
 
     def test_unsupported_format_raises(self):
         with pytest.raises(ValueError, match="Unsupported dataset format"):
-            convert_to_genqa({}, DatasetFormat("converse"))
+            convert_to_genqa({}, DatasetFormat.DPO)
 
 
 class TestConvertFromGenqa:
@@ -347,21 +347,21 @@ class TestConvertFromGenqa:
 
 
 class TestDatasetTransformationDetectFormat:
-    @patch("sagemaker.ai_registry.dataset_transformation.DatasetFormatDetector")
-    def test_detect_known_format(self, mock_detector_cls):
-        mock_detector_cls.detect_format.return_value = "openai_chat"
+    @patch("sagemaker.ai_registry.dataset_format_detector.DatasetFormatDetector.detect_format")
+    def test_detect_known_format(self, mock_detect):
+        mock_detect.return_value = "openai_chat"
         result = DatasetTransformation.detect_format("/path/to/file.jsonl")
         assert result == DatasetFormat.OPENAI_CHAT
 
-    @patch("sagemaker.ai_registry.dataset_transformation.DatasetFormatDetector")
-    def test_detect_none_raises(self, mock_detector_cls):
-        mock_detector_cls.detect_format.return_value = None
+    @patch("sagemaker.ai_registry.dataset_format_detector.DatasetFormatDetector.detect_format")
+    def test_detect_none_raises(self, mock_detect):
+        mock_detect.return_value = None
         with pytest.raises(ValueError, match="Unable to detect dataset format"):
             DatasetTransformation.detect_format("/path/to/file.jsonl")
 
-    @patch("sagemaker.ai_registry.dataset_transformation.DatasetFormatDetector")
-    def test_detect_unsupported_format_raises(self, mock_detector_cls):
-        mock_detector_cls.detect_format.return_value = "rft"
+    @patch("sagemaker.ai_registry.dataset_format_detector.DatasetFormatDetector.detect_format")
+    def test_detect_unsupported_format_raises(self, mock_detect):
+        mock_detect.return_value = "rft"
         with pytest.raises(ValueError, match="not a supported transformation format"):
             DatasetTransformation.detect_format("/path/to/file.jsonl")
 
