@@ -34,6 +34,7 @@ from sagemaker.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.s3_utils import s3_path_join
 from sagemaker.session import Session
 from sagemaker.utils import resolve_value_from_config, retry_with_backoff, format_tags, Tags
+from sagemaker.workflow._utils import EXPERIMENTS_REGIONS
 from sagemaker.workflow.callback_step import CallbackOutput, CallbackStep
 from sagemaker.workflow._event_bridge_client_helper import (
     EventBridgeSchedulerHelper,
@@ -99,6 +100,8 @@ class Pipeline:
                 the same name already exists. By default, pipeline name is used as
                 experiment name and execution id is used as the trial name.
                 If set to None, no experiment or trial will be created automatically.
+                Note: The default experiment config is only applied in regions where
+                SageMaker Experiments is Available.
             steps (Sequence[Union[Step, StepCollection, StepOutput]]): The list of the
                 non-conditional steps associated with the pipeline. Any steps that are within the
                 `if_steps` or `else_steps` of a `ConditionStep` cannot be listed in the steps of a
@@ -126,6 +129,12 @@ class Pipeline:
         self._event_bridge_scheduler_helper = EventBridgeSchedulerHelper(
             self.sagemaker_session.boto_session.client("scheduler"),
         )
+
+        # Apply default experiment config only in regions where Experiments is available
+        if pipeline_experiment_config is _DEFAULT_EXPERIMENT_CFG:
+            region = self.sagemaker_session.boto_region_name
+            if region not in EXPERIMENTS_REGIONS:
+                self.pipeline_experiment_config = None
 
     @property
     def latest_pipeline_version_id(self):
