@@ -24,11 +24,11 @@ from sagemaker.core.remote_function.core.serialization import (
     _MetaData,
     _compute_hash,
     _compute_hmac,
+    _extract_job_name_from_secret_arn,
     _get_or_create_hmac_secret,
     _get_hmac_key_from_secret,
     _store_secret_arn_in_parameter_store,
     _get_secret_arn_from_parameter_store,
-    _extract_job_name_from_s3_uri,
     _validate_secret_arn,
     _perform_integrity_check,
     _upload_payload_and_metadata_to_s3,
@@ -186,7 +186,7 @@ class TestParameterStore:
         call_kwargs = ssm_client.put_parameter.call_args[1]
         assert call_kwargs["Name"] == f"/sagemaker/remote-function/{MOCK_JOB_NAME}/secret-arn"
         assert call_kwargs["Value"] == MOCK_SECRET_ARN
-        assert call_kwargs["Overwrite"] is True
+        assert "Tags" in call_kwargs
 
     def test_get_secret_arn(self):
         session, _, ssm_client, _ = _mock_sagemaker_session()
@@ -208,28 +208,6 @@ class TestParameterStore:
             _get_secret_arn_from_parameter_store(session, MOCK_JOB_NAME)
 
 
-class TestExtractJobName:
-    """Tests for S3 URI job name extraction."""
-
-    def test_extract_from_results_uri(self):
-        result = _extract_job_name_from_s3_uri(
-            "s3://bucket/remote-function/my-job-123/results"
-        )
-        assert result == "my-job-123"
-
-    def test_extract_from_function_uri(self):
-        result = _extract_job_name_from_s3_uri(
-            "s3://bucket/remote-function/my-job-123/function"
-        )
-        assert result == "my-job-123"
-
-    def test_extract_from_exception_uri(self):
-        result = _extract_job_name_from_s3_uri(
-            "s3://bucket/remote-function/my-job-123/exception"
-        )
-        assert result == "my-job-123"
-
-
 class TestValidateSecretArn:
     """Tests for secret ARN validation (Mitigations #1 and #3)."""
 
@@ -238,7 +216,7 @@ class TestValidateSecretArn:
         session, _, _, _ = _mock_sagemaker_session()
         
         # Should not raise
-        _validate_secret_arn(session, MOCK_SECRET_ARN, MOCK_JOB_NAME)
+        _validate_secret_arn(session, MOCK_SECRET_ARN)
 
     def test_cross_account_arn_rejected(self):
         """Mitigation #1: Secret ARN from different account should be rejected."""
@@ -247,7 +225,7 @@ class TestValidateSecretArn:
         attacker_arn = "arn:aws:secretsmanager:us-west-2:999999999999:secret:evil-secret"
         
         with pytest.raises(DeserializationError, match="same AWS account"):
-            _validate_secret_arn(session, attacker_arn, MOCK_JOB_NAME)
+            _validate_secret_arn(session, attacker_arn)
 
     def test_tampered_arn_rejected(self):
         """Mitigation #3: ARN not matching Parameter Store should be rejected."""
@@ -261,15 +239,15 @@ class TestValidateSecretArn:
         # Attacker's ARN (same account but different secret)
         tampered_arn = f"arn:aws:secretsmanager:us-west-2:{MOCK_ACCOUNT_ID}:secret:attacker-created-secret"
         
-        with pytest.raises(DeserializationError, match="Secret ARN mismatch"):
-            _validate_secret_arn(session, tampered_arn, MOCK_JOB_NAME)
+        with pytest.raises(DeserializationError, match="does not match expected format"):
+            _validate_secret_arn(session, tampered_arn)
 
     def test_invalid_arn_format_rejected(self):
         """Malformed ARN should be rejected."""
         session, _, _, _ = _mock_sagemaker_session()
         
         with pytest.raises(DeserializationError, match="Invalid secret ARN format"):
-            _validate_secret_arn(session, "not-an-arn", MOCK_JOB_NAME)
+            _validate_secret_arn(session, "not-an-arn")
 
 
 class TestPerformIntegrityCheck:
@@ -288,7 +266,6 @@ class TestPerformIntegrityCheck:
             buffer=payload,
             sagemaker_session=session,
             secret_arn=MOCK_SECRET_ARN,
-            s3_uri=MOCK_S3_URI,
         )
 
     def test_hmac_integrity_check_fails_on_tampered_payload(self):
@@ -305,7 +282,6 @@ class TestPerformIntegrityCheck:
                 buffer=tampered_payload,
                 sagemaker_session=session,
                 secret_arn=MOCK_SECRET_ARN,
-                s3_uri=MOCK_S3_URI,
             )
 
     def test_legacy_sha256_check_passes_with_warning(self):
@@ -340,19 +316,6 @@ class TestPerformIntegrityCheck:
                 secret_arn=MOCK_SECRET_ARN,
             )
 
-    def test_hmac_check_requires_s3_uri(self):
-        """HMAC check should require s3_uri."""
-        session, _, _, _ = _mock_sagemaker_session()
-        
-        with pytest.raises(DeserializationError, match="s3_uri is required"):
-            _perform_integrity_check(
-                expected_hash_value="hash",
-                buffer=b"data",
-                sagemaker_session=session,
-                secret_arn=MOCK_SECRET_ARN,
-            )
-
-
 class TestAttackScenarios:
     """Tests simulating actual attack scenarios."""
 
@@ -373,7 +336,6 @@ class TestAttackScenarios:
                 buffer=malicious_payload,
                 sagemaker_session=session,
                 secret_arn=MOCK_SECRET_ARN,
-                s3_uri=MOCK_S3_URI,
             )
 
     def test_attacker_points_to_cross_account_secret(self):
@@ -383,7 +345,7 @@ class TestAttackScenarios:
         attacker_secret_arn = "arn:aws:secretsmanager:us-west-2:999999999999:secret:attacker-secret"
         
         with pytest.raises(DeserializationError, match="same AWS account"):
-            _validate_secret_arn(session, attacker_secret_arn, MOCK_JOB_NAME)
+            _validate_secret_arn(session, attacker_secret_arn)
 
     def test_attacker_creates_secret_in_same_account(self):
         """Attacker creates secret in same account but ARN doesn't match Parameter Store."""
@@ -398,4 +360,4 @@ class TestAttackScenarios:
         attacker_arn = f"arn:aws:secretsmanager:us-west-2:{MOCK_ACCOUNT_ID}:secret:sagemaker/remote-function/evil-job/hmac-key"
         
         with pytest.raises(DeserializationError, match="Secret ARN mismatch"):
-            _validate_secret_arn(session, attacker_arn, MOCK_JOB_NAME)
+            _validate_secret_arn(session, attacker_arn)

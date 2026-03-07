@@ -216,7 +216,6 @@ def deserialize_func_from_s3(sagemaker_session: Session, s3_uri: str) -> Callabl
         buffer=bytes_to_deserialize,
         sagemaker_session=sagemaker_session,
         secret_arn=metadata.secret_arn,
-        s3_uri=s3_uri
     )
 
     return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
@@ -315,7 +314,6 @@ def deserialize_obj_from_s3(sagemaker_session: Session, s3_uri: str) -> Any:
         buffer=bytes_to_deserialize,
         sagemaker_session=sagemaker_session,
         secret_arn=metadata.secret_arn,
-        s3_uri=s3_uri
     )
 
     return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
@@ -411,7 +409,6 @@ def deserialize_exception_from_s3(sagemaker_session: Session, s3_uri: str) -> An
         buffer=bytes_to_deserialize,
         sagemaker_session=sagemaker_session,
         secret_arn=metadata.secret_arn,
-        s3_uri=s3_uri
     )
 
     return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
@@ -518,17 +515,24 @@ def _store_secret_arn_in_parameter_store(
     ssm_client = sagemaker_session.boto_session.client('ssm')
     parameter_name = f"/sagemaker/remote-function/{job_name}/secret-arn"
     
-    ssm_client.put_parameter(
-        Name=parameter_name,
-        Value=secret_arn,
-        Type="String",
-        Overwrite=True,
-        Description=f"Secret ARN for SageMaker remote function job {job_name}",
-        Tags=[
-            {'Key': 'SageMaker:JobName', 'Value': job_name},
-            {'Key': 'SageMaker:Purpose', 'Value': 'RemoteFunctionIntegrity'}
-        ]
-    )
+    try:
+        ssm_client.put_parameter(
+            Name=parameter_name,
+            Value=secret_arn,
+            Type="String",
+            Description=f"Secret ARN for SageMaker remote function job {job_name}",
+            Tags=[
+                {'Key': 'SageMaker:JobName', 'Value': job_name},
+                {'Key': 'SageMaker:Purpose', 'Value': 'RemoteFunctionIntegrity'}
+            ]
+        )
+    except ssm_client.exceptions.ParameterAlreadyExists:
+        ssm_client.put_parameter(
+            Name=parameter_name,
+            Value=secret_arn,
+            Type="String",
+            Overwrite=True,
+        )
 
 
 def _get_secret_arn_from_parameter_store(
@@ -560,35 +564,34 @@ def _get_secret_arn_from_parameter_store(
         )
 
 
-def _extract_job_name_from_s3_uri(s3_uri: str) -> str:
-    """Extract job name from S3 URI.
+def _extract_job_name_from_secret_arn(secret_arn: str) -> str:
+    """Extract job name from a Secrets Manager ARN.
     
-    S3 URI format: s3://bucket/path/to/job-name/results
-    or: s3://bucket/job-name/function
+    Secret name convention: sagemaker/remote-function/{job_name}/hmac-key
+    ARN format: arn:aws:secretsmanager:region:account:secret:sagemaker/remote-function/{job_name}/hmac-key-XXXXXX
     
     Args:
-        s3_uri: S3 URI containing job name
+        secret_arn: Full ARN of the secret
         
     Returns:
-        Job name extracted from URI
+        Extracted job name
+        
+    Raises:
+        DeserializationError: If ARN doesn't match expected format
     """
-    # Remove s3:// prefix and split by /
-    parts = s3_uri.replace("s3://", "").split("/")
-    
-    # Try to find a part that looks like a job name
-    # Job names typically contain execution IDs or timestamps
-    for part in reversed(parts):
-        if part and part not in ['function', 'arguments', 'results', 'exception', 'payload.pkl', 'metadata.json']:
-            return part
-    
-    # Fallback: use the last meaningful part
-    return parts[-2] if len(parts) > 1 else parts[0]
+    import re
+    match = re.search(r":secret:sagemaker/remote-function/(.+)/hmac-key", secret_arn)
+    if not match:
+        raise DeserializationError(
+            f"Secret ARN does not match expected format "
+            f"'sagemaker/remote-function/{{job_name}}/hmac-key': {secret_arn}"
+        )
+    return match.group(1)
 
 
 def _validate_secret_arn(
     sagemaker_session: Session,
     metadata_secret_arn: str,
-    job_name: str
 ):
     """Validate secret ARN from metadata against trusted sources.
     
@@ -596,10 +599,12 @@ def _validate_secret_arn(
     1. Validate secret is in same AWS account
     2. Validate secret ARN matches Parameter Store (trust anchor)
     
+    The job_name is derived from the secret ARN's naming convention, then
+    independently validated against the SSM trust anchor.
+    
     Args:
         sagemaker_session: SageMaker session
         metadata_secret_arn: Secret ARN from S3 metadata (untrusted)
-        job_name: Remote function job name
         
     Raises:
         DeserializationError: If validation fails
@@ -623,6 +628,7 @@ def _validate_secret_arn(
         )
     
     # Mitigation #3: Validate against Parameter Store (trust anchor)
+    job_name = _extract_job_name_from_secret_arn(metadata_secret_arn)
     expected_secret_arn = _get_secret_arn_from_parameter_store(sagemaker_session, job_name)
     
     if metadata_secret_arn != expected_secret_arn:
@@ -638,7 +644,6 @@ def _perform_integrity_check(
     buffer: bytes,
     sagemaker_session: Optional[Session] = None,
     secret_arn: Optional[str] = None,
-    s3_uri: Optional[str] = None
 ):
     """Performs integrity checks for serialized code/arguments uploaded to s3.
 
@@ -650,7 +655,6 @@ def _perform_integrity_check(
         buffer: Serialized data buffer
         sagemaker_session: SageMaker session (required if secret_arn is provided)
         secret_arn: ARN of secret containing HMAC key (None for legacy plain SHA-256)
-        s3_uri: S3 URI for extracting job name (required if secret_arn is provided)
     """
     if secret_arn:
         # New secure method: HMAC with key from Secrets Manager
@@ -659,16 +663,8 @@ def _perform_integrity_check(
                 "sagemaker_session is required for HMAC integrity check"
             )
         
-        if not s3_uri:
-            raise DeserializationError(
-                "s3_uri is required for HMAC integrity check to extract job name"
-            )
-        
-        # Extract job name from S3 URI
-        job_name = _extract_job_name_from_s3_uri(s3_uri)
-        
         # Validate secret ARN (Mitigations #1 and #3)
-        _validate_secret_arn(sagemaker_session, secret_arn, job_name)
+        _validate_secret_arn(sagemaker_session, secret_arn)
         
         # Now safe to retrieve HMAC key
         hmac_key = _get_hmac_key_from_secret(sagemaker_session, secret_arn)

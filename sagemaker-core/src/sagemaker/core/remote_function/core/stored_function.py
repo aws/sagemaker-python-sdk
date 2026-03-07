@@ -145,10 +145,9 @@ class StoredFunction:
         )
         serialization._upload_payload_and_metadata_to_s3(
             bytes_to_upload=serialized_data.func,
-            
+            job_name=self.job_name,
             s3_uri=s3_path_join(self.func_upload_path, FUNCTION_FOLDER),
             sagemaker_session=self.sagemaker_session,
-            job_name=self.job_name,
             s3_kms_key=self.s3_kms_key,
         )
 
@@ -158,10 +157,9 @@ class StoredFunction:
         )
         serialization._upload_payload_and_metadata_to_s3(
             bytes_to_upload=serialized_data.args,
-            
+            job_name=self.job_name,
             s3_uri=s3_path_join(self.func_upload_path, ARGUMENTS_FOLDER),
             sagemaker_session=self.sagemaker_session,
-            job_name=self.job_name,
             s3_kms_key=self.s3_kms_key,
         )
 
