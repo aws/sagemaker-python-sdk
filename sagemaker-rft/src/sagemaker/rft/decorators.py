@@ -5,11 +5,14 @@ Provides rft_handler decorator for AgentCore Runtime entrypoints.
 
 from __future__ import annotations
 
+import asyncio
+import logging
 from functools import wraps
 from typing import Any, Callable
 
 from sagemaker.rft.context import set_rollout_context, clear_rollout_context
-from sagemaker.rft.feedback import RolloutFeedbackClient
+
+logger = logging.getLogger(__name__)
 
 
 def rft_handler(func: Callable) -> Callable:
@@ -17,39 +20,54 @@ def rft_handler(func: Callable) -> Callable:
 
     Automatically:
     1. Sets rollout context (metadata + inference_params) for header injection
-    2. Reports rollout completion status to the training platform
-    3. Reports errors if the rollout fails
+    2. Clears context when done
+    3. Logs errors if the rollout fails
+
+    Works with both sync and async functions.
 
     Args:
-        func: An async function that handles the rollout.
+        func: A sync or async function that handles the rollout.
 
     Returns:
-        Wrapped async function with automatic context and reporting.
+        Wrapped function with automatic context management.
 
     Example::
 
         @app.entrypoint
         @rft_handler
-        async def invoke_agent(payload):
-            result = await agent.invoke_async(payload["instance"])
+        def invoke_agent(payload):
+            result = agent(payload["instance"])
             return result
     """
+    if asyncio.iscoroutinefunction(func):
 
-    @wraps(func)
-    async def wrapper(payload: dict) -> Any:
-        metadata = payload.get("metadata")
-        inference_params = payload.get("inference_params")
+        @wraps(func)
+        async def async_wrapper(payload: dict) -> Any:
+            metadata = payload.get("metadata")
+            inference_params = payload.get("inference_params")
+            set_rollout_context(metadata, inference_params)
+            try:
+                return await func(payload)
+            except Exception:
+                logger.exception("RFT rollout failed")
+                raise
+            finally:
+                clear_rollout_context()
 
-        set_rollout_context(metadata, inference_params)
+        return async_wrapper
+    else:
 
-        try:
-            result = await func(payload)
-            RolloutFeedbackClient(metadata).report_complete()
-            return result
-        except Exception:
-            RolloutFeedbackClient(metadata).report_error()
-            raise
-        finally:
-            clear_rollout_context()
+        @wraps(func)
+        def sync_wrapper(payload: dict) -> Any:
+            metadata = payload.get("metadata")
+            inference_params = payload.get("inference_params")
+            set_rollout_context(metadata, inference_params)
+            try:
+                return func(payload)
+            except Exception:
+                logger.exception("RFT rollout failed")
+                raise
+            finally:
+                clear_rollout_context()
 
-    return wrapper
+        return sync_wrapper

@@ -1,11 +1,14 @@
-"""Rollout feedback client for reporting completion status to the trainer."""
+"""Rollout feedback client for reporting completion and rewards to the RFT Runtime Service."""
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
-import requests
+import boto3
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSPreparedRequest
 
 from sagemaker.rft.models import RolloutMetadata
 
@@ -13,19 +16,20 @@ logger = logging.getLogger(__name__)
 
 
 class RolloutFeedbackClient:
-    """Client for reporting rollout completion to the trainer.
+    """Client for reporting rollout completion to the RFT Runtime Service.
 
-    Create one instance per rollout and call either report_complete()
-    or report_error() when the rollout finishes.
+    Calls the runtime service's ``/CompleteTrajectory`` and ``/UpdateReward``
+    APIs using SigV4-signed requests.
 
     Example::
 
-        feedback = RolloutFeedbackClient(request.metadata)
+        feedback = RolloutFeedbackClient(metadata)
         try:
             result = run_agent(...)
-            feedback.report_complete(reward=compute_reward(result))
+            feedback.complete_trajectory()
+            feedback.update_reward(reward=0.95)
         except Exception:
-            feedback.report_error()
+            logger.exception("Rollout failed")
             raise
     """
 
@@ -33,12 +37,8 @@ class RolloutFeedbackClient:
         """Initialize the feedback client.
 
         Args:
-            metadata: Rollout metadata - either a dict or RolloutMetadata instance.
-                Must contain reporting_address.
-
-        Raises:
-            TypeError: If metadata is not a dict or RolloutMetadata.
-            ValueError: If metadata is missing required 'reporting_address' field.
+            metadata: Rollout metadata dict or RolloutMetadata instance.
+                Expected keys: ``endpoint``, ``job_arn``, ``trajectory_id``, ``region``.
         """
         if isinstance(metadata, RolloutMetadata):
             metadata = metadata.model_dump()
@@ -47,52 +47,56 @@ class RolloutFeedbackClient:
                 f"metadata must be a dict or RolloutMetadata, got {type(metadata).__name__}."
             )
 
-        if "reporting_address" not in metadata:
-            raise ValueError(
-                "metadata missing required field 'reporting_address'. "
-                "Ensure you're passing the metadata from the rollout request."
-            )
-
-        self._server_address = metadata["reporting_address"].rstrip("/")
+        self._endpoint = metadata.get("endpoint", "").rstrip("/")
+        self._job_arn = metadata.get("job_arn", "")
+        self._trajectory_id = metadata.get("trajectory_id", "")
+        self._region = metadata.get("region", "us-west-2")
         self._metadata = metadata
 
-    def report_complete(self, reward: float | list[float] | None = None) -> None:
-        """Report successful rollout completion, optionally with reward.
+    def complete_trajectory(self) -> None:
+        """Report trajectory completion to the runtime service."""
+        logger.info("CompleteTrajectory: trajectory_id=%s", self._trajectory_id)
+        body = json.dumps({
+            "trajectoryId": self._trajectory_id,
+            "jobArn": self._job_arn,
+        })
+        self._signed_post("/CompleteTrajectory", body)
+
+    def update_reward(self, reward: float | list[float]) -> None:
+        """Report reward(s) to the runtime service.
 
         Args:
-            reward: Optional reward value(s). Can be a single float or a list
-                of floats for multi-step rewards.
+            reward: A single float or list of floats for multi-step rewards.
         """
-        if reward is not None:
-            self._report_reward(reward)
-        self._report_status("finished")
+        rewards = [reward] if isinstance(reward, (int, float)) else reward
+        body = json.dumps({
+            "trajectoryId": self._trajectory_id,
+            "jobArn": self._job_arn,
+            "rewards": rewards,
+        })
+        self._signed_post("/UpdateReward", body)
 
-    def report_error(self) -> None:
-        """Report rollout error."""
-        self._report_status("error")
+    def _signed_post(self, path: str, body: str) -> None:
+        """Send a SigV4-signed POST to the runtime service."""
+        import requests as req_lib
 
-    def _report_reward(self, reward: float | list[float]) -> None:
-        """Report reward to the trainer."""
+        url = f"{self._endpoint}{path}"
         try:
-            response = requests.post(
-                f"{self._server_address}/rollout/reward",
+            session = boto3.Session()
+            credentials = session.get_credentials().get_frozen_credentials()
+            request = AWSPreparedRequest(
+                method="POST",
+                url=url,
                 headers={"Content-Type": "application/json"},
-                json={"metadata": self._metadata, "reward": reward},
+                body=body,
+            )
+            SigV4Auth(credentials, "sagemaker", self._region).add_auth(request)
+            response = req_lib.post(
+                url,
+                headers=dict(request.headers),
+                data=body,
                 timeout=10,
             )
             response.raise_for_status()
-        except requests.RequestException as e:
-            logger.warning(f"Failed to report reward for {self._metadata}: {e}")
-
-    def _report_status(self, status: str) -> None:
-        """Report rollout status to the trainer."""
-        try:
-            response = requests.post(
-                f"{self._server_address}/rollout/status",
-                headers={"Content-Type": "application/json"},
-                json={"metadata": self._metadata, "status": status},
-                timeout=10,
-            )
-            response.raise_for_status()
-        except requests.RequestException as e:
-            logger.warning(f"Failed to report status for {self._metadata}: {e}")
+        except Exception as e:
+            logger.warning("Failed %s: %s", path, e)

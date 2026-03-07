@@ -22,10 +22,10 @@ class RolloutMetadata(BaseModel):
     and make_inference_headers.
     """
 
-    job_id: str = Field(description="Training job identifier")
-    experiment_id: str = Field(description="Experiment/iteration identifier")
-    rollout_id: str = Field(description="Unique rollout identifier")
-    reporting_address: str = Field(description="Callback URL for reporting results")
+    job_arn: str = Field(description="Training job ARN")
+    trajectory_id: str = Field(description="Unique trajectory identifier")
+    endpoint: str = Field(description="RFT Runtime Service endpoint URL")
+    region: str = Field(default="us-west-2", description="AWS region")
 
 
 class InferenceParams(BaseModel):
