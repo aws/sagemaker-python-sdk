@@ -22,6 +22,7 @@ from sagemaker.serve.builder.schema_builder import SchemaBuilder
 from sagemaker.core.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.core.deserializers import JSONDeserializer, TorchTensorDeserializer
 from sagemaker.serve.constants import Framework
+from sagemaker.serve.mode.function_pointers import Mode
 
 
 class TestModelBuilderSimpleMethods:
@@ -299,3 +300,313 @@ class TestModelBuilderSimpleMethods:
         with patch.object(builder, '_fetch_serializer_and_deserializer_for_framework', return_value=(None, None)):
             with pytest.raises(ValueError, match="Cannot determine deserializer"):
                 builder._get_client_translators()
+
+
+class TestBuildForPassthroughLocalContainer:
+    """Tests for _build_for_passthrough() with LOCAL_CONTAINER mode.
+
+    Validates: Requirements 2.1, 2.2, 3.1
+    """
+
+    def _make_mock_session(self):
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.config = {}
+        mock_session.boto_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        return mock_session
+
+    @patch.object(ModelBuilder, '_create_model')
+    @patch.object(ModelBuilder, '_prepare_for_mode')
+    def test_build_for_passthrough_initializes_secret_key(
+        self, mock_prepare, mock_create
+    ):
+        """Test that _build_for_passthrough initializes secret_key for LOCAL_CONTAINER mode.
+
+        Bug 1 fix: secret_key must be set to empty string so _deploy_local_endpoint()
+        can pass it to LocalEndpoint.create() without raising AttributeError.
+        """
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.LOCAL_CONTAINER,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self._make_mock_session(),
+        )
+
+        builder._build_for_passthrough()
+
+        assert builder.secret_key == ""
+
+    @patch.object(ModelBuilder, '_create_model')
+    @patch.object(ModelBuilder, '_prepare_for_mode')
+    def test_build_for_passthrough_calls_prepare_for_mode_local_container(
+        self, mock_prepare, mock_create
+    ):
+        """Test that _build_for_passthrough calls _prepare_for_mode for LOCAL_CONTAINER.
+
+        Bug 2 fix: _prepare_for_mode() must be called so that
+        self.modes[str(Mode.LOCAL_CONTAINER)] contains a LocalContainerMode object,
+        preventing KeyError when _deploy_local_endpoint() accesses it.
+        """
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.LOCAL_CONTAINER,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self._make_mock_session(),
+        )
+
+        builder._build_for_passthrough()
+
+        mock_prepare.assert_called_once()
+
+    @patch.object(ModelBuilder, '_create_model')
+    @patch.object(ModelBuilder, '_prepare_for_mode')
+    def test_build_for_passthrough_does_not_call_prepare_for_mode_sagemaker_endpoint(
+        self, mock_prepare, mock_create
+    ):
+        """Test that _build_for_passthrough does NOT call _prepare_for_mode for SAGEMAKER_ENDPOINT.
+
+        Preservation: SAGEMAKER_ENDPOINT mode passthrough must continue to work without
+        calling _prepare_for_mode() (endpoint mode has its own preparation in _create_model).
+        """
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.SAGEMAKER_ENDPOINT,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self._make_mock_session(),
+        )
+
+        builder._build_for_passthrough()
+
+        mock_prepare.assert_not_called()
+
+
+class TestBuildForPassthroughS3PathPreservation:
+    """Tests for _build_for_passthrough() S3 path preservation with ModelTrainer.
+
+    Validates: Requirements 2.4, 3.5
+    """
+
+    def _make_mock_session(self):
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.config = {}
+        mock_session.boto_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        return mock_session
+
+    @patch.object(ModelBuilder, '_create_model')
+    @patch.object(ModelBuilder, '_prepare_for_mode')
+    def test_build_for_passthrough_preserves_model_path_as_s3_upload_path(
+        self, mock_prepare, mock_create
+    ):
+        """Test that _build_for_passthrough preserves model_path as s3_upload_path.
+
+        Bug 4 fix: When ModelTrainer has set model_path to an S3 URI,
+        _build_for_passthrough() must preserve it as s3_upload_path instead of
+        unconditionally setting it to None.
+
+        **Validates: Requirements 2.4**
+        """
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.LOCAL_CONTAINER,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self._make_mock_session(),
+        )
+        builder.model_path = "s3://bucket/model.tar.gz"
+
+        builder._build_for_passthrough()
+
+        assert builder.s3_upload_path == "s3://bucket/model.tar.gz"
+
+    @patch.object(ModelBuilder, '_create_model')
+    @patch.object(ModelBuilder, '_prepare_for_mode')
+    def test_build_for_passthrough_sets_s3_upload_path_none_when_no_model_path(
+        self, mock_prepare, mock_create
+    ):
+        """Test that _build_for_passthrough sets s3_upload_path to None when no model_path.
+
+        Preservation: When no model artifacts are involved (model_path is None),
+        s3_upload_path should still be set to None as before.
+
+        **Validates: Requirements 3.5**
+        """
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.LOCAL_CONTAINER,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self._make_mock_session(),
+        )
+        builder.model_path = None
+
+        builder._build_for_passthrough()
+
+        assert builder.s3_upload_path is None
+
+
+class TestGetDockerClient:
+    """Tests for _get_docker_client() Studio Docker client initialization.
+
+    Validates: Requirements 2.3, 3.3
+    """
+
+    @patch("sagemaker.serve.mode.local_container_mode.os.path.exists")
+    @patch("sagemaker.serve.mode.local_container_mode.check_for_studio", return_value=True)
+    @patch("sagemaker.serve.mode.local_container_mode.docker")
+    def test_pull_image_studio_uses_socket_path(
+        self, mock_docker, mock_check_studio, mock_path_exists
+    ):
+        """Test that in Studio, _get_docker_client uses the proxy socket path.
+
+        Bug 3 fix: When check_for_studio() returns True and the proxy socket exists,
+        DockerClient should be initialized with base_url pointing to that socket.
+        """
+        from sagemaker.serve.mode.local_container_mode import _get_docker_client
+
+        mock_path_exists.side_effect = lambda p: p == "/docker/proxy/docker.sock"
+        mock_client = Mock()
+        mock_docker.DockerClient.return_value = mock_client
+
+        with patch.dict("os.environ", {}, clear=True):
+            result = _get_docker_client()
+
+        mock_docker.DockerClient.assert_called_once_with(
+            base_url="unix:///docker/proxy/docker.sock"
+        )
+        assert result == mock_client
+
+    @patch("sagemaker.serve.mode.local_container_mode.check_for_studio", return_value=False)
+    @patch("sagemaker.serve.mode.local_container_mode.docker")
+    def test_pull_image_non_studio_uses_from_env(self, mock_docker, mock_check_studio):
+        """Test that in non-Studio environments, _get_docker_client uses docker.from_env().
+
+        Preservation: Standard Docker environments must continue to use docker.from_env().
+        """
+        from sagemaker.serve.mode.local_container_mode import _get_docker_client
+
+        mock_client = Mock()
+        mock_docker.from_env.return_value = mock_client
+
+        with patch.dict("os.environ", {}, clear=True):
+            result = _get_docker_client()
+
+        mock_docker.from_env.assert_called_once()
+        assert result == mock_client
+
+    @patch("sagemaker.serve.mode.local_container_mode.check_for_studio")
+    @patch("sagemaker.serve.mode.local_container_mode.docker")
+    def test_pull_image_with_docker_host_env_var(self, mock_docker, mock_check_studio):
+        """Test that when DOCKER_HOST is set, docker.from_env() is used regardless of Studio.
+
+        When the user explicitly sets DOCKER_HOST, we should respect that and skip
+        Studio detection entirely.
+        """
+        from sagemaker.serve.mode.local_container_mode import _get_docker_client
+
+        mock_client = Mock()
+        mock_docker.from_env.return_value = mock_client
+
+        with patch.dict("os.environ", {"DOCKER_HOST": "tcp://localhost:2375"}):
+            result = _get_docker_client()
+
+        mock_docker.from_env.assert_called_once()
+        mock_check_studio.assert_not_called()
+        assert result == mock_client
+
+
+class TestPreservationNonPassthroughBehavior:
+    """Tests for Property 4: Preservation - Non-Passthrough and Non-LOCAL_CONTAINER Behavior.
+
+    Verifies that the bugfix does not alter behavior for:
+    - Model-server-specific build methods (e.g., _build_for_torchserve)
+    - SAGEMAKER_ENDPOINT passthrough mode
+
+    **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5**
+    """
+
+    def _make_mock_session(self):
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.config = {}
+        mock_session.boto_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        return mock_session
+
+    @patch('sagemaker.serve.model_builder.ModelBuilder._create_model')
+    @patch('sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode')
+    @patch('sagemaker.serve.model_builder.ModelBuilder._save_model_inference_spec')
+    def test_build_for_torchserve_still_calls_prepare_for_mode(
+        self, mock_save_spec, mock_prepare, mock_create
+    ):
+        """Test that _build_for_torchserve still calls _prepare_for_mode for LOCAL_CONTAINER.
+
+        Preservation: The torchserve build path already calls _prepare_for_mode()
+        for local modes. This must remain unchanged after the passthrough bugfix.
+
+        **Validates: Requirements 3.2**
+        """
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            model=Mock(),
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.LOCAL_CONTAINER,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self._make_mock_session(),
+        )
+        builder.model_server = Mock()
+        builder.env_vars = {}
+        builder.shared_libs = []
+        builder.dependencies = {}
+        builder.inference_spec = None
+        builder.model_path = None
+
+        builder._build_for_torchserve()
+
+        mock_prepare.assert_called_once()
+
+    @patch.object(ModelBuilder, '_create_model')
+    @patch.object(ModelBuilder, '_prepare_for_mode')
+    def test_build_for_passthrough_sagemaker_endpoint_unchanged(
+        self, mock_prepare, mock_create
+    ):
+        """Test that SAGEMAKER_ENDPOINT passthrough is fully unchanged by the bugfix.
+
+        Preservation: SAGEMAKER_ENDPOINT passthrough must continue to:
+        - Initialize secret_key to empty string
+        - NOT call _prepare_for_mode()
+        - Set s3_upload_path to None when no model_path
+        - Return the model from _create_model()
+
+        **Validates: Requirements 3.1, 3.5**
+        """
+        mock_model = Mock()
+        mock_create.return_value = mock_model
+
+        builder = ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.SAGEMAKER_ENDPOINT,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self._make_mock_session(),
+        )
+        builder.model_path = None
+
+        result = builder._build_for_passthrough()
+
+        assert builder.secret_key == ""
+        assert builder.s3_upload_path is None
+        mock_prepare.assert_not_called()
+        mock_create.assert_called_once()
+        assert result == mock_model
+

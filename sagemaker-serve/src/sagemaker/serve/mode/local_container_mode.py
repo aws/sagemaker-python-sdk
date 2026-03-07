@@ -3,12 +3,15 @@
 from __future__ import absolute_import
 from pathlib import Path
 import logging
+import os
 from datetime import datetime, timedelta
 from typing import Dict, Type
 import base64
 import time
 import subprocess
 import docker
+
+from sagemaker.core.local.utils import check_for_studio
 
 from sagemaker.serve.model_server.tensorflow_serving.server import LocalTensorflowServing
 from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -32,6 +35,25 @@ _PING_HEALTH_CHECK_FAIL_MSG = (
     "Container did not pass the ping health check. "
     + "Please increase container_timeout_seconds or review your inference code."
 )
+
+STUDIO_DOCKER_SOCKET_PATHS = [
+    "/docker/proxy/docker.sock",
+    "/var/run/docker.sock",
+]
+
+
+def _get_docker_client():
+    """Get a Docker client, handling SageMaker Studio's non-standard socket path."""
+    if os.environ.get("DOCKER_HOST"):
+        return docker.from_env()
+    try:
+        if check_for_studio():
+            for socket_path in STUDIO_DOCKER_SOCKET_PATHS:
+                if os.path.exists(socket_path):
+                    return docker.DockerClient(base_url=f"unix://{socket_path}")
+    except (NotImplementedError, Exception):
+        pass
+    return docker.from_env()
 
 
 class LocalContainerMode(
@@ -212,7 +234,7 @@ class LocalContainerMode(
         
         # Check if Docker is available first
         try:
-            self.client = docker.from_env()
+            self.client = _get_docker_client()
             self.client.ping()  # Test Docker connection
         except Exception as e:
             raise RuntimeError(
