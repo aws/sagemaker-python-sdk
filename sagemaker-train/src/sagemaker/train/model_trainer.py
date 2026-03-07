@@ -546,7 +546,11 @@ class ModelTrainer(BaseModel):
             )
 
         if self.training_image:
-            logger.info(f"Training image URI: {self.training_image}")
+            from sagemaker.core.helper.pipeline_variable import PipelineVariable
+            if isinstance(self.training_image, PipelineVariable):
+                logger.info("Training image URI: (PipelineVariable - resolved at pipeline execution)")
+            else:
+                logger.info(f"Training image URI: {self.training_image}")
     
 
     def _create_training_job_args(
