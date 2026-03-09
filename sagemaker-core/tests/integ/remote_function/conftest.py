@@ -3,6 +3,7 @@
 import glob
 import os
 import subprocess
+import sys
 import tempfile
 
 import cloudpickle
@@ -22,8 +23,7 @@ def _build_and_upload_core_wheel(sagemaker_session):
     dist_dir = tempfile.mkdtemp(prefix="sagemaker_core_wheel_")
 
     subprocess.run(
-        f"python -m build --wheel --outdir {dist_dir}",
-        shell=True,
+        [sys.executable, "-m", "pip", "wheel", "--no-deps", "-w", dist_dir, "."],
         cwd=os.path.join(repo_root, "sagemaker-core"),
         check=True,
     )
