@@ -133,7 +133,7 @@ from sagemaker.core.config.config_schema import (
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
     MODEL_CONTAINERS_PATH,
 )
-from sagemaker.serve.constants import SUPPORTED_MODEL_SERVERS, Framework
+from sagemaker.serve.constants import LOCAL_MODES, SUPPORTED_MODEL_SERVERS, Framework
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.core import fw_utils
 from sagemaker.core.helper.session_helper import container_def
@@ -1287,7 +1287,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if not self.image_uri:
             raise ValueError("image_uri is required for pass-through cases")
 
-        self.s3_upload_path = None
+        self.secret_key = ""
+
+        if self.model_path and self.model_path.startswith("s3://"):
+            self.s3_upload_path = self.model_path
+        else:
+            self.s3_upload_path = None
+
+        if self.mode in LOCAL_MODES:
+            self._prepare_for_mode()
+
         return self._create_model()
 
     def _build_default_async_inference_config(self, async_inference_config):
