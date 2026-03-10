@@ -46,7 +46,7 @@
                 "mx-central-1": "637423239942"
             },
             "repository": "djl-inference",
-            "tag_prefix": "0.36.0-lmi18.0.0-cu128"
+            "tag_prefix": "0.36.0-lmi21.0.0-cu129"
         },
         "0.35.0": {
             "registries": {
