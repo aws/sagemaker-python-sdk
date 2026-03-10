@@ -607,23 +607,22 @@ class FeatureGroup(CoreFeatureGroup):
                 region=region,
             )
 
-            # Print policy with clear instructions
-            print("\n" + "=" * 80)
-            print("S3 Bucket Policy Update recommended")
-            print("=" * 80)
-            print(
-                "\nTo complete Lake Formation setup, add the following deny policy to your S3 bucket."
+            # Log policy with clear instructions
+            policy_json = json.dumps(policy, indent=2)
+            policy_message = (
+                "\n" + "=" * 50
+                + "\nS3 Bucket Policy Update recommended"
+                + "\n" + "=" * 50
+                + "\n\nTo complete Lake Formation setup, add the following"
+                + "\ndeny policy to your S3 bucket."
+                + "\nThis restricts access to the offline store data to"
+                + "\nonly the allowed principals."
+                + f"\n\nBucket: {bucket_name}"
+                + f"\n\nPolicy to add:\n{policy_json}"
+                + "\n\nNote: Merge this with your existing bucket policy if one exists."
+                + "\n" + "=" * 50 + "\n"
             )
-            print(
-                "This policy restricts access to the offline store data to only the allowed principals."
-            )
-            print("\nBucket:", bucket_name)
-            print("\nPolicy to add:")
-            print("-" * 40)
-            print(json.dumps(policy, indent=2))
-            print("-" * 40)
-            print("\nNote: Merge this with your existing bucket policy if one exists.")
-            print("=" * 80 + "\n")
+            logger.info(policy_message)
 
         return results
 

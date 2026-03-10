@@ -1609,10 +1609,8 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
     @patch.object(FeatureGroup, "_generate_s3_deny_policy")
-    @patch("builtins.print")
     def test_uses_service_linked_role_arn_when_use_service_linked_role_true(
         self,
-        mock_print,
         mock_generate_policy,
         mock_revoke,
         mock_grant,
@@ -1660,10 +1658,8 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
     @patch.object(FeatureGroup, "_generate_s3_deny_policy")
-    @patch("builtins.print")
     def test_uses_service_linked_role_arn_by_default(
         self,
-        mock_print,
         mock_generate_policy,
         mock_revoke,
         mock_grant,
@@ -1710,10 +1706,8 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
     @patch.object(FeatureGroup, "_generate_s3_deny_policy")
-    @patch("builtins.print")
     def test_service_linked_role_arn_uses_correct_account_id(
         self,
-        mock_print,
         mock_generate_policy,
         mock_revoke,
         mock_grant,
@@ -1768,10 +1762,8 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
     @patch.object(FeatureGroup, "_generate_s3_deny_policy")
-    @patch("builtins.print")
     def test_uses_registration_role_arn_when_use_service_linked_role_false(
         self,
-        mock_print,
         mock_generate_policy,
         mock_revoke,
         mock_grant,
@@ -1829,10 +1821,8 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
     @patch.object(FeatureGroup, "_generate_s3_deny_policy")
-    @patch("builtins.print")
     def test_registration_role_arn_passed_to_s3_registration(
         self,
-        mock_print,
         mock_generate_policy,
         mock_revoke,
         mock_grant,
@@ -1887,10 +1877,8 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
     @patch.object(FeatureGroup, "_generate_s3_deny_policy")
-    @patch("builtins.print")
     def test_different_registration_role_arns_produce_different_policies(
         self,
-        mock_print,
         mock_generate_policy,
         mock_revoke,
         mock_grant,
@@ -1966,17 +1954,17 @@ class TestPolicyPrintedWithClearInstructions:
     @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("builtins.print")
+    @patch("sagemaker.mlops.feature_store.feature_group.logger")
     def test_policy_printed_with_header_and_instructions(
         self,
-        mock_print,
+        mock_logger,
         mock_revoke,
         mock_grant,
         mock_register,
         mock_refresh,
     ):
         """
-        Test that enable_lake_formation prints the S3 deny policy with clear
+        Test that enable_lake_formation logs the S3 deny policy with clear
         header and instructions for the user.
         """
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
@@ -2004,42 +1992,42 @@ class TestPolicyPrintedWithClearInstructions:
         # Call enable_lake_formation with show_s3_policy=True
         fg.enable_lake_formation(show_s3_policy=True)
 
-        # Collect all print calls
-        print_calls = [str(call) for call in mock_print.call_args_list]
-        all_printed_text = " ".join(print_calls)
+        # Collect all logger.info calls
+        log_calls = [str(call) for call in mock_logger.info.call_args_list]
+        all_logged_text = " ".join(log_calls)
 
-        # Verify header is printed
-        assert "S3 Bucket Policy" in all_printed_text, "Header should mention 'S3 Bucket Policy'"
+        # Verify header is logged
+        assert "S3 Bucket Policy" in all_logged_text, "Header should mention 'S3 Bucket Policy'"
 
-        # Verify instructions are printed
+        # Verify instructions are logged
         assert (
-            "Lake Formation" in all_printed_text
-            or "deny policy" in all_printed_text
+            "Lake Formation" in all_logged_text
+            or "deny policy" in all_logged_text
         ), "Instructions should mention Lake Formation or deny policy"
 
-        # Verify bucket name is printed
-        assert "test-bucket" in all_printed_text, "Bucket name should be printed"
+        # Verify bucket name is logged
+        assert "test-bucket" in all_logged_text, "Bucket name should be logged"
 
-        # Verify note about merging with existing policy is printed
+        # Verify note about merging with existing policy is logged
         assert (
-            "Merge" in all_printed_text or "existing" in all_printed_text
-        ), "Note about merging with existing policy should be printed"
+            "Merge" in all_logged_text or "existing" in all_logged_text
+        ), "Note about merging with existing policy should be logged"
 
     @patch.object(FeatureGroup, "refresh")
     @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("builtins.print")
+    @patch("sagemaker.mlops.feature_store.feature_group.logger")
     def test_policy_json_is_printed(
         self,
-        mock_print,
+        mock_logger,
         mock_revoke,
         mock_grant,
         mock_register,
         mock_refresh,
     ):
         """
-        Test that the S3 deny policy JSON is printed to the console when show_s3_policy=True.
+        Test that the S3 deny policy JSON is logged to the console when show_s3_policy=True.
         """
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
@@ -2066,31 +2054,31 @@ class TestPolicyPrintedWithClearInstructions:
         # Call enable_lake_formation with show_s3_policy=True
         fg.enable_lake_formation(show_s3_policy=True)
 
-        # Collect all print calls
-        print_calls = [str(call) for call in mock_print.call_args_list]
-        all_printed_text = " ".join(print_calls)
+        # Collect all logger.info calls
+        log_calls = [str(call) for call in mock_logger.info.call_args_list]
+        all_logged_text = " ".join(log_calls)
 
-        # Verify policy JSON structure elements are printed
-        assert "Version" in all_printed_text, "Policy JSON should contain 'Version'"
-        assert "Statement" in all_printed_text, "Policy JSON should contain 'Statement'"
-        assert "Effect" in all_printed_text, "Policy JSON should contain 'Effect'"
-        assert "Deny" in all_printed_text, "Policy JSON should contain 'Deny' effect"
+        # Verify policy JSON structure elements are logged
+        assert "Version" in all_logged_text, "Policy JSON should contain 'Version'"
+        assert "Statement" in all_logged_text, "Policy JSON should contain 'Statement'"
+        assert "Effect" in all_logged_text, "Policy JSON should contain 'Effect'"
+        assert "Deny" in all_logged_text, "Policy JSON should contain 'Deny' effect"
 
     @patch.object(FeatureGroup, "refresh")
     @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("builtins.print")
+    @patch("sagemaker.mlops.feature_store.feature_group.logger")
     def test_policy_printed_only_after_successful_setup(
         self,
-        mock_print,
+        mock_logger,
         mock_revoke,
         mock_grant,
         mock_register,
         mock_refresh,
     ):
         """
-        Test that the S3 deny policy is only printed after all Lake Formation
+        Test that the S3 deny policy is only logged after all Lake Formation
         phases complete successfully.
         """
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
@@ -2119,15 +2107,15 @@ class TestPolicyPrintedWithClearInstructions:
         with pytest.raises(RuntimeError):
             fg.enable_lake_formation(show_s3_policy=True)
 
-        # Collect all print calls
-        print_calls = [str(call) for call in mock_print.call_args_list]
-        all_printed_text = " ".join(print_calls)
+        # Collect all logger.info calls
+        log_calls = [str(call) for call in mock_logger.info.call_args_list]
+        all_logged_text = " ".join(log_calls)
 
-        # Verify policy was NOT printed when setup failed
-        assert "S3 Bucket Policy" not in all_printed_text, "Policy should not be printed when setup fails"
+        # Verify policy was NOT logged when setup failed
+        assert "S3 Bucket Policy" not in all_logged_text, "Policy should not be logged when setup fails"
 
         # Reset mocks
-        mock_print.reset_mock()
+        mock_logger.reset_mock()
         mock_register.reset_mock()
         mock_register.side_effect = None
         mock_register.return_value = True
@@ -2139,15 +2127,15 @@ class TestPolicyPrintedWithClearInstructions:
         with pytest.raises(RuntimeError):
             fg.enable_lake_formation(show_s3_policy=True)
 
-        # Collect all print calls
-        print_calls = [str(call) for call in mock_print.call_args_list]
-        all_printed_text = " ".join(print_calls)
+        # Collect all logger.info calls
+        log_calls = [str(call) for call in mock_logger.info.call_args_list]
+        all_logged_text = " ".join(log_calls)
 
-        # Verify policy was NOT printed when setup fails at Phase 2
-        assert "S3 Bucket Policy" not in all_printed_text, "Policy should not be printed when Phase 2 fails"
+        # Verify policy was NOT logged when setup fails at Phase 2
+        assert "S3 Bucket Policy" not in all_logged_text, "Policy should not be logged when Phase 2 fails"
 
         # Reset mocks
-        mock_print.reset_mock()
+        mock_logger.reset_mock()
         mock_grant.reset_mock()
         mock_grant.side_effect = None
         mock_grant.return_value = True
@@ -2159,28 +2147,28 @@ class TestPolicyPrintedWithClearInstructions:
         with pytest.raises(RuntimeError):
             fg.enable_lake_formation(show_s3_policy=True)
 
-        # Collect all print calls
-        print_calls = [str(call) for call in mock_print.call_args_list]
-        all_printed_text = " ".join(print_calls)
+        # Collect all logger.info calls
+        log_calls = [str(call) for call in mock_logger.info.call_args_list]
+        all_logged_text = " ".join(log_calls)
 
-        # Verify policy was NOT printed when setup fails at Phase 3
-        assert "S3 Bucket Policy" not in all_printed_text, "Policy should not be printed when Phase 3 fails"
+        # Verify policy was NOT logged when setup fails at Phase 3
+        assert "S3 Bucket Policy" not in all_logged_text, "Policy should not be logged when Phase 3 fails"
 
     @patch.object(FeatureGroup, "refresh")
     @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("builtins.print")
+    @patch("sagemaker.mlops.feature_store.feature_group.logger")
     def test_policy_includes_both_allowed_principals(
         self,
-        mock_print,
+        mock_logger,
         mock_revoke,
         mock_grant,
         mock_register,
         mock_refresh,
     ):
         """
-        Test that the printed policy includes both the Lake Formation role
+        Test that the logged policy includes both the Lake Formation role
         and the Feature Store execution role as allowed principals.
         """
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
@@ -2209,32 +2197,32 @@ class TestPolicyPrintedWithClearInstructions:
         # Call enable_lake_formation with service-linked role and show_s3_policy=True
         fg.enable_lake_formation(use_service_linked_role=True, show_s3_policy=True)
 
-        # Collect all print calls
-        print_calls = [str(call) for call in mock_print.call_args_list]
-        all_printed_text = " ".join(print_calls)
+        # Collect all logger.info calls
+        log_calls = [str(call) for call in mock_logger.info.call_args_list]
+        all_logged_text = " ".join(log_calls)
 
-        # Verify Feature Store role is in the printed output
-        assert feature_store_role in all_printed_text, "Feature Store role should be in printed policy"
+        # Verify Feature Store role is in the logged output
+        assert feature_store_role in all_logged_text, "Feature Store role should be in logged policy"
 
-        # Verify Lake Formation service-linked role pattern is in the printed output
-        assert "AWSServiceRoleForLakeFormationDataAccess" in all_printed_text, \
-            "Lake Formation service-linked role should be in printed policy"
+        # Verify Lake Formation service-linked role pattern is in the logged output
+        assert "AWSServiceRoleForLakeFormationDataAccess" in all_logged_text, \
+            "Lake Formation service-linked role should be in logged policy"
 
     @patch.object(FeatureGroup, "refresh")
     @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("builtins.print")
+    @patch("sagemaker.mlops.feature_store.feature_group.logger")
     def test_policy_not_printed_when_show_s3_policy_false(
         self,
-        mock_print,
+        mock_logger,
         mock_revoke,
         mock_grant,
         mock_register,
         mock_refresh,
     ):
         """
-        Test that the S3 deny policy is NOT printed when show_s3_policy=False (default).
+        Test that the S3 deny policy is NOT logged when show_s3_policy=False (default).
         """
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
@@ -2261,29 +2249,29 @@ class TestPolicyPrintedWithClearInstructions:
         # Call enable_lake_formation with show_s3_policy=False (default)
         fg.enable_lake_formation(show_s3_policy=False)
 
-        # Collect all print calls
-        print_calls = [str(call) for call in mock_print.call_args_list]
-        all_printed_text = " ".join(print_calls)
+        # Collect all logger.info calls
+        log_calls = [str(call) for call in mock_logger.info.call_args_list]
+        all_logged_text = " ".join(log_calls)
 
-        # Verify policy was NOT printed
-        assert "S3 Bucket Policy" not in all_printed_text, "Policy should not be printed when show_s3_policy=False"
-        assert "Version" not in all_printed_text, "Policy JSON should not be printed when show_s3_policy=False"
+        # Verify policy was NOT logged
+        assert "S3 Bucket Policy" not in all_logged_text, "Policy should not be logged when show_s3_policy=False"
+        assert "Version" not in all_logged_text, "Policy JSON should not be logged when show_s3_policy=False"
 
     @patch.object(FeatureGroup, "refresh")
     @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("builtins.print")
+    @patch("sagemaker.mlops.feature_store.feature_group.logger")
     def test_policy_not_printed_by_default(
         self,
-        mock_print,
+        mock_logger,
         mock_revoke,
         mock_grant,
         mock_register,
         mock_refresh,
     ):
         """
-        Test that the S3 deny policy is NOT printed by default (when show_s3_policy is not specified).
+        Test that the S3 deny policy is NOT logged by default (when show_s3_policy is not specified).
         """
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
@@ -2310,10 +2298,10 @@ class TestPolicyPrintedWithClearInstructions:
         # Call enable_lake_formation without specifying show_s3_policy (should default to False)
         fg.enable_lake_formation()
 
-        # Collect all print calls
-        print_calls = [str(call) for call in mock_print.call_args_list]
-        all_printed_text = " ".join(print_calls)
+        # Collect all logger.info calls
+        log_calls = [str(call) for call in mock_logger.info.call_args_list]
+        all_logged_text = " ".join(log_calls)
 
-        # Verify policy was NOT printed
-        assert "S3 Bucket Policy" not in all_printed_text, "Policy should not be printed by default"
-        assert "Version" not in all_printed_text, "Policy JSON should not be printed by default"
+        # Verify policy was NOT logged
+        assert "S3 Bucket Policy" not in all_logged_text, "Policy should not be logged by default"
+        assert "Version" not in all_logged_text, "Policy JSON should not be logged by default"
