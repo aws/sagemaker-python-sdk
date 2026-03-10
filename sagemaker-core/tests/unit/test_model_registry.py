@@ -126,6 +126,38 @@ class TestModelRegistry:
         assert args["skip_model_validation"] == "All"
         assert args["source_uri"] == "s3://bucket/source"
 
+    def test_get_model_package_args_model_card(self):
+        from sagemaker.core.shapes import ModelCard
+
+        model_card = ModelCard()
+        model_card.content = '{"model_details": {"name": "test"}}'
+        model_card.model_card_status = "Approved"
+
+        args = get_model_package_args(
+            model_card=model_card,
+        )
+
+        assert args["model_card"] == {
+            "ModelCardContent": '{"model_details": {"name": "test"}}',
+            "ModelCardStatus": "Approved",
+        }
+
+    def test_get_model_package_args_model_package_model_card(self):
+        from sagemaker.core.shapes import ModelPackageModelCard
+
+        model_card = ModelPackageModelCard()
+        model_card.model_card_content = '{"model_details": {"name": "test"}}'
+        model_card.model_card_status = "Approved"
+
+        args = get_model_package_args(
+            model_card=model_card,
+        )
+
+        assert args["model_card"] == {
+            "ModelCardContent": '{"model_details": {"name": "test"}}',
+            "ModelCardStatus": "Approved",
+        }
+
     def test_get_create_model_package_request_minimal(self):
         """Test get_create_model_package_request with minimal parameters"""
         request = get_create_model_package_request(
