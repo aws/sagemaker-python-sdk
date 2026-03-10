@@ -23,7 +23,7 @@ def _build_and_upload_core_wheel(sagemaker_session):
     dist_dir = tempfile.mkdtemp(prefix="sagemaker_core_wheel_")
 
     subprocess.run(
-        [sys.executable, "-m", "pip", "wheel", "--no-deps", "-w", dist_dir, "."],
+        [sys.executable, "-m", "pip", "wheel", "--no-build-isolation", "--no-deps", "-w", dist_dir, "."],
         cwd=os.path.join(repo_root, "sagemaker-core"),
         check=True,
     )
