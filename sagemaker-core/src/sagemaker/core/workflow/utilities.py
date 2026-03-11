@@ -28,6 +28,7 @@ try:
     from _hashlib import HASH as Hash
 except ImportError:
     import typing
+
     Hash = typing.Any
 
 from sagemaker.core.common_utils import base_from_name
@@ -227,7 +228,9 @@ def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]
     return None
 
 
-def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List[str]) -> str:
+def get_training_code_hash(
+    entry_point: str, source_dir: str, dependencies: Optional[str] = None
+) -> str:
     """Get the hash of a training step's code artifact(s).
 
     Args:
@@ -236,7 +239,7 @@ def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List
                 training
         source_dir (str): Path to a directory with any other training source
                 code dependencies aside from the entry point file
-        dependencies (str): The relative path within ``source_dir`` to a
+        dependencies Optional[str]: The relative path within ``source_dir`` to a
                 ``requirements.txt`` file with any additional libraries that
                 will be exported to the container
     Returns:
@@ -258,7 +261,7 @@ def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List
                 if dependencies:
                     return hash_files_or_dirs([entry_point] + [dependencies])
                 else:
-                    return hash_files_or_dirs([source_dir])
+                    return hash_files_or_dirs([entry_point])
     return None
 
 
