@@ -579,12 +579,24 @@ def _extract_job_name_from_secret_arn(secret_arn: str) -> str:
     Raises:
         DeserializationError: If ARN doesn't match expected format
     """
+    # Length guard to prevent ReDoS on crafted inputs.
+    # Real ARNs are ~165 chars (job names are max 63 chars per SageMaker API).
+    MAX_SECRET_ARN_LENGTH = 256
+    if len(secret_arn) > MAX_SECRET_ARN_LENGTH:
+        raise DeserializationError(
+            f"Secret ARN exceeds maximum length of {MAX_SECRET_ARN_LENGTH} characters"
+        )
+
     import re
-    match = re.search(r":secret:sagemaker/remote-function/(.+)/hmac-key", secret_arn)
+    # Use [^/]+ (non-greedy, no slashes) to prevent path-traversal in job name,
+    # and anchor with $ to ensure the ARN ends with the expected suffix.
+    match = re.search(
+        r":secret:sagemaker/remote-function/([^/]+)/hmac-key-[A-Za-z0-9]{6}$", secret_arn
+    )
     if not match:
         raise DeserializationError(
             f"Secret ARN does not match expected format "
-            f"'sagemaker/remote-function/{{job_name}}/hmac-key': {secret_arn}"
+            f"'sagemaker/remote-function/{{job_name}}/hmac-key-XXXXXX': {secret_arn}"
         )
     return match.group(1)
 
@@ -653,37 +665,34 @@ def _perform_integrity_check(
     Args:
         expected_hash_value: Expected hash value from metadata
         buffer: Serialized data buffer
-        sagemaker_session: SageMaker session (required if secret_arn is provided)
-        secret_arn: ARN of secret containing HMAC key (None for legacy plain SHA-256)
+        sagemaker_session: SageMaker session (required for HMAC integrity check)
+        secret_arn: ARN of secret containing HMAC key (required)
+        
+    Raises:
+        DeserializationError: If integrity check fails or secret_arn is missing
     """
-    if secret_arn:
-        # New secure method: HMAC with key from Secrets Manager
-        if not sagemaker_session:
-            raise DeserializationError(
-                "sagemaker_session is required for HMAC integrity check"
-            )
-        
-        # Validate secret ARN (Mitigations #1 and #3)
-        _validate_secret_arn(sagemaker_session, secret_arn)
-        
-        # Now safe to retrieve HMAC key
-        hmac_key = _get_hmac_key_from_secret(sagemaker_session, secret_arn)
-        actual_hash_value = _compute_hmac(buffer, hmac_key)
-        
-        if not hmac.compare_digest(expected_hash_value, actual_hash_value):
-            raise DeserializationError(
-                "HMAC integrity check failed. Serialized data may have been tampered with. "
-                "Please restrict access to your S3 bucket."
-            )
-    else:
-        # Legacy method: plain SHA-256 (backward compatibility)
-        logger.warning(
-            "Using legacy SHA-256 integrity check without HMAC authentication. "
-            "This provides weaker security guarantees. Please upgrade to the latest SDK version."
+    if not secret_arn:
+        raise DeserializationError(
+            "Missing secret_arn in metadata. HMAC integrity check is required. "
+            "Legacy SHA-256 integrity check is no longer supported due to security "
+            "vulnerabilities. Please upgrade to the latest SDK version on both "
+            "client and remote sides."
         )
-        actual_hash_value = _compute_hash(buffer)
-        if expected_hash_value != actual_hash_value:
-            raise DeserializationError(
-                "Integrity check for the serialized function or data failed. "
-                "Please restrict access to your S3 bucket"
-            )
+
+    if not sagemaker_session:
+        raise DeserializationError(
+            "sagemaker_session is required for HMAC integrity check"
+        )
+    
+    # Validate secret ARN (Mitigations #1 and #3)
+    _validate_secret_arn(sagemaker_session, secret_arn)
+    
+    # Now safe to retrieve HMAC key
+    hmac_key = _get_hmac_key_from_secret(sagemaker_session, secret_arn)
+    actual_hash_value = _compute_hmac(buffer, hmac_key)
+    
+    if not hmac.compare_digest(expected_hash_value, actual_hash_value):
+        raise DeserializationError(
+            "HMAC integrity check failed. Serialized data may have been tampered with. "
+            "Please restrict access to your S3 bucket."
+        )

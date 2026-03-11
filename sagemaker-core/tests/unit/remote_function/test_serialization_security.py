@@ -250,7 +250,44 @@ class TestValidateSecretArn:
             _validate_secret_arn(session, "not-an-arn")
 
 
-class TestPerformIntegrityCheck:
+class TestExtractJobNameFromSecretArn:
+    """Tests for _extract_job_name_from_secret_arn regex hardening."""
+
+    def test_valid_arn(self):
+        result = _extract_job_name_from_secret_arn(MOCK_SECRET_ARN)
+        assert result == MOCK_JOB_NAME
+
+    def test_rejects_greedy_path_traversal(self):
+        """Greedy .+ allowed evil/hmac-key/../ in job name — now rejected."""
+        malicious_arn = (
+            "arn:aws:secretsmanager:us-east-1:123456789012:secret:"
+            "sagemaker/remote-function/evil/hmac-key/../sagemaker/"
+            "remote-function/legit-job/hmac-key-AbCdEf"
+        )
+        with pytest.raises(DeserializationError, match="does not match expected format"):
+            _extract_job_name_from_secret_arn(malicious_arn)
+
+    def test_rejects_arn_exceeding_max_length(self):
+        """Long input caused ReDoS — now rejected by length check."""
+        long_arn = (
+            "arn:aws:secretsmanager:us-east-1:123456789012:"
+            + ":secret:sagemaker/remote-function/y" * 10100
+            + "\n:secret:sagemaker/remote-function/c/hmac-key-AbCdEf"
+        )
+        with pytest.raises(DeserializationError, match="exceeds maximum length"):
+            _extract_job_name_from_secret_arn(long_arn)
+
+    def test_rejects_arn_without_6char_suffix(self):
+        """ARN must end with hmac-key-XXXXXX (6 alphanumeric chars)."""
+        bad_arn = "arn:aws:secretsmanager:us-west-2:123456789012:secret:sagemaker/remote-function/job/hmac-key"
+        with pytest.raises(DeserializationError, match="does not match expected format"):
+            _extract_job_name_from_secret_arn(bad_arn)
+
+    def test_rejects_arn_with_trailing_content(self):
+        """$ anchor prevents matching when extra content follows."""
+        bad_arn = MOCK_SECRET_ARN + "/extra"
+        with pytest.raises(DeserializationError, match="does not match expected format"):
+            _extract_job_name_from_secret_arn(bad_arn)
     """Tests for integrity check with HMAC."""
 
     def test_hmac_integrity_check_passes(self):
@@ -284,27 +321,26 @@ class TestPerformIntegrityCheck:
                 secret_arn=MOCK_SECRET_ARN,
             )
 
-    def test_legacy_sha256_check_passes_with_warning(self):
-        """Legacy SHA-256 check should pass with warning when no secret_arn."""
+    def test_legacy_sha256_check_rejected(self):
+        """Legacy SHA-256 check without secret_arn is no longer supported."""
         payload = b"test payload"
         expected_hash = _compute_hash(payload)
         
-        # Should not raise (legacy path)
-        _perform_integrity_check(
-            expected_hash_value=expected_hash,
-            buffer=payload,
-        )
-
-    def test_legacy_sha256_check_fails_on_tampered_payload(self):
-        """Legacy SHA-256 check should fail on tampered payload."""
-        original_payload = b"original payload"
-        tampered_payload = b"tampered payload"
-        expected_hash = _compute_hash(original_payload)
-        
-        with pytest.raises(DeserializationError, match="Integrity check"):
+        with pytest.raises(DeserializationError, match="HMAC integrity check is required"):
             _perform_integrity_check(
                 expected_hash_value=expected_hash,
-                buffer=tampered_payload,
+                buffer=payload,
+            )
+
+    def test_legacy_sha256_tampered_payload_also_rejected(self):
+        """Legacy path is rejected regardless of hash correctness."""
+        payload = b"test payload"
+        expected_hash = _compute_hash(payload)
+        
+        with pytest.raises(DeserializationError, match="HMAC integrity check is required"):
+            _perform_integrity_check(
+                expected_hash_value=expected_hash,
+                buffer=b"tampered",
             )
 
     def test_hmac_check_requires_session(self):
@@ -320,22 +356,14 @@ class TestAttackScenarios:
     """Tests simulating actual attack scenarios."""
 
     def test_attacker_replaces_payload_and_metadata_plain_hash(self):
-        """Attacker replaces both files with plain SHA-256 - should fail HMAC check."""
-        session, secrets_client, _, _ = _mock_sagemaker_session()
-        
-        # Attacker creates malicious payload
+        """Attacker replaces both files with plain SHA-256 (no secret_arn) - should be rejected."""
         malicious_payload = b"malicious code"
-        
-        # Attacker computes plain SHA-256 (not HMAC)
         plain_hash = hashlib.sha256(malicious_payload).hexdigest()
         
-        # Attacker's HMAC won't match because they don't know the key
-        with pytest.raises(DeserializationError, match="HMAC integrity check failed"):
+        with pytest.raises(DeserializationError, match="HMAC integrity check is required"):
             _perform_integrity_check(
                 expected_hash_value=plain_hash,
                 buffer=malicious_payload,
-                sagemaker_session=session,
-                secret_arn=MOCK_SECRET_ARN,
             )
 
     def test_attacker_points_to_cross_account_secret(self):
@@ -356,8 +384,8 @@ class TestAttackScenarios:
             "Parameter": {"Value": MOCK_SECRET_ARN}
         }
         
-        # Attacker's secret in same account
-        attacker_arn = f"arn:aws:secretsmanager:us-west-2:{MOCK_ACCOUNT_ID}:secret:sagemaker/remote-function/evil-job/hmac-key"
+        # Attacker's secret in same account (with valid suffix format)
+        attacker_arn = f"arn:aws:secretsmanager:us-west-2:{MOCK_ACCOUNT_ID}:secret:sagemaker/remote-function/evil-job/hmac-key-XyZ123"
         
         with pytest.raises(DeserializationError, match="Secret ARN mismatch"):
             _validate_secret_arn(session, attacker_arn)
