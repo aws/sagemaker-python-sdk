@@ -447,6 +447,7 @@ class StepDetail(BaseModel):
     end_time: Optional[str] = Field(None, description="Step end time")
     display_name: Optional[str] = Field(None, description="Display name for the step")
     failure_reason: Optional[str] = Field(None, description="Reason for failure if step failed")
+    job_arn: Optional[str] = Field(None, description="ARN of the underlying job (training, processing, transform, etc.)")
 
 
 class PipelineExecutionStatus(BaseModel):
@@ -938,7 +939,6 @@ class EvaluationPipelineExecution(BaseModel):
                 
                 # Create steps table if steps exist
                 if self.status.step_details:
-                    # Check if any step has a failure
                     has_failures = any(step.failure_reason for step in self.status.step_details)
                     
                     steps_table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 1))
@@ -946,10 +946,10 @@ class EvaluationPipelineExecution(BaseModel):
                     steps_table.add_column("Status", style="yellow", width=15)
                     steps_table.add_column("Duration", style="green", width=12)
                     
-                    failed_steps = []  # Track steps with failures for detailed display
+                    failed_steps = []
+                    job_arn_entries = []
                     
                     for step in self.status.step_details:
-                        # Calculate duration if both times are available
                         duration = ""
                         if step.start_time and step.end_time:
                             try:
@@ -963,7 +963,6 @@ class EvaluationPipelineExecution(BaseModel):
                         elif step.start_time:
                             duration = "Running..."
                         
-                        # Color code status
                         status_display = step.status
                         if "succeeded" in step.status.lower() or "completed" in step.status.lower():
                             status_display = f"[green]{step.status}[/green]"
@@ -972,14 +971,18 @@ class EvaluationPipelineExecution(BaseModel):
                         elif "executing" in step.status.lower() or "running" in step.status.lower():
                             status_display = f"[yellow]{step.status}[/yellow]"
                         
-                        # Build row data
+                        if step.job_arn:
+                            job_arn_entries.append({
+                                'step_name': step.display_name or step.name,
+                                'job_arn': step.job_arn,
+                            })
+                        
                         row_data = [
                             step.display_name or step.name,
                             status_display,
                             duration
                         ]
                         
-                        # Add error indicator if failures exist
                         if has_failures:
                             if step.failure_reason:
                                 row_data.append("❌")
@@ -989,35 +992,47 @@ class EvaluationPipelineExecution(BaseModel):
                         
                         steps_table.add_row(*row_data)
                     
-                    # Build combined content
                     from rich.console import Group
                     content_parts = [
                         status_table,
-                        Text(""),  # Empty line for spacing
+                        Text(""),
                         Text("Pipeline Steps", style="bold magenta"),
                         steps_table
                     ]
                     
-                    # Add failure details section if there are any failures
                     if failed_steps:
-                        content_parts.append(Text(""))  # Empty line
+                        content_parts.append(Text(""))
                         content_parts.append(Text("Step Failure Details", style="bold red"))
                         
                         for step in failed_steps:
-                            content_parts.append(Text(""))  # Empty line before each failure
+                            content_parts.append(Text(""))
                             content_parts.append(Text(f"• {step.display_name or step.name}:", style="bold red"))
                             content_parts.append(Text(f"  {step.failure_reason}", style="red"))
                     
-                    combined_content = Group(*content_parts)
+                    # Add job links table if any steps have ARNs
+                    if job_arn_entries:
+                        links_table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 1))
+                        links_table.add_column("Step", style="cyan", width=20)
+                        links_table.add_column("Job Link", width=12)
+                        links_table.add_column("Job ARN", style="dim", overflow="fold")
+                        for entry in job_arn_entries:
+                            try:
+                                from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
+                                url = get_studio_url(entry['job_arn'])
+                                link_col = f"[link={url}]🔗 link[/link]" if url else ""
+                            except Exception:
+                                link_col = ""
+                            links_table.add_row(entry['step_name'], link_col, entry['job_arn'])
+                        content_parts.append(Text(""))
+                        content_parts.append(Text("Job ARNs", style="bold magenta"))
+                        content_parts.append(links_table)
                     
-                    # Display combined content in a single panel
                     console.print(Panel(
-                        combined_content,
+                        Group(*content_parts),
                         title="[bold blue]Pipeline Execution Status[/bold blue]",
                         border_style="blue"
                     ))
                 else:
-                    # Display only status table if no steps
                     console.print(Panel(
                         status_table,
                         title="[bold blue]Pipeline Execution Status[/bold blue]",
@@ -1204,7 +1219,22 @@ class EvaluationPipelineExecution(BaseModel):
         execution._pipeline_execution = pipeline_execution_ref
         
         return execution
-    
+
+    @staticmethod
+    def _extract_job_arn_from_metadata(step) -> Optional[str]:
+        """Extract the underlying job ARN from a pipeline step's metadata."""
+        metadata = getattr(step, 'metadata', None)
+        if metadata is None or 'Unassigned' in metadata.__class__.__name__:
+            return None
+        for attr in ('training_job', 'processing_job', 'transform_job', 'tuning_job',
+                     'auto_ml_job', 'compilation_job'):
+            job_meta = getattr(metadata, attr, None)
+            if job_meta is not None and not ('Unassigned' in job_meta.__class__.__name__):
+                arn = getattr(job_meta, 'arn', None)
+                if arn and not ('Unassigned' in arn.__class__.__name__):
+                    return str(arn)
+        return None
+
     def _update_step_details_from_raw_steps(self, raw_steps: List[Any]) -> None:
         """Internal method to update step_details from raw pipeline execution steps
         
@@ -1246,7 +1276,8 @@ class EvaluationPipelineExecution(BaseModel):
                     start_time=start_time,
                     end_time=end_time,
                     display_name=step_display_name,
-                    failure_reason=failure_reason
+                    failure_reason=failure_reason,
+                    job_arn=self._extract_job_arn_from_metadata(step)
                 )
                 
                 step_details.append(step_detail)
@@ -1256,8 +1287,8 @@ class EvaluationPipelineExecution(BaseModel):
                 logger.warning(f"Failed to process pipeline step: {str(e)}")
                 continue
         
-        # Update the job's step details
-        self.status.step_details = step_details
+        # Update the job's step details (reverse so earliest step appears first)
+        self.status.step_details = list(reversed(step_details))
 
 
 # ============================================================================
