@@ -9,6 +9,7 @@ These tests require:
 Run with: pytest tests/integ/test_featureStore_lakeformation.py -v -m integ
 """
 
+import logging
 import uuid
 
 import boto3
@@ -447,8 +448,9 @@ def test_enable_lake_formation_fails_with_nonexistent_role(
     """
     fg = shared_feature_group_for_negative_tests
 
-    # Generate a nonexistent role ARN by appending a random string to the current role
-    nonexistent_role = f"{role}-nonexistent-{uuid.uuid4().hex[:8]}"
+    # Build a short nonexistent role ARN using the account ID from the real role
+    account_id = role.split(":")[4]
+    nonexistent_role = f"arn:aws:iam::{account_id}:role/non-existent-role"
 
     with pytest.raises(RuntimeError) as exc_info:
         fg.enable_lake_formation(
@@ -470,7 +472,7 @@ def test_enable_lake_formation_fails_with_nonexistent_role(
 
 @pytest.mark.serial
 @pytest.mark.slow_test
-def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region, capsys):
+def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region, caplog):
     """
     Test the full Lake Formation flow with S3 deny policy output.
 
@@ -478,7 +480,7 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
     1. Creates a FeatureGroup with offline store
     2. Enables Lake Formation with show_s3_policy=True
     3. Verifies all Lake Formation phases complete successfully
-    4. Verifies the S3 deny policy is printed to the console
+    4. Verifies the S3 deny policy is logged
     5. Verifies the policy structure contains expected elements
 
     This validates Requirements 6.1-6.9 from the design document.
@@ -496,25 +498,19 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance with policy output
-        result = fg.enable_lake_formation(show_s3_policy=True)
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group"):
+            result = fg.enable_lake_formation(show_s3_policy=True)
 
         # Verify all phases completed successfully
         assert result["s3_registration"] is True
         assert result["permissions_granted"] is True
         assert result["iam_principal_revoked"] is True
 
-        # Capture the printed output
-        captured = capsys.readouterr()
-        output = captured.out
+        output = caplog.text
 
-        # Re-print the output so it's visible in terminal with -s flag
-        print(output)
-
-        # Verify the policy header is printed
+        # Verify the policy header is logged
         assert "S3 Bucket Policy Update recommended" in output
-        assert "=" * 80 in output
-
-        # Verify bucket information is printed
+        # Verify bucket information is logged
         # Extract bucket name from s3_uri (s3://bucket/path -> bucket)
         expected_bucket = s3_uri.replace("s3://", "").split("/")[0]
         assert f"Bucket: {expected_bucket}" in output
@@ -541,7 +537,7 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
         # Verify the service-linked role pattern is present (default use_service_linked_role=True)
         assert "aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess" in output
 
-        # Verify instructions are printed
+        # Verify instructions are logged
         assert "Merge this with your existing bucket policy" in output
 
     finally:
@@ -552,15 +548,15 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
 
 @pytest.mark.serial
 @pytest.mark.slow_test
-def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region, capsys):
+def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region, caplog):
     """
-    Test that S3 deny policy is NOT printed when show_s3_policy=False (default).
+    Test that S3 deny policy is NOT logged when show_s3_policy=False (default).
 
     This test verifies:
     1. Creates a FeatureGroup with offline store
     2. Enables Lake Formation without show_s3_policy (defaults to False)
     3. Verifies all Lake Formation phases complete successfully
-    4. Verifies the S3 deny policy is NOT printed to the console
+    4. Verifies the S3 deny policy is NOT logged
 
     This validates Requirement 6.2 from the design document.
     """
@@ -577,18 +573,17 @@ def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region,
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance WITHOUT policy output (default)
-        result = fg.enable_lake_formation()
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group"):
+            result = fg.enable_lake_formation()
 
         # Verify all phases completed successfully
         assert result["s3_registration"] is True
         assert result["permissions_granted"] is True
         assert result["iam_principal_revoked"] is True
 
-        # Capture the printed output
-        captured = capsys.readouterr()
-        output = captured.out
+        output = caplog.text
 
-        # Verify the policy is NOT printed
+        # Verify the policy is NOT logged
         assert "S3 Bucket Policy Update recommended" not in output
         assert '"Version": "2012-10-17"' not in output
         assert "s3:GetObject" not in output
@@ -601,7 +596,7 @@ def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region,
 
 @pytest.mark.serial
 @pytest.mark.slow_test
-def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, region, capsys):
+def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, region, caplog):
     """
     Test the full Lake Formation flow with custom registration role and policy output.
 
@@ -629,22 +624,21 @@ def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, regi
 
         # Enable Lake Formation with custom registration role and policy output
         # Using the same role for both execution and registration for test simplicity
-        result = fg.enable_lake_formation(
-            use_service_linked_role=False,
-            registration_role_arn=role,
-            show_s3_policy=True,
-        )
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group"):
+            result = fg.enable_lake_formation(
+                use_service_linked_role=False,
+                registration_role_arn=role,
+                show_s3_policy=True,
+            )
 
         # Verify all phases completed successfully
         assert result["s3_registration"] is True
         assert result["permissions_granted"] is True
         assert result["iam_principal_revoked"] is True
 
-        # Capture the printed output
-        captured = capsys.readouterr()
-        output = captured.out
+        output = caplog.text
 
-        # Verify the policy header is printed
+        # Verify the policy header is logged
         assert "S3 Bucket Policy Update recommended" in output
 
         # Verify the custom role ARN is used in the policy (appears twice - once for each principal)
