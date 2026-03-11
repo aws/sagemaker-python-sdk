@@ -43,13 +43,25 @@ def get_studio_url(training_job, domain_id: str = None) -> str:
         region = training_job.region if hasattr(training_job, 'region') and training_job.region else 'us-east-1'
         job_name = training_job.training_job_name
     
-    sm_client = boto3.client('sagemaker', region_name=region)
-    
     # Auto-detect domain if not provided
     if not domain_id:
+        # First try Studio metadata (when running inside Studio)
         try:
+            import os, json as _json
+            metadata_path = '/opt/ml/metadata/resource-metadata.json'
+            if os.path.exists(metadata_path):
+                with open(metadata_path, 'r') as f:
+                    domain_id = _json.load(f).get('DomainId')
+        except Exception:
+            pass
+
+    if not domain_id:
+        # Fall back to list_domains, sorted by creation time for deterministic results
+        try:
+            sm_client = boto3.client('sagemaker', region_name=region)
             domains = sm_client.list_domains()['Domains']
             if domains:
+                domains.sort(key=lambda d: d.get('CreationTime', ''))
                 domain_id = domains[0]['DomainId']
         except Exception:
             pass

@@ -302,7 +302,7 @@ def wait(
                     # Header section with training job name
                     header_table = Table(show_header=False, box=None, padding=(0, 1))
                     header_table.add_column("Property", style="cyan bold", width=20)
-                    header_table.add_column("Value", style="white", overflow="fold")
+                    header_table.add_column("Value", style="dim", overflow="fold")
                     
                     # Add Studio job link
                     try:
@@ -330,7 +330,7 @@ def wait(
 
                     status_table = Table(show_header=False, box=None, padding=(0, 1))
                     status_table.add_column("Property", style="cyan bold", width=20)
-                    status_table.add_column("Value", style="white")
+                    status_table.add_column("Value", style="dim")
 
                     status_table.add_row("Job Status", f"[bold][orange3]{status}[/][/]")
                     status_table.add_row("Secondary Status", f"[bold yellow]{secondary_status}[/bold yellow]")

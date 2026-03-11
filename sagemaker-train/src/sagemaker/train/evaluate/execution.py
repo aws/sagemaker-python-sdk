@@ -915,6 +915,7 @@ class EvaluationPipelineExecution(BaseModel):
             from rich.panel import Panel
             from rich.text import Text
             from rich.layout import Layout
+            from rich.console import Group
             
             # Create console with Jupyter support
             console = Console(force_jupyter=True)
@@ -925,14 +926,45 @@ class EvaluationPipelineExecution(BaseModel):
                 current_status = self.status.overall_status
                 elapsed = time.time() - start_time
                 
+                # Create header table with pipeline name link
+                header_table = Table(show_header=False, box=None, padding=(0, 1))
+                header_table.add_column("Property", style="cyan bold", width=20)
+                header_table.add_column("Value", style="dim", overflow="fold")
+
+                # Extract pipeline name from execution ARN and build Studio link
+                pipeline_name = None
+                exec_id = ''
+                if self.arn:
+                    arn_parts = self.arn.split('/')
+                    if len(arn_parts) >= 4:
+                        pipeline_name = arn_parts[-3]
+                        exec_id = arn_parts[-1]
+                # Use execution display name if available, fall back to self.name
+                display_name = self.name
+                if self._pipeline_execution:
+                    dn = getattr(self._pipeline_execution, 'pipeline_execution_display_name', None)
+                    if dn and not (hasattr(dn, '__class__') and 'Unassigned' in dn.__class__.__name__):
+                        display_name = dn
+                try:
+                    from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
+                    dummy_url = get_studio_url(self.arn.split('/')[0].replace(':pipeline', ':training-job') + '/dummy' if self.arn else 'dummy')
+                    if dummy_url and pipeline_name:
+                        base = dummy_url.rsplit('/jobs/train/', 1)[0]
+                        pipeline_url = f"{base}/jobs/evaluation/detail?pipeline_name={pipeline_name}&execution_id={exec_id}"
+                        header_table.add_row("Evaluation Job", f"[link={pipeline_url}]🔗 {display_name}[/link]")
+                    else:
+                        header_table.add_row("Evaluation Job", str(display_name))
+                except Exception:
+                    header_table.add_row("Evaluation Job", str(display_name))
+
                 # Create main status table
                 status_table = Table(show_header=False, box=None, padding=(0, 1))
                 status_table.add_column("Property", style="cyan bold", width=20)
-                status_table.add_column("Value", style="white")
+                status_table.add_column("Value", style="dim")
                 
-                status_table.add_row("Overall Status", f"[bold]{current_status}[/bold]")
-                status_table.add_row("Target Status", f"[bold]{target_status}[/bold]")
-                status_table.add_row("Elapsed Time", f"{elapsed:.1f}s")
+                status_table.add_row("Overall Status", f"[bold][orange3]{current_status}[/][/]")
+                status_table.add_row("Target Status", f"[bold yellow]{target_status}[/bold yellow]")
+                status_table.add_row("Elapsed Time", f"[bold bright_red]{elapsed:.1f}s[/bold bright_red]")
                 
                 if self.status.failure_reason:
                     status_table.add_row("Failure Reason", f"[red]{self.status.failure_reason}[/red]")
@@ -1028,15 +1060,15 @@ class EvaluationPipelineExecution(BaseModel):
                         content_parts.append(links_table)
                     
                     console.print(Panel(
-                        Group(*content_parts),
-                        title="[bold blue]Pipeline Execution Status[/bold blue]",
-                        border_style="blue"
+                        Group(header_table, *content_parts),
+                        title="[bold bright_blue]Pipeline Execution Status[/bold bright_blue]",
+                        border_style="orange3"
                     ))
                 else:
                     console.print(Panel(
-                        status_table,
-                        title="[bold blue]Pipeline Execution Status[/bold blue]",
-                        border_style="blue"
+                        Group(header_table, status_table),
+                        title="[bold bright_blue]Pipeline Execution Status[/bold bright_blue]",
+                        border_style="orange3"
                     ))
                 
                 if target_status == current_status:
