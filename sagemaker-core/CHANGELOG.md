@@ -1,4 +1,26 @@
 # Changelog
+## v2.5.1 (2026-03-12)
+
+### Bug Fixes
+
+- Fix handling of training step dependencies to allow successful pipeline creation (#5618)
+- Fix model registration with a model card to support both `ModelCard` and `ModelPackageModelCard` objects (#5611)
+- Fix `_build_for_passthrough()` to only set `s3_upload_path` for S3 URIs, preventing CreateModel API validation errors with local paths (#5601)
+- Fix local mode cleanup by handling root-owned files from Docker containers with `PermissionError` recovery (#5601)
+- Fix local mode processing to allow `file://` scheme URIs for output S3 paths (#5601)
+- Relax `rich` dependency upper bound back to 15.0.0 (#5620)
+
+### Enhancements
+
+- Add EUCS region (`eusc-de-east-1`) to JumpStart region config (#5615)
+- Add ISO regions to DJL-LMI image URI config (#5595)
+- Update DJL-LMI to latest image `lmi21.0.0-cu129` for SDK v3.x (#5616)
+- Add additional ISO region domains (`us-iso-west-1`, `us-isob-west-1`) to alternate domains config
+
+### Removals
+
+- Remove unused legacy `_convert_expression` method from JumpStart search (#5593)
+
 ## v2.5.0 (2026-03-02)
 
 ### Features
