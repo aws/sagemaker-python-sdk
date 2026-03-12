@@ -5,7 +5,6 @@
 
 - Fix handling of training step dependencies to allow successful pipeline creation (#5618)
 - Fix model registration with a model card to support both `ModelCard` and `ModelPackageModelCard` objects (#5611)
-- Fix `_build_for_passthrough()` to only set `s3_upload_path` for S3 URIs, preventing CreateModel API validation errors with local paths (#5601)
 - Fix local mode cleanup by handling root-owned files from Docker containers with `PermissionError` recovery (#5601)
 - Fix local mode processing to allow `file://` scheme URIs for output S3 paths (#5601)
 - Relax `rich` dependency upper bound back to 15.0.0 (#5620)
