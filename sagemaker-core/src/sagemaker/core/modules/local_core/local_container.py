@@ -17,6 +17,7 @@ import base64
 import os
 import re
 import shutil
+import stat
 import subprocess
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
@@ -55,6 +56,17 @@ TRAINING_JOB_NAME_ENV_NAME = "TRAINING_JOB_NAME"
 S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
 S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
 SM_STUDIO_LOCAL_MODE = "SM_STUDIO_LOCAL_MODE"
+
+
+def _rmtree(path):
+    """Remove a directory tree, handling root-owned files from Docker containers."""
+    def _onerror(func, path, exc_info):
+        if isinstance(exc_info[1], PermissionError):
+            os.chmod(path, stat.S_IRWXU)
+            func(path)
+        else:
+            raise exc_info[1]
+    shutil.rmtree(path, onerror=_onerror)
 
 
 class _LocalContainer(BaseModel):
@@ -209,12 +221,12 @@ class _LocalContainer(BaseModel):
         # Print our Job Complete line
         logger.info("Local training job completed, output artifacts saved to %s", artifacts)
 
-        shutil.rmtree(os.path.join(self.container_root, "input"))
-        shutil.rmtree(os.path.join(self.container_root, "shared"))
+        _rmtree(os.path.join(self.container_root, "input"))
+        _rmtree(os.path.join(self.container_root, "shared"))
         for host in self.hosts:
-            shutil.rmtree(os.path.join(self.container_root, host))
+            _rmtree(os.path.join(self.container_root, host))
         for folder in self._temporary_folders:
-            shutil.rmtree(os.path.join(self.container_root, folder))
+            _rmtree(os.path.join(self.container_root, folder))
         return artifacts
 
     def retrieve_artifacts(

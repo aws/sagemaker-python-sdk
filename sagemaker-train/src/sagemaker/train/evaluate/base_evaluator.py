@@ -701,10 +701,18 @@ class BaseEvaluator(BaseModel):
         Returns:
             dict: Base template context dictionary
         """
+        # Generate default mlflow_experiment_name if not provided
+        # This is required by AWS when ModelPackageGroupArn is not provided in training jobs
+        mlflow_experiment_name = self.mlflow_experiment_name
+        if not mlflow_experiment_name and self.mlflow_resource_arn:
+            # Use pipeline_name as default experiment name
+            mlflow_experiment_name = '{{ pipeline_name }}'
+            _logger.info("No mlflow_experiment_name provided, using pipeline_name as default")
+        
         return {
             'role_arn': role_arn,
             'mlflow_resource_arn': self.mlflow_resource_arn,
-            'mlflow_experiment_name': self.mlflow_experiment_name,
+            'mlflow_experiment_name': mlflow_experiment_name,
             'mlflow_run_name': self.mlflow_run_name,
             'model_package_group_arn': model_package_group_arn,
             'source_model_package_arn': self._source_model_package_arn,

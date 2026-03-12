@@ -29,6 +29,7 @@ from .conftest import (
     DEFAULT_SAGEMAKER_TRAINING_RETRY_CONFIG,
     SUBMIT_SERVICE_JOB_RESP,
     LIST_SERVICE_JOB_RESP_WITH_JOBS,
+    LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS,
     LIST_SERVICE_JOB_RESP_EMPTY,
     TRAINING_JOB_PAYLOAD,
 )
@@ -279,14 +280,14 @@ class TestTrainingQueueList:
 
         # Verify list_service_job was called
         mock_list_service_job.assert_called_once()
-        
+
         # Get the call arguments - list_service_job is called with positional args:
         # list_service_job(queue_name, status, filters, next_token)
         call_args = mock_list_service_job.call_args[0]
-        
+
         # The 3rd positional argument (index 2) is filters
         filters = call_args[2] if len(call_args) > 2 else None
-        
+
         # Verify filters contain the job name
         assert filters is not None, "Filters should be passed to list_service_job"
         assert filters[0]["name"] == "JOB_NAME", "JOB_NAME filter should be present"
@@ -299,6 +300,56 @@ class TestTrainingQueueList:
 
         queue = TrainingQueue(JOB_QUEUE)
         jobs = queue.list_jobs()
+
+        assert len(jobs) == 0
+
+
+class TestTrainingQueueListByShare:
+    """Tests for TrainingQueue.list_jobs_by_share method"""
+
+    @patch("sagemaker.train.aws_batch.training_queue._list_service_job")
+    def test_list_jobs_by_share_default(self, mock_list_service_job):
+        """Test list_jobs_by_share with default parameters"""
+        mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS])
+
+        queue = TrainingQueue(JOB_QUEUE)
+        jobs = queue.list_jobs_by_share()
+
+        assert len(jobs) == 2
+        assert jobs[0].share_identifier == SHARE_IDENTIFIER
+
+    @patch("sagemaker.train.aws_batch.training_queue._list_service_job")
+    def test_list_jobs_by_share_with_share_filter(self, mock_list_service_job):
+        """Test list_jobs_by_share with job name filter"""
+        mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_BY_SHARE_RESP_WITH_JOBS])
+
+        queue = TrainingQueue(JOB_QUEUE)
+        jobs = queue.list_jobs_by_share(share_identifier=SHARE_IDENTIFIER)
+
+        # Verify list_service_job was called
+        mock_list_service_job.assert_called_once()
+
+        # Get the call arguments - list_service_job is called with positional args:
+        # list_service_job(queue_name, status, filters, next_token)
+        call_args = mock_list_service_job.call_args[0]
+
+        # The 3rd positional argument (index 2) is filters
+        filters = call_args[2] if len(call_args) > 2 else None
+
+        # Verify filters contain the share identifier
+        assert filters is not None, "Filters should be passed to list_service_job"
+        assert filters[0]["name"] == "SHARE_IDENTIFIER", "SHARE_IDENTIFIER filter should be present"
+        assert filters[0]["values"] == [
+            SHARE_IDENTIFIER
+        ], "Filter values should contain the share identifier"
+
+    @patch("sagemaker.train.aws_batch.training_queue._list_service_job")
+    def test_list_jobs_by_share_empty(self, mock_list_service_job):
+        """Test list_jobs_by_share returns empty list"""
+        mock_list_service_job.return_value = iter([LIST_SERVICE_JOB_RESP_EMPTY])
+
+        queue = TrainingQueue(JOB_QUEUE)
+        jobs = queue.list_jobs_by_share()
 
         assert len(jobs) == 0
 

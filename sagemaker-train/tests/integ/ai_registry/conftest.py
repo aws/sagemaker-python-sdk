@@ -106,13 +106,8 @@ def cleanup_list():
     """Track resources for cleanup."""
     resources = []
     yield resources
-    for evaluator in resources:
+    for resource in resources:
         try:
-            from sagemaker.ai_registry.air_hub import AIRHub
-            AIRHub.delete_hub_content(
-                hub_content_type=evaluator.hub_content_type,
-                hub_content_name=evaluator.name,
-                hub_content_version=evaluator.version
-            )
+            resource.delete()
         except Exception:
             pass

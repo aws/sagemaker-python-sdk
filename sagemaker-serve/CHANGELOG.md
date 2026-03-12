@@ -1,4 +1,12 @@
 # Changelog
+## v1.5.0 (2026-03-02)
+
+### Bug fixes and Other Changes
+
+- **Fix**: Resolve alt config resolution for jumpstart models (#5563)
+- **Fix**: Bug fixes for Model Customization (#5558)
+- **Feature**: Add license to sagemaker-serve (#5553)
+
 ## v1.4.1 (2026-02-10)
 
  - Update Module dependencies

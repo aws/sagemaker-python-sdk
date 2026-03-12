@@ -341,6 +341,8 @@ def _parse_response(response_str: str) -> str:
 
 def _format_score(score: float) -> str:
     """Format score as percentage: 0.8333 -> '83.3%' """
+    if score is None:
+        return "N/A"
     return f"{score * 100:.1f}%"
 
 
@@ -697,9 +699,10 @@ def _show_llmaj_results(
     
     # Download base model aggregate results if both models exist
     base_aggregate = None
+    base_bedrock_job_name = None
     if not is_single_model and base_job_name:
         try:
-            base_aggregate, _ = _download_bedrock_aggregate_json(
+            base_aggregate, base_bedrock_job_name = _download_bedrock_aggregate_json(
                 pipeline_execution, base_job_name
             )
             logger.info(f"Successfully downloaded base model aggregate results")
@@ -774,9 +777,9 @@ def _show_llmaj_results(
         )
     
     # Download base model per-example results if base_job_name exists
-    if base_job_name and bedrock_job_name:
+    if base_job_name and base_bedrock_job_name:
         try:
-            base_results = _download_llmaj_results_from_s3(pipeline_execution, bedrock_job_name)
+            base_results = _download_llmaj_results_from_s3(pipeline_execution, base_bedrock_job_name)
             logger.info(f"Successfully downloaded {len(base_results)} base model per-example results")
         except FileNotFoundError as e:
             s3_path = pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"

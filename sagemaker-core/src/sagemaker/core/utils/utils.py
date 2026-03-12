@@ -298,6 +298,22 @@ class Unassigned:
             cls._instance = super().__new__(cls)
         return cls._instance
 
+    def __repr__(self):
+        """Return clean representation for debugging."""
+        return "Unassigned()"
+
+    def __str__(self):
+        """Return empty string for clean printing."""
+        return ""
+
+    def __iter__(self):
+        """Return empty iterator to prevent iteration errors."""
+        return iter([])
+
+    def __bool__(self):
+        """Return False for truthiness checks."""
+        return False
+
 
 class SingletonMeta(type):
     """
