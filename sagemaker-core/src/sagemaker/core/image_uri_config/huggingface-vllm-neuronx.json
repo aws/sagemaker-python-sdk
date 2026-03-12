@@ -4,7 +4,7 @@
             "neuronx"
         ],
         "version_aliases": {
-            "0.4": "0.4.4"
+            "0.4": "0.4.5"
         },
         "versions": {
             "0.4.1": {
@@ -77,6 +77,32 @@
                     "us-west-2": "763104351884"
                 },
                 "tag_prefix": "0.11.0-optimum0.4.4",
+                "repository": "huggingface-vllm-inference-neuronx",
+                "container_version": {
+                    "neuronx": "ubuntu22.04"
+                },
+                "sdk_versions": [
+                    "sdk2.26.1"
+                ]
+            },
+            "0.4.5": {
+                "py_versions": [
+                    "py310"
+                ],
+                "registries": {
+                    "ap-northeast-1": "763104351884",
+                    "ap-south-1": "763104351884",
+                    "ap-southeast-1": "763104351884",
+                    "ap-southeast-2": "763104351884",
+                    "eu-central-1": "763104351884",
+                    "eu-west-1": "763104351884",
+                    "eu-west-3": "763104351884",
+                    "sa-east-1": "763104351884",
+                    "us-east-1": "763104351884",
+                    "us-east-2": "763104351884",
+                    "us-west-2": "763104351884"
+                },
+                "tag_prefix": "0.11.0-optimum0.4.5",
                 "repository": "huggingface-vllm-inference-neuronx",
                 "container_version": {
                     "neuronx": "ubuntu22.04"
