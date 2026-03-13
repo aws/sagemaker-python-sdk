@@ -1050,7 +1050,6 @@ class FeatureGroup:
         self.feature_definitions = feature_definitions
         return self.feature_definitions
 
-    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.get_record")
     def get_record(
         self,
         record_identifier_value_as_string: str,
@@ -1070,7 +1069,6 @@ class FeatureGroup:
             feature_names=feature_names,
         ).get("Record")
 
-    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.put_record")
     def put_record(
         self,
         record: Sequence[FeatureValue],
@@ -1094,7 +1092,6 @@ class FeatureGroup:
             ttl_duration=ttl_duration.to_dict() if ttl_duration is not None else None,
         )
 
-    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.delete_record")
     def delete_record(
         self,
         record_identifier_value_as_string: str,
