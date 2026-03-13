@@ -75,12 +75,15 @@ SM_EFA_NCCL_INSTANCES = [
     "ml.p4d.24xlarge",
     "ml.p4de.24xlarge",
     "ml.p5.48xlarge",
+    "ml.p5e.48xlarge",
     "ml.trn1.32xlarge",
 ]
 
 SM_EFA_RDMA_INSTANCES = [
     "ml.p4d.24xlarge",
     "ml.p4de.24xlarge",
+    "ml.p5.48xlarge",
+    "ml.p5e.48xlarge",
     "ml.trn1.32xlarge",
 ]
 
