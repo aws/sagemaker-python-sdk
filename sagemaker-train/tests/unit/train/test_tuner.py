@@ -581,8 +581,7 @@ class TestHyperparameterTunerStaticMethods:
         assert len(channel_names) == 4, "Should have exactly 4 channels"
 
     def test_build_training_job_definition_includes_spot_params(self):
-        """Test that _build_training_job_definition includes spot parameters.
-        """
+        """Test that _build_training_job_definition includes spot parameters."""
         tuner = HyperparameterTuner(
             model_trainer=_create_mock_model_trainer(with_spot_training=True),
             objective_metric_name="accuracy",
@@ -594,4 +593,6 @@ class TestHyperparameterTunerStaticMethods:
 
         # Verify managed spot training enabled
         assert definition.enable_managed_spot_training is True, "Spot should be enabled"
-        assert isinstance(definition.stopping_condition.max_wait_time_in_seconds, int), "Max wait time should be set"
+        assert isinstance(
+            definition.stopping_condition.max_wait_time_in_seconds, int
+        ), "Max wait time should be set"
