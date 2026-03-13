@@ -51,7 +51,6 @@ class TensorflowservingServerTests(TestCase):
         local_tensorflow_server._start_tensorflow_serving(
             client=mock_docker_client,
             model_path=MODEL_PATH,
-            secret_key=SECRET_KEY,
             env_vars=ENV_VAR,
             image=CPU_TF_IMAGE,
         )
@@ -66,7 +65,6 @@ class TensorflowservingServerTests(TestCase):
             environment={
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
                 "LOCAL_PYTHON": platform.python_version(),
                 "KEY": "VALUE",
             },
@@ -89,7 +87,6 @@ class TensorflowservingServerTests(TestCase):
         ) = SageMakerTensorflowServing()._upload_tensorflow_serving_artifacts(
             model_path=MODEL_PATH,
             sagemaker_session=mock_session,
-            secret_key=SECRET_KEY,
             s3_model_data_url=S3_URI,
             image=CPU_TF_IMAGE,
             should_upload_artifacts=True,
@@ -97,5 +94,5 @@ class TensorflowservingServerTests(TestCase):
 
         mock_upload.assert_called_once_with(mock_session, MODEL_PATH, "mock_model_data_uri", ANY)
         self.assertEqual(s3_upload_path, S3_URI)
-        self.assertEqual(env_vars.get("SAGEMAKER_SERVE_SECRET_KEY"), SECRET_KEY)
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
         self.assertEqual(env_vars.get("LOCAL_PYTHON"), "3.8")

@@ -213,7 +213,6 @@ class DJL(ABC):
             self.modes[str(Mode.LOCAL_CONTAINER)].create_server(
                 self.image_uri,
                 timeout if timeout else 1800,
-                self.secret_key,
                 predictor,
                 self.pysdk_model.env,
             )

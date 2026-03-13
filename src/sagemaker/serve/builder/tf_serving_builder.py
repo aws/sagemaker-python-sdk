@@ -124,7 +124,7 @@ class TensorflowServing(ABC):
         if not self.image_uri:
             raise ValueError("image_uri is not set for tensorflow serving")
 
-        self.secret_key = prepare_for_tf_serving(
+        prepare_for_tf_serving(
             model_path=self.model_path,
             shared_libs=self.shared_libs,
             dependencies=self.dependencies,

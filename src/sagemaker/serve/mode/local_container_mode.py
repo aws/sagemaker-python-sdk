@@ -68,7 +68,6 @@ class LocalContainerMode(
         self.model_server = model_server
         self.client = None
         self.container = None
-        self.secret_key = None
         self._ping_container = None
         self._invoke_serving = None
 
@@ -89,7 +88,6 @@ class LocalContainerMode(
         self,
         image: str,
         container_timeout_seconds: int,
-        secret_key: str,
         predictor: PredictorBase,
         env_vars: Dict[str, str] = None,
         model_path: str = None,
@@ -108,7 +106,6 @@ class LocalContainerMode(
                 docker_client=self.client,
                 model_path=model_path if model_path else self.model_path,
                 image_uri=image,
-                secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
             self._ping_container = self._triton_deep_ping
@@ -117,7 +114,6 @@ class LocalContainerMode(
                 client=self.client,
                 image=image,
                 model_path=model_path if model_path else self.model_path,
-                secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
             self._ping_container = self._djl_deep_ping
@@ -126,7 +122,6 @@ class LocalContainerMode(
                 client=self.client,
                 image=image,
                 model_path=model_path if model_path else self.model_path,
-                secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
             self._ping_container = self._torchserve_deep_ping
@@ -135,7 +130,6 @@ class LocalContainerMode(
                 client=self.client,
                 image=image,
                 model_path=model_path if model_path else self.model_path,
-                secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
                 jumpstart=jumpstart,
             )
@@ -145,7 +139,6 @@ class LocalContainerMode(
                 client=self.client,
                 image=image,
                 model_path=model_path if model_path else self.model_path,
-                secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
             self._ping_container = self._multi_model_server_deep_ping
@@ -154,7 +147,6 @@ class LocalContainerMode(
                 client=self.client,
                 image=image,
                 model_path=model_path if model_path else self.model_path,
-                secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
             self._ping_container = self._tensorflow_serving_deep_ping
@@ -164,7 +156,6 @@ class LocalContainerMode(
                 client=self.client,
                 image=image,
                 model_path=model_path if model_path else self.model_path,
-                secret_key=secret_key,
                 env_vars=env_vars if env_vars else self.env_vars,
             )
             tei_serving.schema_builder = self.schema_builder

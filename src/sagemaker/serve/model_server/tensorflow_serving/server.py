@@ -22,7 +22,7 @@ class LocalTensorflowServing:
     """LocalTensorflowServing class."""
 
     def _start_tensorflow_serving(
-        self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
+        self, client: object, image: str, model_path: str, env_vars: dict
     ):
         """Starts a local tensorflow serving container.
 
@@ -30,7 +30,6 @@ class LocalTensorflowServing:
             client: Docker client
             image: Image to use
             model_path: Path to the model
-            secret_key: Secret key to use for authentication
             env_vars: Environment variables to set
         """
         self.container = client.containers.run(
@@ -48,7 +47,6 @@ class LocalTensorflowServing:
             environment={
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "LOCAL_PYTHON": platform.python_version(),
                 **env_vars,
             },
@@ -99,7 +97,6 @@ class SageMakerTensorflowServing:
         self,
         model_path: str,
         sagemaker_session: Session,
-        secret_key: str,
         s3_model_data_url: str = None,
         image: str = None,
         should_upload_artifacts: bool = False,
@@ -109,7 +106,6 @@ class SageMakerTensorflowServing:
         Args:
             model_path: Path to the model
             sagemaker_session: SageMaker session
-            secret_key: Secret key to use for authentication
             s3_model_data_url: S3 model data URL
             image: Image to use
             model_data_s3_path: S3 model data URI
@@ -142,7 +138,6 @@ class SageMakerTensorflowServing:
             "SAGEMAKER_PROGRAM": "inference.py",
             "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars
