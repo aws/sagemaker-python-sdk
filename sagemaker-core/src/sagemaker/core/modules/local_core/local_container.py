@@ -17,7 +17,6 @@ import base64
 import os
 import re
 import shutil
-import stat
 import subprocess
 from tempfile import TemporaryDirectory
 from typing import Any, Dict, List, Optional
@@ -60,13 +59,23 @@ SM_STUDIO_LOCAL_MODE = "SM_STUDIO_LOCAL_MODE"
 
 def _rmtree(path):
     """Remove a directory tree, handling root-owned files from Docker containers."""
-    def _onerror(func, path, exc_info):
-        if isinstance(exc_info[1], PermissionError):
-            os.chmod(path, stat.S_IRWXU)
-            func(path)
-        else:
-            raise exc_info[1]
-    shutil.rmtree(path, onerror=_onerror)
+    try:
+        shutil.rmtree(path)
+    except PermissionError:
+        # Files created by Docker containers are owned by root.
+        # Use a Docker container to remove them since os.chmod will also fail.
+        try:
+            subprocess.run(
+                ["docker", "run", "--rm", "-v", f"{path}:/delete", "alpine", "rm", "-rf", "/delete"],
+                check=True,
+                capture_output=True,
+            )
+            # The mount point directory itself may remain — clean it up
+            if os.path.exists(path):
+                shutil.rmtree(path, ignore_errors=True)
+        except Exception:
+            logger.warning("Failed to clean up root-owned files in %s. You may need to remove them manually with: sudo rm -rf %s", path, path)
+            raise
 
 
 class _LocalContainer(BaseModel):
