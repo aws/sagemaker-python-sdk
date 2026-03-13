@@ -985,11 +985,111 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     )
                     return
 
+        # Fallback: Nova recipes don't have hosting configs in the hub document
+        if self._is_nova_model():
+            nova_config = self._get_nova_hosting_config(instance_type=self.instance_type)
+            if not self.image_uri:
+                self.image_uri = nova_config["image_uri"]
+            if not self.env_vars:
+                self.env_vars = nova_config["env_vars"]
+            if not self.instance_type:
+                self.instance_type = nova_config["instance_type"]
+            return
+
         raise ValueError(
             f"Model with recipe '{recipe_name}' is not supported for deployment. "
             f"The recipe does not have hosting configuration. "
             f"Please use a model that supports deployment or contact AWS support for assistance."
         )
+
+    # Nova escrow ECR accounts per region
+    _NOVA_ESCROW_ACCOUNTS = {
+        "us-east-1": "708977205387",
+        "us-west-2": "176779409107",
+        "eu-west-2": "470633809225",
+        "ap-northeast-1": "878185805882",
+    }
+
+    # Nova hosting configs per model (from Rhinestone modelDeployment.ts)
+    _NOVA_HOSTING_CONFIGS = {
+        "nova-textgeneration-micro": [
+            {"InstanceType": "ml.g5.12xlarge", "Environment": {"CONTEXT_LENGTH": "4096", "MAX_CONCURRENCY": "16"}},
+            {"InstanceType": "ml.g5.24xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8192", "MAX_CONCURRENCY": "16"}},
+            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "10000", "MAX_CONCURRENCY": "16"}},
+            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "10000", "MAX_CONCURRENCY": "16"}},
+            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "12000", "MAX_CONCURRENCY": "16"}},
+            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "12000", "MAX_CONCURRENCY": "16"}},
+        ],
+        "nova-textgeneration-lite": [
+            {"InstanceType": "ml.g6.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "20000", "MAX_CONCURRENCY": "16"}},
+            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "12000", "MAX_CONCURRENCY": "16"}},
+        ],
+        "nova-textgeneration-pro": [
+            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "12000", "MAX_CONCURRENCY": "16"}},
+            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "50000", "MAX_CONCURRENCY": "16"}},
+        ],
+        "nova-textgeneration-lite-v2": [
+            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "50000", "MAX_CONCURRENCY": "16"}},
+        ],
+    }
+
+    def _is_nova_model(self) -> bool:
+        """Check if the model is a Nova model based on recipe name or hub content name."""
+        model_package = self._fetch_model_package()
+        if not model_package:
+            return False
+        containers = getattr(model_package.inference_specification, "containers", None)
+        if not containers:
+            return False
+        base_model = getattr(containers[0], "base_model", None)
+        if not base_model:
+            return False
+        recipe_name = getattr(base_model, "recipe_name", "") or ""
+        hub_content_name = getattr(base_model, "hub_content_name", "") or ""
+        return "nova" in recipe_name.lower() or "nova" in hub_content_name.lower()
+
+    def _get_nova_hosting_config(self, instance_type=None):
+        """Get Nova hosting config (image URI, env vars, instance type).
+
+        Nova training recipes don't have hosting configs in the JumpStart hub document.
+        This provides the hardcoded fallback, matching Rhinestone's getNovaHostingConfigs().
+        """
+        model_package = self._fetch_model_package()
+        hub_content_name = model_package.inference_specification.containers[0].base_model.hub_content_name
+
+        configs = self._NOVA_HOSTING_CONFIGS.get(hub_content_name)
+        if not configs:
+            raise ValueError(
+                f"Nova model '{hub_content_name}' is not supported for deployment. "
+                f"Supported: {list(self._NOVA_HOSTING_CONFIGS.keys())}"
+            )
+
+        region = self.sagemaker_session.boto_region_name
+        escrow_account = self._NOVA_ESCROW_ACCOUNTS.get(region)
+        if not escrow_account:
+            raise ValueError(
+                f"Nova deployment is not supported in region '{region}'. "
+                f"Supported: {list(self._NOVA_ESCROW_ACCOUNTS.keys())}"
+            )
+
+        image_uri = f"{escrow_account}.dkr.ecr.{region}.amazonaws.com/nova-inference-repo:SM-Inference-latest"
+
+        if instance_type:
+            config = next((c for c in configs if c["InstanceType"] == instance_type), None)
+            if not config:
+                supported = [c["InstanceType"] for c in configs]
+                raise ValueError(
+                    f"Instance type '{instance_type}' not supported for '{hub_content_name}'. "
+                    f"Supported: {supported}"
+                )
+        else:
+            config = next((c for c in configs if c.get("Profile") == "Default"), configs[0])
+
+        return {
+            "image_uri": image_uri,
+            "env_vars": config["Environment"],
+            "instance_type": config["InstanceType"],
+        }
 
     def _initialize_jumpstart_config(self) -> None:
         """Initialize JumpStart-specific configuration."""
@@ -2217,6 +2317,36 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             model_package = self._fetch_model_package()
             # Fetch recipe config first to set image_uri, instance_type, env_vars, and s3_upload_path
             self._fetch_and_cache_recipe_config()
+
+            # Nova models use a completely different deployment architecture
+            if self._is_nova_model():
+                escrow_uri = self._resolve_nova_escrow_uri()
+                base_model = model_package.inference_specification.containers[0].base_model
+
+                container_def = ContainerDefinition(
+                    image=self.image_uri,
+                    environment=self.env_vars,
+                    model_data_source={
+                        "s3_data_source": {
+                            "s3_uri": escrow_uri.rstrip("/") + "/",
+                            "s3_data_type": "S3Prefix",
+                            "compression_type": "None",
+                        }
+                    },
+                )
+                model_name = self.model_name or f"model-{uuid.uuid4().hex[:10]}"
+                self.built_model = Model.create(
+                    execution_role_arn=self.role_arn,
+                    model_name=model_name,
+                    containers=[container_def],
+                    enable_network_isolation=True,
+                    tags=[
+                        {"key": "sagemaker-studio:jumpstart-model-id",
+                         "value": base_model.hub_content_name},
+                    ],
+                )
+                return self.built_model
+
             peft_type = self._fetch_peft()
 
             if peft_type == "LORA":
@@ -4207,6 +4337,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         from sagemaker.core.resources import InferenceComponent
         from sagemaker.core.resources import Tag as CoreTag
 
+        # Nova models use direct model-on-variant, no InferenceComponents
+        if self._is_nova_model():
+            return self._deploy_nova_model(
+                endpoint_name=endpoint_name,
+                initial_instance_count=initial_instance_count,
+                wait=kwargs.get("wait", True),
+            )
+
         # Fetch model package
         model_package = self._fetch_model_package()
 
@@ -4402,6 +4540,91 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if e.response["Error"]["Code"] == "ValidationException":
                 return False
             raise
+
+    def _resolve_nova_escrow_uri(self) -> str:
+        """Resolve the escrow S3 URI for Nova model artifacts from manifest.json.
+
+        Nova training jobs write artifacts to an escrow S3 bucket. The location
+        is recorded in manifest.json in the training job output directory.
+        """
+        import json
+        from urllib.parse import urlparse
+
+        if isinstance(self.model, TrainingJob):
+            training_job = self.model
+        elif isinstance(self.model, ModelTrainer):
+            training_job = self.model._latest_training_job
+        else:
+            raise ValueError("Nova escrow URI resolution requires a TrainingJob or ModelTrainer")
+
+        output_path = training_job.output_data_config.s3_output_path.rstrip("/")
+        manifest_s3 = f"{output_path}/{training_job.training_job_name}/output/output/manifest.json"
+
+        parsed = urlparse(manifest_s3)
+        bucket = parsed.netloc
+        key = parsed.path.lstrip("/")
+
+        s3_client = self.sagemaker_session.boto_session.client("s3")
+        resp = s3_client.get_object(Bucket=bucket, Key=key)
+        manifest = json.loads(resp["Body"].read().decode())
+
+        escrow_uri = manifest.get("checkpoint_s3_bucket")
+        if not escrow_uri:
+            raise ValueError(
+                f"'checkpoint_s3_bucket' not found in manifest.json. "
+                f"Available keys: {list(manifest.keys())}"
+            )
+        return escrow_uri
+
+    def _deploy_nova_model(
+        self,
+        endpoint_name: str,
+        initial_instance_count: int = 1,
+        wait: bool = True,
+    ) -> Endpoint:
+        """Deploy a Nova model directly to an endpoint without inference components.
+
+        Nova models use a model-on-variant architecture:
+        - ModelName is embedded in the ProductionVariant
+        - No InferenceComponents are created
+        - EnableNetworkIsolation is set on the Model (during build)
+        """
+        from sagemaker.core.shapes import ProductionVariant
+
+        model_package = self._fetch_model_package()
+        base_model = model_package.inference_specification.containers[0].base_model
+
+        if not endpoint_name:
+            endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
+
+        EndpointConfig.create(
+            endpoint_config_name=endpoint_name,
+            production_variants=[
+                ProductionVariant(
+                    variant_name="AllTraffic",
+                    model_name=self.built_model.model_name,
+                    instance_type=self.instance_type,
+                    initial_instance_count=initial_instance_count,
+                )
+            ],
+        )
+
+        tags = [
+            {"key": "sagemaker-studio:jumpstart-model-id", "value": base_model.hub_content_name},
+        ]
+        if base_model.recipe_name:
+            tags.append({"key": "sagemaker-studio:recipe-name", "value": base_model.recipe_name})
+
+        endpoint = Endpoint.create(
+            endpoint_name=endpoint_name,
+            endpoint_config_name=endpoint_name,
+            tags=tags,
+        )
+
+        if wait:
+            endpoint.wait_for_status("InService")
+
+        return endpoint
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.deploy_local")
     def deploy_local(
