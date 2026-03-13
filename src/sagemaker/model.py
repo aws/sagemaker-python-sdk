@@ -91,6 +91,8 @@ from sagemaker.session import (
     get_update_model_package_inference_args,
 )
 from sagemaker.model_life_cycle import ModelLifeCycle
+from sagemaker.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.telemetry.constants import Feature
 
 # Setting LOGGER for backward compatibility, in case users import it...
 logger = LOGGER = logging.getLogger("sagemaker")
@@ -1368,6 +1370,7 @@ api/latest/reference/services/sagemaker.html#SageMaker.Client.add_tags>`_
 
         return self
 
+    @_telemetry_emitter(feature=Feature.JUMPSTART, func_name="model.deploy")
     def deploy(
         self,
         initial_instance_count=None,
