@@ -1444,13 +1444,15 @@ class HyperparameterTuner(object):
 
         # Build stopping condition
         stopping_condition = StoppingCondition()
-        if (
-            model_trainer.stopping_condition
-            and model_trainer.stopping_condition.max_runtime_in_seconds
-        ):
-            stopping_condition.max_runtime_in_seconds = (
-                model_trainer.stopping_condition.max_runtime_in_seconds
-            )
+        if model_trainer.stopping_condition:
+            if model_trainer.stopping_condition.max_runtime_in_seconds:
+                stopping_condition.max_runtime_in_seconds = (
+                    model_trainer.stopping_condition.max_runtime_in_seconds
+                )
+            if model_trainer.stopping_condition.max_wait_time_in_seconds:
+                stopping_condition.max_wait_time_in_seconds = (
+                    model_trainer.stopping_condition.max_wait_time_in_seconds
+                )
 
         definition = HyperParameterTrainingJobDefinition(
             algorithm_specification=algorithm_spec,
@@ -1460,6 +1462,7 @@ class HyperparameterTuner(object):
             resource_config=resource_config,
             stopping_condition=stopping_condition,
             static_hyper_parameters=self.static_hyperparameters or {},
+            enable_managed_spot_training=model_trainer.compute.enable_managed_spot_training,
         )
 
         return definition
