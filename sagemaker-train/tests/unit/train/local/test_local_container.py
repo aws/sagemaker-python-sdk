@@ -44,6 +44,25 @@ class TestRmtree:
 
     @patch("sagemaker.train.local.local_container.shutil.rmtree")
     @patch("sagemaker.train.local.local_container.subprocess.run")
+    @patch("sagemaker.train.local.local_container.os.path.exists", return_value=False)
+    def test_rmtree_studio_adds_network(self, mock_exists, mock_run, mock_rmtree):
+        """In Studio, docker run includes --network sagemaker."""
+        mock_rmtree.side_effect = PermissionError("Permission denied")
+
+        _rmtree("/tmp/test", IMAGE, is_studio=True)
+
+        mock_run.assert_called_once_with(
+            [
+                "docker", "run", "--rm",
+                "--network", "sagemaker",
+                "-v", "/tmp/test:/delete", IMAGE, "rm", "-rf", "/delete",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+    @patch("sagemaker.train.local.local_container.shutil.rmtree")
+    @patch("sagemaker.train.local.local_container.subprocess.run")
     @patch("sagemaker.train.local.local_container.os.path.exists", return_value=True)
     def test_rmtree_cleans_up_mount_point(self, mock_exists, mock_run, mock_rmtree):
         """After docker cleanup, remaining mount point directory is removed."""

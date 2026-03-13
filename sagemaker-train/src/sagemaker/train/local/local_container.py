@@ -65,14 +65,13 @@ S3_ENDPOINT_URL_ENV_NAME = "S3_ENDPOINT_URL"
 SM_STUDIO_LOCAL_MODE = "SM_STUDIO_LOCAL_MODE"
 
 
-def _rmtree(path, image=None):
+def _rmtree(path, image=None, is_studio=False):
     """Remove a directory tree, handling root-owned files from Docker containers."""
     try:
         shutil.rmtree(path)
     except PermissionError:
         # Files created by Docker containers are owned by root.
         # Use a Docker container to remove them since os.chmod will also fail.
-        # Use the training image (already pulled) to avoid needing alpine.
         if image is None:
             logger.warning(
                 "Failed to clean up root-owned files in %s. "
@@ -81,11 +80,11 @@ def _rmtree(path, image=None):
             )
             raise
         try:
-            subprocess.run(
-                ["docker", "run", "--rm", "-v", f"{path}:/delete", image, "rm", "-rf", "/delete"],
-                check=True,
-                capture_output=True,
-            )
+            cmd = ["docker", "run", "--rm"]
+            if is_studio:
+                cmd += ["--network", "sagemaker"]
+            cmd += ["-v", f"{path}:/delete", image, "rm", "-rf", "/delete"]
+            subprocess.run(cmd, check=True, capture_output=True)
             # The mount point directory itself may remain — clean it up
             if os.path.exists(path):
                 shutil.rmtree(path, ignore_errors=True)
@@ -250,12 +249,12 @@ class _LocalContainer(BaseModel):
         # Print our Job Complete line
         logger.info("Local training job completed, output artifacts saved to %s", artifacts)
 
-        _rmtree(os.path.join(self.container_root, "input"), self.image)
-        _rmtree(os.path.join(self.container_root, "shared"), self.image)
+        _rmtree(os.path.join(self.container_root, "input"), self.image, self.is_studio)
+        _rmtree(os.path.join(self.container_root, "shared"), self.image, self.is_studio)
         for host in self.hosts:
-            _rmtree(os.path.join(self.container_root, host), self.image)
+            _rmtree(os.path.join(self.container_root, host), self.image, self.is_studio)
         for folder in self._temporary_folders:
-            _rmtree(os.path.join(self.container_root, folder), self.image)
+            _rmtree(os.path.join(self.container_root, folder), self.image, self.is_studio)
         return artifacts
 
     def retrieve_artifacts(
