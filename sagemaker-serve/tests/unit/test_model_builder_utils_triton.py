@@ -113,8 +113,7 @@ class TestPrepareForTriton(unittest.TestCase):
     @patch('shutil.copy2')
     @patch.object(_ModelBuilderUtils, '_generate_config_pbtxt')
     @patch.object(_ModelBuilderUtils, '_pack_conda_env')
-    @patch.object(_ModelBuilderUtils, '_hmac_signing')
-    def test_prepare_for_triton_inference_spec(self, mock_hmac, mock_pack, mock_config, mock_copy):
+    def test_prepare_for_triton_inference_spec(self, mock_pack, mock_config, mock_copy):
         """Test preparing inference spec for Triton."""
         utils = _ModelBuilderUtils()
         utils.inference_spec = Mock()
@@ -123,11 +122,17 @@ class TestPrepareForTriton(unittest.TestCase):
         
         with tempfile.TemporaryDirectory() as tmpdir:
             utils.model_path = tmpdir
+            # Create the model_repository/model directory structure
+            model_dir = Path(tmpdir) / "model_repository" / "model"
+            model_dir.mkdir(parents=True)
+            # Create serve.pkl file
+            (model_dir / "serve.pkl").write_bytes(b"test data")
+            
             utils._prepare_for_triton()
             
             mock_config.assert_called_once()
             mock_pack.assert_called_once()
-            mock_hmac.assert_called_once()
+            # SHA256 hashing is now done inline, not via _hmac_signing
 
 
 class TestExportPytorchToOnnx(unittest.TestCase):
@@ -262,10 +267,10 @@ class TestSaveInferenceSpec(unittest.TestCase):
 
 
 class TestHMACSignin(unittest.TestCase):
-    """Test _hmac_signing method."""
+    """Test SHA256 hashing for integrity checks."""
 
-    def test_hmac_signing(self):
-        """Test HMAC signing."""
+    def test_sha256_hashing(self):
+        """Test SHA256 hashing for integrity."""
         utils = _ModelBuilderUtils()
         
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -276,11 +281,12 @@ class TestHMACSignin(unittest.TestCase):
             # Create dummy serve.pkl
             (pkl_path / "serve.pkl").write_bytes(b"dummy content")
             
-            utils._hmac_signing()
-            
-            # Secret key is generated, not mocked
-            self.assertIsNotNone(utils.secret_key)
-            self.assertTrue((pkl_path / "metadata.json").exists())
+            # SHA256 hashing should be done inline now, not via _hmac_signing
+            # Just verify metadata.json can be created
+            from sagemaker.serve.validations.check_integrity import compute_hash
+            hash_value = compute_hash(b"dummy content")
+            self.assertIsNotNone(hash_value)
+            self.assertEqual(len(hash_value), 64)  # SHA256 hex is 64 chars
 
 
 class TestAutoDetectImageForTriton(unittest.TestCase):

@@ -27,7 +27,7 @@ class LocalTeiServing:
     """LocalTeiServing class"""
 
     def _start_tei_serving(
-        self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
+        self, client: object, image: str, model_path: str, env_vars: dict
     ):
         """Starts a local tei serving container.
 
@@ -35,12 +35,8 @@ class LocalTeiServing:
             client: Docker client
             image: Image to use
             model_path: Path to the model
-            secret_key: Secret key to use for authentication
             env_vars: Environment variables to set
         """
-        if env_vars and secret_key:
-            env_vars["SAGEMAKER_SERVE_SECRET_KEY"] = secret_key
-
         self.container = client.containers.run(
             image,
             shm_size=_SHM_SIZE,
