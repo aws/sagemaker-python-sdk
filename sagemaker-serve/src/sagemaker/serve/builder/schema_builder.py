@@ -196,6 +196,11 @@ class SchemaBuilder(TritonSchemaBuilder):
             return StringDeserializer()
         if _is_jsonable(obj):
             return JSONDeserializer()
+        if isinstance(obj, dict) and "content_type" in obj:
+            try:
+                return BytesDeserializer()
+            except ValueError as e:
+                logger.error(e)
 
         raise ValueError(
             (
