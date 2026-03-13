@@ -484,7 +484,7 @@ pipeline = Pipeline(
 |--------------|--------------|--------------|--------|
 | Run processing jobs | `Processor(...)`, `ScriptProcessor(...)` | `sagemaker.core.resources.ProcessingJob` | ❌ REMOVED |
 | PySpark processing | `PySparkProcessor(...)` | `sagemaker.core.resources.ProcessingJob` | ❌ REMOVED |
-| Feature Store | `FeatureGroup`, `FeatureStore` | `sagemaker.core.resources.ProcessingJob` | ❌ REMOVED |
+| Feature Store | `FeatureGroup`, `FeatureStore` | `sagemaker.core.resources.FeatureGroup`, `FeatureStore` | ✅ SUPPORTED |
 | Data Wrangler | `sagemaker.wrangler` | `sagemaker.core.resources.ProcessingJob` | ❌ REMOVED |
 | Ground Truth (Labeling) | Not directly in V2 SDK (AWS console) | `sagemaker.core.resources.GroundTruthJob` (28 classes) | 🆕 NEW IN V3 |
 
