@@ -15,6 +15,8 @@ import pytest
 
 from sagemaker.train.local.local_container import _rmtree
 
+IMAGE = "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.1-cpu-py310"
+
 
 class TestRmtree:
     """Test cases for _rmtree function."""
@@ -22,20 +24,20 @@ class TestRmtree:
     @patch("sagemaker.train.local.local_container.shutil.rmtree")
     def test_rmtree_success(self, mock_rmtree):
         """Normal case — shutil.rmtree succeeds."""
-        _rmtree("/tmp/test")
+        _rmtree("/tmp/test", IMAGE)
         mock_rmtree.assert_called_once_with("/tmp/test")
 
     @patch("sagemaker.train.local.local_container.shutil.rmtree")
     @patch("sagemaker.train.local.local_container.subprocess.run")
     @patch("sagemaker.train.local.local_container.os.path.exists", return_value=False)
     def test_rmtree_permission_error_docker_fallback(self, mock_exists, mock_run, mock_rmtree):
-        """PermissionError triggers docker fallback to remove root-owned files."""
+        """PermissionError triggers docker fallback using the training image."""
         mock_rmtree.side_effect = PermissionError("Permission denied")
 
-        _rmtree("/tmp/test")
+        _rmtree("/tmp/test", IMAGE)
 
         mock_run.assert_called_once_with(
-            ["docker", "run", "--rm", "-v", "/tmp/test:/delete", "alpine", "rm", "-rf", "/delete"],
+            ["docker", "run", "--rm", "-v", "/tmp/test:/delete", IMAGE, "rm", "-rf", "/delete"],
             check=True,
             capture_output=True,
         )
@@ -47,7 +49,7 @@ class TestRmtree:
         """After docker cleanup, remaining mount point directory is removed."""
         mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
 
-        _rmtree("/tmp/test")
+        _rmtree("/tmp/test", IMAGE)
 
         assert mock_rmtree.call_count == 2
         mock_rmtree.assert_has_calls([
@@ -60,7 +62,15 @@ class TestRmtree:
     def test_rmtree_docker_fallback_fails_raises(self, mock_run, mock_rmtree):
         """If docker fallback also fails, the exception propagates."""
         mock_rmtree.side_effect = PermissionError("Permission denied")
-        mock_run.side_effect = Exception("docker not available")
+        mock_run.side_effect = Exception("docker failed")
 
-        with pytest.raises(Exception, match="docker not available"):
+        with pytest.raises(Exception, match="docker failed"):
+            _rmtree("/tmp/test", IMAGE)
+
+    @patch("sagemaker.train.local.local_container.shutil.rmtree")
+    def test_rmtree_no_image_raises(self, mock_rmtree):
+        """PermissionError without image raises immediately."""
+        mock_rmtree.side_effect = PermissionError("Permission denied")
+
+        with pytest.raises(PermissionError):
             _rmtree("/tmp/test")
