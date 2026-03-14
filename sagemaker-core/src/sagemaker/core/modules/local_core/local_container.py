@@ -75,7 +75,7 @@ def _rmtree(path, image=None, is_studio=False):
             cmd = ["docker", "run", "--rm"]
             if is_studio:
                 cmd += ["--network", "sagemaker"]
-            cmd += ["-v", f"{path}:/delete", image, "rm", "-rf", "/delete"]
+            cmd += ["-v", f"{path}:/delete", image, "sh", "-c", "find /delete -mindepth 1 -delete"]
             subprocess.run(cmd, check=True, capture_output=True)
             # The mount point directory itself may remain — clean it up
             if os.path.exists(path):

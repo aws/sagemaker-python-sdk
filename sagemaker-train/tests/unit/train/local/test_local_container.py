@@ -37,7 +37,11 @@ class TestRmtree:
         _rmtree("/tmp/test", IMAGE)
 
         mock_run.assert_called_once_with(
-            ["docker", "run", "--rm", "-v", "/tmp/test:/delete", IMAGE, "rm", "-rf", "/delete"],
+            [
+                "docker", "run", "--rm",
+                "-v", "/tmp/test:/delete", IMAGE,
+                "sh", "-c", "find /delete -mindepth 1 -delete",
+            ],
             check=True,
             capture_output=True,
         )
@@ -55,7 +59,8 @@ class TestRmtree:
             [
                 "docker", "run", "--rm",
                 "--network", "sagemaker",
-                "-v", "/tmp/test:/delete", IMAGE, "rm", "-rf", "/delete",
+                "-v", "/tmp/test:/delete", IMAGE,
+                "sh", "-c", "find /delete -mindepth 1 -delete",
             ],
             check=True,
             capture_output=True,
