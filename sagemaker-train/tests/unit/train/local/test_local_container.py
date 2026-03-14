@@ -29,29 +29,24 @@ class TestRmtree:
 
     @patch("sagemaker.train.local.local_container.shutil.rmtree")
     @patch("sagemaker.train.local.local_container.subprocess.run")
-    @patch("sagemaker.train.local.local_container.os.path.exists", return_value=False)
-    def test_rmtree_permission_error_docker_fallback(self, mock_exists, mock_run, mock_rmtree):
-        """PermissionError triggers docker fallback using the training image."""
-        mock_rmtree.side_effect = PermissionError("Permission denied")
+    def test_rmtree_permission_error_docker_chmod_fallback(self, mock_run, mock_rmtree):
+        """PermissionError triggers docker chmod then retry."""
+        mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
 
         _rmtree("/tmp/test", IMAGE)
 
         mock_run.assert_called_once_with(
-            [
-                "docker", "run", "--rm",
-                "-v", "/tmp/test:/delete", IMAGE,
-                "sh", "-c", "find /delete -mindepth 1 -delete",
-            ],
+            ["docker", "run", "--rm", "-v", "/tmp/test:/delete", IMAGE, "chmod", "-R", "777", "/delete"],
             check=True,
             capture_output=True,
         )
+        assert mock_rmtree.call_count == 2
 
     @patch("sagemaker.train.local.local_container.shutil.rmtree")
     @patch("sagemaker.train.local.local_container.subprocess.run")
-    @patch("sagemaker.train.local.local_container.os.path.exists", return_value=False)
-    def test_rmtree_studio_adds_network(self, mock_exists, mock_run, mock_rmtree):
+    def test_rmtree_studio_adds_network(self, mock_run, mock_rmtree):
         """In Studio, docker run includes --network sagemaker."""
-        mock_rmtree.side_effect = PermissionError("Permission denied")
+        mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
 
         _rmtree("/tmp/test", IMAGE, is_studio=True)
 
@@ -60,26 +55,11 @@ class TestRmtree:
                 "docker", "run", "--rm",
                 "--network", "sagemaker",
                 "-v", "/tmp/test:/delete", IMAGE,
-                "sh", "-c", "find /delete -mindepth 1 -delete",
+                "chmod", "-R", "777", "/delete",
             ],
             check=True,
             capture_output=True,
         )
-
-    @patch("sagemaker.train.local.local_container.shutil.rmtree")
-    @patch("sagemaker.train.local.local_container.subprocess.run")
-    @patch("sagemaker.train.local.local_container.os.path.exists", return_value=True)
-    def test_rmtree_cleans_up_mount_point(self, mock_exists, mock_run, mock_rmtree):
-        """After docker cleanup, remaining mount point directory is removed."""
-        mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
-
-        _rmtree("/tmp/test", IMAGE)
-
-        assert mock_rmtree.call_count == 2
-        mock_rmtree.assert_has_calls([
-            call("/tmp/test"),
-            call("/tmp/test", ignore_errors=True),
-        ])
 
     @patch("sagemaker.train.local.local_container.shutil.rmtree")
     @patch("sagemaker.train.local.local_container.subprocess.run")

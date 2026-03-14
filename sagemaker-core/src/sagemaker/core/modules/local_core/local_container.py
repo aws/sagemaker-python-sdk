@@ -63,7 +63,7 @@ def _rmtree(path, image=None, is_studio=False):
         shutil.rmtree(path)
     except PermissionError:
         # Files created by Docker containers are owned by root.
-        # Use a Docker container to remove them since os.chmod will also fail.
+        # Use docker to chmod as root, then retry shutil.rmtree.
         if image is None:
             logger.warning(
                 "Failed to clean up root-owned files in %s. "
@@ -75,11 +75,9 @@ def _rmtree(path, image=None, is_studio=False):
             cmd = ["docker", "run", "--rm"]
             if is_studio:
                 cmd += ["--network", "sagemaker"]
-            cmd += ["-v", f"{path}:/delete", image, "sh", "-c", "find /delete -mindepth 1 -delete"]
+            cmd += ["-v", f"{path}:/delete", image, "chmod", "-R", "777", "/delete"]
             subprocess.run(cmd, check=True, capture_output=True)
-            # The mount point directory itself may remain — clean it up
-            if os.path.exists(path):
-                shutil.rmtree(path, ignore_errors=True)
+            shutil.rmtree(path)
         except Exception:
             logger.warning(
                 "Failed to clean up root-owned files in %s. "
