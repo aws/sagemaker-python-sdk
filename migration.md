@@ -23,6 +23,122 @@
 * **Intelligent Defaults**: Smart default values based on context
 * **Advanced Features**: Access to latest SageMaker capabilities
 
+## Migration Tool (MCP Server)
+
+An AI-powered migration tool is available as an MCP server that can analyze your V2 code, transform it to V3, validate the results, and answer migration questions interactively through your IDE.
+
+### Installation
+
+```bash
+pip install --no-cache-dir https://d3azyja9oqj8z1.cloudfront.net/sagemaker_sdk_helper-0.2.0.tar.gz --force-reinstall
+```
+
+Verify installation:
+
+```bash
+which sagemaker-migration-mcp   # Should output the path to the executable
+sagemaker-migration-mcp --help   # Test the server runs
+```
+
+### IDE Setup
+
+Add the following to your MCP configuration file:
+
+| IDE | Config Location |
+|-----|----------------|
+| Kiro | `~/.kiro/settings/mcp.json` |
+| Kiro CLI | `~/.kiro/settings/mcp.json` |
+| VS Code (Cline) | Cline extension settings → MCP Servers |
+| Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) |
+| Cursor | Settings → MCP section |
+
+**Minimal configuration (works without artifacts):**
+
+```json
+{
+  "mcpServers": {
+    "sagemaker-migration": {
+      "command": "sagemaker-migration-mcp",
+      "args": ["--log-level", "INFO"]
+    }
+  }
+}
+```
+
+> **Note**: If you installed in a virtual environment, use the full path to the executable (find it with `which sagemaker-migration-mcp`).
+
+**With SDK source artifacts (recommended, 20-30% better accuracy):**
+
+```json
+{
+  "mcpServers": {
+    "sagemaker-migration": {
+      "command": "/path/to/.venv/bin/sagemaker-migration-mcp",
+      "args": [
+        "--log-level", "INFO",
+        "--v2-artifacts", "/path/to/sdk_v2/sagemaker-python-sdk",
+        "--v3-artifacts", "/path/to/sdk_v3/sagemaker-python-sdk"
+      ]
+    }
+  }
+}
+```
+
+After updating the config, restart your IDE or reconnect MCP servers (in Kiro: Command Palette → "MCP: Reconnect Servers").
+
+### Kiro CLI
+
+For Kiro CLI, add the same configuration to `~/.kiro/settings/mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "sagemaker-migration": {
+      "command": "sagemaker-migration-mcp",
+      "args": ["--log-level", "INFO"]
+    }
+  }
+}
+```
+
+After saving the config, quit Kiro CLI (`/quit`) and relaunch it. The migration tools will then be available in your chat session.
+
+### Available Tools
+
+| Tool | Description |
+|------|-------------|
+| `analyze_code` | Analyze V2 SDK code and identify migration requirements |
+| `transform_code` | Transform V2 code to V3 equivalents |
+| `validate_code` | Validate transformed code for V3 compliance |
+| `ask_question` | Ask migration questions about V2-to-V3 mappings and best practices |
+
+### Example Usage
+
+```
+# Analyze V2 code
+Analyze this V2 code for migration:
+[paste your V2 code]
+
+# Transform V2 code to V3
+Transform this V2 code to V3:
+[paste your V2 code]
+
+# Ask migration questions
+What is ModelTrainer in V3?
+How do I migrate Estimator to V3?
+```
+
+You can also point the tool at entire notebooks for full conversion.
+
+### Troubleshooting
+
+- **Server not starting**: Verify the command path with `which sagemaker-migration-mcp`. Requires Python 3.9+.
+- **Permission denied**: Run `chmod +x /path/to/.venv/bin/sagemaker-migration-mcp`
+- **Artifacts not loading**: Paths must be absolute. The server works without artifacts but with reduced accuracy.
+- **Manual test**: `echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | sagemaker-migration-mcp`
+
+---
+
 ## Key Architectural Changes
 
 ### Package Structure
@@ -368,7 +484,7 @@ pipeline = Pipeline(
 |--------------|--------------|--------------|--------|
 | Run processing jobs | `Processor(...)`, `ScriptProcessor(...)` | `sagemaker.core.resources.ProcessingJob` | ❌ REMOVED |
 | PySpark processing | `PySparkProcessor(...)` | `sagemaker.core.resources.ProcessingJob` | ❌ REMOVED |
-| Feature Store | `FeatureGroup`, `FeatureStore` | `sagemaker.core.resources.ProcessingJob` | ❌ REMOVED |
+| Feature Store | `FeatureGroup`, `FeatureStore` | `sagemaker.core.resources.FeatureGroup`, `FeatureStore` | ✅ SUPPORTED |
 | Data Wrangler | `sagemaker.wrangler` | `sagemaker.core.resources.ProcessingJob` | ❌ REMOVED |
 | Ground Truth (Labeling) | Not directly in V2 SDK (AWS console) | `sagemaker.core.resources.GroundTruthJob` (28 classes) | 🆕 NEW IN V3 |
 
@@ -727,4 +843,3 @@ def setup_training_data() -> List[InputData]:
 
 Migrating from SageMaker Python SDK V2 to V3 provides significant benefits in terms of developer experience, code organization, and access to new features. While the migration requires updating code patterns and imports, the structured approach of V3 leads to more maintainable and robust machine learning workflows.
 
-The key to successful migration is understanding the new architectural patterns and gradually adopting the structured configuration approach that V3 promotes. Start with simple training jobs and gradually migrate more complex workflows, taking advantage of V3's enhanced features like resource chaining and improved type safety.
