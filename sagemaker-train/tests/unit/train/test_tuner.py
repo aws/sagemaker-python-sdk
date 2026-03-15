@@ -53,6 +53,7 @@ def _create_mock_model_trainer(with_internal_channels=False):
     trainer.training_input_mode = "File"
     trainer.role = "arn:aws:iam::123456789012:role/SageMakerRole"
     trainer.output_data_config = MagicMock()
+    trainer.output_data_config.kms_key_id = None
     trainer.output_data_config.s3_output_path = "s3://bucket/output"
     trainer.compute = MagicMock()
     trainer.compute.instance_type = "ml.m5.xlarge"
