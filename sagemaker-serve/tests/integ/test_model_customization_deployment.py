@@ -113,15 +113,26 @@ class TestModelCustomizationFromTrainingJob:
         assert model_builder.instance_type is not None
 
     def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints):
-        """Test deploying model from training job and adapter."""
-        from sagemaker.core.resources import TrainingJob
+        """Test deploying model from training job.
+
+        For LORA models, this verifies the two-step deployment:
+        base IC + adapter IC are both created on the same endpoint.
+        """
+        from sagemaker.core.resources import TrainingJob, InferenceComponent
         from sagemaker.serve import ModelBuilder
         import time
 
         training_job = TrainingJob.get(training_job_name=training_job_name)
-        model_builder = ModelBuilder(model=training_job)
-        model = model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}")
-        endpoint = model_builder.deploy(endpoint_name=endpoint_name)
+        model_builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge")
+        model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}")
+
+        peft_type = model_builder._fetch_peft()
+        adapter_name = f"{endpoint_name}-adapter"
+
+        endpoint = model_builder.deploy(
+            endpoint_name=endpoint_name,
+            inference_component_name=adapter_name if peft_type == "LORA" else None,
+        )
 
         cleanup_endpoints.append(endpoint_name)
 
@@ -129,17 +140,16 @@ class TestModelCustomizationFromTrainingJob:
         assert endpoint.endpoint_arn is not None
         assert endpoint.endpoint_status == "InService"
 
-        # Deploy adapter to the same endpoint
-        adapter_name = f"{endpoint_name}-adapter-{int(time.time())}-{random.randint(100, 100000)}"
-        model_builder2 = ModelBuilder(model=training_job)
-        model_builder2.build()
-        endpoint2 = model_builder2.deploy(
-            endpoint_name=endpoint_name,
-            inference_component_name=adapter_name
-        )
+        if peft_type == "LORA":
+            # Verify base IC was created
+            base_ic_name = f"{endpoint_name}-inference-component"
+            base_ic = InferenceComponent.get(inference_component_name=base_ic_name)
+            assert base_ic is not None
+            assert base_ic.inference_component_status == "InService"
 
-        assert endpoint2 is not None
-        assert endpoint2.endpoint_name == endpoint_name
+            # Verify adapter IC was created
+            adapter_ic = InferenceComponent.get(inference_component_name=adapter_name)
+            assert adapter_ic is not None
 
     def test_fetch_endpoint_names_for_base_model(self, training_job_name):
         """Test fetching endpoint names for base model."""

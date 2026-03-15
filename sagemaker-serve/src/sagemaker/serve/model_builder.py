@@ -958,7 +958,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         self.image_uri = config.get("EcrAddress")
 
                     # Cache environment variables from recipe config
-                    if not self.env_vars:
+                    if self.env_vars:
+                        self.env_vars.update(config.get("Environment", {}))
+                    else:
                         self.env_vars = config.get("Environment", {})
 
                     # Infer instance type from JumpStart metadata if not provided
@@ -990,7 +992,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             nova_config = self._get_nova_hosting_config(instance_type=self.instance_type)
             if not self.image_uri:
                 self.image_uri = nova_config["image_uri"]
-            if not self.env_vars:
+            if self.env_vars:
+                self.env_vars.update(nova_config["env_vars"])
+            else:
                 self.env_vars = nova_config["env_vars"]
             if not self.instance_type:
                 self.instance_type = nova_config["instance_type"]
