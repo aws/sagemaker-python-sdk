@@ -8,7 +8,7 @@ from typing import List, Optional
 
 import botocore.exceptions
 
-from sagemaker.core.resources import FeatureGroup as CoreFeatureGroup
+from sagemaker.core.resources import FeatureGroup
 from sagemaker.core.resources import Base
 from sagemaker.core.shapes import (
     FeatureDefinition,
@@ -55,11 +55,11 @@ class LakeFormationConfig(Base):
     disable_hybrid_access_mode: bool = True
 
 
-class FeatureGroup(CoreFeatureGroup):
+class FeatureGroupManager(FeatureGroup):
 
     # Inherit parent docstring and append our additions
-    if CoreFeatureGroup.__doc__ and __doc__:
-        __doc__ = CoreFeatureGroup.__doc__
+    if FeatureGroup.__doc__ and __doc__:
+        __doc__ = FeatureGroup.__doc__
 
     @staticmethod
     def _s3_uri_to_arn(s3_uri: str, region: Optional[str] = None) -> str:
@@ -326,7 +326,7 @@ class FeatureGroup(CoreFeatureGroup):
                 },
                 Permissions=["ALL"],
             )
-            logger.info(f"Revoked IAMAllowedPrincipal from table: {database_name}.{table_name}")
+            logger.info(f"Disabled Lake Formation hybrid-access mode on table: {database_name}.{table_name}")
             return True
         except botocore.exceptions.ClientError as e:
             # if the Table doesn't have that permission because the user already revoked it
@@ -514,6 +514,21 @@ class FeatureGroup(CoreFeatureGroup):
         table_name_str = str(table_name)
         role_arn_str = str(self.role_arn)
 
+        # Determine the actual S3 location to register with Lake Formation.
+        # For Iceberg tables, the Glue table's StorageDescriptor.Location is the parent
+        # path (without /data suffix), while resolved_output_s3_uri always ends with /data.
+        s3_location_to_register = resolved_s3_uri_str
+        if (
+            self.offline_store_config.table_format is not None
+            and str(self.offline_store_config.table_format) == "Iceberg"
+            and resolved_s3_uri_str.endswith("/data")
+        ):
+            s3_location_to_register = resolved_s3_uri_str[: -len("/data")]
+            logger.info(
+                f"Iceberg table format detected. Using parent S3 path for LF registration: "
+                f"{s3_location_to_register}"
+            )
+
         # Execute Lake Formation setup with fail-fast behavior
         results = {
             "s3_registration": False,
@@ -524,7 +539,7 @@ class FeatureGroup(CoreFeatureGroup):
         # Phase 1: Register S3 with Lake Formation
         try:
             results["s3_registration"] = self._register_s3_with_lake_formation(
-                resolved_s3_uri_str,
+                s3_location_to_register,
                 session,
                 region,
                 use_service_linked_role=use_service_linked_role,

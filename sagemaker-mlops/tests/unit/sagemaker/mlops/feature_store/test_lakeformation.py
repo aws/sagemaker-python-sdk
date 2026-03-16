@@ -1,10 +1,10 @@
-"""Unit tests for Lake Formation integration with FeatureGroup."""
+"""Unit tests for Lake Formation integration with FeatureGroupManager."""
 from unittest.mock import MagicMock, patch
 
 import botocore.exceptions
 import pytest
 
-from sagemaker.mlops.feature_store import FeatureGroup, LakeFormationConfig
+from sagemaker.mlops.feature_store import FeatureGroupManager, LakeFormationConfig
 
 
 class TestS3UriToArn:
@@ -13,25 +13,25 @@ class TestS3UriToArn:
     def test_converts_s3_uri_to_arn(self):
         """Test S3 URI is converted to ARN format."""
         uri = "s3://my-bucket/my-prefix/data"
-        result = FeatureGroup._s3_uri_to_arn(uri)
+        result = FeatureGroupManager._s3_uri_to_arn(uri)
         assert result == "arn:aws:s3:::my-bucket/my-prefix/data"
 
     def test_handles_bucket_only_uri(self):
         """Test S3 URI with bucket only."""
         uri = "s3://my-bucket"
-        result = FeatureGroup._s3_uri_to_arn(uri)
+        result = FeatureGroupManager._s3_uri_to_arn(uri)
         assert result == "arn:aws:s3:::my-bucket"
 
     def test_returns_arn_unchanged(self):
         """Test ARN input is returned unchanged (idempotent)."""
         arn = "arn:aws:s3:::my-bucket/path"
-        result = FeatureGroup._s3_uri_to_arn(arn)
+        result = FeatureGroupManager._s3_uri_to_arn(arn)
         assert result == arn
 
     def test_uses_region_for_partition(self):
         """Test that region is used to determine partition."""
         uri = "s3://my-bucket/path"
-        result = FeatureGroup._s3_uri_to_arn(uri, region="cn-north-1")
+        result = FeatureGroupManager._s3_uri_to_arn(uri, region="cn-north-1")
         assert result.startswith("arn:aws-cn:s3:::")
 
 
@@ -39,7 +39,7 @@ class TestS3UriToArn:
 class TestGetLakeFormationClient:
     """Tests for _get_lake_formation_client method."""
 
-    @patch("sagemaker.mlops.feature_store.feature_group.Session")
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.Session")
     def test_creates_client_with_default_session(self, mock_session_class):
         """Test client creation with default session."""
         mock_session = MagicMock()
@@ -47,8 +47,8 @@ class TestGetLakeFormationClient:
         mock_session.client.return_value = mock_client
         mock_session_class.return_value = mock_session
 
-        fg = MagicMock(spec=FeatureGroup)
-        fg._get_lake_formation_client = FeatureGroup._get_lake_formation_client.__get__(fg)
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._get_lake_formation_client = FeatureGroupManager._get_lake_formation_client.__get__(fg)
 
         client = fg._get_lake_formation_client(region="us-west-2")
 
@@ -61,8 +61,8 @@ class TestGetLakeFormationClient:
         mock_client = MagicMock()
         mock_session.client.return_value = mock_client
 
-        fg = MagicMock(spec=FeatureGroup)
-        fg._get_lake_formation_client = FeatureGroup._get_lake_formation_client.__get__(fg)
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._get_lake_formation_client = FeatureGroupManager._get_lake_formation_client.__get__(fg)
 
         client = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
 
@@ -75,8 +75,8 @@ class TestGetLakeFormationClient:
         mock_client = MagicMock()
         mock_session.client.return_value = mock_client
 
-        fg = MagicMock(spec=FeatureGroup)
-        fg._get_lake_formation_client = FeatureGroup._get_lake_formation_client.__get__(fg)
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._get_lake_formation_client = FeatureGroupManager._get_lake_formation_client.__get__(fg)
 
         client1 = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
         client2 = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
@@ -91,8 +91,8 @@ class TestGetLakeFormationClient:
         mock_client_east = MagicMock()
         mock_session.client.side_effect = [mock_client_west, mock_client_east]
 
-        fg = MagicMock(spec=FeatureGroup)
-        fg._get_lake_formation_client = FeatureGroup._get_lake_formation_client.__get__(fg)
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._get_lake_formation_client = FeatureGroupManager._get_lake_formation_client.__get__(fg)
 
         client1 = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
         client2 = fg._get_lake_formation_client(session=mock_session, region="us-east-1")
@@ -106,10 +106,10 @@ class TestRegisterS3WithLakeFormation:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroup)
-        self.fg._s3_uri_to_arn = FeatureGroup._s3_uri_to_arn
+        self.fg = MagicMock(spec=FeatureGroupManager)
+        self.fg._s3_uri_to_arn = FeatureGroupManager._s3_uri_to_arn
         self.fg._register_s3_with_lake_formation = (
-            FeatureGroup._register_s3_with_lake_formation.__get__(self.fg)
+            FeatureGroupManager._register_s3_with_lake_formation.__get__(self.fg)
         )
         self.mock_client = MagicMock()
         self.fg._get_lake_formation_client = MagicMock(return_value=self.mock_client)
@@ -191,8 +191,8 @@ class TestRevokeIamAllowedPrincipal:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroup)
-        self.fg._revoke_iam_allowed_principal = FeatureGroup._revoke_iam_allowed_principal.__get__(
+        self.fg = MagicMock(spec=FeatureGroupManager)
+        self.fg._revoke_iam_allowed_principal = FeatureGroupManager._revoke_iam_allowed_principal.__get__(
             self.fg
         )
         self.mock_client = MagicMock()
@@ -268,9 +268,9 @@ class TestGrantLakeFormationPermissions:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroup)
+        self.fg = MagicMock(spec=FeatureGroupManager)
         self.fg._grant_lake_formation_permissions = (
-            FeatureGroup._grant_lake_formation_permissions.__get__(self.fg)
+            FeatureGroupManager._grant_lake_formation_permissions.__get__(self.fg)
         )
         self.mock_client = MagicMock()
         self.fg._get_lake_formation_client = MagicMock(return_value=self.mock_client)
@@ -351,10 +351,10 @@ class TestGrantLakeFormationPermissions:
 class TestEnableLakeFormationValidation:
     """Tests for enable_lake_formation validation logic."""
 
-    @patch.object(FeatureGroup, "refresh")
+    @patch.object(FeatureGroupManager, "refresh")
     def test_raises_error_when_no_offline_store(self, mock_refresh):
         """Test that enable_lake_formation raises ValueError when no offline store is configured."""
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = None
         fg.feature_group_status = "Created"
 
@@ -364,12 +364,12 @@ class TestEnableLakeFormationValidation:
         # Verify refresh was called
         mock_refresh.assert_called_once()
 
-    @patch.object(FeatureGroup, "refresh")
+    @patch.object(FeatureGroupManager, "refresh")
     def test_raises_error_when_no_role_arn(self, mock_refresh):
         """Test that enable_lake_formation raises ValueError when no role_arn is configured."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -388,12 +388,12 @@ class TestEnableLakeFormationValidation:
         # Verify refresh was called
         mock_refresh.assert_called_once()
 
-    @patch.object(FeatureGroup, "refresh")
+    @patch.object(FeatureGroupManager, "refresh")
     def test_raises_error_when_invalid_status(self, mock_refresh):
         """Test enable_lake_formation raises ValueError when Feature Group not in Created status."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -412,18 +412,18 @@ class TestEnableLakeFormationValidation:
         # Verify refresh was called
         mock_refresh.assert_called_once()
 
-    @patch.object(FeatureGroup, "wait_for_status")
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "wait_for_status")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
     def test_wait_for_active_calls_wait_for_status(
         self, mock_revoke, mock_grant, mock_register, mock_refresh, mock_wait
     ):
         """Test that wait_for_active=True calls wait_for_status with 'Created' target."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -450,18 +450,18 @@ class TestEnableLakeFormationValidation:
         # Verify refresh was called after wait
         mock_refresh.assert_called_once()
 
-    @patch.object(FeatureGroup, "wait_for_status")
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "wait_for_status")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
     def test_wait_for_active_false_does_not_call_wait(
         self, mock_revoke, mock_grant, mock_register, mock_refresh, mock_wait
     ):
         """Test that wait_for_active=False does not call wait_for_status."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -521,10 +521,10 @@ class TestEnableLakeFormationValidation:
             ),
         ],
     )
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
     def test_fail_fast_phase_execution(
         self,
         mock_revoke,
@@ -546,7 +546,7 @@ class TestEnableLakeFormationValidation:
         """
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
-        fg = FeatureGroup(feature_group_name=feature_group_name)
+        fg = FeatureGroupManager(feature_group_name=feature_group_name)
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri=f"s3://test-bucket/{s3_uri}",
@@ -626,9 +626,9 @@ class TestUnhandledExceptionPropagation:
         AlreadyExistsException, the error should be propagated to the caller unchanged.
 
         """
-        fg = MagicMock(spec=FeatureGroup)
-        fg._s3_uri_to_arn = FeatureGroup._s3_uri_to_arn
-        fg._register_s3_with_lake_formation = FeatureGroup._register_s3_with_lake_formation.__get__(
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._s3_uri_to_arn = FeatureGroupManager._s3_uri_to_arn
+        fg._register_s3_with_lake_formation = FeatureGroupManager._register_s3_with_lake_formation.__get__(
             fg
         )
         mock_client = MagicMock()
@@ -662,8 +662,8 @@ class TestUnhandledExceptionPropagation:
         InvalidInputException, the error should be propagated to the caller unchanged.
 
         """
-        fg = MagicMock(spec=FeatureGroup)
-        fg._revoke_iam_allowed_principal = FeatureGroup._revoke_iam_allowed_principal.__get__(fg)
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._revoke_iam_allowed_principal = FeatureGroupManager._revoke_iam_allowed_principal.__get__(fg)
         mock_client = MagicMock()
         fg._get_lake_formation_client = MagicMock(return_value=mock_client)
 
@@ -695,9 +695,9 @@ class TestUnhandledExceptionPropagation:
         InvalidInputException, the error should be propagated to the caller unchanged.
 
         """
-        fg = MagicMock(spec=FeatureGroup)
+        fg = MagicMock(spec=FeatureGroupManager)
         fg._grant_lake_formation_permissions = (
-            FeatureGroup._grant_lake_formation_permissions.__get__(fg)
+            FeatureGroupManager._grant_lake_formation_permissions.__get__(fg)
         )
         mock_client = MagicMock()
         fg._get_lake_formation_client = MagicMock(return_value=mock_client)
@@ -729,14 +729,14 @@ class TestUnhandledExceptionPropagation:
         Verify that specifically handled exceptions (AlreadyExistsException, InvalidInputException)
         do NOT propagate but return True instead, while all other exceptions are propagated.
         """
-        fg = MagicMock(spec=FeatureGroup)
-        fg._s3_uri_to_arn = FeatureGroup._s3_uri_to_arn
-        fg._register_s3_with_lake_formation = FeatureGroup._register_s3_with_lake_formation.__get__(
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._s3_uri_to_arn = FeatureGroupManager._s3_uri_to_arn
+        fg._register_s3_with_lake_formation = FeatureGroupManager._register_s3_with_lake_formation.__get__(
             fg
         )
-        fg._revoke_iam_allowed_principal = FeatureGroup._revoke_iam_allowed_principal.__get__(fg)
+        fg._revoke_iam_allowed_principal = FeatureGroupManager._revoke_iam_allowed_principal.__get__(fg)
         fg._grant_lake_formation_permissions = (
-            FeatureGroup._grant_lake_formation_permissions.__get__(fg)
+            FeatureGroupManager._grant_lake_formation_permissions.__get__(fg)
         )
         mock_client = MagicMock()
         fg._get_lake_formation_client = MagicMock(return_value=mock_client)
@@ -787,9 +787,9 @@ class TestCreateWithLakeFormation:
         ],
     )
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    @patch.object(FeatureGroup, "get")
-    @patch.object(FeatureGroup, "wait_for_status")
-    @patch.object(FeatureGroup, "enable_lake_formation")
+    @patch.object(FeatureGroupManager, "get")
+    @patch.object(FeatureGroupManager, "wait_for_status")
+    @patch.object(FeatureGroupManager, "enable_lake_formation")
     def test_no_lake_formation_operations_when_disabled(
         self,
         mock_enable_lf,
@@ -803,7 +803,7 @@ class TestCreateWithLakeFormation:
         """
         No Lake Formation Operations When Disabled
 
-        For any call to FeatureGroup.create() where lake_formation_config is None or has enabled=False,
+        For any call to FeatureGroupManager.create() where lake_formation_config is None or has enabled=False,
         no Lake Formation client methods should be invoked.
 
         """
@@ -817,7 +817,7 @@ class TestCreateWithLakeFormation:
         mock_get_client.return_value = mock_client
 
         # Mock the get method to return a feature group
-        mock_fg = MagicMock(spec=FeatureGroup)
+        mock_fg = MagicMock(spec=FeatureGroupManager)
         mock_fg.feature_group_name = feature_group_name
         mock_get.return_value = mock_fg
 
@@ -830,7 +830,7 @@ class TestCreateWithLakeFormation:
         # Test 1: lake_formation_config with enabled=False (explicit)
         lf_config = LakeFormationConfig()
         lf_config.enabled = False
-        result = FeatureGroup.create(
+        result = FeatureGroupManager.create(
             feature_group_name=feature_group_name,
             record_identifier_feature_name=record_id_feature,
             event_time_feature_name=event_time_feature,
@@ -852,7 +852,7 @@ class TestCreateWithLakeFormation:
         mock_get.return_value = mock_fg
 
         # Test 2: lake_formation_config not specified (defaults to None)
-        result = FeatureGroup.create(
+        result = FeatureGroupManager.create(
             feature_group_name=feature_group_name,
             record_identifier_feature_name=record_id_feature,
             event_time_feature_name=event_time_feature,
@@ -892,9 +892,9 @@ class TestCreateWithLakeFormation:
         ],
     )
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    @patch.object(FeatureGroup, "get")
-    @patch.object(FeatureGroup, "wait_for_status")
-    @patch.object(FeatureGroup, "enable_lake_formation")
+    @patch.object(FeatureGroupManager, "get")
+    @patch.object(FeatureGroupManager, "wait_for_status")
+    @patch.object(FeatureGroupManager, "enable_lake_formation")
     def test_enable_lake_formation_called_when_enabled(
         self,
         mock_enable_lf,
@@ -929,7 +929,7 @@ class TestCreateWithLakeFormation:
         mock_get_client.return_value = mock_client
 
         # Mock the get method to return a feature group
-        mock_fg = MagicMock(spec=FeatureGroup)
+        mock_fg = MagicMock(spec=FeatureGroupManager)
         mock_fg.feature_group_name = feature_group_name
         mock_fg.wait_for_status = mock_wait
         mock_fg.enable_lake_formation = mock_enable_lf
@@ -954,7 +954,7 @@ class TestCreateWithLakeFormation:
         lf_config.enabled = True
 
         # Create with lake_formation_config enabled=True
-        result = FeatureGroup.create(
+        result = FeatureGroupManager.create(
             feature_group_name=feature_group_name,
             record_identifier_feature_name=record_id_feature,
             event_time_feature_name=event_time_feature,
@@ -1012,7 +1012,7 @@ class TestCreateWithLakeFormation:
             ValueError,
             match="lake_formation_config with enabled=True requires offline_store_config to be configured",
         ):
-            FeatureGroup.create(
+            FeatureGroupManager.create(
                 feature_group_name=feature_group_name,
                 record_identifier_feature_name=record_id_feature,
                 event_time_feature_name=event_time_feature,
@@ -1074,7 +1074,7 @@ class TestCreateWithLakeFormation:
         with pytest.raises(
             ValueError, match="lake_formation_config with enabled=True requires role_arn to be specified"
         ):
-            FeatureGroup.create(
+            FeatureGroupManager.create(
                 feature_group_name=feature_group_name,
                 record_identifier_feature_name=record_id_feature,
                 event_time_feature_name=event_time_feature,
@@ -1094,9 +1094,9 @@ class TestCreateWithLakeFormation:
         ],
     )
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    @patch.object(FeatureGroup, "get")
-    @patch.object(FeatureGroup, "wait_for_status")
-    @patch.object(FeatureGroup, "enable_lake_formation")
+    @patch.object(FeatureGroupManager, "get")
+    @patch.object(FeatureGroupManager, "wait_for_status")
+    @patch.object(FeatureGroupManager, "enable_lake_formation")
     def test_use_service_linked_role_extraction_from_config(
         self,
         mock_enable_lf,
@@ -1134,7 +1134,7 @@ class TestCreateWithLakeFormation:
         mock_get_client.return_value = mock_client
 
         # Mock the get method to return a feature group
-        mock_fg = MagicMock(spec=FeatureGroup)
+        mock_fg = MagicMock(spec=FeatureGroupManager)
         mock_fg.feature_group_name = feature_group_name
         mock_fg.wait_for_status = mock_wait
         mock_fg.enable_lake_formation = mock_enable_lf
@@ -1165,7 +1165,7 @@ class TestCreateWithLakeFormation:
             expected_registration_role = "arn:aws:iam::123456789012:role/LFRegistrationRole"
 
         # Create with lake_formation_config
-        result = FeatureGroup.create(
+        result = FeatureGroupManager.create(
             feature_group_name=feature_group_name,
             record_identifier_feature_name=record_id_feature,
             event_time_feature_name=event_time_feature,
@@ -1195,7 +1195,7 @@ class TestDisableHybridAccessMode:
         """Set up test fixtures."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
-        self.fg = FeatureGroup(feature_group_name="test-fg")
+        self.fg = FeatureGroupManager(feature_group_name="test-fg")
         self.fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -1209,10 +1209,10 @@ class TestDisableHybridAccessMode:
         self.fg.feature_group_arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test-fg"
         self.fg.feature_group_status = "Created"
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
     def test_revoke_called_when_disable_hybrid_access_mode_true(
         self, mock_revoke, mock_grant, mock_register, mock_refresh
     ):
@@ -1226,10 +1226,10 @@ class TestDisableHybridAccessMode:
         mock_revoke.assert_called_once()
         assert result["iam_principal_revoked"] is True
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
     def test_revoke_skipped_when_disable_hybrid_access_mode_false(
         self, mock_revoke, mock_grant, mock_register, mock_refresh
     ):
@@ -1244,10 +1244,10 @@ class TestDisableHybridAccessMode:
         assert result["s3_registration"] is True
         assert result["permissions_granted"] is True
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
     def test_default_disable_hybrid_access_mode_is_true(
         self, mock_revoke, mock_grant, mock_register, mock_refresh
     ):
@@ -1267,9 +1267,9 @@ class TestCreateWithLakeFormationDisableHybridAccessMode:
     """Tests for disable_hybrid_access_mode passed through create() via LakeFormationConfig."""
 
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
-    @patch.object(FeatureGroup, "get")
-    @patch.object(FeatureGroup, "wait_for_status")
-    @patch.object(FeatureGroup, "enable_lake_formation")
+    @patch.object(FeatureGroupManager, "get")
+    @patch.object(FeatureGroupManager, "wait_for_status")
+    @patch.object(FeatureGroupManager, "enable_lake_formation")
     def test_disable_hybrid_access_mode_false_passed_through_create(
         self, mock_enable_lf, mock_wait, mock_get, mock_get_client
     ):
@@ -1282,7 +1282,7 @@ class TestCreateWithLakeFormationDisableHybridAccessMode:
         }
         mock_get_client.return_value = mock_client
 
-        mock_fg = MagicMock(spec=FeatureGroup)
+        mock_fg = MagicMock(spec=FeatureGroupManager)
         mock_fg.wait_for_status = mock_wait
         mock_fg.enable_lake_formation = mock_enable_lf
         mock_get.return_value = mock_fg
@@ -1296,7 +1296,7 @@ class TestCreateWithLakeFormationDisableHybridAccessMode:
         lf_config.enabled = True
         lf_config.disable_hybrid_access_mode = False
 
-        FeatureGroup.create(
+        FeatureGroupManager.create(
             feature_group_name="test-fg",
             record_identifier_feature_name="record_id",
             event_time_feature_name="event_time",
@@ -1339,34 +1339,34 @@ class TestExtractAccountIdFromArn:
     def test_extracts_account_id_from_sagemaker_arn(self):
         """Test extracting account ID from a SageMaker Feature Group ARN."""
         arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/my-feature-group"
-        result = FeatureGroup._extract_account_id_from_arn(arn)
+        result = FeatureGroupManager._extract_account_id_from_arn(arn)
         assert result == "123456789012"
 
     def test_raises_value_error_for_invalid_arn_too_few_parts(self):
         """Test that ValueError is raised for ARN with fewer than 5 colon-separated parts."""
         invalid_arn = "arn:aws:sagemaker:us-west-2"  # Only 4 parts
         with pytest.raises(ValueError, match="Invalid ARN format"):
-            FeatureGroup._extract_account_id_from_arn(invalid_arn)
+            FeatureGroupManager._extract_account_id_from_arn(invalid_arn)
 
     def test_raises_value_error_for_empty_string(self):
         """Test that ValueError is raised for empty string."""
         with pytest.raises(ValueError, match="Invalid ARN format"):
-            FeatureGroup._extract_account_id_from_arn("")
+            FeatureGroupManager._extract_account_id_from_arn("")
 
     def test_raises_value_error_for_non_arn_string(self):
         """Test that ValueError is raised for non-ARN string."""
         with pytest.raises(ValueError, match="Invalid ARN format"):
-            FeatureGroup._extract_account_id_from_arn("not-an-arn")
+            FeatureGroupManager._extract_account_id_from_arn("not-an-arn")
 
     def test_raises_value_error_for_s3_uri(self):
         """Test that ValueError is raised for S3 URI (not ARN)."""
         with pytest.raises(ValueError, match="Invalid ARN format"):
-            FeatureGroup._extract_account_id_from_arn("s3://my-bucket/my-prefix")
+            FeatureGroupManager._extract_account_id_from_arn("s3://my-bucket/my-prefix")
 
     def test_handles_arn_with_resource_path(self):
         """Test extracting account ID from ARN with complex resource path."""
         arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/my-fg/version/1"
-        result = FeatureGroup._extract_account_id_from_arn(arn)
+        result = FeatureGroupManager._extract_account_id_from_arn(arn)
         assert result == "123456789012"
 
 
@@ -1376,14 +1376,14 @@ class TestGetLakeFormationServiceLinkedRoleArn:
     def test_generates_correct_service_linked_role_arn(self):
         """Test that the method generates the correct service-linked role ARN format."""
         account_id = "123456789012"
-        result = FeatureGroup._get_lake_formation_service_linked_role_arn(account_id)
+        result = FeatureGroupManager._get_lake_formation_service_linked_role_arn(account_id)
         expected = "arn:aws:iam::123456789012:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
         assert result == expected
 
     def test_uses_region_for_partition(self):
         """Test that region is used to determine partition."""
         account_id = "123456789012"
-        result = FeatureGroup._get_lake_formation_service_linked_role_arn(account_id, region="cn-north-1")
+        result = FeatureGroupManager._get_lake_formation_service_linked_role_arn(account_id, region="cn-north-1")
         assert result.startswith("arn:aws-cn:iam::")
 
 
@@ -1393,8 +1393,8 @@ class TestGenerateS3DenyPolicy:
 
     def setup_method(self):
         """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroup)
-        self.fg._generate_s3_deny_policy = FeatureGroup._generate_s3_deny_policy.__get__(self.fg)
+        self.fg = MagicMock(spec=FeatureGroupManager)
+        self.fg._generate_s3_deny_policy = FeatureGroupManager._generate_s3_deny_policy.__get__(self.fg)
 
     def test_policy_includes_correct_bucket_arn_in_object_statement(self):
         """Test that the policy includes correct bucket ARN and prefix in object actions statement."""
@@ -1604,11 +1604,11 @@ class TestGenerateS3DenyPolicy:
 class TestEnableLakeFormationServiceLinkedRoleInPolicy:
     """Tests for service-linked role ARN usage in S3 deny policy generation."""
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroup, "_generate_s3_deny_policy")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_policy")
     def test_uses_service_linked_role_arn_when_use_service_linked_role_true(
         self,
         mock_generate_policy,
@@ -1623,7 +1623,7 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         """
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -1653,11 +1653,11 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         assert call_kwargs["lake_formation_role_arn"] == expected_slr_arn
         assert call_kwargs["feature_store_role_arn"] == fg.role_arn
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroup, "_generate_s3_deny_policy")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_policy")
     def test_uses_service_linked_role_arn_by_default(
         self,
         mock_generate_policy,
@@ -1672,7 +1672,7 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         """
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -1701,11 +1701,11 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         call_kwargs = mock_generate_policy.call_args[1]
         assert call_kwargs["lake_formation_role_arn"] == expected_slr_arn
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroup, "_generate_s3_deny_policy")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_policy")
     def test_service_linked_role_arn_uses_correct_account_id(
         self,
         mock_generate_policy,
@@ -1722,7 +1722,7 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
 
         # Use a specific account ID to verify it's extracted correctly
         account_id = "111222333444"
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -1757,11 +1757,11 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
 class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
     """Tests for verifying registration_role_arn is used when use_service_linked_role=False."""
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroup, "_generate_s3_deny_policy")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_policy")
     def test_uses_registration_role_arn_when_use_service_linked_role_false(
         self,
         mock_generate_policy,
@@ -1777,7 +1777,7 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         # Set up Feature Group with required configuration
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -1816,11 +1816,11 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         service_linked_role_pattern = "aws-service-role/lakeformation.amazonaws.com"
         assert service_linked_role_pattern not in call_kwargs["lake_formation_role_arn"]
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroup, "_generate_s3_deny_policy")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_policy")
     def test_registration_role_arn_passed_to_s3_registration(
         self,
         mock_generate_policy,
@@ -1836,7 +1836,7 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         # Set up Feature Group with required configuration
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -1872,11 +1872,11 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         assert call_args[1]["use_service_linked_role"] == False
         assert call_args[1]["role_arn"] == custom_registration_role
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroup, "_generate_s3_deny_policy")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_policy")
     def test_different_registration_role_arns_produce_different_policies(
         self,
         mock_generate_policy,
@@ -1892,7 +1892,7 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         # Set up Feature Group with required configuration
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -1950,11 +1950,11 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
 class TestPolicyPrintedWithClearInstructions:
     """Tests for verifying the S3 deny policy is printed with clear instructions."""
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("sagemaker.mlops.feature_store.feature_group.logger")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.logger")
     def test_policy_printed_with_header_and_instructions(
         self,
         mock_logger,
@@ -1970,7 +1970,7 @@ class TestPolicyPrintedWithClearInstructions:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         # Set up Feature Group with required configuration
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -2013,11 +2013,11 @@ class TestPolicyPrintedWithClearInstructions:
             "Merge" in all_logged_text or "existing" in all_logged_text
         ), "Note about merging with existing policy should be logged"
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("sagemaker.mlops.feature_store.feature_group.logger")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.logger")
     def test_policy_json_is_printed(
         self,
         mock_logger,
@@ -2032,7 +2032,7 @@ class TestPolicyPrintedWithClearInstructions:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         # Set up Feature Group with required configuration
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -2064,11 +2064,11 @@ class TestPolicyPrintedWithClearInstructions:
         assert "Effect" in all_logged_text, "Policy JSON should contain 'Effect'"
         assert "Deny" in all_logged_text, "Policy JSON should contain 'Deny' effect"
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("sagemaker.mlops.feature_store.feature_group.logger")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.logger")
     def test_policy_printed_only_after_successful_setup(
         self,
         mock_logger,
@@ -2084,7 +2084,7 @@ class TestPolicyPrintedWithClearInstructions:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         # Set up Feature Group with required configuration
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -2154,11 +2154,11 @@ class TestPolicyPrintedWithClearInstructions:
         # Verify policy was NOT logged when setup fails at Phase 3
         assert "S3 Bucket Policy" not in all_logged_text, "Policy should not be logged when Phase 3 fails"
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("sagemaker.mlops.feature_store.feature_group.logger")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.logger")
     def test_policy_includes_both_allowed_principals(
         self,
         mock_logger,
@@ -2174,7 +2174,7 @@ class TestPolicyPrintedWithClearInstructions:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         # Set up Feature Group with required configuration
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -2208,11 +2208,11 @@ class TestPolicyPrintedWithClearInstructions:
         assert "AWSServiceRoleForLakeFormationDataAccess" in all_logged_text, \
             "Lake Formation service-linked role should be in logged policy"
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("sagemaker.mlops.feature_store.feature_group.logger")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.logger")
     def test_policy_not_printed_when_show_s3_policy_false(
         self,
         mock_logger,
@@ -2227,7 +2227,7 @@ class TestPolicyPrintedWithClearInstructions:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         # Set up Feature Group with required configuration
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
@@ -2257,11 +2257,11 @@ class TestPolicyPrintedWithClearInstructions:
         assert "S3 Bucket Policy" not in all_logged_text, "Policy should not be logged when show_s3_policy=False"
         assert "Version" not in all_logged_text, "Policy JSON should not be logged when show_s3_policy=False"
 
-    @patch.object(FeatureGroup, "refresh")
-    @patch.object(FeatureGroup, "_register_s3_with_lake_formation")
-    @patch.object(FeatureGroup, "_grant_lake_formation_permissions")
-    @patch.object(FeatureGroup, "_revoke_iam_allowed_principal")
-    @patch("sagemaker.mlops.feature_store.feature_group.logger")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.logger")
     def test_policy_not_printed_by_default(
         self,
         mock_logger,
@@ -2276,7 +2276,7 @@ class TestPolicyPrintedWithClearInstructions:
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
 
         # Set up Feature Group with required configuration
-        fg = FeatureGroup(feature_group_name="test-fg")
+        fg = FeatureGroupManager(feature_group_name="test-fg")
         fg.offline_store_config = OfflineStoreConfig(
             s3_storage_config=S3StorageConfig(
                 s3_uri="s3://test-bucket/path",
