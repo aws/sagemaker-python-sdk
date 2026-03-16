@@ -48,7 +48,10 @@ Add the following to your MCP configuration file:
 |-----|----------------|
 | Kiro | `~/.kiro/settings/mcp.json` |
 | Kiro CLI | `~/.kiro/settings/mcp.json` |
+| VS Code (Copilot) | `.vscode/mcp.json` in workspace root |
 | VS Code (Cline) | Cline extension settings → MCP Servers |
+| VS Code (Roo Code) | Roo Code extension settings → MCP Servers |
+| Codex CLI | `codex.json` or `~/.codex/config.json` |
 | Claude Desktop | `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) |
 | Cursor | Settings → MCP section |
 
