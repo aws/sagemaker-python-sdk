@@ -533,22 +533,48 @@ class HyperparameterTuner(object):
             ignore_patterns=source_code.ignore_patterns,
         )
 
-        # Upload code channel if source_dir is set
-        code_channel = None
-        if source_code.source_dir:
-            code_channel = model_trainer.create_input_data_channel(
-                channel_name=SM_CODE,
-                data_source=source_code.source_dir,
-                key_prefix=key_prefix,
-                ignore_patterns=source_code.ignore_patterns,
-            )
-
         # Store channels on model_trainer so _build_training_job_definition can pick them up
-        if not hasattr(model_trainer, "_tuner_channels"):
-            model_trainer._tuner_channels = []
         model_trainer._tuner_channels = [sm_drivers_channel]
-        if code_channel:
-            model_trainer._tuner_channels.append(code_channel)
+
+        # Set script mode hyperparameters required by framework containers.
+        # The framework container (PyTorch, TF) uses sagemaker_program to find the entry script
+        # and sagemaker_submit_directory to download source code to /opt/ml/code/.
+        if model_trainer.hyperparameters is None:
+            model_trainer.hyperparameters = {}
+        model_trainer.hyperparameters["sagemaker_program"] = source_code.entry_script
+
+        # Upload sourcedir.tar.gz for the legacy framework container path.
+        # The HPT API doesn't support container_entrypoint, so the framework container
+        # uses sagemaker_submit_directory to download and extract code to /opt/ml/code/.
+        if source_code.source_dir and not _is_valid_s3_uri(source_code.source_dir):
+            import tarfile
+            import tempfile
+
+            session = model_trainer.sagemaker_session
+            bucket = session.default_bucket()
+            s3_key = f"{key_prefix}/sourcedir/sourcedir.tar.gz"
+
+            with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
+                tar_path = tmp.name
+            try:
+                with tarfile.open(tar_path, "w:gz") as tar:
+                    for root, _dirs, files in os.walk(source_code.source_dir):
+                        for f in files:
+                            fpath = os.path.join(root, f)
+                            arcname = os.path.relpath(fpath, source_code.source_dir)
+                            tar.add(fpath, arcname=arcname)
+                s3_client = session.boto_session.client(
+                    "s3", region_name=session.boto_region_name
+                )
+                s3_client.upload_file(tar_path, bucket, s3_key)
+                model_trainer.hyperparameters["sagemaker_submit_directory"] = (
+                    f"s3://{bucket}/{s3_key}"
+                )
+            finally:
+                if os.path.exists(tar_path):
+                    os.remove(tar_path)
+        elif source_code.source_dir and _is_valid_s3_uri(source_code.source_dir):
+            model_trainer.hyperparameters["sagemaker_submit_directory"] = source_code.source_dir
 
         # Store the temp dir reference to prevent cleanup
         model_trainer._tuner_temp_dir = temp_dir
