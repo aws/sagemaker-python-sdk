@@ -253,7 +253,6 @@ class HyperparameterTuner(object):
         self.instance_configs_dict = None
         self.instance_configs = None
         self.autotune = autotune
-        self.output_data_config = model_trainer.output_data_config
 
     def override_resource_config(
         self,
@@ -1422,7 +1421,6 @@ class HyperparameterTuner(object):
                 if not any(c.channel_name == channel.channel_name for c in input_data_config):
                     input_data_config.append(channel)
 
-
         # Build resource config
         resource_config = ResourceConfig(
             instance_type=(
@@ -1448,7 +1446,7 @@ class HyperparameterTuner(object):
             algorithm_specification=algorithm_spec,
             role_arn=model_trainer.role,
             input_data_config=input_data_config if input_data_config else None,
-            output_data_config=self.output_data_config,
+            output_data_config=model_trainer.output_data_config,
             resource_config=resource_config,
             stopping_condition=stopping_condition,
             static_hyper_parameters=self.static_hyperparameters or {},
