@@ -4439,11 +4439,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ),
             )
 
-            InferenceComponent.create(
-                inference_component_name=adapter_ic_name,
-                endpoint_name=endpoint_name,
-                specification=adapter_ic_spec,
-            )
+            for attempt in range(3):
+                try:
+                    InferenceComponent.create(
+                        inference_component_name=adapter_ic_name,
+                        endpoint_name=endpoint_name,
+                        specification=adapter_ic_spec,
+                    )
+                    break
+                except ClientError as e:
+                    if "Could not find endpoint" in str(e) and attempt < 2:
+                        import time
+                        logger.info("Endpoint not yet visible, retrying in %ds...", 5 * (attempt + 1))
+                        time.sleep(5 * (attempt + 1))
+                    else:
+                        raise
             logger.info("Created adapter InferenceComponent: '%s'", adapter_ic_name)
 
         else:
