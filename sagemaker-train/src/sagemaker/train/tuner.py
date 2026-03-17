@@ -444,11 +444,13 @@ class HyperparameterTuner(object):
 
     @classmethod
     def _prepare_model_trainer_for_tuning(cls, model_trainer, inputs=None, job_name=None, **kwargs):
-        """Prepare ModelTrainer before tuning by uploading source code and configuring hyperparameters.
+        """Prepare ModelTrainer before tuning by building sm_drivers and code channels.
 
-        This method mimics V2's _prepare_estimator_for_tuning() pattern, adapted for V3's
-        ModelTrainer architecture. It ensures that script mode hyperparameters are set before
-        the tuning job is created, which framework containers (PyTorch, TensorFlow) require.
+        This method replicates the channel-building logic from ModelTrainer._create_training_job()
+        to ensure the sm_drivers channel (containing torchrun_driver.py, distributed config, and
+        sm_train.sh) is included in the tuning job definition. Without this, the framework
+        container falls back to the legacy entry point (python train.py) instead of using the
+        V3 driver (torchrun), breaking distributed training.
 
         Args:
             model_trainer: ModelTrainer instance to prepare
@@ -456,84 +458,95 @@ class HyperparameterTuner(object):
             job_name: Job name (unused, for V2 compatibility)
             **kwargs: Additional arguments (unused, for V2 compatibility)
         """
-        # Only proceed if source_code is configured
-        if hasattr(model_trainer, "source_code") and model_trainer.source_code is not None:
-            cls._upload_source_code_and_configure_hyperparameters(model_trainer)
+        if not hasattr(model_trainer, "source_code") or model_trainer.source_code is None:
+            return
+
+        cls._build_driver_and_code_channels(model_trainer)
 
     @classmethod
-    def _upload_source_code_and_configure_hyperparameters(cls, model_trainer):
-        """Upload source code to S3 and add script mode hyperparameters.
+    def _build_driver_and_code_channels(cls, model_trainer):
+        """Build sm_drivers and code input channels for the tuning job.
 
-        Framework containers (PyTorch, TensorFlow) expect sagemaker_program and
-        sagemaker_submit_directory hyperparameters for script mode execution. This method:
-        1. Checks if source_dir is a local path or S3 URI
-        2. Creates a tar.gz archive and uploads to S3
-        3. Adds required script mode hyperparameters to model_trainer.hyperparameters
-
-        This follows V2's pattern of creating sourcedir.tar.gz files.
+        Replicates the channel-building logic from ModelTrainer._create_training_job()
+        so that the tuning job gets the same execution environment as a standalone
+        training job (distributed drivers, source code, train script).
 
         Args:
             model_trainer: ModelTrainer instance with source_code configured
         """
+        import json
         import os
-        import tarfile
-        import tempfile
+        import shutil
         import time
+        from tempfile import TemporaryDirectory
+
+        from sagemaker.train.constants import (
+            SM_CODE,
+            SM_DRIVERS,
+            SM_DRIVERS_LOCAL_PATH,
+            DEFAULT_CONTAINER_ENTRYPOINT,
+            DEFAULT_CONTAINER_ARGUMENTS,
+        )
 
         source_code = model_trainer.source_code
+        base_name = model_trainer.base_job_name or "tuning"
+        key_prefix = f"{base_name}/tuning-{int(time.time())}/input"
 
-        # Get source directory and entry script
-        source_dir = source_code.source_dir
-        entry_script = source_code.entry_script
+        # Build sm_drivers channel (same as ModelTrainer._create_training_job)
+        temp_dir = TemporaryDirectory()
+        shutil.copytree(SM_DRIVERS_LOCAL_PATH, temp_dir.name, dirs_exist_ok=True)
 
-        # Check if already an S3 URI
-        if _is_valid_s3_uri(source_dir):
-            # Already uploaded, use as-is
-            source_s3_uri = source_dir
-        else:
-            # Local directory - need to create tar.gz and upload
-            session = model_trainer.sagemaker_session
-            bucket = session.default_bucket()
+        # If distributed config is set, copy distributed drivers
+        if model_trainer.distributed:
+            driver_dir = os.path.join(temp_dir.name, "distributed_drivers")
+            shutil.copytree(model_trainer.distributed.driver_dir, driver_dir, dirs_exist_ok=True)
 
-            # Generate S3 key
-            timestamp = int(time.time())
-            s3_key = (
-                f"{model_trainer.base_job_name or 'source'}/source-{timestamp}/sourcedir.tar.gz"
+        # Write sourcecode.json
+        source_code_json_path = os.path.join(temp_dir.name, "sourcecode.json")
+        with open(source_code_json_path, "w") as f:
+            dump = source_code.model_dump() if source_code else {}
+            f.write(json.dumps(dump))
+
+        # Write distributed.json
+        distributed_json_path = os.path.join(temp_dir.name, "distributed.json")
+        with open(distributed_json_path, "w") as f:
+            dump = model_trainer.distributed.model_dump() if model_trainer.distributed else {}
+            f.write(json.dumps(dump))
+
+        # Prepare the train script (sm_train.sh)
+        model_trainer._prepare_train_script(
+            tmp_dir=temp_dir,
+            source_code=source_code,
+            distributed=model_trainer.distributed,
+        )
+
+        # Upload sm_drivers channel
+        sm_drivers_channel = model_trainer.create_input_data_channel(
+            channel_name=SM_DRIVERS,
+            data_source=temp_dir.name,
+            key_prefix=key_prefix,
+            ignore_patterns=source_code.ignore_patterns,
+        )
+
+        # Upload code channel if source_dir is set
+        code_channel = None
+        if source_code.source_dir:
+            code_channel = model_trainer.create_input_data_channel(
+                channel_name=SM_CODE,
+                data_source=source_code.source_dir,
+                key_prefix=key_prefix,
+                ignore_patterns=source_code.ignore_patterns,
             )
 
-            # Create tar.gz file
-            with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp_file:
-                tar_path = tmp_file.name
+        # Store channels on model_trainer so _build_training_job_definition can pick them up
+        if not hasattr(model_trainer, "_tuner_channels"):
+            model_trainer._tuner_channels = []
+        model_trainer._tuner_channels = [sm_drivers_channel]
+        if code_channel:
+            model_trainer._tuner_channels.append(code_channel)
 
-            try:
-                # Create tar.gz archive
-                with tarfile.open(tar_path, "w:gz") as tar:
-                    # Add all files from source_dir
-                    for root, dirs, files in os.walk(source_dir):
-                        for file in files:
-                            file_path = os.path.join(root, file)
-                            # Calculate arcname to preserve directory structure
-                            arcname = os.path.relpath(file_path, source_dir)
-                            tar.add(file_path, arcname=arcname)
-
-                # Upload to S3
-                s3_client = session.boto_session.client("s3", region_name=session.boto_region_name)
-                s3_client.upload_file(tar_path, bucket, s3_key)
-
-                # Construct S3 URI
-                source_s3_uri = f"s3://{bucket}/{s3_key}"
-            finally:
-                # Clean up temp file
-                if os.path.exists(tar_path):
-                    os.remove(tar_path)
-
-        # Initialize hyperparameters dict if None
-        if model_trainer.hyperparameters is None:
-            model_trainer.hyperparameters = {}
-
-        # Add script mode hyperparameters required by framework containers
-        model_trainer.hyperparameters["sagemaker_program"] = entry_script
-        model_trainer.hyperparameters["sagemaker_submit_directory"] = source_s3_uri
+        # Store the temp dir reference to prevent cleanup
+        model_trainer._tuner_temp_dir = temp_dir
 
     @runnable_by_pipeline
     def tune(
@@ -1422,6 +1435,12 @@ class HyperparameterTuner(object):
                 if not any(c.channel_name == channel.channel_name for c in input_data_config):
                     input_data_config.append(channel)
 
+        # Include channels built by _prepare_model_trainer_for_tuning (sm_drivers, code)
+        if hasattr(model_trainer, "_tuner_channels") and model_trainer._tuner_channels:
+            for channel in model_trainer._tuner_channels:
+                if not any(c.channel_name == channel.channel_name for c in input_data_config):
+                    input_data_config.append(channel)
+
         # Build output data config
         output_config = OutputDataConfig(
             s3_output_path=(
@@ -1461,5 +1480,15 @@ class HyperparameterTuner(object):
             stopping_condition=stopping_condition,
             static_hyper_parameters=self.static_hyperparameters or {},
         )
+
+        # Pass through environment variables from model_trainer
+        if hasattr(model_trainer, "environment") and model_trainer.environment:
+            definition.environment = model_trainer.environment
+
+        # Pass through VPC config from model_trainer
+        if hasattr(model_trainer, "networking") and model_trainer.networking:
+            vpc_config = model_trainer.networking._to_vpc_config()
+            if vpc_config:
+                definition.vpc_config = vpc_config
 
         return definition
