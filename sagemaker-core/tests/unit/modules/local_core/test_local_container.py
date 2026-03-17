@@ -941,3 +941,63 @@ class TestLocalContainer:
         calls = mock_write.call_args_list
         input_config_call = [c for c in calls if "inputdataconfig.json" in str(c)]
         assert len(input_config_call) > 0
+
+
+RMTREE_IMAGE = "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.1-cpu-py310"
+MODULE = "sagemaker.core.modules.local_core.local_container"
+
+
+class TestRmtree:
+    """Test cases for _rmtree function."""
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    def test_rmtree_success(self, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        _rmtree("/tmp/test", RMTREE_IMAGE)
+        mock_rmtree.assert_called_once_with("/tmp/test")
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    @patch(f"{MODULE}.subprocess.run")
+    def test_rmtree_permission_error_docker_chmod_fallback(self, mock_run, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
+        _rmtree("/tmp/test", RMTREE_IMAGE)
+        mock_run.assert_called_once_with(
+            ["docker", "run", "--rm", "-v", "/tmp/test:/delete", RMTREE_IMAGE, "chmod", "-R", "777", "/delete"],
+            check=True,
+            capture_output=True,
+        )
+        assert mock_rmtree.call_count == 2
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    @patch(f"{MODULE}.subprocess.run")
+    def test_rmtree_studio_adds_network(self, mock_run, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
+        _rmtree("/tmp/test", RMTREE_IMAGE, is_studio=True)
+        mock_run.assert_called_once_with(
+            [
+                "docker", "run", "--rm",
+                "--network", "sagemaker",
+                "-v", "/tmp/test:/delete", RMTREE_IMAGE,
+                "chmod", "-R", "777", "/delete",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    @patch(f"{MODULE}.subprocess.run")
+    def test_rmtree_docker_fallback_fails_raises(self, mock_run, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        mock_rmtree.side_effect = PermissionError("Permission denied")
+        mock_run.side_effect = Exception("docker failed")
+        with pytest.raises(Exception, match="docker failed"):
+            _rmtree("/tmp/test", RMTREE_IMAGE)
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    def test_rmtree_no_image_raises(self, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        mock_rmtree.side_effect = PermissionError("Permission denied")
+        with pytest.raises(PermissionError):
+            _rmtree("/tmp/test")
