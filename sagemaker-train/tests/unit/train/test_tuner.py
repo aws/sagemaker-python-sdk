@@ -31,7 +31,7 @@ from sagemaker.core.shapes import (
     Channel,
     DataSource,
     S3DataSource,
-    OutputDataConfig
+    OutputDataConfig,
 )
 
 
@@ -53,7 +53,10 @@ def _create_mock_model_trainer(with_internal_channels=False):
     trainer.training_image = "test-image:latest"
     trainer.training_input_mode = "File"
     trainer.role = "arn:aws:iam::123456789012:role/SageMakerRole"
-    trainer.output_data_config = OutputDataConfig(kms_key_id="arn:aws:kms:us-west-2:123456789012:key/abc123", s3_output_path="s3://bucket/output")
+    trainer.output_data_config = OutputDataConfig(
+        kms_key_id="arn:aws:kms:us-west-2:123456789012:key/abc123",
+        s3_output_path="s3://bucket/output",
+    )
     trainer.compute = MagicMock()
     trainer.compute.instance_type = "ml.m5.xlarge"
     trainer.compute.instance_count = 1
