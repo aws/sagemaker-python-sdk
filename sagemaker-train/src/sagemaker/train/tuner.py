@@ -458,7 +458,12 @@ class HyperparameterTuner(object):
             job_name: Job name (unused, for V2 compatibility)
             **kwargs: Additional arguments (unused, for V2 compatibility)
         """
-        if not hasattr(model_trainer, "source_code") or model_trainer.source_code is None:
+        source_code = getattr(model_trainer, "source_code", None)
+        if source_code is None:
+            return
+        # Only proceed if source_code has a real entry_script string
+        entry_script = getattr(source_code, "entry_script", None)
+        if not isinstance(entry_script, str):
             return
 
         cls._build_driver_and_code_channels(model_trainer)
@@ -1478,17 +1483,22 @@ class HyperparameterTuner(object):
             output_data_config=output_config,
             resource_config=resource_config,
             stopping_condition=stopping_condition,
-            static_hyper_parameters=self.static_hyperparameters or {},
+            static_hyper_parameters=getattr(self, "static_hyperparameters", None) or {},
         )
 
         # Pass through environment variables from model_trainer
-        if hasattr(model_trainer, "environment") and model_trainer.environment:
-            definition.environment = model_trainer.environment
+        env = getattr(model_trainer, "environment", None)
+        if env and isinstance(env, dict):
+            definition.environment = env
 
         # Pass through VPC config from model_trainer
-        if hasattr(model_trainer, "networking") and model_trainer.networking:
-            vpc_config = model_trainer.networking._to_vpc_config()
-            if vpc_config:
-                definition.vpc_config = vpc_config
+        networking = getattr(model_trainer, "networking", None)
+        if networking and hasattr(networking, "_to_vpc_config"):
+            try:
+                vpc_config = networking._to_vpc_config()
+                if vpc_config:
+                    definition.vpc_config = vpc_config
+            except Exception:
+                pass
 
         return definition
