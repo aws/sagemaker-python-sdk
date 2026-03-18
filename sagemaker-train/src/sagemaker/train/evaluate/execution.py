@@ -1078,7 +1078,7 @@ class EvaluationPipelineExecution(BaseModel):
                                     console_link = f"[bright_blue underline][link={url}]🔗 link[/link][/bright_blue underline]"
                                 cw_url = get_cloudwatch_logs_url(arn)
                                 if cw_url:
-                                    logs_link = f"[bright_blue underline][link={cw_url}]🔗 logs[/link][/bright_blue underline]"
+                                    logs_link = f"[bright_blue underline][link={cw_url}]🔗 link[/link][/bright_blue underline]"
                                 if in_studio and studio_base:
                                     parsed = _parse_job_arn(arn)
                                     if parsed:
@@ -1087,7 +1087,7 @@ class EvaluationPipelineExecution(BaseModel):
                                             if resource.startswith(prefix):
                                                 job_name = resource.split("/", 1)[1]
                                                 s_url = f"{studio_base}/{path}{job_name}"
-                                                studio_link = f"[bright_blue underline][link={s_url}]🔗 studio[/link][/bright_blue underline]"
+                                                studio_link = f"[bright_blue underline][link={s_url}]🔗 link[/link][/bright_blue underline]"
                                                 break
                             except Exception:
                                 pass
