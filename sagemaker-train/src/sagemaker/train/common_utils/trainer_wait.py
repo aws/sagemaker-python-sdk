@@ -308,7 +308,7 @@ def wait(
                     try:
                         from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
                         studio_url = get_studio_url(training_job)
-                        header_table.add_row("TrainingJob Name", f"[link={studio_url}]🔗 {training_job.training_job_name}[/link]")
+                        header_table.add_row("TrainingJob Name", f"[underline][link={studio_url}]🔗 {training_job.training_job_name}[/link][/underline]")
                     except Exception:
                         header_table.add_row("TrainingJob Name", f"[bold green]{training_job.training_job_name}[/bold green]")
                     
@@ -324,7 +324,7 @@ def wait(
                             else:
                                 link_text = "MLflow Experiment"
                             
-                            header_table.add_row("MLflow Experiment", f"[link={cached_url}]🔗 {link_text}[/link]")
+                            header_table.add_row("MLflow Experiment", f"[underline][link={cached_url}]🔗 {link_text}[/link][/underline]")
                         elif mlflow_link_cache['error']:
                             header_table.add_row("MLflow Experiment", f"[red]{mlflow_link_cache['error']}[/red]")
 

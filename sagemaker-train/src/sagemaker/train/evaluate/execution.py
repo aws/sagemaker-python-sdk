@@ -951,7 +951,7 @@ class EvaluationPipelineExecution(BaseModel):
                     if dummy_url and pipeline_name:
                         base = dummy_url.rsplit('/jobs/train/', 1)[0]
                         pipeline_url = f"{base}/jobs/evaluation/detail?pipeline_name={pipeline_name}&execution_id={exec_id}"
-                        header_table.add_row("Evaluation Job", f"[link={pipeline_url}]🔗 {display_name}[/link]")
+                        header_table.add_row("Evaluation Job", f"[underline][link={pipeline_url}]🔗 {display_name}[/link][/underline]")
                     else:
                         header_table.add_row("Evaluation Job", str(display_name))
                 except Exception:
@@ -1051,7 +1051,7 @@ class EvaluationPipelineExecution(BaseModel):
                             try:
                                 from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
                                 url = get_studio_url(entry['job_arn'])
-                                link_col = f"[link={url}]🔗 link[/link]" if url else ""
+                                link_col = f"[underline][link={url}]🔗 link[/link][/underline]" if url else ""
                             except Exception:
                                 link_col = ""
                             links_table.add_row(entry['step_name'], link_col, entry['job_arn'])
