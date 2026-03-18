@@ -41,10 +41,15 @@ class LocalTritonServer:
         env_vars.update(
             {
                 "TRITON_MODEL_DIR": "/models/model",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "LOCAL_PYTHON": platform.python_version(),
             }
         )
+
+        # Only set SAGEMAKER_SERVE_SECRET_KEY for inference_spec path where
+        # pickle integrity verification is needed. The ONNX path does not
+        # use pickles, so no secret key is required.
+        if secret_key and isinstance(secret_key, str) and secret_key.strip():
+            env_vars["SAGEMAKER_SERVE_SECRET_KEY"] = secret_key
 
         if "cpu" not in image_uri:
             self.container = docker_client.containers.run(
@@ -133,7 +138,12 @@ class SageMakerTritonServer:
         env_vars = {
             "SAGEMAKER_TRITON_DEFAULT_MODEL_NAME": "model",
             "TRITON_MODEL_DIR": "/opt/ml/model/model",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
+
+        # Only set SAGEMAKER_SERVE_SECRET_KEY for inference_spec path where
+        # pickle integrity verification is needed.
+        if secret_key and isinstance(secret_key, str) and secret_key.strip():
+            env_vars["SAGEMAKER_SERVE_SECRET_KEY"] = secret_key
+
         return s3_upload_path, env_vars

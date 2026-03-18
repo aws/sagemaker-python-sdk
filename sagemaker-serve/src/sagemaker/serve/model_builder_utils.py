@@ -3075,8 +3075,8 @@ class _ModelBuilderUtils:
             export_path.mkdir(parents=True)
 
         if self.model:
-            self.secret_key = "dummy secret key for onnx backend"
-
+            # ONNX path: export model to ONNX format for Triton's native ONNX backend.
+            # No pickle is created or loaded at runtime, so no HMAC signing is needed.
             if self.framework == Framework.PYTORCH:
                 self._export_pytorch_to_onnx(
                     export_path=export_path, model=self.model, schema_builder=self.schema_builder
