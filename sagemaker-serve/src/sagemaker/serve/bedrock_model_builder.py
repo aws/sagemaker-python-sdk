@@ -13,9 +13,11 @@
 """Holds the BedrockModelBuilder class."""
 from __future__ import absolute_import
 
+import json
 import time
 import logging
 from typing import Optional, Dict, Any, Union
+from urllib.parse import urlparse
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.resources import TrainingJob, ModelPackage
@@ -27,9 +29,30 @@ from sagemaker.core.telemetry.constants import Feature
 logger = logging.getLogger(__name__)
 
 
+def _is_nova_model(container) -> bool:
+    """Determine whether a model package container represents a Nova model.
+
+    Checks both recipe_name and hub_content_name for the "nova" substring.
+
+    Args:
+        container: A container from ModelPackage.inference_specification.containers.
+
+    Returns:
+        True if the container represents a Nova model, False otherwise.
+    """
+    base_model = getattr(container, "base_model", None)
+    if not base_model:
+        return False
+
+    recipe_name = getattr(base_model, "recipe_name", None) or ""
+    hub_content_name = getattr(base_model, "hub_content_name", None) or ""
+
+    return "nova" in recipe_name.lower() or "nova" in hub_content_name.lower()
+
+
 class BedrockModelBuilder:
     """Builder class for deploying models to Amazon Bedrock.
-    
+
     This class provides functionality to deploy SageMaker models to Bedrock
     using either model import jobs or custom model creation, depending on
     the model type (Nova models vs. other models).
@@ -42,7 +65,8 @@ class BedrockModelBuilder:
         """Initialize BedrockModelBuilder with a model instance.
 
         Args:
-            model: The model to deploy. Can be a ModelTrainer, TrainingJob, or ModelPackage instance.
+            model: The model to deploy. Can be a ModelTrainer, TrainingJob,
+                or ModelPackage instance.
         """
         self.model = model
         self._bedrock_client = None
@@ -53,7 +77,7 @@ class BedrockModelBuilder:
 
     def _get_bedrock_client(self):
         """Get or create Bedrock client singleton.
-        
+
         Returns:
             boto3.client: Bedrock client instance.
         """
@@ -63,7 +87,7 @@ class BedrockModelBuilder:
 
     def _get_sagemaker_client(self):
         """Get or create SageMaker client singleton.
-        
+
         Returns:
             boto3.client: SageMaker client instance.
         """
@@ -73,20 +97,20 @@ class BedrockModelBuilder:
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="BedrockModelBuilder.deploy")
     def deploy(
-            self,
-            job_name: Optional[str] = None,
-            imported_model_name: Optional[str] = None,
-            custom_model_name: Optional[str] = None,
-            role_arn: Optional[str] = None,
-            job_tags: Optional[list] = None,
-            imported_model_tags: Optional[list] = None,
-            model_tags: Optional[list] = None,
-            client_request_token: Optional[str] = None,
-            imported_model_kms_key_id: Optional[str] = None,
-            deployment_name: Optional[str] = None,
+        self,
+        job_name: Optional[str] = None,
+        imported_model_name: Optional[str] = None,
+        custom_model_name: Optional[str] = None,
+        role_arn: Optional[str] = None,
+        job_tags: Optional[list] = None,
+        imported_model_tags: Optional[list] = None,
+        model_tags: Optional[list] = None,
+        client_request_token: Optional[str] = None,
+        imported_model_kms_key_id: Optional[str] = None,
+        deployment_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Deploy the model to Bedrock.
-        
+
         Automatically detects if the model is a Nova model and uses the appropriate
         Bedrock API (create_custom_model for Nova, create_model_import_job for others).
         For Nova models, also creates a custom model deployment for inference.
@@ -108,19 +132,24 @@ class BedrockModelBuilder:
             Response from Bedrock API. For Nova models, returns the
             create_custom_model_deployment response. For others, returns
             the create_model_import_job response.
-            
+
         Raises:
-            ValueError: If required parameters are missing for the detected model type.
+            ValueError: If model_package is not set or required parameters are missing.
         """
+        if not self.model_package:
+            raise ValueError(
+                "model_package is not set. Provide a valid model during initialization."
+            )
+
         container = self.model_package.inference_specification.containers[0]
-        is_nova = (hasattr(container, 'base_model') and container.base_model and
-                   hasattr(container.base_model, 'recipe_name') and container.base_model.recipe_name and
-                   "nova" in container.base_model.recipe_name.lower()) or \
-                  (hasattr(container, 'base_model') and container.base_model and
-                   hasattr(container.base_model, 'hub_content_name') and container.base_model.hub_content_name and
-                   "nova" in container.base_model.hub_content_name.lower())
+        is_nova = _is_nova_model(container)
 
         if is_nova:
+            if not custom_model_name:
+                raise ValueError("custom_model_name is required for Nova model deployment.")
+            if not role_arn:
+                raise ValueError("role_arn is required for Nova model deployment.")
+
             params = {
                 "modelName": custom_model_name,
                 "modelSourceConfig": {"s3DataSource": {"s3Uri": self.s3_model_artifacts}},
@@ -129,6 +158,8 @@ class BedrockModelBuilder:
             if model_tags:
                 params["modelTags"] = model_tags
             params = {k: v for k, v in params.items() if v is not None}
+
+            logger.info("Creating custom model %s for Nova deployment", custom_model_name)
             create_response = self._get_bedrock_client().create_custom_model(**params)
 
             model_arn = create_response.get("modelArn")
@@ -147,6 +178,8 @@ class BedrockModelBuilder:
                 "importedModelKmsKeyId": imported_model_kms_key_id,
             }
             params = {k: v for k, v in params.items() if v is not None}
+
+            logger.info("Creating model import job for non-Nova deployment")
             return self._get_bedrock_client().create_model_import_job(**params)
 
     def create_deployment(
@@ -174,7 +207,11 @@ class BedrockModelBuilder:
 
         Raises:
             RuntimeError: If the model fails or times out waiting to become Active.
+            ValueError: If model_arn is not provided.
         """
+        if not model_arn:
+            raise ValueError("model_arn is required for create_deployment.")
+
         self._wait_for_model_active(model_arn, poll_interval=poll_interval, max_wait=max_wait)
 
         params = {
@@ -183,9 +220,13 @@ class BedrockModelBuilder:
             **{k: v for k, v in kwargs.items() if v is not None},
         }
         params = {k: v for k, v in params.items() if v is not None}
+
+        logger.info("Creating deployment %s for model %s", deployment_name, model_arn)
         return self._get_bedrock_client().create_custom_model_deployment(**params)
 
-    def _wait_for_model_active(self, model_arn: str, poll_interval: int = 60, max_wait: int = 3600):
+    def _wait_for_model_active(
+        self, model_arn: str, poll_interval: int = 60, max_wait: int = 3600
+    ):
         """Poll Bedrock until the custom model reaches Active status.
 
         Args:
@@ -197,6 +238,7 @@ class BedrockModelBuilder:
             RuntimeError: If the model status is Failed or the wait times out.
         """
         elapsed = 0
+        status = None
         while elapsed < max_wait:
             resp = self._get_bedrock_client().get_custom_model(modelIdentifier=model_arn)
             status = resp.get("modelStatus")
@@ -214,13 +256,12 @@ class BedrockModelBuilder:
             f"Last status: {status}"
         )
 
-
     def _fetch_model_package(self) -> Optional[ModelPackage]:
         """Fetch the ModelPackage from the provided model.
-        
+
         Extracts ModelPackage from ModelTrainer, TrainingJob, or returns
         the ModelPackage directly if that's what was provided.
-        
+
         Returns:
             ModelPackage instance or None if no model was provided.
         """
@@ -229,98 +270,95 @@ class BedrockModelBuilder:
         if isinstance(self.model, TrainingJob):
             return ModelPackage.get(self.model.output_model_package_arn)
         if isinstance(self.model, ModelTrainer):
-            return ModelPackage.get(self.model._latest_training_job.output_model_package_arn)
+            return ModelPackage.get(
+                self.model._latest_training_job.output_model_package_arn
+            )
         return None
 
     def _get_s3_artifacts(self) -> Optional[str]:
         """Extract S3 URI of model artifacts from the model package.
-        
+
         For Nova models, fetches checkpoint URI from manifest.json in training job output.
         For other models, returns the model data source S3 URI.
-        
+
         Returns:
             S3 URI string of the model artifacts, or None if not available.
         """
         if not self.model_package:
             return None
-        
+
         container = self.model_package.inference_specification.containers[0]
-        is_nova = (hasattr(container, 'base_model') and container.base_model and 
-                  hasattr(container.base_model, 'recipe_name') and container.base_model.recipe_name and
-                  "nova" in container.base_model.recipe_name.lower()) or \
-                  (hasattr(container, 'base_model') and container.base_model and
-                   hasattr(container.base_model, 'hub_content_name') and container.base_model.hub_content_name and
-                   "nova" in container.base_model.hub_content_name.lower())
-        
+        is_nova = _is_nova_model(container)
+
         if is_nova and isinstance(self.model, TrainingJob):
             return self._get_checkpoint_uri_from_manifest()
-        
-        if hasattr(container, 'model_data_source') and container.model_data_source:
-            if hasattr(container.model_data_source, 's3_data_source') and container.model_data_source.s3_data_source:
-                return container.model_data_source.s3_data_source.s3_uri
+
+        if hasattr(container, "model_data_source") and container.model_data_source:
+            data_source = container.model_data_source
+            if hasattr(data_source, "s3_data_source") and data_source.s3_data_source:
+                return data_source.s3_data_source.s3_uri
         return None
-    
+
     def _get_checkpoint_uri_from_manifest(self) -> Optional[str]:
         """Get checkpoint URI from manifest.json for Nova models.
-        
+
         Steps:
         1. Fetch S3 model artifacts from training job
-        2. Go one level up in directory
-        3. Find manifest.json
-        4. Fetch checkpoint_s3_bucket from manifest
-        
+        2. Construct path to manifest.json in the output directory
+        3. Read and parse manifest.json
+        4. Return checkpoint_s3_bucket value
+
         Returns:
             Checkpoint URI from manifest.json.
-            
+
         Raises:
-            ValueError: If manifest.json cannot be found or parsed.
+            ValueError: If manifest.json cannot be found or parsed, or if the
+                model is not a TrainingJob instance.
         """
-        import json
-        from urllib.parse import urlparse
-        import logging
-        
-        logger = logging.getLogger(__name__)
-        
         if not isinstance(self.model, TrainingJob):
             raise ValueError("Model must be a TrainingJob instance for Nova models")
-        
-        # Step 1: Get S3 model artifacts from training job
+
         s3_artifacts = self.model.model_artifacts.s3_model_artifacts
         if not s3_artifacts:
             raise ValueError("No S3 model artifacts found in training job")
-        
-        logger.info(f"S3 artifacts path: {s3_artifacts}")
-        
-        # Step 2: Construct manifest path (same directory as model artifacts)
+
+        logger.info("S3 artifacts path: %s", s3_artifacts)
+
+        # Construct manifest path
         # s3://bucket/path/output/model.tar.gz -> s3://bucket/path/output/output/manifest.json
-        parts = s3_artifacts.rstrip('/').rsplit('/', 1)
-        manifest_path = parts[0] + '/output/manifest.json'
-        
-        logger.info(f"Manifest path: {manifest_path}")
-        
-        # Step 3: Find and read manifest.json
+        parts = s3_artifacts.rstrip("/").rsplit("/", 1)
+        manifest_path = parts[0] + "/output/manifest.json"
+
+        logger.info("Manifest path: %s", manifest_path)
+
         parsed = urlparse(manifest_path)
         bucket = parsed.netloc
-        manifest_key = parsed.path.lstrip('/')
-        
-        logger.info(f"Looking for manifest at s3://{bucket}/{manifest_key}")
-        
-        s3_client = self.boto_session.client('s3')
+        manifest_key = parsed.path.lstrip("/")
+
+        logger.info("Looking for manifest at s3://%s/%s", bucket, manifest_key)
+
+        s3_client = self.boto_session.client("s3")
         try:
             response = s3_client.get_object(Bucket=bucket, Key=manifest_key)
-            manifest = json.loads(response['Body'].read().decode('utf-8'))
-            logger.info(f"Manifest content: {manifest}")
-            
-            # Step 4: Fetch checkpoint_s3_bucket from manifest
-            checkpoint_uri = manifest.get('checkpoint_s3_bucket')
+            manifest = json.loads(response["Body"].read().decode("utf-8"))
+            logger.info("Manifest content: %s", manifest)
+
+            checkpoint_uri = manifest.get("checkpoint_s3_bucket")
             if not checkpoint_uri:
-                raise ValueError(f"'checkpoint_s3_bucket' not found in manifest. Available keys: {list(manifest.keys())}")
-            
-            logger.info(f"Checkpoint URI: {checkpoint_uri}")
+                raise ValueError(
+                    "'checkpoint_s3_bucket' not found in manifest. "
+                    "Available keys: %s" % list(manifest.keys())
+                )
+
+            logger.info("Checkpoint URI: %s", checkpoint_uri)
             return checkpoint_uri
         except s3_client.exceptions.NoSuchKey:
-            raise ValueError(f"manifest.json not found at s3://{bucket}/{manifest_key}")
+            raise ValueError(
+                "manifest.json not found at s3://%s/%s" % (bucket, manifest_key)
+            )
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse manifest.json: {e}")
+            raise ValueError("Failed to parse manifest.json: %s" % e)
+        except ValueError:
+            raise
         except Exception as e:
-            raise ValueError(f"Error reading manifest.json: {e}")
+            raise ValueError("Error reading manifest.json: %s" % e)
