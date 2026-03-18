@@ -116,6 +116,7 @@ from sagemaker.core.jumpstart.document import get_hub_content_and_document
 from sagemaker.core.jumpstart.utils import get_eula_url
 from sagemaker.train.defaults import TrainDefaults, JumpStartTrainDefaults
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
+from sagemaker.core.helper.pipeline_variable import StrPipeVar
 
 from sagemaker.train.local.local_container import _LocalContainer
 
@@ -235,14 +236,14 @@ class ModelTrainer(BaseModel):
     compute: Optional[Compute] = None
     networking: Optional[Networking] = None
     stopping_condition: Optional[StoppingCondition] = None
-    training_image: Optional[str] = None
+    training_image: Optional[StrPipeVar] = None
     training_image_config: Optional[TrainingImageConfig] = None
-    algorithm_name: Optional[str] = None
+    algorithm_name: Optional[StrPipeVar] = None
     output_data_config: Optional[shapes.OutputDataConfig] = None
     input_data_config: Optional[List[Union[Channel, InputData]]] = None
     checkpoint_config: Optional[shapes.CheckpointConfig] = None
-    training_input_mode: Optional[str] = "File"
-    environment: Optional[Dict[str, str]] = {}
+    training_input_mode: Optional[StrPipeVar] = "File"
+    environment: Optional[Dict[str, StrPipeVar]] = {}
     hyperparameters: Optional[Union[Dict[str, Any], str]] = {}
     tags: Optional[List[Tag]] = None
     local_container_root: Optional[str] = os.getcwd()
@@ -545,7 +546,11 @@ class ModelTrainer(BaseModel):
             )
 
         if self.training_image:
-            logger.info(f"Training image URI: {self.training_image}")
+            from sagemaker.core.helper.pipeline_variable import PipelineVariable
+            if isinstance(self.training_image, PipelineVariable):
+                logger.info("Training image URI: (PipelineVariable - resolved at pipeline execution)")
+            else:
+                logger.info(f"Training image URI: {self.training_image}")
     
 
     def _create_training_job_args(

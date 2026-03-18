@@ -1,4 +1,10 @@
 # Changelog
+## v1.5.0 (2026-03-02)
+
+- feat: Add Feature Store Support to V3 (#5539)
+- feat: EMRStep smart output with `output_args` (#5535)
+- chore: Add license to sagemaker-mlops (#5553)
+
 ## v1.4.1 (2026-02-10)
 
 - fix: Don't apply default experiment config for pipelines in non-Eureka GA regions (#5500)
