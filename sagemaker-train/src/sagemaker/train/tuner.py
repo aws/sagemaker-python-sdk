@@ -1471,14 +1471,6 @@ class HyperparameterTuner(object):
                 if not any(c.channel_name == channel.channel_name for c in input_data_config):
                     input_data_config.append(channel)
 
-        # Build output data config
-        output_config = OutputDataConfig(
-            s3_output_path=(
-                model_trainer.output_data_config.s3_output_path
-                if model_trainer.output_data_config
-                else None
-            )
-        )
 
         # Build resource config
         resource_config = ResourceConfig(
