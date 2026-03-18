@@ -36,8 +36,8 @@ pip install --no-cache-dir https://d3azyja9oqj8z1.cloudfront.net/sagemaker_sdk_h
 Verify installation:
 
 ```bash
-which sagemaker-migration-mcp   # Should output the path to the executable
-sagemaker-migration-mcp --help   # Test the server runs
+which sagemaker-sdk-helper   # Should output the path to the executable
+sagemaker-sdk-helper --help   # Test the server runs
 ```
 
 ### IDE Setup
@@ -60,23 +60,23 @@ Add the following to your MCP configuration file:
 ```json
 {
   "mcpServers": {
-    "sagemaker-migration": {
-      "command": "sagemaker-migration-mcp",
+    "sagemaker-sdk-helper": {
+      "command": "sagemaker-sdk-helper",
       "args": ["--log-level", "INFO"]
     }
   }
 }
 ```
 
-> **Note**: If you installed in a virtual environment, use the full path to the executable (find it with `which sagemaker-migration-mcp`).
+> **Note**: If you installed in a virtual environment, use the full path to the executable (find it with `which sagemaker-sdk-helper`).
 
 **With SDK source artifacts (recommended, 20-30% better accuracy):**
 
 ```json
 {
   "mcpServers": {
-    "sagemaker-migration": {
-      "command": "/path/to/.venv/bin/sagemaker-migration-mcp",
+    "sagemaker-sdk-helper": {
+      "command": "/path/to/.venv/bin/sagemaker-sdk-helper",
       "args": [
         "--log-level", "INFO",
         "--v2-artifacts", "/path/to/sdk_v2/sagemaker-python-sdk",
@@ -96,8 +96,8 @@ For Kiro CLI, add the same configuration to `~/.kiro/settings/mcp.json`:
 ```json
 {
   "mcpServers": {
-    "sagemaker-migration": {
-      "command": "sagemaker-migration-mcp",
+    "sagemaker-sdk-helper": {
+      "command": "sagemaker-sdk-helper",
       "args": ["--log-level", "INFO"]
     }
   }
@@ -135,10 +135,10 @@ You can also point the tool at entire notebooks for full conversion.
 
 ### Troubleshooting
 
-- **Server not starting**: Verify the command path with `which sagemaker-migration-mcp`. Requires Python 3.9+.
-- **Permission denied**: Run `chmod +x /path/to/.venv/bin/sagemaker-migration-mcp`
+- **Server not starting**: Verify the command path with `which sagemaker-sdk-helper`. Requires Python 3.9+.
+- **Permission denied**: Run `chmod +x /path/to/.venv/bin/sagemaker-sdk-helper`
 - **Artifacts not loading**: Paths must be absolute. The server works without artifacts but with reduced accuracy.
-- **Manual test**: `echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | sagemaker-migration-mcp`
+- **Manual test**: `echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | sagemaker-sdk-helper`
 
 ---
 
