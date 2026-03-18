@@ -35,8 +35,6 @@ from sagemaker.core.resources import TrainingJob
 
 logger = logging.getLogger(__name__)
 
-# Nova training job in us-east-1 (from existing test pattern)
-NOVA_TRAINING_JOB_NAME = "nova-textgeneration-lite-v2-sft-20251202132123"
 REGION = "us-east-1"
 
 
@@ -68,11 +66,11 @@ def bedrock_client(boto_session):
 
 
 @pytest.fixture(scope="module")
-def training_job(region_env):
-    """Fetch the Nova training job."""
+def training_job(region_env, nova_training_job_name):
+    """Fetch the Nova training job using the shared get-or-create fixture."""
     session = boto3.Session(region_name=region_env)
     return TrainingJob.get(
-        training_job_name=NOVA_TRAINING_JOB_NAME,
+        training_job_name=nova_training_job_name,
         session=session,
         region=region_env,
     )

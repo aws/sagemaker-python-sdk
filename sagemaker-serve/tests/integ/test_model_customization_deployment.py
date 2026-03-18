@@ -51,8 +51,13 @@ def endpoint_name():
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_e2e_endpoints():
     """Cleanup e2e endpoints before and after tests."""
+    import os
     from sagemaker.core.resources import Endpoint
     from botocore.exceptions import ClientError
+
+    # Ensure region is set before any SageMaker session is created
+    if "AWS_DEFAULT_REGION" not in os.environ:
+        os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
 
     # Cleanup before tests
     try:
@@ -329,7 +334,9 @@ class TestModelCustomizationDeployment:
     @pytest.fixture(scope="class")
     def training_job(self, setup_config):
         """Get the training job."""
-        return TrainingJob.get(training_job_name=setup_config["training_job_name"])
+        return TrainingJob.get(
+            training_job_name=setup_config["training_job_name"],
+        )
 
     @pytest.fixture(scope="class")
     def s3_client(self, setup_config):
@@ -553,7 +560,6 @@ def test_model_customization_workflow(training_job_name):
 
 class TestBedrockNovaDeployment:
     """Test suite for deploying Nova models to Bedrock."""
-    NOVA_TRAINING_JOB_NAME = "nova-textgeneration-lite-v2-sft-20251202132123"
 
     @pytest.fixture(scope="class", autouse=True)
     def setup_region(self):
@@ -568,14 +574,15 @@ class TestBedrockNovaDeployment:
             os.environ.pop('AWS_DEFAULT_REGION', None)
 
     @pytest.fixture(scope="class")
-    def training_job(self, setup_region):
-        """Get Nova training job."""
+    def training_job(self, setup_region, nova_training_job_name):
+        """Get Nova training job using the shared get-or-create fixture."""
         import boto3
         session = boto3.Session(region_name="us-east-1")
         return TrainingJob.get(
-            training_job_name=self.NOVA_TRAINING_JOB_NAME,
+            training_job_name=nova_training_job_name,
             session=session,
-            region="us-east-1")
+            region="us-east-1",
+        )
 
     @pytest.mark.skip(reason="Bedrock Nova deployment test skipped per team decision")
     def test_bedrock_model_builder_creation(self, training_job):
