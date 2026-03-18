@@ -377,26 +377,43 @@ class TestWaitForModelActive:
 
 
 class TestCreateDeployment:
-    def test_polls_then_creates(self):
+    def test_polls_model_then_creates_then_polls_deployment(self):
         b = _builder()
         b._bedrock_client = Mock()
         b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
         b._bedrock_client.create_custom_model_deployment.return_value = {
             "customModelDeploymentArn": "arn:dep"
         }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
         result = b.create_deployment(model_arn="arn:model", deployment_name="dep")
+
         b._bedrock_client.get_custom_model.assert_called_once()
         b._bedrock_client.create_custom_model_deployment.assert_called_once()
+        b._bedrock_client.get_custom_model_deployment.assert_called_once()
         assert result["customModelDeploymentArn"] == "arn:dep"
 
     def test_passes_extra_kwargs(self):
         b = _builder()
         b._bedrock_client = Mock()
         b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
-        b._bedrock_client.create_custom_model_deployment.return_value = {}
+        b._bedrock_client.create_custom_model_deployment.return_value = {
+            "customModelDeploymentArn": "arn:dep"
+        }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
         b.create_deployment(model_arn="arn:model", deployment_name="d", commitmentDuration="ONE_MONTH")
         kw = b._bedrock_client.create_custom_model_deployment.call_args[1]
         assert kw["commitmentDuration"] == "ONE_MONTH"
+
+    def test_skips_deployment_polling_when_no_arn_in_response(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
+        b._bedrock_client.create_custom_model_deployment.return_value = {}
+
+        b.create_deployment(model_arn="arn:model", deployment_name="d")
+        b._bedrock_client.get_custom_model_deployment.assert_not_called()
 
     def test_empty_model_arn_raises(self):
         with pytest.raises(ValueError, match="model_arn is required"):
@@ -405,6 +422,47 @@ class TestCreateDeployment:
     def test_none_model_arn_raises(self):
         with pytest.raises(ValueError, match="model_arn is required"):
             _builder().create_deployment(model_arn=None, deployment_name="d")
+
+
+# ── _wait_for_deployment_active ─────────────────────────────────────────────
+
+
+class TestWaitForDeploymentActive:
+    def test_immediate_active(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+        b._wait_for_deployment_active("arn:dep")
+        b._bedrock_client.get_custom_model_deployment.assert_called_once_with(
+            customModelDeploymentIdentifier="arn:dep"
+        )
+
+    def test_polls_then_active(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_custom_model_deployment.side_effect = [
+            {"status": "Creating"},
+            {"status": "Creating"},
+            {"status": "Active"},
+        ]
+        with patch(f"{MODULE}.time.sleep"):
+            b._wait_for_deployment_active("arn:dep", poll_interval=1, max_wait=10)
+        assert b._bedrock_client.get_custom_model_deployment.call_count == 3
+
+    def test_failed_raises(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Failed"}
+        with pytest.raises(RuntimeError, match="failed"):
+            b._wait_for_deployment_active("arn:dep")
+
+    def test_timeout_raises(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Creating"}
+        with patch(f"{MODULE}.time.sleep"):
+            with pytest.raises(RuntimeError, match="Timed out"):
+                b._wait_for_deployment_active("arn:dep", poll_interval=1, max_wait=2)
 
 
 # ── deploy ──────────────────────────────────────────────────────────────────
@@ -432,10 +490,13 @@ class TestDeploy:
         b._bedrock_client.create_custom_model_deployment.return_value = {
             "customModelDeploymentArn": "arn:dep"
         }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
         result = b.deploy(custom_model_name="nova-m", role_arn="r")
         b._bedrock_client.create_custom_model.assert_called_once()
         b._bedrock_client.get_custom_model.assert_called_once()
         b._bedrock_client.create_custom_model_deployment.assert_called_once()
+        b._bedrock_client.get_custom_model_deployment.assert_called_once()
         assert result["customModelDeploymentArn"] == "arn:dep"
 
     def test_nova_via_hub_content_name(self):
@@ -449,6 +510,8 @@ class TestDeploy:
         b._bedrock_client.create_custom_model_deployment.return_value = {
             "customModelDeploymentArn": "arn:dep"
         }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
         result = b.deploy(custom_model_name="n", role_arn="r")
         assert result["customModelDeploymentArn"] == "arn:dep"
 
@@ -463,6 +526,8 @@ class TestDeploy:
         b._bedrock_client.create_custom_model_deployment.return_value = {
             "customModelDeploymentArn": "dep"
         }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
         b.deploy(custom_model_name="my-model", role_arn="r")
         kw = b._bedrock_client.create_custom_model_deployment.call_args[1]
         assert kw["modelDeploymentName"] == "my-model-deployment"
@@ -478,6 +543,8 @@ class TestDeploy:
         b._bedrock_client.create_custom_model_deployment.return_value = {
             "customModelDeploymentArn": "dep"
         }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
         tags = [{"Key": "env", "Value": "test"}]
         b.deploy(custom_model_name="m", role_arn="r", model_tags=tags)
         kw = b._bedrock_client.create_custom_model.call_args[1]

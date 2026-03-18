@@ -193,20 +193,21 @@ class BedrockModelBuilder:
         """Create a deployment for a Nova custom model.
 
         Polls the model status until it becomes Active before creating the deployment,
-        since Bedrock requires the custom model to be ready before deployment.
+        then polls the deployment status until it becomes Active.
 
         Args:
             model_arn: ARN of the custom model to deploy.
             deployment_name: Name for the deployment.
-            poll_interval: Seconds between status checks. Defaults to 60.
-            max_wait: Maximum seconds to wait for model to become Active. Defaults to 3600.
+            poll_interval: Seconds between status checks. Defaults to 60 for model,
+                30 for deployment.
+            max_wait: Maximum seconds to wait per polling phase. Defaults to 3600.
             **kwargs: Additional parameters for create_custom_model_deployment.
 
         Returns:
             Response from Bedrock create_custom_model_deployment API.
 
         Raises:
-            RuntimeError: If the model fails or times out waiting to become Active.
+            RuntimeError: If the model or deployment fails or times out.
             ValueError: If model_arn is not provided.
         """
         if not model_arn:
@@ -222,7 +223,15 @@ class BedrockModelBuilder:
         params = {k: v for k, v in params.items() if v is not None}
 
         logger.info("Creating deployment %s for model %s", deployment_name, model_arn)
-        return self._get_bedrock_client().create_custom_model_deployment(**params)
+        response = self._get_bedrock_client().create_custom_model_deployment(**params)
+
+        deployment_arn = response.get("customModelDeploymentArn")
+        if deployment_arn:
+            self._wait_for_deployment_active(
+                deployment_arn, poll_interval=poll_interval, max_wait=max_wait
+            )
+
+        return response
 
     def _wait_for_model_active(
         self, model_arn: str, poll_interval: int = 60, max_wait: int = 3600
@@ -253,6 +262,40 @@ class BedrockModelBuilder:
             elapsed += poll_interval
         raise RuntimeError(
             f"Timed out after {max_wait}s waiting for custom model {model_arn} to become Active. "
+            f"Last status: {status}"
+        )
+
+    def _wait_for_deployment_active(
+        self, deployment_arn: str, poll_interval: int = 30, max_wait: int = 3600
+    ):
+        """Poll Bedrock until the custom model deployment reaches Active status.
+
+        Args:
+            deployment_arn: ARN of the custom model deployment.
+            poll_interval: Seconds between status checks. Defaults to 30.
+            max_wait: Maximum seconds to wait. Defaults to 3600.
+
+        Raises:
+            RuntimeError: If the deployment status is Failed or the wait times out.
+        """
+        elapsed = 0
+        status = None
+        while elapsed < max_wait:
+            resp = self._get_bedrock_client().get_custom_model_deployment(
+                customModelDeploymentIdentifier=deployment_arn
+            )
+            status = resp.get("status")
+            logger.info("Deployment status: %s (elapsed %ds)", status, elapsed)
+            if status == "Active":
+                return
+            if status == "Failed":
+                raise RuntimeError(
+                    f"Deployment {deployment_arn} failed."
+                )
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+        raise RuntimeError(
+            f"Timed out after {max_wait}s waiting for deployment {deployment_arn} to become Active. "
             f"Last status: {status}"
         )
 
