@@ -13,6 +13,8 @@
 """Holds the BedrockModelBuilder class."""
 from __future__ import absolute_import
 
+import time
+import logging
 from typing import Optional, Dict, Any, Union
 
 from sagemaker.core.helper.session_helper import Session
@@ -21,6 +23,8 @@ from sagemaker.core.resources import TrainingJob, ModelPackage
 from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+
+logger = logging.getLogger(__name__)
 
 
 class BedrockModelBuilder:
@@ -79,11 +83,13 @@ class BedrockModelBuilder:
             model_tags: Optional[list] = None,
             client_request_token: Optional[str] = None,
             imported_model_kms_key_id: Optional[str] = None,
+            deployment_name: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Deploy the model to Bedrock.
         
         Automatically detects if the model is a Nova model and uses the appropriate
         Bedrock API (create_custom_model for Nova, create_model_import_job for others).
+        For Nova models, also creates a custom model deployment for inference.
 
         Args:
             job_name: Name for the model import job (non-Nova models only).
@@ -95,9 +101,13 @@ class BedrockModelBuilder:
             model_tags: Tags for the custom model (Nova models only).
             client_request_token: Unique token for idempotency (non-Nova models only).
             imported_model_kms_key_id: KMS key ID for encryption (non-Nova models only).
+            deployment_name: Name for the deployment (Nova models only). If not provided,
+                defaults to custom_model_name suffixed with '-deployment'.
 
         Returns:
-            Response from Bedrock API containing job ARN or model ARN.
+            Response from Bedrock API. For Nova models, returns the
+            create_custom_model_deployment response. For others, returns
+            the create_model_import_job response.
             
         Raises:
             ValueError: If required parameters are missing for the detected model type.
@@ -119,7 +129,11 @@ class BedrockModelBuilder:
             if model_tags:
                 params["modelTags"] = model_tags
             params = {k: v for k, v in params.items() if v is not None}
-            return self._get_bedrock_client().create_custom_model(**params)
+            create_response = self._get_bedrock_client().create_custom_model(**params)
+
+            model_arn = create_response.get("modelArn")
+            deploy_name = deployment_name or f"{custom_model_name}-deployment"
+            return self.create_deployment(model_arn=model_arn, deployment_name=deploy_name)
         else:
             model_data_source = {"s3DataSource": {"s3Uri": self.s3_model_artifacts}}
             params = {
@@ -134,6 +148,72 @@ class BedrockModelBuilder:
             }
             params = {k: v for k, v in params.items() if v is not None}
             return self._get_bedrock_client().create_model_import_job(**params)
+
+    def create_deployment(
+        self,
+        model_arn: str,
+        deployment_name: Optional[str] = None,
+        poll_interval: int = 60,
+        max_wait: int = 3600,
+        **kwargs,
+    ) -> Dict[str, Any]:
+        """Create a deployment for a Nova custom model.
+
+        Polls the model status until it becomes Active before creating the deployment,
+        since Bedrock requires the custom model to be ready before deployment.
+
+        Args:
+            model_arn: ARN of the custom model to deploy.
+            deployment_name: Name for the deployment.
+            poll_interval: Seconds between status checks. Defaults to 60.
+            max_wait: Maximum seconds to wait for model to become Active. Defaults to 3600.
+            **kwargs: Additional parameters for create_custom_model_deployment.
+
+        Returns:
+            Response from Bedrock create_custom_model_deployment API.
+
+        Raises:
+            RuntimeError: If the model fails or times out waiting to become Active.
+        """
+        self._wait_for_model_active(model_arn, poll_interval=poll_interval, max_wait=max_wait)
+
+        params = {
+            "modelDeploymentName": deployment_name,
+            "modelArn": model_arn,
+            **{k: v for k, v in kwargs.items() if v is not None},
+        }
+        params = {k: v for k, v in params.items() if v is not None}
+        return self._get_bedrock_client().create_custom_model_deployment(**params)
+
+    def _wait_for_model_active(self, model_arn: str, poll_interval: int = 60, max_wait: int = 3600):
+        """Poll Bedrock until the custom model reaches Active status.
+
+        Args:
+            model_arn: ARN of the custom model.
+            poll_interval: Seconds between status checks.
+            max_wait: Maximum seconds to wait.
+
+        Raises:
+            RuntimeError: If the model status is Failed or the wait times out.
+        """
+        elapsed = 0
+        while elapsed < max_wait:
+            resp = self._get_bedrock_client().get_custom_model(modelIdentifier=model_arn)
+            status = resp.get("modelStatus")
+            logger.info("Custom model status: %s (elapsed %ds)", status, elapsed)
+            if status == "Active":
+                return
+            if status == "Failed":
+                raise RuntimeError(
+                    f"Custom model {model_arn} failed. Cannot proceed with deployment."
+                )
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+        raise RuntimeError(
+            f"Timed out after {max_wait}s waiting for custom model {model_arn} to become Active. "
+            f"Last status: {status}"
+        )
+
 
     def _fetch_model_package(self) -> Optional[ModelPackage]:
         """Fetch the ModelPackage from the provided model.
