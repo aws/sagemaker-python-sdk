@@ -931,31 +931,37 @@ class EvaluationPipelineExecution(BaseModel):
                 header_table.add_column("Property", style="cyan bold", width=20)
                 header_table.add_column("Value", style="dim", overflow="fold")
 
-                # Extract pipeline name from execution ARN and build Studio link
+                # Extract pipeline name and region from execution ARN
                 pipeline_name = None
                 exec_id = ''
+                region = None
                 if self.arn:
                     arn_parts = self.arn.split('/')
                     if len(arn_parts) >= 4:
                         pipeline_name = arn_parts[-3]
                         exec_id = arn_parts[-1]
+                    region = self.arn.split(":")[3] if len(self.arn.split(":")) > 3 else None
                 # Use execution display name if available, fall back to self.name
                 display_name = self.name
                 if self._pipeline_execution:
                     dn = getattr(self._pipeline_execution, 'pipeline_execution_display_name', None)
                     if dn and not (hasattr(dn, '__class__') and 'Unassigned' in dn.__class__.__name__):
                         display_name = dn
+                header_table.add_row("Evaluation Job", str(display_name))
+
+                # Build links row
+                links = []
                 try:
-                    from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
-                    dummy_url = get_studio_url(self.arn.split('/')[0].replace(':pipeline', ':training-job') + '/dummy' if self.arn else 'dummy')
-                    if dummy_url and pipeline_name:
-                        base = dummy_url.rsplit('/jobs/train/', 1)[0]
-                        pipeline_url = f"{base}/jobs/evaluation/detail?pipeline_name={pipeline_name}&execution_id={exec_id}"
-                        header_table.add_row("Evaluation Job", f"[underline][link={pipeline_url}]🔗 {display_name}[/link][/underline]")
-                    else:
-                        header_table.add_row("Evaluation Job", str(display_name))
+                    from sagemaker.train.common_utils.metrics_visualizer import _is_in_studio, _get_studio_base_url
+                    if region and pipeline_name and _is_in_studio():
+                        base = _get_studio_base_url(region)
+                        if base:
+                            pipeline_url = f"{base}/jobs/evaluation/detail?pipeline_name={pipeline_name}&execution_id={exec_id}"
+                            links.append(f"[bright_blue underline][link={pipeline_url}]🔗 Pipeline Execution (Studio)[/link][/bright_blue underline]")
                 except Exception:
-                    header_table.add_row("Evaluation Job", str(display_name))
+                    pass
+                if links:
+                    header_table.add_row("Links", " | ".join(links))
 
                 # Create main status table
                 status_table = Table(show_header=False, box=None, padding=(0, 1))
@@ -1045,16 +1051,45 @@ class EvaluationPipelineExecution(BaseModel):
                     if job_arn_entries:
                         links_table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 1))
                         links_table.add_column("Step", style="cyan", width=20)
-                        links_table.add_column("Job Link", width=12)
+                        links_table.add_column("Job Link", style="dim")
+                        links_table.add_column("Logs", style="dim")
                         links_table.add_column("Job ARN", style="dim", overflow="fold")
+                        from sagemaker.train.common_utils.metrics_visualizer import (
+                            _is_in_studio, _parse_job_arn, _get_studio_base_url,
+                            get_console_job_url, get_cloudwatch_logs_url,
+                        )
+                        in_studio = _is_in_studio()
+                        studio_base = _get_studio_base_url(region) if in_studio else ""
+                        studio_path_map = {
+                            "training-job/": "jobs/train/",
+                            "processing-job/": "jobs/processing/",
+                            "transform-job/": "jobs/transform/",
+                        }
                         for entry in job_arn_entries:
+                            job_link = ""
+                            logs_link = ""
                             try:
-                                from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
-                                url = get_studio_url(entry['job_arn'])
-                                link_col = f"[underline][link={url}]🔗 link[/link][/underline]" if url else ""
+                                arn = entry['job_arn']
+                                if in_studio and studio_base:
+                                    parsed = _parse_job_arn(arn)
+                                    if parsed:
+                                        _, resource = parsed
+                                        for prefix, path in studio_path_map.items():
+                                            if resource.startswith(prefix):
+                                                job_name = resource.split("/", 1)[1]
+                                                url = f"{studio_base}/{path}{job_name}"
+                                                job_link = f"[bright_blue underline][link={url}]🔗 link[/link][/bright_blue underline]"
+                                                break
+                                else:
+                                    url = get_console_job_url(arn)
+                                    if url:
+                                        job_link = f"[bright_blue underline][link={url}]🔗 link[/link][/bright_blue underline]"
+                                cw_url = get_cloudwatch_logs_url(arn)
+                                if cw_url:
+                                    logs_link = f"[bright_blue underline][link={cw_url}]🔗 logs[/link][/bright_blue underline]"
                             except Exception:
-                                link_col = ""
-                            links_table.add_row(entry['step_name'], link_col, entry['job_arn'])
+                                pass
+                            links_table.add_row(entry['step_name'], job_link, logs_link, entry['job_arn'])
                         content_parts.append(Text(""))
                         content_parts.append(Text("Job ARNs", style="bold magenta"))
                         content_parts.append(links_table)

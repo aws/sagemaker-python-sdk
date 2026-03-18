@@ -299,34 +299,45 @@ def wait(
                     
                     clear_output(wait=True)
 
-                    # Header section with training job name
+                    # Header section with training job info
                     header_table = Table(show_header=False, box=None, padding=(0, 1))
                     header_table.add_column("Property", style="cyan bold", width=20)
                     header_table.add_column("Value", style="dim", overflow="fold")
                     
-                    # Add Studio job link
-                    try:
-                        from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
-                        studio_url = get_studio_url(training_job)
-                        header_table.add_row("TrainingJob Name", f"[underline][link={studio_url}]🔗 {training_job.training_job_name}[/link][/underline]")
-                    except Exception:
-                        header_table.add_row("TrainingJob Name", f"[bold green]{training_job.training_job_name}[/bold green]")
-                    
+                    header_table.add_row("TrainingJob Name", f"[bold green]{training_job.training_job_name}[/bold green]")
                     header_table.add_row("TrainingJob ARN", f"[dim]{training_job.training_job_arn}[/dim]")
                     
-                    # Add MLflow link to header if available
+                    # Build links row
+                    links = []
+                    try:
+                        from sagemaker.train.common_utils.metrics_visualizer import (
+                            _is_in_studio, get_console_job_url, get_cloudwatch_logs_url, get_studio_url
+                        )
+                        if _is_in_studio():
+                            studio_url = get_studio_url(training_job)
+                            if studio_url:
+                                links.append(f"[bright_blue underline][link={studio_url}]🔗 Training Job (Studio)[/link][/bright_blue underline]")
+                        else:
+                            console_url = get_console_job_url(training_job.training_job_arn)
+                            if console_url:
+                                links.append(f"[bright_blue underline][link={console_url}]🔗 Training Job[/link][/bright_blue underline]")
+                        cw_url = get_cloudwatch_logs_url(training_job.training_job_arn)
+                        if cw_url:
+                            links.append(f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs[/link][/bright_blue underline]")
+                    except Exception:
+                        pass
                     if has_mlflow_config:
                         cached_url = get_cached_mlflow_url()
                         if cached_url:
-                            exp_name = training_job.mlflow_config.mlflow_experiment_name if hasattr(training_job, 'mlflow_config') else None
-                            if exp_name and not _is_unassigned_attribute(exp_name):
-                                link_text = exp_name
-                            else:
-                                link_text = "MLflow Experiment"
-                            
-                            header_table.add_row("MLflow Experiment", f"[underline][link={cached_url}]🔗 {link_text}[/link][/underline]")
+                            links.append(f"[bright_blue underline][link={cached_url}]🔗 MLflow Experiment[/link][/bright_blue underline]")
                         elif mlflow_link_cache['error']:
                             header_table.add_row("MLflow Experiment", f"[red]{mlflow_link_cache['error']}[/red]")
+                    if has_mlflow_config:
+                        exp_name = training_job.mlflow_config.mlflow_experiment_name if hasattr(training_job, 'mlflow_config') else None
+                        if exp_name and not _is_unassigned_attribute(exp_name):
+                            header_table.add_row("MLflow Experiment", f"{exp_name}")
+                    if links:
+                        header_table.add_row("Links", " | ".join(links))
 
                     status_table = Table(show_header=False, box=None, padding=(0, 1))
                     status_table.add_column("Property", style="cyan bold", width=20)

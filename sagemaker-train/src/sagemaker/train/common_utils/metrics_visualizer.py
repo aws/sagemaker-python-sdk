@@ -2,10 +2,83 @@
 
 import logging
 from typing import Optional, List, Dict, Any
-import boto3
 from sagemaker.core.resources import TrainingJob
 
 logger = logging.getLogger(__name__)
+
+
+def _is_in_studio() -> bool:
+    """Check if running inside SageMaker Studio."""
+    from sagemaker.train.common_utils.finetune_utils import _read_domain_id_from_metadata
+    return _read_domain_id_from_metadata() is not None
+
+
+def _get_studio_base_url(region: str) -> str:
+    """Get Studio base URL, or empty string if domain not resolvable."""
+    from sagemaker.train.common_utils.finetune_utils import _read_domain_id_from_metadata
+    domain_id = _read_domain_id_from_metadata()
+    if not domain_id or not region:
+        return ""
+    return f"https://studio-{domain_id}.studio.{region}.sagemaker.aws"
+
+
+def _parse_job_arn(job_arn: str):
+    """Parse a SageMaker job ARN into (region, resource) or None."""
+    import re
+    m = re.match(r'arn:aws(?:-[a-z]+)?:sagemaker:([a-z0-9-]+):\d+:(\S+)', job_arn)
+    return (m.group(1), m.group(2)) if m else None
+
+
+def get_console_job_url(job_arn: str) -> str:
+    """Get AWS Console URL for a SageMaker job ARN.
+    
+    Args:
+        job_arn: Full ARN like arn:aws:sagemaker:us-east-1:123:training-job/my-job
+        
+    Returns:
+        Console URL or empty string.
+    """
+    parsed = _parse_job_arn(job_arn)
+    if not parsed:
+        return ""
+    region, resource = parsed
+    job_type_map = {
+        "training-job/": "#/jobs/",
+        "processing-job/": "#/processing-jobs/",
+        "transform-job/": "#/transform-jobs/",
+    }
+    for prefix, fragment in job_type_map.items():
+        if resource.startswith(prefix):
+            job_name = resource.split("/", 1)[1]
+            return f"https://{region}.console.aws.amazon.com/sagemaker/home?region={region}{fragment}{job_name}"
+    return ""
+
+
+def get_cloudwatch_logs_url(job_arn: str) -> str:
+    """Get CloudWatch Logs console URL for a SageMaker job ARN.
+    
+    Returns:
+        CloudWatch console URL or empty string.
+    """
+    parsed = _parse_job_arn(job_arn)
+    if not parsed:
+        return ""
+    region, resource = parsed
+    log_group_map = {
+        "training-job/": "/aws/sagemaker/TrainingJobs",
+        "processing-job/": "/aws/sagemaker/ProcessingJobs",
+        "transform-job/": "/aws/sagemaker/TransformJobs",
+    }
+    for prefix, log_group in log_group_map.items():
+        if resource.startswith(prefix):
+            job_name = resource.split("/", 1)[1]
+            encoded_group = log_group.replace("/", "$252F")
+            return (
+                f"https://{region}.console.aws.amazon.com/cloudwatch/home?region={region}"
+                f"#logsV2:log-groups/log-group/{encoded_group}"
+                f"$3FlogStreamNameFilter$3D{job_name}"
+            )
+    return ""
 
 
 def get_studio_url(training_job, domain_id: str = None) -> str:
@@ -43,34 +116,10 @@ def get_studio_url(training_job, domain_id: str = None) -> str:
         region = training_job.region if hasattr(training_job, 'region') and training_job.region else 'us-east-1'
         job_name = training_job.training_job_name
     
-    # Auto-detect domain if not provided
-    if not domain_id:
-        # First try Studio metadata (when running inside Studio)
-        try:
-            import os, json as _json
-            metadata_path = '/opt/ml/metadata/resource-metadata.json'
-            if os.path.exists(metadata_path):
-                with open(metadata_path, 'r') as f:
-                    domain_id = _json.load(f).get('DomainId')
-        except Exception:
-            pass
-
-    if not domain_id:
-        # Fall back to list_domains, sorted by creation time for deterministic results
-        try:
-            sm_client = boto3.client('sagemaker', region_name=region)
-            domains = sm_client.list_domains()['Domains']
-            if domains:
-                domains.sort(key=lambda d: d.get('CreationTime', ''))
-                domain_id = domains[0]['DomainId']
-        except Exception:
-            pass
-    
-    if not domain_id:
+    base = _get_studio_base_url(region)
+    if not base:
         return ""
-    
-    # Studio URL format: https://studio-{domain_id}.studio.{region}.sagemaker.aws/jobs/train/{job_name}
-    return f"https://studio-{domain_id}.studio.{region}.sagemaker.aws/jobs/train/{job_name}"
+    return f"{base}/jobs/train/{job_name}"
 
 
 def display_job_links_html(rows: list, as_html: bool = False):
