@@ -52,12 +52,15 @@ def endpoint_name():
 def cleanup_e2e_endpoints():
     """Cleanup e2e endpoints before and after tests."""
     import os
-    from sagemaker.core.resources import Endpoint
     from botocore.exceptions import ClientError
 
-    # Ensure region is set before any SageMaker session is created
-    if "AWS_DEFAULT_REGION" not in os.environ:
-        os.environ["AWS_DEFAULT_REGION"] = "us-west-2"
+    # This file's tests use us-west-2 resources. Set SAGEMAKER_REGION so the
+    # SDK's SageMakerClient creates sessions in the correct region from the start.
+    # Save/restore to avoid leaking into other test files.
+    original_sm_region = os.environ.get("SAGEMAKER_REGION")
+    os.environ["SAGEMAKER_REGION"] = "us-west-2"
+
+    from sagemaker.core.resources import Endpoint
 
     # Cleanup before tests
     try:
@@ -82,6 +85,12 @@ def cleanup_e2e_endpoints():
                 pass
     except (ClientError, Exception):
         pass
+
+    # Restore original SAGEMAKER_REGION
+    if original_sm_region:
+        os.environ["SAGEMAKER_REGION"] = original_sm_region
+    elif "SAGEMAKER_REGION" in os.environ:
+        del os.environ["SAGEMAKER_REGION"]
 
 
 @pytest.fixture(scope="module")
@@ -534,7 +543,11 @@ class TestModelCustomizationDeployment:
 
 
 def test_model_customization_workflow(training_job_name):
-    """Standalone test function for pytest discovery."""
+    """Standalone test function for pytest discovery.
+
+    Relies on SAGEMAKER_REGION being set by the cleanup_e2e_endpoints
+    session fixture (us-west-2).
+    """
     config = {
         "training_job_name": training_job_name,
         "region": "us-west-2",
