@@ -1051,25 +1051,34 @@ class EvaluationPipelineExecution(BaseModel):
                     if job_arn_entries:
                         links_table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 1))
                         links_table.add_column("Step", style="cyan", width=20)
-                        links_table.add_column("Job Link", style="dim")
-                        links_table.add_column("Logs", style="dim")
-                        links_table.add_column("Job ARN", style="dim", overflow="fold")
+                        links_table.add_column("Console", style="dim")
                         from sagemaker.train.common_utils.metrics_visualizer import (
                             _is_in_studio, _parse_job_arn, _get_studio_base_url,
                             get_console_job_url, get_cloudwatch_logs_url,
                         )
                         in_studio = _is_in_studio()
                         studio_base = _get_studio_base_url(region) if in_studio else ""
+                        if in_studio:
+                            links_table.add_column("Studio", style="dim")
+                        links_table.add_column("Logs", style="dim")
+                        links_table.add_column("Job ARN", style="dim", overflow="fold")
                         studio_path_map = {
                             "training-job/": "jobs/train/",
                             "processing-job/": "jobs/processing/",
                             "transform-job/": "jobs/transform/",
                         }
                         for entry in job_arn_entries:
-                            job_link = ""
+                            console_link = ""
                             logs_link = ""
+                            studio_link = ""
                             try:
                                 arn = entry['job_arn']
+                                url = get_console_job_url(arn)
+                                if url:
+                                    console_link = f"[bright_blue underline][link={url}]🔗 link[/link][/bright_blue underline]"
+                                cw_url = get_cloudwatch_logs_url(arn)
+                                if cw_url:
+                                    logs_link = f"[bright_blue underline][link={cw_url}]🔗 logs[/link][/bright_blue underline]"
                                 if in_studio and studio_base:
                                     parsed = _parse_job_arn(arn)
                                     if parsed:
@@ -1077,19 +1086,16 @@ class EvaluationPipelineExecution(BaseModel):
                                         for prefix, path in studio_path_map.items():
                                             if resource.startswith(prefix):
                                                 job_name = resource.split("/", 1)[1]
-                                                url = f"{studio_base}/{path}{job_name}"
-                                                job_link = f"[bright_blue underline][link={url}]🔗 link[/link][/bright_blue underline]"
+                                                s_url = f"{studio_base}/{path}{job_name}"
+                                                studio_link = f"[bright_blue underline][link={s_url}]🔗 studio[/link][/bright_blue underline]"
                                                 break
-                                else:
-                                    url = get_console_job_url(arn)
-                                    if url:
-                                        job_link = f"[bright_blue underline][link={url}]🔗 link[/link][/bright_blue underline]"
-                                cw_url = get_cloudwatch_logs_url(arn)
-                                if cw_url:
-                                    logs_link = f"[bright_blue underline][link={cw_url}]🔗 logs[/link][/bright_blue underline]"
                             except Exception:
                                 pass
-                            links_table.add_row(entry['step_name'], job_link, logs_link, entry['job_arn'])
+                            row = [entry['step_name'], console_link]
+                            if in_studio:
+                                row.append(studio_link)
+                            row.extend([logs_link, entry['job_arn']])
+                            links_table.add_row(*row)
                         content_parts.append(Text(""))
                         content_parts.append(Text("Job ARNs", style="bold magenta"))
                         content_parts.append(links_table)

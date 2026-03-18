@@ -307,37 +307,39 @@ def wait(
                     header_table.add_row("TrainingJob Name", f"[bold green]{training_job.training_job_name}[/bold green]")
                     header_table.add_row("TrainingJob ARN", f"[dim]{training_job.training_job_arn}[/dim]")
                     
-                    # Build links row
-                    links = []
+                    # Build links rows
+                    links_row1 = []
+                    links_row2 = []
                     try:
                         from sagemaker.train.common_utils.metrics_visualizer import (
                             _is_in_studio, get_console_job_url, get_cloudwatch_logs_url, get_studio_url
                         )
+                        console_url = get_console_job_url(training_job.training_job_arn)
+                        if console_url:
+                            links_row1.append(f"[bright_blue underline][link={console_url}]🔗 Training Job (Console)[/link][/bright_blue underline]")
                         if _is_in_studio():
                             studio_url = get_studio_url(training_job)
                             if studio_url:
-                                links.append(f"[bright_blue underline][link={studio_url}]🔗 Training Job (Studio)[/link][/bright_blue underline]")
-                        else:
-                            console_url = get_console_job_url(training_job.training_job_arn)
-                            if console_url:
-                                links.append(f"[bright_blue underline][link={console_url}]🔗 Training Job[/link][/bright_blue underline]")
+                                links_row1.append(f"[bright_blue underline][link={studio_url}]🔗 Training Job (Studio)[/link][/bright_blue underline]")
                         cw_url = get_cloudwatch_logs_url(training_job.training_job_arn)
                         if cw_url:
-                            links.append(f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs[/link][/bright_blue underline]")
+                            links_row2.append(f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs[/link][/bright_blue underline]")
                     except Exception:
                         pass
                     if has_mlflow_config:
                         cached_url = get_cached_mlflow_url()
                         if cached_url:
-                            links.append(f"[bright_blue underline][link={cached_url}]🔗 MLflow Experiment[/link][/bright_blue underline]")
+                            links_row2.append(f"[bright_blue underline][link={cached_url}]🔗 MLflow Experiment[/link][/bright_blue underline]")
                         elif mlflow_link_cache['error']:
                             header_table.add_row("MLflow Experiment", f"[red]{mlflow_link_cache['error']}[/red]")
                     if has_mlflow_config:
                         exp_name = training_job.mlflow_config.mlflow_experiment_name if hasattr(training_job, 'mlflow_config') else None
                         if exp_name and not _is_unassigned_attribute(exp_name):
                             header_table.add_row("MLflow Experiment", f"{exp_name}")
-                    if links:
-                        header_table.add_row("Links", " | ".join(links))
+                    if links_row1:
+                        header_table.add_row("Links", " | ".join(links_row1))
+                    if links_row2:
+                        header_table.add_row("" if links_row1 else "Links", " | ".join(links_row2))
 
                     status_table = Table(show_header=False, box=None, padding=(0, 1))
                     status_table.add_column("Property", style="cyan bold", width=20)
