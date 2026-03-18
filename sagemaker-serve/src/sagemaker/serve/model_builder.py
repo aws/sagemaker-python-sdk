@@ -4428,6 +4428,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 base_ic = InferenceComponent.get(inference_component_name=base_ic_name)
                 base_ic.wait_for_status("InService")
 
+                # Wait for endpoint to stabilize after base IC creation
+                endpoint.wait_for_status("InService")
+
             # Deploy adapter IC
             adapter_ic_name = inference_component_name or f"{endpoint_name}-adapter"
             adapter_s3_uri = getattr(self, "_adapter_s3_uri", None)
@@ -4439,21 +4442,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ),
             )
 
-            for attempt in range(3):
-                try:
-                    InferenceComponent.create(
-                        inference_component_name=adapter_ic_name,
-                        endpoint_name=endpoint_name,
-                        specification=adapter_ic_spec,
-                    )
-                    break
-                except ClientError as e:
-                    if "Could not find endpoint" in str(e) and attempt < 2:
-                        import time
-                        logger.info("Endpoint not yet visible, retrying in %ds...", 5 * (attempt + 1))
-                        time.sleep(5 * (attempt + 1))
-                    else:
-                        raise
+            InferenceComponent.create(
+                inference_component_name=adapter_ic_name,
+                endpoint_name=endpoint_name,
+                specification=adapter_ic_spec,
+            )
             logger.info("Created adapter InferenceComponent: '%s'", adapter_ic_name)
 
         else:
