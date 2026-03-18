@@ -1465,8 +1465,6 @@ class HyperparameterTuner(object):
                 if not any(c.channel_name == channel.channel_name for c in input_data_config):
                     input_data_config.append(channel)
 
-<<<<<<< feature_kms_encryped_tuner_output
-=======
         # Include channels built by _prepare_model_trainer_for_tuning (sm_drivers, code)
         if hasattr(model_trainer, "_tuner_channels") and model_trainer._tuner_channels:
             for channel in model_trainer._tuner_channels:
@@ -1482,7 +1480,6 @@ class HyperparameterTuner(object):
             )
         )
 
->>>>>>> master
         # Build resource config
         resource_config = ResourceConfig(
             instance_type=(
