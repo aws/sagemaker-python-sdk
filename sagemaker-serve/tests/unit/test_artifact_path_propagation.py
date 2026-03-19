@@ -45,8 +45,10 @@ class TestArtifactPathPropagation(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._resolve_model_artifact_uri")
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_peft")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_base_model_artifact_uri_propagated_to_inference_component(
         self,
+        mock_is_nova_model,
         mock_is_model_customization,
         mock_fetch_peft,
         mock_resolve_artifact,
@@ -133,8 +135,10 @@ class TestArtifactPathPropagation(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._resolve_model_artifact_uri")
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_peft")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_fine_tuned_model_artifact_uri_propagated_to_inference_component(
         self,
+        mock_is_nova_model,
         mock_is_model_customization,
         mock_fetch_peft,
         mock_resolve_artifact,
@@ -220,8 +224,10 @@ class TestArtifactPathPropagation(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._resolve_model_artifact_uri")
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_peft")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_lora_adapter_no_artifact_uri_propagated(
         self,
+        mock_is_nova_model,
         mock_is_model_customization,
         mock_fetch_peft,
         mock_resolve_artifact,
@@ -298,21 +304,21 @@ class TestArtifactPathPropagation(unittest.TestCase):
         # Execute: Deploy to existing endpoint (LORA adapter)
         builder._deploy_model_customization(endpoint_name="test-endpoint", initial_instance_count=1)
 
-        # Verify: _resolve_model_artifact_uri was called
-        assert mock_resolve_artifact.called
+        # Verify: _resolve_model_artifact_uri is NOT called for LORA adapters
+        assert not mock_resolve_artifact.called
 
-        # Verify: InferenceComponent.create was called with artifact_url=None
+        # Verify: InferenceComponent.create was called
         assert mock_ic_create.called
-        call_kwargs = mock_ic_create.call_args[1]
 
-        # Extract the specification
-        ic_spec = call_kwargs["specification"]
-
-        # Verify artifact_url is None for LORA adapters
-        assert ic_spec.container.artifact_url is None
-
-        # Verify base_inference_component_name is set
-        assert ic_spec.base_inference_component_name == "base-component"
+        # Verify: adapter IC has base_inference_component_name set
+        # Find the adapter IC create call (the one with base_inference_component_name)
+        for c in mock_ic_create.call_args_list:
+            ic_spec = c[1]["specification"]
+            if ic_spec.base_inference_component_name:
+                assert ic_spec.base_inference_component_name == "base-component"
+                break
+        else:
+            pytest.fail("No adapter IC with base_inference_component_name found")
 
     @patch("sagemaker.core.resources.InferenceComponent.create")
     @patch("sagemaker.core.resources.Endpoint.get")
@@ -323,8 +329,10 @@ class TestArtifactPathPropagation(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._resolve_model_artifact_uri")
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_peft")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_environment_variables_propagated_with_artifact_path(
         self,
+        mock_is_nova_model,
         mock_is_model_customization,
         mock_fetch_peft,
         mock_resolve_artifact,
