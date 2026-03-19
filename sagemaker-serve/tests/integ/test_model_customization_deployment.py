@@ -51,8 +51,16 @@ def endpoint_name():
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_e2e_endpoints():
     """Cleanup e2e endpoints before and after tests."""
-    from sagemaker.core.resources import Endpoint
+    import os
     from botocore.exceptions import ClientError
+
+    # This file's tests use us-west-2 resources. Set SAGEMAKER_REGION so the
+    # SDK's SageMakerClient creates sessions in the correct region from the start.
+    # Save/restore to avoid leaking into other test files.
+    original_sm_region = os.environ.get("SAGEMAKER_REGION")
+    os.environ["SAGEMAKER_REGION"] = "us-west-2"
+
+    from sagemaker.core.resources import Endpoint
 
     # Cleanup before tests
     try:
@@ -77,6 +85,12 @@ def cleanup_e2e_endpoints():
                 pass
     except (ClientError, Exception):
         pass
+
+    # Restore original SAGEMAKER_REGION
+    if original_sm_region:
+        os.environ["SAGEMAKER_REGION"] = original_sm_region
+    elif "SAGEMAKER_REGION" in os.environ:
+        del os.environ["SAGEMAKER_REGION"]
 
 
 @pytest.fixture(scope="module")
@@ -340,7 +354,9 @@ class TestModelCustomizationDeployment:
     @pytest.fixture(scope="class")
     def training_job(self, setup_config):
         """Get the training job."""
-        return TrainingJob.get(training_job_name=setup_config["training_job_name"])
+        return TrainingJob.get(
+            training_job_name=setup_config["training_job_name"],
+        )
 
     @pytest.fixture(scope="class")
     def s3_client(self, setup_config):
@@ -538,7 +554,11 @@ class TestModelCustomizationDeployment:
 
 
 def test_model_customization_workflow(training_job_name):
-    """Standalone test function for pytest discovery."""
+    """Standalone test function for pytest discovery.
+
+    Relies on SAGEMAKER_REGION being set by the cleanup_e2e_endpoints
+    session fixture (us-west-2).
+    """
     config = {
         "training_job_name": training_job_name,
         "region": "us-west-2",
@@ -562,51 +582,3 @@ def test_model_customization_workflow(training_job_name):
         raise
 
 
-class TestBedrockNovaDeployment:
-    """Test suite for deploying Nova models to Bedrock."""
-    NOVA_TRAINING_JOB_NAME = "nova-textgeneration-lite-v2-sft-20251202132123"
-
-    @pytest.fixture(scope="class", autouse=True)
-    def setup_region(self):
-        """Set region to us-east-1 for Nova tests."""
-        import os
-        original_region = os.environ.get('AWS_DEFAULT_REGION')
-        os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
-        yield
-        if original_region:
-            os.environ['AWS_DEFAULT_REGION'] = original_region
-        else:
-            os.environ.pop('AWS_DEFAULT_REGION', None)
-
-    @pytest.fixture(scope="class")
-    def training_job(self, setup_region):
-        """Get Nova training job."""
-        import boto3
-        session = boto3.Session(region_name="us-east-1")
-        return TrainingJob.get(
-            training_job_name=self.NOVA_TRAINING_JOB_NAME,
-            session=session,
-            region="us-east-1")
-
-    @pytest.mark.skip(reason="Bedrock Nova deployment test skipped per team decision")
-    def test_bedrock_model_builder_creation(self, training_job):
-        """Test BedrockModelBuilder creation with Nova model."""
-        bedrock_builder = BedrockModelBuilder(model=training_job)
-        assert bedrock_builder is not None
-        assert bedrock_builder.model == training_job
-        assert bedrock_builder.s3_model_artifacts is not None
-
-    @pytest.mark.skip(reason="Bedrock Nova deployment test skipped per team decision")
-    @pytest.mark.slow
-    def test_nova_model_deployment(self, training_job):
-        """Test Nova model deployment to Bedrock."""
-        from sagemaker.core.helper.session_helper import get_execution_role
-        bedrock_builder = BedrockModelBuilder(model=training_job)
-        rand = random.randint(1000, 9999)
-        response = bedrock_builder.deploy(
-            custom_model_name=f"test-nova-deployment-{rand}",
-            role_arn=get_execution_role()
-        )
-
-        assert response is not None
-        assert "modelArn" in response or "jobArn" in response
