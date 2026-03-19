@@ -4,18 +4,21 @@
 
 import json
 import logging
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import botocore.exceptions
 
 from sagemaker.core.resources import FeatureGroup
 from sagemaker.core.resources import Base
 from sagemaker.core.shapes import (
+    AddOnlineStoreReplicaAction,
     FeatureDefinition,
     OfflineStoreConfig,
     OnlineStoreConfig,
+    OnlineStoreConfigUpdate,
     Tag,
     ThroughputConfig,
+    ThroughputConfigUpdate,
 )
 from sagemaker.core.shapes import Unassigned
 from sagemaker.core.helper.pipeline_variable import StrPipeVar
@@ -25,6 +28,23 @@ from boto3 import Session
 
 
 logger = logging.getLogger(__name__)
+
+
+class IcebergProperties(Base):
+    """Configuration for Iceberg table properties in a Feature Group offline store.
+
+    Use this to customize Iceberg table behavior such as compaction settings,
+    snapshot retention, and other Iceberg-specific configurations.
+
+    Attributes:
+        properties: A dictionary mapping Iceberg property names to their values.
+            Common properties include:
+            - 'write.target-file-size-bytes': Target size for data files
+            - 'commit.manifest.min-count-to-merge': Min manifests before merging
+            - 'history.expire.max-snapshot-age-ms': Max age for snapshot expiration
+    """
+
+    properties: Optional[Dict[str, str]] = None
 
 
 class LakeFormationConfig(Base):
@@ -56,6 +76,9 @@ class LakeFormationConfig(Base):
 
 
 class FeatureGroupManager(FeatureGroup):
+
+    # Attribute for Iceberg table properties (populated by get() when include_iceberg_properties=True)
+    iceberg_properties: Optional[IcebergProperties] = None
 
     # Inherit parent docstring and append our additions
     if FeatureGroup.__doc__ and __doc__:
@@ -641,66 +664,239 @@ class FeatureGroupManager(FeatureGroup):
 
         return results
 
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        feature_group_name: StrPipeVar,
-        record_identifier_feature_name: StrPipeVar,
-        event_time_feature_name: StrPipeVar,
-        feature_definitions: List[FeatureDefinition],
-        online_store_config: Optional[OnlineStoreConfig] = None,
-        offline_store_config: Optional[OfflineStoreConfig] = None,
-        throughput_config: Optional[ThroughputConfig] = None,
-        role_arn: Optional[StrPipeVar] = None,
-        description: Optional[StrPipeVar] = None,
-        tags: Optional[List[Tag]] = None,
-        use_pre_prod_offline_store_replicator_lambda: Optional[bool] = None,
-        lake_formation_config: Optional[LakeFormationConfig] = None,
+    def _get_iceberg_properties(
+        self,
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
-    ) -> Optional["FeatureGroup"]:
+    ) -> Dict[str, any]:
         """
-        Create a FeatureGroup resource with optional Lake Formation governance.
+        Fetch the current Glue table definition for the Feature Group's Iceberg offline store.
+
+        Validates that the Feature Group has an Iceberg-formatted offline store,
+        retrieves the Glue table, and strips non-TableInput fields.
 
         Parameters:
-            feature_group_name: The name of the FeatureGroup.
-            record_identifier_feature_name: The name of the Feature whose value uniquely
-                identifies a Record.
-            event_time_feature_name: The name of the feature that stores the EventTime.
-            feature_definitions: A list of Feature names and types.
-            online_store_config: Configuration for the OnlineStore.
-            offline_store_config: Configuration for the OfflineStore.
-            throughput_config: Throughput configuration.
-            role_arn: IAM execution role ARN for the OfflineStore.
-            description: A free-form description of the FeatureGroup.
-            tags: Tags used to identify Features in each FeatureGroup.
-            use_pre_prod_offline_store_replicator_lambda: Pre-prod replicator flag.
-            lake_formation_config: Optional LakeFormationConfig to configure Lake Formation
-                governance. When enabled=True, requires offline_store_config and role_arn.
-            session: Boto3 session.
-            region: Region name.
+            session: Optional boto3 session. If not provided, uses default credentials.
+            region: Optional AWS region. If not provided, uses default region.
+
+        Returns:
+            Dict with keys:
+            - 'database_name': The Glue database name
+            - 'table_name': The Glue table name
+            - 'table_input': The cleaned Glue TableInput dict
+            - 'glue_client': The Glue client used for the request
+
+        Raises:
+            ValueError: If offline_store_config is not configured or table_format is not Iceberg.
+            RuntimeError: If the Glue get_table call fails.
+        """
+        # Validate offline store is configured
+        if self.offline_store_config is None or self.offline_store_config == Unassigned():
+            raise ValueError(
+                "Cannot update Iceberg properties: offline_store_config is not configured"
+            )
+
+        # Validate table format is Iceberg
+        if (
+            self.offline_store_config.table_format is None
+            or str(self.offline_store_config.table_format) != "Iceberg"
+        ):
+            raise ValueError(
+                "Cannot update Iceberg properties: table_format must be 'Iceberg'"
+            )
+
+        # Get database and table name from data_catalog_config
+        data_catalog_config = self.offline_store_config.data_catalog_config
+        if data_catalog_config is None:
+            raise ValueError(
+                "Cannot update Iceberg properties: data_catalog_config is not available"
+            )
+
+        database_name = str(data_catalog_config.database)
+        table_name = str(data_catalog_config.table_name)
+
+        # Get Glue client
+        if session is None:
+            session = Session()
+
+        region_str = str(region) if region else session.region_name
+        glue_client = session.client("glue", region_name=region_str)
+
+        try:
+            # Get current table definition
+            response = glue_client.get_table(
+                DatabaseName=database_name,
+                Name=table_name,
+            )
+            table_input = response["Table"]
+
+            # Remove fields that shouldn't be in TableInput
+            fields_to_remove = [
+                "DatabaseName",
+                "CreateTime",
+                "UpdateTime",
+                "CreatedBy",
+                "IsRegisteredWithLakeFormation",
+                "CatalogId",
+                "VersionId",
+                "FederatedTable",
+            ]
+            for field in fields_to_remove:
+                table_input.pop(field, None)
+
+            return {
+                "database_name": database_name,
+                "table_name": table_name,
+                "table_input": table_input,
+                "glue_client": glue_client,
+            }
+
+        except botocore.exceptions.ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            error_message = e.response.get("Error", {}).get("Message", str(e))
+            raise RuntimeError(
+                f"Failed to update Iceberg properties for {self.feature_group_name}: "
+                f"[{error_code}] {error_message}"
+            ) from e
+
+    def _update_iceberg_properties(
+        self,
+        iceberg_properties: IcebergProperties,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Dict[str, any]:
+        """
+        Update Iceberg table properties for the Feature Group's offline store.
+
+        This method updates the Glue table properties for an Iceberg-formatted
+        offline store. The Feature Group must have an offline store configured
+        with table_format='Iceberg'.
+
+        Parameters:
+            iceberg_properties: IcebergProperties object containing the properties to set.
+            session: Optional boto3 session. If not provided, uses default credentials.
+            region: Optional AWS region. If not provided, uses default region.
+
+        Returns:
+            Dict containing the update results with keys:
+            - 'database': The Glue database name
+            - 'table': The Glue table name
+            - 'properties_updated': The properties that were updated
+
+        Raises:
+            ValueError: If offline_store_config is not configured or table_format is not Iceberg.
+            RuntimeError: If the Glue table update fails.
+        """
+        # Validate iceberg_properties has properties to update
+        if iceberg_properties is None or not iceberg_properties.properties:
+            raise ValueError(
+                "iceberg_properties must contain at least one property to update"
+            )
+
+        result = self._get_iceberg_properties(session=session, region=region)
+        database_name = result["database_name"]
+        table_name = result["table_name"]
+        table_input = result["table_input"]
+        glue_client = result["glue_client"]
+
+        logger.info(
+            f"Updating Iceberg properties for {self.feature_group_name} "
+            f"(database={database_name}, table={table_name})"
+        )
+
+        try:
+            # Update parameters with new Iceberg properties
+            if "Parameters" not in table_input:
+                table_input["Parameters"] = {}
+
+            for key, value in iceberg_properties.properties.items():
+                table_input["Parameters"][key] = value
+
+            # Update the table
+            glue_client.update_table(
+                DatabaseName=database_name,
+                TableInput=table_input,
+            )
+
+            logger.info(
+                f"Successfully updated Iceberg properties for {self.feature_group_name}"
+            )
+
+            return {
+                "database": database_name,
+                "table": table_name,
+                "properties_updated": iceberg_properties.properties,
+            }
+
+        except botocore.exceptions.ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "Unknown")
+            error_message = e.response.get("Error", {}).get("Message", str(e))
+            raise RuntimeError(
+                f"Failed to update Iceberg properties for {self.feature_group_name}: "
+                f"[{error_code}] {error_message}"
+            ) from e
+
+    @classmethod
+    def get(
+        cls,
+        *args,
+        include_iceberg_properties: bool = False,
+        **kwargs,
+    ) -> Optional["FeatureGroup"]:
+        """
+        Get a FeatureGroup resource with optional Iceberg property retrieval.
+
+        Accepts all parameters from FeatureGroup.get(), plus:
+
+        Parameters:
+            include_iceberg_properties: If True, fetches Iceberg table properties
+                from Glue and stores them in the iceberg_properties attribute.
+                Only applies to Feature Groups with table_format='Iceberg'.
 
         Returns:
             The FeatureGroup resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit.
-                For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
         """
+        session = kwargs.get("session")
+        region = kwargs.get("region")
+
+        feature_group = super().get(*args, **kwargs)
+
+        if include_iceberg_properties:
+            result = feature_group._get_iceberg_properties(session=session, region=region)
+            feature_group.iceberg_properties = IcebergProperties(
+                properties=result["table_input"].get("Parameters", {})
+            )
+
+        return feature_group
+
+    @classmethod
+    def create(
+        cls,
+        *args,
+        lake_formation_config: Optional[LakeFormationConfig] = None,
+        iceberg_properties: Optional[IcebergProperties] = None,
+        **kwargs,
+    ) -> Optional["FeatureGroup"]:
+        """
+        Create a FeatureGroup resource with optional Lake Formation governance and Iceberg properties.
+
+        Accepts all parameters from FeatureGroup.create(), plus:
+
+        Parameters:
+            lake_formation_config: Optional LakeFormationConfig to configure Lake Formation
+                governance. When enabled=True, requires offline_store_config and role_arn.
+            iceberg_properties: Optional IcebergProperties to configure Iceberg table
+                properties for the offline store. Requires offline_store_config with
+                table_format='Iceberg'.
+
+        Returns:
+            The FeatureGroup resource.
+        """
+        offline_store_config = kwargs.get("offline_store_config")
+        role_arn = kwargs.get("role_arn")
+        session = kwargs.get("session")
+        region = kwargs.get("region")
+
         # Validation for Lake Formation
         if lake_formation_config is not None and lake_formation_config.enabled:
             if offline_store_config is None:
@@ -720,31 +916,21 @@ class FeatureGroupManager(FeatureGroup):
                     "when use_service_linked_role is False"
                 )
 
-        # Build kwargs, only including non-None values so parent uses its defaults
-        create_kwargs = {
-            "feature_group_name": feature_group_name,
-            "record_identifier_feature_name": record_identifier_feature_name,
-            "event_time_feature_name": event_time_feature_name,
-            "feature_definitions": feature_definitions,
-            "session": session,
-            "region": region,
-        }
-        if online_store_config is not None:
-            create_kwargs["online_store_config"] = online_store_config
-        if offline_store_config is not None:
-            create_kwargs["offline_store_config"] = offline_store_config
-        if throughput_config is not None:
-            create_kwargs["throughput_config"] = throughput_config
-        if role_arn is not None:
-            create_kwargs["role_arn"] = role_arn
-        if description is not None:
-            create_kwargs["description"] = description
-        if tags is not None:
-            create_kwargs["tags"] = tags
-        if use_pre_prod_offline_store_replicator_lambda is not None:
-            create_kwargs["use_pre_prod_offline_store_replicator_lambda"] = use_pre_prod_offline_store_replicator_lambda
+        # Validation for Iceberg properties
+        if iceberg_properties is not None and iceberg_properties.properties:
+            if offline_store_config is None:
+                raise ValueError(
+                    "iceberg_properties requires offline_store_config to be configured"
+                )
+            if (
+                offline_store_config.table_format is None
+                or str(offline_store_config.table_format) != "Iceberg"
+            ):
+                raise ValueError(
+                    "iceberg_properties requires offline_store_config.table_format to be 'Iceberg'"
+                )
 
-        feature_group = super().create(**create_kwargs)
+        feature_group = super().create(*args, **kwargs)
 
         # Enable Lake Formation if requested
         if lake_formation_config is not None and lake_formation_config.enabled:
@@ -757,4 +943,67 @@ class FeatureGroupManager(FeatureGroup):
                 show_s3_policy=lake_formation_config.show_s3_policy,
                 disable_hybrid_access_mode=lake_formation_config.disable_hybrid_access_mode,
             )
+        
+        # Update Iceberg properties if requested
+        if iceberg_properties is not None and iceberg_properties.properties:
+            # Wait for feature group to be created before updating Iceberg properties
+            feature_group.wait_for_status(target_status="Created")
+            feature_group._update_iceberg_properties(
+                iceberg_properties=iceberg_properties,
+                session=session,
+                region=region,
+            )
+
         return feature_group
+
+    def update(
+        self,
+        *args,
+        iceberg_properties: Optional[IcebergProperties] = None,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+        **kwargs,
+    ) -> Optional["FeatureGroup"]:
+        """
+        Update a FeatureGroup resource with optional Iceberg property updates.
+
+        Accepts all parameters from FeatureGroup.update(), plus:
+
+        Parameters:
+            iceberg_properties: Optional IcebergProperties to update Iceberg table
+                properties for the offline store. Requires offline_store_config with
+                table_format='Iceberg'.
+            session: Boto3 session for Iceberg property updates.
+            region: Region name for Iceberg property updates.
+
+        Returns:
+            The FeatureGroup resource.
+        """
+
+        offline_store_config = self.offline_store_config
+
+        # Validation for Iceberg properties
+        if iceberg_properties is not None and iceberg_properties.properties:
+            if offline_store_config is None or offline_store_config == Unassigned():
+                raise ValueError(
+                    "iceberg_properties requires offline_store_config to be configured"
+                )
+            if (
+                offline_store_config.table_format is None
+                or str(offline_store_config.table_format) != "Iceberg"
+            ):
+                raise ValueError(
+                    "iceberg_properties requires offline_store_config.table_format to be 'Iceberg'"
+                )
+
+        result = super().update(*args, **kwargs)
+
+        # Update Iceberg properties if requested
+        if iceberg_properties is not None and iceberg_properties.properties:
+            self._update_iceberg_properties(
+                iceberg_properties=iceberg_properties,
+                session=session,
+                region=region,
+            )
+
+        return result
