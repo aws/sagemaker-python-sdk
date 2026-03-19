@@ -1050,7 +1050,6 @@ class FeatureGroup:
         self.feature_definitions = feature_definitions
         return self.feature_definitions
 
-    @_telemetry_emitter(feature=Feature.FEATURE_STORE_V2, func_name="feature_group.get_record")
     def get_record(
         self,
         record_identifier_value_as_string: str,
