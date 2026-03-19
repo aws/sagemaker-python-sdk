@@ -1,4 +1,12 @@
 # Changelog
+## v1.6.0 (2026-03-19)
+
+### Bug fixes and Other Changes
+
+- **Fix**: Include sm_drivers channel in HyperparameterTuner jobs (#5634)
+- **Fix**: resolve PermissionError during local mode cleanup of root-owned Docker files (#5629)
+- **Fix**: Add PipelineVariable support to ModelTrainer fields (#5608)
+  
 ## v1.5.0 (2026-03-02)
 
 ### Features
