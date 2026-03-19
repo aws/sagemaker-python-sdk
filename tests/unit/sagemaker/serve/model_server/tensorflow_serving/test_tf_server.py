@@ -66,7 +66,6 @@ class TensorflowservingServerTests(TestCase):
             environment={
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
                 "LOCAL_PYTHON": platform.python_version(),
                 "KEY": "VALUE",
             },
@@ -97,5 +96,4 @@ class TensorflowservingServerTests(TestCase):
 
         mock_upload.assert_called_once_with(mock_session, MODEL_PATH, "mock_model_data_uri", ANY)
         self.assertEqual(s3_upload_path, S3_URI)
-        self.assertEqual(env_vars.get("SAGEMAKER_SERVE_SECRET_KEY"), SECRET_KEY)
         self.assertEqual(env_vars.get("LOCAL_PYTHON"), "3.8")
