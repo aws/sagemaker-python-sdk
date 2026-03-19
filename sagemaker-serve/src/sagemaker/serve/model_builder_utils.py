@@ -131,7 +131,6 @@ from sagemaker.core.deserializers import JSONDeserializer
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.builder.requirements_manager import RequirementsManager
 from sagemaker.serve.validations.check_integrity import (
-    generate_secret_key,
     compute_hash,
 )
 from sagemaker.core.remote_function.core.serialization import _MetaData
@@ -2884,19 +2883,16 @@ class _ModelBuilderUtils:
             pkl_path = Path(self.model_path).joinpath("model_repository").joinpath("model")
             save_pkl(pkl_path, (self.inference_spec, self.schema_builder))
     
-    def _hmac_signing(self):
-        """Perform HMAC signing on picke file for integrity check"""
-        secret_key = generate_secret_key()
+    def _compute_integrity_hash(self):
+        """Compute SHA-256 hash of serve.pkl and store in metadata.json for integrity check."""
         pkl_path = Path(self.model_path).joinpath("model_repository").joinpath("model")
 
         with open(str(pkl_path.joinpath("serve.pkl")), "rb") as f:
             buffer = f.read()
-        hash_value = compute_hash(buffer=buffer, secret_key=secret_key)
+        hash_value = compute_hash(buffer=buffer)
 
         with open(str(pkl_path.joinpath("metadata.json")), "wb") as metadata:
             metadata.write(_MetaData(hash_value).to_json())
-
-        self.secret_key = secret_key
 
     def _generate_config_pbtxt(self, pkl_path: Path):
         """Generate Triton config.pbtxt file."""
@@ -3100,7 +3096,7 @@ class _ModelBuilderUtils:
 
             self._pack_conda_env(pkl_path=pkl_path)
 
-            self._hmac_signing()
+            self._compute_integrity_hash()
 
             return
 
