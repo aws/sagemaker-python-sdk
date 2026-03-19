@@ -643,7 +643,7 @@ class ResourcesCodeGen:
                 #  exclude resource attributes from documentation
                 continue
             else:
-                if documentation == None:
+                if documentation is None:
                     documentation_string += f"{attribute_snake}: \n"
                 else:
                     documentation_string += f"{attribute_snake}: {documentation}\n"
