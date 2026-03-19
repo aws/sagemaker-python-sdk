@@ -1,7 +1,6 @@
 pytest
 pytest-cov
 pytest-xdist
-hypothesis
 mock
 pydantic==2.11.9
 pydantic_core==2.33.2
