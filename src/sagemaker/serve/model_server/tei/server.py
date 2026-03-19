@@ -39,9 +39,6 @@ class LocalTeiServing:
             secret_key: Secret key to use for authentication
             env_vars: Environment variables to set
         """
-        if env_vars and secret_key:
-            env_vars["SAGEMAKER_SERVE_SECRET_KEY"] = secret_key
-
         self.container = client.containers.run(
             image,
             shm_size=_SHM_SIZE,

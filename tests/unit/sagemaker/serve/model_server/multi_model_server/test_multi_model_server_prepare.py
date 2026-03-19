@@ -68,7 +68,6 @@ class MultiModelServerPrepareTests(TestCase):
                 "KEY": "VALUE",
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": "secret_key",
                 "LOCAL_PYTHON": platform.python_version(),
             },
         )

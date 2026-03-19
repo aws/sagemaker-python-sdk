@@ -26,10 +26,12 @@ class TritonPythonModel:
     def initialize(self, args: dict) -> None:
         """Placeholder docstring"""
         serve_path = Path(TRITON_MODEL_DIR).joinpath("serve.pkl")
+        metadata_path = Path(TRITON_MODEL_DIR).joinpath("metadata.json")
         with open(str(serve_path), mode="rb") as f:
-            inference_spec, schema_builder = cloudpickle.load(f)
+            buffer = f.read()
 
-        # TODO: HMAC signing for integrity check
+        perform_integrity_check(buffer=buffer, metadata_path=metadata_path)
+        inference_spec, schema_builder = cloudpickle.loads(buffer)
 
         self.inference_spec = inference_spec
         self.schema_builder = schema_builder
