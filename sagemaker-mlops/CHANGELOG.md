@@ -1,4 +1,10 @@
 # Changelog
+## v1.6.0 (2026-03-19)
+
+### Features
+
+- **Feature Processor**: Port feature processor to v3
+  
 ## v1.5.0 (2026-03-02)
 
 - feat: Add Feature Store Support to V3 (#5539)
