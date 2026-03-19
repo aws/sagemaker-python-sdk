@@ -56,10 +56,9 @@ class LakeFormationConfig(Base):
 
 
 class FeatureGroupManager(FeatureGroup):
+    """FeatureGroup with extended management capabilities."""
 
-    # Inherit parent docstring and append our additions
-    if FeatureGroup.__doc__ and __doc__:
-        __doc__ = FeatureGroup.__doc__
+    _lf_client_cache: dict
 
     @staticmethod
     def _s3_uri_to_arn(s3_uri: str, region: Optional[str] = None) -> str:
@@ -221,8 +220,8 @@ class FeatureGroupManager(FeatureGroup):
             A boto3 Lake Formation client.
         """
         cache_key = (id(session), region)
-        if not hasattr(self, "_lf_client_cache"):
-            self._lf_client_cache: dict = {}
+        if not hasattr(self, "_lf_client_cache") or self._lf_client_cache is None:
+            self._lf_client_cache = {}
 
         if cache_key not in self._lf_client_cache:
             boto_session = session or Session()
@@ -470,14 +469,14 @@ class FeatureGroupManager(FeatureGroup):
             )
 
         # Validate offline store exists
-        if self.offline_store_config is None or self.offline_store_config == Unassigned():
+        if self.offline_store_config is None or isinstance(self.offline_store_config, Unassigned):
             raise ValueError(
                 f"Feature Group '{self.feature_group_name}' does not have an offline store configured. "
                 "Lake Formation can only be enabled for Feature Groups with offline stores."
             )
 
         # Get role ARN from Feature Group config
-        if self.role_arn is None or self.role_arn == Unassigned():
+        if self.role_arn is None or isinstance(self.role_arn, Unassigned):
             raise ValueError(
                 f"Feature Group '{self.feature_group_name}' does not have a role_arn configured. "
                 "Lake Formation requires a role ARN to grant permissions."
@@ -493,7 +492,7 @@ class FeatureGroupManager(FeatureGroup):
             raise ValueError("Offline store S3 configuration is missing")
 
         resolved_s3_uri = s3_config.resolved_output_s3_uri
-        if resolved_s3_uri is None or resolved_s3_uri == Unassigned():
+        if resolved_s3_uri is None or isinstance(resolved_s3_uri, Unassigned):
             raise ValueError(
                 "Resolved S3 URI not available. Ensure the Feature Group is in 'Created' status."
             )
@@ -599,6 +598,13 @@ class FeatureGroupManager(FeatureGroup):
 
         # Generate and optionally print S3 deny policy
         if show_s3_policy:
+            # Validate feature_group_arn is available for account ID extraction
+            if self.feature_group_arn is None or isinstance(self.feature_group_arn, Unassigned):
+                raise ValueError(
+                    "Feature Group ARN is required to generate S3 policy. "
+                    "Ensure the Feature Group is in 'Created' status."
+                )
+
             # Extract bucket name and prefix from resolved S3 URI using core utility
             bucket_name, s3_prefix = parse_s3_url(resolved_s3_uri_str)
 
@@ -659,9 +665,9 @@ class FeatureGroupManager(FeatureGroup):
         lake_formation_config: Optional[LakeFormationConfig] = None,
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
-    ) -> Optional["FeatureGroup"]:
+    ) -> Optional["FeatureGroupManager"]:
         """
-        Create a FeatureGroup resource with optional Lake Formation governance.
+        Create a FeatureGroupManager resource with optional Lake Formation governance.
 
         Parameters:
             feature_group_name: The name of the FeatureGroup.
@@ -682,7 +688,7 @@ class FeatureGroupManager(FeatureGroup):
             region: Region name.
 
         Returns:
-            The FeatureGroup resource.
+            The FeatureGroupManager resource.
 
         Raises:
             botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
@@ -744,7 +750,10 @@ class FeatureGroupManager(FeatureGroup):
         if use_pre_prod_offline_store_replicator_lambda is not None:
             create_kwargs["use_pre_prod_offline_store_replicator_lambda"] = use_pre_prod_offline_store_replicator_lambda
 
-        feature_group = super().create(**create_kwargs)
+        super().create(**create_kwargs)
+
+        # Get as FeatureGroupManager instance (super().create() returns FeatureGroup)
+        feature_group = cls.get(feature_group_name=feature_group_name, session=session, region=region)
 
         # Enable Lake Formation if requested
         if lake_formation_config is not None and lake_formation_config.enabled:

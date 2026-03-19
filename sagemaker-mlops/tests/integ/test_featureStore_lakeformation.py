@@ -498,7 +498,7 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance with policy output
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group"):
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
             result = fg.enable_lake_formation(show_s3_policy=True)
 
         # Verify all phases completed successfully
@@ -573,7 +573,7 @@ def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region,
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance WITHOUT policy output (default)
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group"):
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
             result = fg.enable_lake_formation()
 
         # Verify all phases completed successfully
@@ -624,7 +624,7 @@ def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, regi
 
         # Enable Lake Formation with custom registration role and policy output
         # Using the same role for both execution and registration for test simplicity
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group"):
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
             result = fg.enable_lake_formation(
                 use_service_linked_role=False,
                 registration_role_arn=role,

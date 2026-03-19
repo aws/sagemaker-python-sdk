@@ -1,8 +1,9 @@
-"""Unit tests for Lake Formation integration with FeatureGroupManager."""
+"""Unit tests for FeatureGroupManager."""
 from unittest.mock import MagicMock, patch
 
 import botocore.exceptions
 import pytest
+from boto3 import Session
 
 from sagemaker.mlops.feature_store import FeatureGroupManager, LakeFormationConfig
 
@@ -2305,3 +2306,361 @@ class TestPolicyPrintedWithClearInstructions:
         # Verify policy was NOT logged
         assert "S3 Bucket Policy" not in all_logged_text, "Policy should not be logged by default"
         assert "Version" not in all_logged_text, "Policy JSON should not be logged by default"
+
+
+class TestFeatureGroupManagerReturnType:
+    """Tests to verify create() and get() return FeatureGroupManager instances."""
+
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    def test_create_returns_feature_group_manager_instance(self, mock_get_client):
+        """Test that create() returns a FeatureGroupManager, not a FeatureGroup."""
+        from sagemaker.core.shapes import FeatureDefinition
+        from sagemaker.core.resources import FeatureGroup
+
+        mock_client = MagicMock()
+        mock_client.create_feature_group.return_value = {
+            "FeatureGroupArn": "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test"
+        }
+        mock_client.describe_feature_group.return_value = {
+            "FeatureGroupName": "test-fg",
+            "FeatureGroupArn": "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test",
+            "RecordIdentifierFeatureName": "record_id",
+            "EventTimeFeatureName": "event_time",
+            "FeatureDefinitions": [{"FeatureName": "record_id", "FeatureType": "String"}],
+            "FeatureGroupStatus": "Created",
+        }
+        mock_get_client.return_value = mock_client
+
+        result = FeatureGroupManager.create(
+            feature_group_name="test-fg",
+            record_identifier_feature_name="record_id",
+            event_time_feature_name="event_time",
+            feature_definitions=[FeatureDefinition(feature_name="record_id", feature_type="String")],
+        )
+
+        assert isinstance(result, FeatureGroupManager)
+        assert not type(result) is FeatureGroup
+
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    def test_get_returns_feature_group_manager_instance(self, mock_get_client):
+        """Test that get() returns a FeatureGroupManager, not a FeatureGroup."""
+        from sagemaker.core.resources import FeatureGroup
+
+        mock_client = MagicMock()
+        mock_client.describe_feature_group.return_value = {
+            "FeatureGroupName": "test-fg",
+            "FeatureGroupArn": "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test",
+            "RecordIdentifierFeatureName": "record_id",
+            "EventTimeFeatureName": "event_time",
+            "FeatureDefinitions": [{"FeatureName": "record_id", "FeatureType": "String"}],
+            "FeatureGroupStatus": "Created",
+        }
+        mock_get_client.return_value = mock_client
+
+        result = FeatureGroupManager.get(feature_group_name="test-fg")
+
+        assert isinstance(result, FeatureGroupManager)
+        assert not type(result) is FeatureGroup
+
+
+class TestEnableLakeFormationIcebergTableFormat:
+    """Tests for Iceberg table format S3 path handling in enable_lake_formation."""
+
+    def setup_method(self):
+        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
+
+        self.fg = FeatureGroupManager(feature_group_name="test-fg")
+        self.fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(
+                s3_uri="s3://test-bucket/path",
+                resolved_output_s3_uri="s3://test-bucket/resolved-path/data",
+            ),
+            data_catalog_config=DataCatalogConfig(
+                catalog="AwsDataCatalog", database="test_db", table_name="test_table"
+            ),
+            table_format="Iceberg",
+        )
+        self.fg.role_arn = "arn:aws:iam::123456789012:role/TestRole"
+        self.fg.feature_group_arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test-fg"
+        self.fg.feature_group_status = "Created"
+
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    def test_iceberg_strips_data_suffix_for_s3_registration(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
+    ):
+        """Test that Iceberg tables register the parent S3 path (without /data suffix)."""
+        mock_register.return_value = True
+        mock_grant.return_value = True
+        mock_revoke.return_value = True
+
+        self.fg.enable_lake_formation()
+
+        # The registered S3 location should NOT end with /data
+        call_args = mock_register.call_args
+        registered_location = call_args[0][0]
+        assert registered_location == "s3://test-bucket/resolved-path"
+        assert not registered_location.endswith("/data")
+
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    def test_non_iceberg_keeps_full_s3_path(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
+    ):
+        """Test that non-Iceberg tables use the full resolved S3 URI."""
+        self.fg.offline_store_config.table_format = None
+        self.fg.offline_store_config.s3_storage_config.resolved_output_s3_uri = (
+            "s3://test-bucket/resolved-path/data"
+        )
+
+        mock_register.return_value = True
+        mock_grant.return_value = True
+        mock_revoke.return_value = True
+
+        self.fg.enable_lake_formation()
+
+        call_args = mock_register.call_args
+        registered_location = call_args[0][0]
+        assert registered_location == "s3://test-bucket/resolved-path/data"
+
+
+class TestEnableLakeFormationMissingArn:
+    """Tests for feature_group_arn validation when show_s3_policy=True."""
+
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    def test_raises_error_when_feature_group_arn_is_none(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
+    ):
+        """Test ValueError when show_s3_policy=True but feature_group_arn is None."""
+        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
+
+        fg = FeatureGroupManager(feature_group_name="test-fg")
+        fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(
+                s3_uri="s3://test-bucket/path",
+                resolved_output_s3_uri="s3://test-bucket/resolved-path",
+            ),
+            data_catalog_config=DataCatalogConfig(
+                catalog="AwsDataCatalog", database="test_db", table_name="test_table"
+            ),
+        )
+        fg.role_arn = "arn:aws:iam::123456789012:role/TestRole"
+        fg.feature_group_arn = None
+        fg.feature_group_status = "Created"
+
+        mock_register.return_value = True
+        mock_grant.return_value = True
+        mock_revoke.return_value = True
+
+        with pytest.raises(ValueError, match="Feature Group ARN is required"):
+            fg.enable_lake_formation(show_s3_policy=True)
+
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    def test_no_error_when_show_s3_policy_false_and_arn_missing(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
+    ):
+        """Test that missing feature_group_arn is fine when show_s3_policy=False."""
+        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
+
+        fg = FeatureGroupManager(feature_group_name="test-fg")
+        fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(
+                s3_uri="s3://test-bucket/path",
+                resolved_output_s3_uri="s3://test-bucket/resolved-path",
+            ),
+            data_catalog_config=DataCatalogConfig(
+                catalog="AwsDataCatalog", database="test_db", table_name="test_table"
+            ),
+        )
+        fg.role_arn = "arn:aws:iam::123456789012:role/TestRole"
+        fg.feature_group_arn = None
+        fg.feature_group_status = "Created"
+
+        mock_register.return_value = True
+        mock_grant.return_value = True
+        mock_revoke.return_value = True
+
+        result = fg.enable_lake_formation(show_s3_policy=False)
+        assert result["s3_registration"] is True
+
+
+class TestEnableLakeFormationHappyPath:
+    """Tests for the full happy-path return value of enable_lake_formation."""
+
+    def setup_method(self):
+        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
+
+        self.fg = FeatureGroupManager(feature_group_name="test-fg")
+        self.fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(
+                s3_uri="s3://test-bucket/path",
+                resolved_output_s3_uri="s3://test-bucket/resolved-path",
+            ),
+            data_catalog_config=DataCatalogConfig(
+                catalog="AwsDataCatalog", database="test_db", table_name="test_table"
+            ),
+        )
+        self.fg.role_arn = "arn:aws:iam::123456789012:role/TestRole"
+        self.fg.feature_group_arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test-fg"
+        self.fg.feature_group_status = "Created"
+
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    def test_returns_all_true_on_success(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
+    ):
+        """Test full happy-path returns all phases as True."""
+        mock_register.return_value = True
+        mock_grant.return_value = True
+        mock_revoke.return_value = True
+
+        result = self.fg.enable_lake_formation()
+
+        assert result == {
+            "s3_registration": True,
+            "permissions_granted": True,
+            "iam_principal_revoked": True,
+        }
+
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    def test_returns_none_for_revoke_when_hybrid_mode_preserved(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
+    ):
+        """Test return dict when disable_hybrid_access_mode=False."""
+        mock_register.return_value = True
+        mock_grant.return_value = True
+
+        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=False)
+
+        assert result == {
+            "s3_registration": True,
+            "permissions_granted": True,
+            "iam_principal_revoked": None,
+        }
+        mock_revoke.assert_not_called()
+
+
+class TestCreatePassesThroughSessionAndRegion:
+    """Tests for session and region pass-through in create()."""
+
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    @patch.object(FeatureGroupManager, "get")
+    @patch.object(FeatureGroupManager, "wait_for_status")
+    @patch.object(FeatureGroupManager, "enable_lake_formation")
+    def test_session_and_region_passed_to_enable_lake_formation(
+        self, mock_enable_lf, mock_wait, mock_get, mock_get_client
+    ):
+        """Test that session and region are forwarded to enable_lake_formation."""
+        from sagemaker.core.shapes import FeatureDefinition, OfflineStoreConfig, S3StorageConfig
+
+        mock_client = MagicMock()
+        mock_client.create_feature_group.return_value = {
+            "FeatureGroupArn": "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test"
+        }
+        mock_get_client.return_value = mock_client
+
+        mock_fg = MagicMock(spec=FeatureGroupManager)
+        mock_fg.wait_for_status = mock_wait
+        mock_fg.enable_lake_formation = mock_enable_lf
+        mock_get.return_value = mock_fg
+
+        mock_session = MagicMock(spec=Session)
+        lf_config = LakeFormationConfig()
+        lf_config.enabled = True
+
+        FeatureGroupManager.create(
+            feature_group_name="test-fg",
+            record_identifier_feature_name="record_id",
+            event_time_feature_name="event_time",
+            feature_definitions=[FeatureDefinition(feature_name="record_id", feature_type="String")],
+            offline_store_config=OfflineStoreConfig(
+                s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path")
+            ),
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            lake_formation_config=lf_config,
+            session=mock_session,
+            region="eu-west-1",
+        )
+
+        mock_enable_lf.assert_called_once_with(
+            session=mock_session,
+            region="eu-west-1",
+            use_service_linked_role=True,
+            registration_role_arn=None,
+            show_s3_policy=False,
+            disable_hybrid_access_mode=True,
+        )
+
+
+class TestRegionInferenceFromSession:
+    """Tests for region inference from session in LF methods."""
+
+    def test_register_s3_infers_region_from_session(self):
+        """Test that _register_s3_with_lake_formation infers region from session."""
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._s3_uri_to_arn = FeatureGroupManager._s3_uri_to_arn
+        fg._register_s3_with_lake_formation = (
+            FeatureGroupManager._register_s3_with_lake_formation.__get__(fg)
+        )
+        mock_client = MagicMock()
+        mock_client.register_resource.return_value = {}
+        fg._get_lake_formation_client = MagicMock(return_value=mock_client)
+
+        mock_session = MagicMock()
+        mock_session.region_name = "ap-southeast-1"
+
+        fg._register_s3_with_lake_formation("s3://bucket/path", session=mock_session)
+
+        # Region should be inferred and passed to client
+        fg._get_lake_formation_client.assert_called_with(mock_session, "ap-southeast-1")
+
+    def test_revoke_iam_infers_region_from_session(self):
+        """Test that _revoke_iam_allowed_principal infers region from session."""
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._revoke_iam_allowed_principal = (
+            FeatureGroupManager._revoke_iam_allowed_principal.__get__(fg)
+        )
+        mock_client = MagicMock()
+        mock_client.revoke_permissions.return_value = {}
+        fg._get_lake_formation_client = MagicMock(return_value=mock_client)
+
+        mock_session = MagicMock()
+        mock_session.region_name = "ap-southeast-1"
+
+        fg._revoke_iam_allowed_principal("db", "table", session=mock_session)
+
+        fg._get_lake_formation_client.assert_called_with(mock_session, "ap-southeast-1")
+
+    def test_grant_permissions_infers_region_from_session(self):
+        """Test that _grant_lake_formation_permissions infers region from session."""
+        fg = MagicMock(spec=FeatureGroupManager)
+        fg._grant_lake_formation_permissions = (
+            FeatureGroupManager._grant_lake_formation_permissions.__get__(fg)
+        )
+        mock_client = MagicMock()
+        mock_client.grant_permissions.return_value = {}
+        fg._get_lake_formation_client = MagicMock(return_value=mock_client)
+
+        mock_session = MagicMock()
+        mock_session.region_name = "ap-southeast-1"
+
+        fg._grant_lake_formation_permissions(
+            "arn:aws:iam::123456789012:role/Role", "db", "table", session=mock_session
+        )
+
+        fg._get_lake_formation_client.assert_called_with(mock_session, "ap-southeast-1")
