@@ -40,7 +40,7 @@ class TestLocalTeiServing(unittest.TestCase):
     @patch('sagemaker.serve.model_server.tei.server.Path')
     @patch('sagemaker.serve.model_server.tei.server.DeviceRequest')
     def test_start_tei_serving_adds_secret_key(self, mock_device_req, mock_path, mock_update_env):
-        """Test _start_tei_serving adds secret key to env vars."""
+        """Test _start_tei_serving no longer adds secret key to env vars."""
         from sagemaker.serve.model_server.tei.server import LocalTeiServing
         
         server = LocalTeiServing()
@@ -62,8 +62,8 @@ class TestLocalTeiServing(unittest.TestCase):
             env_vars=env_vars
         )
         
-        # Verify secret key was added to env_vars
-        self.assertEqual(env_vars["SAGEMAKER_SERVE_SECRET_KEY"], "test-secret")
+        # Verify secret key is NOT added to env_vars
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
 
     @patch('sagemaker.serve.model_server.tei.server.requests.post')
     @patch('sagemaker.serve.model_server.tei.server.get_docker_host')

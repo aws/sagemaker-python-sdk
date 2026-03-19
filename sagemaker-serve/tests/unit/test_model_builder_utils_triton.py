@@ -265,7 +265,7 @@ class TestHMACSignin(unittest.TestCase):
     """Test _compute_integrity_hash method."""
 
     def test_compute_integrity_hash(self):
-        """Test HMAC signing."""
+        """Test SHA-256 integrity hash computation."""
         utils = _ModelBuilderUtils()
         
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -278,8 +278,7 @@ class TestHMACSignin(unittest.TestCase):
             
             utils._compute_integrity_hash()
             
-            # Secret key is generated, not mocked
-            self.assertIsNotNone(utils.secret_key)
+            # metadata.json should be created with the SHA-256 hash
             self.assertTrue((pkl_path / "metadata.json").exists())
 
 
