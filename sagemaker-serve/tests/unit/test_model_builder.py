@@ -371,10 +371,8 @@ class ModelCustomizationTest(unittest.TestCase):
         """Test fetching PEFT from TrainingJob."""
         from sagemaker.core.utils.utils import Unassigned
         
-        mock_job_spec = Mock()
-        mock_job_spec.get = Mock(return_value="LORA")
         self.mock_training_job.serverless_job_config = Mock()
-        self.mock_training_job.serverless_job_config.job_spec = mock_job_spec
+        self.mock_training_job.serverless_job_config.peft = "LORA"
         
         builder = ModelBuilder(
             model=self.mock_training_job,
@@ -389,10 +387,8 @@ class ModelCustomizationTest(unittest.TestCase):
         """Test fetching PEFT from ModelTrainer."""
         from sagemaker.train.model_trainer import ModelTrainer
         
-        mock_job_spec = Mock()
-        mock_job_spec.get = Mock(return_value="LORA")
         self.mock_training_job.serverless_job_config = Mock()
-        self.mock_training_job.serverless_job_config.job_spec = mock_job_spec
+        self.mock_training_job.serverless_job_config.peft = "LORA"
         
         mock_trainer = Mock(spec=ModelTrainer)
         mock_trainer._latest_training_job = self.mock_training_job
@@ -459,7 +455,8 @@ class ModelCustomizationTest(unittest.TestCase):
             with patch.object(builder, '_fetch_and_cache_recipe_config'):
                 with patch.object(builder, '_get_client_translators', return_value=(Mock(), Mock())):
                     with patch.object(builder, '_get_serve_setting', return_value=Mock()):
-                        result = builder._build_single_modelbuilder()
+                        with patch.object(builder, '_is_nova_model', return_value=False):
+                            result = builder._build_single_modelbuilder()
         
         # Verify Model.create was called (indicating model customization path was taken)
         mock_model_class.create.assert_called_once()
@@ -500,6 +497,7 @@ class ModelCustomizationTest(unittest.TestCase):
         
         with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
             with patch.object(builder, '_fetch_peft', return_value=None):
+              with patch.object(builder, '_is_nova_model', return_value=False):
                 with patch.object(EndpointConfig, 'create', return_value=mock_endpoint_config):
                     with patch.object(Endpoint, 'get', side_effect=ClientError({'Error': {'Code': 'ValidationException'}}, 'GetEndpoint')):
                         with patch.object(Endpoint, 'create', return_value=mock_endpoint):
@@ -574,6 +572,7 @@ class ModelCustomizationTest(unittest.TestCase):
         
         with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
             with patch.object(builder, '_fetch_peft', return_value=None):
+              with patch.object(builder, '_is_nova_model', return_value=False):
                 with patch.object(EndpointConfig, 'create', return_value=mock_endpoint_config):
                     with patch.object(Endpoint, 'get', side_effect=ClientError({'Error': {'Code': 'ValidationException'}}, 'GetEndpoint')):
                         with patch.object(Endpoint, 'create', return_value=mock_endpoint):
@@ -646,6 +645,7 @@ class ModelCustomizationTest(unittest.TestCase):
         
         with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
             with patch.object(builder, '_fetch_peft', return_value=None):
+              with patch.object(builder, '_is_nova_model', return_value=False):
                 with patch.object(EndpointConfig, 'create', return_value=mock_endpoint_config):
                     with patch.object(Endpoint, 'get', side_effect=ClientError({'Error': {'Code': 'ValidationException'}}, 'GetEndpoint')):
                         with patch.object(Endpoint, 'create', return_value=mock_endpoint):
