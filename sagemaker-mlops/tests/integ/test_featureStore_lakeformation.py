@@ -17,7 +17,6 @@ import pytest
 from botocore.exceptions import ClientError
 
 from sagemaker.core.helper.session_helper import Session, get_execution_role
-from sagemaker.core.resources import FeatureGroup
 from sagemaker.mlops.feature_store import (
     FeatureGroupManager,
     LakeFormationConfig,
@@ -59,7 +58,7 @@ def region():
 @pytest.fixture(scope="module")
 def shared_feature_group_for_negative_tests(s3_uri, role, region):
     """
-    Create a single FeatureGroup for negative tests that only need to verify
+    Create a single FeatureGroupManager for negative tests that only need to verify
     error conditions without modifying the resource.
 
     This fixture is module-scoped to be created once and shared across tests,
@@ -82,12 +81,12 @@ def generate_feature_group_name():
     return f"test-lf-fg-{uuid.uuid4().hex[:8]}"
 
 
-def create_test_feature_group(name: str, s3_uri: str, role_arn: str, region: str) -> FeatureGroup:
-    """Create a FeatureGroup via FeatureGroupManager for testing."""
+def create_test_feature_group(name: str, s3_uri: str, role_arn: str, region: str) -> FeatureGroupManager:
+    """Create a FeatureGroupManager with offline store for testing."""
 
     offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
 
-    fg = FeatureGroupManager.create_feature_group(
+    fg = FeatureGroupManager.create(
         feature_group_name=name,
         record_identifier_feature_name="record_id",
         event_time_feature_name="event_time",
@@ -100,12 +99,12 @@ def create_test_feature_group(name: str, s3_uri: str, role_arn: str, region: str
     return fg
 
 
-def cleanup_feature_group(fg: FeatureGroup):
+def cleanup_feature_group(fg: FeatureGroupManager):
     """
-    Delete a FeatureGroup and its associated Glue table.
+    Delete a FeatureGroupManager and its associated Glue table.
 
     Args:
-        fg: The FeatureGroup to delete.
+        fg: The FeatureGroupManager to delete.
     """
     try:
         # Delete the Glue table if it exists
@@ -129,10 +128,10 @@ def cleanup_feature_group(fg: FeatureGroup):
                 # Don't fail cleanup if Glue table deletion fails
                 pass
 
-        # Delete the FeatureGroup
+        # Delete the FeatureGroupManager
         fg.delete()
     except ClientError:
-        # Don't fail cleanup if deletion fails
+        # Don't fail cleanup if Glue table deletion fails
         pass
 
 
@@ -140,20 +139,20 @@ def cleanup_feature_group(fg: FeatureGroup):
 @pytest.mark.slow_test
 def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
     """
-    Test creating a FeatureGroup and enabling Lake Formation governance.
+    Test creating a FeatureGroupManager and enabling Lake Formation governance.
 
     This test:
-    1. Creates a new FeatureGroup with offline store via FeatureGroupManager
+    1. Creates a new FeatureGroupManager with offline store
     2. Waits for it to reach Created status
     3. Enables Lake Formation governance (registers S3, grants permissions, revokes IAM principals)
-    4. Cleans up the FeatureGroup
+    4. Cleans up the FeatureGroupManager
     """
 
     fg_name = generate_feature_group_name()
     fg = None
 
     try:
-        # Create the FeatureGroup
+        # Create the FeatureGroupManager
         fg = create_test_feature_group(fg_name, s3_uri, role, region)
         assert fg is not None
 
@@ -161,10 +160,8 @@ def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
         fg.wait_for_status(target_status="Created", poll=30, timeout=300)
         assert fg.feature_group_status == "Created"
 
-        # Enable Lake Formation governance via composition API
-        manager = FeatureGroupManager()
-        lf_config = LakeFormationConfig()
-        result = manager.enable_lake_formation(fg, lf_config)
+        # Enable Lake Formation governance
+        result = fg.enable_lake_formation()
 
         # Verify all phases completed successfully
         assert result["s3_registration"] is True
@@ -182,26 +179,26 @@ def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
 @pytest.mark.slow_test
 def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
     """
-    Test creating a FeatureGroup with lake_formation_config.enabled=True.
+    Test creating a FeatureGroupManager with lake_formation_config.enabled=True.
 
     This test verifies the integrated workflow where Lake Formation is enabled
-    automatically during FeatureGroup creation:
-    1. Creates a new FeatureGroup with lake_formation_config.enabled=True
-    2. Verifies the FeatureGroup is created and Lake Formation is configured
-    3. Cleans up the FeatureGroup
+    automatically during FeatureGroupManager creation:
+    1. Creates a new FeatureGroupManager with lake_formation_config.enabled=True
+    2. Verifies the FeatureGroupManager is created and Lake Formation is configured
+    3. Cleans up the FeatureGroupManager
     """
 
     fg_name = generate_feature_group_name()
     fg = None
 
     try:
-        # Create the FeatureGroup with Lake Formation enabled
+        # Create the FeatureGroupManager with Lake Formation enabled
 
         offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
         lake_formation_config = LakeFormationConfig()
         lake_formation_config.enabled = True
 
-        fg = FeatureGroupManager.create_feature_group(
+        fg = FeatureGroupManager.create(
             feature_group_name=fg_name,
             record_identifier_feature_name="record_id",
             event_time_feature_name="event_time",
@@ -211,7 +208,7 @@ def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
             lake_formation_config=lake_formation_config,
         )
 
-        # Verify the FeatureGroup was created
+        # Verify the FeatureGroupManager was created
         assert fg is not None
         assert fg.feature_group_name == fg_name
         assert fg.feature_group_status == "Created"
@@ -229,24 +226,24 @@ def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
 @pytest.mark.serial
 def test_create_feature_group_without_lake_formation(s3_uri, role, region):
     """
-    Test creating a FeatureGroup without Lake Formation enabled.
+    Test creating a FeatureGroupManager without Lake Formation enabled.
 
     This test verifies that when lake_formation_config is not provided or enabled=False,
-    the FeatureGroup is created successfully without any Lake Formation operations:
-    1. Creates a new FeatureGroup without lake_formation_config
-    2. Verifies the FeatureGroup is created successfully
+    the FeatureGroupManager is created successfully without any Lake Formation operations:
+    1. Creates a new FeatureGroupManager without lake_formation_config
+    2. Verifies the FeatureGroupManager is created successfully
     3. Verifies no Lake Formation operations were performed
-    4. Cleans up the FeatureGroup
+    4. Cleans up the FeatureGroupManager
     """
     fg_name = generate_feature_group_name()
     fg = None
 
     try:
-        # Create the FeatureGroup without Lake Formation
+        # Create the FeatureGroupManager without Lake Formation
         offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
 
         # Create without lake_formation_config (default behavior)
-        fg = FeatureGroupManager.create_feature_group(
+        fg = FeatureGroupManager.create(
             feature_group_name=fg_name,
             record_identifier_feature_name="record_id",
             event_time_feature_name="event_time",
@@ -255,7 +252,7 @@ def test_create_feature_group_without_lake_formation(s3_uri, role, region):
             role_arn=role,
         )
 
-        # Verify the FeatureGroup was created
+        # Verify the FeatureGroupManager was created
         assert fg is not None
         assert fg.feature_group_name == fg_name
 
@@ -281,7 +278,7 @@ def test_create_feature_group_without_lake_formation(s3_uri, role, region):
 
 def test_create_feature_group_with_lake_formation_fails_without_offline_store(role, region):
     """
-    Test that creating a FeatureGroup with enable_lake_formation=True fails
+    Test that creating a FeatureGroupManager with enable_lake_formation=True fails
     when no offline store is configured.
 
     Expected behavior: ValueError should be raised indicating offline store is required.
@@ -293,7 +290,7 @@ def test_create_feature_group_with_lake_formation_fails_without_offline_store(ro
 
     # Attempt to create without offline store but with Lake Formation enabled
     with pytest.raises(ValueError) as exc_info:
-        FeatureGroupManager.create_feature_group(
+        FeatureGroupManager.create(
             feature_group_name=fg_name,
             record_identifier_feature_name="record_id",
             event_time_feature_name="event_time",
@@ -310,7 +307,7 @@ def test_create_feature_group_with_lake_formation_fails_without_offline_store(ro
 
 def test_create_feature_group_with_lake_formation_fails_without_role(s3_uri, region):
     """
-    Test that creating a FeatureGroup with lake_formation_config.enabled=True fails
+    Test that creating a FeatureGroupManager with lake_formation_config.enabled=True fails
     when no role_arn is provided.
 
     Expected behavior: ValueError should be raised indicating role_arn is required.
@@ -323,7 +320,7 @@ def test_create_feature_group_with_lake_formation_fails_without_role(s3_uri, reg
 
     # Attempt to create without role_arn but with Lake Formation enabled
     with pytest.raises(ValueError) as exc_info:
-        FeatureGroupManager.create_feature_group(
+        FeatureGroupManager.create(
             feature_group_name=fg_name,
             record_identifier_feature_name="record_id",
             event_time_feature_name="event_time",
@@ -338,29 +335,27 @@ def test_create_feature_group_with_lake_formation_fails_without_role(s3_uri, reg
 
 def test_enable_lake_formation_fails_for_non_created_status(s3_uri, role, region):
     """
-    Test that enable_lake_formation() fails when called on a FeatureGroup
+    Test that enable_lake_formation() fails when called on a FeatureGroupManager
     that is not in 'Created' status.
 
     Expected behavior: ValueError should be raised indicating the Feature Group
     must be in 'Created' status.
 
-    Note: This test creates its own FeatureGroup because it needs to test
+    Note: This test creates its own FeatureGroupManager because it needs to test
     behavior during the 'Creating' status, which requires a fresh resource.
     """
     fg_name = generate_feature_group_name()
     fg = None
 
     try:
-        # Create the FeatureGroup
+        # Create the FeatureGroupManager
         fg = create_test_feature_group(fg_name, s3_uri, role, region)
         assert fg is not None
 
         # Immediately try to enable Lake Formation without waiting for Created status
         # The Feature Group will be in 'Creating' status
-        manager = FeatureGroupManager()
-        lf_config = LakeFormationConfig()
         with pytest.raises(ValueError) as exc_info:
-            manager.enable_lake_formation(fg, lf_config)
+            fg.enable_lake_formation(wait_for_active=False)
 
         # Verify error message mentions status requirement
         error_msg = str(exc_info.value)
@@ -375,22 +370,22 @@ def test_enable_lake_formation_fails_for_non_created_status(s3_uri, role, region
 
 def test_enable_lake_formation_without_offline_store(role, region):
     """
-    Test that enable_lake_formation() fails when called on a FeatureGroup
+    Test that enable_lake_formation() fails when called on a FeatureGroupManager
     without an offline store configured.
 
     Expected behavior: ValueError should be raised indicating offline store is required.
 
-    Note: This test creates a FeatureGroup with only online store, which is a valid
+    Note: This test creates a FeatureGroupManager with only online store, which is a valid
     configuration, but Lake Formation cannot be enabled for it.
     """
     fg_name = generate_feature_group_name()
     fg = None
 
     try:
-        # Create a FeatureGroup with only online store (no offline store)
+        # Create a FeatureGroupManager with only online store (no offline store)
         online_store_config = OnlineStoreConfig(enable_online_store=True)
 
-        fg = FeatureGroupManager.create_feature_group(
+        fg = FeatureGroupManager.create(
             feature_group_name=fg_name,
             record_identifier_feature_name="record_id",
             event_time_feature_name="event_time",
@@ -403,10 +398,8 @@ def test_enable_lake_formation_without_offline_store(role, region):
         fg.wait_for_status(target_status="Created", poll=30, timeout=300)
 
         # Attempt to enable Lake Formation
-        manager = FeatureGroupManager()
-        lf_config = LakeFormationConfig()
         with pytest.raises(ValueError) as exc_info:
-            manager.enable_lake_formation(fg, lf_config)
+            fg.enable_lake_formation()
         # Verify error message mentions offline store requirement
         assert "does not have an offline store configured" in str(exc_info.value)
 
@@ -429,13 +422,11 @@ def test_enable_lake_formation_fails_with_invalid_registration_role(
     fg = shared_feature_group_for_negative_tests
 
     # Attempt to enable Lake Formation without service-linked role and without registration_role_arn
-    manager = FeatureGroupManager()
-    lf_config = LakeFormationConfig(
-        use_service_linked_role=False,
-        registration_role_arn=None,
-    )
     with pytest.raises(ValueError) as exc_info:
-        manager.enable_lake_formation(fg, lf_config)
+        fg.enable_lake_formation(
+            use_service_linked_role=False,
+            registration_role_arn=None,
+        )
 
     # Verify error message mentions role requirement
     error_msg = str(exc_info.value)
@@ -461,13 +452,11 @@ def test_enable_lake_formation_fails_with_nonexistent_role(
     account_id = role.split(":")[4]
     nonexistent_role = f"arn:aws:iam::{account_id}:role/non-existent-role"
 
-    manager = FeatureGroupManager()
-    lf_config = LakeFormationConfig(
-        use_service_linked_role=False,
-        registration_role_arn=nonexistent_role,
-    )
     with pytest.raises(RuntimeError) as exc_info:
-        manager.enable_lake_formation(fg, lf_config)
+        fg.enable_lake_formation(
+            use_service_linked_role=False,
+            registration_role_arn=nonexistent_role,
+        )
 
     # Verify we got an appropriate error
     error_msg = str(exc_info.value)
@@ -488,7 +477,7 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
     Test the full Lake Formation flow with S3 deny policy output.
 
     This test verifies:
-    1. Creates a FeatureGroup with offline store
+    1. Creates a FeatureGroupManager with offline store
     2. Enables Lake Formation with show_s3_policy=True
     3. Verifies all Lake Formation phases complete successfully
     4. Verifies the S3 deny policy is logged
@@ -500,7 +489,7 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
     fg = None
 
     try:
-        # Create the FeatureGroup
+        # Create the FeatureGroupManager
         fg = create_test_feature_group(fg_name, s3_uri, role, region)
         assert fg is not None
 
@@ -509,10 +498,8 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance with policy output
-        manager = FeatureGroupManager()
-        lf_config = LakeFormationConfig(show_s3_policy=True)
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = manager.enable_lake_formation(fg, lf_config)
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group"):
+            result = fg.enable_lake_formation(show_s3_policy=True)
 
         # Verify all phases completed successfully
         assert result["s3_registration"] is True
@@ -566,7 +553,7 @@ def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region,
     Test that S3 deny policy is NOT logged when show_s3_policy=False (default).
 
     This test verifies:
-    1. Creates a FeatureGroup with offline store
+    1. Creates a FeatureGroupManager with offline store
     2. Enables Lake Formation without show_s3_policy (defaults to False)
     3. Verifies all Lake Formation phases complete successfully
     4. Verifies the S3 deny policy is NOT logged
@@ -577,7 +564,7 @@ def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region,
     fg = None
 
     try:
-        # Create the FeatureGroup
+        # Create the FeatureGroupManager
         fg = create_test_feature_group(fg_name, s3_uri, role, region)
         assert fg is not None
 
@@ -586,10 +573,8 @@ def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region,
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance WITHOUT policy output (default)
-        manager = FeatureGroupManager()
-        lf_config = LakeFormationConfig()
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = manager.enable_lake_formation(fg, lf_config)
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group"):
+            result = fg.enable_lake_formation()
 
         # Verify all phases completed successfully
         assert result["s3_registration"] is True
@@ -616,7 +601,7 @@ def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, regi
     Test the full Lake Formation flow with custom registration role and policy output.
 
     This test verifies:
-    1. Creates a FeatureGroup with offline store
+    1. Creates a FeatureGroupManager with offline store
     2. Enables Lake Formation with use_service_linked_role=False and a custom registration_role_arn
     3. Verifies the S3 deny policy uses the custom role ARN instead of service-linked role
 
@@ -629,7 +614,7 @@ def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, regi
     fg = None
 
     try:
-        # Create the FeatureGroup
+        # Create the FeatureGroupManager
         fg = create_test_feature_group(fg_name, s3_uri, role, region)
         assert fg is not None
 
@@ -639,14 +624,12 @@ def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, regi
 
         # Enable Lake Formation with custom registration role and policy output
         # Using the same role for both execution and registration for test simplicity
-        manager = FeatureGroupManager()
-        lf_config = LakeFormationConfig(
-            use_service_linked_role=False,
-            registration_role_arn=role,
-            show_s3_policy=True,
-        )
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = manager.enable_lake_formation(fg, lf_config)
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group"):
+            result = fg.enable_lake_formation(
+                use_service_linked_role=False,
+                registration_role_arn=role,
+                show_s3_policy=True,
+            )
 
         # Verify all phases completed successfully
         assert result["s3_registration"] is True
