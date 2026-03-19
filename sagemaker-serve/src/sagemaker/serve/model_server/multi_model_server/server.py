@@ -35,7 +35,6 @@ class LocalMultiModelServer:
         env = {
             "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
             "SAGEMAKER_PROGRAM": "inference.py",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         if env_vars:
@@ -47,7 +46,7 @@ class LocalMultiModelServer:
             image,
             "serve",
             # network_mode="host",
-            ports={'8080/tcp': 8080},
+            ports={"8080/tcp": 8080},
             detach=True,
             auto_remove=True,
             volumes={
@@ -131,7 +130,6 @@ class SageMakerMultiModelServer:
             env_vars = {
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
                 "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
                 "LOCAL_PYTHON": platform.python_version(),

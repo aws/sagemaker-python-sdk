@@ -21,20 +21,21 @@ class TestTritonSerializer(unittest.TestCase):
         """Test TritonSerializer initialization."""
         mock_serializer = Mock()
         serializer = TritonSerializer(mock_serializer, "FP32")
-        
+
         self.assertEqual(serializer.dtype, "FP32")
         self.assertEqual(serializer.input_serializer, mock_serializer)
 
     def test_triton_serializer_serialize(self):
         """Test TritonSerializer serialize method."""
         import numpy as np
+
         mock_serializer = Mock()
         mock_array = np.array([[1, 2, 3]])
         mock_serializer.serialize.return_value = mock_array
-        
+
         serializer = TritonSerializer(mock_serializer, "FP32")
         result = serializer.serialize(mock_array)
-        
+
         self.assertIsNotNone(result)
 
 
@@ -45,8 +46,8 @@ class TestValidateForTriton(unittest.TestCase):
         """Test validation fails without tritonclient - skipped as tritonclient is installed."""
         pass
 
-    @patch('importlib.util.find_spec')
-    @patch.object(_ModelBuilderUtils, '_has_nvidia_gpu')
+    @patch("importlib.util.find_spec")
+    @patch.object(_ModelBuilderUtils, "_has_nvidia_gpu")
     def test_validate_for_triton_no_gpu_local(self, mock_has_gpu, mock_find_spec):
         """Test validation fails for GPU mode without GPU."""
         utils = _ModelBuilderUtils()
@@ -56,23 +57,23 @@ class TestValidateForTriton(unittest.TestCase):
         utils.schema_builder = Mock()
         utils.schema_builder._update_serializer_deserializer_for_triton = Mock()
         utils.schema_builder._detect_dtype_for_triton = Mock()
-        
+
         mock_find_spec.return_value = Mock()
         mock_has_gpu.return_value = False
-        
+
         with self.assertRaises(ValueError):
             utils._validate_for_triton()
 
-    @patch('importlib.util.find_spec')
+    @patch("importlib.util.find_spec")
     def test_validate_for_triton_unsupported_mode(self, mock_find_spec):
         """Test validation fails for unsupported mode."""
         utils = _ModelBuilderUtils()
         utils.mode = "UNSUPPORTED_MODE"
         utils.model_path = "/tmp/model"
         utils.schema_builder = Mock()
-        
+
         mock_find_spec.return_value = Mock()
-        
+
         with self.assertRaises(ValueError):
             utils._validate_for_triton()
 
@@ -80,51 +81,51 @@ class TestValidateForTriton(unittest.TestCase):
 class TestPrepareForTriton(unittest.TestCase):
     """Test _prepare_for_triton method."""
 
-    @patch('shutil.copy2')
-    @patch.object(_ModelBuilderUtils, '_export_pytorch_to_onnx')
+    @patch("shutil.copy2")
+    @patch.object(_ModelBuilderUtils, "_export_pytorch_to_onnx")
     def test_prepare_for_triton_pytorch(self, mock_export, mock_copy):
         """Test preparing PyTorch model for Triton."""
         utils = _ModelBuilderUtils()
         utils.framework = Framework.PYTORCH
         utils.model = Mock()
         utils.schema_builder = Mock()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             utils.model_path = tmpdir
             utils._prepare_for_triton()
-            
+
             mock_export.assert_called_once()
 
-    @patch('shutil.copy2')
-    @patch.object(_ModelBuilderUtils, '_export_tf_to_onnx')
+    @patch("shutil.copy2")
+    @patch.object(_ModelBuilderUtils, "_export_tf_to_onnx")
     def test_prepare_for_triton_tensorflow(self, mock_export, mock_copy):
         """Test preparing TensorFlow model for Triton."""
         utils = _ModelBuilderUtils()
         utils.framework = Framework.TENSORFLOW
         utils.model = Mock()
         utils.schema_builder = Mock()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             utils.model_path = tmpdir
             utils._prepare_for_triton()
-            
+
             mock_export.assert_called_once()
 
-    @patch('shutil.copy2')
-    @patch.object(_ModelBuilderUtils, '_generate_config_pbtxt')
-    @patch.object(_ModelBuilderUtils, '_pack_conda_env')
-    @patch.object(_ModelBuilderUtils, '_compute_integrity_hash')
+    @patch("shutil.copy2")
+    @patch.object(_ModelBuilderUtils, "_generate_config_pbtxt")
+    @patch.object(_ModelBuilderUtils, "_pack_conda_env")
+    @patch.object(_ModelBuilderUtils, "_compute_integrity_hash")
     def test_prepare_for_triton_inference_spec(self, mock_hmac, mock_pack, mock_config, mock_copy):
         """Test preparing inference spec for Triton."""
         utils = _ModelBuilderUtils()
         utils.inference_spec = Mock()
         utils.model = None
         utils.schema_builder = Mock()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             utils.model_path = tmpdir
             utils._prepare_for_triton()
-            
+
             mock_config.assert_called_once()
             mock_pack.assert_called_once()
             mock_hmac.assert_called_once()
@@ -133,26 +134,27 @@ class TestPrepareForTriton(unittest.TestCase):
 class TestExportPytorchToOnnx(unittest.TestCase):
     """Test _export_pytorch_to_onnx method."""
 
-    @patch('torch.onnx.export')
+    @patch("torch.onnx.export")
     def test_export_pytorch_to_onnx_success(self, mock_export):
         """Test successful PyTorch to ONNX export."""
         try:
             import ml_dtypes
+
             # Skip test if ml_dtypes doesn't have required attribute
-            if not hasattr(ml_dtypes, 'float4_e2m1fn'):
+            if not hasattr(ml_dtypes, "float4_e2m1fn"):
                 self.skipTest("ml_dtypes version incompatible with current numpy/onnx")
         except ImportError:
             pass
-        
+
         utils = _ModelBuilderUtils()
         mock_model = Mock()
         mock_schema = Mock()
         mock_schema.sample_input = Mock()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             export_path = Path(tmpdir)
             utils._export_pytorch_to_onnx(mock_model, export_path, mock_schema)
-            
+
             mock_export.assert_called_once()
 
     def test_export_pytorch_to_onnx_no_torch(self):
@@ -167,7 +169,7 @@ class TestExportTFToOnnx(unittest.TestCase):
     def test_export_tf_to_onnx_no_tf2onnx(self):
         """Test TensorFlow export without tf2onnx installed."""
         utils = _ModelBuilderUtils()
-        
+
         # tf2onnx not installed in test environment
         with tempfile.TemporaryDirectory() as tmpdir:
             with self.assertRaises(ImportError):
@@ -188,11 +190,11 @@ class TestGenerateConfigPbtxt(unittest.TestCase):
         utils.schema_builder._sample_output_ndarray.shape = [1, 5]
         utils.schema_builder._input_triton_dtype = "FP32"
         utils.schema_builder._output_triton_dtype = "FP32"
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             pkl_path = Path(tmpdir)
             utils._generate_config_pbtxt(pkl_path)
-            
+
             config_path = pkl_path / "config.pbtxt"
             self.assertTrue(config_path.exists())
             content = config_path.read_text()
@@ -209,11 +211,11 @@ class TestGenerateConfigPbtxt(unittest.TestCase):
         utils.schema_builder._sample_output_ndarray.shape = [1, 5]
         utils.schema_builder._input_triton_dtype = "FP32"
         utils.schema_builder._output_triton_dtype = "FP32"
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             pkl_path = Path(tmpdir)
             utils._generate_config_pbtxt(pkl_path)
-            
+
             config_path = pkl_path / "config.pbtxt"
             self.assertTrue(config_path.exists())
             content = config_path.read_text()
@@ -226,8 +228,8 @@ class TestPackCondaEnv(unittest.TestCase):
     def test_pack_conda_env_no_conda_pack(self):
         """Test packing conda env without conda_pack."""
         utils = _ModelBuilderUtils()
-        
-        with patch('importlib.util.find_spec', return_value=None):
+
+        with patch("importlib.util.find_spec", return_value=None):
             with tempfile.TemporaryDirectory() as tmpdir:
                 with self.assertRaises(ImportError):
                     utils._pack_conda_env(Path(tmpdir))
@@ -235,7 +237,7 @@ class TestPackCondaEnv(unittest.TestCase):
     def test_pack_conda_env_no_conda_pack_real(self):
         """Test packing conda env without conda_pack - real check."""
         utils = _ModelBuilderUtils()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             with self.assertRaises(ImportError):
                 utils._pack_conda_env(Path(tmpdir))
@@ -249,14 +251,14 @@ class TestSaveInferenceSpec(unittest.TestCase):
         utils = _ModelBuilderUtils()
         utils.inference_spec = Mock()
         utils.schema_builder = Mock()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             utils.model_path = tmpdir
             pkl_path = os.path.join(tmpdir, "model_repository", "model")
             os.makedirs(pkl_path, exist_ok=True)
-            
+
             utils._save_inference_spec()
-            
+
             # Check that serve.pkl was created
             self.assertTrue(os.path.exists(os.path.join(pkl_path, "serve.pkl")))
 
@@ -265,21 +267,20 @@ class TestHMACSignin(unittest.TestCase):
     """Test _compute_integrity_hash method."""
 
     def test_compute_integrity_hash(self):
-        """Test HMAC signing."""
+        """Test SHA-256 integrity hash computation."""
         utils = _ModelBuilderUtils()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             utils.model_path = tmpdir
             pkl_path = Path(tmpdir) / "model_repository" / "model"
             pkl_path.mkdir(parents=True)
-            
+
             # Create dummy serve.pkl
             (pkl_path / "serve.pkl").write_bytes(b"dummy content")
-            
+
             utils._compute_integrity_hash()
-            
-            # Secret key is generated, not mocked
-            self.assertIsNotNone(utils.secret_key)
+
+            # metadata.json should be created with the SHA-256 hash
             self.assertTrue((pkl_path / "metadata.json").exists())
 
 
@@ -291,9 +292,9 @@ class TestAutoDetectImageForTriton(unittest.TestCase):
         utils = _ModelBuilderUtils()
         utils.image_uri = "custom-triton-image"
         utils.sagemaker_session = Mock()
-        
+
         utils._auto_detect_image_for_triton()
-        
+
         self.assertEqual(utils.image_uri, "custom-triton-image")
 
     def test_auto_detect_image_cpu_instance(self):
@@ -306,9 +307,9 @@ class TestAutoDetectImageForTriton(unittest.TestCase):
         utils.inference_spec = None
         utils.framework = "pytorch"
         utils.version = "1.13"
-        
+
         utils._auto_detect_image_for_triton()
-        
+
         self.assertIsNotNone(utils.image_uri)
         self.assertIn("-cpu", utils.image_uri)
 
@@ -322,9 +323,9 @@ class TestAutoDetectImageForTriton(unittest.TestCase):
         utils.inference_spec = None
         utils.framework = "pytorch"
         utils.version = "1.13"
-        
+
         utils._auto_detect_image_for_triton()
-        
+
         self.assertIsNotNone(utils.image_uri)
         self.assertNotIn("-cpu", utils.image_uri)
 
@@ -335,7 +336,7 @@ class TestAutoDetectImageForTriton(unittest.TestCase):
         utils.instance_type = "ml.g5.xlarge"
         utils.sagemaker_session = Mock()
         utils.sagemaker_session.boto_region_name = "unsupported-region"
-        
+
         with self.assertRaises(ValueError):
             utils._auto_detect_image_for_triton()
 
@@ -349,7 +350,7 @@ class TestValidateDJLServingSampleData(unittest.TestCase):
         utils.schema_builder = Mock()
         utils.schema_builder.sample_input = {"inputs": "test", "parameters": {}}
         utils.schema_builder.sample_output = [{"generated_text": "output"}]
-        
+
         # Should not raise
         utils._validate_djl_serving_sample_data()
 
@@ -359,7 +360,7 @@ class TestValidateDJLServingSampleData(unittest.TestCase):
         utils.schema_builder = Mock()
         utils.schema_builder.sample_input = {"wrong_key": "test"}
         utils.schema_builder.sample_output = [{"generated_text": "output"}]
-        
+
         with self.assertRaises(ValueError):
             utils._validate_djl_serving_sample_data()
 
@@ -369,7 +370,7 @@ class TestValidateDJLServingSampleData(unittest.TestCase):
         utils.schema_builder = Mock()
         utils.schema_builder.sample_input = {"inputs": "test", "parameters": {}}
         utils.schema_builder.sample_output = [{"wrong_key": "output"}]
-        
+
         with self.assertRaises(ValueError):
             utils._validate_djl_serving_sample_data()
 
@@ -383,7 +384,7 @@ class TestValidateTGIServingSampleData(unittest.TestCase):
         utils.schema_builder = Mock()
         utils.schema_builder.sample_input = {"inputs": "test", "parameters": {}}
         utils.schema_builder.sample_output = [{"generated_text": "output"}]
-        
+
         # Should not raise
         utils._validate_tgi_serving_sample_data()
 
@@ -393,7 +394,7 @@ class TestValidateTGIServingSampleData(unittest.TestCase):
         utils.schema_builder = Mock()
         utils.schema_builder.sample_input = "invalid"
         utils.schema_builder.sample_output = [{"generated_text": "output"}]
-        
+
         with self.assertRaises(ValueError):
             utils._validate_tgi_serving_sample_data()
 
@@ -401,15 +402,15 @@ class TestValidateTGIServingSampleData(unittest.TestCase):
 class TestCreateCondaEnv(unittest.TestCase):
     """Test _create_conda_env method."""
 
-    @patch('sagemaker.serve.builder.requirements_manager.RequirementsManager')
+    @patch("sagemaker.serve.builder.requirements_manager.RequirementsManager")
     def test_create_conda_env_success(self, mock_req_manager):
         """Test successful conda env creation."""
         utils = _ModelBuilderUtils()
         mock_manager = Mock()
         mock_req_manager.return_value = mock_manager
-        
+
         utils._create_conda_env()
-        
+
         # Should not raise
 
 
