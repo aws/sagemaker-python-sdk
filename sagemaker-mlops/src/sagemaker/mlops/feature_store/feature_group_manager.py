@@ -7,6 +7,7 @@ import logging
 from typing import Dict, List, Optional
 
 import botocore.exceptions
+from pydantic import model_validator
 
 from sagemaker.core.resources import FeatureGroup
 from sagemaker.core.resources import Base
@@ -25,6 +26,7 @@ from sagemaker.core.helper.pipeline_variable import StrPipeVar
 from sagemaker.core.s3.utils import parse_s3_url
 from sagemaker.core.common_utils import aws_partition
 from boto3 import Session
+from sagemaker.mlops.feature_store.feature_utils import _APPROVED_ICEBERG_PROPERTIES
 
 
 logger = logging.getLogger(__name__)
@@ -45,6 +47,18 @@ class IcebergProperties(Base):
     """
 
     properties: Optional[Dict[str, str]] = None
+
+    @model_validator(mode="after")
+    def validate_property_keys(self):
+        if self.properties is None:
+            return self
+        invalid_keys = set(self.properties.keys()) - _APPROVED_ICEBERG_PROPERTIES
+        if invalid_keys:
+            raise ValueError(
+                f"Invalid iceberg properties: {invalid_keys}. "
+                f"Approved properties are: {_APPROVED_ICEBERG_PROPERTIES}"
+            )
+        return self
 
 
 class LakeFormationConfig(Base):

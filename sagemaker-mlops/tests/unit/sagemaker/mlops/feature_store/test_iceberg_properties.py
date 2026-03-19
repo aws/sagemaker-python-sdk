@@ -23,6 +23,39 @@ class TestIcebergPropertiesConfig:
         config = IcebergProperties(properties=props)
         assert config.properties == props
 
+    def test_valid_approved_keys_accepted(self):
+        """Test that all approved keys are accepted."""
+        props = {
+            "write.target-file-size-bytes": "536870912",
+            "write.metadata.delete-after-commit.enabled": "true",
+            "history.expire.max-snapshot-age-ms": "432000000",
+        }
+        config = IcebergProperties(properties=props)
+        assert config.properties == props
+
+    def test_single_invalid_key_raises_error(self):
+        """Test that a single invalid key raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid iceberg properties"):
+            IcebergProperties(properties={"not.a.valid.key": "value"})
+
+    def test_multiple_invalid_keys_raises_error(self):
+        """Test that multiple invalid keys raise ValueError."""
+        with pytest.raises(ValueError, match="Invalid iceberg properties"):
+            IcebergProperties(properties={"bad.key.one": "1", "bad.key.two": "2"})
+
+    def test_mix_valid_and_invalid_keys_raises_error(self):
+        """Test that a mix of valid and invalid keys raises ValueError."""
+        with pytest.raises(ValueError, match="Invalid iceberg properties"):
+            IcebergProperties(properties={
+                "write.target-file-size-bytes": "536870912",
+                "invalid.key": "value",
+            })
+
+    def test_error_message_contains_invalid_key_names(self):
+        """Test that the error message includes the invalid key names."""
+        with pytest.raises(ValueError, match="fake.property"):
+            IcebergProperties(properties={"fake.property": "value"})
+
 
 class TestGetIcebergProperties:
     """Tests for get_iceberg_properties method."""
@@ -219,12 +252,12 @@ class TestUpdateIcebergProperties:
             "glue_client": mock_glue_client,
         }
 
-        props = IcebergProperties(properties={"key": "value"})
+        props = IcebergProperties(properties={"write.target-file-size-bytes": "value"})
         result = self.fg._update_iceberg_properties(iceberg_properties=props)
 
         call_args = mock_glue_client.update_table.call_args
         updated_params = call_args[1]["TableInput"]["Parameters"]
-        assert updated_params == {"key": "value"}
+        assert updated_params == {"write.target-file-size-bytes": "value"}
 
     def test_raises_runtime_error_on_update_table_client_error(self):
         """Test RuntimeError wrapping ClientError from Glue update_table."""
@@ -240,7 +273,7 @@ class TestUpdateIcebergProperties:
             "UpdateTable",
         )
 
-        props = IcebergProperties(properties={"key": "value"})
+        props = IcebergProperties(properties={"write.target-file-size-bytes": "value"})
 
         with pytest.raises(RuntimeError, match="Failed to update Iceberg properties"):
             self.fg._update_iceberg_properties(iceberg_properties=props)
@@ -327,7 +360,7 @@ class TestCreateWithIcebergProperties:
                 record_identifier_feature_name="record_id",
                 event_time_feature_name="event_time",
                 feature_definitions=feature_definitions,
-                iceberg_properties=IcebergProperties(properties={"key": "value"}),
+                iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "value"}),
             )
 
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -351,7 +384,7 @@ class TestCreateWithIcebergProperties:
                 offline_store_config=OfflineStoreConfig(
                     s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path"),
                 ),
-                iceberg_properties=IcebergProperties(properties={"key": "value"}),
+                iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "value"}),
             )
 
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -376,7 +409,7 @@ class TestCreateWithIcebergProperties:
                     s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path"),
                     table_format="Glue",
                 ),
-                iceberg_properties=IcebergProperties(properties={"key": "value"}),
+                iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "value"}),
             )
 
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -463,7 +496,7 @@ class TestCreateWithIcebergProperties:
         mock_get.return_value = mock_fg
 
         mock_session = MagicMock(spec=Session)
-        iceberg_props = IcebergProperties(properties={"key": "val"})
+        iceberg_props = IcebergProperties(properties={"write.target-file-size-bytes": "val"})
 
         FeatureGroupManager.create(
             feature_group_name="test-fg",
@@ -572,7 +605,7 @@ class TestUpdateWithIcebergProperties:
         )
         fg.update(
             description="new desc",
-            iceberg_properties=IcebergProperties(properties={"key": "val"}),
+            iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "val"}),
         )
 
         # Verify the SageMaker API call does NOT contain iceberg_properties
@@ -592,7 +625,7 @@ class TestUpdateWithIcebergProperties:
         fg.offline_store_config = None
 
         with pytest.raises(ValueError, match="iceberg_properties requires offline_store_config"):
-            fg.update(iceberg_properties=IcebergProperties(properties={"key": "val"}))
+            fg.update(iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "val"}))
 
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -608,7 +641,7 @@ class TestUpdateWithIcebergProperties:
         object.__setattr__(fg, "offline_store_config", Unassigned())
 
         with pytest.raises(ValueError, match="iceberg_properties requires offline_store_config"):
-            fg.update(iceberg_properties=IcebergProperties(properties={"key": "val"}))
+            fg.update(iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "val"}))
 
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -627,7 +660,7 @@ class TestUpdateWithIcebergProperties:
         )
 
         with pytest.raises(ValueError, match="table_format to be 'Iceberg'"):
-            fg.update(iceberg_properties=IcebergProperties(properties={"key": "val"}))
+            fg.update(iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "val"}))
 
 
 class TestGetWithIcebergProperties:
@@ -678,7 +711,6 @@ class TestGetWithIcebergProperties:
             "table_name": "test_table",
             "table_input": {
                 "Parameters": {
-                    "table_type": "ICEBERG",
                     "write.target-file-size-bytes": "536870912",
                 },
             },
@@ -692,7 +724,6 @@ class TestGetWithIcebergProperties:
 
         mock_get_iceberg.assert_called_once_with(session=None, region=None)
         assert result.iceberg_properties.properties == {
-            "table_type": "ICEBERG",
             "write.target-file-size-bytes": "536870912",
         }
 
@@ -748,7 +779,7 @@ class TestGetWithIcebergProperties:
         mock_get_iceberg.return_value = {
             "database_name": "test_db",
             "table_name": "test_table",
-            "table_input": {"Parameters": {"key": "val"}},
+            "table_input": {"Parameters": {"write.target-file-size-bytes": "val"}},
             "glue_client": MagicMock(),
         }
 
