@@ -94,10 +94,6 @@ DETERMINISTIC_TEMPLATE = """{
             "Type": "Training",
             "Arguments": {
                 "RoleArn": "{{ role_arn }}",
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
-                },
                 "ServerlessJobConfig": {
                     "BaseModelArn": "{{ base_model_arn }}",
                     "AcceptEula": true,
@@ -614,10 +610,6 @@ CUSTOM_SCORER_TEMPLATE = """{
             "Type": "Training",
             "Arguments": {
                 "RoleArn": "{{ role_arn }}",
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
-                },
                 "ServerlessJobConfig": {
                     "BaseModelArn": "{{ base_model_arn }}",
                     "AcceptEula": true,
