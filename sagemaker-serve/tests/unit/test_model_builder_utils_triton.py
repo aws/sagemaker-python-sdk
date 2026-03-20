@@ -81,9 +81,14 @@ class TestPrepareForTriton(unittest.TestCase):
     """Test _prepare_for_triton method."""
 
     @patch('shutil.copy2')
+    @patch.object(_ModelBuilderUtils, '_hmac_signing')
     @patch.object(_ModelBuilderUtils, '_export_pytorch_to_onnx')
-    def test_prepare_for_triton_pytorch(self, mock_export, mock_copy):
-        """Test preparing PyTorch model for Triton."""
+    def test_prepare_for_triton_pytorch(self, mock_export, mock_hmac, mock_copy):
+        """Test preparing PyTorch model for Triton.
+        
+        ONNX path: no pickle is created or loaded at runtime,
+        so no HMAC signing is needed.
+        """
         utils = _ModelBuilderUtils()
         utils.framework = Framework.PYTORCH
         utils.model = Mock()
@@ -94,11 +99,17 @@ class TestPrepareForTriton(unittest.TestCase):
             utils._prepare_for_triton()
             
             mock_export.assert_called_once()
+            mock_hmac.assert_not_called()
 
     @patch('shutil.copy2')
+    @patch.object(_ModelBuilderUtils, '_hmac_signing')
     @patch.object(_ModelBuilderUtils, '_export_tf_to_onnx')
-    def test_prepare_for_triton_tensorflow(self, mock_export, mock_copy):
-        """Test preparing TensorFlow model for Triton."""
+    def test_prepare_for_triton_tensorflow(self, mock_export, mock_hmac, mock_copy):
+        """Test preparing TensorFlow model for Triton.
+        
+        ONNX path: no pickle is created or loaded at runtime,
+        so no HMAC signing is needed.
+        """
         utils = _ModelBuilderUtils()
         utils.framework = Framework.TENSORFLOW
         utils.model = Mock()
@@ -109,6 +120,7 @@ class TestPrepareForTriton(unittest.TestCase):
             utils._prepare_for_triton()
             
             mock_export.assert_called_once()
+            mock_hmac.assert_not_called()
 
     @patch('shutil.copy2')
     @patch.object(_ModelBuilderUtils, '_generate_config_pbtxt')
