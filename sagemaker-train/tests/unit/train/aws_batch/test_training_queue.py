@@ -403,7 +403,6 @@ class TestTrainingQueueSubmitWithQuotaManagement:
             SHARE_IDENTIFIER,
             TIMEOUT_CONFIG,
             BATCH_TAGS,
-            None,
             quota_share_name=QUOTA_SHARE_NAME,
             preemption_config=PREEMPTION_CONFIG,
         )

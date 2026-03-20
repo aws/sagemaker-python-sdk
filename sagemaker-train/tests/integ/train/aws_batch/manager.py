@@ -21,9 +21,9 @@ class BatchTestResourceManager:
     def __init__(
         self,
         batch_client,
-        queue_name="pysdk-test-queue",
-        service_env_name="pysdk-test-queue-service-environment",
-        scheduling_policy_name="pysdk-test-scheduling-policy",
+        queue_name="pysdk-test-qm-queue",
+        service_env_name="pysdk-test-qm-queue-service-environment",
+        scheduling_policy_name="pysdk-test-qm-scheduling-policy",
         quota_share_name="pysdk-test-quota-share",
     ):
         self.batch_client = batch_client
