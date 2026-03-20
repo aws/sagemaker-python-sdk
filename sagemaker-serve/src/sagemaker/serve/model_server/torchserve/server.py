@@ -39,7 +39,6 @@ class LocalTorchServe:
             environment={
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "LOCAL_PYTHON": platform.python_version(),
                 **env_vars,
             },
@@ -103,7 +102,6 @@ class SageMakerTorchServe:
             "SAGEMAKER_PROGRAM": "inference.py",
             "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars

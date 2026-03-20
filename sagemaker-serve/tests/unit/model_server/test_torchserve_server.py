@@ -32,8 +32,6 @@ class TestLocalTorchServe(unittest.TestCase):
         self.assertEqual(server.container, mock_container)
         mock_client.containers.run.assert_called_once()
         call_kwargs = mock_client.containers.run.call_args[1]
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", call_kwargs["environment"])
-        self.assertEqual(call_kwargs["environment"]["SAGEMAKER_SERVE_SECRET_KEY"], "test-secret")
         self.assertEqual(call_kwargs["environment"]["CUSTOM_VAR"], "value")
 
     @patch('sagemaker.serve.model_server.torchserve.server.requests.post')
@@ -97,8 +95,7 @@ class TestSageMakerTorchServe(unittest.TestCase):
         )
         
         self.assertEqual(s3_path, "s3://bucket/model")
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
-        self.assertEqual(env_vars["SAGEMAKER_SERVE_SECRET_KEY"], "test-key")
+        self.assertIn("SAGEMAKER_SUBMIT_DIRECTORY", env_vars)
 
     @patch('sagemaker.serve.model_server.torchserve.server.upload')
     @patch('sagemaker.serve.model_server.torchserve.server.determine_bucket_and_prefix')
@@ -129,7 +126,7 @@ class TestSageMakerTorchServe(unittest.TestCase):
         )
         
         self.assertEqual(s3_path, "s3://bucket/code_prefix/model.tar.gz")
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
+        self.assertIn("SAGEMAKER_SUBMIT_DIRECTORY", env_vars)
         mock_upload.assert_called_once()
 
     @patch('sagemaker.serve.model_server.torchserve.server._is_s3_uri')
@@ -150,7 +147,7 @@ class TestSageMakerTorchServe(unittest.TestCase):
         )
         
         self.assertIsNone(s3_path)
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
+        self.assertIn("SAGEMAKER_SUBMIT_DIRECTORY", env_vars)
 
 
 if __name__ == "__main__":

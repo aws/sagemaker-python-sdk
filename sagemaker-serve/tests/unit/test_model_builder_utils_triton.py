@@ -113,7 +113,7 @@ class TestPrepareForTriton(unittest.TestCase):
     @patch('shutil.copy2')
     @patch.object(_ModelBuilderUtils, '_generate_config_pbtxt')
     @patch.object(_ModelBuilderUtils, '_pack_conda_env')
-    @patch.object(_ModelBuilderUtils, '_hmac_signing')
+    @patch.object(_ModelBuilderUtils, '_compute_integrity_hash')
     def test_prepare_for_triton_inference_spec(self, mock_hmac, mock_pack, mock_config, mock_copy):
         """Test preparing inference spec for Triton."""
         utils = _ModelBuilderUtils()
@@ -262,10 +262,10 @@ class TestSaveInferenceSpec(unittest.TestCase):
 
 
 class TestHMACSignin(unittest.TestCase):
-    """Test _hmac_signing method."""
+    """Test _compute_integrity_hash method."""
 
-    def test_hmac_signing(self):
-        """Test HMAC signing."""
+    def test_compute_integrity_hash(self):
+        """Test SHA-256 integrity hash computation."""
         utils = _ModelBuilderUtils()
         
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -276,10 +276,9 @@ class TestHMACSignin(unittest.TestCase):
             # Create dummy serve.pkl
             (pkl_path / "serve.pkl").write_bytes(b"dummy content")
             
-            utils._hmac_signing()
+            utils._compute_integrity_hash()
             
-            # Secret key is generated, not mocked
-            self.assertIsNotNone(utils.secret_key)
+            # metadata.json should be created with the SHA-256 hash
             self.assertTrue((pkl_path / "metadata.json").exists())
 
 

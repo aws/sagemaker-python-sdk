@@ -25,8 +25,6 @@ class TestSageMakerSmdServer(unittest.TestCase):
         )
         
         self.assertEqual(s3_path, "s3://bucket/model")
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
-        self.assertEqual(env_vars["SAGEMAKER_SERVE_SECRET_KEY"], "test-key")
         self.assertIn("SAGEMAKER_INFERENCE_CODE_DIRECTORY", env_vars)
 
     @patch('sagemaker.serve.model_server.smd.server.upload')
@@ -58,7 +56,6 @@ class TestSageMakerSmdServer(unittest.TestCase):
         )
         
         self.assertEqual(s3_path, "s3://bucket/code_prefix/model.tar.gz")
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
         self.assertIn("SAGEMAKER_INFERENCE_CODE", env_vars)
         mock_upload.assert_called_once()
 
@@ -80,7 +77,7 @@ class TestSageMakerSmdServer(unittest.TestCase):
         )
         
         self.assertIsNone(s3_path)
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
+        self.assertIn("SAGEMAKER_INFERENCE_CODE_DIRECTORY", env_vars)
 
 
 if __name__ == "__main__":
