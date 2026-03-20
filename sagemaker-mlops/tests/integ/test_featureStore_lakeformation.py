@@ -652,3 +652,70 @@ def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, regi
         # Cleanup
         if fg:
             cleanup_feature_group(fg)
+
+@pytest.mark.skip(reason="This is a full e2e test that could take 15 min to run.")
+@pytest.mark.serial
+@pytest.mark.slow_test
+def test_e2e_lf_put_record_athena_query(sagemaker_session, s3_uri, role, region):
+    """
+    End-to-end test: create FG with LF, put a record, wait for offline sync, query via Athena.
+
+    Skipped by default because offline store sync takes ~10 minutes.
+    """
+    import time
+    from datetime import datetime, timezone
+
+    from sagemaker.mlops.feature_store import (
+        FeatureValue,
+        create_athena_query,
+    )
+
+    fg_name = generate_feature_group_name()
+    fg = None
+
+    try:
+        # 1. Create feature group with LF enabled
+        fg = create_test_feature_group(fg_name, s3_uri, role, region)
+        fg.wait_for_status(target_status="Created", poll=30, timeout=300)
+
+        result = fg.enable_lake_formation()
+        assert result["s3_registration"] is True
+        assert result["permissions_granted"] is True
+        assert result["iam_principal_revoked"] is True
+        assert result["bucket_policy_applied"] is True
+
+        # 2. Put a record
+        record_id = uuid.uuid4().hex[:8]
+        event_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        fg.put_record(
+            record=[
+                FeatureValue(feature_name="record_id", value_as_string=record_id),
+                FeatureValue(feature_name="event_time", value_as_string=event_time),
+                FeatureValue(feature_name="feature_value", value_as_string="3.14"),
+            ],
+        )
+        logging.info(f"Put record: record_id={record_id}, event_time={event_time}")
+
+        # 3. Wait for offline store sync (~10 min)
+        wait_minutes = 10
+        logging.info(f"Waiting {wait_minutes} minutes for offline store sync...")
+        time.sleep(wait_minutes * 60)
+
+        # 4. Query via Athena
+        bucket = sagemaker_session.default_bucket()
+        output_location = f"s3://{bucket}/athena-results/test-lf-e2e"
+
+        query = create_athena_query(fg_name, sagemaker_session)
+        query.run(
+            query_string=f'SELECT * FROM "{query.table_name}" WHERE record_id = \'{record_id}\'',
+            output_location=output_location,
+        )
+        query.wait()
+
+        df = query.as_dataframe()
+        assert len(df) >= 1, f"Expected at least 1 row, got {len(df)}"
+        assert df.iloc[0]["record_id"] == record_id
+
+    finally:
+        if fg:
+            cleanup_feature_group(fg)
