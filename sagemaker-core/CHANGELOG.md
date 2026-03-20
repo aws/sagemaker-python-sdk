@@ -1,4 +1,11 @@
 # Changelog
+## v2.6.0 (2026-03-19)
+
+### Bug fixes and Other Changes
+
+- **Fix**: resolve PermissionError during local mode cleanup of root-owned Docker files (#5629)
+- **Enhancement**: Add EUSC region config for JumpStart
+  
 ## v2.5.1 (2026-03-12)
 
 ### Bug Fixes
