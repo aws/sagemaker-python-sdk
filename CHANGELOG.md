@@ -1,4 +1,15 @@
 # Changelog
+## v3.6.0 (2026-03-19)
+
+### Fixes
+- **HyperparameterTuner**: Include sm_drivers channel in HyperparameterTuner jobs (#5516)
+- **Pipeline**: Fix handling of training step dependencies to allow successful pipeline creation
+- **ModelBuilder**: Fix the bug in deploy from LORA finetuning job
+
+### Features
+- **Feature Processor**: Port feature processor to v3
+- **Jumpstart**: Add EUSC region config for JumpStart
+  
 ## v3.5.0 (2026-03-02)
 
 ### Features
