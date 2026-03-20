@@ -39,26 +39,18 @@ class LakeFormationConfig(Base):
         registration_role_arn: IAM role ARN to use for S3 registration with Lake Formation.
             Required when use_service_linked_role is False. This can be different from the
             Feature Group's execution role.
-        show_s3_policy: If True, prints the S3 deny policy to the console after successful
-            Lake Formation setup. This policy should be added to your S3 bucket to restrict
-            access to only the allowed principals. Default is False.
-        disable_hybrid_access_mode: If True, revokes IAMAllowedPrincipal permissions from
-            the Glue table, moving it to Lake Formation-only access mode. If False, keeps
-            hybrid access mode where both IAM and Lake Formation control access.
-            Default is True (LF-only mode).
     """
 
     enabled: bool = False
     use_service_linked_role: bool = True
     registration_role_arn: Optional[str] = None
-    show_s3_policy: bool = False
-    disable_hybrid_access_mode: bool = True
 
 
 class FeatureGroupManager(FeatureGroup):
     """FeatureGroup with extended management capabilities."""
 
     _lf_client_cache: dict
+    _s3_client_cache: dict
 
     @staticmethod
     def _s3_uri_to_arn(s3_uri: str, region: Optional[str] = None) -> str:
@@ -131,19 +123,20 @@ class FeatureGroupManager(FeatureGroup):
             f"lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
         )
 
-    def _generate_s3_deny_policy(
+    def _generate_s3_deny_statements(
         self,
         bucket_name: str,
         s3_prefix: str,
         lake_formation_role_arn: str,
         feature_store_role_arn: str,
         region: Optional[str] = None,
-    ) -> dict:
+        caller_arn: Optional[str] = None,
+    ) -> list:
         """
-        Generate an S3 deny policy for Lake Formation governance.
+        Generate S3 deny statements for Lake Formation governance.
 
-        This policy denies S3 access to the offline store data prefix except for
-        the Lake Formation role and Feature Store execution role.
+        These statements deny S3 access to the offline store data prefix except for
+        the Lake Formation role, Feature Store execution role, and optionally the caller.
 
         Args:
             bucket_name: S3 bucket name.
@@ -152,53 +145,42 @@ class FeatureGroupManager(FeatureGroup):
             feature_store_role_arn: Feature Store execution role ARN.
             region: AWS region name (e.g., 'us-west-2'). Used to determine the correct
                 partition for S3 ARNs. If not provided, defaults to 'aws' partition.
+            caller_arn: ARN of the caller to exempt from deny statements.
 
         Returns:
-            S3 bucket policy as a dict with valid JSON structure containing:
-            - Version: "2012-10-17"
-            - Statement: List with two deny statements:
-              1. Deny GetObject, PutObject, DeleteObject on data prefix except allowed principals
-              2. Deny ListBucket on bucket with prefix condition except allowed principals
+            List of statement dicts containing:
+            1. Deny GetObject, PutObject, DeleteObject on data prefix except allowed principals
+            2. Deny ListBucket on bucket with prefix condition except allowed principals
         """
         partition = aws_partition(region) if region else "aws"
 
-        policy = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Sid": "DenyAllAccessToFeatureStorePrefixExceptAllowedPrincipals",
-                    "Effect": "Deny",
-                    "Principal": "*",
-                    "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
-                    "Resource": f"arn:{partition}:s3:::{bucket_name}/{s3_prefix}/*",
-                    "Condition": {
-                        "StringNotEquals": {
-                            "aws:PrincipalArn": [
-                                lake_formation_role_arn,
-                                feature_store_role_arn,
-                            ]
-                        }
-                    },
+        allowed_principals = [lake_formation_role_arn, feature_store_role_arn]
+        if caller_arn:
+            allowed_principals.append(caller_arn)
+
+        return [
+            {
+                "Sid": "DenyAllAccessToFeatureStorePrefixExceptAllowedPrincipals",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+                "Resource": f"arn:{partition}:s3:::{bucket_name}/{s3_prefix}/*",
+                "Condition": {
+                    "StringNotEquals": {"aws:PrincipalArn": allowed_principals}
                 },
-                {
-                    "Sid": "DenyListOnPrefixExceptAllowedPrincipals",
-                    "Effect": "Deny",
-                    "Principal": "*",
-                    "Action": "s3:ListBucket",
-                    "Resource": f"arn:{partition}:s3:::{bucket_name}",
-                    "Condition": {
-                        "StringLike": {"s3:prefix": f"{s3_prefix}/*"},
-                        "StringNotEquals": {
-                            "aws:PrincipalArn": [
-                                lake_formation_role_arn,
-                                feature_store_role_arn,
-                            ]
-                        },
-                    },
+            },
+            {
+                "Sid": "DenyListOnPrefixExceptAllowedPrincipals",
+                "Effect": "Deny",
+                "Principal": "*",
+                "Action": "s3:ListBucket",
+                "Resource": f"arn:{partition}:s3:::{bucket_name}",
+                "Condition": {
+                    "StringLike": {"s3:prefix": f"{s3_prefix}/*"},
+                    "StringNotEquals": {"aws:PrincipalArn": allowed_principals},
                 },
-            ],
-        }
-        return policy
+            },
+        ]
 
     def _get_lake_formation_client(
         self,
@@ -230,6 +212,37 @@ class FeatureGroupManager(FeatureGroup):
             )
 
         return self._lf_client_cache[cache_key]
+
+    def _get_s3_client(
+        self,
+        session: Optional[Session] = None,
+        region: Optional[str] = None,
+    ):
+        """
+        Get an S3 client, reusing a cached client when possible.
+
+        The client is cached on the instance keyed by (session, region). Subsequent
+        calls with the same arguments return the existing client instead of creating
+        a new one.
+
+        Args:
+            session: Boto3 session. If not provided, a new session will be created.
+            region: AWS region name.
+
+        Returns:
+            A boto3 S3 client.
+        """
+        cache_key = (id(session), region)
+        if not hasattr(self, "_s3_client_cache") or self._s3_client_cache is None:
+            self._s3_client_cache = {}
+
+        if cache_key not in self._s3_client_cache:
+            boto_session = session or Session()
+            self._s3_client_cache[cache_key] = boto_session.client(
+                "s3", region_name=region
+            )
+
+        return self._s3_client_cache[cache_key]
 
     def _register_s3_with_lake_formation(
         self,
@@ -296,6 +309,9 @@ class FeatureGroupManager(FeatureGroup):
         """
         Revoke IAMAllowedPrincipal permissions from a Glue table.
 
+        Checks for existing IAMAllowedPrincipal permissions via list_permissions
+        before attempting revocation. If no permissions exist, skips the revoke call.
+
         Args:
             database_name: Glue database name.
             table_name: Glue table name.
@@ -306,7 +322,7 @@ class FeatureGroupManager(FeatureGroup):
             True if revocation succeeded or permissions didn't exist.
 
         Raises:
-            ClientError: If revocation fails for unexpected reasons.
+            ClientError: If list_permissions or revoke_permissions fails.
         """
         # Get region from session if not provided
         if region is None and session is not None:
@@ -314,28 +330,34 @@ class FeatureGroupManager(FeatureGroup):
 
         client = self._get_lake_formation_client(session, region)
 
-        try:
-            client.revoke_permissions(
-                Principal={"DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"},
-                Resource={
-                    "Table": {
-                        "DatabaseName": database_name,
-                        "Name": table_name,
-                    }
-                },
-                Permissions=["ALL"],
+        response = client.list_permissions(
+            Principal={"DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"},
+            Resource={
+                "Table": {
+                    "DatabaseName": database_name,
+                    "Name": table_name,
+                }
+            },
+        )
+
+        if not response.get("PrincipalResourcePermissions", []):
+            logger.info(
+                f"No IAMAllowedPrincipal permissions found on: {database_name}.{table_name}"
             )
-            logger.info(f"Disabled Lake Formation hybrid-access mode on table: {database_name}.{table_name}")
             return True
-        except botocore.exceptions.ClientError as e:
-            # if the Table doesn't have that permission because the user already revoked it
-            # then just return True
-            if e.response["Error"]["Code"] == "InvalidInputException":
-                logger.info(
-                    f"IAMAllowedPrincipal permissions may not exist on: {database_name}.{table_name}"
-                )
-                return True
-            raise
+
+        client.revoke_permissions(
+            Principal={"DataLakePrincipalIdentifier": "IAM_ALLOWED_PRINCIPALS"},
+            Resource={
+                "Table": {
+                    "DatabaseName": database_name,
+                    "Name": table_name,
+                }
+            },
+            Permissions=["ALL"],
+        )
+        logger.info(f"Disabled Lake Formation hybrid-access mode on table: {database_name}.{table_name}")
+        return True
 
     def _grant_lake_formation_permissions(
         self,
@@ -390,6 +412,70 @@ class FeatureGroupManager(FeatureGroup):
                 return True
             raise
 
+    def _apply_bucket_policy(
+        self,
+        bucket_name: str,
+        s3_prefix: str,
+        lake_formation_role_arn: str,
+        feature_store_role_arn: str,
+        session: Optional[Session] = None,
+        region: Optional[str] = None,
+    ) -> bool:
+        """
+        Apply S3 deny statements to the bucket policy for Lake Formation governance.
+
+        Fetches the existing bucket policy, appends deny statements idempotently
+        (by Sid), and puts the merged policy back.
+
+        Args:
+            bucket_name: S3 bucket name.
+            s3_prefix: S3 prefix path (without bucket name).
+            lake_formation_role_arn: Lake Formation registration role ARN.
+            feature_store_role_arn: Feature Store execution role ARN.
+            session: Boto3 session.
+            region: AWS region name.
+
+        Returns:
+            True on success.
+
+        Raises:
+            ClientError: If S3 operations fail.
+        """
+        s3_client = self._get_s3_client(session, region)
+
+        # Get existing bucket policy
+        try:
+            response = s3_client.get_bucket_policy(Bucket=bucket_name)
+            policy = json.loads(response["Policy"])
+        except botocore.exceptions.ClientError as e:
+            if e.response["Error"]["Code"] == "NoSuchBucketPolicy":
+                policy = {"Version": "2012-10-17", "Statement": []}
+            else:
+                raise
+
+        # Generate deny statements
+        deny_statements = self._generate_s3_deny_statements(
+            bucket_name=bucket_name,
+            s3_prefix=s3_prefix,
+            lake_formation_role_arn=lake_formation_role_arn,
+            feature_store_role_arn=feature_store_role_arn,
+            region=region,
+        )
+
+        # Filter out statements whose Sid already exists
+        existing_sids = {stmt.get("Sid") for stmt in policy.get("Statement", [])}
+        new_statements = [s for s in deny_statements if s.get("Sid") not in existing_sids]
+
+        if not new_statements:
+            logger.info("Bucket policy already contains the deny statements. Skipping update.")
+            return True
+
+        policy["Statement"].extend(new_statements)
+        s3_client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(policy))
+        # TODO: Remove verbose policy logging
+        logger.info(f"Applied bucket policy: {json.dumps(policy, indent=2)}")
+        return True
+
     @Base.add_validate_call
     def enable_lake_formation(
         self,
@@ -398,8 +484,6 @@ class FeatureGroupManager(FeatureGroup):
         use_service_linked_role: bool = True,
         registration_role_arn: Optional[str] = None,
         wait_for_active: bool = False,
-        show_s3_policy: bool = False,
-        disable_hybrid_access_mode: bool = True,
     ) -> dict:
         """
         Enable Lake Formation governance for this Feature Group's offline store.
@@ -409,8 +493,8 @@ class FeatureGroupManager(FeatureGroup):
         2. Validates Feature Group status is 'Created'
         3. Registers the offline store S3 location as data lake location
         4. Grants the execution role permissions on the Glue table
-        5. Optionally revokes IAMAllowedPrincipal permissions from the Glue table
-           (controlled by disable_hybrid_access_mode)
+        5. Revokes IAMAllowedPrincipal permissions from the Glue table
+        6. Applies S3 deny bucket policy
 
         The role ARN is automatically extracted from the Feature Group's configuration.
         Each phase depends on the success of the previous phase - if any phase fails,
@@ -427,19 +511,13 @@ class FeatureGroupManager(FeatureGroup):
                 Feature Group's execution role (role_arn)
             wait_for_active: If True, waits for the Feature Group to reach 'Created' status
                 before enabling Lake Formation. Default is False.
-            show_s3_policy: If True, prints the S3 deny policy to the console after successful
-                Lake Formation setup. This policy should be added to your S3 bucket to restrict
-                access to only the allowed principals. Default is False.
-            disable_hybrid_access_mode: If True, revokes IAMAllowedPrincipal permissions from
-                the Glue table, moving it to Lake Formation-only access mode. If False, keeps
-                hybrid access mode where both IAM and Lake Formation control access.
-                Default is True.
 
         Returns:
             Dict with status of each Lake Formation operation:
             - s3_registration: bool
-            - iam_principal_revoked: bool or None (None when disable_hybrid_access_mode=False)
             - permissions_granted: bool
+            - iam_principal_revoked: bool
+            - bucket_policy_applied: bool
 
         Raises:
             ValueError: If the Feature Group has no offline store configured,
@@ -533,6 +611,7 @@ class FeatureGroupManager(FeatureGroup):
             "s3_registration": False,
             "iam_principal_revoked": False,
             "permissions_granted": False,
+            "bucket_policy_applied": False,
         }
 
         # Phase 1: Register S3 with Lake Formation
@@ -573,77 +652,58 @@ class FeatureGroupManager(FeatureGroup):
                 f"Subsequent phases skipped. Results: {results}"
             )
 
-        # Phase 3: Revoke IAMAllowedPrincipal permissions (if disabling hybrid access mode)
-        if disable_hybrid_access_mode:
-            try:
-                results["iam_principal_revoked"] = self._revoke_iam_allowed_principal(
-                    database_name_str, table_name_str, session, region
-                )
-            except Exception as e:
-                raise RuntimeError(
-                    f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}. Error: {e}"
-                ) from e
+        # Phase 3: Revoke IAMAllowedPrincipal permissions
+        try:
+            results["iam_principal_revoked"] = self._revoke_iam_allowed_principal(
+                database_name_str, table_name_str, session, region
+            )
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}. Error: {e}"
+            ) from e
 
-            if not results["iam_principal_revoked"]:
-                raise RuntimeError(
-                    f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}"
-                )
-        else:
-            results["iam_principal_revoked"] = None
-            logger.info(
-                "Skipping IAMAllowedPrincipal revocation - hybrid access mode preserved."
+        if not results["iam_principal_revoked"]:
+            raise RuntimeError(
+                f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}"
             )
 
-        logger.info(f"Lake Formation setup complete for {self.feature_group_name}: {results}")
+        # Phase 4: Apply S3 bucket policy
+        # Validate feature_group_arn is available for account ID extraction
+        if self.feature_group_arn is None or isinstance(self.feature_group_arn, Unassigned):
+            raise ValueError(
+                "Feature Group ARN is required to apply bucket policy. "
+                "Ensure the Feature Group is in 'Created' status."
+            )
 
-        # Generate and optionally print S3 deny policy
-        if show_s3_policy:
-            # Validate feature_group_arn is available for account ID extraction
-            if self.feature_group_arn is None or isinstance(self.feature_group_arn, Unassigned):
-                raise ValueError(
-                    "Feature Group ARN is required to generate S3 policy. "
-                    "Ensure the Feature Group is in 'Created' status."
-                )
+        bucket_name, s3_prefix = parse_s3_url(resolved_s3_uri_str)
+        feature_group_arn_str = str(self.feature_group_arn) if self.feature_group_arn else ""
+        account_id = self._extract_account_id_from_arn(feature_group_arn_str)
 
-            # Extract bucket name and prefix from resolved S3 URI using core utility
-            bucket_name, s3_prefix = parse_s3_url(resolved_s3_uri_str)
+        if use_service_linked_role:
+            lf_role_arn = self._get_lake_formation_service_linked_role_arn(account_id, region)
+        else:
+            lf_role_arn = str(registration_role_arn)
 
-            # Extract account ID from Feature Group ARN
-            feature_group_arn_str = str(self.feature_group_arn) if self.feature_group_arn else ""
-            account_id = self._extract_account_id_from_arn(feature_group_arn_str)
-
-            # Determine Lake Formation role ARN based on use_service_linked_role flag
-            if use_service_linked_role:
-                lf_role_arn = self._get_lake_formation_service_linked_role_arn(account_id, region)
-            else:
-                # registration_role_arn is validated earlier when use_service_linked_role is False
-                lf_role_arn = str(registration_role_arn)
-
-            # Generate the S3 deny policy
-            policy = self._generate_s3_deny_policy(
+        try:
+            results["bucket_policy_applied"] = self._apply_bucket_policy(
                 bucket_name=bucket_name,
                 s3_prefix=s3_prefix,
                 lake_formation_role_arn=lf_role_arn,
                 feature_store_role_arn=role_arn_str,
+                session=session,
                 region=region,
             )
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to apply bucket policy. Results: {results}. Error: {e}"
+            ) from e
 
-            # Log policy with clear instructions
-            policy_json = json.dumps(policy, indent=2)
-            policy_message = (
-                "\n" + "=" * 50
-                + "\nS3 Bucket Policy Update recommended"
-                + "\n" + "=" * 50
-                + "\n\nTo complete Lake Formation setup, add the following"
-                + "\ndeny policy to your S3 bucket."
-                + "\nThis restricts access to the offline store data to"
-                + "\nonly the allowed principals."
-                + f"\n\nBucket: {bucket_name}"
-                + f"\n\nPolicy to add:\n{policy_json}"
-                + "\n\nNote: Merge this with your existing bucket policy if one exists."
-                + "\n" + "=" * 50 + "\n"
+        if not results["bucket_policy_applied"]:
+            raise RuntimeError(
+                f"Failed to apply bucket policy. Results: {results}"
             )
-            logger.info(policy_message)
+
+        logger.info(f"Lake Formation setup complete for {self.feature_group_name}: {results}")
 
         return results
 
@@ -763,7 +823,5 @@ class FeatureGroupManager(FeatureGroup):
                 region=region,
                 use_service_linked_role=lake_formation_config.use_service_linked_role,
                 registration_role_arn=lake_formation_config.registration_role_arn,
-                show_s3_policy=lake_formation_config.show_s3_policy,
-                disable_hybrid_access_mode=lake_formation_config.disable_hybrid_access_mode,
             )
         return feature_group
