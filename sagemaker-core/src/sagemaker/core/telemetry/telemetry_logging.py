@@ -13,15 +13,18 @@
 """Telemetry module for SageMaker Python SDK to collect usage data and metrics."""
 from __future__ import absolute_import
 import logging
+import os
 import platform
 import sys
 from time import perf_counter
 from typing import List
 import functools
 import requests
+from urllib.parse import quote
 
 import boto3
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.common_utils import resolve_value_from_config
 from sagemaker.core.config.config_schema import TELEMETRY_OPT_OUT_PATH
 from sagemaker.core.telemetry.constants import (
@@ -136,6 +139,11 @@ def _telemetry_emitter(feature: str, func_name: str):
                 # Add endpoint ARN to the extra info if available
                 if hasattr(sagemaker_session, "endpoint_arn") and sagemaker_session.endpoint_arn:
                     extra += f"&x-endpointArn={sagemaker_session.endpoint_arn}"
+
+                # Add created_by from environment variable if available
+                created_by = os.environ.get(_CREATED_BY_ENV_VAR, "")
+                if created_by:
+                    extra += f"&x-createdBy={quote(created_by, safe='')}"
 
                 start_timer = perf_counter()
                 try:
