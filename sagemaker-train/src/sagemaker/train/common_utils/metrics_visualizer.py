@@ -94,11 +94,10 @@ def get_studio_url(training_job, domain_id: str = None) -> str:
     Example:
         >>> from sagemaker.train import get_studio_url
         >>> url = get_studio_url('my-training-job')
-        >>> url = get_studio_url('arn:aws:sagemaker:us-east-1:123456789:training-job/my-job')
+        >>> url = get_studio_url('arn:aws:sagemaker:us-west-2:123456789:training-job/my-job')
     """
     import re
 
-    # Handle ARN string — extract region and job name directly
     if isinstance(training_job, str):
         arn_match = re.match(
             r'arn:aws(?:-[a-z]+)?:sagemaker:([a-z0-9-]+):\d+:training-job/(.+)',
@@ -108,12 +107,14 @@ def get_studio_url(training_job, domain_id: str = None) -> str:
             region = arn_match.group(1)
             job_name = arn_match.group(2)
         else:
-            # Treat as job name, need to fetch the object
+            # Plain job name — use session region
             training_job = TrainingJob.get(training_job_name=training_job)
-            region = training_job.region if hasattr(training_job, 'region') and training_job.region else 'us-east-1'
+            from sagemaker.core.utils.utils import SageMakerClient
+            region = SageMakerClient().region_name
             job_name = training_job.training_job_name
     else:
-        region = training_job.region if hasattr(training_job, 'region') and training_job.region else 'us-east-1'
+        from sagemaker.core.utils.utils import SageMakerClient
+        region = SageMakerClient().region_name
         job_name = training_job.training_job_name
     
     base = _get_studio_base_url(region)
