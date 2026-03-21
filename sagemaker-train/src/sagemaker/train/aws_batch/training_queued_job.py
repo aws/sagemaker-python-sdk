@@ -29,7 +29,7 @@ from sagemaker.train.configs import (
     SourceCode,
     TrainingImageConfig,
 )
-from .batch_api_helper import _terminate_service_job, _describe_service_job
+from .batch_api_helper import _terminate_service_job, _describe_service_job, _update_service_job
 from .exception import NoTrainingJob, MissingRequiredArgument
 from ..utils import _get_training_job_name_from_training_job_arn
 from .constants import JOB_STATUS_COMPLETED, JOB_STATUS_FAILED, POLL_IN_SECONDS
@@ -84,6 +84,17 @@ class TrainingQueuedJob:
 
         """
         _terminate_service_job(self.job_arn, reason)
+
+    def update(self, scheduling_priority: int) -> Dict:
+        """Update Batch job.
+
+        Args:
+            scheduling_priority: An integer representing scheduling priority.
+
+        Returns: A dict which includes jobArn, jobName and jobId.
+
+        """
+        return _update_service_job(self.job_arn, scheduling_priority)
 
     def describe(self) -> Dict:
         """Describe Batch job.
