@@ -158,9 +158,11 @@ class FeatureGroupManager(FeatureGroup):
         if caller_arn:
             allowed_principals.append(caller_arn)
 
+        sid_suffix = s3_prefix.rstrip("/").rsplit("/", 1)[-1]
+
         return [
             {
-                "Sid": "DenyAllAccessToFeatureStorePrefixExceptAllowedPrincipals",
+                "Sid": f"DenyFSObjectAccess_{sid_suffix}",
                 "Effect": "Deny",
                 "Principal": "*",
                 "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
@@ -170,7 +172,7 @@ class FeatureGroupManager(FeatureGroup):
                 },
             },
             {
-                "Sid": "DenyListOnPrefixExceptAllowedPrincipals",
+                "Sid": f"DenyFSListAccess_{sid_suffix}",
                 "Effect": "Deny",
                 "Principal": "*",
                 "Action": "s3:ListBucket",
@@ -472,7 +474,6 @@ class FeatureGroupManager(FeatureGroup):
 
         policy["Statement"].extend(new_statements)
         s3_client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(policy))
-        # TODO: Remove verbose policy logging
         logger.info(f"Applied bucket policy: {json.dumps(policy, indent=2)}")
         return True
 

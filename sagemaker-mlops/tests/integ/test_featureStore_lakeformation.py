@@ -472,19 +472,18 @@ def test_enable_lake_formation_fails_with_nonexistent_role(
 
 @pytest.mark.serial
 @pytest.mark.slow_test
-def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region, caplog):
+def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region):
     """
-    Test the full Lake Formation flow with S3 deny policy output.
+    Test the full Lake Formation flow with S3 deny policy application.
 
     This test verifies:
     1. Creates a FeatureGroupManager with offline store
-    2. Enables Lake Formation with show_s3_policy=True
-    3. Verifies all Lake Formation phases complete successfully
-    4. Verifies the S3 deny policy is logged
-    5. Verifies the policy structure contains expected elements
-
-    This validates Requirements 6.1-6.9 from the design document.
+    2. Enables Lake Formation (bucket policy is applied automatically)
+    3. Verifies all Lake Formation phases complete successfully (including bucket policy)
+    4. Fetches the actual bucket policy and verifies its structure
     """
+    import json
+
     fg_name = generate_feature_group_name()
     fg = None
 
@@ -497,48 +496,25 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
         fg.wait_for_status(target_status="Created", poll=30, timeout=300)
         assert fg.feature_group_status == "Created"
 
-        # Enable Lake Formation governance with policy output
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = fg.enable_lake_formation(show_s3_policy=True)
+        # Enable Lake Formation governance
+        result = fg.enable_lake_formation()
 
         # Verify all phases completed successfully
         assert result["s3_registration"] is True
         assert result["permissions_granted"] is True
         assert result["iam_principal_revoked"] is True
+        assert result["bucket_policy_applied"] is True
 
-        output = caplog.text
+        # Fetch the actual bucket policy from S3 and verify the role is allowed
+        bucket_name = s3_uri.replace("s3://", "").split("/")[0]
+        s3_client = boto3.client("s3")
+        policy = json.loads(s3_client.get_bucket_policy(Bucket=bucket_name)["Policy"])
 
-        # Verify the policy header is logged
-        assert "S3 Bucket Policy Update recommended" in output
-        # Verify bucket information is logged
-        # Extract bucket name from s3_uri (s3://bucket/path -> bucket)
-        expected_bucket = s3_uri.replace("s3://", "").split("/")[0]
-        assert f"Bucket: {expected_bucket}" in output
-
-        # Verify policy structure elements are present
-        assert '"Version": "2012-10-17"' in output
-        assert '"Statement"' in output
-        assert '"Effect": "Deny"' in output
-        assert '"Principal": "*"' in output
-
-        # Verify the deny actions are present
-        assert "s3:GetObject" in output
-        assert "s3:PutObject" in output
-        assert "s3:DeleteObject" in output
-        assert "s3:ListBucket" in output
-
-        # Verify the condition structure is present
-        assert "StringNotEquals" in output
-        assert "aws:PrincipalArn" in output
-
-        # Verify the role ARN is in the allowed principals
-        assert role in output
-
-        # Verify the service-linked role pattern is present (default use_service_linked_role=True)
-        assert "aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess" in output
-
-        # Verify instructions are logged
-        assert "Merge this with your existing bucket policy" in output
+        # Find a DenyFS statement and verify the execution role is in allowed principals
+        deny_stmts = [s for s in policy["Statement"] if s.get("Sid", "").startswith("DenyFS")]
+        assert len(deny_stmts) >= 1
+        allowed = deny_stmts[0]["Condition"]["StringNotEquals"]["aws:PrincipalArn"]
+        assert role in allowed
 
     finally:
         # Cleanup
@@ -548,17 +524,14 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
 
 @pytest.mark.serial
 @pytest.mark.slow_test
-def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region, caplog):
+def test_enable_lake_formation_default_applies_bucket_policy(s3_uri, role, region, caplog):
     """
-    Test that S3 deny policy is NOT logged when show_s3_policy=False (default).
+    Test that bucket policy is applied automatically with default arguments.
 
     This test verifies:
     1. Creates a FeatureGroupManager with offline store
-    2. Enables Lake Formation without show_s3_policy (defaults to False)
-    3. Verifies all Lake Formation phases complete successfully
-    4. Verifies the S3 deny policy is NOT logged
-
-    This validates Requirement 6.2 from the design document.
+    2. Enables Lake Formation with default arguments
+    3. Verifies all four phases complete successfully (including bucket policy)
     """
     fg_name = generate_feature_group_name()
     fg = None
@@ -572,7 +545,7 @@ def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region,
         fg.wait_for_status(target_status="Created", poll=30, timeout=300)
         assert fg.feature_group_status == "Created"
 
-        # Enable Lake Formation governance WITHOUT policy output (default)
+        # Enable Lake Formation governance with defaults
         with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
             result = fg.enable_lake_formation()
 
@@ -580,13 +553,7 @@ def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region,
         assert result["s3_registration"] is True
         assert result["permissions_granted"] is True
         assert result["iam_principal_revoked"] is True
-
-        output = caplog.text
-
-        # Verify the policy is NOT logged
-        assert "S3 Bucket Policy Update recommended" not in output
-        assert '"Version": "2012-10-17"' not in output
-        assert "s3:GetObject" not in output
+        assert result["bucket_policy_applied"] is True
 
     finally:
         # Cleanup
@@ -596,20 +563,17 @@ def test_enable_lake_formation_no_policy_output_by_default(s3_uri, role, region,
 
 @pytest.mark.serial
 @pytest.mark.slow_test
-def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, region, caplog):
+def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, region):
     """
-    Test the full Lake Formation flow with custom registration role and policy output.
+    Test the full Lake Formation flow with custom registration role.
 
     This test verifies:
     1. Creates a FeatureGroupManager with offline store
     2. Enables Lake Formation with use_service_linked_role=False and a custom registration_role_arn
-    3. Verifies the S3 deny policy uses the custom role ARN instead of service-linked role
-
-    This validates Requirements 6.4, 6.5 from the design document.
-
-    Note: This test uses the same execution role as the registration role for simplicity.
-    In production, these would typically be different roles.
+    3. Fetches the actual bucket policy and verifies the custom role ARN is in the allowed principals
     """
+    import json
+
     fg_name = generate_feature_group_name()
     fg = None
 
@@ -622,31 +586,36 @@ def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, regi
         fg.wait_for_status(target_status="Created", poll=30, timeout=300)
         assert fg.feature_group_status == "Created"
 
-        # Enable Lake Formation with custom registration role and policy output
-        # Using the same role for both execution and registration for test simplicity
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = fg.enable_lake_formation(
-                use_service_linked_role=False,
-                registration_role_arn=role,
-                show_s3_policy=True,
-            )
+        # Enable Lake Formation with custom registration role
+        result = fg.enable_lake_formation(
+            use_service_linked_role=False,
+            registration_role_arn=role,
+        )
 
         # Verify all phases completed successfully
         assert result["s3_registration"] is True
         assert result["permissions_granted"] is True
         assert result["iam_principal_revoked"] is True
+        assert result["bucket_policy_applied"] is True
 
-        output = caplog.text
+        # Fetch the actual bucket policy from S3 and verify the role is in allowed principals
+        bucket_name = s3_uri.replace("s3://", "").split("/")[0]
+        s3_client = boto3.client("s3")
+        policy = json.loads(s3_client.get_bucket_policy(Bucket=bucket_name)["Policy"])
 
-        # Verify the policy header is logged
-        assert "S3 Bucket Policy Update recommended" in output
+        # Find the deny statements for this feature group's prefix
+        fg.refresh()
+        s3_resolved = fg.offline_store_config.s3_storage_config.resolved_output_s3_uri
+        fg_prefix = s3_resolved.replace(f"s3://{bucket_name}/", "").rstrip("/")
+        sid_suffix = fg_prefix.rsplit("/", 1)[-1]
 
-        # Verify the custom role ARN is used in the policy (appears twice - once for each principal)
-        # The role should appear as both the Lake Formation role and the Feature Store role
-        assert output.count(role) >= 2
+        object_sid = f"DenyFSObjectAccess_{sid_suffix}"
+        deny_stmts = [s for s in policy["Statement"] if s.get("Sid") == object_sid]
+        assert len(deny_stmts) == 1
 
-        # Verify the service-linked role is NOT used
-        assert "aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess" not in output
+        # Verify the custom role ARN is in the allowed principals
+        allowed = deny_stmts[0]["Condition"]["StringNotEquals"]["aws:PrincipalArn"]
+        assert role in allowed
 
     finally:
         # Cleanup
