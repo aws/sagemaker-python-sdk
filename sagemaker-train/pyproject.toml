@@ -43,9 +43,6 @@ dependencies = [
     "sagemaker-mlflow>=0.0.1,<1.0.0",
     "mlflow>=3.0.0,<4.0.0",
     "nest_asyncio>=1.5.0",
-    "ipywidgets>=8.0.0",
-    "rich>=13.0.0",
-    "matplotlib>=3.5.0",
 ]
 
 [project.urls]
@@ -63,6 +60,11 @@ test = [
     "omegaconf",
     "graphene",
     "IPython"
+]
+notebook = [
+    "ipywidgets>=8.0.0",
+    "rich>=13.0.0",
+    "matplotlib>=3.5.0",
 ]
 
 [tool.setuptools.packages.find]

@@ -931,16 +931,14 @@ class EvaluationPipelineExecution(BaseModel):
                 header_table.add_column("Property", style="cyan bold", width=20)
                 header_table.add_column("Value", style="dim", overflow="fold")
 
-                # Extract pipeline name and region from execution ARN
+                # Extract pipeline name and exec_id from execution ARN
                 pipeline_name = None
                 exec_id = ''
-                region = None
                 if self.arn:
                     arn_parts = self.arn.split('/')
                     if len(arn_parts) >= 4:
                         pipeline_name = arn_parts[-3]
                         exec_id = arn_parts[-1]
-                    region = self.arn.split(":")[3] if len(self.arn.split(":")) > 3 else None
                 # Use execution display name if available, fall back to self.name
                 display_name = self.name
                 if self._pipeline_execution:
@@ -952,8 +950,10 @@ class EvaluationPipelineExecution(BaseModel):
                 # Build links row
                 links = []
                 try:
+                    from sagemaker.core.utils.utils import SageMakerClient
                     from sagemaker.train.common_utils.metrics_visualizer import _is_in_studio, _get_studio_base_url
-                    if region and pipeline_name and _is_in_studio():
+                    if pipeline_name and _is_in_studio():
+                        region = SageMakerClient().region_name
                         base = _get_studio_base_url(region)
                         if base:
                             pipeline_url = f"{base}/jobs/evaluation/detail?pipeline_name={pipeline_name}&execution_id={exec_id}"
@@ -1052,12 +1052,13 @@ class EvaluationPipelineExecution(BaseModel):
                         links_table = Table(show_header=True, header_style="bold magenta", box=None, padding=(0, 1))
                         links_table.add_column("Step", style="cyan", width=20)
                         links_table.add_column("Console", style="dim")
+                        from sagemaker.core.utils.utils import SageMakerClient
                         from sagemaker.train.common_utils.metrics_visualizer import (
                             _is_in_studio, _parse_job_arn, _get_studio_base_url,
                             get_console_job_url, get_cloudwatch_logs_url,
                         )
                         in_studio = _is_in_studio()
-                        studio_base = _get_studio_base_url(region) if in_studio else ""
+                        studio_base = _get_studio_base_url(SageMakerClient().region_name) if in_studio else ""
                         if in_studio:
                             links_table.add_column("Studio", style="dim")
                         links_table.add_column("Logs", style="dim")
@@ -1296,15 +1297,16 @@ class EvaluationPipelineExecution(BaseModel):
     @staticmethod
     def _extract_job_arn_from_metadata(step) -> Optional[str]:
         """Extract the underlying job ARN from a pipeline step's metadata."""
+        from sagemaker.train.common_utils.trainer_wait import _is_unassigned_attribute
         metadata = getattr(step, 'metadata', None)
-        if metadata is None or 'Unassigned' in metadata.__class__.__name__:
+        if metadata is None or _is_unassigned_attribute(metadata):
             return None
         for attr in ('training_job', 'processing_job', 'transform_job', 'tuning_job',
                      'auto_ml_job', 'compilation_job'):
             job_meta = getattr(metadata, attr, None)
-            if job_meta is not None and not ('Unassigned' in job_meta.__class__.__name__):
+            if job_meta is not None and not _is_unassigned_attribute(job_meta):
                 arn = getattr(job_meta, 'arn', None)
-                if arn and not ('Unassigned' in arn.__class__.__name__):
+                if arn and not _is_unassigned_attribute(arn):
                     return str(arn)
         return None
 

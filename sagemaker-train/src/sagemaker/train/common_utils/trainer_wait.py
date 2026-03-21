@@ -182,16 +182,16 @@ def get_mlflow_url(training_job) -> str:
     if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
         raise ValueError("Training job does not have MLflow configured")
     
-    import boto3
     import os
     from mlflow.tracking import MlflowClient
     import mlflow
-    
+    from sagemaker.core.utils.utils import SageMakerClient
+
     mlflow_arn = training_job.mlflow_config.mlflow_resource_arn
     exp_name = training_job.mlflow_config.mlflow_experiment_name
-    
+
     # Get presigned base URL
-    sm_client = boto3.client('sagemaker')
+    sm_client = SageMakerClient().sagemaker_client
     response = sm_client.create_presigned_mlflow_app_url(Arn=mlflow_arn)
     base_url = response.get('AuthorizedUrl')
     
