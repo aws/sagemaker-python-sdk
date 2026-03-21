@@ -2,8 +2,12 @@
 # Licensed under the Apache License, Version 2.0
 """SageMaker FeatureStore V3 - powered by sagemaker-core."""
 
-# Resources from core
+# FeatureGroup with Lake Formation support (local subclass)
 from sagemaker.core.resources import FeatureGroup, FeatureMetadata
+from sagemaker.mlops.feature_store.feature_group_manager import FeatureGroupManager, LakeFormationConfig
+
+# Resources from core
+from sagemaker.core.resources import FeatureMetadata
 
 # Shapes from core (Pydantic - no to_dict() needed)
 from sagemaker.core.shapes import (
@@ -73,12 +77,14 @@ from sagemaker.mlops.feature_store.ingestion_manager_pandas import (
 __all__ = [
     # Resources
     "FeatureGroup",
+    "FeatureGroupManager",
     "FeatureMetadata",
     # Shapes
     "DataCatalogConfig",
     "FeatureParameter",
     "FeatureValue",
     "Filter",
+    "LakeFormationConfig",
     "OfflineStoreConfig",
     "OnlineStoreConfig",
     "OnlineStoreSecurityConfig",
