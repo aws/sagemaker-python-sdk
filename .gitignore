@@ -40,3 +40,4 @@ env/
 sagemaker_train/src/**/container_drivers/sm_train.sh
 sagemaker_train/src/**/container_drivers/sourcecode.json
 sagemaker_train/src/**/container_drivers/distributed.json
+.kiro
