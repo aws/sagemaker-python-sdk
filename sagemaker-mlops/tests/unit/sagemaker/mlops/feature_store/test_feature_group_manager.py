@@ -1583,14 +1583,14 @@ class TestGenerateS3DenyStatements:
         assert len(statements) == 2
 
         object_statement = statements[0]
-        assert object_statement["Sid"] == "DenyAllAccessToFeatureStorePrefixExceptAllowedPrincipals"
+        assert object_statement["Sid"] == "DenyFSObjectAccess_prefix"
         assert object_statement["Effect"] == "Deny"
         assert object_statement["Principal"] == "*"
         assert "Condition" in object_statement
         assert "StringNotEquals" in object_statement["Condition"]
 
         list_statement = statements[1]
-        assert list_statement["Sid"] == "DenyListOnPrefixExceptAllowedPrincipals"
+        assert list_statement["Sid"] == "DenyFSListAccess_prefix"
         assert list_statement["Effect"] == "Deny"
         assert list_statement["Principal"] == "*"
         assert "Condition" in list_statement
@@ -1696,8 +1696,8 @@ class TestApplyBucketPolicy:
         existing_policy = {
             "Version": "2012-10-17",
             "Statement": [
-                {"Sid": "DenyAllAccessToFeatureStorePrefixExceptAllowedPrincipals", "Effect": "Deny"},
-                {"Sid": "DenyListOnPrefixExceptAllowedPrincipals", "Effect": "Deny"},
+                {"Sid": "DenyFSObjectAccess_prefix", "Effect": "Deny"},
+                {"Sid": "DenyFSListAccess_prefix", "Effect": "Deny"},
             ]
         }
         self.mock_s3_client.get_bucket_policy.return_value = {"Policy": _json.dumps(existing_policy)}
@@ -1753,7 +1753,7 @@ class TestApplyBucketPolicy:
         existing_policy = {
             "Version": "2012-10-17",
             "Statement": [
-                {"Sid": "DenyAllAccessToFeatureStorePrefixExceptAllowedPrincipals", "Effect": "Deny"},
+                {"Sid": "DenyFSObjectAccess_prefix", "Effect": "Deny"},
             ]
         }
         self.mock_s3_client.get_bucket_policy.return_value = {"Policy": _json.dumps(existing_policy)}
@@ -1769,7 +1769,7 @@ class TestApplyBucketPolicy:
         policy = _json.loads(put_args[1]["Policy"])
         assert len(policy["Statement"]) == 2  # 1 existing + 1 new
         sids = [s["Sid"] for s in policy["Statement"]]
-        assert "DenyListOnPrefixExceptAllowedPrincipals" in sids
+        assert "DenyFSListAccess_prefix" in sids
 
 
 class TestEnableLakeFormationServiceLinkedRoleInPolicy:
