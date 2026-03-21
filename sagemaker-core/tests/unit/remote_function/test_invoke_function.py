@@ -188,6 +188,7 @@ class TestExecuteRemoteFunction:
             s3_base_uri="s3://bucket/path",
             s3_kms_key="key-123",
             context=mock_context,
+            job_name=None,
         )
         mock_stored_func.load_and_invoke.assert_called_once()
 

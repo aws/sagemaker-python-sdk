@@ -931,6 +931,7 @@ class _Job:
                 sagemaker_session=job_settings.sagemaker_session,
                 s3_base_uri=s3_base_uri,
                 s3_kms_key=job_settings.s3_kms_key,
+                job_name=job_name,
             )
             stored_function.save(func, *func_args, **func_kwargs)
         else:
@@ -942,6 +943,7 @@ class _Job:
                     step_name=step_compilation_context.step_name,
                     func_step_s3_dir=step_compilation_context.pipeline_build_time,
                 ),
+                job_name=job_name,
             )
 
             stored_function.save_pipeline_step_function(serialized_data)
