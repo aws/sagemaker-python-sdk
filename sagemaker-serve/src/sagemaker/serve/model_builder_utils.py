@@ -3075,7 +3075,8 @@ class _ModelBuilderUtils:
             export_path.mkdir(parents=True)
 
         if self.model:
-            self.secret_key = "dummy secret key for onnx backend"
+            # ONNX path: no pickle serialization, no serve.pkl, no integrity check needed.
+            # Do not set secret_key — there is nothing to sign.
 
             if self.framework == Framework.PYTORCH:
                 self._export_pytorch_to_onnx(
