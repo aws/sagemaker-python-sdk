@@ -78,13 +78,13 @@ jobs:
           VERSION="${{ needs.read-versions.outputs.train }}"
           REPO="conda-forge/sagemaker-train-feedstock"
           STATE=$(gh pr list --repo "$REPO" --state all \
-            --search "[bot-automerge] sagemaker-train v${VERSION}" \
+            --search "sagemaker-train v${VERSION}" \
             --json state -q '.[0].state // "NOT_FOUND"')
           if [ "$STATE" = "MERGED" ]; then
             echo "Already merged, skipping rerun."; exit 0
           fi
           PR=$(gh pr list --repo "$REPO" --state open \
-            --search "[bot-automerge] sagemaker-train v${VERSION}" \
+            --search "sagemaker-train v${VERSION}" \
             --json number -q '.[0].number')
           [ -z "$PR" ] && echo "No open PR found." && exit 1
           echo "PR #${PR}"
@@ -100,7 +100,7 @@ jobs:
           REPO="conda-forge/sagemaker-train-feedstock"
           for i in $(seq 1 $MAX_ATTEMPTS); do
             STATE=$(gh pr list --repo "$REPO" --state all \
-              --search "[bot-automerge] sagemaker-train v${VERSION}" \
+              --search "sagemaker-train v${VERSION}" \
               --json state -q '.[0].state // "NOT_FOUND"')
             echo "Attempt $i: ${STATE}"
             [ "$STATE" = "MERGED" ] && exit 0
@@ -118,13 +118,13 @@ jobs:
           VERSION="${{ needs.read-versions.outputs.serve }}"
           REPO="conda-forge/sagemaker-serve-feedstock"
           STATE=$(gh pr list --repo "$REPO" --state all \
-            --search "[bot-automerge] sagemaker-serve v${VERSION}" \
+            --search "sagemaker-serve v${VERSION}" \
             --json state -q '.[0].state // "NOT_FOUND"')
           if [ "$STATE" = "MERGED" ]; then
             echo "Already merged, skipping rerun."; exit 0
           fi
           PR=$(gh pr list --repo "$REPO" --state open \
-            --search "[bot-automerge] sagemaker-serve v${VERSION}" \
+            --search "sagemaker-serve v${VERSION}" \
             --json number -q '.[0].number')
           [ -z "$PR" ] && echo "No open PR found." && exit 1
           BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
@@ -139,7 +139,7 @@ jobs:
           REPO="conda-forge/sagemaker-serve-feedstock"
           for i in $(seq 1 $MAX_ATTEMPTS); do
             STATE=$(gh pr list --repo "$REPO" --state all \
-              --search "[bot-automerge] sagemaker-serve v${VERSION}" \
+              --search "sagemaker-serve v${VERSION}" \
               --json state -q '.[0].state // "NOT_FOUND"')
             echo "Attempt $i: ${STATE}"
             [ "$STATE" = "MERGED" ] && exit 0
@@ -157,13 +157,13 @@ jobs:
           VERSION="${{ needs.read-versions.outputs.mlops }}"
           REPO="conda-forge/sagemaker-mlops-feedstock"
           STATE=$(gh pr list --repo "$REPO" --state all \
-            --search "[bot-automerge] sagemaker-mlops v${VERSION}" \
+            --search "sagemaker-mlops v${VERSION}" \
             --json state -q '.[0].state // "NOT_FOUND"')
           if [ "$STATE" = "MERGED" ]; then
             echo "Already merged, skipping rerun."; exit 0
           fi
           PR=$(gh pr list --repo "$REPO" --state open \
-            --search "[bot-automerge] sagemaker-mlops v${VERSION}" \
+            --search "sagemaker-mlops v${VERSION}" \
             --json number -q '.[0].number')
           [ -z "$PR" ] && echo "No open PR found." && exit 1
           BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
@@ -178,7 +178,7 @@ jobs:
           REPO="conda-forge/sagemaker-mlops-feedstock"
           for i in $(seq 1 $MAX_ATTEMPTS); do
             STATE=$(gh pr list --repo "$REPO" --state all \
-              --search "[bot-automerge] sagemaker-mlops v${VERSION}" \
+              --search "sagemaker-mlops v${VERSION}" \
               --json state -q '.[0].state // "NOT_FOUND"')
             echo "Attempt $i: ${STATE}"
             [ "$STATE" = "MERGED" ] && exit 0
