@@ -41,6 +41,8 @@ class TrainingQueue:
         share_identifier: Optional[str] = None,
         timeout: Optional[Dict] = None,
         tags: Optional[Dict] = None,
+        quota_share_name: Optional[str] = None,
+        preemption_config: Optional[Dict] = None,
     ) -> TrainingQueuedJob:
         """Submit a queued job and return a QueuedJob object.
 
@@ -53,6 +55,8 @@ class TrainingQueue:
             share_identifier: Share identifier for Batch job.
             timeout: Timeout configuration for Batch job.
             tags: Tags apply to Batch job. These tags are for Batch job only.
+            quota_share_name: Quota Share name for the Batch job.
+            preemption_config: Preemption configuration.
 
         Returns: a TrainingQueuedJob object with Batch job ARN and job name.
 
@@ -85,6 +89,8 @@ class TrainingQueue:
             timeout,
             share_identifier,
             tags,
+            quota_share_name,
+            preemption_config,
         )
         if "jobArn" not in resp or "jobName" not in resp:
             raise MissingRequiredArgument(
