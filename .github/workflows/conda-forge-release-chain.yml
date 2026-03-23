@@ -77,9 +77,16 @@ jobs:
         run: |
           VERSION="${{ needs.read-versions.outputs.train }}"
           REPO="conda-forge/sagemaker-train-feedstock"
+          STATE=$(gh pr list --repo "$REPO" --state all \
+            --search "[bot-automerge] sagemaker-train v${VERSION}" \
+            --json state -q '.[0].state // "NOT_FOUND"')
+          if [ "$STATE" = "MERGED" ]; then
+            echo "Already merged, skipping rerun."; exit 0
+          fi
           PR=$(gh pr list --repo "$REPO" --state open \
             --search "[bot-automerge] sagemaker-train v${VERSION}" \
             --json number -q '.[0].number')
+          [ -z "$PR" ] && echo "No open PR found." && exit 1
           echo "PR #${PR}"
           BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
           RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
@@ -110,9 +117,16 @@ jobs:
         run: |
           VERSION="${{ needs.read-versions.outputs.serve }}"
           REPO="conda-forge/sagemaker-serve-feedstock"
+          STATE=$(gh pr list --repo "$REPO" --state all \
+            --search "[bot-automerge] sagemaker-serve v${VERSION}" \
+            --json state -q '.[0].state // "NOT_FOUND"')
+          if [ "$STATE" = "MERGED" ]; then
+            echo "Already merged, skipping rerun."; exit 0
+          fi
           PR=$(gh pr list --repo "$REPO" --state open \
             --search "[bot-automerge] sagemaker-serve v${VERSION}" \
             --json number -q '.[0].number')
+          [ -z "$PR" ] && echo "No open PR found." && exit 1
           BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
           RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
             --json databaseId,conclusion -q \
@@ -142,9 +156,16 @@ jobs:
         run: |
           VERSION="${{ needs.read-versions.outputs.mlops }}"
           REPO="conda-forge/sagemaker-mlops-feedstock"
+          STATE=$(gh pr list --repo "$REPO" --state all \
+            --search "[bot-automerge] sagemaker-mlops v${VERSION}" \
+            --json state -q '.[0].state // "NOT_FOUND"')
+          if [ "$STATE" = "MERGED" ]; then
+            echo "Already merged, skipping rerun."; exit 0
+          fi
           PR=$(gh pr list --repo "$REPO" --state open \
             --search "[bot-automerge] sagemaker-mlops v${VERSION}" \
             --json number -q '.[0].number')
+          [ -z "$PR" ] && echo "No open PR found." && exit 1
           BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
           RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
             --json databaseId,conclusion -q \
@@ -174,9 +195,16 @@ jobs:
         run: |
           VERSION="${{ needs.read-versions.outputs.pysdk }}"
           REPO="conda-forge/sagemaker-python-sdk-feedstock"
+          STATE=$(gh pr list --repo "$REPO" --state all \
+            --search "[bot-automerge] sagemaker-python-sdk v${VERSION}" \
+            --json state -q '.[0].state // "NOT_FOUND"')
+          if [ "$STATE" = "MERGED" ]; then
+            echo "Already merged, skipping rerun."; exit 0
+          fi
           PR=$(gh pr list --repo "$REPO" --state open \
             --search "[bot-automerge] sagemaker-python-sdk v${VERSION}" \
             --json number -q '.[0].number')
+          [ -z "$PR" ] && echo "No open PR found." && exit 1
           BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
           RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
             --json databaseId,conclusion -q \
@@ -206,9 +234,16 @@ jobs:
         run: |
           VERSION="${{ needs.read-versions.outputs.meta }}"
           REPO="conda-forge/sagemaker-feedstock"
+          STATE=$(gh pr list --repo "$REPO" --state all \
+            --search "[bot-automerge] sagemaker v${VERSION}" \
+            --json state -q '.[0].state // "NOT_FOUND"')
+          if [ "$STATE" = "MERGED" ]; then
+            echo "Already merged, skipping rerun."; exit 0
+          fi
           PR=$(gh pr list --repo "$REPO" --state open \
             --search "[bot-automerge] sagemaker v${VERSION}" \
             --json number -q '.[0].number')
+          [ -z "$PR" ] && echo "No open PR found." && exit 1
           BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
           RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
             --json databaseId,conclusion -q \
