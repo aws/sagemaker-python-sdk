@@ -46,7 +46,7 @@ def _submit_service_job(
         timeout: Set with value of timeout if specified, else default to 1 day.
         share_identifier: value of shareIdentifier if specified.
         tags: A dict of string to string representing Batch tags.
-        quota_share_name: Quota Share name for the Batch job.
+        quota_share_name: value of quotaShareName if specified.
         preemption_config: Preemption configuration.
 
     Returns:

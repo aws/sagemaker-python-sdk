@@ -37,6 +37,7 @@ from .conftest import (
     TIMEOUT_CONFIG,
     SCHEDULING_PRIORITY,
     SHARE_IDENTIFIER,
+    QUOTA_SHARE_NAME,
     SUBMIT_SERVICE_JOB_RESP,
     DESCRIBE_SERVICE_JOB_RESP_RUNNING,
     LIST_SERVICE_JOB_RESP_EMPTY,
@@ -96,6 +97,25 @@ class TestSubmitServiceJob:
         assert call_kwargs["schedulingPriority"] == SCHEDULING_PRIORITY
         assert call_kwargs["shareIdentifier"] == SHARE_IDENTIFIER
         assert call_kwargs["timeoutConfig"] == TIMEOUT_CONFIG
+
+    @patch("sagemaker.train.aws_batch.batch_api_helper.get_batch_boto_client")
+    def test_submit_service_job_with_quota_share_name(self, mock_get_client):
+        """Test submit_service_job with quota_share_name parameter"""
+        mock_client = Mock()
+        mock_client.submit_service_job.return_value = SUBMIT_SERVICE_JOB_RESP
+        mock_get_client.return_value = mock_client
+
+        result = _submit_service_job(
+            TRAINING_JOB_PAYLOAD,
+            JOB_NAME,
+            JOB_QUEUE,
+            quota_share_name=QUOTA_SHARE_NAME,
+        )
+
+        assert result["jobArn"] == SUBMIT_SERVICE_JOB_RESP["jobArn"]
+        call_kwargs = mock_client.submit_service_job.call_args[1]
+        assert call_kwargs["quotaShareName"] == QUOTA_SHARE_NAME
+        assert "shareIdentifier" not in call_kwargs
 
     @patch("sagemaker.train.aws_batch.batch_api_helper.get_batch_boto_client")
     def test_submit_service_job_with_tags(self, mock_get_client):
