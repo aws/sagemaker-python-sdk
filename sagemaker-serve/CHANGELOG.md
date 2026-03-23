@@ -1,4 +1,8 @@
 # Changelog
+## v1.6.0 (2026-03-19)
+
+ - **ModelBuilder**: Fix the bug in deploy from LORA finetuning job
+   
 ## v1.5.0 (2026-03-02)
 
 ### Bug fixes and Other Changes

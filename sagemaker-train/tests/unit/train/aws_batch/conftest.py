@@ -182,3 +182,7 @@ TRAINING_JOB_PAYLOAD = {
         "TrainingInputMode": "File",
     },
 }
+
+# Quota Management
+QUOTA_SHARE_NAME = "test-quota-share"
+PREEMPTION_CONFIG = {"preemptionRetriesBeforeTermination": 10}

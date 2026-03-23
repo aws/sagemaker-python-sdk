@@ -314,12 +314,6 @@ class BaseEvaluator(BaseModel):
                 sagemaker_session=session
             )
             
-            # Check if model is GPT OSS (not supported for evaluation)
-            if model_info.base_model_name in ["openai-reasoning-gpt-oss-20b", "openai-reasoning-gpt-oss-120b"]:
-                raise ValueError(
-                    "Evaluation is currently not supported for models created from GPT OSS 20B base model"
-                )
-            
             # If model is a ModelPackage object or ARN (has source_model_package_arn),
             # validate that the resolved base_model_arn is a hub content ARN
             if model_info.source_model_package_arn:
