@@ -70,37 +70,6 @@ class TestGetLakeFormationClient:
         mock_session.client.assert_called_with("lakeformation", region_name="us-west-2")
         assert client == mock_client
 
-    def test_caches_client_for_same_session_and_region(self):
-        """Test that repeated calls with the same session and region reuse the cached client."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_lake_formation_client = FeatureGroupManager._get_lake_formation_client.__get__(fg)
-
-        client1 = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
-        client2 = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
-
-        assert client1 is client2
-        mock_session.client.assert_called_once()
-
-    def test_creates_new_client_for_different_region(self):
-        """Test that a different region produces a new client."""
-        mock_session = MagicMock()
-        mock_client_west = MagicMock()
-        mock_client_east = MagicMock()
-        mock_session.client.side_effect = [mock_client_west, mock_client_east]
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_lake_formation_client = FeatureGroupManager._get_lake_formation_client.__get__(fg)
-
-        client1 = fg._get_lake_formation_client(session=mock_session, region="us-west-2")
-        client2 = fg._get_lake_formation_client(session=mock_session, region="us-east-1")
-
-        assert client1 is not client2
-        assert mock_session.client.call_count == 2
-
 
 class TestGetS3Client:
     """Tests for _get_s3_client method."""
@@ -134,37 +103,6 @@ class TestGetS3Client:
 
         mock_session.client.assert_called_with("s3", region_name="us-west-2")
         assert client == mock_client
-
-    def test_caches_client_for_same_session_and_region(self):
-        """Test that repeated calls with the same session and region reuse the cached client."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_s3_client = FeatureGroupManager._get_s3_client.__get__(fg)
-
-        client1 = fg._get_s3_client(session=mock_session, region="us-west-2")
-        client2 = fg._get_s3_client(session=mock_session, region="us-west-2")
-
-        assert client1 is client2
-        mock_session.client.assert_called_once()
-
-    def test_creates_new_client_for_different_region(self):
-        """Test that a different region produces a new client."""
-        mock_session = MagicMock()
-        mock_client_west = MagicMock()
-        mock_client_east = MagicMock()
-        mock_session.client.side_effect = [mock_client_west, mock_client_east]
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_s3_client = FeatureGroupManager._get_s3_client.__get__(fg)
-
-        client1 = fg._get_s3_client(session=mock_session, region="us-west-2")
-        client2 = fg._get_s3_client(session=mock_session, region="us-east-1")
-
-        assert client1 is not client2
-        assert mock_session.client.call_count == 2
 
 
 class TestRegisterS3WithLakeFormation:

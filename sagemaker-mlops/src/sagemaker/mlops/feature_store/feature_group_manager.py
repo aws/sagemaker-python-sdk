@@ -49,9 +49,6 @@ class LakeFormationConfig(Base):
 class FeatureGroupManager(FeatureGroup):
     """FeatureGroup with extended management capabilities."""
 
-    _lf_client_cache: dict
-    _s3_client_cache: dict
-
     @staticmethod
     def _s3_uri_to_arn(s3_uri: str, region: Optional[str] = None) -> str:
         """
@@ -190,11 +187,7 @@ class FeatureGroupManager(FeatureGroup):
         region: Optional[str] = None,
     ):
         """
-        Get a Lake Formation client, reusing a cached client when possible.
-
-        The client is cached on the instance keyed by (session, region). Subsequent
-        calls with the same arguments return the existing client instead of creating
-        a new one.
+        Get a Lake Formation client.
 
         Args:
             session: Boto3 session. If not provided, a new session will be created.
@@ -203,17 +196,8 @@ class FeatureGroupManager(FeatureGroup):
         Returns:
             A boto3 Lake Formation client.
         """
-        cache_key = (id(session), region)
-        if not hasattr(self, "_lf_client_cache") or self._lf_client_cache is None:
-            self._lf_client_cache = {}
-
-        if cache_key not in self._lf_client_cache:
-            boto_session = session or Session()
-            self._lf_client_cache[cache_key] = boto_session.client(
-                "lakeformation", region_name=region
-            )
-
-        return self._lf_client_cache[cache_key]
+        boto_session = session or Session()
+        return boto_session.client("lakeformation", region_name=region)
 
     def _get_s3_client(
         self,
@@ -221,11 +205,7 @@ class FeatureGroupManager(FeatureGroup):
         region: Optional[str] = None,
     ):
         """
-        Get an S3 client, reusing a cached client when possible.
-
-        The client is cached on the instance keyed by (session, region). Subsequent
-        calls with the same arguments return the existing client instead of creating
-        a new one.
+        Get an S3 client.
 
         Args:
             session: Boto3 session. If not provided, a new session will be created.
@@ -234,17 +214,8 @@ class FeatureGroupManager(FeatureGroup):
         Returns:
             A boto3 S3 client.
         """
-        cache_key = (id(session), region)
-        if not hasattr(self, "_s3_client_cache") or self._s3_client_cache is None:
-            self._s3_client_cache = {}
-
-        if cache_key not in self._s3_client_cache:
-            boto_session = session or Session()
-            self._s3_client_cache[cache_key] = boto_session.client(
-                "s3", region_name=region
-            )
-
-        return self._s3_client_cache[cache_key]
+        boto_session = session or Session()
+        return boto_session.client("s3", region_name=region)
 
     def _register_s3_with_lake_formation(
         self,
