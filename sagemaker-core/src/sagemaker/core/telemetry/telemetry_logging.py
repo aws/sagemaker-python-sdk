@@ -25,6 +25,7 @@ from urllib.parse import quote
 import boto3
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
+from sagemaker.core.telemetry.resource_creation import get_resource_arn
 from sagemaker.core.common_utils import resolve_value_from_config
 from sagemaker.core.config.config_schema import TELEMETRY_OPT_OUT_PATH
 from sagemaker.core.telemetry.constants import (
@@ -84,7 +85,7 @@ def _telemetry_emitter(feature: str, func_name: str):
             sagemaker_session = None
             if len(args) > 0 and hasattr(args[0], "sagemaker_session"):
                 # Get the sagemaker_session from the instance method args
-                sagemaker_session = args[0].sagemaker_session
+                sagemaker_session = args[0].sagemaker_session or _get_default_sagemaker_session()
             elif len(args) > 0 and hasattr(args[0], "_sagemaker_session"):
                 # Get the sagemaker_session from the instance method args (private attribute)
                 sagemaker_session = args[0]._sagemaker_session
@@ -152,6 +153,11 @@ def _telemetry_emitter(feature: str, func_name: str):
                     stop_timer = perf_counter()
                     elapsed = stop_timer - start_timer
                     extra += f"&x-latency={round(elapsed, 2)}"
+                    # For specified response types (e.g., TrainingJob), obtain the ARN of the
+                    # resource created if present so that it can be included.
+                    resource_arn = get_resource_arn(response)
+                    if resource_arn:
+                        extra += f"&x-resourceArn={resource_arn}"
                     if not telemetry_opt_out_flag:
                         _send_telemetry_request(
                             STATUS_TO_CODE[str(Status.SUCCESS)],

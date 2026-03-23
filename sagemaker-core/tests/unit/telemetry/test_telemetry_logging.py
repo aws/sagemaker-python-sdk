@@ -495,3 +495,50 @@ class TestTelemetryLogging(unittest.TestCase):
 
         self.assertEqual(url, expected_url)
         self.assertIn("x-createdBy=awslabs%2Fagent-plugins%2Fsagemaker-ai", url)
+
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_with_resource_arn(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that x-resourceArn is included when decorated function returns a TrainingJob."""
+        mock_resolve_config.return_value = False
+
+        mock_training_job = Mock()
+        mock_training_job.__class__.__name__ = "TrainingJob"
+        mock_training_job.training_job_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:training-job/my-job"
+        )
+
+        class TrainingJobReturningMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            @_telemetry_emitter(MOCK_FEATURE, MOCK_FUNC_NAME)
+            def mock_train(self):
+                return mock_training_job
+
+        TrainingJobReturningMock().mock_train()
+
+        args = mock_send_telemetry_request.call_args.args
+        extra_str = str(args[5])
+        self.assertIn(
+            "x-resourceArn=arn:aws:sagemaker:us-west-2:123456789012:training-job/my-job",
+            extra_str,
+        )
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_without_resource_arn(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that x-resourceArn is NOT included when response has no registered ARN."""
+        mock_resolve_config.return_value = False
+
+        mock_local_client = LocalSagemakerClientMock()
+        mock_local_client.mock_create_model()
+
+        args = mock_send_telemetry_request.call_args.args
+        extra_str = str(args[5])
+        self.assertNotIn("x-resourceArn", extra_str)
