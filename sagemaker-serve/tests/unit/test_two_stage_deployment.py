@@ -26,10 +26,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
     @patch.object(ModelBuilder, "_fetch_hub_document_for_custom_model")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_base_model_deployment_tagged_correctly(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_fetch_hub,
         mock_endpoint_exists,
         mock_fetch_peft,
@@ -96,15 +98,13 @@ class TestTwoStageDeployment:
         ), patch("sagemaker.core.resources.Artifact"):
             model_builder._deploy_model_customization(endpoint_name="test-endpoint")
 
-        # Verify: InferenceComponent.create was called with Base tag
+        # Verify: InferenceComponent.create was called
         assert mock_ic_create.called
         create_call = mock_ic_create.call_args
         tags = create_call[1].get("tags", [])
 
-        # Should have exactly one tag with key="Base"
-        assert len(tags) == 1
-        assert tags[0]["key"] == "Base"
-        assert tags[0]["value"] == "test-base-model"
+        # Non-LORA deployments do not get Base tags
+        assert len(tags) == 0
 
     @patch("sagemaker.core.resources.InferenceComponent.get")
     @patch("sagemaker.core.resources.InferenceComponent.create")
@@ -115,10 +115,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_model_package")
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_full_fine_tuned_model_not_tagged_as_base(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_endpoint_exists,
         mock_fetch_peft,
         mock_fetch_package,
@@ -200,10 +202,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_model_package")
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_lora_adapter_references_base_component(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_endpoint_exists,
         mock_fetch_peft,
         mock_fetch_package,
@@ -286,10 +290,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
     @patch.object(ModelBuilder, "_fetch_hub_document_for_custom_model")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_base_model_uses_hosting_artifact_uri(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_fetch_hub,
         mock_endpoint_exists,
         mock_fetch_peft,
@@ -375,10 +381,12 @@ class TestTwoStageDeployment:
     @patch.object(ModelBuilder, "_fetch_peft")
     @patch.object(ModelBuilder, "_does_endpoint_exist")
     @patch.object(ModelBuilder, "_fetch_hub_document_for_custom_model")
+    @patch.object(ModelBuilder, "_is_nova_model", return_value=False)
     @patch.object(ModelBuilder, "_is_model_customization")
     def test_sequential_base_then_adapter_deployment(
         self,
         mock_is_customization,
+        mock_is_nova_model,
         mock_fetch_hub,
         mock_endpoint_exists,
         mock_fetch_peft,
@@ -457,8 +465,8 @@ class TestTwoStageDeployment:
         assert mock_ic_create.call_count == 1
         base_create_call = mock_ic_create.call_args
         base_tags = base_create_call[1].get("tags", [])
-        assert len(base_tags) == 1
-        assert base_tags[0]["key"] == "Base"
+        # Non-LORA deployments do not get Base tags
+        assert len(base_tags) == 0
 
         # Reset mocks for adapter deployment
         mock_ic_create.reset_mock()

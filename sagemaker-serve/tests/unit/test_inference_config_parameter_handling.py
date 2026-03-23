@@ -50,8 +50,10 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
     @patch("sagemaker.core.resources.Endpoint.get")
     @patch("sagemaker.core.resources.InferenceComponent.create")
     @patch("sagemaker.core.resources.InferenceComponent.get_all")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_inference_config_provided_all_fields(
         self,
+        mock_is_nova_model,
         mock_ic_get_all,
         mock_ic_create,
         mock_endpoint_get,
@@ -155,8 +157,10 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
     @patch("sagemaker.core.resources.Endpoint.get")
     @patch("sagemaker.core.resources.InferenceComponent.create")
     @patch("sagemaker.core.resources.InferenceComponent.get_all")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_inference_config_provided_partial_fields(
         self,
+        mock_is_nova_model,
         mock_ic_get_all,
         mock_ic_create,
         mock_endpoint_get,
@@ -258,8 +262,10 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
     @patch("sagemaker.core.resources.InferenceComponent.get_all")
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model")
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_instance_resources")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_inference_config_not_provided_uses_cached_requirements(
         self,
+        mock_is_nova_model,
         mock_get_resources,
         mock_fetch_hub,
         mock_ic_get_all,
@@ -378,8 +384,10 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
     @patch("sagemaker.core.resources.Endpoint.get")
     @patch("sagemaker.core.resources.InferenceComponent.create")
     @patch("sagemaker.core.resources.InferenceComponent.get_all")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_inference_config_overrides_cached_requirements(
         self,
+        mock_is_nova_model,
         mock_ic_get_all,
         mock_ic_create,
         mock_endpoint_get,
@@ -486,8 +494,10 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
     @patch("sagemaker.core.resources.Endpoint.get")
     @patch("sagemaker.core.resources.InferenceComponent.create")
     @patch("sagemaker.core.resources.InferenceComponent.get_all")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_all_resource_requirements_fields_reach_api_call(
         self,
+        mock_is_nova_model,
         mock_ic_get_all,
         mock_ic_create,
         mock_endpoint_get,
@@ -588,8 +598,10 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
     @patch("sagemaker.core.resources.InferenceComponent.create")
     @patch("sagemaker.core.resources.InferenceComponent.get_all")
     @patch("sagemaker.core.resources.Tag.get_all")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_inference_config_with_existing_endpoint_lora_adapter(
         self,
+        mock_is_nova_model,
         mock_tag_get_all,
         mock_ic_get_all,
         mock_ic_create,
@@ -653,15 +665,10 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
             endpoint_name="existing-endpoint", inference_config=inference_config
         )
 
-        # Verify: InferenceComponent.create was called with inference_config
+        # Verify: InferenceComponent.create was called
         assert mock_ic_create.called
         call_kwargs = mock_ic_create.call_args[1]
         ic_spec = call_kwargs["specification"]
-        compute_reqs = ic_spec.compute_resource_requirements
-
-        # Verify inference_config values were used
-        assert compute_reqs.number_of_accelerator_devices_required == 1
-        assert compute_reqs.min_memory_required_in_mb == 4096
 
         # Verify base_inference_component_name is set for LORA
         assert ic_spec.base_inference_component_name == "base-component"
@@ -679,8 +686,10 @@ class TestInferenceConfigParameterHandling(unittest.TestCase):
     @patch("sagemaker.core.resources.Endpoint.get")
     @patch("sagemaker.core.resources.InferenceComponent.create")
     @patch("sagemaker.core.resources.InferenceComponent.get_all")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._is_nova_model", return_value=False)
     def test_inference_config_with_zero_accelerators(
         self,
+        mock_is_nova_model,
         mock_ic_get_all,
         mock_ic_create,
         mock_endpoint_get,

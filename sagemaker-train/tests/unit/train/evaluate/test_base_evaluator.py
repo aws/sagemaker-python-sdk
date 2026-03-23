@@ -1012,43 +1012,43 @@ class TestEvaluateMethod:
 
 
 class TestGPTOSSModelValidation:
-    """Tests for GPT OSS model validation."""
+    """Tests for GPT OSS model validation - models should be allowed for evaluation."""
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_gpt_oss_20b_model_blocked(self, mock_resolve, mock_session):
-        """Test that GPT OSS 20B model is blocked from evaluation."""
+    def test_gpt_oss_20b_model_allowed(self, mock_resolve, mock_session):
+        """Test that GPT OSS 20B model is allowed for evaluation."""
         mock_info = MagicMock()
         mock_info.base_model_name = "openai-reasoning-gpt-oss-20b"
         mock_info.base_model_arn = DEFAULT_HUB_CONTENT_ARN
         mock_info.source_model_package_arn = None
         mock_resolve.return_value = mock_info
         
-        with pytest.raises(ValidationError, match="Evaluation is currently not supported for models created from GPT OSS 20B base model"):
-            BaseEvaluator(
-                model="openai-reasoning-gpt-oss-20b",
-                s3_output_path=DEFAULT_S3_OUTPUT,
-                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
-                model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
-                sagemaker_session=mock_session,
-            )
+        evaluator = BaseEvaluator(
+            model="openai-reasoning-gpt-oss-20b",
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+        assert evaluator.model == "openai-reasoning-gpt-oss-20b"
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_gpt_oss_120b_model_blocked(self, mock_resolve, mock_session):
-        """Test that GPT OSS 120B model is blocked from evaluation."""
+    def test_gpt_oss_120b_model_allowed(self, mock_resolve, mock_session):
+        """Test that GPT OSS 120B model is allowed for evaluation."""
         mock_info = MagicMock()
         mock_info.base_model_name = "openai-reasoning-gpt-oss-120b"
         mock_info.base_model_arn = DEFAULT_HUB_CONTENT_ARN
         mock_info.source_model_package_arn = None
         mock_resolve.return_value = mock_info
         
-        with pytest.raises(ValidationError, match="Evaluation is currently not supported for models created from GPT OSS 20B base model"):
-            BaseEvaluator(
-                model="openai-reasoning-gpt-oss-120b",
-                s3_output_path=DEFAULT_S3_OUTPUT,
-                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
-                model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
-                sagemaker_session=mock_session,
-            )
+        evaluator = BaseEvaluator(
+            model="openai-reasoning-gpt-oss-120b",
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+        assert evaluator.model == "openai-reasoning-gpt-oss-120b"
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
     def test_non_gpt_oss_model_allowed(self, mock_resolve, mock_session, mock_model_info):
