@@ -904,7 +904,7 @@ class EvaluationPipelineExecution(BaseModel):
             if ipython is not None and 'IPKernelApp' in ipython.config:
                 is_jupyter = True
                 from IPython.display import display, HTML, clear_output
-        except:
+        except Exception:
             pass
         
         if is_jupyter:
@@ -958,7 +958,7 @@ class EvaluationPipelineExecution(BaseModel):
                                 end = datetime.fromisoformat(step.end_time.replace('Z', '+00:00'))
                                 duration_seconds = (end - start).total_seconds()
                                 duration = f"{duration_seconds:.1f}s"
-                            except:
+                            except Exception:
                                 duration = "N/A"
                         elif step.start_time:
                             duration = "Running..."
@@ -982,7 +982,7 @@ class EvaluationPipelineExecution(BaseModel):
                         # Add error indicator if failures exist
                         if has_failures:
                             if step.failure_reason:
-                                row_data.append("❌")
+                                row_data.append("â")
                                 failed_steps.append(step)
                             else:
                                 row_data.append("")
@@ -1005,7 +1005,7 @@ class EvaluationPipelineExecution(BaseModel):
                         
                         for step in failed_steps:
                             content_parts.append(Text(""))  # Empty line before each failure
-                            content_parts.append(Text(f"• {step.display_name or step.name}:", style="bold red"))
+                            content_parts.append(Text(f"â¢ {step.display_name or step.name}:", style="bold red"))
                             content_parts.append(Text(f"  {step.failure_reason}", style="red"))
                     
                     combined_content = Group(*content_parts)
