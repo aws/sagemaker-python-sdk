@@ -473,7 +473,7 @@ class AwsBatchResourceManager:
                     jobQueues=[create_qs_request["jobQueue"]]
                 )
                 jq_arn = desc_jqs_resp["jobQueues"][0]["jobQueueArn"]
-                quota_share_arn = f"{jq_arn}/quota-share/{create_qs_request["quotaShareName"]}"
+                quota_share_arn = f"{jq_arn}/quota-share/{create_qs_request['quotaShareName']}"
                 return {
                     "quotaShareName": create_qs_request["quotaShareName"],
                     "quotaShareArn": quota_share_arn,
