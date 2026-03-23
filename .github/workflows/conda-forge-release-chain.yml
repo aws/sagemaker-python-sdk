@@ -12,13 +12,7 @@ on:
         required: false
         default: '60'
 
-env:
-  GH_TOKEN: ${{ secrets.GH_PAT }}
-  POLL_INTERVAL: ${{ github.event.inputs.poll_interval_seconds }}
-  MAX_ATTEMPTS: ${{ github.event.inputs.timeout_attempts }}
-
 jobs:
-  # ── Read versions from VERSION files ────────────────────────────────────────
   read-versions:
     runs-on: ubuntu-latest
     outputs:
@@ -33,243 +27,91 @@ jobs:
       - name: Read versions
         id: v
         run: |
-          echo "core=$(cat sagemaker-core/VERSION)"   >> $GITHUB_OUTPUT
-          echo "train=$(cat sagemaker-train/VERSION)"  >> $GITHUB_OUTPUT
-          echo "serve=$(cat sagemaker-serve/VERSION)"  >> $GITHUB_OUTPUT
-          echo "mlops=$(cat sagemaker-mlops/VERSION)"  >> $GITHUB_OUTPUT
-          echo "pysdk=$(cat VERSION)"                  >> $GITHUB_OUTPUT
-          echo "meta=$(cat VERSION)"                   >> $GITHUB_OUTPUT
-      - name: Print versions
-        run: |
-          echo "sagemaker-core:       $(cat sagemaker-core/VERSION)"
-          echo "sagemaker-train:      $(cat sagemaker-train/VERSION)"
-          echo "sagemaker-serve:      $(cat sagemaker-serve/VERSION)"
-          echo "sagemaker-mlops:      $(cat sagemaker-mlops/VERSION)"
-          echo "sagemaker-python-sdk: $(cat VERSION)"
-          echo "sagemaker (meta):     $(cat VERSION)"
+          echo "core=$(cat sagemaker-core/VERSION)"  >> $GITHUB_OUTPUT
+          echo "train=$(cat sagemaker-train/VERSION)" >> $GITHUB_OUTPUT
+          echo "serve=$(cat sagemaker-serve/VERSION)" >> $GITHUB_OUTPUT
+          echo "mlops=$(cat sagemaker-mlops/VERSION)" >> $GITHUB_OUTPUT
+          echo "pysdk=$(cat VERSION)"                 >> $GITHUB_OUTPUT
+          echo "meta=$(cat VERSION)"                  >> $GITHUB_OUTPUT
+          cat sagemaker-core/VERSION sagemaker-train/VERSION sagemaker-serve/VERSION \
+              sagemaker-mlops/VERSION VERSION | paste - - - - - \
+            | awk '{print "core="$1" train="$2" serve="$3" mlops="$4" pysdk/meta="$5}'
 
-  # ── 1. Wait for sagemaker-core (automerges on its own) ──────────────────────
   wait-sagemaker-core:
     needs: read-versions
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GH_PAT }}
     steps:
-      - name: Wait for sagemaker-core feedstock PR to merge
+      - name: Wait for sagemaker-core to merge (automerges on its own)
         run: |
-          VERSION="${{ needs.read-versions.outputs.core }}"
           REPO="conda-forge/sagemaker-core-feedstock"
-          echo "Waiting for: [bot-automerge] sagemaker-core v${VERSION}"
-          for i in $(seq 1 $MAX_ATTEMPTS); do
+          SEARCH="[bot-automerge] sagemaker-core v${{ needs.read-versions.outputs.core }}"
+          for i in $(seq 1 ${{ github.event.inputs.timeout_attempts }}); do
             STATE=$(gh pr list --repo "$REPO" --state all \
-              --search "[bot-automerge] sagemaker-core v${VERSION}" \
-              --json state -q '.[0].state // "NOT_FOUND"')
+              --search "$SEARCH" --json state -q '.[0].state // "NOT_FOUND"')
             echo "Attempt $i: ${STATE}"
             [ "$STATE" = "MERGED" ] && exit 0
-            sleep $POLL_INTERVAL
+            sleep ${{ github.event.inputs.poll_interval_seconds }}
           done
           echo "Timed out." && exit 1
 
-  # ── 2. sagemaker-train ───────────────────────────────────────────────────────
   release-sagemaker-train:
     needs: [read-versions, wait-sagemaker-core]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Rerun failed checks
-        run: |
-          VERSION="${{ needs.read-versions.outputs.train }}"
-          REPO="conda-forge/sagemaker-train-feedstock"
-          STATE=$(gh pr list --repo "$REPO" --state all \
-            --search "sagemaker-train v${VERSION}" \
-            --json state -q '.[0].state // "NOT_FOUND"')
-          if [ "$STATE" = "MERGED" ]; then
-            echo "Already merged, skipping rerun."; exit 0
-          fi
-          PR=$(gh pr list --repo "$REPO" --state open \
-            --search "sagemaker-train v${VERSION}" \
-            --json number -q '.[0].number')
-          [ -z "$PR" ] && echo "No open PR found." && exit 1
-          echo "PR #${PR}"
-          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
-          RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
-            --json databaseId,conclusion -q \
-            '[.[] | select(.conclusion=="failure")][0].databaseId')
-          [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed \
-            || echo "No failed runs."
-      - name: Wait for merge
-        run: |
-          VERSION="${{ needs.read-versions.outputs.train }}"
-          REPO="conda-forge/sagemaker-train-feedstock"
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            STATE=$(gh pr list --repo "$REPO" --state all \
-              --search "sagemaker-train v${VERSION}" \
-              --json state -q '.[0].state // "NOT_FOUND"')
-            echo "Attempt $i: ${STATE}"
-            [ "$STATE" = "MERGED" ] && exit 0
-            sleep $POLL_INTERVAL
-          done
-          echo "Timed out." && exit 1
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker-train
+      feedstock: conda-forge/sagemaker-train-feedstock
+      pr_search: "sagemaker-train v${{ needs.read-versions.outputs.train }}"
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.GH_PAT }}
 
-  # ── 3. sagemaker-serve ───────────────────────────────────────────────────────
   release-sagemaker-serve:
     needs: [read-versions, release-sagemaker-train]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Rerun failed checks
-        run: |
-          VERSION="${{ needs.read-versions.outputs.serve }}"
-          REPO="conda-forge/sagemaker-serve-feedstock"
-          STATE=$(gh pr list --repo "$REPO" --state all \
-            --search "sagemaker-serve v${VERSION}" \
-            --json state -q '.[0].state // "NOT_FOUND"')
-          if [ "$STATE" = "MERGED" ]; then
-            echo "Already merged, skipping rerun."; exit 0
-          fi
-          PR=$(gh pr list --repo "$REPO" --state open \
-            --search "sagemaker-serve v${VERSION}" \
-            --json number -q '.[0].number')
-          [ -z "$PR" ] && echo "No open PR found." && exit 1
-          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
-          RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
-            --json databaseId,conclusion -q \
-            '[.[] | select(.conclusion=="failure")][0].databaseId')
-          [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed \
-            || echo "No failed runs."
-      - name: Wait for merge
-        run: |
-          VERSION="${{ needs.read-versions.outputs.serve }}"
-          REPO="conda-forge/sagemaker-serve-feedstock"
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            STATE=$(gh pr list --repo "$REPO" --state all \
-              --search "sagemaker-serve v${VERSION}" \
-              --json state -q '.[0].state // "NOT_FOUND"')
-            echo "Attempt $i: ${STATE}"
-            [ "$STATE" = "MERGED" ] && exit 0
-            sleep $POLL_INTERVAL
-          done
-          echo "Timed out." && exit 1
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker-serve
+      feedstock: conda-forge/sagemaker-serve-feedstock
+      pr_search: "sagemaker-serve v${{ needs.read-versions.outputs.serve }}"
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.GH_PAT }}
 
-  # ── 4. sagemaker-mlops ───────────────────────────────────────────────────────
   release-sagemaker-mlops:
     needs: [read-versions, release-sagemaker-serve]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Rerun failed checks
-        run: |
-          VERSION="${{ needs.read-versions.outputs.mlops }}"
-          REPO="conda-forge/sagemaker-mlops-feedstock"
-          STATE=$(gh pr list --repo "$REPO" --state all \
-            --search "sagemaker-mlops v${VERSION}" \
-            --json state -q '.[0].state // "NOT_FOUND"')
-          if [ "$STATE" = "MERGED" ]; then
-            echo "Already merged, skipping rerun."; exit 0
-          fi
-          PR=$(gh pr list --repo "$REPO" --state open \
-            --search "sagemaker-mlops v${VERSION}" \
-            --json number -q '.[0].number')
-          [ -z "$PR" ] && echo "No open PR found." && exit 1
-          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
-          RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
-            --json databaseId,conclusion -q \
-            '[.[] | select(.conclusion=="failure")][0].databaseId')
-          [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed \
-            || echo "No failed runs."
-      - name: Wait for merge
-        run: |
-          VERSION="${{ needs.read-versions.outputs.mlops }}"
-          REPO="conda-forge/sagemaker-mlops-feedstock"
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            STATE=$(gh pr list --repo "$REPO" --state all \
-              --search "sagemaker-mlops v${VERSION}" \
-              --json state -q '.[0].state // "NOT_FOUND"')
-            echo "Attempt $i: ${STATE}"
-            [ "$STATE" = "MERGED" ] && exit 0
-            sleep $POLL_INTERVAL
-          done
-          echo "Timed out." && exit 1
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker-mlops
+      feedstock: conda-forge/sagemaker-mlops-feedstock
+      pr_search: "sagemaker-mlops v${{ needs.read-versions.outputs.mlops }}"
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.GH_PAT }}
 
-  # ── 5. sagemaker-python-sdk-feedstock ───────────────────────────────────────
   release-sagemaker-python-sdk:
     needs: [read-versions, release-sagemaker-mlops]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Rerun failed checks
-        run: |
-          VERSION="${{ needs.read-versions.outputs.pysdk }}"
-          REPO="conda-forge/sagemaker-python-sdk-feedstock"
-          STATE=$(gh pr list --repo "$REPO" --state all \
-            --search "[bot-automerge] sagemaker-python-sdk v${VERSION}" \
-            --json state -q '.[0].state // "NOT_FOUND"')
-          if [ "$STATE" = "MERGED" ]; then
-            echo "Already merged, skipping rerun."; exit 0
-          fi
-          PR=$(gh pr list --repo "$REPO" --state open \
-            --search "[bot-automerge] sagemaker-python-sdk v${VERSION}" \
-            --json number -q '.[0].number')
-          [ -z "$PR" ] && echo "No open PR found." && exit 1
-          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
-          RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
-            --json databaseId,conclusion -q \
-            '[.[] | select(.conclusion=="failure")][0].databaseId')
-          [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed \
-            || echo "No failed runs."
-      - name: Wait for merge
-        run: |
-          VERSION="${{ needs.read-versions.outputs.pysdk }}"
-          REPO="conda-forge/sagemaker-python-sdk-feedstock"
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            STATE=$(gh pr list --repo "$REPO" --state all \
-              --search "[bot-automerge] sagemaker-python-sdk v${VERSION}" \
-              --json state -q '.[0].state // "NOT_FOUND"')
-            echo "Attempt $i: ${STATE}"
-            [ "$STATE" = "MERGED" ] && exit 0
-            sleep $POLL_INTERVAL
-          done
-          echo "Timed out." && exit 1
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker-python-sdk
+      feedstock: conda-forge/sagemaker-python-sdk-feedstock
+      pr_search: "[bot-automerge] sagemaker-python-sdk v${{ needs.read-versions.outputs.pysdk }}"
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.GH_PAT }}
 
-  # ── 6. sagemaker (meta-package) ──────────────────────────────────────────────
   release-sagemaker:
     needs: [read-versions, release-sagemaker-python-sdk]
-    runs-on: ubuntu-latest
-    steps:
-      - name: Rerun failed checks
-        run: |
-          VERSION="${{ needs.read-versions.outputs.meta }}"
-          REPO="conda-forge/sagemaker-feedstock"
-          STATE=$(gh pr list --repo "$REPO" --state all \
-            --search "[bot-automerge] sagemaker v${VERSION}" \
-            --json state -q '.[0].state // "NOT_FOUND"')
-          if [ "$STATE" = "MERGED" ]; then
-            echo "Already merged, skipping rerun."; exit 0
-          fi
-          PR=$(gh pr list --repo "$REPO" --state open \
-            --search "[bot-automerge] sagemaker v${VERSION}" \
-            --json number -q '.[0].number')
-          [ -z "$PR" ] && echo "No open PR found." && exit 1
-          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
-          RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
-            --json databaseId,conclusion -q \
-            '[.[] | select(.conclusion=="failure")][0].databaseId')
-          [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed \
-            || echo "No failed runs."
-      - name: Wait for merge
-        run: |
-          VERSION="${{ needs.read-versions.outputs.meta }}"
-          REPO="conda-forge/sagemaker-feedstock"
-          for i in $(seq 1 $MAX_ATTEMPTS); do
-            STATE=$(gh pr list --repo "$REPO" --state all \
-              --search "[bot-automerge] sagemaker v${VERSION}" \
-              --json state -q '.[0].state // "NOT_FOUND"')
-            echo "Attempt $i: ${STATE}"
-            [ "$STATE" = "MERGED" ] && exit 0
-            sleep $POLL_INTERVAL
-          done
-          echo "Timed out." && exit 1
-
-      - name: Release chain complete
-        run: |
-          echo "All packages released on conda-forge:"
-          echo "  sagemaker-core       ${{ needs.read-versions.outputs.core }}"
-          echo "  sagemaker-train      ${{ needs.read-versions.outputs.train }}"
-          echo "  sagemaker-serve      ${{ needs.read-versions.outputs.serve }}"
-          echo "  sagemaker-mlops      ${{ needs.read-versions.outputs.mlops }}"
-          echo "  sagemaker-python-sdk ${{ needs.read-versions.outputs.pysdk }}"
-          echo "  sagemaker            ${{ needs.read-versions.outputs.meta }}"
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker
+      feedstock: conda-forge/sagemaker-feedstock
+      pr_search: "[bot-automerge] sagemaker v${{ needs.read-versions.outputs.meta }}"
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.GH_PAT }}

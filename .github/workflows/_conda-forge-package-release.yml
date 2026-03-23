@@ -1,0 +1,66 @@
+name: _Conda Forge Package Release
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: 'Package name (e.g. sagemaker-train)'
+        required: true
+        type: string
+      feedstock:
+        description: 'Feedstock repo (e.g. conda-forge/sagemaker-train-feedstock)'
+        required: true
+        type: string
+      pr_search:
+        description: 'PR title search string (e.g. sagemaker-train v1.6.0)'
+        required: true
+        type: string
+      poll_interval:
+        required: true
+        type: string
+      max_attempts:
+        required: true
+        type: string
+    secrets:
+      token:
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.token }}
+    steps:
+      - name: Rerun failed checks or skip if already merged
+        run: |
+          REPO="${{ inputs.feedstock }}"
+          SEARCH="${{ inputs.pr_search }}"
+          STATE=$(gh pr list --repo "$REPO" --state all \
+            --search "$SEARCH" --json state -q '.[0].state // "NOT_FOUND"')
+          echo "Current state: ${STATE}"
+          if [ "$STATE" = "MERGED" ]; then
+            echo "Already merged, skipping."; exit 0
+          fi
+          PR=$(gh pr list --repo "$REPO" --state open \
+            --search "$SEARCH" --json number -q '.[0].number')
+          [ -z "$PR" ] && echo "No open PR found." && exit 1
+          echo "PR #${PR}"
+          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
+          RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
+            --json databaseId,conclusion -q \
+            '[.[] | select(.conclusion=="failure")][0].databaseId')
+          [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed \
+            || echo "No failed runs."
+
+      - name: Wait for merge
+        run: |
+          REPO="${{ inputs.feedstock }}"
+          SEARCH="${{ inputs.pr_search }}"
+          for i in $(seq 1 ${{ inputs.max_attempts }}); do
+            STATE=$(gh pr list --repo "$REPO" --state all \
+              --search "$SEARCH" --json state -q '.[0].state // "NOT_FOUND"')
+            echo "Attempt $i: ${STATE}"
+            [ "$STATE" = "MERGED" ] && exit 0
+            sleep ${{ inputs.poll_interval }}
+          done
+          echo "Timed out waiting for ${{ inputs.package }}." && exit 1
