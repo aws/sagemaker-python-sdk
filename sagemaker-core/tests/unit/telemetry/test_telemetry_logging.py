@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import os
 import unittest
 import pytest
 import requests
@@ -18,6 +19,7 @@ from unittest.mock import Mock, patch, MagicMock
 import boto3
 import sagemaker
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.telemetry.telemetry_logging import (
     _send_telemetry_request,
     _telemetry_emitter,
@@ -33,15 +35,22 @@ from sagemaker.core.user_agent import SDK_VERSION, process_studio_metadata_file
 
 # Try to import sagemaker-serve exceptions, skip tests if not available
 try:
-    from sagemaker.serve.utils.exceptions import ModelBuilderException, LocalModelOutOfMemoryException
+    from sagemaker.serve.utils.exceptions import (
+        ModelBuilderException,
+        LocalModelOutOfMemoryException,
+    )
+
     SAGEMAKER_SERVE_AVAILABLE = True
 except ImportError:
     SAGEMAKER_SERVE_AVAILABLE = False
+
     # Create mock exceptions for type hints
     class ModelBuilderException(Exception):
         pass
+
     class LocalModelOutOfMemoryException(Exception):
         pass
+
 
 MOCK_SESSION = Mock()
 MOCK_EXCEPTION = LocalModelOutOfMemoryException("mock raise ex")
@@ -158,10 +167,7 @@ class TestTelemetryLogging(unittest.TestCase):
             1, [11, 12], MOCK_SESSION, None, None, expected_extra_str
         )
 
-    @pytest.mark.skipif(
-        not SAGEMAKER_SERVE_AVAILABLE,
-        reason="Requires sagemaker-serve package"
-    )
+    @pytest.mark.skipif(not SAGEMAKER_SERVE_AVAILABLE, reason="Requires sagemaker-serve package")
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
     def test_telemetry_emitter_decorator_handle_exception_success(
@@ -194,7 +200,7 @@ class TestTelemetryLogging(unittest.TestCase):
 
         mock_send_telemetry_request.assert_called_once_with(
             0,
-            [1, 2],
+            [11, 12],
             MOCK_SESSION,
             str(mock_exception_obj),
             mock_exception_obj.__class__.__name__,
@@ -357,3 +363,182 @@ class TestTelemetryLogging(unittest.TestCase):
             _send_telemetry_request(1, [1, 2], mock_session)
             # Assert telemetry request was not sent
             mock_requests_helper.assert_not_called()
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_with_created_by_env_var(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that x-createdBy is included when SAGEMAKER_PYSDK_CREATED_BY env var is set"""
+        mock_resolve_config.return_value = False
+
+        # Set environment variable
+        os.environ[_CREATED_BY_ENV_VAR] = "awslabs/agent-plugins/sagemaker-ai"
+
+        try:
+            mock_local_client = LocalSagemakerClientMock()
+            mock_local_client.mock_create_model()
+
+            args = mock_send_telemetry_request.call_args.args
+            extra_str = str(args[5])
+
+            # Verify x-createdBy is in the extra string with URL encoding
+            self.assertIn("x-createdBy=awslabs%2Fagent-plugins%2Fsagemaker-ai", extra_str)
+
+            # Verify forward slashes are encoded as %2F
+            self.assertNotIn("x-createdBy=awslabs/agent-plugins", extra_str)
+        finally:
+            # Clean up environment variable
+            if _CREATED_BY_ENV_VAR in os.environ:
+                del os.environ[_CREATED_BY_ENV_VAR]
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_without_created_by_env_var(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that x-createdBy is NOT included when env var is not set"""
+        mock_resolve_config.return_value = False
+
+        # Ensure environment variable is not set
+        if _CREATED_BY_ENV_VAR in os.environ:
+            del os.environ[_CREATED_BY_ENV_VAR]
+
+        mock_local_client = LocalSagemakerClientMock()
+        mock_local_client.mock_create_model()
+
+        args = mock_send_telemetry_request.call_args.args
+        extra_str = str(args[5])
+
+        # Verify x-createdBy is NOT in the extra string
+        self.assertNotIn("x-createdBy", extra_str)
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_created_by_with_special_chars(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that x-createdBy properly URL-encodes special characters"""
+        mock_resolve_config.return_value = False
+
+        # Set environment variable with special characters
+        os.environ[_CREATED_BY_ENV_VAR] = "My App & Tools (v2.0)"
+
+        try:
+            mock_local_client = LocalSagemakerClientMock()
+            mock_local_client.mock_create_model()
+
+            args = mock_send_telemetry_request.call_args.args
+            extra_str = str(args[5])
+
+            # Verify special characters are URL-encoded
+            self.assertIn("x-createdBy=My%20App%20%26%20Tools%20%28v2.0%29", extra_str)
+
+            # Verify raw special characters are NOT in the URL
+            self.assertNotIn("My App & Tools", extra_str)
+            self.assertNotIn("(v2.0)", extra_str)
+        finally:
+            if _CREATED_BY_ENV_VAR in os.environ:
+                del os.environ[_CREATED_BY_ENV_VAR]
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_created_by_empty_string(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that x-createdBy is NOT included when env var is empty string"""
+        mock_resolve_config.return_value = False
+
+        # Set environment variable to empty string
+        os.environ[_CREATED_BY_ENV_VAR] = ""
+
+        try:
+            mock_local_client = LocalSagemakerClientMock()
+            mock_local_client.mock_create_model()
+
+            args = mock_send_telemetry_request.call_args.args
+            extra_str = str(args[5])
+
+            # Verify x-createdBy is NOT added for empty string
+            self.assertNotIn("x-createdBy", extra_str)
+        finally:
+            if _CREATED_BY_ENV_VAR in os.environ:
+                del os.environ[_CREATED_BY_ENV_VAR]
+
+    def test_construct_url_with_created_by(self):
+        """Test URL construction includes x-createdBy in extra_info"""
+        mock_accountId = "123456789012"
+        mock_region = "us-west-2"
+        mock_status = "1"
+        mock_feature = "15"
+        mock_extra_info = (
+            "DataSet.create&x-sdkVersion=3.0&x-createdBy=awslabs%2Fagent-plugins%2Fsagemaker-ai"
+        )
+
+        url = _construct_url(
+            accountId=mock_accountId,
+            region=mock_region,
+            status=mock_status,
+            feature=mock_feature,
+            failure_reason=None,
+            failure_type=None,
+            extra_info=mock_extra_info,
+        )
+
+        expected_url = (
+            f"https://sm-pysdk-t-{mock_region}.s3.{mock_region}.amazonaws.com/telemetry?"
+            f"x-accountId={mock_accountId}"
+            f"&x-status={mock_status}"
+            f"&x-feature={mock_feature}"
+            f"&x-extra={mock_extra_info}"
+        )
+
+        self.assertEqual(url, expected_url)
+        self.assertIn("x-createdBy=awslabs%2Fagent-plugins%2Fsagemaker-ai", url)
+
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_with_resource_arn(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that x-resourceArn is included when decorated function returns a TrainingJob."""
+        mock_resolve_config.return_value = False
+
+        mock_training_job = Mock()
+        mock_training_job.__class__.__name__ = "TrainingJob"
+        mock_training_job.training_job_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:training-job/my-job"
+        )
+
+        class TrainingJobReturningMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            @_telemetry_emitter(MOCK_FEATURE, MOCK_FUNC_NAME)
+            def mock_train(self):
+                return mock_training_job
+
+        TrainingJobReturningMock().mock_train()
+
+        args = mock_send_telemetry_request.call_args.args
+        extra_str = str(args[5])
+        self.assertIn(
+            "x-resourceArn=arn:aws:sagemaker:us-west-2:123456789012:training-job/my-job",
+            extra_str,
+        )
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_without_resource_arn(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that x-resourceArn is NOT included when response has no registered ARN."""
+        mock_resolve_config.return_value = False
+
+        mock_local_client = LocalSagemakerClientMock()
+        mock_local_client.mock_create_model()
+
+        args = mock_send_telemetry_request.call_args.args
+        extra_str = str(args[5])
+        self.assertNotIn("x-resourceArn", extra_str)
