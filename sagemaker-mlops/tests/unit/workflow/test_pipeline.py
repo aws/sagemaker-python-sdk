@@ -361,6 +361,7 @@ def test_get_function_step_result_incomplete_job(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path"},
         "TrainingJobStatus": "Failed",
+        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "key"}
     }
     
     with pytest.raises(RemoteFunctionError, match="not in Completed status"):
@@ -376,7 +377,11 @@ def test_get_function_step_result_success(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
+<<<<<<< HEAD
         "Environment": {},
+=======
+        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "key"}
+>>>>>>> parent of fb0d789d (Bug fix for hmac key for V3 (#5379))
     }
     
     with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result"):
@@ -499,7 +504,11 @@ def test_pipeline_execution_result_terminal_failure(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
+<<<<<<< HEAD
         "Environment": {},
+=======
+        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "key"}
+>>>>>>> parent of fb0d789d (Bug fix for hmac key for V3 (#5379))
     }
     
     with patch.object(execution, "wait", side_effect=WaiterError("name", "Waiter encountered a terminal failure state", {})):
@@ -517,7 +526,11 @@ def test_get_function_step_result_obsolete_s3_path(mock_session):
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/different/path"},
         "TrainingJobStatus": "Completed",
+<<<<<<< HEAD
         "Environment": {},
+=======
+        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "key"}
+>>>>>>> parent of fb0d789d (Bug fix for hmac key for V3 (#5379))
     }
     
     with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result"):
