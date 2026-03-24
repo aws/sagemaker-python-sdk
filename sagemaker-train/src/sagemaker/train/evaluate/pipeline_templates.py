@@ -11,8 +11,7 @@ DETERMINISTIC_TEMPLATE = """{
     "Metadata": {},
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
-        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}{% if mlflow_run_name %},
-        "MlflowRunName": "{{ mlflow_run_name }}"{% endif %}
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
     },
     "Parameters": [],
     "Steps": [
@@ -531,8 +530,7 @@ CUSTOM_SCORER_TEMPLATE = """{
     "Metadata": {},
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
-        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}{% if mlflow_run_name %},
-        "MlflowRunName": "{{ mlflow_run_name }}"{% endif %}
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
     },
     "Parameters": [],
     "Steps": [
@@ -925,8 +923,7 @@ LLMAJ_TEMPLATE = """{
     "Metadata": {},
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
-        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}{% if mlflow_run_name %},
-        "MlflowRunName": "{{ mlflow_run_name }}"{% endif %}
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
     },
     "Parameters": [],
     "Steps": [
