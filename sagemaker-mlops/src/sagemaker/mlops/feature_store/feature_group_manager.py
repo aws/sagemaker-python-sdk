@@ -807,6 +807,13 @@ class FeatureGroupManager(FeatureGroup):
                 "iceberg_properties must contain at least one property to update"
             )
 
+        invalid_keys = set(iceberg_properties.properties.keys()) - _APPROVED_ICEBERG_PROPERTIES
+        if invalid_keys:
+            raise ValueError(
+                f"Invalid iceberg properties: {invalid_keys}. "
+                f"Approved properties are: {_APPROVED_ICEBERG_PROPERTIES}"
+            )
+
         result = self._get_iceberg_properties(session=session, region=region)
         database_name = result["database_name"]
         table_name = result["table_name"]
