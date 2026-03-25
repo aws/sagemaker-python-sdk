@@ -15,6 +15,8 @@ from __future__ import absolute_import
 import boto3
 import botocore
 import pytest
+import random
+import string
 
 from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.train.configs import SourceCode, InputData, Compute
@@ -29,6 +31,15 @@ from tests.integ.train.test_model_trainer import (
 from .manager import BatchTestResourceManager
 
 
+class ShortId:
+    ALPHABET = string.ascii_lowercase + string.digits
+    DEFAULT_LENGTH = 8
+
+    @staticmethod
+    def get(length=DEFAULT_LENGTH):
+        return "".join(random.choices(ShortId.ALPHABET, k=length))
+
+
 @pytest.fixture(scope="module")
 def batch_client():
     return boto3.client("batch", region_name="us-west-2")
@@ -36,9 +47,18 @@ def batch_client():
 
 @pytest.fixture(scope="function")
 def batch_test_resource_manager(batch_client):
-    resource_manager = BatchTestResourceManager(batch_client=batch_client)
-    resource_manager.get_or_create_resources()
-    yield resource_manager
+    # Guarantee AWS Batch resource name uniqueness across concurrent test runtimes
+    test_id = ShortId.get()
+    print(f"Integration test ID (used in AWS Batch resource naming): {test_id}")
+
+    resource_manager = BatchTestResourceManager(batch_client=batch_client, test_id=test_id)
+
+    try:
+        resource_manager.get_or_create_resources()
+        yield resource_manager
+    except Exception as e:
+        print(f"Exception thrown while creating or yielding AWS Batch resources: {str(e)}")
+
     resource_manager.delete_resources()
 
 
