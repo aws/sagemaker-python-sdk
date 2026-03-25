@@ -45,10 +45,11 @@ class TrainingQueuedJob:
     With this class, customers are able to attach the latest training job to a ModelTrainer.
     """
 
-    def __init__(self, job_arn: str, job_name: str, share_identifier: Optional[str] = None):
+    def __init__(self, job_arn: str, job_name: str, share_identifier: Optional[str] = None, quota_share_name: Optional[str] = None):
         self.job_arn = job_arn
         self.job_name = job_name
         self.share_identifier = share_identifier
+        self.quota_share_name = quota_share_name
         self._no_training_job_status = {"SUBMITTED", "PENDING", "RUNNABLE"}
 
     def get_model_trainer(self) -> ModelTrainer:

@@ -816,8 +816,10 @@ def list_jobs_by_quota_share(training_queue: TrainingQueue, quota_share_names: L
     Args:
         training_queue (TrainingQueue): The TrainingQueue to query for jobs.
     """
-    all_jobs = [job for status in statuses for job in training_queue.list_jobs(status=status.value)]
-
+    all_jobs = [
+        job for status in statuses for qs_name in quota_share_names
+        for job in training_queue.list_jobs_by_share(quota_share_name=qs_name, status=status.value)
+    ]
     jobs_by_qs = {qs_name: [] for qs_name in quota_share_names}
     for job in all_jobs:
         job_detail = job.describe()
