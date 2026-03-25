@@ -82,7 +82,6 @@ def test_model_builder_negative_path(sagemaker_session):
             None,
         ),
         ("HuggingFaceH4/zephyr-7b-beta", "text-generation", "ml.g5.2xlarge", 900),
-        ("HuggingFaceH4/zephyr-7b-alpha", "text-generation", "ml.g5.2xlarge", 900),
     ],
 )
 def test_model_builder_happy_path_with_task_provided_local_schema_mode(

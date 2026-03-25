@@ -87,7 +87,7 @@ def test_non_prepacked_jumpstart_model(setup):
 
 def test_prepacked_jumpstart_model(setup):
 
-    model_id = "huggingface-txt2img-conflictx-complex-lineart"
+    model_id = "model-txt2img-stabilityai-stable-diffusion-v2-1-base"
 
     model = JumpStartModel(
         model_id=model_id,
@@ -251,11 +251,10 @@ def test_instantiating_model(mock_warning_logger, setup):
 
 
 def test_jumpstart_model_register(setup):
-    model_id = "huggingface-txt2img-conflictx-complex-lineart"
+    model_id = "model-txt2img-stabilityai-stable-diffusion-v2-1-base"
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="1.1.0",
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
