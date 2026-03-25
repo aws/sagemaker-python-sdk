@@ -1,4 +1,12 @@
 # Changelog
+## v2.7.0 (2026-03-25)
+
+### Bug fixes and Other Changes
+
+- **Enhancement**: Add telemetry attribution module for SDK usage provenance (#5661)
+- **Enhancement**: Updated SDK to use latest LMIv22 image for v3.x (#5640)
+- **Enhancement**: Resources codegen update for eval job links (#5662)
+
 ## v2.6.0 (2026-03-19)
 
 ### Bug fixes and Other Changes
