@@ -162,7 +162,6 @@ def main(sys_args=None):
             sagemaker_session=sagemaker_session,
             s3_base_uri=s3_uri,
             s3_kms_key=s3_kms_key,
-            hmac_key=hmac_key,
         )
     finally:
         sys.exit(exit_code)
