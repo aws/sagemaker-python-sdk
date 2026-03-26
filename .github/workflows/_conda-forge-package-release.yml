@@ -59,27 +59,6 @@ jobs:
           done
           echo "Timed out waiting for ${PACKAGE}==${VERSION}." && exit 1
 
-      - name: Rerun failed checks on ${{ inputs.package }} feedstock PR
-        run: |
-          REPO="${{ inputs.feedstock }}"
-          SEARCH="${{ inputs.pr_search }}"
-          STATE=$(gh pr list --repo "$REPO" --state all \
-            --search "$SEARCH" --json state -q '.[0].state // "NOT_FOUND"')
-          echo "PR state: ${STATE}"
-          if [ "$STATE" = "MERGED" ]; then
-            echo "Already merged, skipping rerun."; exit 0
-          fi
-          PR=$(gh pr list --repo "$REPO" --state open \
-            --search "$SEARCH" --json number -q '.[0].number')
-          [ -z "$PR" ] && echo "No open PR found." && exit 1
-          echo "PR #${PR}"
-          BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
-          RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
-            --json databaseId,conclusion -q \
-            '[.[] | select(.conclusion=="failure")][0].databaseId')
-          [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed \
-            || echo "No failed runs."
-
       - name: Merge and wait for ${{ inputs.package }} feedstock PR
         run: |
           REPO="${{ inputs.feedstock }}"
@@ -92,7 +71,21 @@ jobs:
             PR=$(gh pr list --repo "$REPO" --state open \
               --search "$SEARCH" --json number -q '.[0].number')
             if [ -n "$PR" ]; then
-              gh pr merge "$PR" --repo "$REPO" --merge --auto 2>/dev/null || true
+              CI_STATUS=$(gh pr view "$PR" --repo "$REPO" \
+                --json statusCheckRollup -q \
+                '[.statusCheckRollup[].conclusion] | if length == 0 then "pending" elif all(. == "SUCCESS") then "success" else "failure" end')
+              echo "CI status: ${CI_STATUS}"
+              if [ "$CI_STATUS" = "success" ]; then
+                echo "CI passed, merging PR #${PR}..."
+                gh pr merge "$PR" --repo "$REPO" --merge 2>/dev/null || true
+              elif [ "$CI_STATUS" = "failure" ]; then
+                echo "CI failed, retriggering..."
+                BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
+                RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
+                  --json databaseId,conclusion -q \
+                  '[.[] | select(.conclusion=="failure")][0].databaseId')
+                [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed || true
+              fi
             fi
             sleep ${{ inputs.poll_interval }}
           done
