@@ -249,7 +249,7 @@ ML Operations Examples
 .. rst-class:: new-content
 
 E2E Pipeline with Model Registry
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+----------------------------------
 
 .. rst-class:: new-content-label
 
@@ -297,7 +297,7 @@ Build a SageMaker Pipeline that preprocesses data, trains a model, and registers
 .. rst-class:: new-content
 
 Processing Jobs
-~~~~~~~~~~~~~~~~
+----------------
 
 .. rst-class:: new-content-label
 
@@ -326,7 +326,7 @@ Run data preprocessing with ``ScriptProcessor`` (sklearn) or ``FrameworkProcesso
 .. rst-class:: new-content
 
 Batch Transform Jobs
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 .. rst-class:: new-content-label
 
@@ -352,7 +352,7 @@ Run batch inference on large datasets using ``Transformer``.
 .. rst-class:: new-content
 
 Hyperparameter Tuning
-~~~~~~~~~~~~~~~~~~~~~~
+----------------------
 
 .. rst-class:: new-content-label
 
@@ -383,7 +383,7 @@ Optimize hyperparameters with ``HyperparameterTuner`` using ``ContinuousParamete
 .. rst-class:: new-content
 
 Model Registry
-~~~~~~~~~~~~~~~
+---------------
 
 .. rst-class:: new-content-label
 
@@ -413,7 +413,7 @@ Register models, create models from registry entries, and manage approval workfl
 .. rst-class:: new-content
 
 Clarify Bias and Explainability
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------------
 
 .. rst-class:: new-content-label
 
@@ -435,7 +435,7 @@ Run pre-training bias analysis and SHAP explainability using ``SageMakerClarifyP
 .. rst-class:: new-content
 
 EMR Serverless Pipeline Step
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------
 
 .. rst-class:: new-content-label
 
@@ -466,7 +466,7 @@ Run PySpark jobs on EMR Serverless within a SageMaker Pipeline.
 .. rst-class:: new-content
 
 MLflow Integration
-~~~~~~~~~~~~~~~~~~~
+-------------------
 
 .. rst-class:: new-content-label
 
@@ -502,7 +502,7 @@ Migration from V2
 .. rst-class:: new-content-label
 
 MLOps Classes and Imports
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+--------------------------
 
 .. list-table::
    :header-rows: 1
@@ -548,7 +548,7 @@ MLOps Classes and Imports
 .. rst-class:: new-content
 
 V3 Package Structure
-~~~~~~~~~~~~~~~~~~~~~
+---------------------
 
 .. rst-class:: new-content-label
 
