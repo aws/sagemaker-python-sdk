@@ -383,7 +383,12 @@ def test_step_validate_json_get_function_with_property_file():
     
     step_map = {"processing-step": processing_step}
     
-    Step._validate_json_get_function(step, json_get, step_map)
+        Step._validate_json_get_function(step, json_get, step_map)
+
+
+def test_step_find_dependencies_in_step_arguments_with_json_get():
+    from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
+    from sagemaker.core.workflow.functions import JsonGet
 
 
 
@@ -472,6 +477,7 @@ def test_step_find_dependencies_in_step_arguments_with_delayed_return():
 
     dependencies = Step._find_dependencies_in_step_arguments(step2, obj, {"step1": step1})
     assert "step1" in dependencies
+
 
 
 
