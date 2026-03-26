@@ -24,6 +24,18 @@ from sagemaker.core.workflow.utilities import (
     get_processing_dependencies,
     get_processing_code_hash,
     get_training_code_hash,
+    get_code_hash,
+    validate_step_args_input,
+    override_pipeline_parameter_var,
+    trim_request_dict,
+    _collect_parameters,
+    list_to_request,
+    hash_file,
+    hash_files_or_dirs,
+    hash_object,
+    get_processing_dependencies,
+    get_processing_code_hash,
+    get_training_code_hash,
     validate_step_args_input,
     override_pipeline_parameter_var,
     trim_request_dict,
@@ -31,7 +43,7 @@ from sagemaker.core.workflow.utilities import (
 )
 from sagemaker.core.workflow.entities import Entity
 from sagemaker.core.workflow.parameters import Parameter
-from sagemaker.core.workflow.pipeline_context import _StepArguments
+from sagemaker.core.workflow.pipeline_context import _StepArguments, _JobStepArguments
 
 
 class MockEntity(Entity):
@@ -430,6 +442,170 @@ class TestWorkflowUtilities:
         obj = TestClass("value1", "value2", param3="value3")
 
         assert obj.param1 == "value1"
+
+
+    def test_get_training_code_hash_source_dir_with_none_dependencies(self):
+        """Test get_training_code_hash with source_dir and dependencies=None does not raise TypeError.
+
+        Regression test for https://github.com/aws/sagemaker-python-sdk/issues/5181
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            entry_file = Path(temp_dir, "train.py")
+            entry_file.write_text("print('training')")
+
+            result = get_training_code_hash(
+                entry_point=str(entry_file), source_dir=temp_dir, dependencies=None
+            )
+
+            assert result is not None
+            assert len(result) == 64
+
+    def test_get_training_code_hash_entry_point_with_none_dependencies(self):
+        """Test get_training_code_hash with entry_point only and dependencies=None does not raise TypeError.
+
+        Regression test for https://github.com/aws/sagemaker-python-sdk/issues/5181
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            entry_file = Path(temp_dir, "train.py")
+            entry_file.write_text("print('training')")
+
+            result = get_training_code_hash(
+                entry_point=str(entry_file), source_dir=None, dependencies=None
+            )
+
+            assert result is not None
+            assert len(result) == 64
+
+    def test_get_code_hash_training_step_with_source_code_no_requirements(self):
+        """Test get_code_hash with TrainingStep where SourceCode has requirements=None.
+
+        Regression test for https://github.com/aws/sagemaker-python-sdk/issues/5181
+        When SourceCode.requirements is None (the default), get_code_hash should not
+        raise a TypeError.
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            entry_file = Path(temp_dir, "train.py")
+            entry_file.write_text("print('training')")
+
+            # Create a mock source_code with requirements=None (the default)
+            source_code = Mock()
+            source_code.source_dir = temp_dir
+            source_code.requirements = None
+            source_code.entry_script = str(entry_file)
+
+            # Create a mock model_trainer
+            model_trainer = Mock()
+            model_trainer.source_code = source_code
+
+            # Create a mock TrainingStep
+            step = Mock()
+            step.__class__ = type('TrainingStep', (), {})
+            step.step_args = Mock()
+            step.step_args.func_args = [model_trainer]
+
+            # Patch isinstance to recognize our mock as a TrainingStep
+            with patch('sagemaker.core.workflow.utilities.isinstance') as mock_isinstance:
+                def side_effect(obj, cls):
+                    from sagemaker.mlops.workflow.steps import TrainingStep, ProcessingStep
+                    if cls == ProcessingStep or cls == (ProcessingStep,):
+                        return False
+                    if cls == TrainingStep or cls == (TrainingStep,):
+                        return obj is step
+                    return builtins_isinstance(obj, cls)
+
+                import builtins
+                builtins_isinstance = builtins.isinstance
+                mock_isinstance.side_effect = side_effect
+
+                # This should not raise TypeError
+                result = get_code_hash(step)
+
+            # Verify we get a valid hash
+            assert result is not None
+            assert len(result) == 64
+
+    def test_get_code_hash_training_step_with_source_code_with_requirements(self):
+        """Test get_code_hash with TrainingStep where SourceCode has a requirements file."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            entry_file = Path(temp_dir, "train.py")
+            entry_file.write_text("print('training')")
+            req_file = Path(temp_dir, "requirements.txt")
+            req_file.write_text("numpy==1.21.0")
+
+            # Create a mock source_code with requirements set
+            source_code = Mock()
+            source_code.source_dir = temp_dir
+            source_code.requirements = str(req_file)
+            source_code.entry_script = str(entry_file)
+
+            # Create a mock model_trainer
+            model_trainer = Mock()
+            model_trainer.source_code = source_code
+
+            # Create a mock TrainingStep
+            step = Mock()
+            step.step_args = Mock()
+            step.step_args.func_args = [model_trainer]
+
+            with patch('sagemaker.core.workflow.utilities.isinstance') as mock_isinstance:
+                def side_effect(obj, cls):
+                    from sagemaker.mlops.workflow.steps import TrainingStep, ProcessingStep
+                    if cls == ProcessingStep or cls == (ProcessingStep,):
+                        return False
+                    if cls == TrainingStep or cls == (TrainingStep,):
+                        return obj is step
+                    return builtins_isinstance(obj, cls)
+
+                import builtins
+                builtins_isinstance = builtins.isinstance
+                mock_isinstance.side_effect = side_effect
+
+                result = get_code_hash(step)
+
+            assert result is not None
+            assert len(result) == 64
+
+    def test_get_code_hash_training_step_entry_script_only_no_requirements(self):
+        """Test get_code_hash with TrainingStep where SourceCode has entry_script but no source_dir or requirements.
+
+        Regression test for https://github.com/aws/sagemaker-python-sdk/issues/5181
+        """
+        with tempfile.TemporaryDirectory() as temp_dir:
+            entry_file = Path(temp_dir, "train.py")
+            entry_file.write_text("print('training')")
+
+            # Create a mock source_code with only entry_script
+            source_code = Mock()
+            source_code.source_dir = None
+            source_code.requirements = None
+            source_code.entry_script = str(entry_file)
+
+            # Create a mock model_trainer
+            model_trainer = Mock()
+            model_trainer.source_code = source_code
+
+            # Create a mock TrainingStep
+            step = Mock()
+            step.step_args = Mock()
+            step.step_args.func_args = [model_trainer]
+
+            with patch('sagemaker.core.workflow.utilities.isinstance') as mock_isinstance:
+                def side_effect(obj, cls):
+                    from sagemaker.mlops.workflow.steps import TrainingStep, ProcessingStep
+                    if cls == ProcessingStep or cls == (ProcessingStep,):
+                        return False
+                    if cls == TrainingStep or cls == (TrainingStep,):
+                        return obj is step
+                    return builtins_isinstance(obj, cls)
+
+                import builtins
+                builtins_isinstance = builtins.isinstance
+                mock_isinstance.side_effect = side_effect
+
+                result = get_code_hash(step)
+
+            assert result is not None
+            assert len(result) == 64
         assert obj.param2 == "value2"
         assert obj.param3 == "value3"
 
