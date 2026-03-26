@@ -386,6 +386,38 @@ def test_step_validate_json_get_function_with_property_file():
     Step._validate_json_get_function(step, json_get, step_map)
 
 
+def test_delayed_return_import_from_correct_module():
+    """Verify that DelayedReturn can be imported from sagemaker.mlops.workflow.function_step."""
+    from sagemaker.mlops.workflow.function_step import DelayedReturn
+    assert DelayedReturn is not None
+    # Verify it's a class
+    assert isinstance(DelayedReturn, type)
+
+
+def test_find_dependencies_in_step_arguments_with_delayed_return_uses_correct_import():
+    """Verify _find_dependencies_in_step_arguments uses the mlops import path for DelayedReturn."""
+    from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
+    from sagemaker.mlops.workflow.function_step import DelayedReturn, _FunctionStep
+    from sagemaker.core.workflow.functions import JsonGet
+    from unittest.mock import patch, Mock
+
+    # Create a mock function step
+    mock_func_step = Mock(spec=_FunctionStep)
+    mock_func_step.name = "func-step"
+
+    # Create a DelayedReturn that acts as a PipelineVariable
+    delayed = Mock(spec=DelayedReturn)
+    delayed._referenced_steps = [mock_func_step]
+    delayed._step = mock_func_step
+
+    mock_json_get = Mock(spec=JsonGet)
+    mock_json_get.property_file = None
+    delayed._to_json_get = Mock(return_value=mock_json_get)
+
+    # Verify isinstance check works with the correct import
+    assert isinstance(delayed, DelayedReturn)
+
+
 def test_step_find_dependencies_in_step_arguments_with_json_get():
     from unittest.mock import patch
     from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
@@ -415,6 +447,34 @@ def test_step_find_dependencies_in_step_arguments_with_json_get():
 
 
 def test_step_find_dependencies_in_step_arguments_with_delayed_return():
+    from unittest.mock import patch
+    from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
+    from sagemaker.mlops.workflow.function_step import DelayedReturn
+    from sagemaker.core.workflow.functions import JsonGet
+    from sagemaker.core.helper.pipeline_variable import PipelineVariable
+    
+    step1 = Mock(spec=Step)
+    step1.name = "step1"
+    step1.step_type = StepTypeEnum.PROCESSING
+    step1.property_files = []
+    step1.arguments = {}
+    
+    json_get = Mock(spec=JsonGet)
+    json_get.property_file = None
+    
+    delayed_return = Mock(spec=DelayedReturn)
+    delayed_return._referenced_steps = [step1]
+    delayed_return._to_json_get = Mock(return_value=json_get)
+    
+    step2 = Mock(spec=Step)
+    step2.name = "step2"
+    step2._validate_json_get_function = Mock()
+    step2._get_step_name_from_str = Step._get_step_name_from_str
+    
+    obj = {"key": delayed_return}
+    
+    dependencies = Step._find_dependencies_in_step_arguments(step2, obj, {"step1": step1})
+    assert "step1" in dependencies
     from unittest.mock import patch
     from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
     from sagemaker.core.workflow.functions import JsonGet
@@ -448,6 +508,7 @@ def test_step_find_dependencies_in_step_arguments_with_delayed_return():
     with patch.dict('sys.modules', {'sagemaker.core.workflow.function_step': mock_module}):
         dependencies = Step._find_dependencies_in_step_arguments(step2, obj, {"step1": step1})
         assert "step1" in dependencies
+
 
 
 def test_step_find_dependencies_in_step_arguments_with_string_reference():
