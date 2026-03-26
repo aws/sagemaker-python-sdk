@@ -39,7 +39,7 @@ MAX_INIT_TIME_SECONDS = 5
 
 TEST_MODEL_IDS = {
     "catboost-classification-model",
-    "huggingface-txt2img-conflictx-complex-lineart",
+    "model-txt2img-stabilityai-stable-diffusion-v2-1-base",
     "meta-textgeneration-llama-2-7b",
     "meta-textgeneration-llama-3-2-1b",
     "catboost-regression-model",
