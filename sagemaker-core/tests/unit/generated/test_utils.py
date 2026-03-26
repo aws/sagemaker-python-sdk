@@ -373,6 +373,31 @@ def test_serialize_method_nested_shape():
     }
 
 
+
+def test_serialize_with_bytes_value_returns_bytes():
+    result = serialize({"body": b"1"})
+    assert result == {"body": b"1"}
+
+
+def test_serialize_with_empty_bytes_returns_empty_dict():
+    # Empty bytes is falsy, so the walrus operator in _serialize_dict skips it
+    result = serialize({"body": b""})
+    assert result == {}
+
+
+def test_serialize_with_bytes_in_list():
+    result = serialize([b"hello", b"world"])
+    assert result == [b"hello", b"world"]
+
+
+def test_is_not_primitive_with_bytes_returns_false():
+    assert is_not_primitive(b"test") is False
+
+
+def test_is_primitive_class_with_bytes_returns_true():
+    assert is_primitive_class(bytes) is True
+
+
 class TestUnassignedBehavior:
     """Test Unassigned class methods for proper behavior.
     
