@@ -72,8 +72,15 @@ jobs:
               --search "$SEARCH" --json number -q '.[0].number')
             if [ -n "$PR" ]; then
               CI_STATUS=$(gh pr view "$PR" --repo "$REPO" \
-                --json statusCheckRollup -q \
-                '[.statusCheckRollup | group_by(.name) | map(sort_by(.startedAt) | last | .conclusion) | if length == 0 then "pending" elif all(. == "SUCCESS") then "success" elif any(. == null or . == "") then "pending" else "failure" end][-1]')
+                --json statusCheckRollup -q '
+                  .statusCheckRollup | map(
+                    if .__typename == "CheckRun" then .conclusion
+                    elif .__typename == "StatusContext" then .state
+                    else null end
+                  ) | if length == 0 then "pending"
+                    elif any(. == null or . == "" or . == "IN_PROGRESS" or . == "QUEUED" or . == "WAITING" or . == "PENDING") then "pending"
+                    elif all(. == "SUCCESS") then "success"
+                    else "failure" end')
               echo "CI status: ${CI_STATUS}"
               if [ "$CI_STATUS" = "success" ]; then
                 echo "CI passed, merging PR #${PR}..."
