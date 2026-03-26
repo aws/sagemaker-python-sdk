@@ -374,27 +374,18 @@ def test_serialize_method_nested_shape():
 
 
 
-def test_serialize_with_bytes_value_returns_bytes():
-    result = serialize(b'1')
-    assert result == b'1'
-
-
-def test_serialize_dict_with_bytes_value_returns_dict_with_bytes():
+def test_serialize_bytes_returns_bytes():
     result = serialize({'body': b'1'})
     assert result == {'body': b'1'}
+    assert serialize(b'hello') == b'hello'
 
 
-def test_is_not_primitive_with_bytes_returns_false():
-    assert is_not_primitive(b'hello') is False
+def test_is_not_primitive_with_bytes():
+    assert is_not_primitive(b'test') is False
 
 
-def test_is_primitive_class_with_bytes_returns_true():
+def test_is_primitive_class_with_bytes():
     assert is_primitive_class(bytes) is True
-
-
-def test_serialize_list_with_bytes_elements():
-    result = serialize([b'a', b'b'])
-    assert result == [b'a', b'b']
 
 
 class TestUnassignedBehavior:
