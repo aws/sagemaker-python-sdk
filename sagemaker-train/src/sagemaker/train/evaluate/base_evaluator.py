@@ -49,6 +49,10 @@ class BaseEvaluator(BaseModel):
     Attributes:
         region (Optional[str]): AWS region for evaluation jobs. If not provided, will use
             SAGEMAKER_REGION env var or default region.
+        role (Optional[str]): IAM execution role ARN for SageMaker pipeline and training jobs.
+            If not provided, will be derived from the session's caller identity. Use this when
+            running outside SageMaker-managed environments (e.g., local notebooks, CI/CD) where
+            the caller identity is not a SageMaker-assumable role.
         sagemaker_session (Optional[Any]): SageMaker session object. If not provided, a default
             session will be created automatically.
         model (Union[str, Any]): Model for evaluation. Can be:
@@ -88,6 +92,7 @@ class BaseEvaluator(BaseModel):
     """
     
     region: Optional[str] = None
+    role: Optional[str] = None
     sagemaker_session: Optional[Any] = None
     model: Union[str, BaseTrainer, ModelPackage]
     base_eval_name: Optional[str] = None
@@ -631,9 +636,12 @@ class BaseEvaluator(BaseModel):
                 - account_id (str): AWS account ID
         """
         # Get role ARN
-        role_arn = (self.sagemaker_session.get_caller_identity_arn() 
-                   if hasattr(self.sagemaker_session, 'get_caller_identity_arn') 
-                   else self.sagemaker_session.expand_role())
+        if self.role:
+            role_arn = self.role
+        else:
+            role_arn = (self.sagemaker_session.get_caller_identity_arn()
+                       if hasattr(self.sagemaker_session, 'get_caller_identity_arn')
+                       else self.sagemaker_session.expand_role())
         
         # Get region - prefer self.region if set, otherwise extract from session
         region = self.region or (self.sagemaker_session.boto_region_name 

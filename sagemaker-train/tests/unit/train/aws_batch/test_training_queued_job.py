@@ -47,6 +47,14 @@ class TestTrainingQueuedJobInit:
         assert queued_job.job_arn == JOB_ARN
         assert queued_job.job_name == JOB_NAME
 
+    def test_training_queued_job_init_with_quota_share_name(self):
+        """Test TrainingQueuedJob initialization with quota_share_name"""
+        queued_job = TrainingQueuedJob(JOB_ARN, JOB_NAME, quota_share_name="test-quota")
+        assert queued_job.job_arn == JOB_ARN
+        assert queued_job.job_name == JOB_NAME
+        assert queued_job.share_identifier is None
+        assert queued_job.quota_share_name == "test-quota"
+
 
 class TestTrainingQueuedJobDescribe:
     """Tests for TrainingQueuedJob.describe method"""
