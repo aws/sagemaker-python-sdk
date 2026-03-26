@@ -124,28 +124,7 @@ class SourceCode(BaseConfig):
         ".ipynb_checkpoints",
     ]
 
-class OutputDataConfig(shapes.OutputDataConfig):
-    """OutputDataConfig.
 
-    Provides the configuration for the output data location of the training job 
-    (will not be carried over to any model repository or deployment).
-
-    Parameters:
-        s3_output_path (Optional[StrPipeVar]):
-            The S3 URI where the output data will be stored. This is the location where the
-            training job will save its output data, such as model artifacts and logs.
-        kms_key_id (Optional[StrPipeVar]):
-            The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that
-            SageMaker uses to encrypt the model artifacts at rest using Amazon S3 server-side
-            encryption.
-        compression_type (Optional[StrPipeVar]):
-            The model output compression type. Select None to output an uncompressed model,
-            recommended for large model outputs. Defaults to gzip.
-    """
-
-    s3_output_path: Optional[StrPipeVar] = None
-    kms_key_id: Optional[StrPipeVar] = None
-    compression_type: Optional[StrPipeVar] = None
 
 
 class Compute(shapes.ResourceConfig):
