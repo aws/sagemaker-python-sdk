@@ -80,7 +80,7 @@ jobs:
           [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed \
             || echo "No failed runs."
 
-      - name: Wait for ${{ inputs.package }} feedstock PR to merge
+      - name: Merge and wait for ${{ inputs.package }} feedstock PR
         run: |
           REPO="${{ inputs.feedstock }}"
           SEARCH="${{ inputs.pr_search }}"
@@ -89,6 +89,11 @@ jobs:
               --search "$SEARCH" --json state -q '.[0].state // "NOT_FOUND"')
             echo "Attempt $i: ${STATE}"
             [ "$STATE" = "MERGED" ] && exit 0
+            PR=$(gh pr list --repo "$REPO" --state open \
+              --search "$SEARCH" --json number -q '.[0].number')
+            if [ -n "$PR" ]; then
+              gh pr merge "$PR" --repo "$REPO" --merge --auto 2>/dev/null || true
+            fi
             sleep ${{ inputs.poll_interval }}
           done
           echo "Timed out waiting for ${{ inputs.package }} PR to merge." && exit 1
