@@ -1,4 +1,14 @@
 # Changelog
+## v1.7.0 (2026-03-25)
+
+### Bug fixes and Other Changes
+
+- **Fix**: Sync Nova hosting configs with AGISageMakerInference (#5664)
+
+## v1.6.0 (2026-03-19)
+
+ - **ModelBuilder**: Fix the bug in deploy from LORA finetuning job
+   
 ## v1.5.0 (2026-03-02)
 
 ### Bug fixes and Other Changes

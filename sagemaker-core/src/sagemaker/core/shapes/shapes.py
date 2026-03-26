@@ -8577,7 +8577,7 @@ class InferenceComponentComputeResourceRequirements(Base):
     max_memory_required_in_mb: The maximum MB of memory to allocate to run a model that you assign to an inference component.
     """
 
-    min_memory_required_in_mb: int
+    min_memory_required_in_mb: Optional[int] = Unassigned()
     number_of_cpu_cores_required: Optional[float] = Unassigned()
     number_of_accelerator_devices_required: Optional[float] = Unassigned()
     max_memory_required_in_mb: Optional[int] = Unassigned()

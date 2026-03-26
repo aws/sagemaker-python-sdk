@@ -1,4 +1,23 @@
 # Changelog
+## v1.7.0 (2026-03-25)
+
+### Bug fixes and Other Changes
+
+- **Feature**: Add support for AWS Batch Quota Management job submission and job priority update (#5659)
+- **Feature**: Extend list_jobs_by_share for quota_share_name (#5669)
+- **Feature**: MLflow metrics visualization, enhanced wait UI, and eval job links (#5662)
+- **Feature**: Support IAM role for BaseEvaluator (#5671)
+- **Fix**: Remove GPT OSS model evaluation restriction (#5658)
+- **Tests**: AWS Batch integ test resources are now uniquely named by test run (#5666)
+
+## v1.6.0 (2026-03-19)
+
+### Bug fixes and Other Changes
+
+- **Fix**: Include sm_drivers channel in HyperparameterTuner jobs (#5634)
+- **Fix**: resolve PermissionError during local mode cleanup of root-owned Docker files (#5629)
+- **Fix**: Add PipelineVariable support to ModelTrainer fields (#5608)
+  
 ## v1.5.0 (2026-03-02)
 
 ### Features
