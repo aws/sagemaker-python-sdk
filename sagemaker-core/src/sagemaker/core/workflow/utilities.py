@@ -175,7 +175,9 @@ def get_code_hash(step: Entity) -> str:
             source_dir = source_code.source_dir
             requirements = source_code.requirements
             entry_point = source_code.entry_script
-            return get_training_code_hash(entry_point, source_dir, requirements)
+            return get_training_code_hash(
+                entry_point, source_dir, requirements
+            )
     return None
 
 

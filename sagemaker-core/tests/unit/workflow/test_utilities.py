@@ -274,10 +274,14 @@ class TestWorkflowUtilities:
             requirements_file.write_text("numpy==1.21.0")
 
             result_no_deps = get_training_code_hash(
-                entry_point=str(entry_file), source_dir=temp_dir, dependencies=None
+                entry_point=str(entry_file),
+                source_dir=temp_dir,
+                dependencies=None,
             )
             result_with_deps = get_training_code_hash(
-                entry_point=str(entry_file), source_dir=temp_dir, dependencies=str(requirements_file)
+                entry_point=str(entry_file),
+                source_dir=temp_dir,
+                dependencies=str(requirements_file),
             )
 
             assert result_no_deps is not None
@@ -286,19 +290,32 @@ class TestWorkflowUtilities:
             assert len(result_with_deps) == 64
             assert result_no_deps != result_with_deps
 
-    def test_get_training_code_hash_with_source_dir_and_none_dependencies(self):
-        """Test get_training_code_hash with source_dir and None dependencies does not raise TypeError"""
+    def test_get_training_code_hash_source_dir_none_deps(
+        self,
+    ):
+        """Test get_training_code_hash with source_dir
+        and None dependencies does not raise TypeError.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             entry_file = Path(temp_dir, "train.py")
             entry_file.write_text("print('training')")
 
-            # This should NOT raise TypeError: can only concatenate list (not "NoneType") to list
-            result = get_training_code_hash(
-                entry_point=str(entry_file), source_dir=temp_dir, dependencies=None
+            # Should NOT raise TypeError
+            result_none = get_training_code_hash(
+                entry_point=str(entry_file),
+                source_dir=temp_dir,
+                dependencies=None,
+            )
+            # Empty list should be equivalent to None
+            result_empty = get_training_code_hash(
+                entry_point=str(entry_file),
+                source_dir=temp_dir,
+                dependencies=[],
             )
 
-            assert result is not None
-            assert len(result) == 64
+            assert result_none is not None
+            assert len(result_none) == 64
+            assert result_none == result_empty
 
     def test_get_training_code_hash_entry_point_only(self):
         """Test get_training_code_hash with entry_point only"""
@@ -310,11 +327,15 @@ class TestWorkflowUtilities:
 
             # Without dependencies
             result_no_deps = get_training_code_hash(
-                entry_point=str(entry_file), source_dir=None, dependencies=None
+                entry_point=str(entry_file),
+                source_dir=None,
+                dependencies=None,
             )
             # With dependencies
             result_with_deps = get_training_code_hash(
-                entry_point=str(entry_file), source_dir=None, dependencies=str(requirements_file)
+                entry_point=str(entry_file),
+                source_dir=None,
+                dependencies=str(requirements_file),
             )
 
             assert result_no_deps is not None
@@ -323,19 +344,32 @@ class TestWorkflowUtilities:
             assert len(result_with_deps) == 64
             assert result_no_deps != result_with_deps
 
-    def test_get_training_code_hash_entry_point_only_and_none_dependencies(self):
-        """Test get_training_code_hash with entry_point only and None dependencies does not raise TypeError"""
+    def test_get_training_code_hash_entry_point_none_deps(
+        self,
+    ):
+        """Test get_training_code_hash with entry_point
+        and None dependencies does not raise TypeError.
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             entry_file = Path(temp_dir, "train.py")
             entry_file.write_text("print('training')")
 
-            # This should NOT raise TypeError: can only concatenate list (not "NoneType") to list
-            result = get_training_code_hash(
-                entry_point=str(entry_file), source_dir=None, dependencies=None
+            # Should NOT raise TypeError
+            result_none = get_training_code_hash(
+                entry_point=str(entry_file),
+                source_dir=None,
+                dependencies=None,
+            )
+            # Empty list should be equivalent to None
+            result_empty = get_training_code_hash(
+                entry_point=str(entry_file),
+                source_dir=None,
+                dependencies=[],
             )
 
-            assert result is not None
-            assert len(result) == 64
+            assert result_none is not None
+            assert len(result_none) == 64
+            assert result_none == result_empty
 
     def test_get_training_code_hash_s3_uri(self):
         """Test get_training_code_hash with S3 URI returns None"""
@@ -354,10 +388,16 @@ class TestWorkflowUtilities:
 
             assert result is None
 
-    @pytest.mark.skip(reason="Requires sagemaker-mlops module which is not installed in sagemaker-core tests")
-    def test_get_code_hash_with_training_step_and_no_requirements(self):
-        """Test get_code_hash with TrainingStep where SourceCode has requirements=None"""
-        from sagemaker.mlops.workflow.steps import TrainingStep
+    def test_get_code_hash_training_step_no_requirements(
+        self,
+    ):
+        """Test get_code_hash with TrainingStep where
+        SourceCode has requirements=None.
+        """
+        # Create a fake TrainingStep class to patch isinstance
+        FakeTrainingStep = type(
+            "TrainingStep", (), {}
+        )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             entry_file = Path(temp_dir, "train.py")
@@ -365,61 +405,89 @@ class TestWorkflowUtilities:
 
             mock_source_code = Mock()
             mock_source_code.source_dir = temp_dir
-            mock_source_code.requirements = None  # This is the key: requirements is None
+            mock_source_code.requirements = None
             mock_source_code.entry_script = str(entry_file)
 
             mock_model_trainer = Mock()
             mock_model_trainer.source_code = mock_source_code
 
             mock_step_args = Mock()
-            mock_step_args.func_args = [mock_model_trainer]
+            mock_step_args.func_args = [
+                mock_model_trainer
+            ]
 
-            mock_step = Mock(spec=TrainingStep)
+            mock_step = MagicMock(spec=FakeTrainingStep)
             mock_step.step_args = mock_step_args
 
-            # This should NOT raise TypeError
-            result = get_code_hash(mock_step)
+            with patch(
+                "sagemaker.core.workflow.utilities"
+                ".TrainingStep",
+                new=FakeTrainingStep,
+            ):
+                result = get_code_hash(mock_step)
 
             assert result is not None
             assert len(result) == 64
 
-    @pytest.mark.skip(reason="Requires sagemaker-mlops module which is not installed in sagemaker-core tests")
-    def test_get_code_hash_with_training_step_and_requirements(self):
-        """Test get_code_hash with TrainingStep where SourceCode has valid requirements"""
-        from sagemaker.mlops.workflow.steps import TrainingStep
+    def test_get_code_hash_training_step_with_requirements(
+        self,
+    ):
+        """Test get_code_hash with TrainingStep where
+        SourceCode has valid requirements.
+        """
+        FakeTrainingStep = type(
+            "TrainingStep", (), {}
+        )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             entry_file = Path(temp_dir, "train.py")
             entry_file.write_text("print('training')")
-            requirements_file = Path(temp_dir, "requirements.txt")
-            requirements_file.write_text("numpy==1.21.0")
+            req_file = Path(temp_dir, "requirements.txt")
+            req_file.write_text("numpy==1.21.0")
 
-            mock_source_code_no_req = Mock()
-            mock_source_code_no_req.source_dir = temp_dir
-            mock_source_code_no_req.requirements = None
-            mock_source_code_no_req.entry_script = str(entry_file)
+            mock_sc_no_req = Mock()
+            mock_sc_no_req.source_dir = temp_dir
+            mock_sc_no_req.requirements = None
+            mock_sc_no_req.entry_script = str(entry_file)
 
-            mock_source_code_with_req = Mock()
-            mock_source_code_with_req.source_dir = temp_dir
-            mock_source_code_with_req.requirements = str(requirements_file)
-            mock_source_code_with_req.entry_script = str(entry_file)
+            mock_sc_with_req = Mock()
+            mock_sc_with_req.source_dir = temp_dir
+            mock_sc_with_req.requirements = str(req_file)
+            mock_sc_with_req.entry_script = str(entry_file)
 
-            mock_model_trainer_no_req = Mock()
-            mock_model_trainer_no_req.source_code = mock_source_code_no_req
+            mock_mt_no_req = Mock()
+            mock_mt_no_req.source_code = mock_sc_no_req
 
-            mock_model_trainer_with_req = Mock()
-            mock_model_trainer_with_req.source_code = mock_source_code_with_req
+            mock_mt_with_req = Mock()
+            mock_mt_with_req.source_code = mock_sc_with_req
 
-            mock_step_no_req = Mock(spec=TrainingStep)
+            mock_step_no_req = MagicMock(
+                spec=FakeTrainingStep
+            )
             mock_step_no_req.step_args = Mock()
-            mock_step_no_req.step_args.func_args = [mock_model_trainer_no_req]
+            mock_step_no_req.step_args.func_args = [
+                mock_mt_no_req
+            ]
 
-            mock_step_with_req = Mock(spec=TrainingStep)
+            mock_step_with_req = MagicMock(
+                spec=FakeTrainingStep
+            )
             mock_step_with_req.step_args = Mock()
-            mock_step_with_req.step_args.func_args = [mock_model_trainer_with_req]
+            mock_step_with_req.step_args.func_args = [
+                mock_mt_with_req
+            ]
 
-            result_no_req = get_code_hash(mock_step_no_req)
-            result_with_req = get_code_hash(mock_step_with_req)
+            with patch(
+                "sagemaker.core.workflow.utilities"
+                ".TrainingStep",
+                new=FakeTrainingStep,
+            ):
+                result_no_req = get_code_hash(
+                    mock_step_no_req
+                )
+                result_with_req = get_code_hash(
+                    mock_step_with_req
+                )
 
             assert result_no_req is not None
             assert result_with_req is not None
