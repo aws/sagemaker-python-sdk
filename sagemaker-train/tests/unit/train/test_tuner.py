@@ -39,12 +39,13 @@ from sagemaker.core.shapes import (
 # ---------------------------------------------------------------------------
 
 
-def _create_mock_model_trainer(with_internal_channels=False):
+def _create_mock_model_trainer(with_internal_channels=False, environment=None):
     """Create a mock ModelTrainer with common attributes.
 
     Args:
         with_internal_channels: If True, adds internal channels (code, sm_drivers)
             to input_data_config for testing channel inclusion in tuning jobs.
+        environment: Optional dict of environment variables to set on the trainer.
     """
     trainer = MagicMock()
     trainer.sagemaker_session = MagicMock()
@@ -61,6 +62,7 @@ def _create_mock_model_trainer(with_internal_channels=False):
     trainer.stopping_condition = MagicMock()
     trainer.stopping_condition.max_runtime_in_seconds = 3600
     trainer.input_data_config = None
+    trainer.environment = environment if environment is not None else {}
 
     if with_internal_channels:
         trainer.input_data_config = [
@@ -574,3 +576,90 @@ class TestHyperparameterTunerStaticMethods:
         assert "train" in channel_names, "User 'train' channel should be included"
         assert "validation" in channel_names, "User 'validation' channel should be included"
         assert len(channel_names) == 4, "Should have exactly 4 channels"
+
+    def test_build_training_job_definition_includes_environment_variables(self):
+        """Test that _build_training_job_definition includes environment variables.
+
+        This test verifies the fix for GitHub issue #5613 where tuning jobs were missing
+        environment variables that were set on the ModelTrainer.
+        """
+        env_vars = {"RANDOM_STATE": "42", "MY_VAR": "hello"}
+        mock_trainer = _create_mock_model_trainer(environment=env_vars)
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        # The definition should contain the environment variables
+        assert hasattr(definition, "environment") or hasattr(definition, "Environment"), \
+            "Training job definition should have environment attribute"
+        definition_env = getattr(definition, "environment", None) or getattr(definition, "Environment", None)
+        assert definition_env == env_vars, \
+            f"Environment should be {env_vars}, got {definition_env}"
+
+    def test_build_training_job_definition_with_empty_environment(self):
+        """Test that _build_training_job_definition handles empty environment."""
+        mock_trainer = _create_mock_model_trainer(environment={})
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        # Should not raise an error
+        definition = tuner._build_training_job_definition(None)
+        assert definition is not None
+
+    def test_build_training_job_definition_with_none_environment(self):
+        """Test that _build_training_job_definition handles None environment."""
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = None
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        # Should not raise an error
+        definition = tuner._build_training_job_definition(None)
+        assert definition is not None
+
+
+class TestGetModelTrainerEnvironment:
+    """Test _get_model_trainer_environment helper method."""
+
+    def test_returns_environment_when_set(self):
+        """Test that environment is returned when set on model trainer."""
+        env_vars = {"KEY1": "val1", "KEY2": "val2"}
+        mock_trainer = _create_mock_model_trainer(environment=env_vars)
+
+        result = HyperparameterTuner._get_model_trainer_environment(mock_trainer)
+        assert result == env_vars
+
+    def test_returns_none_when_empty(self):
+        """Test that None is returned when environment is empty."""
+        mock_trainer = _create_mock_model_trainer(environment={})
+
+        result = HyperparameterTuner._get_model_trainer_environment(mock_trainer)
+        assert result is None
+
+    def test_returns_none_when_none(self):
+        """Test that None is returned when environment is None."""
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = None
+
+        result = HyperparameterTuner._get_model_trainer_environment(mock_trainer)
+        assert result is None
+
+    def test_returns_none_when_attribute_missing(self):
+        """Test that None is returned when environment attribute doesn't exist."""
+        mock_trainer = MagicMock(spec=[])
+
+        result = HyperparameterTuner._get_model_trainer_environment(mock_trainer)
+        assert result is None

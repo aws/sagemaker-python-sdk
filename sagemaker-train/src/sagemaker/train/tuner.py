@@ -442,6 +442,23 @@ class HyperparameterTuner(object):
 
         return new_static_hyperparameters, auto_parameters
 
+    @staticmethod
+    def _get_model_trainer_environment(model_trainer):
+        """Extract environment variables from a ModelTrainer instance.
+
+        Returns the environment dict if it is non-empty, otherwise None.
+
+        Args:
+            model_trainer: ModelTrainer instance
+
+        Returns:
+            dict or None: Environment variables dict, or None if empty/not set.
+        """
+        env = getattr(model_trainer, "environment", None)
+        if env:
+            return dict(env)
+        return None
+
     @classmethod
     def _prepare_model_trainer_for_tuning(cls, model_trainer, inputs=None, job_name=None, **kwargs):
         """Prepare ModelTrainer before tuning by building sm_drivers and code channels.
