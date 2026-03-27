@@ -26,14 +26,15 @@ from unittest.mock import patch, MagicMock
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.helper.pipeline_variable import PipelineVariable, StrPipeVar
-from sagemaker.core.workflow.parameters import ParameterString
+from sagemaker.core.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.train.model_trainer import ModelTrainer, Mode
 from sagemaker.train.configs import (
     Compute,
     StoppingCondition,
     OutputDataConfig,
 )
-from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE, TrainDefaults
+from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE
+from sagemaker.train.utils import _get_repo_name_from_image, safe_serialize
 
 
 DEFAULT_IMAGE = "000000000000.dkr.ecr.us-west-2.amazonaws.com/dummy-image:latest"
@@ -176,3 +177,116 @@ class TestModelTrainerRealValuesStillWork:
                 stopping_condition=DEFAULT_STOPPING,
                 output_data_config=DEFAULT_OUTPUT,
             )
+
+
+class TestValidateTrainingImageAndAlgorithmName:
+    """Tests for _validate_training_image_and_algorithm_name with PipelineVariable."""
+
+    def test_pipeline_variable_training_image_passes_validation(self):
+        """PipelineVariable as training_image should pass validation."""
+        param = ParameterString(name="TrainingImage", default_value=DEFAULT_IMAGE)
+        trainer = ModelTrainer(
+            training_image=param,
+            base_job_name="pipeline-test-job",
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE,
+            stopping_condition=DEFAULT_STOPPING,
+            output_data_config=DEFAULT_OUTPUT,
+        )
+        assert trainer.training_image is param
+
+    def test_pipeline_variable_algorithm_name_passes_validation(self):
+        """PipelineVariable as algorithm_name should pass validation."""
+        param = ParameterString(name="AlgoName", default_value="my-algo")
+        trainer = ModelTrainer(
+            algorithm_name=param,
+            base_job_name="pipeline-test-job",
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE,
+            stopping_condition=DEFAULT_STOPPING,
+            output_data_config=DEFAULT_OUTPUT,
+        )
+        assert trainer.algorithm_name is param
+
+    def test_both_pipeline_variables_raises_value_error(self):
+        """Both training_image and algorithm_name as PipelineVariable should raise ValueError."""
+        image_param = ParameterString(name="TrainingImage", default_value=DEFAULT_IMAGE)
+        algo_param = ParameterString(name="AlgoName", default_value="my-algo")
+        with pytest.raises(ValueError, match="Only one of"):
+            ModelTrainer(
+                training_image=image_param,
+                algorithm_name=algo_param,
+                base_job_name="pipeline-test-job",
+                role=DEFAULT_ROLE,
+                compute=DEFAULT_COMPUTE,
+                stopping_condition=DEFAULT_STOPPING,
+                output_data_config=DEFAULT_OUTPUT,
+            )
+
+    def test_neither_provided_raises_value_error(self):
+        """Neither training_image nor algorithm_name should raise ValueError."""
+        with pytest.raises(ValueError, match="Atleast one of"):
+            ModelTrainer(
+                training_image=None,
+                algorithm_name=None,
+                base_job_name="pipeline-test-job",
+                role=DEFAULT_ROLE,
+                compute=DEFAULT_COMPUTE,
+                stopping_condition=DEFAULT_STOPPING,
+                output_data_config=DEFAULT_OUTPUT,
+            )
+
+
+class TestGetRepoNameFromImage:
+    """Tests for _get_repo_name_from_image with PipelineVariable."""
+
+    def test_returns_none_for_pipeline_variable(self):
+        """_get_repo_name_from_image should return None for PipelineVariable."""
+        param = ParameterString(name="TrainingImage", default_value=DEFAULT_IMAGE)
+        result = _get_repo_name_from_image(param)
+        assert result is None
+
+    def test_returns_repo_name_for_string(self):
+        """_get_repo_name_from_image should return repo name for a normal string."""
+        result = _get_repo_name_from_image(
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-repo:latest"
+        )
+        assert result == "my-repo"
+
+    def test_returns_repo_name_without_tag(self):
+        """_get_repo_name_from_image should handle image URIs without tags."""
+        result = _get_repo_name_from_image(
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-repo"
+        )
+        assert result == "my-repo"
+
+
+class TestSafeSerialize:
+    """Tests for safe_serialize with PipelineVariable."""
+
+    def test_safe_serialize_pipeline_variable_returns_variable(self):
+        """safe_serialize should return the PipelineVariable object as-is."""
+        param = ParameterInteger(name="MaxDepth", default_value=5)
+        result = safe_serialize(param)
+        assert result is param
+
+    def test_safe_serialize_string_returns_string(self):
+        """safe_serialize should return strings as-is."""
+        result = safe_serialize("hello")
+        assert result == "hello"
+
+    def test_safe_serialize_int_returns_json(self):
+        """safe_serialize should JSON-encode integers."""
+        result = safe_serialize(5)
+        assert result == "5"
+
+    def test_safe_serialize_dict_returns_json(self):
+        """safe_serialize should JSON-encode dicts."""
+        result = safe_serialize({"key": "value"})
+        assert result == '{"key": "value"}'
+
+    def test_safe_serialize_parameter_string_returns_variable(self):
+        """safe_serialize should return ParameterString as-is."""
+        param = ParameterString(name="MyParam", default_value="val")
+        result = safe_serialize(param)
+        assert result is param

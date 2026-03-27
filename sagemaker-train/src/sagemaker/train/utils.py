@@ -24,9 +24,9 @@ from datetime import datetime
 from typing import Literal, Any
 
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core.shapes import Unassigned
 from sagemaker.train import logger
-from sagemaker.core.workflow.parameters import PipelineVariable
 
 
 def _default_bucket_and_prefix(session: Session) -> str:
@@ -142,7 +142,7 @@ def _get_unique_name(base, max_length=63):
     return unique_name
 
 
-def _get_repo_name_from_image(image) -> str:
+def _get_repo_name_from_image(image: "str | PipelineVariable") -> "str | None":
     """Get the repository name from the image URI.
 
     Example:
@@ -152,13 +152,11 @@ def _get_repo_name_from_image(image) -> str:
     ```
 
     Args:
-        image: The image URI (str or PipelineVariable)
+        image (str | PipelineVariable): The image URI
 
     Returns:
-        str: The repository name, or None if image is a PipelineVariable
+        str | None: The repository name, or None if image is a PipelineVariable
     """
-    from sagemaker.core.helper.pipeline_variable import PipelineVariable
-
     if isinstance(image, PipelineVariable):
         return None
     return image.split("/")[-1].split(":")[0].split("@")[0]
