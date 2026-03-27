@@ -103,6 +103,11 @@ class TestEvaluatorIntegration:
         assert evaluator.method == EvaluatorMethod.BYOC
         assert evaluator.reference is not None
 
+        # Wait for Lambda to become Active before invoking
+        lambda_client = boto3.client("lambda")
+        waiter = lambda_client.get_waiter("function_active_v2")
+        waiter.wait(FunctionName=evaluator.reference)
+
         # Invoke the Lambda directly to verify the handler is correct
         lambda_client = boto3.client("lambda")
         response = lambda_client.invoke(
