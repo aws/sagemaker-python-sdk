@@ -33,7 +33,7 @@ from sagemaker.train.configs import (
     StoppingCondition,
     OutputDataConfig,
 )
-from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE
+from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE, TrainDefaults
 
 
 DEFAULT_IMAGE = "000000000000.dkr.ecr.us-west-2.amazonaws.com/dummy-image:latest"

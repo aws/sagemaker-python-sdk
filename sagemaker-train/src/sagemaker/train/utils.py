@@ -142,7 +142,7 @@ def _get_unique_name(base, max_length=63):
     return unique_name
 
 
-def _get_repo_name_from_image(image: str) -> str:
+def _get_repo_name_from_image(image) -> str:
     """Get the repository name from the image URI.
 
     Example:
@@ -152,11 +152,15 @@ def _get_repo_name_from_image(image: str) -> str:
     ```
 
     Args:
-        image (str): The image URI
+        image: The image URI (str or PipelineVariable)
 
     Returns:
-        str: The repository name
+        str: The repository name, or None if image is a PipelineVariable
     """
+    from sagemaker.core.helper.pipeline_variable import PipelineVariable
+
+    if isinstance(image, PipelineVariable):
+        return None
     return image.split("/")[-1].split(":")[0].split("@")[0]
 
 

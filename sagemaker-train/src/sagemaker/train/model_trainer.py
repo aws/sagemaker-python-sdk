@@ -410,14 +410,16 @@ class ModelTrainer(BaseModel):
                 self._temp_code_dir.cleanup()
 
     def _validate_training_image_and_algorithm_name(
-        self, training_image: Optional[str], algorithm_name: Optional[str]
+        self, training_image, algorithm_name
     ):
         """Validate that only one of 'training_image' or 'algorithm_name' is provided."""
-        if not training_image and not algorithm_name:
+        has_image = training_image is not None
+        has_algo = algorithm_name is not None
+        if not has_image and not has_algo:
             raise ValueError(
                 "Atleast one of 'training_image' or 'algorithm_name' must be provided.",
             )
-        if training_image and algorithm_name:
+        if has_image and has_algo:
             raise ValueError(
                 "Only one of 'training_image' or 'algorithm_name' must be provided.",
             )
