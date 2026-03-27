@@ -715,3 +715,74 @@ class ModelCustomizationTest(unittest.TestCase):
                 call_kwargs = mock_deploy_mc.call_args[1]
                 self.assertEqual(call_kwargs['inference_config'], inference_config)
                 self.assertEqual(result, mock_endpoint)
+
+
+class TestLoraAcceptEula(unittest.TestCase):
+    """Tests for accept_eula handling in the LoRA deployment path."""
+
+    def _make_mb(self, accept_eula=None):
+        mb = ModelBuilder.__new__(ModelBuilder)
+        mb.accept_eula = accept_eula
+        mb.image_uri = "some-image-uri"
+        mb.env_vars = {}
+        mb.model_name = None
+        mb.role_arn = "arn:aws:iam::123456789012:role/role"
+        mb.model = MagicMock()
+        mb._adapter_s3_uri = None
+        return mb
+
+    def _patch_lora_deps(self, mb, hosting_uri="s3://bucket/hosting/"):
+        """Patch all dependencies needed to reach the LoRA ContainerDefinition block."""
+        patches = [
+            patch.object(mb, "_fetch_peft", return_value="LORA"),
+            patch.object(mb, "_fetch_hub_document_for_custom_model",
+                         return_value={"HostingArtifactUri": hosting_uri}),
+            patch.object(mb, "_get_model_package_for_training_job",
+                         return_value=MagicMock()),
+        ]
+        return patches
+
+    def test_lora_build_raises_when_accept_eula_false(self):
+        mb = self._make_mb(accept_eula=False)
+        patches = self._patch_lora_deps(mb)
+        for p in patches:
+            p.start()
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                mb._build_single_modelbuilder()
+            self.assertIn("accept_eula", str(ctx.exception))
+        finally:
+            for p in patches:
+                p.stop()
+
+    def test_lora_build_raises_when_accept_eula_not_set(self):
+        mb = self._make_mb(accept_eula=None)
+        patches = self._patch_lora_deps(mb)
+        for p in patches:
+            p.start()
+        try:
+            with self.assertRaises(ValueError) as ctx:
+                mb._build_single_modelbuilder()
+            self.assertIn("accept_eula", str(ctx.exception))
+        finally:
+            for p in patches:
+                p.stop()
+
+    @patch("sagemaker.serve.model_builder.ContainerDefinition")
+    @patch("sagemaker.serve.model_builder.Model")
+    def test_lora_build_passes_accept_eula_true(self, mock_model, mock_container_def):
+        mb = self._make_mb(accept_eula=True)
+        mock_model.create.return_value = MagicMock()
+        patches = self._patch_lora_deps(mb)
+        for p in patches:
+            p.start()
+        try:
+            mb._build_single_modelbuilder()
+            call_kwargs = mock_container_def.call_args[1]
+            eula_val = (
+                call_kwargs["model_data_source"]["s3_data_source"]["model_access_config"]["accept_eula"]
+            )
+            self.assertTrue(eula_val)
+        finally:
+            for p in patches:
+                p.stop()

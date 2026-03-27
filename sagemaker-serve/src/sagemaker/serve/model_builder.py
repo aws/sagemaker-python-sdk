@@ -2373,6 +2373,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         "HostingArtifactUri not found in JumpStart hub metadata. "
                         "Cannot deploy LORA adapter without base model artifacts."
                     )
+                accept_eula = getattr(self, "accept_eula", None)
+                if not accept_eula:
+                    raise ValueError(
+                        "accept_eula must be set to True to deploy this model. "
+                        "Please set accept_eula=True on the ModelBuilder instance to confirm "
+                        "you have read and accepted the end-user license agreement for this model."
+                    )
                 container_def = ContainerDefinition(
                     image=self.image_uri,
                     environment=self.env_vars,
@@ -2381,7 +2388,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                             "s3_uri": hosting_artifact_uri,
                             "s3_data_type": "S3Prefix",
                             "compression_type": "None",
-                            "model_access_config": {"accept_eula": True},
+                            "model_access_config": {"accept_eula": accept_eula},
                         }
                     },
                 )
