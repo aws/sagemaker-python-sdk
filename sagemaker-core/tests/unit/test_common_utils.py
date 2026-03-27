@@ -1139,6 +1139,236 @@ class TestCustomExtractallTarfile:
 
         assert (extract_path / "file.txt").exists()
 
+    def test_custom_extractall_tarfile_without_data_filter(self, tmp_path):
+        """Test custom_extractall_tarfile uses safe members with extract_path as base when data_filter unavailable."""
+        from sagemaker.core.common_utils import custom_extractall_tarfile
+
+        # Create tar file
+        source = tmp_path / "source"
+        source.mkdir()
+        (source / "file.txt").write_text("content")
+
+        tar_path = tmp_path / "test.tar.gz"
+        with tarfile.open(tar_path, "w:gz") as tar:
+            tar.add(source / "file.txt", arcname="file.txt")
+
+        extract_path = tmp_path / "extract"
+        extract_path.mkdir()
+
+        with patch('sagemaker.core.common_utils.tarfile') as mock_tarfile_module:
+            # Remove data_filter to force fallback path
+            if hasattr(mock_tarfile_module, 'data_filter'):
+                delattr(mock_tarfile_module, 'data_filter')
+
+            with tarfile.open(tar_path, "r:gz") as tar:
+                with patch('sagemaker.core.common_utils._get_safe_members') as mock_safe:
+                    mock_safe.return_value = tar.getmembers()
+                    custom_extractall_tarfile(tar, str(extract_path))
+                    # Verify _get_safe_members was called with members list and base path
+                    mock_safe.assert_called_once()
+                    call_args = mock_safe.call_args
+                    # First arg should be a list of TarInfo members
+                    assert isinstance(call_args[0][0], list)
+                    # Second arg should be the resolved extract path (not CWD)
+                    from sagemaker.core.common_utils import _get_resolved_path
+                    expected_base = _get_resolved_path(str(extract_path))
+                    assert call_args[0][1] == expected_base
+
+
+class TestIsBadPath:
+    """Test _is_bad_path function for secure tar extraction."""
+
+    def test_is_bad_path_safe_relative(self):
+        """Test _is_bad_path returns False for safe relative paths."""
+        from sagemaker.core.common_utils import _is_bad_path, _get_resolved_path
+
+        base = _get_resolved_path("/tmp/safe")
+        assert _is_bad_path("safe/file.txt", base) is False
+
+    def test_is_bad_path_actual_escape(self):
+        """Test _is_bad_path returns True for paths escaping base."""
+        from sagemaker.core.common_utils import _is_bad_path, _get_resolved_path
+
+        base = _get_resolved_path("/tmp/safe")
+        assert _is_bad_path("/etc/passwd", base) is True
+
+    def test_is_bad_path_traversal(self):
+        """Test _is_bad_path detects parent directory traversal."""
+        from sagemaker.core.common_utils import _is_bad_path, _get_resolved_path
+
+        base = _get_resolved_path("/tmp/safe")
+        assert _is_bad_path("../../etc/passwd", base) is True
+
+    def test_is_bad_path_prefix_collision(self):
+        """Test _is_bad_path does NOT flag /tmp/safe2 when base is /tmp/safe.
+
+        This is the key test for the startswith() bug fix - /tmp/safe2 starts with
+        /tmp/safe but is NOT actually under /tmp/safe.
+        """
+        from sagemaker.core.common_utils import _is_bad_path, _get_resolved_path
+
+        base = _get_resolved_path("/tmp/safe")
+        # /tmp/safe2 is NOT under /tmp/safe, but startswith would incorrectly say it is
+        # With the fix using commonpath, this should correctly identify it as outside base
+        assert _is_bad_path("/tmp/safe2/file.txt", base) is True
+
+
+class TestGetSafeMembers:
+    """Test _get_safe_members function for secure tar extraction."""
+
+    def test_get_safe_members_accepts_member_list_and_base(self):
+        """Test _get_safe_members works with a list of TarInfo mocks and a base path."""
+        from sagemaker.core.common_utils import _get_safe_members, _get_resolved_path
+
+        base = _get_resolved_path("/tmp/extract")
+
+        mock_member = Mock()
+        mock_member.name = "safe/file.txt"
+        mock_member.issym = Mock(return_value=False)
+        mock_member.islnk = Mock(return_value=False)
+
+        members = [mock_member]
+        safe = list(_get_safe_members(members, base))
+        assert len(safe) == 1
+        assert mock_member in safe
+
+    def test_get_safe_members_filters_bad_paths(self):
+        """Test _get_safe_members filters out members with bad paths."""
+        from sagemaker.core.common_utils import _get_safe_members, _get_resolved_path
+
+        base = _get_resolved_path("/tmp/extract")
+
+        mock_safe = Mock()
+        mock_safe.name = "safe/file.txt"
+        mock_safe.issym = Mock(return_value=False)
+        mock_safe.islnk = Mock(return_value=False)
+
+        mock_bad = Mock()
+        mock_bad.name = "/etc/passwd"
+        mock_bad.issym = Mock(return_value=False)
+        mock_bad.islnk = Mock(return_value=False)
+
+        with patch('sagemaker.core.common_utils._is_bad_path') as mock_is_bad:
+            mock_is_bad.side_effect = lambda name, base: name == "/etc/passwd"
+            safe = list(_get_safe_members([mock_safe, mock_bad], base))
+            assert len(safe) == 1
+            assert mock_safe in safe
+
+    def test_get_safe_members_filters_bad_symlinks(self):
+        """Test _get_safe_members filters out bad symlinks."""
+        from sagemaker.core.common_utils import _get_safe_members, _get_resolved_path
+
+        base = _get_resolved_path("/tmp/extract")
+
+        mock_safe = Mock()
+        mock_safe.name = "safe/file.txt"
+        mock_safe.issym = Mock(return_value=False)
+        mock_safe.islnk = Mock(return_value=False)
+
+        mock_symlink = Mock()
+        mock_symlink.name = "bad/symlink"
+        mock_symlink.issym = Mock(return_value=True)
+        mock_symlink.islnk = Mock(return_value=False)
+        mock_symlink.linkname = "/etc/passwd"
+
+        with patch('sagemaker.core.common_utils._is_bad_path', return_value=False):
+            with patch('sagemaker.core.common_utils._is_bad_link') as mock_is_bad_link:
+                mock_is_bad_link.return_value = True
+                safe = list(_get_safe_members([mock_safe, mock_symlink], base))
+                assert len(safe) == 1
+                assert mock_safe in safe
+
+    def test_get_safe_members_filters_bad_hardlinks(self):
+        """Test _get_safe_members filters out bad hardlinks."""
+        from sagemaker.core.common_utils import _get_safe_members, _get_resolved_path
+
+        base = _get_resolved_path("/tmp/extract")
+
+        mock_safe = Mock()
+        mock_safe.name = "safe/file.txt"
+        mock_safe.issym = Mock(return_value=False)
+        mock_safe.islnk = Mock(return_value=False)
+
+        mock_hardlink = Mock()
+        mock_hardlink.name = "bad/hardlink"
+        mock_hardlink.issym = Mock(return_value=False)
+        mock_hardlink.islnk = Mock(return_value=True)
+        mock_hardlink.linkname = "/etc/passwd"
+
+        with patch('sagemaker.core.common_utils._is_bad_path', return_value=False):
+            with patch('sagemaker.core.common_utils._is_bad_link') as mock_is_bad_link:
+                mock_is_bad_link.return_value = True
+                safe = list(_get_safe_members([mock_safe, mock_hardlink], base))
+                assert len(safe) == 1
+                assert mock_safe in safe
+
+
+class TestValidateSourceDirectorySecurity:
+    """Test _validate_source_directory prefix collision fix."""
+
+    def test_validate_source_directory_blocks_sensitive_path(self):
+        """Test that actual sensitive paths are blocked."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        with pytest.raises(ValueError, match="sensitive system paths"):
+            _validate_source_directory("/etc/secrets")
+
+    def test_validate_source_directory_prefix_collision(self):
+        """Test that /etcetera is NOT blocked when /etc is in sensitive paths.
+
+        This tests the fix for the startswith() prefix collision vulnerability.
+        """
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        # /etcetera should NOT be blocked - it's not under /etc
+        # With the old startswith() check, this would incorrectly raise ValueError
+        try:
+            _validate_source_directory("/etcetera")
+        except ValueError:
+            pytest.fail("_validate_source_directory incorrectly blocked /etcetera due to prefix collision with /etc")
+
+    def test_validate_source_directory_s3_path(self):
+        """Test that S3 paths are allowed."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        _validate_source_directory("s3://my-bucket/my-prefix")
+
+    def test_validate_source_directory_none(self):
+        """Test that None is allowed."""
+        from sagemaker.core.common_utils import _validate_source_directory
+
+        _validate_source_directory(None)
+
+
+class TestValidateDependencyPathSecurity:
+    """Test _validate_dependency_path prefix collision fix."""
+
+    def test_validate_dependency_path_blocks_sensitive_path(self):
+        """Test that actual sensitive paths are blocked."""
+        from sagemaker.core.common_utils import _validate_dependency_path
+
+        with pytest.raises(ValueError, match="sensitive system paths"):
+            _validate_dependency_path("/root/.bashrc")
+
+    def test_validate_dependency_path_prefix_collision(self):
+        """Test that /rootkit is NOT blocked when /root is in sensitive paths.
+
+        This tests the fix for the startswith() prefix collision vulnerability.
+        """
+        from sagemaker.core.common_utils import _validate_dependency_path
+
+        # /rootkit should NOT be blocked - it's not under /root
+        try:
+            _validate_dependency_path("/rootkit")
+        except ValueError:
+            pytest.fail("_validate_dependency_path incorrectly blocked /rootkit due to prefix collision with /root")
+
+    def test_validate_dependency_path_none(self):
+        """Test that None is allowed."""
+        from sagemaker.core.common_utils import _validate_dependency_path
+
+        _validate_dependency_path(None)
+
 
 class TestCanModelPackageSourceUriAutopopulate:
     """Test can_model_package_source_uri_autopopulate function."""

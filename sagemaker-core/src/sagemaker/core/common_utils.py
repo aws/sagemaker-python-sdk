@@ -647,7 +647,7 @@ def _validate_source_directory(source_directory):
 
     # Check if the source path is under any sensitive directory
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if abs_source != "/" and abs_source.startswith(sensitive_path):
+        if abs_source != "/" and os.path.commonpath([abs_source, sensitive_path]) == sensitive_path:
             raise ValueError(
                 f"source_directory cannot access sensitive system paths. "
                 f"Got: {source_directory} (resolved to {abs_source})"
@@ -673,7 +673,7 @@ def _validate_dependency_path(dependency):
 
     # Check if the dependency path is under any sensitive directory
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if abs_dependency != "/" and abs_dependency.startswith(sensitive_path):
+        if abs_dependency != "/" and os.path.commonpath([abs_dependency, sensitive_path]) == sensitive_path:
             raise ValueError(
                 f"dependency path cannot access sensitive system paths. "
                 f"Got: {dependency} (resolved to {abs_dependency})"
@@ -689,7 +689,7 @@ def _create_or_update_code_dir(
     
     # Validate that code_dir does not resolve to a sensitive system path
     for sensitive_path in _SENSITIVE_SYSTEM_PATHS:
-        if resolved_code_dir != "/" and resolved_code_dir.startswith(sensitive_path):
+        if resolved_code_dir != "/" and os.path.commonpath([resolved_code_dir, sensitive_path]) == sensitive_path:
             raise ValueError(
                 f"Invalid code_dir path: {code_dir} resolves to sensitive system path {resolved_code_dir}"
             )
