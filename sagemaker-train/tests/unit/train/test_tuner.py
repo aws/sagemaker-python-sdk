@@ -601,6 +601,11 @@ class TestHyperparameterTunerStaticMethods:
             f"Environment should be {env_vars}, "
             f"got {definition.environment}"
         )
+        # Verify defensive copy: the dict on the definition
+        # should not be the same object as the original
+        assert definition.environment is not env_vars, (
+            "Environment should be a copy, not the same object"
+        )
 
     def test_build_training_job_definition_with_empty_environment(self):
         """Test that empty env is not propagated to definition."""
@@ -656,6 +661,10 @@ class TestGetModelTrainerEnvironment:
             mock_trainer,
         )
         assert result == env_vars
+        # Verify it's a copy, not the same object
+        assert result is not env_vars, (
+            "Should return a defensive copy"
+        )
 
     def test_returns_none_when_empty(self):
         """Test that None is returned when environment is empty."""

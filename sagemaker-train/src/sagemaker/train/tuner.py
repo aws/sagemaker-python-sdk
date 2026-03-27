@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """Placeholder docstring"""
 
-from __future__ import absolute_import
+from __future__ import absolute_import, annotations
 
 import logging
 from enum import Enum
@@ -445,17 +445,18 @@ class HyperparameterTuner(object):
     @staticmethod
     def _get_model_trainer_environment(
         model_trainer: "ModelTrainer",
-    ) -> Optional[Dict[str, str]]:
+    ) -> dict[str, str] | None:
         """Extract environment variables from a ModelTrainer instance.
 
-        Returns the environment dict if it is non-empty, otherwise None.
+        Returns a copy of the environment dict if it is non-empty,
+        otherwise None.
 
         Args:
             model_trainer (ModelTrainer): ModelTrainer instance.
 
         Returns:
-            Optional[Dict[str, str]]: Environment variables dict,
-                or None if empty/not set.
+            dict[str, str] | None: A copy of the environment variables
+                dict, or None if empty/not set.
         """
         env = model_trainer.environment
         if env:
