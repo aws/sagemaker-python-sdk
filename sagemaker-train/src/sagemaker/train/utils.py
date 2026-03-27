@@ -192,7 +192,16 @@ def safe_serialize(data):
     try:
         return json.dumps(data)
     except TypeError:
-        return str(data)
+        try:
+            return str(data)
+        except TypeError:
+            # PipelineVariable.__str__ raises TypeError by design.
+            # If the isinstance check above didn't catch it (e.g. import
+            # path mismatch), fall back to returning the object directly
+            # when it looks like a PipelineVariable (has an ``expr`` property).
+            if hasattr(data, "expr"):
+                return data
+            raise
 
 
 def _run_clone_command_silent(repo_url, dest_dir):
