@@ -26,14 +26,13 @@ from unittest.mock import patch, MagicMock
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.helper.pipeline_variable import PipelineVariable, StrPipeVar
-from sagemaker.core.workflow.parameters import ParameterString, ParameterInteger, ParameterFloat
+from sagemaker.core.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.train.model_trainer import ModelTrainer, Mode
 from sagemaker.train.configs import (
     Compute,
     StoppingCondition,
     OutputDataConfig,
 )
-from sagemaker.core.workflow.pipeline_context import PipelineSession
 from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE
 
 
@@ -180,10 +179,10 @@ class TestModelTrainerRealValuesStillWork:
 
 
 class TestModelTrainerHyperparametersPipelineVariable:
-    """Test that PipelineVariable objects in hyperparameters survive safe_serialize."""
+    """Test that ModelTrainer correctly preserves PipelineVariable objects in hyperparameters."""
 
-    def test_hyperparameters_with_pipeline_variable_integer(self):
-        """ParameterInteger in hyperparameters should be passed through as-is."""
+    def test_hyperparameters_preserves_pipeline_variable_integer(self):
+        """ParameterInteger in hyperparameters should be preserved in ModelTrainer."""
         max_depth = ParameterInteger(name="MaxDepth", default_value=5)
         trainer = ModelTrainer(
             training_image=DEFAULT_IMAGE,
@@ -193,13 +192,10 @@ class TestModelTrainerHyperparametersPipelineVariable:
             output_data_config=DEFAULT_OUTPUT,
             hyperparameters={"max_depth": max_depth},
         )
-        # safe_serialize should return the PipelineVariable object directly
-        from sagemaker.train.utils import safe_serialize
-        result = safe_serialize(max_depth)
-        assert result is max_depth
+        assert trainer.hyperparameters["max_depth"] is max_depth
 
-    def test_hyperparameters_with_pipeline_variable_string(self):
-        """ParameterString in hyperparameters should be passed through as-is."""
+    def test_hyperparameters_preserves_pipeline_variable_string(self):
+        """ParameterString in hyperparameters should be preserved in ModelTrainer."""
         optimizer = ParameterString(name="Optimizer", default_value="sgd")
         trainer = ModelTrainer(
             training_image=DEFAULT_IMAGE,
@@ -209,12 +205,10 @@ class TestModelTrainerHyperparametersPipelineVariable:
             output_data_config=DEFAULT_OUTPUT,
             hyperparameters={"optimizer": optimizer},
         )
-        from sagemaker.train.utils import safe_serialize
-        result = safe_serialize(optimizer)
-        assert result is optimizer
+        assert trainer.hyperparameters["optimizer"] is optimizer
 
-    def test_hyperparameters_with_mixed_pipeline_and_regular_values(self):
-        """Mixed PipelineVariable and regular values should both serialize correctly."""
+    def test_hyperparameters_preserves_mixed_pipeline_and_regular_values(self):
+        """Mixed PipelineVariable and regular values should all be preserved."""
         max_depth = ParameterInteger(name="MaxDepth", default_value=5)
         trainer = ModelTrainer(
             training_image=DEFAULT_IMAGE,
@@ -228,10 +222,8 @@ class TestModelTrainerHyperparametersPipelineVariable:
                 "objective": "binary:logistic",
             },
         )
-        from sagemaker.train.utils import safe_serialize
-        # PipelineVariable should be returned as-is
-        assert safe_serialize(max_depth) is max_depth
-        # Float should be JSON-serialized
-        assert safe_serialize(0.1) == "0.1"
-        # String should be returned as-is
-        assert safe_serialize("binary:logistic") == "binary:logistic"
+        # PipelineVariable should be preserved as-is
+        assert trainer.hyperparameters["max_depth"] is max_depth
+        # Regular values should also be preserved
+        assert trainer.hyperparameters["eta"] == 0.1
+        assert trainer.hyperparameters["objective"] == "binary:logistic"

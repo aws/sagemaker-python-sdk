@@ -54,6 +54,12 @@ def test_safe_serialize_with_string_returns_string_as_is():
     assert safe_serialize("12345") == "12345"
 
 
+def test_safe_serialize_with_json_like_string_returns_as_is():
+    """A string that looks like JSON should be returned as-is, not double-serialized."""
+    json_str = '{"key": "value"}'
+    assert safe_serialize(json_str) == json_str
+
+
 def test_safe_serialize_with_int_returns_json_string():
     assert safe_serialize(5) == "5"
     assert safe_serialize(0) == "0"

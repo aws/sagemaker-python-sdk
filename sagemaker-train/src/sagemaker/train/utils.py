@@ -168,22 +168,26 @@ def convert_unassigned_to_none(instance) -> Any:
     return instance
 
 
-def safe_serialize(data):
+def safe_serialize(data) -> "str | PipelineVariable":
     """Serialize the data without wrapping strings in quotes.
 
     This function handles the following cases:
-    1. If `data` is a string, it returns the string as-is without wrapping in quotes.
-    2. If `data` is of type `PipelineVariable`, it returns the json representation of the PipelineVariable
-    3. If `data` is serializable (e.g., a dictionary, list, int, float), it returns
-       the JSON-encoded string using `json.dumps()`.
-    4. If `data` cannot be serialized (e.g., a custom object), it returns the string
-       representation of the data using `str(data)`.
+    1. If ``data`` is a string, it returns the string as-is without wrapping in quotes.
+    2. If ``data`` is of type :class:`~sagemaker.core.workflow.parameters.PipelineVariable`,
+       it returns the object directly so that pipeline serialization can handle it
+       downstream.  Callers should be aware that the return value may be a
+       ``PipelineVariable`` rather than a plain ``str``.
+    3. If ``data`` is serializable (e.g., a dictionary, list, int, float), it returns
+       the JSON-encoded string using ``json.dumps()``.
+    4. If ``data`` cannot be serialized (e.g., a custom object), it returns the string
+       representation of the data using ``str(data)``.
 
     Args:
         data (Any): The data to serialize.
 
     Returns:
-        str: The serialized JSON-compatible string or the string representation of the input.
+        str | PipelineVariable: The serialized JSON-compatible string, the string
+            representation of the input, or the original ``PipelineVariable`` object.
     """
     if isinstance(data, str):
         return data
@@ -197,11 +201,9 @@ def safe_serialize(data):
         except TypeError:
             # PipelineVariable.__str__ raises TypeError by design.
             # If the isinstance check above didn't catch it (e.g. import
-            # path mismatch), fall back to returning the object directly
-            # when it looks like a PipelineVariable (has an ``expr`` property).
-            if hasattr(data, "expr"):
-                return data
-            raise
+            # path mismatch or reload issues), return the object directly
+            # so pipeline serialization can handle it downstream.
+            return data
 
 
 def _run_clone_command_silent(repo_url, dest_dir):
