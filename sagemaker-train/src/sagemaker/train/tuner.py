@@ -443,18 +443,21 @@ class HyperparameterTuner(object):
         return new_static_hyperparameters, auto_parameters
 
     @staticmethod
-    def _get_model_trainer_environment(model_trainer):
+    def _get_model_trainer_environment(
+        model_trainer: "ModelTrainer",
+    ) -> Optional[Dict[str, str]]:
         """Extract environment variables from a ModelTrainer instance.
 
         Returns the environment dict if it is non-empty, otherwise None.
 
         Args:
-            model_trainer: ModelTrainer instance
+            model_trainer (ModelTrainer): ModelTrainer instance.
 
         Returns:
-            dict or None: Environment variables dict, or None if empty/not set.
+            Optional[Dict[str, str]]: Environment variables dict,
+                or None if empty/not set.
         """
-        env = getattr(model_trainer, "environment", None)
+        env = model_trainer.environment
         if env:
             return dict(env)
         return None
@@ -1530,8 +1533,8 @@ class HyperparameterTuner(object):
         )
 
         # Pass through environment variables from model_trainer
-        env = getattr(model_trainer, "environment", None)
-        if env and isinstance(env, dict):
+        env = self._get_model_trainer_environment(model_trainer)
+        if env is not None:
             definition.environment = env
 
         # Pass through VPC config from model_trainer

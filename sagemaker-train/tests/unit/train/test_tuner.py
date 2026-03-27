@@ -578,13 +578,15 @@ class TestHyperparameterTunerStaticMethods:
         assert len(channel_names) == 4, "Should have exactly 4 channels"
 
     def test_build_training_job_definition_includes_environment_variables(self):
-        """Test that _build_training_job_definition includes environment variables.
+        """Test that _build_training_job_definition includes env vars.
 
-        This test verifies the fix for GitHub issue #5613 where tuning jobs were missing
-        environment variables that were set on the ModelTrainer.
+        This test verifies the fix for GitHub issue #5613 where tuning
+        jobs were missing environment variables set on the ModelTrainer.
         """
         env_vars = {"RANDOM_STATE": "42", "MY_VAR": "hello"}
-        mock_trainer = _create_mock_model_trainer(environment=env_vars)
+        mock_trainer = _create_mock_model_trainer(
+            environment=env_vars,
+        )
 
         tuner = HyperparameterTuner(
             model_trainer=mock_trainer,
@@ -595,14 +597,13 @@ class TestHyperparameterTunerStaticMethods:
         definition = tuner._build_training_job_definition(None)
 
         # The definition should contain the environment variables
-        assert hasattr(definition, "environment") or hasattr(definition, "Environment"), \
-            "Training job definition should have environment attribute"
-        definition_env = getattr(definition, "environment", None) or getattr(definition, "Environment", None)
-        assert definition_env == env_vars, \
-            f"Environment should be {env_vars}, got {definition_env}"
+        assert definition.environment == env_vars, (
+            f"Environment should be {env_vars}, "
+            f"got {definition.environment}"
+        )
 
     def test_build_training_job_definition_with_empty_environment(self):
-        """Test that _build_training_job_definition handles empty environment."""
+        """Test that empty env is not propagated to definition."""
         mock_trainer = _create_mock_model_trainer(environment={})
 
         tuner = HyperparameterTuner(
@@ -611,12 +612,17 @@ class TestHyperparameterTunerStaticMethods:
             hyperparameter_ranges=_create_single_hp_range(),
         )
 
-        # Should not raise an error
         definition = tuner._build_training_job_definition(None)
         assert definition is not None
+        # Empty environment should not be set on the definition
+        env = getattr(definition, "environment", None)
+        assert env is None, (
+            "Empty environment should not be propagated, "
+            f"got {env}"
+        )
 
     def test_build_training_job_definition_with_none_environment(self):
-        """Test that _build_training_job_definition handles None environment."""
+        """Test that None env is not propagated to definition."""
         mock_trainer = _create_mock_model_trainer()
         mock_trainer.environment = None
 
@@ -626,27 +632,38 @@ class TestHyperparameterTunerStaticMethods:
             hyperparameter_ranges=_create_single_hp_range(),
         )
 
-        # Should not raise an error
         definition = tuner._build_training_job_definition(None)
         assert definition is not None
+        # None environment should not be set on the definition
+        env = getattr(definition, "environment", None)
+        assert env is None, (
+            "None environment should not be propagated, "
+            f"got {env}"
+        )
 
 
 class TestGetModelTrainerEnvironment:
     """Test _get_model_trainer_environment helper method."""
 
     def test_returns_environment_when_set(self):
-        """Test that environment is returned when set on model trainer."""
+        """Test that environment is returned when set."""
         env_vars = {"KEY1": "val1", "KEY2": "val2"}
-        mock_trainer = _create_mock_model_trainer(environment=env_vars)
+        mock_trainer = _create_mock_model_trainer(
+            environment=env_vars,
+        )
 
-        result = HyperparameterTuner._get_model_trainer_environment(mock_trainer)
+        result = HyperparameterTuner._get_model_trainer_environment(
+            mock_trainer,
+        )
         assert result == env_vars
 
     def test_returns_none_when_empty(self):
         """Test that None is returned when environment is empty."""
         mock_trainer = _create_mock_model_trainer(environment={})
 
-        result = HyperparameterTuner._get_model_trainer_environment(mock_trainer)
+        result = HyperparameterTuner._get_model_trainer_environment(
+            mock_trainer,
+        )
         assert result is None
 
     def test_returns_none_when_none(self):
@@ -654,12 +671,96 @@ class TestGetModelTrainerEnvironment:
         mock_trainer = _create_mock_model_trainer()
         mock_trainer.environment = None
 
-        result = HyperparameterTuner._get_model_trainer_environment(mock_trainer)
+        result = HyperparameterTuner._get_model_trainer_environment(
+            mock_trainer,
+        )
         assert result is None
 
-    def test_returns_none_when_attribute_missing(self):
-        """Test that None is returned when environment attribute doesn't exist."""
-        mock_trainer = MagicMock(spec=[])
 
-        result = HyperparameterTuner._get_model_trainer_environment(mock_trainer)
-        assert result is None
+class TestMultiTrainerEnvironmentPropagation:
+    """Test environment propagation for multi-trainer tuning jobs."""
+
+    def test_create_multi_trainer_with_environment(self):
+        """Test that environment is preserved on trainers in create()."""
+        env1 = {"VAR_A": "1"}
+        env2 = {"VAR_B": "2"}
+        trainer1 = _create_mock_model_trainer(environment=env1)
+        trainer2 = _create_mock_model_trainer(environment=env2)
+
+        tuner = HyperparameterTuner.create(
+            model_trainer_dict={
+                "trainer1": trainer1,
+                "trainer2": trainer2,
+            },
+            objective_metric_name_dict={
+                "trainer1": "accuracy",
+                "trainer2": "loss",
+            },
+            hyperparameter_ranges_dict={
+                "trainer1": _create_single_hp_range(),
+                "trainer2": _create_single_hp_range(),
+            },
+        )
+
+        # Verify environment is preserved on each trainer
+        assert tuner.model_trainer_dict["trainer1"].environment == env1
+        assert tuner.model_trainer_dict["trainer2"].environment == env2
+
+    def test_get_environment_for_each_trainer_in_dict(self):
+        """Test _get_model_trainer_environment for each trainer."""
+        env1 = {"VAR_A": "1"}
+        env2 = {"VAR_B": "2"}
+        trainer1 = _create_mock_model_trainer(environment=env1)
+        trainer2 = _create_mock_model_trainer(environment=env2)
+
+        tuner = HyperparameterTuner.create(
+            model_trainer_dict={
+                "trainer1": trainer1,
+                "trainer2": trainer2,
+            },
+            objective_metric_name_dict={
+                "trainer1": "accuracy",
+                "trainer2": "loss",
+            },
+            hyperparameter_ranges_dict={
+                "trainer1": _create_single_hp_range(),
+                "trainer2": _create_single_hp_range(),
+            },
+        )
+
+        for name, mt in tuner.model_trainer_dict.items():
+            env = HyperparameterTuner._get_model_trainer_environment(
+                mt,
+            )
+            if name == "trainer1":
+                assert env == env1
+            elif name == "trainer2":
+                assert env == env2
+
+    def test_multi_trainer_empty_environment(self):
+        """Test multi-trainer with empty environment."""
+        trainer1 = _create_mock_model_trainer(environment={})
+        trainer2 = _create_mock_model_trainer(environment={})
+
+        tuner = HyperparameterTuner.create(
+            model_trainer_dict={
+                "trainer1": trainer1,
+                "trainer2": trainer2,
+            },
+            objective_metric_name_dict={
+                "trainer1": "accuracy",
+                "trainer2": "loss",
+            },
+            hyperparameter_ranges_dict={
+                "trainer1": _create_single_hp_range(),
+                "trainer2": _create_single_hp_range(),
+            },
+        )
+
+        for _name, mt in tuner.model_trainer_dict.items():
+            env = HyperparameterTuner._get_model_trainer_environment(
+                mt,
+            )
+            assert env is None, (
+                "Empty environment should return None"
+            )
