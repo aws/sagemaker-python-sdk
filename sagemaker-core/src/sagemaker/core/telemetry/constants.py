@@ -29,6 +29,7 @@ class Feature(Enum):
     MODEL_CUSTOMIZATION = 15
     MLOPS = 16
     FEATURE_STORE = 17
+    PROCESSING = 18
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""
