@@ -213,8 +213,8 @@ class Triton:
             export_path.mkdir(parents=True)
 
         if self.model:
-            self.secret_key = "dummy secret key for onnx backend"
-
+            # ONNX path: export model to ONNX format for Triton's native ONNX backend.
+            # No pickle is created or loaded at runtime, so no HMAC signing is needed.
             if self._framework == "pytorch":
                 self._export_pytorch_to_onnx(
                     export_path=export_path, model=self.model, schema_builder=self.schema_builder
@@ -457,12 +457,10 @@ class Triton:
         )
 
     def _save_inference_spec(self) -> None:
-        """Placeholder docstring"""
+        """Save inference specification to pickle file."""
         if self.inference_spec:
             pkl_path = Path(self.model_path).joinpath("model_repository").joinpath("model")
             save_pkl(pkl_path, (self.inference_spec, self.schema_builder))
-
-        return
 
     def _build_for_triton(self):
         """Placeholder docstring"""

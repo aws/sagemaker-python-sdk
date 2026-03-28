@@ -67,6 +67,7 @@ class TritonBuilderTests(TestCase):
         mock_export = Mock()
         triton_builder._export_pytorch_to_onnx = mock_export
         triton_builder._export_tf_to_onnx = mock_export
+        triton_builder._hmac_signing = Mock()
 
         return triton_builder
 
