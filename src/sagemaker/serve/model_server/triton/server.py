@@ -33,7 +33,6 @@ class LocalTritonServer:
         self,
         docker_client: docker.DockerClient,
         model_path: str,
-        secret_key: str,
         image_uri: str,
         env_vars: dict,
     ):
@@ -43,7 +42,6 @@ class LocalTritonServer:
         env_vars.update(
             {
                 "TRITON_MODEL_DIR": "/models/model",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "LOCAL_PYTHON": platform.python_version(),
             }
         )
@@ -113,7 +111,6 @@ class SageMakerTritonServer:
         self,
         model_path: str,
         sagemaker_session: Session,
-        secret_key: str,
         s3_model_data_url: str = None,
         image: str = None,
         should_upload_artifacts: bool = False,
@@ -146,7 +143,6 @@ class SageMakerTritonServer:
         env_vars = {
             "SAGEMAKER_TRITON_DEFAULT_MODEL_NAME": "model",
             "TRITON_MODEL_DIR": "/opt/ml/model/model",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars

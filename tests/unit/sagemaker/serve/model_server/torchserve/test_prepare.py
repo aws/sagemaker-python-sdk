@@ -37,7 +37,6 @@ class PrepareForTorchServeTests(TestCase):
     @patch("builtins.open", new_callable=mock_open, read_data=b"{}")
     @patch("sagemaker.serve.model_server.torchserve.prepare._MetaData")
     @patch("sagemaker.serve.model_server.torchserve.prepare.compute_hash")
-    @patch("sagemaker.serve.model_server.torchserve.prepare.generate_secret_key")
     @patch("sagemaker.serve.model_server.torchserve.prepare.capture_dependencies")
     @patch("sagemaker.serve.model_server.torchserve.prepare.shutil")
     @patch("sagemaker.serve.model_server.torchserve.prepare.Path")
@@ -46,7 +45,6 @@ class PrepareForTorchServeTests(TestCase):
         mock_path,
         mock_shutil,
         mock_capture_dependencies,
-        mock_generate_secret_key,
         mock_compute_hash,
         mock_metadata,
         mock_open,
@@ -55,8 +53,6 @@ class PrepareForTorchServeTests(TestCase):
         mock_path_instance = mock_path.return_value
         mock_path_instance.exists.return_value = True
         mock_path_instance.joinpath.return_value = Mock()
-
-        mock_generate_secret_key.return_value = SECRET_KEY
 
         secret_key = prepare_for_torchserve(
             model_path=MODEL_PATH,
@@ -69,13 +65,12 @@ class PrepareForTorchServeTests(TestCase):
 
         mock_path_instance.mkdir.assert_not_called()
         INFERENCE_SPEC.prepare.assert_called_once()
-        self.assertEqual(secret_key, SECRET_KEY)
+        self.assertEqual(secret_key, "")
 
     @patch("os.rename")
     @patch("builtins.open", new_callable=mock_open, read_data=b"{}")
     @patch("sagemaker.serve.model_server.torchserve.prepare._MetaData")
     @patch("sagemaker.serve.model_server.torchserve.prepare.compute_hash")
-    @patch("sagemaker.serve.model_server.torchserve.prepare.generate_secret_key")
     @patch("sagemaker.serve.model_server.torchserve.prepare.capture_dependencies")
     @patch("sagemaker.serve.model_server.torchserve.prepare.shutil")
     @patch("sagemaker.serve.model_server.torchserve.prepare.Path")
@@ -84,7 +79,6 @@ class PrepareForTorchServeTests(TestCase):
         mock_path,
         mock_shutil,
         mock_capture_dependencies,
-        mock_generate_secret_key,
         mock_compute_hash,
         mock_metadata,
         mock_open,
@@ -94,8 +88,6 @@ class PrepareForTorchServeTests(TestCase):
         mock_path_instance = mock_path.return_value
         mock_path_instance.exists.return_value = True
         mock_path_instance.joinpath.return_value = Mock()
-
-        mock_generate_secret_key.return_value = SECRET_KEY
 
         secret_key = prepare_for_torchserve(
             model_path=MODEL_PATH,
@@ -109,4 +101,4 @@ class PrepareForTorchServeTests(TestCase):
         mock_rename.assert_called_once()
         mock_path_instance.mkdir.assert_not_called()
         INFERENCE_SPEC.prepare.assert_called_once()
-        self.assertEqual(secret_key, SECRET_KEY)
+        self.assertEqual(secret_key, "")

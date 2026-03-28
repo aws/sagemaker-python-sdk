@@ -20,7 +20,6 @@ class SageMakerSmdServer:
         self,
         model_path: str,
         sagemaker_session: Session,
-        secret_key: str,
         s3_model_data_url: str = None,
         image: str = None,
         should_upload_artifacts: bool = False,
@@ -53,7 +52,6 @@ class SageMakerSmdServer:
             "SAGEMAKER_INFERENCE_CODE_DIRECTORY": "/opt/ml/model/code",
             "SAGEMAKER_INFERENCE_CODE": "inference.handler",
             "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars
