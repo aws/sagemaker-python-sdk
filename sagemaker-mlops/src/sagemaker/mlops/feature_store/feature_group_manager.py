@@ -61,7 +61,7 @@ class IcebergProperties(Base):
         # Check for no duplicate keys
         if len(set(self.properties.keys())) != len(self.properties.keys()):
             raise ValueError(
-                f"Invalide duplicate properties. Please only have 1 of each property."
+                f"Invalid duplicate properties. Please only have 1 of each property."
             )
         return self
 
@@ -817,6 +817,12 @@ class FeatureGroupManager(FeatureGroup):
             raise ValueError(
                 f"Invalid iceberg properties: {invalid_keys}. "
                 f"Approved properties are: {_APPROVED_ICEBERG_PROPERTIES}"
+            )
+
+         # Check for no duplicate keys
+        if len(set(iceberg_properties.properties.keys())) != len(iceberg_properties.properties.keys()):
+            raise ValueError(
+                f"Invalid duplicate properties. Please only have 1 of each property."
             )
 
         result = self._get_iceberg_properties(session=session, region=region)

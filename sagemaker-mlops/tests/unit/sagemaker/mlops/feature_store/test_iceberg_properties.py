@@ -56,6 +56,24 @@ class TestIcebergPropertiesConfig:
         with pytest.raises(ValueError, match="fake.property"):
             IcebergProperties(properties={"fake.property": "value"})
 
+    def test_duplicate_keys_raises_error(self):
+        """Test that duplicate property keys raise ValueError."""
+        config = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
+        mock_props = MagicMock()
+        mock_props.keys.return_value = [
+            "write.target-file-size-bytes",
+            "write.target-file-size-bytes",
+        ]
+        object.__setattr__(config, "properties", mock_props)
+        with pytest.raises(ValueError, match="Invalid duplicate properties"):
+            config.validate_property_keys()
+
+    def test_no_duplicate_keys_passes(self):
+        """Test that unique approved keys pass duplicate validation."""
+        config = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
+        result = config.validate_property_keys()
+        assert result is config
+
 
 class TestGetIcebergProperties:
     """Tests for get_iceberg_properties method."""
@@ -276,6 +294,20 @@ class TestUpdateIcebergProperties:
         props = IcebergProperties(properties={"write.target-file-size-bytes": "value"})
 
         with pytest.raises(RuntimeError, match="Failed to update Iceberg properties"):
+            self.fg._update_iceberg_properties(iceberg_properties=props)
+
+    def test_raises_error_on_duplicate_keys(self):
+        """Test ValueError when iceberg_properties has duplicate keys."""
+        props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
+        mock_props = MagicMock()
+        mock_props.keys.return_value = [
+            "write.target-file-size-bytes",
+            "write.target-file-size-bytes",
+        ]
+        mock_props.__bool__ = lambda self: True
+        object.__setattr__(props, "properties", mock_props)
+
+        with pytest.raises(ValueError, match="Invalid duplicate properties"):
             self.fg._update_iceberg_properties(iceberg_properties=props)
 
 
