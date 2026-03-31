@@ -77,6 +77,9 @@ class TestEvaluator:
         
         assert evaluator.method == EvaluatorMethod.BYOC
         mock_air_hub.upload_to_s3.assert_called_once()
+        mock_lambda_client.create_function.assert_called_once()
+        call_kwargs = mock_lambda_client.create_function.call_args[1]
+        assert call_kwargs["Handler"] == "lambda_function.lambda_handler"
 
     @patch('sagemaker.ai_registry.evaluator.AIRHub')
     def test_get_all(self, mock_air_hub):

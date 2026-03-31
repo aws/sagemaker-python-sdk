@@ -61,6 +61,7 @@ FEATURE_TO_CODE = {
     str(Feature.MODEL_CUSTOMIZATION): 15,
     str(Feature.MLOPS): 16,
     str(Feature.FEATURE_STORE): 17,
+    str(Feature.PROCESSING): 18,
 }
 
 STATUS_TO_CODE = {
