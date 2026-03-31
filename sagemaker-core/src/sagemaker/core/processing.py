@@ -77,6 +77,8 @@ from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core.workflow.execution_variables import ExecutionVariables
 from sagemaker.core.workflow.functions import Join
 from sagemaker.core.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.constants import Feature
 
 from sagemaker.core._studio import _append_project_tags
 from sagemaker.core.config.config_utils import _append_sagemaker_config_tags
@@ -771,6 +773,7 @@ class ScriptProcessor(Processor):
             network_config=network_config,
         )
 
+    @_telemetry_emitter(feature=Feature.PROCESSING, func_name="ScriptProcessor.run")
     @runnable_by_pipeline
     def run(
         self,
@@ -1171,6 +1174,7 @@ class FrameworkProcessor(ScriptProcessor):
             os.unlink(tmp.name)
             return s3_uri
 
+    @_telemetry_emitter(feature=Feature.PROCESSING, func_name="FrameworkProcessor.run")
     @runnable_by_pipeline
     def run(
         self,
