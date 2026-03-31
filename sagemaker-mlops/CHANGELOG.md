@@ -1,4 +1,19 @@
 # Changelog
+## v1.7.1 (2026-03-31)
+
+### Features
+
+- **Telemetry**: Added telemetry emitter to `ScriptProcessor` and `FrameworkProcessor`, enabling SDK usage tracking for processing jobs via the telemetry attribution module (new `PROCESSING` feature enum added to telemetry constants)
+
+### Bug Fixes
+
+- **ModelBuilder**: Fixed `accept_eula` handling in ModelBuilder's LoRA deployment path — previously hardcoded to `True`, now respects the user-provided value and raises a `ValueError` if not explicitly set to `True`
+- **Evaluate**: Fixed Lambda handler name derivation in the Evaluator — hardcoded the handler to `lambda_function.lambda_handler` instead of deriving it from the source filename, which caused invocation failures when the source file had a non-default name
+
+## v1.7.0 (2026-03-25)
+
+- Update module dependencies
+
 ## v1.6.0 (2026-03-19)
 
 ### Features

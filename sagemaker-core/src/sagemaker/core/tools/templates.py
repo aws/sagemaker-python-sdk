@@ -483,7 +483,7 @@ STOP_METHOD_TEMPLATE = """
 @Base.add_validate_call
 def stop(self) -> None:
 {docstring}
-    client = SageMakerClient().client
+    client = SageMakerClient().sagemaker_client
 
     operation_input_args = {{
 {operation_input_args}
