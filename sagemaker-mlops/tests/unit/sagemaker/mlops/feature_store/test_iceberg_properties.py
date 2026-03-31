@@ -143,6 +143,8 @@ class TestGetIcebergProperties:
                 "CatalogId": "123456789012",
                 "VersionId": "1",
                 "FederatedTable": {},
+                "IsMultiDialectView": False,
+                "IsMaterializedView": False,
             }
         }
 
@@ -153,7 +155,8 @@ class TestGetIcebergProperties:
         assert result["glue_client"] == mock_glue_client
         # Verify stripped fields are not in table_input
         for field in ["DatabaseName", "CreateTime", "UpdateTime", "CreatedBy",
-                      "IsRegisteredWithLakeFormation", "CatalogId", "VersionId", "FederatedTable"]:
+                      "IsRegisteredWithLakeFormation", "CatalogId", "VersionId", "FederatedTable",
+                      "IsMultiDialectView", "IsMaterializedView"]:
             assert field not in result["table_input"]
         # Verify kept fields remain
         assert result["table_input"]["Name"] == "test_table"

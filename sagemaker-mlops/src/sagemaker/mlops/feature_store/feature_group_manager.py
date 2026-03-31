@@ -151,6 +151,8 @@ class FeatureGroupManager(FeatureGroup):
                 "CatalogId",
                 "VersionId",
                 "FederatedTable",
+                "IsMultiDialectView",
+                "IsMaterializedView",
             ]
             for field in fields_to_remove:
                 table_input.pop(field, None)
