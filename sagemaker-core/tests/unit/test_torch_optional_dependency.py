@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -36,7 +36,7 @@ def test_torch_tensor_serializer_raises_import_error_when_torch_missing():
 
 
 def test_torch_tensor_deserializer_raises_import_error_when_torch_missing():
-    """Verify TorchTensorDeserializer raises ImportError with helpful message when torch is missing."""
+    """Verify TorchTensorDeserializer raises ImportError when torch is missing."""
     import importlib
     import sagemaker.core.deserializers.base as base_module
 
@@ -51,6 +51,7 @@ def test_torch_tensor_deserializer_raises_import_error_when_torch_missing():
 
 def test_torch_tensor_serializer_works_when_torch_installed():
     """Verify TorchTensorSerializer can be instantiated when torch is available."""
+    pytest.importorskip("torch")
     from sagemaker.core.serializers.base import TorchTensorSerializer
 
     serializer = TorchTensorSerializer()
@@ -60,6 +61,7 @@ def test_torch_tensor_serializer_works_when_torch_installed():
 
 def test_torch_tensor_deserializer_works_when_torch_installed():
     """Verify TorchTensorDeserializer can be instantiated when torch is available."""
+    pytest.importorskip("torch")
     from sagemaker.core.deserializers.base import TorchTensorDeserializer
 
     deserializer = TorchTensorDeserializer()
