@@ -730,16 +730,37 @@ class TestLoraAcceptEula(unittest.TestCase):
         mb.role_arn = "arn:aws:iam::123456789012:role/role"
         mb.model = MagicMock()
         mb._adapter_s3_uri = None
+        mb.shared_libs = []
+        mb.dependencies = {"auto": True}
+        mb.image_config = None
+        mb.inference_spec = None
+        mb.schema_builder = None
+        mb.modelbuilder_list = None
+        mb.sagemaker_session = None
+        mb.s3_model_data_url = None
+        mb.source_code = None
+        mb.model_server = None
+        mb.model_metadata = None
+        mb.log_level = None
+        mb.content_type = None
+        mb.accept_type = None
+        mb.compute = None
+        mb.network = None
+        mb.instance_type = None
+        mb.mode = None
         return mb
 
     def _patch_lora_deps(self, mb, hosting_uri="s3://bucket/hosting/"):
         """Patch all dependencies needed to reach the LoRA ContainerDefinition block."""
         patches = [
+            patch.object(mb, "_get_serve_setting", return_value=MagicMock()),
+            patch.object(mb, "_is_model_customization", return_value=True),
+            patch.object(mb, "_fetch_model_package", return_value=MagicMock()),
+            patch.object(mb, "_fetch_and_cache_recipe_config"),
+            patch.object(mb, "_is_nova_model", return_value=False),
             patch.object(mb, "_fetch_peft", return_value="LORA"),
             patch.object(mb, "_fetch_hub_document_for_custom_model",
                          return_value={"HostingArtifactUri": hosting_uri}),
-            patch.object(mb, "_get_model_package_for_training_job",
-                         return_value=MagicMock()),
         ]
         return patches
 
