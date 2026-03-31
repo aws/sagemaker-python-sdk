@@ -726,6 +726,7 @@ class TestLoraAcceptEula(unittest.TestCase):
         mb.image_uri = "some-image-uri"
         mb.env_vars = {}
         mb.model_name = None
+        mb.model_path = "/tmp/fake-model-path"
         mb.role_arn = "arn:aws:iam::123456789012:role/role"
         mb.model = MagicMock()
         mb._adapter_s3_uri = None
