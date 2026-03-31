@@ -173,36 +173,3 @@ p {
     color: var(--pst-color-text-base);
 }
 
-/* NEW CONTENT HIGHLIGHT - remove this block to revert red highlighting */
-.new-content {
-    border-left: 4px solid #dc2626;
-    padding-left: 16px;
-    margin-left: 0;
-}
-section.new-content {
-    border-left: 4px solid #dc2626;
-    padding-left: 16px;
-    margin-left: 0;
-}
-.new-content-label::before {
-    content: "NEW";
-    background: #dc2626;
-    color: white;
-    font-size: 0.7em;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 3px;
-    margin-right: 8px;
-    vertical-align: middle;
-}
-p.new-content-label::before {
-    content: "NEW";
-    background: #dc2626;
-    color: white;
-    font-size: 0.7em;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 3px;
-    margin-right: 8px;
-    vertical-align: middle;
-}

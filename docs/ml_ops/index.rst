@@ -202,11 +202,9 @@ If you're migrating MLOps workflows from V2, the key improvements are:
 Lineage Tracking
 ~~~~~~~~~~~~~~~~
 
-.. rst-class:: new-content
 
 SageMaker Lineage enables tracing events across your ML workflow via a graph structure. V3 provides lineage tracking through ``sagemaker.core.lineage`` with support for:
 
-.. rst-class:: new-content-label
 
 - **Contexts** - Logical grouping of lineage entities under workflow contexts
 - **Actions** - Recording computational steps like model builds and transformations
@@ -246,12 +244,10 @@ SageMaker Lineage enables tracing events across your ML workflow via a graph str
 ML Operations Examples
 ----------------------
 
-.. rst-class:: new-content
 
 E2E Pipeline with Model Registry
 ----------------------------------
 
-.. rst-class:: new-content-label
 
 Build a SageMaker Pipeline that preprocesses data, trains a model, and registers it to the Model Registry.
 
@@ -294,12 +290,10 @@ Build a SageMaker Pipeline that preprocesses data, trains a model, and registers
 :doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-pipeline-train-create-registry>`
 
 
-.. rst-class:: new-content
 
 Processing Jobs
 ----------------
 
-.. rst-class:: new-content-label
 
 Run data preprocessing with ``ScriptProcessor`` (sklearn) or ``FrameworkProcessor`` (PyTorch).
 
@@ -323,12 +317,10 @@ Run data preprocessing with ``ScriptProcessor`` (sklearn) or ``FrameworkProcesso
 :doc:`SKLearn example <../v3-examples/ml-ops-examples/v3-processing-job-sklearn>` · :doc:`PyTorch example <../v3-examples/ml-ops-examples/v3-processing-job-pytorch/v3-pytorch-processing-example>`
 
 
-.. rst-class:: new-content
 
 Batch Transform Jobs
 ---------------------
 
-.. rst-class:: new-content-label
 
 Run batch inference on large datasets using ``Transformer``.
 
@@ -349,12 +341,10 @@ Run batch inference on large datasets using ``Transformer``.
 :doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-transform-job-example>`
 
 
-.. rst-class:: new-content
 
 Hyperparameter Tuning
 ----------------------
 
-.. rst-class:: new-content-label
 
 Optimize hyperparameters with ``HyperparameterTuner`` using ``ContinuousParameter`` and ``CategoricalParameter`` ranges.
 
@@ -380,12 +370,10 @@ Optimize hyperparameters with ``HyperparameterTuner`` using ``ContinuousParamete
 :doc:`Standalone example <../v3-examples/ml-ops-examples/v3-hyperparameter-tuning-example/v3-hyperparameter-tuning-example>` · :doc:`Pipeline example <../v3-examples/ml-ops-examples/v3-hyperparameter-tuning-example/v3-hyperparameter-tuning-pipeline>`
 
 
-.. rst-class:: new-content
 
 Model Registry
 ---------------
 
-.. rst-class:: new-content-label
 
 Register models, create models from registry entries, and manage approval workflows.
 
@@ -410,12 +398,10 @@ Register models, create models from registry entries, and manage approval workfl
 :doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-model-registry-example/v3-model-registry-example>`
 
 
-.. rst-class:: new-content
 
 Clarify Bias and Explainability
 --------------------------------
 
-.. rst-class:: new-content-label
 
 Run pre-training bias analysis and SHAP explainability using ``SageMakerClarifyProcessor``.
 
@@ -432,12 +418,10 @@ Run pre-training bias analysis and SHAP explainability using ``SageMakerClarifyP
 :doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-sagemaker-clarify>`
 
 
-.. rst-class:: new-content
 
 EMR Serverless Pipeline Step
 -----------------------------
 
-.. rst-class:: new-content-label
 
 Run PySpark jobs on EMR Serverless within a SageMaker Pipeline.
 
@@ -463,12 +447,10 @@ Run PySpark jobs on EMR Serverless within a SageMaker Pipeline.
 :doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-emr-serverless-step-example>`
 
 
-.. rst-class:: new-content
 
 MLflow Integration
 -------------------
 
-.. rst-class:: new-content-label
 
 Train with MLflow metric tracking and deploy from the MLflow model registry.
 
@@ -494,12 +476,10 @@ Train with MLflow metric tracking and deploy from the MLflow model registry.
 :doc:`Full example notebook <../v3-examples/ml-ops-examples/v3-mlflow-train-inference-e2e-example>`
 
 
-.. rst-class:: new-content
 
 Migration from V2
 ------------------
 
-.. rst-class:: new-content-label
 
 MLOps Classes and Imports
 --------------------------
@@ -545,12 +525,10 @@ MLOps Classes and Imports
    * - ``sagemaker.lineage.context.Context``
      - ``sagemaker.core.lineage.context.Context``
 
-.. rst-class:: new-content
 
 V3 Package Structure
 ---------------------
 
-.. rst-class:: new-content-label
 
 .. list-table::
    :header-rows: 1

@@ -59,12 +59,10 @@ Here's how inference has evolved from V2 to V3:
    )
 
 
-.. rst-class:: new-content
 
 Custom InferenceSpec
 --------------------
 
-.. rst-class:: new-content-label
 
 Define custom model loading and inference logic by extending ``InferenceSpec``. Implement ``load()`` to deserialize your model and ``invoke()`` to run predictions.
 
@@ -109,12 +107,10 @@ Define custom model loading and inference logic by extending ``InferenceSpec``. 
 :doc:`Full example notebook <../v3-examples/inference-examples/inference-spec-example>`
 
 
-.. rst-class:: new-content
 
 JumpStart Model Deployment
 --------------------------
 
-.. rst-class:: new-content-label
 
 Deploy pre-trained models from the JumpStart hub using ``ModelBuilder.from_jumpstart_config()``.
 
@@ -143,12 +139,10 @@ Deploy pre-trained models from the JumpStart hub using ``ModelBuilder.from_jumps
 :doc:`Full example notebook <../v3-examples/inference-examples/jumpstart-example>`
 
 
-.. rst-class:: new-content
 
 Model Optimization (Quantization)
 ----------------------------------
 
-.. rst-class:: new-content-label
 
 Optimize models with quantization (e.g., AWQ) using ``model_builder.optimize()`` before deployment.
 
@@ -180,12 +174,10 @@ Optimize models with quantization (e.g., AWQ) using ``model_builder.optimize()``
 :doc:`Full example notebook <../v3-examples/inference-examples/optimize-example>`
 
 
-.. rst-class:: new-content
 
 Train-to-Inference End-to-End
 ------------------------------
 
-.. rst-class:: new-content-label
 
 Pass a ``ModelTrainer`` directly to ``ModelBuilder`` to go from training to deployment in one flow.
 
@@ -220,12 +212,10 @@ Pass a ``ModelTrainer`` directly to ``ModelBuilder`` to go from training to depl
 :doc:`Full example notebook <../v3-examples/inference-examples/train-inference-e2e-example>`
 
 
-.. rst-class:: new-content
 
 JumpStart Train-to-Inference
 -----------------------------
 
-.. rst-class:: new-content-label
 
 Train a JumpStart model with ``ModelTrainer.from_jumpstart_config()`` then deploy via ``ModelBuilder``.
 
@@ -251,12 +241,10 @@ Train a JumpStart model with ``ModelTrainer.from_jumpstart_config()`` then deplo
 :doc:`Full example notebook <../v3-examples/inference-examples/jumpstart-e2e-training-example>`
 
 
-.. rst-class:: new-content
 
 HuggingFace Model Deployment
 ------------------------------
 
-.. rst-class:: new-content-label
 
 Deploy HuggingFace models with a custom ``InferenceSpec`` using Multi Model Server (MMS).
 
@@ -295,12 +283,10 @@ Deploy HuggingFace models with a custom ``InferenceSpec`` using Multi Model Serv
 :doc:`Full example notebook <../v3-examples/inference-examples/huggingface-example>`
 
 
-.. rst-class:: new-content
 
 In-Process Mode
 ----------------
 
-.. rst-class:: new-content-label
 
 Run inference entirely in your Python process with no containers or AWS resources. Use ``Mode.IN_PROCESS`` and ``deploy_local()``.
 
@@ -333,12 +319,10 @@ Run inference entirely in your Python process with no containers or AWS resource
 :doc:`Full example notebook <../v3-examples/inference-examples/in-process-mode-example>`
 
 
-.. rst-class:: new-content
 
 Local Container Mode
 ---------------------
 
-.. rst-class:: new-content-label
 
 Test models in Docker containers locally using ``Mode.LOCAL_CONTAINER`` and ``deploy_local()``. Same container environment as SageMaker endpoints.
 
@@ -372,12 +356,10 @@ Test models in Docker containers locally using ``Mode.LOCAL_CONTAINER`` and ``de
 :doc:`Full example notebook <../v3-examples/inference-examples/local-mode-example>`
 
 
-.. rst-class:: new-content
 
 Inference Pipelines (Multi-Container)
 --------------------------------------
 
-.. rst-class:: new-content-label
 
 Chain multiple containers into a serial inference pipeline. Pass a list of ``Model`` objects to ``ModelBuilder``.
 
@@ -429,12 +411,10 @@ Chain multiple containers into a serial inference pipeline. Pass a list of ``Mod
 Migration from V2
 ------------------
 
-.. rst-class:: new-content
 
 Inference Classes and Imports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: new-content-label
 
 .. list-table::
    :header-rows: 1
@@ -463,12 +443,10 @@ Inference Classes and Imports
    * - ``sagemaker.deserializers.*``
      - Handle deserialization directly (e.g., ``json.loads()``)
 
-.. rst-class:: new-content
 
 Methods and Patterns
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: new-content-label
 
 .. list-table::
    :header-rows: 1
@@ -489,12 +467,10 @@ Methods and Patterns
    * - ``Transformer(model_name=...).transform(...)``
      - ``sagemaker.core.resources.TransformJob.create(...)``
 
-.. rst-class:: new-content
 
 Session and Utilities
 ~~~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: new-content-label
 
 .. list-table::
    :header-rows: 1
@@ -511,12 +487,10 @@ Session and Utilities
    * - ``boto3.client('sagemaker')``
      - ``sagemaker.core.resources.*`` (Model, Endpoint, EndpointConfig, etc.)
 
-.. rst-class:: new-content
 
 V3 Package Structure
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: new-content-label
 
 .. list-table::
    :header-rows: 1

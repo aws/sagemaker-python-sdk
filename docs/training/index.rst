@@ -48,12 +48,10 @@ Quick Start Example
    trainer.train(input_data_config=[train_data])
 
 
-.. rst-class:: new-content
 
 Local Container Training
 ------------------------
 
-.. rst-class:: new-content-label
 
 Run training jobs in Docker containers on your local machine for rapid development and debugging before deploying to SageMaker cloud instances. Local mode requires Docker to be installed and running.
 
@@ -120,12 +118,10 @@ Key points:
 :doc:`Full example notebook <../v3-examples/training-examples/local-training-example>`
 
 
-.. rst-class:: new-content
 
 Distributed Local Training
 --------------------------
 
-.. rst-class:: new-content-label
 
 Test multi-node distributed training locally using multiple Docker containers before deploying to cloud. This uses the ``Torchrun`` distributed driver to coordinate training across containers.
 
@@ -174,12 +170,10 @@ Key points:
 :doc:`Full example notebook <../v3-examples/training-examples/distributed-local-training-example>`
 
 
-.. rst-class:: new-content
 
 Hyperparameter Management
 -------------------------
 
-.. rst-class:: new-content-label
 
 ModelTrainer supports loading hyperparameters from JSON files, YAML files, or Python dictionaries. File-based hyperparameters provide better version control and support for complex nested structures.
 
@@ -246,12 +240,10 @@ Key points:
 :doc:`Full example notebook <../v3-examples/training-examples/hyperparameter-training-example>`
 
 
-.. rst-class:: new-content
 
 JumpStart Training
 ------------------
 
-.. rst-class:: new-content-label
 
 Train pre-configured models from the SageMaker JumpStart hub using ``ModelTrainer.from_jumpstart_config()``. JumpStart provides optimized training scripts, default hyperparameters, and curated datasets for hundreds of models.
 
@@ -335,12 +327,10 @@ Key points:
 :doc:`Full example notebook <../v3-examples/training-examples/jumpstart-training-example>`
 
 
-.. rst-class:: new-content
 
 Custom Distributed Training Drivers
 ------------------------------------
 
-.. rst-class:: new-content-label
 
 Create custom distributed training drivers by extending ``DistributedConfig`` for specialized coordination logic, framework integration, or advanced debugging.
 
@@ -397,12 +387,10 @@ Key points:
 :doc:`Full example notebook <../v3-examples/training-examples/custom-distributed-training-example>`
 
 
-.. rst-class:: new-content
 
 AWS Batch Training Queues
 -------------------------
 
-.. rst-class:: new-content-label
 
 Submit training jobs to AWS Batch job queues for automatic scheduling and resource management. Batch handles capacity allocation and job execution order.
 
@@ -457,12 +445,10 @@ Key points:
 Migration from V2
 ------------------
 
-.. rst-class:: new-content
 
 Training Classes and Imports
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: new-content-label
 
 .. list-table::
    :header-rows: 1
@@ -487,12 +473,10 @@ Training Classes and Imports
    * - ``sagemaker.tuner.HyperparameterTuner``
      - ``sagemaker.core.resources.HyperParameterTuningJob``
 
-.. rst-class:: new-content
 
 Methods and Patterns
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: new-content-label
 
 .. list-table::
    :header-rows: 1
@@ -517,12 +501,10 @@ Methods and Patterns
    * - ``max_run=3600``
      - ``StoppingCondition(max_runtime_in_seconds=3600)``
 
-.. rst-class:: new-content
 
 Session and Utilities
 ~~~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: new-content-label
 
 .. list-table::
    :header-rows: 1
@@ -541,12 +523,10 @@ Session and Utilities
    * - ``boto3.client('sagemaker')``
      - ``sagemaker.core.resources.*`` (TrainingJob, Model, Endpoint, etc.)
 
-.. rst-class:: new-content
 
 V3 Package Structure
 ~~~~~~~~~~~~~~~~~~~~~
 
-.. rst-class:: new-content-label
 
 .. list-table::
    :header-rows: 1
