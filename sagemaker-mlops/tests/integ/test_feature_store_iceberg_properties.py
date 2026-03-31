@@ -2,6 +2,7 @@
 import time
 
 import boto3
+
 import pandas as pd
 import pytest
 
@@ -45,12 +46,13 @@ def feature_group_name():
 
 @pytest.fixture
 def sample_dataframe():
-    current_time = int(time.time())
+    from datetime import datetime, timezone, timedelta
+    base_time = datetime.now(timezone.utc)
     return pd.DataFrame({
         "record_id": [f"id-{i}" for i in range(10)],
         "feature_1": [i * 1.5 for i in range(10)],
         "feature_2": [i * 2 for i in range(10)],
-        "event_time": [float(current_time + i) for i in range(10)],
+        "event_time": [(base_time + timedelta(seconds=i)).strftime("%Y-%m-%dT%H:%M:%SZ") for i in range(10)],
     })
 
 
