@@ -1430,6 +1430,7 @@ class HyperparameterTuner(object):
                         input_data_config.append(
                             Channel(
                                 channel_name=inp.channel_name,
+                                content_type=inp.content_type,
                                 data_source=DataSource(
                                     s3_data_source=S3DataSource(
                                         s3_data_type="S3Prefix",
