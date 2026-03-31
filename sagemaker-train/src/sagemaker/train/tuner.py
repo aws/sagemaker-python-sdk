@@ -1514,7 +1514,7 @@ class HyperparameterTuner(object):
 
         # Pass through environment variables from model_trainer
         env = getattr(model_trainer, "environment", None)
-        if env and isinstance(env, dict):
+        if env and isinstance(env, dict) and len(env) > 0:
             definition.environment = env
 
         # Pass through VPC config from model_trainer
