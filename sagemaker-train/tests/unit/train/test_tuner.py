@@ -574,3 +574,65 @@ class TestHyperparameterTunerStaticMethods:
         assert "train" in channel_names, "User 'train' channel should be included"
         assert "validation" in channel_names, "User 'validation' channel should be included"
         assert len(channel_names) == 4, "Should have exactly 4 channels"
+
+    def test_build_training_job_definition_includes_environment_variables(self):
+        """Test that _build_training_job_definition includes environment variables.
+
+        This test verifies the fix for GitHub issue #5613 where tuning jobs were missing
+        environment variables that were set on the ModelTrainer.
+        """
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = {
+            "RANDOM_STATE": "42",
+            "MY_VAR": "hello",
+        }
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert definition.environment is not None, "Environment should be set"
+        assert definition.environment == {
+            "RANDOM_STATE": "42",
+            "MY_VAR": "hello",
+        }, "Environment variables should match those set on ModelTrainer"
+
+    def test_build_training_job_definition_with_empty_environment(self):
+        """Test that _build_training_job_definition handles empty environment dict."""
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = {}
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        # Empty dict should not be set (falsy check)
+        assert not getattr(definition, "environment", None), (
+            "Empty environment dict should not be propagated"
+        )
+
+    def test_build_training_job_definition_with_none_environment(self):
+        """Test that _build_training_job_definition handles None environment."""
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = None
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        # None environment should not cause an error and should not be set
+        assert not getattr(definition, "environment", None), (
+            "None environment should not be propagated"
+        )
