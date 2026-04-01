@@ -210,10 +210,19 @@ class FeatureGroupManager(FeatureGroup):
         database_name = result["database_name"]
         table_name = result["table_name"]
         table = result["table"]
+        current_properties = result["properties"]
+
+        # Compute before/after diff for audit logging
+        changed = {}
+        for key, new_value in iceberg_properties.properties.items():
+            old_value = current_properties.get(key)
+            if old_value != new_value:
+                changed[key] = {"old": old_value, "new": new_value}
 
         logger.info(
-            f"Updating Iceberg properties for {self.feature_group_name} "
-            f"(database={database_name}, table={table_name})"
+            f"Updating Iceberg properties for feature group '{self.feature_group_name}' "
+            f"(database={database_name}, table={table_name}). "
+            f"Property changes: {changed}"
         )
 
         try:
@@ -221,7 +230,8 @@ class FeatureGroupManager(FeatureGroup):
                 txn.set_properties(iceberg_properties.properties)
 
             logger.info(
-                f"Successfully updated Iceberg properties for {self.feature_group_name}"
+                f"Successfully updated Iceberg properties for feature group "
+                f"'{self.feature_group_name}'. Properties applied: {changed}"
             )
 
             return {
@@ -231,6 +241,10 @@ class FeatureGroupManager(FeatureGroup):
             }
 
         except Exception as e:
+            logger.error(
+                f"Failed to update Iceberg properties for feature group "
+                f"'{self.feature_group_name}'. Attempted changes: {changed}. Error: {e}"
+            )
             raise RuntimeError(
                 f"Failed to update Iceberg properties for {self.feature_group_name}: {e}"
             ) from e
