@@ -179,12 +179,12 @@ then
     fi
 
     printf "INFO: Invoking remote function inside conda environment: $conda_env.\\n"
-    printf "INFO: $conda_exe run -n $conda_env python -m sagemaker.train.remote_function.invoke_function \\n"
-    $conda_exe run -n $conda_env python -m sagemaker.train.remote_function.invoke_function "$@"
+    printf "INFO: $conda_exe run -n $conda_env python -m sagemaker.core.remote_function.invoke_function \\n"
+    $conda_exe run -n $conda_env python -m sagemaker.core.remote_function.invoke_function "$@"
 else
     printf "INFO: No conda env provided. Invoking remote function\\n"
-    printf "INFO: python -m sagemaker.train.remote_function.invoke_function \\n"
-    python -m sagemaker.train.remote_function.invoke_function "$@"
+    printf "INFO: python -m sagemaker.core.remote_function.invoke_function \\n"
+    python -m sagemaker.core.remote_function.invoke_function "$@"
 fi
 """
 
@@ -238,14 +238,14 @@ then
         -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
         -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
 
-        python -m mpi4py -m sagemaker.train.remote_function.invoke_function \\n"
+        python -m mpi4py -m sagemaker.core.remote_function.invoke_function \\n"
         $conda_exe run -n $conda_env mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
         --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
         -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
         -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
         -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
         $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
-        python -m mpi4py -m sagemaker.train.remote_function.invoke_function "$@"
+        python -m mpi4py -m sagemaker.core.remote_function.invoke_function "$@"
 
         python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME} --job_ended 1
     else
@@ -263,7 +263,7 @@ else
         -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
         -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
         $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
-        python -m mpi4py -m sagemaker.train.remote_function.invoke_function \\n"
+        python -m mpi4py -m sagemaker.core.remote_function.invoke_function \\n"
 
         mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
         --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
@@ -271,7 +271,7 @@ else
         -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
         -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
         $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
-        python -m mpi4py -m sagemaker.train.remote_function.invoke_function "$@"
+        python -m mpi4py -m sagemaker.core.remote_function.invoke_function "$@"
 
         python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME} --job_ended 1
     else
@@ -324,18 +324,18 @@ then
     printf "INFO: Invoking remote function with torchrun inside conda environment: $conda_env.\\n"
     printf "INFO: $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
     --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
-    -m sagemaker.train.remote_function.invoke_function \\n"
+    -m sagemaker.core.remote_function.invoke_function \\n"
 
     $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
     --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
-    -m sagemaker.train.remote_function.invoke_function "$@"
+    -m sagemaker.core.remote_function.invoke_function "$@"
 else
     printf "INFO: No conda env provided. Invoking remote function with torchrun\\n"
     printf "INFO: torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
-    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.train.remote_function.invoke_function \\n"
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function \\n"
 
     torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
-    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.train.remote_function.invoke_function "$@"
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function "$@"
 fi
 """
 
@@ -728,7 +728,7 @@ class _JobSettings:
             sagemaker_session=self.sagemaker_session,
         )
         if _role:
-            self.role = expand_role(self.sagemaker_session.boto_session, _role)
+            self.role = expand_role(self.sagemaker_session, _role)
         else:
             self.role = get_execution_role(self.sagemaker_session)
 
@@ -941,16 +941,24 @@ class _Job:
         # generate asymmetric key pair for integrity check
         if step_compilation_context is None:
             private_key = ec.generate_private_key(ec.SECP256R1())
-            public_key_pem = private_key.public_key().public_bytes(
-                crypto_serialization.Encoding.PEM,
-                crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
-            ).decode("utf-8")
+            public_key_pem = (
+                private_key.public_key()
+                .public_bytes(
+                    crypto_serialization.Encoding.PEM,
+                    crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
+                )
+                .decode("utf-8")
+            )
         else:
             private_key = step_compilation_context.function_step_secret_token
-            public_key_pem = private_key.public_key().public_bytes(
-                crypto_serialization.Encoding.PEM,
-                crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
-            ).decode("utf-8")
+            public_key_pem = (
+                private_key.public_key()
+                .public_bytes(
+                    crypto_serialization.Encoding.PEM,
+                    crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
+                )
+                .decode("utf-8")
+            )
 
         # serialize function and arguments
         if step_compilation_context is None:
