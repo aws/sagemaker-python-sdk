@@ -26,6 +26,7 @@ from sagemaker.core.s3.utils import parse_s3_url
 from sagemaker.core.common_utils import aws_partition
 from boto3 import Session
 from pyiceberg.catalog import load_catalog
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from sagemaker.mlops.feature_store.feature_utils import _APPROVED_ICEBERG_PROPERTIES
 
 
@@ -75,6 +76,12 @@ class FeatureGroupManager(FeatureGroup):
     if FeatureGroup.__doc__ and __doc__:
         __doc__ = FeatureGroup.__doc__
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(RuntimeError),
+        reraise=True,
+    )
     def _get_iceberg_properties(
         self,
         session: Optional[Session] = None,
@@ -146,6 +153,12 @@ class FeatureGroupManager(FeatureGroup):
                 f"Failed to get Iceberg properties for {self.feature_group_name}: {e}"
             ) from e
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(RuntimeError),
+        reraise=True,
+    )
     def _update_iceberg_properties(
         self,
         iceberg_properties: IcebergProperties,
