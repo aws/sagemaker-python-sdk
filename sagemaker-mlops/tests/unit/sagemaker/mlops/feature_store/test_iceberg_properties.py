@@ -74,6 +74,67 @@ class TestIcebergPropertiesConfig:
         assert result is config
 
 
+class TestValidateTableOwnership:
+    """Tests for _validate_table_ownership method."""
+
+    def setup_method(self):
+        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
+
+        self.fg = MagicMock(spec=FeatureGroupManager)
+        self.fg._validate_table_ownership = FeatureGroupManager._validate_table_ownership.__get__(self.fg)
+        self.fg.feature_group_name = "test-fg"
+        self.fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(s3_uri="s3://my-bucket/feature-store"),
+            data_catalog_config=DataCatalogConfig(
+                catalog="AwsDataCatalog", database="test_db", table_name="test_table"
+            ),
+            table_format="Iceberg",
+        )
+
+    def test_passes_when_location_matches(self):
+        """Test no error when table location matches S3 URI."""
+        mock_table = MagicMock()
+        mock_table.metadata.location = "s3://my-bucket/feature-store/test_db/test_table"
+        self.fg._validate_table_ownership(mock_table, "test_db", "test_table")
+
+    def test_raises_when_location_does_not_match(self):
+        """Test ValueError when table location doesn't match S3 URI."""
+        mock_table = MagicMock()
+        mock_table.metadata.location = "s3://other-bucket/other-path/table"
+        with pytest.raises(ValueError, match="does not match the feature group's S3 URI"):
+            self.fg._validate_table_ownership(mock_table, "test_db", "test_table")
+
+    def test_passes_when_no_metadata(self):
+        """Test no error when table has no metadata."""
+        mock_table = MagicMock()
+        mock_table.metadata = None
+        self.fg._validate_table_ownership(mock_table, "test_db", "test_table")
+
+    def test_passes_when_no_s3_config(self):
+        """Test no error when s3_storage_config is None."""
+        object.__setattr__(self.fg.offline_store_config, "s3_storage_config", None)
+        mock_table = MagicMock()
+        mock_table.metadata.location = "s3://other-bucket/path"
+        self.fg._validate_table_ownership(mock_table, "test_db", "test_table")
+
+    def test_passes_when_s3_uri_is_none(self):
+        """Test no error when s3_uri is None."""
+        object.__setattr__(self.fg.offline_store_config.s3_storage_config, "s3_uri", None)
+        mock_table = MagicMock()
+        mock_table.metadata.location = "s3://other-bucket/path"
+        self.fg._validate_table_ownership(mock_table, "test_db", "test_table")
+
+    def test_error_message_contains_details(self):
+        """Test error message includes table identifier, location, and feature group name."""
+        mock_table = MagicMock()
+        mock_table.metadata.location = "s3://wrong-bucket/wrong-path"
+        with pytest.raises(ValueError, match="test_db.test_table") as exc_info:
+            self.fg._validate_table_ownership(mock_table, "test_db", "test_table")
+        assert "s3://wrong-bucket/wrong-path" in str(exc_info.value)
+        assert "s3://my-bucket/feature-store" in str(exc_info.value)
+        assert "test-fg" in str(exc_info.value)
+
+
 class TestGetIcebergProperties:
     """Tests for get_iceberg_properties method."""
 
@@ -287,6 +348,32 @@ class TestUpdateIcebergProperties:
 
         with pytest.raises(ValueError, match="Invalid duplicate properties"):
             self.fg._update_iceberg_properties(iceberg_properties=props)
+
+    def test_logs_before_after_property_changes(self, caplog):
+        """Test that update logs before/after diff of property changes at INFO level."""
+        import logging
+
+        mock_table = MagicMock()
+        mock_txn = MagicMock()
+        mock_table.transaction.return_value.__enter__ = MagicMock(return_value=mock_txn)
+        mock_table.transaction.return_value.__exit__ = MagicMock(return_value=False)
+
+        self.fg._get_iceberg_properties.return_value = {
+            "database_name": "test_db",
+            "table_name": "test_table",
+            "table": mock_table,
+            "properties": {"write.target-file-size-bytes": "268435456"},
+        }
+
+        props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
+
+        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
+            self.fg._update_iceberg_properties(iceberg_properties=props)
+
+        assert "test-fg" in caplog.text
+        assert "'old': '268435456'" in caplog.text
+        assert "'new': '536870912'" in caplog.text
+        assert "Successfully updated" in caplog.text
 
 
 class TestCreateWithIcebergProperties:

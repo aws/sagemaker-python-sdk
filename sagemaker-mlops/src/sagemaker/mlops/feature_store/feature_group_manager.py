@@ -76,6 +76,31 @@ class FeatureGroupManager(FeatureGroup):
     if FeatureGroup.__doc__ and __doc__:
         __doc__ = FeatureGroup.__doc__
 
+    def _validate_table_ownership(self, table, database_name: str, table_name: str):
+        """Validate that the Iceberg table belongs to this feature group by checking S3 location."""
+        table_location = table.metadata.location if table.metadata else None
+        s3_config = self.offline_store_config.s3_storage_config
+        if s3_config and s3_config.s3_uri:
+            expected_prefix = str(s3_config.s3_uri).rstrip("/")
+            if table_location and not table_location.startswith(expected_prefix):
+                logger.error(
+                    f"Table ownership validation failed for feature group "
+                    f"'{self.feature_group_name}'. The Glue table "
+                    f"'{database_name}.{table_name}' has location '{table_location}' "
+                    f"but the feature group's offline store is configured with "
+                    f"S3 URI '{expected_prefix}'. This may indicate that the "
+                    f"data_catalog_config is pointing to a table that does not belong "
+                    f"to this feature group. To fix this, verify that the "
+                    f"data_catalog_config.database and data_catalog_config.table_name "
+                    f"in your feature group's offline_store_config match the correct "
+                    f"Glue table for this feature group."
+                )
+                raise ValueError(
+                    f"Table '{database_name}.{table_name}' location '{table_location}' "
+                    f"does not match the feature group's S3 URI '{expected_prefix}'. "
+                    f"The table may not belong to feature group '{self.feature_group_name}'."
+                )
+
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=1, max=10),
@@ -140,6 +165,7 @@ class FeatureGroupManager(FeatureGroup):
 
         try:
             table = catalog.load_table(f"{database_name}.{table_name}")
+            self._validate_table_ownership(table, database_name, table_name)
 
             return {
                 "database_name": database_name,
@@ -211,6 +237,8 @@ class FeatureGroupManager(FeatureGroup):
         table_name = result["table_name"]
         table = result["table"]
         current_properties = result["properties"]
+
+        self._validate_table_ownership(table, database_name, table_name)
 
         # Compute before/after diff for audit logging
         changed = {}
