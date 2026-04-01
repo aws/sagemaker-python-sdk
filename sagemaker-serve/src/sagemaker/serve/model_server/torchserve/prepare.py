@@ -13,7 +13,6 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.detector.dependency_manager import capture_dependencies
 from sagemaker.serve.validations.check_integrity import (
-    generate_secret_key,
     compute_hash,
 )
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
@@ -56,7 +55,9 @@ def prepare_for_torchserve(
     # https://github.com/aws/sagemaker-python-sdk/issues/4288
     if is_1p_image_uri(image_uri=image_uri) and "xgboost" in image_uri:
         shutil.copy2(Path(__file__).parent.joinpath("xgboost_inference.py"), code_dir)
-        os.rename(str(code_dir.joinpath("xgboost_inference.py")), str(code_dir.joinpath("inference.py")))
+        os.rename(
+            str(code_dir.joinpath("xgboost_inference.py")), str(code_dir.joinpath("inference.py"))
+        )
     else:
         shutil.copy2(Path(__file__).parent.joinpath("inference.py"), code_dir)
 
@@ -67,11 +68,8 @@ def prepare_for_torchserve(
 
     capture_dependencies(dependencies=dependencies, work_dir=code_dir)
 
-    secret_key = generate_secret_key()
     with open(str(code_dir.joinpath("serve.pkl")), "rb") as f:
         buffer = f.read()
-    hash_value = compute_hash(buffer=buffer, secret_key=secret_key)
+    hash_value = compute_hash(buffer=buffer)
     with open(str(code_dir.joinpath("metadata.json")), "wb") as metadata:
         metadata.write(_MetaData(hash_value).to_json())
-
-    return secret_key

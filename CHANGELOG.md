@@ -1,4 +1,42 @@
 # Changelog
+## v3.7.1 (2026-03-31)
+
+### Features
+- **Telemetry**: Added telemetry emitter to `ScriptProcessor` and `FrameworkProcessor`, enabling SDK usage tracking for processing jobs via the telemetry attribution module (new `PROCESSING` feature enum added to telemetry constants)
+
+### Fixes
+- **ModelBuilder**: Fixed `accept_eula` handling in ModelBuilder's LoRA deployment path — previously hardcoded to `True`, now respects the user-provided value and raises a `ValueError` if not explicitly set to `True`
+- **Evaluate**: Fixed Lambda handler name derivation in the Evaluator — hardcoded the handler to `lambda_function.lambda_handler` instead of deriving it from the source filename, which caused invocation failures when the source file had a non-default name
+
+## v3.7.0 (2026-03-25)
+
+### Fixes
+- **ModelBuilder**: Sync Nova hosting configs with AGISageMakerInference (#5664)
+- **Evaluate**: Remove GPT OSS model evaluation restriction (#5658)
+
+### Features
+- **AWS Batch**: Add support for Quota Management job submission and job priority update (#5659)
+- **AWS Batch**: Extend list_jobs_by_share for quota_share_name (#5669)
+- **Evaluate**: Support IAM role for BaseEvaluator (#5671)
+- **Telemetry**: Add telemetry attribution module for SDK usage provenance (#5661)
+- **MLflow**: Metrics visualization, enhanced wait UI, and eval job links (#5662)
+
+### Chores
+- Updated SDK to use latest LMIv22 image for v3.x (#5640)
+- Migration guide update (#5655)
+- AWS Batch integ test resources are now uniquely named by test run (#5666)
+
+## v3.6.0 (2026-03-19)
+
+### Fixes
+- **HyperparameterTuner**: Include sm_drivers channel in HyperparameterTuner jobs (#5516)
+- **Pipeline**: Fix handling of training step dependencies to allow successful pipeline creation
+- **ModelBuilder**: Fix the bug in deploy from LORA finetuning job
+
+### Features
+- **Feature Processor**: Port feature processor to v3
+- **Jumpstart**: Add EUSC region config for JumpStart
+  
 ## v3.5.0 (2026-03-02)
 
 ### Features

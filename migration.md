@@ -25,7 +25,7 @@
 
 ## Migration Tool (MCP Server)
 
-An AI-powered migration tool is available as an MCP server that can analyze your V2 code, transform it to V3, validate the results, and answer migration questions interactively through your IDE.
+This AI-powered migration tool is available as an MCP server to analyze your V2 code, transform it to V3, validate the results, and answer migration questions interactively through your IDE.
 
 ### Installation
 
@@ -61,31 +61,21 @@ Add the following to your MCP configuration file:
 {
   "mcpServers": {
     "sagemaker-sdk-helper": {
-      "command": "sagemaker-sdk-helper",
-      "args": ["--log-level", "INFO"]
+      "command": "/path/to/installation",
+      "args": ["--log-level", "INFO"],
+      "autoApprove": [
+        "ask_question",
+        "transform_code",
+        "validate_code",
+        "analyze_code"
+      ]
     }
-  }
+    }
 }
+
 ```
 
 > **Note**: If you installed in a virtual environment, use the full path to the executable (find it with `which sagemaker-sdk-helper`).
-
-**With SDK source artifacts (recommended, 20-30% better accuracy):**
-
-```json
-{
-  "mcpServers": {
-    "sagemaker-sdk-helper": {
-      "command": "/path/to/.venv/bin/sagemaker-sdk-helper",
-      "args": [
-        "--log-level", "INFO",
-        "--v2-artifacts", "/path/to/sdk_v2/sagemaker-python-sdk",
-        "--v3-artifacts", "/path/to/sdk_v3/sagemaker-python-sdk"
-      ]
-    }
-  }
-}
-```
 
 After updating the config, restart your IDE or reconnect MCP servers (in Kiro: Command Palette → "MCP: Reconnect Servers").
 
@@ -97,10 +87,16 @@ For Kiro CLI, add the same configuration to `~/.kiro/settings/mcp.json`:
 {
   "mcpServers": {
     "sagemaker-sdk-helper": {
-      "command": "sagemaker-sdk-helper",
-      "args": ["--log-level", "INFO"]
+      "command": "/path/to/installation",
+      "args": ["--log-level", "INFO"],
+      "autoApprove": [
+        "ask_question",
+        "transform_code",
+        "validate_code",
+        "analyze_code"
+      ]
     }
-  }
+    }
 }
 ```
 

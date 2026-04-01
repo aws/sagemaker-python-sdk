@@ -154,7 +154,7 @@ class _MLflowMetricsUtil:
                 
                 loss_data = []
                 for metric_key in run.data.metrics:
-                    if _MLflowConstants.TOTAL_LOSS_METRIC == metric_key.lower():
+                    if any(kw in metric_key.lower() for kw in _MLflowConstants.LOSS_METRIC_KEYWORDS):
                         metric_history = client.get_metric_history(rid, metric_key)
                         loss_data.append({
                             'metric_name': metric_key,
@@ -335,7 +335,7 @@ class _MLflowMetricsUtil:
             
             for rid, metrics in loss_metrics.items():
                 for metric in metrics:
-                    if metric['metric_name'].lower() == _MLflowConstants.TOTAL_LOSS_METRIC:
+                    if any(kw in metric['metric_name'].lower() for kw in _MLflowConstants.LOSS_METRIC_KEYWORDS):
                         if metric['history']:
                             # Get the most recent entry (last in history)
                             return metric['history'][-1]['value']
