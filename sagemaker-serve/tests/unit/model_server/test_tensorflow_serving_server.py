@@ -25,15 +25,13 @@ class TestLocalTensorflowServing(unittest.TestCase):
             client=mock_client,
             image="tensorflow-serving:latest",
             model_path="/path/to/model",
-            secret_key="test-secret",
             env_vars={"CUSTOM_VAR": "value"}
         )
         
         self.assertEqual(server.container, mock_container)
         mock_client.containers.run.assert_called_once()
         call_kwargs = mock_client.containers.run.call_args[1]
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", call_kwargs["environment"])
-        self.assertEqual(call_kwargs["environment"]["SAGEMAKER_SERVE_SECRET_KEY"], "test-secret")
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", call_kwargs["environment"])
         self.assertEqual(call_kwargs["environment"]["CUSTOM_VAR"], "value")
 
     @patch('sagemaker.serve.model_server.tensorflow_serving.server.requests.post')
@@ -92,13 +90,11 @@ class TestSageMakerTensorflowServing(unittest.TestCase):
         s3_path, env_vars = server._upload_tensorflow_serving_artifacts(
             model_path="s3://bucket/model",
             sagemaker_session=mock_session,
-            secret_key="test-key",
             should_upload_artifacts=False
         )
         
         self.assertEqual(s3_path, "s3://bucket/model")
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
-        self.assertEqual(env_vars["SAGEMAKER_SERVE_SECRET_KEY"], "test-key")
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
 
     @patch('sagemaker.serve.model_server.tensorflow_serving.server.upload')
     @patch('sagemaker.serve.model_server.tensorflow_serving.server.determine_bucket_and_prefix')
@@ -122,14 +118,13 @@ class TestSageMakerTensorflowServing(unittest.TestCase):
         s3_path, env_vars = server._upload_tensorflow_serving_artifacts(
             model_path="/local/model",
             sagemaker_session=mock_session,
-            secret_key="test-key",
             s3_model_data_url="s3://bucket/prefix",
             image="test-image",
             should_upload_artifacts=True
         )
         
         self.assertEqual(s3_path, "s3://bucket/code_prefix/model.tar.gz")
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
         mock_upload.assert_called_once()
 
     @patch('sagemaker.serve.model_server.tensorflow_serving.server._is_s3_uri')
@@ -145,12 +140,11 @@ class TestSageMakerTensorflowServing(unittest.TestCase):
         s3_path, env_vars = server._upload_tensorflow_serving_artifacts(
             model_path="/local/model",
             sagemaker_session=mock_session,
-            secret_key="test-key",
             should_upload_artifacts=False
         )
         
         self.assertIsNone(s3_path)
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
 
 
 if __name__ == "__main__":

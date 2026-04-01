@@ -68,10 +68,9 @@ class TestMultiModelServerPrepare(unittest.TestCase):
 
     @patch('builtins.input', return_value='')
     @patch('sagemaker.serve.model_server.multi_model_server.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.multi_model_server.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.multi_model_server.prepare.capture_dependencies')
     @patch('shutil.copy2')
-    def test_prepare_for_mms_creates_structure(self, mock_copy, mock_capture, mock_gen_key, mock_hash, mock_input):
+    def test_prepare_for_mms_creates_structure(self, mock_copy, mock_capture, mock_hash, mock_input):
         """Test prepare_for_mms creates directory structure and files."""
         from sagemaker.serve.model_server.multi_model_server.prepare import prepare_for_mms
         
@@ -83,31 +82,29 @@ class TestMultiModelServerPrepare(unittest.TestCase):
         serve_pkl = code_dir / "serve.pkl"
         serve_pkl.write_bytes(b"test data")
         
-        mock_gen_key.return_value = "test-secret-key"
         mock_hash.return_value = "test-hash"
         mock_session = Mock()
         mock_inference_spec = Mock()
         
-        with patch('builtins.open', mock_open(read_data=b"test data")):
-            secret_key = prepare_for_mms(
-                model_path=str(model_path),
-                shared_libs=[],
-                dependencies={},
-                session=mock_session,
-                image_uri="test-image",
-                inference_spec=mock_inference_spec
-            )
+        secret_key = prepare_for_mms(
+            model_path=str(model_path),
+            shared_libs=[],
+            dependencies={},
+            session=mock_session,
+            image_uri="test-image",
+            inference_spec=mock_inference_spec
+        )
         
-        self.assertEqual(secret_key, "test-secret-key")
+        # Should return None now (no longer returns secret key)
+        self.assertIsNone(secret_key)
         mock_inference_spec.prepare.assert_called_once_with(str(model_path))
         mock_capture.assert_called_once()
 
     @patch('builtins.input', return_value='')
     @patch('sagemaker.serve.model_server.multi_model_server.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.multi_model_server.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.multi_model_server.prepare.capture_dependencies')
     @patch('shutil.copy2')
-    def test_prepare_for_mms_raises_on_invalid_dir(self, mock_copy, mock_capture, mock_gen_key, mock_hash, mock_input):
+    def test_prepare_for_mms_raises_on_invalid_dir(self, mock_copy, mock_capture, mock_hash, mock_input):
         """Test prepare_for_mms raises exception for invalid directory."""
         from sagemaker.serve.model_server.multi_model_server.prepare import prepare_for_mms
         
@@ -128,10 +125,9 @@ class TestMultiModelServerPrepare(unittest.TestCase):
 
     @patch('builtins.input', return_value='')
     @patch('sagemaker.serve.model_server.multi_model_server.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.multi_model_server.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.multi_model_server.prepare.capture_dependencies')
     @patch('shutil.copy2')
-    def test_prepare_for_mms_copies_shared_libs(self, mock_copy, mock_capture, mock_gen_key, mock_hash, mock_input):
+    def test_prepare_for_mms_copies_shared_libs(self, mock_copy, mock_capture, mock_hash, mock_input):
         """Test prepare_for_mms copies shared libraries."""
         from sagemaker.serve.model_server.multi_model_server.prepare import prepare_for_mms
         
@@ -145,7 +141,6 @@ class TestMultiModelServerPrepare(unittest.TestCase):
         shared_lib = Path(self.temp_dir) / "lib.so"
         shared_lib.touch()
         
-        mock_gen_key.return_value = "test-key"
         mock_hash.return_value = "test-hash"
         mock_session = Mock()
         

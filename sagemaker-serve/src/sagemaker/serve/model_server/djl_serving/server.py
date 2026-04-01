@@ -30,7 +30,7 @@ class LocalDJLServing:
     """Placeholder docstring"""
 
     def _start_djl_serving(
-        self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
+        self, client: object, image: str, model_path: str, env_vars: dict
     ):
         """Placeholder docstring"""
         updated_env_vars = _update_env_vars(env_vars)

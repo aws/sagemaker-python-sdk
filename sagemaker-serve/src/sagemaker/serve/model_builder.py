@@ -1291,7 +1291,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 str(Mode.SAGEMAKER_ENDPOINT)
             ].prepare(
                 (model_path or self.model_path),
-                self.secret_key,
                 self.serve_settings.s3_model_data_url,
                 self.sagemaker_session,
                 self.image_uri,
@@ -2593,7 +2592,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 local_model=self.built_model,
                 local_session=local_session,
                 container_timeout_seconds=kwargs.get("container_timeout_in_seconds", 300),
-                secret_key=self.secret_key,
                 local_container_mode_obj=self.modes[str(Mode.LOCAL_CONTAINER)],
                 serializer=self._serializer,
                 deserializer=self._deserializer,
@@ -3104,7 +3102,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 in_process_mode=True,
                 local_model=self.built_model,
                 container_timeout_seconds=kwargs.get("container_timeout_in_seconds", 300),
-                secret_key=self.secret_key,
                 in_process_mode_obj=self.modes[str(Mode.IN_PROCESS)],
                 serializer=self._serializer,
                 deserializer=self._deserializer,
@@ -3199,7 +3196,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         """Reset all dynamically added build-related state."""
         # Core build state
         self.built_model = None
-        self.secret_key = ""
 
         # JumpStart preparation flags
         for attr in ["prepared_for_djl", "prepared_for_tgi", "prepared_for_mms"]:

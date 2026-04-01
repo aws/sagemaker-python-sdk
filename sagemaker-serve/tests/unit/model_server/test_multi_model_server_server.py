@@ -25,15 +25,13 @@ class TestLocalMultiModelServer(unittest.TestCase):
             client=mock_client,
             image="test-image:latest",
             model_path="/path/to/model",
-            secret_key="test-secret",
             env_vars={"CUSTOM_VAR": "value"}
         )
         
         self.assertEqual(server.container, mock_container)
         mock_client.containers.run.assert_called_once()
         call_kwargs = mock_client.containers.run.call_args[1]
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", call_kwargs["environment"])
-        self.assertEqual(call_kwargs["environment"]["SAGEMAKER_SERVE_SECRET_KEY"], "test-secret")
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", call_kwargs["environment"])
 
     @patch('sagemaker.serve.model_server.multi_model_server.server.Path')
     def test_start_serving_with_no_env_vars(self, mock_path):
@@ -52,7 +50,6 @@ class TestLocalMultiModelServer(unittest.TestCase):
             client=mock_client,
             image="test-image:latest",
             model_path="/path/to/model",
-            secret_key="test-secret",
             env_vars=None
         )
         
@@ -121,7 +118,6 @@ class TestSageMakerMultiModelServer(unittest.TestCase):
         
         model_data, env_vars = server._upload_server_artifacts(
             model_path="s3://bucket/model",
-            secret_key="test-key",
             sagemaker_session=mock_session,
             should_upload_artifacts=False
         )
@@ -158,7 +154,6 @@ class TestSageMakerMultiModelServer(unittest.TestCase):
         
         model_data, env_vars = server._upload_server_artifacts(
             model_path="/local/model",
-            secret_key="test-key",
             sagemaker_session=mock_session,
             s3_model_data_url="s3://bucket/prefix",
             image="test-image",
@@ -166,8 +161,7 @@ class TestSageMakerMultiModelServer(unittest.TestCase):
         )
         
         self.assertIsNotNone(model_data)
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
-        self.assertEqual(env_vars["SAGEMAKER_SERVE_SECRET_KEY"], "test-key")
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
 
     @patch('sagemaker.serve.model_server.multi_model_server.server._is_s3_uri')
     def test_upload_server_artifacts_no_upload(self, mock_is_s3):
@@ -181,13 +175,12 @@ class TestSageMakerMultiModelServer(unittest.TestCase):
         
         model_data, env_vars = server._upload_server_artifacts(
             model_path="/local/model",
-            secret_key="test-key",
             sagemaker_session=mock_session,
             should_upload_artifacts=False
         )
         
         self.assertIsNone(model_data)
-        self.assertIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
+        self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", env_vars)
 
 
 class TestUpdateEnvVars(unittest.TestCase):

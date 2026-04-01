@@ -18,10 +18,9 @@ class TestSmdPrepare(unittest.TestCase):
             shutil.rmtree(self.temp_dir)
 
     @patch('sagemaker.serve.model_server.smd.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.smd.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.smd.prepare.capture_dependencies')
     @patch('shutil.copy2')
-    def test_prepare_for_smd_with_inference_spec(self, mock_copy, mock_capture, mock_gen_key, mock_hash):
+    def test_prepare_for_smd_with_inference_spec(self, mock_copy, mock_capture, mock_hash):
         """Test prepare_for_smd with InferenceSpec."""
         from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
         from sagemaker.serve.spec.inference_spec import InferenceSpec
@@ -33,27 +32,24 @@ class TestSmdPrepare(unittest.TestCase):
         serve_pkl = code_dir / "serve.pkl"
         serve_pkl.write_bytes(b"test data")
         
-        mock_gen_key.return_value = "test-secret-key"
         mock_hash.return_value = "test-hash"
         mock_inference_spec = Mock(spec=InferenceSpec)
         
-        with patch('builtins.open', mock_open(read_data=b"test data")):
-            secret_key = prepare_for_smd(
-                model_path=str(model_path),
-                shared_libs=[],
-                dependencies={},
-                inference_spec=mock_inference_spec
-            )
+        secret_key = prepare_for_smd(
+            model_path=str(model_path),
+            shared_libs=[],
+            dependencies={},
+            inference_spec=mock_inference_spec
+        )
         
-        self.assertEqual(secret_key, "test-secret-key")
+        self.assertIsNone(secret_key)
         mock_inference_spec.prepare.assert_called_once_with(str(model_path))
 
     @patch('os.rename')
     @patch('sagemaker.serve.model_server.smd.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.smd.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.smd.prepare.capture_dependencies')
     @patch('shutil.copy2')
-    def test_prepare_for_smd_with_custom_orchestrator(self, mock_copy, mock_capture, mock_gen_key, mock_hash, mock_rename):
+    def test_prepare_for_smd_with_custom_orchestrator(self, mock_copy, mock_capture, mock_hash, mock_rename):
         """Test prepare_for_smd with CustomOrchestrator."""
         from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
         from sagemaker.serve.spec.inference_base import CustomOrchestrator
@@ -65,27 +61,24 @@ class TestSmdPrepare(unittest.TestCase):
         serve_pkl = code_dir / "serve.pkl"
         serve_pkl.write_bytes(b"test data")
         
-        mock_gen_key.return_value = "test-secret-key"
         mock_hash.return_value = "test-hash"
         mock_orchestrator = Mock(spec=CustomOrchestrator)
         
-        with patch('builtins.open', mock_open(read_data=b"test data")):
-            secret_key = prepare_for_smd(
-                model_path=str(model_path),
-                shared_libs=[],
-                dependencies={},
-                inference_spec=mock_orchestrator
-            )
+        secret_key = prepare_for_smd(
+            model_path=str(model_path),
+            shared_libs=[],
+            dependencies={},
+            inference_spec=mock_orchestrator
+        )
         
-        self.assertEqual(secret_key, "test-secret-key")
+        self.assertIsNone(secret_key)
         # Verify custom_execution_inference.py was copied and renamed
         mock_rename.assert_called_once()
 
     @patch('sagemaker.serve.model_server.smd.prepare.compute_hash')
-    @patch('sagemaker.serve.model_server.smd.prepare.generate_secret_key')
     @patch('sagemaker.serve.model_server.smd.prepare.capture_dependencies')
     @patch('shutil.copy2')
-    def test_prepare_for_smd_with_shared_libs(self, mock_copy, mock_capture, mock_gen_key, mock_hash):
+    def test_prepare_for_smd_with_shared_libs(self, mock_copy, mock_capture, mock_hash):
         """Test prepare_for_smd copies shared libraries."""
         from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
         
@@ -99,7 +92,6 @@ class TestSmdPrepare(unittest.TestCase):
         shared_lib = Path(self.temp_dir) / "lib.so"
         shared_lib.touch()
         
-        mock_gen_key.return_value = "test-key"
         mock_hash.return_value = "test-hash"
         
         with patch('builtins.open', mock_open(read_data=b"test data")):
