@@ -376,6 +376,7 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             
     except Exception as e:
         logger.error("Exception getting fine-tuning options: %s", e)
+        raise
 
 
 def _create_input_channels(dataset: str, content_type: Optional[str] = None, 

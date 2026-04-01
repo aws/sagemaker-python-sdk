@@ -57,6 +57,22 @@ def sample_jsonl_file():
 
 
 @pytest.fixture
+def sample_lambda_py_file():
+    """Create a raw Python Lambda file with a non-default filename to test handler derivation."""
+    code = '''import json
+def lambda_handler(event, context):
+    return {"statusCode": 200, "body": json.dumps({"score": 0.9})}
+'''
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.py', prefix='my_custom_evaluator_', delete=False) as f:
+        f.write(code)
+        f.flush()
+        os.fsync(f.fileno())
+        fname = f.name
+    yield fname
+    os.unlink(fname)
+
+
+@pytest.fixture
 def sample_lambda_code():
     """Create sample Lambda function code as zip."""
     code = '''import json

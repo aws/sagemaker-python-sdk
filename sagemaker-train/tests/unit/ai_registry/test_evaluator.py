@@ -61,8 +61,7 @@ class TestEvaluator:
             RESPONSE_KEY_LAST_MODIFIED_TIME: "2024-01-01"
         }
         
-        with patch("builtins.open", MagicMock()), \
-             patch("zipfile.ZipFile") as mock_zip, \
+        with patch("zipfile.ZipFile") as mock_zip, \
              patch("os.path.splitext", return_value=("function", ".py")), \
              patch("os.path.basename", return_value="function.py"):
             
@@ -78,6 +77,9 @@ class TestEvaluator:
         
         assert evaluator.method == EvaluatorMethod.BYOC
         mock_air_hub.upload_to_s3.assert_called_once()
+        mock_lambda_client.create_function.assert_called_once()
+        call_kwargs = mock_lambda_client.create_function.call_args[1]
+        assert call_kwargs["Handler"] == "lambda_function.lambda_handler"
 
     @patch('sagemaker.ai_registry.evaluator.AIRHub')
     def test_get_all(self, mock_air_hub):

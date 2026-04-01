@@ -71,6 +71,11 @@ class TrainingQueue:
             raise ValueError(
                 "TrainingQueue requires using a ModelTrainer with Mode.SAGEMAKER_TRAINING_JOB"
             )
+
+        if share_identifier != None and quota_share_name != None:
+            raise ValueError(
+                "Either share_identifier or quota_share_name can be specified, but not both"
+            )
         training_payload = training_job._create_training_job_args(
             input_data_config=inputs, boto3=True
         )
@@ -108,6 +113,7 @@ class TrainingQueue:
         share_identifier: Optional[str] = None,
         timeout: Optional[Dict] = None,
         tags: Optional[Dict] = None,
+        quota_share_name: Optional[str] = None,
     ) -> List[TrainingQueuedJob]:
         """Submit queued jobs to the provided estimator and return a list of TrainingQueuedJob objects.
 
@@ -120,6 +126,7 @@ class TrainingQueue:
             share_identifier: Share identifier for the Batch jobs.
             timeout: Timeout configuration for the Batch jobs.
             tags: Tags apply to Batch job. These tags are for Batch job only.
+            quota_share_name: Quota share name for the Batch jobs.
 
         Returns: a list of TrainingQueuedJob objects with each Batch job ARN and job name.
 
@@ -144,6 +151,7 @@ class TrainingQueue:
                 share_identifier,
                 timeout,
                 tags,
+                quota_share_name,
             )
             queued_batch_job_list.append(queued_batch_job)
 
@@ -171,7 +179,7 @@ class TrainingQueue:
             for job_result in job_result_dict.get("jobSummaryList", []):
                 if "jobArn" in job_result and "jobName" in job_result:
                     jobs_to_return.append(
-                        TrainingQueuedJob(job_result["jobArn"], job_result["jobName"], job_result.get("shareIdentifier", None))
+                        TrainingQueuedJob(job_result["jobArn"], job_result["jobName"], job_result.get("shareIdentifier", None), job_result.get("quotaShareName", None))
                     )
                 else:
                     logging.warning("Missing JobArn or JobName in Batch ListJobs API")
@@ -182,19 +190,27 @@ class TrainingQueue:
         self,
         status: Optional[str] = JOB_STATUS_RUNNING,
         share_identifier: Optional[str] = None,
+        quota_share_name: Optional[str] = None,
     ) -> List[TrainingQueuedJob]:
         """List Batch jobs according to status and share.
 
         Args:
             status: Batch job status.
             share_identifier: Batch fairshare share identifier.
+            quota_share_name: Batch quota management share name.
 
         Returns: A list of QueuedJob.
 
         """
         filters = None
+        if share_identifier != None and quota_share_name != None:
+            raise ValueError(
+                "Either share_identifier or quota_share_name can be specified, but not both"
+            )
         if share_identifier:
             filters = [{"name": "SHARE_IDENTIFIER", "values": [share_identifier]}]
+        elif quota_share_name:
+            filters = [{"name": "QUOTA_SHARE_NAME", "values": [quota_share_name]}]
 
         jobs_to_return = []
         next_token = None
@@ -202,7 +218,7 @@ class TrainingQueue:
             for job_result in job_result_dict.get("jobSummaryList", []):
                 if "jobArn" in job_result and "jobName" in job_result:
                     jobs_to_return.append(
-                        TrainingQueuedJob(job_result["jobArn"], job_result["jobName"], job_result.get("shareIdentifier", None))
+                        TrainingQueuedJob(job_result["jobArn"], job_result["jobName"], job_result.get("shareIdentifier", None), job_result.get("quotaShareName", None))
                     )
                 else:
                     logging.warning("Missing JobArn or JobName in Batch ListJobs API")

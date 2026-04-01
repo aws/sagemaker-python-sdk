@@ -21,16 +21,18 @@ class BatchTestResourceManager:
     def __init__(
         self,
         batch_client,
+        test_id,
         queue_name="pysdk-test-qm-queue",
         service_env_name="pysdk-test-qm-queue-service-environment",
         scheduling_policy_name="pysdk-test-qm-scheduling-policy",
         quota_share_name="pysdk-test-quota-share",
     ):
+        self.test_id = test_id
         self.batch_client = batch_client
-        self.queue_name = queue_name
-        self.service_environment_name = service_env_name
-        self.scheduling_policy_name = scheduling_policy_name
-        self.quota_share_name = quota_share_name
+        self.queue_name = f"{queue_name}-{test_id}"
+        self.service_environment_name = f"{service_env_name}-{test_id}"
+        self.scheduling_policy_name = f"{scheduling_policy_name}-{test_id}"
+        self.quota_share_name = f"{quota_share_name}-{test_id}"
 
     def _create_or_get_service_environment(self, service_environment_name):
         print(f"Creating service environment: {service_environment_name}")
@@ -277,65 +279,31 @@ class BatchTestResourceManager:
         print("Waiting for QuotaShare deletion to finish...")
         self._wait_for_quota_share_state(quota_share_arn, "DELETED", "DISABLED")
 
-    def get_or_create_resources(
-        self,
-        queue_name=None,
-        service_environment_name=None,
-        scheduling_policy_name=None,
-        quota_share_name=None
-    ):
-        queue_name = queue_name or self.queue_name
-        service_environment_name = service_environment_name or self.service_environment_name
-        scheduling_policy_name = scheduling_policy_name or self.scheduling_policy_name
-        quota_share_name = quota_share_name or self.quota_share_name
+    def get_or_create_resources(self):
+        service_environment = self._create_or_get_service_environment(self.service_environment_name)
+        scheduling_policy = self._create_or_get_scheduling_policy(self.scheduling_policy_name)
 
-        service_environment = self._create_or_get_service_environment(service_environment_name)
-        if service_environment.get("state") != "ENABLED":
-            self._update_service_environment_state(service_environment_name, "ENABLED")
-            self._wait_for_service_environment_state(service_environment_name, "VALID", "ENABLED")
-        time.sleep(10)
+        queue = self._create_or_get_queue(self.queue_name, service_environment["serviceEnvironmentArn"],
+                                          scheduling_policy.get("arn"))
+        self._wait_for_queue_state(self.queue_name, "VALID", "ENABLED")
 
-        scheduling_policy = self._create_or_get_scheduling_policy(scheduling_policy_name)
-        scheduling_policy_arn = scheduling_policy.get("arn")
-
-        queue = self._create_or_get_queue(queue_name, service_environment["serviceEnvironmentArn"],
-                                          scheduling_policy_arn)
-        if queue.get("state") != "ENABLED":
-            self._update_queue_state(queue_name, "ENABLED")
-            self._wait_for_queue_state(queue_name, "VALID", "ENABLED")
-        time.sleep(10)
-
-        quota_share = self._create_or_get_quota_share(quota_share_name, queue_name)
-        if quota_share.get("state") != "ENABLED":
-            self._update_quota_share_state(quota_share["quotaShareArn"], "ENABLED")
-            self._wait_for_quota_share_state(quota_share["quotaShareArn"], "VALID", "ENABLED")
-        time.sleep(10)
+        quota_share = self._create_or_get_quota_share(self.quota_share_name, self.queue_name)
+        self._wait_for_quota_share_state(quota_share["quotaShareArn"], "VALID", "ENABLED")
 
         return queue, service_environment, scheduling_policy, quota_share
 
-    def delete_resources(
-        self,
-        queue_name=None,
-        service_environment_name=None,
-        scheduling_policy_name=None,
-        quota_share_name=None
-    ):
-        queue_name = queue_name or self.queue_name
-        service_environment_name = service_environment_name or self.service_environment_name
-        scheduling_policy_name = scheduling_policy_name or self.scheduling_policy_name
-        quota_share_name = quota_share_name or self.quota_share_name
-
+    def delete_resources(self):
         # Get ARNs needed for deletion
-        desc_jq = self.batch_client.describe_job_queues(jobQueues=[queue_name])
+        desc_jq = self.batch_client.describe_job_queues(jobQueues=[self.queue_name])
         if desc_jq["jobQueues"]:
             jq_arn = desc_jq["jobQueues"][0]["jobQueueArn"]
-            quota_share_arn = f"{jq_arn}/quota-share/{quota_share_name}"
+            quota_share_arn = f"{jq_arn}/quota-share/{self.quota_share_name}"
             self._delete_quota_share(quota_share_arn)
 
-        self._delete_job_queue(queue_name)
+        self._delete_job_queue(self.queue_name)
 
-        sp = self._find_scheduling_policy(scheduling_policy_name)
+        sp = self._find_scheduling_policy(self.scheduling_policy_name)
         if sp:
             self._delete_scheduling_policy(sp["arn"])
 
-        self._delete_service_environment(service_environment_name)
+        self._delete_service_environment(self.service_environment_name)

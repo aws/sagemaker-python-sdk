@@ -382,7 +382,7 @@ class Evaluator(AIRHubEntity):
         # Create Lambda function
         lambda_client = boto3.client("lambda")
         function_name = f"SageMaker-evaluator-{name}-{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        handler_name = f"{os.path.splitext(os.path.basename(source_file))[0]}.lambda_handler"
+        handler_name = "lambda_function.lambda_handler"
 
         try:
             lambda_response = lambda_client.create_function(

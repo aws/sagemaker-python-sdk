@@ -119,6 +119,7 @@ class TestModelCustomizationFromTrainingJob:
 
         training_job = TrainingJob.get(training_job_name=training_job_name)
         model_builder = ModelBuilder(model=training_job)
+        model_builder.accept_eula = True
         model = model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}")
 
         assert model is not None
@@ -139,6 +140,7 @@ class TestModelCustomizationFromTrainingJob:
 
         training_job = TrainingJob.get(training_job_name=training_job_name)
         model_builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge")
+        model_builder.accept_eula = True
         model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}")
 
         peft_type = model_builder._fetch_peft()
@@ -187,6 +189,7 @@ class TestModelCustomizationFromModelPackage:
 
         model_package = ModelPackage.get(model_package_name=model_package_arn)
         model_builder = ModelBuilder(model=model_package)
+        model_builder.accept_eula = True
         model = model_builder.build()
 
         assert model is not None
@@ -201,6 +204,7 @@ class TestModelCustomizationFromModelPackage:
         model_package = ModelPackage.get(model_package_name=model_package_arn)
         endpoint_name = f"e2e-{int(time.time())}-{random.randint(100, 10000)}"
         model_builder = ModelBuilder(model=model_package)
+        model_builder.accept_eula = True
         model_builder.build()
         endpoint = model_builder.deploy(endpoint_name=endpoint_name)
 
@@ -220,6 +224,7 @@ class TestInstanceTypeAutoDetection:
 
         training_job = TrainingJob.get(training_job_name=training_job_name)
         model_builder = ModelBuilder(model=training_job)
+        model_builder.accept_eula = True
         model_builder.build()
 
         assert model_builder.instance_type is not None

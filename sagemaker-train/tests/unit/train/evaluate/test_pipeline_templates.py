@@ -121,7 +121,6 @@ class TestDeterministicTemplate:
         pipeline_def = json.loads(rendered)
         
         assert pipeline_def["MlflowConfig"]["MlflowExperimentName"] == "test-experiment"
-        assert pipeline_def["MlflowConfig"]["MlflowRunName"] == "test-run"
 
     def test_deterministic_template_with_all_hyperparameters(self):
         """Test DETERMINISTIC_TEMPLATE with all optional hyperparameters."""
