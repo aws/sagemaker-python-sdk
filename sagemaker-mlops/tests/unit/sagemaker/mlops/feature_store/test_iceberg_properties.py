@@ -1,7 +1,6 @@
 """Unit tests for Iceberg properties in FeatureGroupManager."""
 from unittest.mock import MagicMock, patch
 
-import botocore.exceptions
 import pytest
 
 from boto3 import Session
@@ -123,89 +122,69 @@ class TestGetIcebergProperties:
         with pytest.raises(ValueError, match="data_catalog_config is not available"):
             self.fg._get_iceberg_properties()
 
-    @patch("sagemaker.mlops.feature_store.feature_group_manager.Session")
-    def test_successful_get_table_and_field_stripping(self, mock_session_class):
-        """Test successful Glue get_table call strips non-TableInput fields."""
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
+    def test_successful_load_table(self, mock_load_catalog):
+        """Test successful pyiceberg catalog load_table call."""
+        mock_catalog = MagicMock()
+        mock_table = MagicMock()
+        mock_table.properties = {"table_type": "ICEBERG"}
+        mock_catalog.load_table.return_value = mock_table
+        mock_load_catalog.return_value = mock_catalog
+
         mock_session = MagicMock()
-        mock_glue_client = MagicMock()
-        mock_session.client.return_value = mock_glue_client
-        mock_session_class.return_value = mock_session
-
-        mock_glue_client.get_table.return_value = {
-            "Table": {
-                "Name": "test_table",
-                "Parameters": {"table_type": "ICEBERG"},
-                "DatabaseName": "test_db",
-                "CreateTime": "2024-01-01",
-                "UpdateTime": "2024-01-02",
-                "CreatedBy": "user",
-                "IsRegisteredWithLakeFormation": False,
-                "CatalogId": "123456789012",
-                "VersionId": "1",
-                "FederatedTable": {},
-                "IsMultiDialectView": False,
-                "IsMaterializedView": False,
-            }
-        }
-
-        result = self.fg._get_iceberg_properties()
-
-        assert result["database_name"] == "test_db"
-        assert result["table_name"] == "test_table"
-        assert result["glue_client"] == mock_glue_client
-        # Verify stripped fields are not in table_input
-        for field in ["DatabaseName", "CreateTime", "UpdateTime", "CreatedBy",
-                      "IsRegisteredWithLakeFormation", "CatalogId", "VersionId", "FederatedTable",
-                      "IsMultiDialectView", "IsMaterializedView"]:
-            assert field not in result["table_input"]
-        # Verify kept fields remain
-        assert result["table_input"]["Name"] == "test_table"
-        assert result["table_input"]["Parameters"] == {"table_type": "ICEBERG"}
-
-    def test_uses_provided_session_and_region(self):
-        """Test that provided session and region are used instead of defaults."""
-        mock_session = MagicMock()
-        mock_glue_client = MagicMock()
-        mock_session.client.return_value = mock_glue_client
-
-        mock_glue_client.get_table.return_value = {
-            "Table": {"Name": "test_table"}
-        }
-
-        result = self.fg._get_iceberg_properties(session=mock_session, region="eu-west-1")
-
-        mock_session.client.assert_called_once_with("glue", region_name="eu-west-1")
-
-    def test_uses_session_region_when_region_not_provided(self):
-        """Test that session.region_name is used when region is None."""
-        mock_session = MagicMock()
-        mock_session.region_name = "ap-southeast-1"
-        mock_glue_client = MagicMock()
-        mock_session.client.return_value = mock_glue_client
-
-        mock_glue_client.get_table.return_value = {
-            "Table": {"Name": "test_table"}
-        }
+        mock_session.region_name = "us-west-2"
 
         result = self.fg._get_iceberg_properties(session=mock_session)
 
-        mock_session.client.assert_called_once_with("glue", region_name="ap-southeast-1")
+        assert result["database_name"] == "test_db"
+        assert result["table_name"] == "test_table"
+        assert result["table"] == mock_table
+        assert result["properties"] == {"table_type": "ICEBERG"}
+        mock_catalog.load_table.assert_called_once_with("test_db.test_table")
 
-    @patch("sagemaker.mlops.feature_store.feature_group_manager.Session")
-    def test_raises_runtime_error_on_client_error(self, mock_session_class):
-        """Test RuntimeError wrapping ClientError from Glue."""
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
+    def test_uses_provided_session_and_region(self, mock_load_catalog):
+        """Test that provided session and region are used instead of defaults."""
+        mock_catalog = MagicMock()
+        mock_table = MagicMock()
+        mock_table.properties = {}
+        mock_catalog.load_table.return_value = mock_table
+        mock_load_catalog.return_value = mock_catalog
+
         mock_session = MagicMock()
-        mock_glue_client = MagicMock()
-        mock_session.client.return_value = mock_glue_client
-        mock_session_class.return_value = mock_session
 
-        mock_glue_client.get_table.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "EntityNotFoundException", "Message": "Table not found"}},
-            "GetTable",
-        )
+        self.fg._get_iceberg_properties(session=mock_session, region="eu-west-1")
 
-        with pytest.raises(RuntimeError, match="Failed to update Iceberg properties"):
-            self.fg._get_iceberg_properties()
+        mock_load_catalog.assert_called_once_with("glue", **{"type": "glue", "client.region": "eu-west-1"})
+
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
+    def test_uses_session_region_when_region_not_provided(self, mock_load_catalog):
+        """Test that session.region_name is used when region is None."""
+        mock_catalog = MagicMock()
+        mock_table = MagicMock()
+        mock_table.properties = {}
+        mock_catalog.load_table.return_value = mock_table
+        mock_load_catalog.return_value = mock_catalog
+
+        mock_session = MagicMock()
+        mock_session.region_name = "ap-southeast-1"
+
+        self.fg._get_iceberg_properties(session=mock_session)
+
+        mock_load_catalog.assert_called_once_with("glue", **{"type": "glue", "client.region": "ap-southeast-1"})
+
+    @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
+    def test_raises_runtime_error_on_client_error(self, mock_load_catalog):
+        """Test RuntimeError wrapping Exception from pyiceberg."""
+        mock_catalog = MagicMock()
+        mock_catalog.load_table.side_effect = Exception("Table not found")
+        mock_load_catalog.return_value = mock_catalog
+
+        mock_session = MagicMock()
+        mock_session.region_name = "us-west-2"
+
+        with pytest.raises(RuntimeError, match="Failed to get Iceberg properties"):
+            self.fg._get_iceberg_properties(session=mock_session)
 
 
 class TestUpdateIcebergProperties:
@@ -237,62 +216,58 @@ class TestUpdateIcebergProperties:
             self.fg._update_iceberg_properties(iceberg_properties=props)
 
     def test_successful_update_merges_properties(self):
-        """Test successful update merges properties and calls update_table."""
-        mock_glue_client = MagicMock()
+        """Test successful update sets properties via pyiceberg transaction."""
+        mock_table = MagicMock()
+        mock_txn = MagicMock()
+        mock_table.transaction.return_value.__enter__ = MagicMock(return_value=mock_txn)
+        mock_table.transaction.return_value.__exit__ = MagicMock(return_value=False)
+
         self.fg._get_iceberg_properties.return_value = {
             "database_name": "test_db",
             "table_name": "test_table",
-            "table_input": {
-                "Name": "test_table",
-                "Parameters": {"table_type": "ICEBERG", "existing_key": "existing_value"},
-            },
-            "glue_client": mock_glue_client,
+            "table": mock_table,
+            "properties": {"table_type": "ICEBERG", "existing_key": "existing_value"},
         }
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
         result = self.fg._update_iceberg_properties(iceberg_properties=props)
 
-        # Verify update_table was called with merged parameters
-        call_args = mock_glue_client.update_table.call_args
-        updated_params = call_args[1]["TableInput"]["Parameters"]
-        assert updated_params["table_type"] == "ICEBERG"
-        assert updated_params["existing_key"] == "existing_value"
-        assert updated_params["write.target-file-size-bytes"] == "536870912"
+        mock_txn.set_properties.assert_called_once_with(props.properties)
 
         assert result["database"] == "test_db"
         assert result["table"] == "test_table"
         assert result["properties_updated"] == props.properties
 
-    def test_creates_parameters_dict_when_missing(self):
-        """Test that Parameters dict is created when not present in table_input."""
-        mock_glue_client = MagicMock()
+    def test_update_with_no_existing_properties(self):
+        """Test update when table has no existing properties."""
+        mock_table = MagicMock()
+        mock_txn = MagicMock()
+        mock_table.transaction.return_value.__enter__ = MagicMock(return_value=mock_txn)
+        mock_table.transaction.return_value.__exit__ = MagicMock(return_value=False)
+
         self.fg._get_iceberg_properties.return_value = {
             "database_name": "test_db",
             "table_name": "test_table",
-            "table_input": {"Name": "test_table"},
-            "glue_client": mock_glue_client,
+            "table": mock_table,
+            "properties": {},
         }
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "value"})
         result = self.fg._update_iceberg_properties(iceberg_properties=props)
 
-        call_args = mock_glue_client.update_table.call_args
-        updated_params = call_args[1]["TableInput"]["Parameters"]
-        assert updated_params == {"write.target-file-size-bytes": "value"}
+        mock_txn.set_properties.assert_called_once_with(props.properties)
 
     def test_raises_runtime_error_on_update_table_client_error(self):
-        """Test RuntimeError wrapping ClientError from Glue update_table."""
-        mock_glue_client = MagicMock()
+        """Test RuntimeError wrapping Exception from pyiceberg transaction."""
+        mock_table = MagicMock()
+        mock_table.transaction().__enter__().set_properties.side_effect = Exception("Access denied")
+
         self.fg._get_iceberg_properties.return_value = {
             "database_name": "test_db",
             "table_name": "test_table",
-            "table_input": {"Name": "test_table", "Parameters": {}},
-            "glue_client": mock_glue_client,
+            "table": mock_table,
+            "properties": {},
         }
-        mock_glue_client.update_table.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "AccessDeniedException", "Message": "Access denied"}},
-            "UpdateTable",
-        )
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "value"})
 
@@ -559,6 +534,60 @@ class TestCreateWithIcebergProperties:
             region="eu-west-1",
         )
 
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    @patch.object(FeatureGroupManager, "get")
+    @patch.object(FeatureGroupManager, "wait_for_status")
+    @patch.object(FeatureGroupManager, "_update_iceberg_properties")
+    def test_create_logs_and_reraises_when_iceberg_update_fails(
+        self, mock_update, mock_wait, mock_get, mock_get_client
+    ):
+        """Test that create logs error and re-raises when iceberg update fails after FG creation."""
+        from sagemaker.core.shapes import (
+            FeatureDefinition,
+            OfflineStoreConfig,
+            S3StorageConfig,
+            DataCatalogConfig,
+        )
+
+        mock_client = MagicMock()
+        mock_client.create_feature_group.return_value = {
+            "FeatureGroupArn": "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test"
+        }
+        mock_get_client.return_value = mock_client
+
+        mock_fg = MagicMock(spec=FeatureGroupManager)
+        mock_fg.feature_group_name = "test-fg"
+        mock_fg.wait_for_status = mock_wait
+        mock_fg._update_iceberg_properties = mock_update
+        mock_get.return_value = mock_fg
+
+        mock_update.side_effect = RuntimeError("Iceberg catalog error")
+
+        iceberg_props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
+
+        with pytest.raises(RuntimeError, match="Iceberg catalog error"):
+            FeatureGroupManager.create(
+                feature_group_name="test-fg",
+                record_identifier_feature_name="record_id",
+                event_time_feature_name="event_time",
+                feature_definitions=[
+                    FeatureDefinition(feature_name="record_id", feature_type="String"),
+                    FeatureDefinition(feature_name="event_time", feature_type="String"),
+                ],
+                offline_store_config=OfflineStoreConfig(
+                    s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path"),
+                    data_catalog_config=DataCatalogConfig(
+                        catalog="AwsDataCatalog", database="db", table_name="tbl"
+                    ),
+                    table_format="Iceberg",
+                ),
+                iceberg_properties=iceberg_props,
+            )
+
+        # FG was created (super().create called) and waited for status
+        mock_client.create_feature_group.assert_called_once()
+        mock_wait.assert_called_once_with(target_status="Created")
+
 
 class TestUpdateWithIcebergProperties:
     """Tests for update() method with iceberg_properties parameter."""
@@ -620,6 +649,30 @@ class TestUpdateWithIcebergProperties:
         )
 
     @patch.object(FeatureGroupManager, "_update_iceberg_properties")
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    def test_skips_parent_update_when_only_iceberg_properties(self, mock_get_client, mock_update_iceberg):
+        """Test that super().update() is not called when only iceberg_properties are passed."""
+        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
+
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        fg = FeatureGroupManager(feature_group_name="test-fg")
+        fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path"),
+            data_catalog_config=DataCatalogConfig(
+                catalog="AwsDataCatalog", database="db", table_name="tbl"
+            ),
+            table_format="Iceberg",
+        )
+        iceberg_props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
+        result = fg.update(iceberg_properties=iceberg_props, session=None, region=None)
+
+        mock_client.update_feature_group.assert_not_called()
+        mock_update_iceberg.assert_called_once()
+        assert result == fg
+
+    @patch.object(FeatureGroupManager, "_update_iceberg_properties")
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
     def test_parent_update_receives_only_standard_params(self, mock_get_client, mock_refresh, mock_update_iceberg):
@@ -647,6 +700,35 @@ class TestUpdateWithIcebergProperties:
         call_args = mock_client.update_feature_group.call_args
         assert "IcebergProperties" not in call_args[1]
         assert "Description" in call_args[1]
+
+    @patch.object(FeatureGroupManager, "_update_iceberg_properties")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    def test_update_logs_and_reraises_when_iceberg_update_fails(self, mock_get_client, mock_refresh, mock_update_iceberg):
+        """Test that update logs error and re-raises when iceberg update fails after FG update."""
+        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
+
+        mock_client = MagicMock()
+        mock_client.update_feature_group.return_value = {}
+        mock_get_client.return_value = mock_client
+
+        mock_update_iceberg.side_effect = RuntimeError("Iceberg catalog error")
+
+        fg = FeatureGroupManager(feature_group_name="test-fg")
+        fg.offline_store_config = OfflineStoreConfig(
+            s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/path"),
+            data_catalog_config=DataCatalogConfig(
+                catalog="AwsDataCatalog", database="db", table_name="tbl"
+            ),
+            table_format="Iceberg",
+        )
+        iceberg_props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
+
+        with pytest.raises(RuntimeError, match="Iceberg catalog error"):
+            fg.update(description="new desc", iceberg_properties=iceberg_props, session=None, region=None)
+
+        # Parent update was called successfully before iceberg update failed
+        mock_client.update_feature_group.assert_called_once()
 
     @patch.object(FeatureGroupManager, "refresh")
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
@@ -744,12 +826,10 @@ class TestGetWithIcebergProperties:
         mock_get_iceberg.return_value = {
             "database_name": "test_db",
             "table_name": "test_table",
-            "table_input": {
-                "Parameters": {
-                    "write.target-file-size-bytes": "536870912",
-                },
+            "table": MagicMock(),
+            "properties": {
+                "write.target-file-size-bytes": "536870912",
             },
-            "glue_client": MagicMock(),
         }
 
         result = FeatureGroupManager.get(
@@ -782,8 +862,8 @@ class TestGetWithIcebergProperties:
         mock_get_iceberg.return_value = {
             "database_name": "test_db",
             "table_name": "test_table",
-            "table_input": {},
-            "glue_client": MagicMock(),
+            "table": MagicMock(),
+            "properties": {},
         }
 
         result = FeatureGroupManager.get(
@@ -814,8 +894,8 @@ class TestGetWithIcebergProperties:
         mock_get_iceberg.return_value = {
             "database_name": "test_db",
             "table_name": "test_table",
-            "table_input": {"Parameters": {"write.target-file-size-bytes": "val"}},
-            "glue_client": MagicMock(),
+            "table": MagicMock(),
+            "properties": {"write.target-file-size-bytes": "val"},
         }
 
         FeatureGroupManager.get(

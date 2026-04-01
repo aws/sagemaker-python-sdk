@@ -6,7 +6,6 @@ import json
 import logging
 from typing import Dict, List, Optional
 
-import botocore.exceptions
 from pydantic import model_validator
 
 from sagemaker.core.resources import FeatureGroup
@@ -26,6 +25,7 @@ from sagemaker.core.helper.pipeline_variable import StrPipeVar
 from sagemaker.core.s3.utils import parse_s3_url
 from sagemaker.core.common_utils import aws_partition
 from boto3 import Session
+from pyiceberg.catalog import load_catalog
 from sagemaker.mlops.feature_store.feature_utils import _APPROVED_ICEBERG_PROPERTIES
 
 
@@ -81,10 +81,10 @@ class FeatureGroupManager(FeatureGroup):
         region: Optional[StrPipeVar] = None,
     ) -> Dict[str, any]:
         """
-        Fetch the current Glue table definition for the Feature Group's Iceberg offline store.
+        Fetch the current Iceberg catalog table definition for the Feature Group's Iceberg offline store.
 
-        Validates that the Feature Group has an Iceberg-formatted offline store,
-        retrieves the Glue table, and strips non-TableInput fields.
+        Validates that the Feature Group has an Iceberg-formatted offline store
+        and retrieves the table via the Iceberg catalog.
 
         Parameters:
             session: Optional boto3 session. If not provided, uses default credentials.
@@ -92,14 +92,14 @@ class FeatureGroupManager(FeatureGroup):
 
         Returns:
             Dict with keys:
-            - 'database_name': The Glue database name
-            - 'table_name': The Glue table name
-            - 'table_input': The cleaned Glue TableInput dict
-            - 'glue_client': The Glue client used for the request
+            - 'database_name': The Iceberg catalog database name
+            - 'table_name': The Iceberg catalog table name
+            - 'table': The pyiceberg Table object
+            - 'properties': The table properties dict
 
         Raises:
             ValueError: If offline_store_config is not configured or table_format is not Iceberg.
-            RuntimeError: If the Glue get_table call fails.
+            RuntimeError: If the Iceberg catalog table load fails.
         """
         # Validate offline store is configured
         if self.offline_store_config is None or self.offline_store_config == Unassigned():
@@ -126,50 +126,24 @@ class FeatureGroupManager(FeatureGroup):
         database_name = str(data_catalog_config.database)
         table_name = str(data_catalog_config.table_name)
 
-        # Get Glue client
         if session is None:
             session = Session()
-
         region_str = str(region) if region else session.region_name
-        glue_client = session.client("glue", region_name=region_str)
+        catalog = load_catalog("glue", **{"type": "glue", "client.region": region_str})
 
         try:
-            # Get current table definition
-            response = glue_client.get_table(
-                DatabaseName=database_name,
-                Name=table_name,
-            )
-            table_input = response["Table"]
-
-            # Remove fields that shouldn't be in TableInput
-            fields_to_remove = [
-                "DatabaseName",
-                "CreateTime",
-                "UpdateTime",
-                "CreatedBy",
-                "IsRegisteredWithLakeFormation",
-                "CatalogId",
-                "VersionId",
-                "FederatedTable",
-                "IsMultiDialectView",
-                "IsMaterializedView",
-            ]
-            for field in fields_to_remove:
-                table_input.pop(field, None)
+            table = catalog.load_table(f"{database_name}.{table_name}")
 
             return {
                 "database_name": database_name,
                 "table_name": table_name,
-                "table_input": table_input,
-                "glue_client": glue_client,
+                "table": table,
+                "properties": dict(table.properties),
             }
 
-        except botocore.exceptions.ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "Unknown")
-            error_message = e.response.get("Error", {}).get("Message", str(e))
+        except Exception as e:
             raise RuntimeError(
-                f"Failed to update Iceberg properties for {self.feature_group_name}: "
-                f"[{error_code}] {error_message}"
+                f"Failed to get Iceberg properties for {self.feature_group_name}: {e}"
             ) from e
 
     def _update_iceberg_properties(
@@ -222,8 +196,7 @@ class FeatureGroupManager(FeatureGroup):
         result = self._get_iceberg_properties(session=session, region=region)
         database_name = result["database_name"]
         table_name = result["table_name"]
-        table_input = result["table_input"]
-        glue_client = result["glue_client"]
+        table = result["table"]
 
         logger.info(
             f"Updating Iceberg properties for {self.feature_group_name} "
@@ -231,18 +204,8 @@ class FeatureGroupManager(FeatureGroup):
         )
 
         try:
-            # Update parameters with new Iceberg properties
-            if "Parameters" not in table_input:
-                table_input["Parameters"] = {}
-
-            for key, value in iceberg_properties.properties.items():
-                table_input["Parameters"][key] = value
-
-            # Update the table
-            glue_client.update_table(
-                DatabaseName=database_name,
-                TableInput=table_input,
-            )
+            with table.transaction() as txn:
+                txn.set_properties(iceberg_properties.properties)
 
             logger.info(
                 f"Successfully updated Iceberg properties for {self.feature_group_name}"
@@ -254,12 +217,9 @@ class FeatureGroupManager(FeatureGroup):
                 "properties_updated": iceberg_properties.properties,
             }
 
-        except botocore.exceptions.ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "Unknown")
-            error_message = e.response.get("Error", {}).get("Message", str(e))
+        except Exception as e:
             raise RuntimeError(
-                f"Failed to update Iceberg properties for {self.feature_group_name}: "
-                f"[{error_code}] {error_message}"
+                f"Failed to update Iceberg properties for {self.feature_group_name}: {e}"
             ) from e
 
     @classmethod
@@ -289,8 +249,13 @@ class FeatureGroupManager(FeatureGroup):
 
         if include_iceberg_properties:
             result = feature_group._get_iceberg_properties(session=session, region=region)
+            all_properties = result["properties"]
+            approved_properties = {
+                k: v for k, v in all_properties.items()
+                if k in _APPROVED_ICEBERG_PROPERTIES
+            }
             feature_group.iceberg_properties = IcebergProperties(
-                properties=result["table_input"].get("Parameters", {})
+                properties=approved_properties
             )
 
         return feature_group
@@ -342,11 +307,20 @@ class FeatureGroupManager(FeatureGroup):
         if iceberg_properties is not None and iceberg_properties.properties:
             # Wait for feature group to be created before updating Iceberg properties
             feature_group.wait_for_status(target_status="Created")
-            feature_group._update_iceberg_properties(
-                iceberg_properties=iceberg_properties,
-                session=session,
-                region=region,
-            )
+            try:
+                feature_group._update_iceberg_properties(
+                    iceberg_properties=iceberg_properties,
+                    session=session,
+                    region=region,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Feature group '{feature_group.feature_group_name}' was created "
+                    f"successfully but failed to update Iceberg properties: {e}."
+                    f"Please now run update on the created Feature Group with the"
+                    f"Iceberg Properties to avoid recreating your Feature Group again."
+                )
+                raise
 
         return feature_group
 
@@ -390,14 +364,29 @@ class FeatureGroupManager(FeatureGroup):
                     "iceberg_properties requires offline_store_config.table_format to be 'Iceberg'"
                 )
 
-        result = super().update(*args, **kwargs)
+        # Only call parent update if there are non-iceberg args to pass
+        result = None
+        if args or kwargs:
+            try:
+                result = super().update(*args, **kwargs)
+            except Exception as e:
+                logger.error(
+                    f"Feature group '{self.feature_group_name}' was not updated successfully: {e}"
+                )
 
         # Update Iceberg properties if requested
         if iceberg_properties is not None and iceberg_properties.properties:
-            self._update_iceberg_properties(
-                iceberg_properties=iceberg_properties,
-                session=session,
-                region=region,
-            )
+            try:
+                self._update_iceberg_properties(
+                    iceberg_properties=iceberg_properties,
+                    session=session,
+                    region=region,
+                )
+            except Exception as e:
+                logger.error(
+                    f"Feature group '{self.feature_group_name}' was updated successfully "
+                    f"but failed to update Iceberg properties: {e}"
+                )
+                raise
 
-        return result
+        return result if result is not None else self

@@ -71,8 +71,8 @@ def test_create_with_iceberg_properties(
     try:
         feature_definitions = load_feature_definitions_from_dataframe(sample_dataframe)
         iceberg_props = IcebergProperties(properties={
-            "write.target-file-size-bytes": "536870912",
-            "history.expire.max-snapshot-age-ms": "432000000",
+            "write.metadata.delete-after-commit.enabled": "true",
+            "write.metadata.previous-versions-max": "5",
         })
 
         fg = FeatureGroupManager.create(
@@ -95,8 +95,8 @@ def test_create_with_iceberg_properties(
             include_iceberg_properties=True,
         )
         assert retrieved.iceberg_properties is not None
-        assert retrieved.iceberg_properties.properties["write.target-file-size-bytes"] == "536870912"
-        assert retrieved.iceberg_properties.properties["history.expire.max-snapshot-age-ms"] == "432000000"
+        assert retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"] == "true"
+        assert retrieved.iceberg_properties.properties["write.metadata.previous-versions-max"] == "5"
     finally:
         cleanup_feature_group(feature_group_name)
 
@@ -117,24 +117,21 @@ def test_update_iceberg_properties(
                 s3_storage_config=S3StorageConfig(s3_uri=f"s3://{bucket}/feature-store"),
                 table_format="Iceberg",
             ),
-            iceberg_properties=IcebergProperties(properties={
-                "write.target-file-size-bytes": "536870912",
-            }),
         )
 
         fg.wait_for_status("Created")
 
         fg.update(iceberg_properties=IcebergProperties(properties={
-            "write.target-file-size-bytes": "268435456",
-            "history.expire.min-snapshots-to-keep": "5",
+            "write.metadata.delete-after-commit.enabled": "true",
+            "write.metadata.previous-versions-max": "5",
         }))
 
         retrieved = FeatureGroupManager.get(
             feature_group_name=feature_group_name,
             include_iceberg_properties=True,
         )
-        assert retrieved.iceberg_properties.properties["write.target-file-size-bytes"] == "268435456"
-        assert retrieved.iceberg_properties.properties["history.expire.min-snapshots-to-keep"] == "5"
+        assert retrieved.iceberg_properties.properties["write.metadata.delete-after-commit.enabled"] == "true"
+        assert retrieved.iceberg_properties.properties["write.metadata.previous-versions-max"] == "5"
     finally:
         cleanup_feature_group(feature_group_name)
 
