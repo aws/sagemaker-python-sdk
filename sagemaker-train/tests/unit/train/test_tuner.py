@@ -31,6 +31,7 @@ from sagemaker.core.shapes import (
     Channel,
     DataSource,
     S3DataSource,
+    OutputDataConfig,
 )
 
 
@@ -52,8 +53,10 @@ def _create_mock_model_trainer(with_internal_channels=False):
     trainer.training_image = "test-image:latest"
     trainer.training_input_mode = "File"
     trainer.role = "arn:aws:iam::123456789012:role/SageMakerRole"
-    trainer.output_data_config = MagicMock()
-    trainer.output_data_config.s3_output_path = "s3://bucket/output"
+    trainer.output_data_config = OutputDataConfig(
+        kms_key_id="arn:aws:kms:us-west-2:123456789012:key/abc123",
+        s3_output_path="s3://bucket/output",
+    )
     trainer.compute = MagicMock()
     trainer.compute.instance_type = "ml.m5.xlarge"
     trainer.compute.instance_count = 1
@@ -574,3 +577,16 @@ class TestHyperparameterTunerStaticMethods:
         assert "train" in channel_names, "User 'train' channel should be included"
         assert "validation" in channel_names, "User 'validation' channel should be included"
         assert len(channel_names) == 4, "Should have exactly 4 channels"
+
+    def test_build_training_job_definition_includes_output_data_config(self):
+        """Test that _build_training_job_definition includes ModelTrainer's output data config."""
+        mock_trainer = _create_mock_model_trainer()
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition([])
+
+        assert definition.output_data_config == mock_trainer.output_data_config
