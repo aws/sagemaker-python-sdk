@@ -255,7 +255,7 @@ class FeatureGroupManager(FeatureGroup):
 
         try:
             with table.transaction() as txn:
-                txn.set_properties(iceberg_properties.properties)
+                txn.set_properties(**iceberg_properties.properties)
 
             logger.info(
                 f"Successfully updated Iceberg properties for feature group "

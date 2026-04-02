@@ -293,7 +293,7 @@ class TestUpdateIcebergProperties:
         props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
         result = self.fg._update_iceberg_properties(iceberg_properties=props)
 
-        mock_txn.set_properties.assert_called_once_with(props.properties)
+        mock_txn.set_properties.assert_called_once_with(**props.properties)
 
         assert result["database"] == "test_db"
         assert result["table"] == "test_table"
@@ -316,7 +316,7 @@ class TestUpdateIcebergProperties:
         props = IcebergProperties(properties={"write.target-file-size-bytes": "value"})
         result = self.fg._update_iceberg_properties(iceberg_properties=props)
 
-        mock_txn.set_properties.assert_called_once_with(props.properties)
+        mock_txn.set_properties.assert_called_once_with(**props.properties)
 
     def test_raises_runtime_error_on_update_table_client_error(self):
         """Test RuntimeError wrapping Exception from pyiceberg transaction."""

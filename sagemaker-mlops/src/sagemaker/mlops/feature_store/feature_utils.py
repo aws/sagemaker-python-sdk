@@ -61,9 +61,6 @@ _APPROVED_ICEBERG_PROPERTIES = {
     "write.delete.mode",
     "write.update.mode",
     "write.delete.granularity",
-    "write.delete.isolation-level",
-    "write.update.isolation-level",
-    "write.merge.isolation-level",
     "history.expire.max-ref-age-ms",
     "read.split.open-file-cost",
     "write.target-file-size-bytes"
