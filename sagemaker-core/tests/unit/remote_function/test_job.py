@@ -146,7 +146,7 @@ class TestJob:
         job = _Job("test-job", "s3://bucket/output", mock_session, "test-key")
         assert job.job_name == "test-job"
         assert job.s3_uri == "s3://bucket/output"
-        assert job.hmac_key == "test-key"
+        assert job.verification_key == "test-key"
 
     def test_from_describe_response(self, mock_session):
         """Test creating _Job from describe response."""
@@ -158,7 +158,7 @@ class TestJob:
         job = _Job.from_describe_response(response, mock_session)
         assert job.job_name == "test-job"
         assert job.s3_uri == "s3://bucket/output"
-        assert job.hmac_key == "test-key"
+        assert job.verification_key == "test-key"
 
     def test_describe_returns_cached_response(self, mock_session):
         """Test that describe returns cached response for completed jobs."""

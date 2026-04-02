@@ -304,7 +304,9 @@ def _ecr_image_uri(account, region, image_name, tag):
 def _generate_sagemaker_sdk_tar(destination_folder):
     """Run build to generate the SDK tar file."""
     command = f"python -m build --sdist -o {destination_folder}"
-    result = subprocess.run(command, shell=True, check=True, capture_output=True)
+    env = os.environ.copy()
+    env["TMPDIR"] = destination_folder
+    subprocess.run(command, shell=True, check=True, capture_output=True, env=env)
     destination_folder_contents = os.listdir(destination_folder)
     source_archive = [f for f in destination_folder_contents if f.endswith("tar.gz")][0]
     return source_archive
