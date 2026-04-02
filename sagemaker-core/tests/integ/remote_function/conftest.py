@@ -21,6 +21,7 @@ import sys
 from contextlib import contextmanager
 
 import docker
+import filelock
 import pytest
 from docker.errors import BuildError
 
@@ -149,45 +150,52 @@ def gpu_instance_type():
 
 
 @pytest.fixture(scope="session")
-def dummy_container_without_error(sagemaker_session, compatible_python_version):
-    ecr_uri = _build_container(sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE)
-    return ecr_uri
-
-
-@pytest.fixture(scope="session")
-def dummy_container_with_user_and_workdir(sagemaker_session, compatible_python_version):
-    ecr_uri = _build_container(
-        sagemaker_session,
-        compatible_python_version,
-        DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR,
+def dummy_container_without_error(sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory):
+    return _build_container_once(
+        "dummy_container_without_error", sagemaker_session, compatible_python_version,
+        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
     )
-    return ecr_uri
 
 
 @pytest.fixture(scope="session")
-def dummy_container_incompatible_python_runtime(sagemaker_session, incompatible_python_version):
-    ecr_uri = _build_container(sagemaker_session, incompatible_python_version, DOCKERFILE_TEMPLATE)
-    return ecr_uri
-
-
-@pytest.fixture(scope="session")
-def dummy_container_with_conda(sagemaker_session, compatible_python_version):
-    ecr_uri = _build_container(
-        sagemaker_session, compatible_python_version, DOCKERFILE_TEMPLATE_WITH_CONDA
+def dummy_container_with_user_and_workdir(sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory):
+    return _build_container_once(
+        "dummy_container_with_user_and_workdir", sagemaker_session, compatible_python_version,
+        DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR, sagemaker_sdk_tar_path, tmp_path_factory,
     )
-    return ecr_uri
 
 
 @pytest.fixture(scope="session")
-def auto_capture_test_container(sagemaker_session):
-    ecr_uri = _build_auto_capture_client_container("3.10", AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE)
-    return ecr_uri
+def dummy_container_incompatible_python_runtime(sagemaker_session, incompatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory):
+    return _build_container_once(
+        "dummy_container_incompatible_python_runtime", sagemaker_session, incompatible_python_version,
+        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+    )
 
 
 @pytest.fixture(scope="session")
-def spark_test_container(sagemaker_session):
-    ecr_uri = _build_container(sagemaker_session, "3.9", DOCKERFILE_TEMPLATE)
-    return ecr_uri
+def dummy_container_with_conda(sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory):
+    return _build_container_once(
+        "dummy_container_with_conda", sagemaker_session, compatible_python_version,
+        DOCKERFILE_TEMPLATE_WITH_CONDA, sagemaker_sdk_tar_path, tmp_path_factory,
+    )
+
+
+@pytest.fixture(scope="session")
+def auto_capture_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_path_factory):
+    return _build_container_once(
+        "auto_capture_test_container", sagemaker_session, "3.10",
+        AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        is_auto_capture=True,
+    )
+
+
+@pytest.fixture(scope="session")
+def spark_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_path_factory):
+    return _build_container_once(
+        "spark_test_container", sagemaker_session, "3.9",
+        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -208,6 +216,27 @@ def conda_env_yml():
         os.remove(conda_yml_file_name)
 
 
+@pytest.fixture(scope="session")
+def sagemaker_sdk_tar_path(tmp_path_factory):
+    """Build the sagemaker-core sdist once and share it across all xdist workers.
+
+    Uses a file lock so only one worker runs the build; others wait and reuse
+    the already-built tar.gz from the shared temp directory.
+    """
+    # tmp_path_factory.getbasetemp().parent is shared across all xdist workers
+    root_tmp = tmp_path_factory.getbasetemp().parent
+    tar_dir = root_tmp / "sagemaker_sdk_tar"
+    tar_dir.mkdir(exist_ok=True)
+    lock_file = root_tmp / "sagemaker_sdk_tar.lock"
+
+    with filelock.FileLock(str(lock_file)):
+        existing = list(tar_dir.glob("*.tar.gz"))
+        if not existing:
+            _generate_sagemaker_sdk_tar(str(tar_dir))
+            existing = list(tar_dir.glob("*.tar.gz"))
+    return str(existing[0])
+
+
 def _tmpdir():
     """Create a temporary directory context manager."""
     import tempfile
@@ -222,7 +251,33 @@ def _tmpdir():
 _tmpdir = contextmanager(_tmpdir)
 
 
-def _build_container(sagemaker_session, py_version, docker_template):
+def _build_container_once(
+    fixture_name, sagemaker_session, py_version, docker_template, sdk_tar_path,
+    tmp_path_factory, is_auto_capture=False,
+):
+    """Build and push a container image exactly once across all xdist workers.
+
+    Uses a file lock keyed by fixture_name so parallel workers wait for the
+    first worker to finish, then reuse the ECR URI written to a shared file.
+    """
+    root_tmp = tmp_path_factory.getbasetemp().parent
+    uri_file = root_tmp / f"{fixture_name}.ecr_uri"
+    lock_file = root_tmp / f"{fixture_name}.lock"
+
+    with filelock.FileLock(str(lock_file)):
+        if uri_file.exists():
+            return uri_file.read_text().strip()
+        if is_auto_capture:
+            ecr_uri = _build_auto_capture_client_container(
+                py_version, docker_template, sdk_tar_path
+            )
+        else:
+            ecr_uri = _build_container(sagemaker_session, py_version, docker_template, sdk_tar_path)
+        uri_file.write_text(ecr_uri)
+    return ecr_uri
+
+
+def _build_container(sagemaker_session, py_version, docker_template, sdk_tar_path):
     """Build a dummy test container locally and push to ECR."""
     region = sagemaker_session.boto_region_name
     image_tag = f"{py_version.replace('.', '-')}-{sagemaker_timestamp()}"
@@ -231,7 +286,8 @@ def _build_container(sagemaker_session, py_version, docker_template):
 
     with _tmpdir() as tmpdir:
         print("building docker image locally in ", tmpdir)
-        source_archive = _generate_sagemaker_sdk_tar(tmpdir)
+        source_archive = os.path.basename(sdk_tar_path)
+        shutil.copy2(sdk_tar_path, os.path.join(tmpdir, source_archive))
         with open(os.path.join(tmpdir, "Dockerfile"), "w") as file:
             content = docker_template.format(py_version=py_version, source_archive=source_archive)
             print(f"Dockerfile contents: \n{content}\n")
@@ -267,10 +323,11 @@ def _build_container(sagemaker_session, py_version, docker_template):
     return ecr_image
 
 
-def _build_auto_capture_client_container(py_version, docker_template):
+def _build_auto_capture_client_container(py_version, docker_template, sdk_tar_path):
     """Build a test docker container for auto_capture tests."""
     with _tmpdir() as tmpdir:
-        source_archive = _generate_sdk_tar_with_public_version(tmpdir)
+        source_archive = os.path.basename(sdk_tar_path)
+        shutil.copy2(sdk_tar_path, os.path.join(tmpdir, source_archive))
         _move_auto_capture_test_file(tmpdir)
         with open(os.path.join(tmpdir, "Dockerfile"), "w") as file:
             content = docker_template.format(py_version=py_version, source_archive=source_archive)
@@ -304,7 +361,11 @@ def _ecr_image_uri(account, region, image_name, tag):
 def _generate_sagemaker_sdk_tar(destination_folder):
     """Run build to generate the SDK tar file."""
     command = f"python -m build --sdist -o {destination_folder}"
-    result = subprocess.run(command, shell=True, check=True, capture_output=True)
+    try:
+        subprocess.run(command, shell=True, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        print(f"Error when building sagemaker-core sdist: {e.stderr}")
+        raise
     destination_folder_contents = os.listdir(destination_folder)
     source_archive = [f for f in destination_folder_contents if f.endswith("tar.gz")][0]
     return source_archive

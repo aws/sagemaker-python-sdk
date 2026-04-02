@@ -842,19 +842,19 @@ class _JobSettings:
 class _Job:
     """Helper class that interacts with the SageMaker training service."""
 
-    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, hmac_key: str):
+    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, verification_key: str):
         """Initialize a _Job object.
 
         Args:
             job_name (str): The training job name.
             s3_uri (str): The training job output S3 uri.
             sagemaker_session (Session): SageMaker boto session.
-            hmac_key (str): Remote function secret key.
+            verification_key (str): Remote function secret key.
         """
         self.job_name = job_name
         self.s3_uri = s3_uri
         self.sagemaker_session = sagemaker_session
-        self.hmac_key = hmac_key
+        self.verification_key = verification_key
         self._last_describe_response = None
 
     @staticmethod
@@ -870,9 +870,9 @@ class _Job:
         """
         job_name = describe_training_job_response["TrainingJobName"]
         s3_uri = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
-        hmac_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
+        verification_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
 
-        job = _Job(job_name, s3_uri, sagemaker_session, hmac_key)
+        job = _Job(job_name, s3_uri, sagemaker_session, verification_key)
         job._last_describe_response = describe_training_job_response
         return job
 
@@ -965,7 +965,7 @@ class _Job:
             stored_function = StoredFunction(
                 sagemaker_session=job_settings.sagemaker_session,
                 s3_base_uri=s3_base_uri,
-                hmac_key=private_key,
+                signing_key=private_key,
                 s3_kms_key=job_settings.s3_kms_key,
             )
             stored_function.save(func, *func_args, **func_kwargs)
@@ -973,7 +973,7 @@ class _Job:
             stored_function = StoredFunction(
                 sagemaker_session=job_settings.sagemaker_session,
                 s3_base_uri=s3_base_uri,
-                hmac_key=private_key,
+                signing_key=private_key,
                 s3_kms_key=job_settings.s3_kms_key,
                 context=Context(
                     step_name=step_compilation_context.step_name,

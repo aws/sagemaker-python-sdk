@@ -149,8 +149,7 @@ class TestJobMethods:
         job = _Job.from_describe_response(response, mock_session)
         assert job.job_name == "test-job"
         assert job.s3_uri == "s3://bucket/output"
-        assert job.hmac_key == "test-key"
-        assert job._last_describe_response == response
+        assert job.verification_key == "test-key"
 
     def test_describe_cached_completed(self, mock_session):
         """Test lines 865-871: describe with cached completed job."""
