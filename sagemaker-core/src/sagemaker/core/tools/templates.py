@@ -644,7 +644,7 @@ class Base(BaseModel):
 
             if value == Unassigned() :
                 unassigned_args.append(arg)
-            elif value == None or not value:
+            elif value is None or not value:
                 continue
             elif (
                 arg_snake.endswith("name")
