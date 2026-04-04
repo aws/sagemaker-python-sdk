@@ -26,7 +26,7 @@ from unittest.mock import patch, MagicMock
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.helper.pipeline_variable import PipelineVariable, StrPipeVar
-from sagemaker.core.workflow.parameters import ParameterString
+from sagemaker.core.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.train.model_trainer import ModelTrainer, Mode
 from sagemaker.train.configs import (
     Compute,
@@ -176,3 +176,54 @@ class TestModelTrainerRealValuesStillWork:
                 stopping_condition=DEFAULT_STOPPING,
                 output_data_config=DEFAULT_OUTPUT,
             )
+
+
+class TestModelTrainerHyperparametersPipelineVariable:
+    """Test that ModelTrainer correctly preserves PipelineVariable objects in hyperparameters."""
+
+    def test_hyperparameters_preserves_pipeline_variable_integer(self):
+        """ParameterInteger in hyperparameters should be preserved in ModelTrainer."""
+        max_depth = ParameterInteger(name="MaxDepth", default_value=5)
+        trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE,
+            stopping_condition=DEFAULT_STOPPING,
+            output_data_config=DEFAULT_OUTPUT,
+            hyperparameters={"max_depth": max_depth},
+        )
+        assert trainer.hyperparameters["max_depth"] is max_depth
+
+    def test_hyperparameters_preserves_pipeline_variable_string(self):
+        """ParameterString in hyperparameters should be preserved in ModelTrainer."""
+        optimizer = ParameterString(name="Optimizer", default_value="sgd")
+        trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE,
+            stopping_condition=DEFAULT_STOPPING,
+            output_data_config=DEFAULT_OUTPUT,
+            hyperparameters={"optimizer": optimizer},
+        )
+        assert trainer.hyperparameters["optimizer"] is optimizer
+
+    def test_hyperparameters_preserves_mixed_pipeline_and_regular_values(self):
+        """Mixed PipelineVariable and regular values should all be preserved."""
+        max_depth = ParameterInteger(name="MaxDepth", default_value=5)
+        trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE,
+            stopping_condition=DEFAULT_STOPPING,
+            output_data_config=DEFAULT_OUTPUT,
+            hyperparameters={
+                "max_depth": max_depth,
+                "eta": 0.1,
+                "objective": "binary:logistic",
+            },
+        )
+        # PipelineVariable should be preserved as-is
+        assert trainer.hyperparameters["max_depth"] is max_depth
+        # Regular values should also be preserved
+        assert trainer.hyperparameters["eta"] == 0.1
+        assert trainer.hyperparameters["objective"] == "binary:logistic"
