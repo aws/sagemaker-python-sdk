@@ -905,7 +905,7 @@ class EvaluationPipelineExecution(BaseModel):
             if ipython is not None and 'IPKernelApp' in ipython.config:
                 is_jupyter = True
                 from IPython.display import display, HTML, clear_output
-        except:
+        except Exception:
             pass
         
         if is_jupyter:
@@ -996,7 +996,7 @@ class EvaluationPipelineExecution(BaseModel):
                                 end = datetime.fromisoformat(step.end_time.replace('Z', '+00:00'))
                                 duration_seconds = (end - start).total_seconds()
                                 duration = f"{duration_seconds:.1f}s"
-                            except:
+                            except Exception:
                                 duration = "N/A"
                         elif step.start_time:
                             duration = "Running..."
