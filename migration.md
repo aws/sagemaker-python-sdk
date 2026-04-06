@@ -418,6 +418,139 @@ pipeline = Pipeline(
 )
 ```
 
+### 5. Feature Store
+
+Feature Store is fully supported in V3 under the `sagemaker.mlops.feature_store` namespace. The V2 `sagemaker.feature_store` module has been reorganized — FeatureGroup and shapes come from `sagemaker-core`, while utility functions, ingestion, Athena queries, and dataset building are provided by the `sagemaker-mlops` package.
+
+> **Detailed Migration Guide:** For comprehensive V2-to-V3 Feature Store migration instructions, see [`sagemaker-mlops/src/sagemaker/mlops/feature_store/MIGRATION_GUIDE.md`](sagemaker-mlops/src/sagemaker/mlops/feature_store/MIGRATION_GUIDE.md).
+
+**Import Changes:**
+
+```python
+# V2 imports
+from sagemaker.feature_store.feature_group import FeatureGroup  # ❌
+from sagemaker.feature_store.inputs import FeatureValue          # ❌
+from sagemaker.session import Session                            # ❌
+
+# V3 imports — everything from one place
+from sagemaker.mlops.feature_store import FeatureGroup           # ✅
+from sagemaker.mlops.feature_store import FeatureValue           # ✅
+from sagemaker.mlops.feature_store import ingest_dataframe       # ✅
+```
+
+**Create a FeatureGroup:**
+
+**V2:**
+
+```python
+from sagemaker.feature_store.feature_group import FeatureGroup
+from sagemaker.session import Session
+
+session = Session()
+fg = FeatureGroup(name="my-fg", sagemaker_session=session)
+fg.load_feature_definitions(data_frame=df)
+fg.create(
+    s3_uri="s3://bucket/prefix",
+    record_identifier_name="id",
+    event_time_feature_name="ts",
+    role_arn=role,
+    enable_online_store=True,
+)
+```
+
+**V3:**
+
+```python
+from sagemaker.mlops.feature_store import (
+    FeatureGroup,
+    OnlineStoreConfig,
+    OfflineStoreConfig,
+    S3StorageConfig,
+    load_feature_definitions_from_dataframe,
+)
+
+feature_defs = load_feature_definitions_from_dataframe(df)
+
+FeatureGroup.create(
+    feature_group_name="my-fg",
+    feature_definitions=feature_defs,
+    record_identifier_feature_name="id",
+    event_time_feature_name="ts",
+    role_arn=role,
+    online_store_config=OnlineStoreConfig(enable_online_store=True),
+    offline_store_config=OfflineStoreConfig(
+        s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/prefix")
+    ),
+)
+```
+
+**Record Operations (Put/Get/Delete):**
+
+**V2:**
+
+```python
+from sagemaker.feature_store.inputs import FeatureValue
+
+fg.put_record(record=[FeatureValue(feature_name="id", value_as_string="123")])
+response = fg.get_record(record_identifier_value_as_string="123")
+fg.delete_record(record_identifier_value_as_string="123", event_time="2024-01-15T00:00:00Z")
+```
+
+**V3:**
+
+```python
+from sagemaker.mlops.feature_store import FeatureGroup, FeatureValue
+
+fg = FeatureGroup(feature_group_name="my-fg")
+fg.put_record(record=[FeatureValue(feature_name="id", value_as_string="123")])
+response = fg.get_record(record_identifier_value_as_string="123")
+fg.delete_record(record_identifier_value_as_string="123", event_time="2024-01-15T00:00:00Z")
+```
+
+**DataFrame Ingestion:**
+
+**V2:**
+
+```python
+fg.ingest(data_frame=df, max_workers=4, max_processes=2, wait=True)
+```
+
+**V3:**
+
+```python
+from sagemaker.mlops.feature_store import ingest_dataframe
+
+manager = ingest_dataframe(
+    feature_group_name="my-fg",
+    data_frame=df,
+    max_workers=4,
+    max_processes=2,
+    wait=True,
+)
+```
+
+**Athena Queries:**
+
+**V2:**
+
+```python
+query = fg.athena_query()
+query.run(query_string="SELECT * FROM ...", output_location="s3://...")
+query.wait()
+df = query.as_dataframe()
+```
+
+**V3:**
+
+```python
+from sagemaker.mlops.feature_store import create_athena_query
+
+query = create_athena_query("my-fg", session)
+query.run(query_string="SELECT * FROM ...", output_location="s3://...")
+query.wait()
+df = query.as_dataframe()
+```
+
 ## Feature Mapping
 
 ### Training Features
@@ -449,6 +582,27 @@ pipeline = Pipeline(
 | Processor | ProcessingJob | Processing jobs |
 | ScriptProcessor | ProcessingJob | Script-based processing |
 | FrameworkProcessor | ProcessingJob | Framework-specific processing |
+
+### Feature Store Features
+
+| V2 Feature | V3 Equivalent | Notes |
+|------------|---------------|-------|
+| `sagemaker.feature_store.feature_group.FeatureGroup` | `sagemaker.mlops.feature_store.FeatureGroup` | Re-exported from sagemaker-core |
+| `FeatureGroup(name=..., sagemaker_session=...)` | `FeatureGroup(feature_group_name=...)` | Session managed internally by core |
+| `fg.create(s3_uri=..., enable_online_store=...)` | `FeatureGroup.create(online_store_config=..., offline_store_config=...)` | Structured config objects |
+| `fg.describe()` | `FeatureGroup.get(feature_group_name=...)` | Returns typed object |
+| `fg.delete()` | `FeatureGroup(feature_group_name=...).delete()` | Same pattern |
+| `fg.put_record(record=...)` | `FeatureGroup(feature_group_name=...).put_record(record=...)` | FeatureValue from core |
+| `fg.get_record(...)` | `FeatureGroup(feature_group_name=...).get_record(...)` | Same interface |
+| `fg.delete_record(...)` | `FeatureGroup(feature_group_name=...).delete_record(...)` | Use strings not enums |
+| `fg.ingest(data_frame=df)` | `ingest_dataframe(feature_group_name=..., data_frame=df)` | Standalone function |
+| `fg.athena_query()` | `create_athena_query(feature_group_name, session)` | Standalone function |
+| `fg.as_hive_ddl()` | `as_hive_ddl(feature_group_name)` | Standalone function |
+| `fg.load_feature_definitions(df)` | `load_feature_definitions_from_dataframe(df)` | Returns list, no mutation |
+| `FeatureStore(session).search(...)` | `FeatureStore.search(resource=..., search_expression=...)` | Core resource class |
+| `FeatureStore.create_dataset(...)` | `DatasetBuilder.create(...)` | Dataclass-based builder |
+| Config shapes with `to_dict()` | Pydantic shapes (auto-serialization) | No manual serialization needed |
+| `TargetStoreEnum.ONLINE_STORE.value` | `"OnlineStore"` (plain strings) | Enums available but strings preferred |
 
 ## Functionality Level Mapping
 
@@ -766,6 +920,12 @@ from sagemaker.train import ModelTrainer   # ✅
 
 from sagemaker.model import Model          # ❌
 from sagemaker.serve import ModelBuilder   # ✅
+
+from sagemaker.feature_store.feature_group import FeatureGroup  # ❌
+from sagemaker.mlops.feature_store import FeatureGroup          # ✅
+
+from sagemaker.feature_store.inputs import FeatureValue         # ❌
+from sagemaker.mlops.feature_store import FeatureValue          # ✅
 ```
 
 ### 2. Parameter Mapping

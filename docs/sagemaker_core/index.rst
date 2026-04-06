@@ -151,6 +151,46 @@ Key Core Features
 * **Monitoring Integration** - Built-in support for CloudWatch metrics, logging, and resource status tracking
 * **Error Handling** - Comprehensive error handling with detailed feedback for troubleshooting and debugging
 
+Feature Store
+~~~~~~~~~~~~~
+
+SageMaker Core provides the foundational ``FeatureGroup`` resource class used by the Feature Store module.
+For full Feature Store functionality in V3 — including DataFrame ingestion, Athena queries, dataset building,
+and feature definitions — use the ``sagemaker.mlops.feature_store`` package:
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import (
+       FeatureGroup,
+       OnlineStoreConfig,
+       OfflineStoreConfig,
+       S3StorageConfig,
+       load_feature_definitions_from_dataframe,
+       ingest_dataframe,
+       create_athena_query,
+       DatasetBuilder,
+   )
+
+   # Create a feature group
+   feature_defs = load_feature_definitions_from_dataframe(df)
+   FeatureGroup.create(
+       feature_group_name="my-feature-group",
+       feature_definitions=feature_defs,
+       record_identifier_feature_name="id",
+       event_time_feature_name="timestamp",
+       role_arn=role,
+       online_store_config=OnlineStoreConfig(enable_online_store=True),
+   )
+
+   # Ingest data from a DataFrame
+   ingest_dataframe(feature_group_name="my-feature-group", data_frame=df, max_workers=4)
+
+.. note::
+
+   If you are migrating from V2 (``sagemaker.feature_store``), see the
+   `Feature Store Migration Guide <https://github.com/aws/sagemaker-python-sdk/blob/main/sagemaker-mlops/src/sagemaker/mlops/feature_store/MIGRATION_GUIDE.md>`_
+   for detailed V2-to-V3 migration instructions.
+
 Supported Core Scenarios
 ------------------------
 
