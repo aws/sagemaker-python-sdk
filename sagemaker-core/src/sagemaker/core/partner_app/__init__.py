@@ -11,6 +11,8 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """__init__ file for sagemaker.core.partner_app"""
-from __future__ import absolute_import
+from __future__ import annotations
 
 from sagemaker.core.partner_app.auth_provider import PartnerAppAuthProvider  # noqa: F401
+from sagemaker.core.partner_app.auth_provider import RequestsAuth  # noqa: F401
+from sagemaker.core.partner_app.auth_utils import PartnerAppAuthUtils  # noqa: F401
