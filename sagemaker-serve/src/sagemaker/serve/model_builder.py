@@ -1063,6 +1063,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         hub_content_name = getattr(base_model, "hub_content_name", "") or ""
         return "nova" in recipe_name.lower() or "nova" in hub_content_name.lower()
 
+    def _is_nova_model_for_telemetry(self) -> bool:
+        """Check if the model is a Nova model for telemetry tracking."""
+        try:
+            return self._is_nova_model()
+        except Exception:
+            return False
+
     def _get_nova_hosting_config(self, instance_type=None):
         """Get Nova hosting config (image URI, env vars, instance type).
 

@@ -69,6 +69,12 @@ class BaseTrainer(ABC):
         self.input_data_config = input_data_config
         self.environment = environment or {}
 
+    def _is_nova_model_for_telemetry(self) -> bool:
+        """Check if the model is a Nova model for telemetry tracking."""
+        from sagemaker.train.common_utils.recipe_utils import _is_nova_model
+        model_name = getattr(self, "_model_name", None)
+        return _is_nova_model(model_name) if model_name else False
+
     @abstractmethod
     def train(self, input_data_config: List[InputData], wait: bool = True, logs: bool = True):
         """Common training method that calls the specific implementation."""

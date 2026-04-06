@@ -414,6 +414,12 @@ class BaseEvaluator(BaseModel):
         info = self._get_resolved_model_info()
         return info.source_model_package_arn if info else None
 
+    def _is_nova_model_for_telemetry(self) -> bool:
+        """Check if the model is a Nova model for telemetry tracking."""
+        from ..common_utils.recipe_utils import _is_nova_model
+        base_model_name = self._base_model_name
+        return _is_nova_model(base_model_name) if base_model_name else False
+
     @property
     def _is_jumpstart_model(self) -> bool:
         """Determine if model is a JumpStart model"""
