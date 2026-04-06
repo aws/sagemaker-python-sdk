@@ -11,6 +11,7 @@ Run with: pytest tests/integ/test_featureStore_lakeformation.py -v -m integ
 
 import logging
 import uuid
+from unittest.mock import patch
 
 import boto3
 import pytest
@@ -622,6 +623,114 @@ def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, regi
         if fg:
             cleanup_feature_group(fg)
 
+# ============================================================================
+# Audit Gate Integration Tests
+# ============================================================================
+
+
+@pytest.mark.serial
+@pytest.mark.slow_test
+def test_audit_gate_detects_glue_table_access(s3_uri, role, region):
+    """
+    Test that the audit gate in enable_lake_formation() detects principals
+    that accessed the Glue table via CloudTrail.
+
+    Flow:
+    1. Create a FeatureGroup (without LF) and wait for Created status
+    2. Call glue:GetTable on the FG's Glue table to generate a CloudTrail event
+    3. Wait for CloudTrail propagation (~5 minutes)
+    4. Call enable_lake_formation() with input() mocked to decline ('N')
+    5. Verify the result contains aborted=True and audit_results with the accessor
+
+    This test is extensible: additional access patterns (training jobs, Athena
+    queries, etc.) can be added as separate test functions following the same
+    pattern.
+    """
+    import time
+
+    fg_name = generate_feature_group_name()
+    fg = None
+
+    try:
+        # Step 1: Create FG without Lake Formation
+        fg = create_test_feature_group(fg_name, s3_uri, role, region)
+        fg.wait_for_status(target_status="Created", poll=30, timeout=300)
+        fg.refresh()
+
+        # Extract Glue table info
+        data_catalog_config = fg.offline_store_config.data_catalog_config
+        database_name = str(data_catalog_config.database)
+        table_name = str(data_catalog_config.table_name)
+
+        # Step 2: Access the Glue table to generate a CloudTrail event
+        glue_client = boto3.client("glue", region_name=region)
+        response = glue_client.get_table(DatabaseName=database_name, Name=table_name)
+        assert "Table" in response, "glue:GetTable should return table metadata"
+        print(f"[TEST] Called glue:GetTable on {database_name}.{table_name}")
+
+        # Step 3: Wait for CloudTrail propagation
+        # CloudTrail events typically appear within 5 minutes
+        wait_minutes = 6
+        print(f"[TEST] Waiting {wait_minutes} minutes for CloudTrail propagation...")
+        time.sleep(wait_minutes * 60)
+
+        # Step 4: Call enable_lake_formation with user declining confirmation
+        with patch("builtins.input", return_value="N"):
+            result = fg.enable_lake_formation(lookback_days=1)
+
+        # Step 5: Verify the result indicates abort with audit findings
+        print(f"[TEST] Audit gate result:\n{result}")
+
+        assert result["aborted"] is True
+        audit_results = result["audit_results"]
+        assert "glue_table_accessors" in audit_results
+        assert len(audit_results["glue_table_accessors"]) > 0
+        assert audit_results["glue_table"] == table_name
+
+    finally:
+        if fg:
+            cleanup_feature_group(fg)
+
+
+@pytest.mark.serial
+@pytest.mark.slow_test
+def test_audit_lake_formation_impact_standalone(s3_uri, role, region):
+    """
+    Test that audit_lake_formation_impact() runs successfully and returns
+    the expected dict structure.
+
+    This test does not require CloudTrail data -- it just verifies the method
+    executes without error and returns the correct keys.
+    """
+    fg_name = generate_feature_group_name()
+    fg = None
+
+    try:
+        fg = create_test_feature_group(fg_name, s3_uri, role, region)
+        fg.wait_for_status(target_status="Created", poll=30, timeout=300)
+
+        result = fg.audit_lake_formation_impact()
+
+        expected_keys = {
+            "glue_table_accessors",
+            "sagemaker_execution_roles",
+            "athena_query_principals",
+            "athena_running_queries",
+            "glue_etl_jobs",
+            "glue_running_job_runs",
+            "sagemaker_running_jobs",
+            "glue_database",
+            "glue_table",
+            "s3_path",
+            "warnings",
+        }
+        assert expected_keys.issubset(result.keys()), f"Missing keys: {expected_keys - result.keys()}"
+
+    finally:
+        if fg:
+            cleanup_feature_group(fg)
+
+
 @pytest.mark.skip(reason="This is a full e2e test that could take 15 min to run.")
 @pytest.mark.serial
 @pytest.mark.slow_test
@@ -688,3 +797,5 @@ def test_e2e_lf_put_record_athena_query(sagemaker_session, s3_uri, role, region)
     finally:
         if fg:
             cleanup_feature_group(fg)
+
+
