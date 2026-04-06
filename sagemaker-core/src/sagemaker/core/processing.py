@@ -51,7 +51,7 @@ from sagemaker.core.config.config_schema import (
 )
 from sagemaker.core.local.local_session import LocalSession
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.shapes import ProcessingInput, ProcessingOutput, ProcessingS3Input
+from sagemaker.core.shapes import ProcessingInput, ProcessingOutput, ProcessingS3Input, ProcessingS3Output
 from sagemaker.core.resources import ProcessingJob
 from sagemaker.core.workflow.pipeline_context import PipelineSession
 from sagemaker.core.common_utils import (
@@ -483,7 +483,46 @@ class Processor(object):
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
-                if output.s3_output and is_pipeline_variable(output.s3_output.s3_uri):
+                if output.s3_output and output.s3_output.s3_uri is not None and is_pipeline_variable(output.s3_output.s3_uri):
+                    normalized_outputs.append(output)
+                    continue
+                # If s3_output or s3_uri is None, auto-generate an S3 URI
+                if output.s3_output is None or output.s3_output.s3_uri is None:
+                    if _pipeline_config:
+                        s3_uri = Join(
+                            on="/",
+                            values=[
+                                "s3:/",
+                                self.sagemaker_session.default_bucket(),
+                                *(
+                                    [self.sagemaker_session.default_bucket_prefix]
+                                    if self.sagemaker_session.default_bucket_prefix
+                                    else []
+                                ),
+                                _pipeline_config.pipeline_name,
+                                ExecutionVariables.PIPELINE_EXECUTION_ID,
+                                _pipeline_config.step_name,
+                                "output",
+                                output.output_name,
+                            ],
+                        )
+                    else:
+                        s3_uri = s3.s3_path_join(
+                            "s3://",
+                            self.sagemaker_session.default_bucket(),
+                            self.sagemaker_session.default_bucket_prefix,
+                            self._current_job_name,
+                            "output",
+                            output.output_name,
+                        )
+                    if output.s3_output is None:
+                        output.s3_output = ProcessingS3Output(
+                            s3_uri=s3_uri,
+                            local_path="/opt/ml/processing/output",
+                            s3_upload_mode="EndOfJob",
+                        )
+                    else:
+                        output.s3_output.s3_uri = s3_uri
                     normalized_outputs.append(output)
                     continue
                 # If the output's s3_uri is not an s3_uri, create one.
@@ -1421,11 +1460,13 @@ def _processing_output_to_request_dict(processing_output):
     }
 
     if processing_output.s3_output:
-        request_dict["S3Output"] = {
-            "S3Uri": processing_output.s3_output.s3_uri,
+        s3_output_dict = {
             "LocalPath": processing_output.s3_output.local_path,
             "S3UploadMode": processing_output.s3_output.s3_upload_mode,
         }
+        if processing_output.s3_output.s3_uri is not None:
+            s3_output_dict["S3Uri"] = processing_output.s3_output.s3_uri
+        request_dict["S3Output"] = s3_output_dict
 
     return request_dict
 
