@@ -11,10 +11,21 @@ The MLOps package sits at the top of the dependency hierarchy and can import fro
 Key components:
 - workflow: Pipeline and step orchestration
 - model_builder: Model building and orchestration
+- feature_store: Feature Store management (FeatureGroup, FeatureStore, ingestion, etc.)
 
 Example usage:
     from sagemaker.mlops import ModelBuilder
     from sagemaker.mlops.workflow import Pipeline, TrainingStep
+
+    # Feature Store
+    from sagemaker.mlops.feature_store import (
+        FeatureGroup,
+        FeatureStore,
+        FeatureMetadata,
+        create_dataset,
+        ingest_dataframe,
+        create_athena_query,
+    )
 """
 from __future__ import absolute_import
 
@@ -27,7 +38,12 @@ from sagemaker.serve.model_builder import ModelBuilder
 #   from sagemaker.mlops import workflow
 #   from sagemaker.mlops.workflow import Pipeline, TrainingStep, etc.
 
+# Feature Store submodule is available via:
+#   from sagemaker.mlops import feature_store
+#   from sagemaker.mlops.feature_store import FeatureGroup, FeatureStore, create_dataset, etc.
+
 __all__ = [
     "ModelBuilder",
     "workflow",  # Submodule
+    "feature_store",  # Submodule
 ]

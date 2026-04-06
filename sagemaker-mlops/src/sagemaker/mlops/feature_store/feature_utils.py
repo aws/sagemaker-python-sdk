@@ -421,6 +421,64 @@ def as_hive_ddl(
     return ddl
 
 
+@_telemetry_emitter(Feature.FEATURE_STORE, "create_dataset")
+def create_dataset(
+    base,
+    output_path: str,
+    session: Session,
+    record_identifier_feature_name: str = None,
+    event_time_identifier_feature_name: str = None,
+    included_feature_names=None,
+    kms_key_id: str = None,
+):
+    """Create a DatasetBuilder for generating a Dataset from FeatureGroups.
+
+    This is a convenience function that constructs a DatasetBuilder instance.
+    The base can be either a FeatureGroup or a pandas DataFrame.
+
+    Args:
+        base (Union[FeatureGroup, DataFrame]): A FeatureGroup or DataFrame to use as the base.
+        output_path (str): S3 URI for storing query results.
+        session (Session): SageMaker session for boto calls.
+        record_identifier_feature_name (str): Required if base is a DataFrame.
+            The feature name used as the record identifier (default: None).
+        event_time_identifier_feature_name (str): Required if base is a DataFrame.
+            The feature name used as the event time identifier (default: None).
+        included_feature_names (List[str]): Features to include in the output.
+            If not set, all features will be included (default: None).
+        kms_key_id (str): KMS key for encryption (default: None).
+
+    Returns:
+        DatasetBuilder: A DatasetBuilder instance configured with the provided parameters.
+
+    Raises:
+        ValueError: If base is a DataFrame and record_identifier_feature_name or
+            event_time_identifier_feature_name is not provided.
+
+    Example:
+        >>> from sagemaker.mlops.feature_store import create_dataset, FeatureGroup
+        >>> fg = FeatureGroup.get(feature_group_name="my-fg")
+        >>> builder = create_dataset(
+        ...     base=fg,
+        ...     output_path="s3://bucket/output",
+        ...     session=session,
+        ... )
+        >>> builder.with_feature_group(other_fg, target_feature_name_in_base="id")
+        >>> df, query = builder.to_dataframe()
+    """
+    from sagemaker.mlops.feature_store.dataset_builder import DatasetBuilder
+
+    return DatasetBuilder.create(
+        base=base,
+        output_path=output_path,
+        session=session,
+        record_identifier_feature_name=record_identifier_feature_name,
+        event_time_identifier_feature_name=event_time_identifier_feature_name,
+        included_feature_names=included_feature_names,
+        kms_key_id=kms_key_id,
+    )
+
+
 @_telemetry_emitter(Feature.FEATURE_STORE, "ingest_dataframe")
 def ingest_dataframe(
     feature_group_name: str,

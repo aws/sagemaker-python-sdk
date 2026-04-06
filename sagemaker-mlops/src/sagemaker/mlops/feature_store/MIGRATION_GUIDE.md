@@ -471,7 +471,7 @@ These V2 features are **not wrapped** because core provides them directly:
 from sagemaker.mlops.feature_store import (
     # Resources (from core)
     FeatureGroup,
-    FeatureStore,
+    FeatureStore,  # For search() and batch operations
     FeatureMetadata,
     
     # Shapes (from core)
