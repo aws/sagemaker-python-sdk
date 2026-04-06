@@ -11,108 +11,106 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests to verify torch dependency is optional in sagemaker-core."""
-from __future__ import absolute_import
+from __future__ import annotations
 
+import importlib
 import io
 import sys
-from unittest import mock
 
 import numpy as np
 import pytest
 
 
+def _block_torch():
+    """Block torch imports by setting sys.modules['torch'] to None.
+
+    Returns a dict of saved torch submodule entries so they can be restored.
+    """
+    saved = {}
+    torch_keys = [key for key in sys.modules if key.startswith("torch.")]
+    saved = {key: sys.modules.pop(key) for key in torch_keys}
+    saved["torch"] = sys.modules.get("torch")
+    sys.modules["torch"] = None
+    return saved
+
+
+def _restore_torch(saved):
+    """Restore torch modules from saved dict."""
+    original_torch = saved.pop("torch", None)
+    if original_torch is not None:
+        sys.modules["torch"] = original_torch
+    elif "torch" in sys.modules:
+        del sys.modules["torch"]
+    for key, val in saved.items():
+        sys.modules[key] = val
+
+
 def test_serializer_module_imports_without_torch():
-    """Verify that importing serializers module succeeds without torch installed."""
-    # The serializers module should be importable even without torch
-    # because TorchTensorSerializer uses lazy import in __init__
-    from sagemaker.core.serializers.base import (
-        CSVSerializer,
-        NumpySerializer,
-        JSONSerializer,
-        IdentitySerializer,
-        SparseMatrixSerializer,
-        JSONLinesSerializer,
-        LibSVMSerializer,
-        DataSerializer,
-        StringSerializer,
-    )
-    # Verify non-torch serializers can be instantiated
-    assert CSVSerializer() is not None
-    assert NumpySerializer() is not None
-    assert JSONSerializer() is not None
-    assert IdentitySerializer() is not None
+    """Verify that importing non-torch serializers succeeds without torch installed."""
+    saved = {}
+    try:
+        saved = _block_torch()
+
+        # Reload the module so it re-evaluates imports with torch blocked
+        import sagemaker.core.serializers.base as ser_module
+
+        importlib.reload(ser_module)
+
+        # Verify non-torch serializers can be instantiated
+        assert ser_module.CSVSerializer() is not None
+        assert ser_module.NumpySerializer() is not None
+        assert ser_module.JSONSerializer() is not None
+        assert ser_module.IdentitySerializer() is not None
+    finally:
+        _restore_torch(saved)
 
 
 def test_deserializer_module_imports_without_torch():
-    """Verify that importing deserializers module succeeds without torch installed."""
-    from sagemaker.core.deserializers.base import (
-        StringDeserializer,
-        BytesDeserializer,
-        CSVDeserializer,
-        StreamDeserializer,
-        NumpyDeserializer,
-        JSONDeserializer,
-        PandasDeserializer,
-        JSONLinesDeserializer,
-    )
-    # Verify non-torch deserializers can be instantiated
-    assert StringDeserializer() is not None
-    assert BytesDeserializer() is not None
-    assert CSVDeserializer() is not None
-    assert NumpyDeserializer() is not None
-    assert JSONDeserializer() is not None
+    """Verify that importing non-torch deserializers succeeds without torch installed."""
+    saved = {}
+    try:
+        saved = _block_torch()
+
+        import sagemaker.core.deserializers.base as deser_module
+
+        importlib.reload(deser_module)
+
+        # Verify non-torch deserializers can be instantiated
+        assert deser_module.StringDeserializer() is not None
+        assert deser_module.BytesDeserializer() is not None
+        assert deser_module.CSVDeserializer() is not None
+        assert deser_module.NumpyDeserializer() is not None
+        assert deser_module.JSONDeserializer() is not None
+    finally:
+        _restore_torch(saved)
 
 
 def test_torch_tensor_serializer_raises_import_error_without_torch():
     """Verify TorchTensorSerializer raises ImportError when torch is not installed."""
-    import importlib
     import sagemaker.core.serializers.base as ser_module
 
-    # Save original torch module if present
-    original_torch = sys.modules.get('torch')
-    
+    saved = {}
     try:
-        # Simulate torch not being installed
-        sys.modules['torch'] = None
-        # Need to also handle the case where torch submodules are cached
-        torch_keys = [key for key in sys.modules if key.startswith('torch.')]
-        saved = {key: sys.modules.pop(key) for key in torch_keys}
-        
+        saved = _block_torch()
+
         with pytest.raises(ImportError, match="Unable to import torch"):
             ser_module.TorchTensorSerializer()
     finally:
-        # Restore original state
-        if original_torch is not None:
-            sys.modules['torch'] = original_torch
-        elif 'torch' in sys.modules:
-            del sys.modules['torch']
-        for key, val in saved.items():
-            sys.modules[key] = val
+        _restore_torch(saved)
 
 
 def test_torch_tensor_deserializer_raises_import_error_without_torch():
     """Verify TorchTensorDeserializer raises ImportError when torch is not installed."""
     import sagemaker.core.deserializers.base as deser_module
 
-    # Save original torch module if present
-    original_torch = sys.modules.get('torch')
-    
+    saved = {}
     try:
-        # Simulate torch not being installed
-        sys.modules['torch'] = None
-        torch_keys = [key for key in sys.modules if key.startswith('torch.')]
-        saved = {key: sys.modules.pop(key) for key in torch_keys}
-        
+        saved = _block_torch()
+
         with pytest.raises(ImportError, match="Unable to import torch"):
             deser_module.TorchTensorDeserializer()
     finally:
-        # Restore original state
-        if original_torch is not None:
-            sys.modules['torch'] = original_torch
-        elif 'torch' in sys.modules:
-            del sys.modules['torch']
-        for key, val in saved.items():
-            sys.modules[key] = val
+        _restore_torch(saved)
 
 
 def test_torch_tensor_serializer_works_with_torch():
