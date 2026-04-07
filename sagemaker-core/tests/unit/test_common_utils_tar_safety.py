@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import os
 import tempfile
-import tarfile
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 
 from sagemaker.core.common_utils import (
     _get_resolved_path,
@@ -204,9 +202,10 @@ def test_get_safe_members_filters_bad_hardlink_member():
 def test_custom_extractall_tarfile_with_data_filter_uses_filter_param():
     """Test custom_extractall_tarfile uses data_filter when available.
 
-    We set mock_tarfile.data_filter explicitly to ensure hasattr returns True.
-    The MagicMock would auto-create the attribute anyway, but we set it
-    explicitly for clarity. The key assertion is that filter="data" is passed.
+    We patch the module-level `tarfile` import in common_utils (not the `tar` parameter).
+    Setting mock_tarfile.data_filter explicitly ensures hasattr(tarfile, 'data_filter')
+    returns True inside custom_extractall_tarfile. The key assertion is that
+    filter="data" is passed to tar.extractall.
     """
     mock_tar = Mock()
     mock_tar.extractall = Mock()
@@ -214,8 +213,9 @@ def test_custom_extractall_tarfile_with_data_filter_uses_filter_param():
     with tempfile.TemporaryDirectory() as tmpdir:
         extract_path = os.path.join(tmpdir, "extract")
 
+        # Patch the module-level tarfile import in common_utils
         with patch("sagemaker.core.common_utils.tarfile") as mock_tarfile:
-            # Explicitly set data_filter to ensure the hasattr check passes
+            # Explicitly set data_filter so hasattr check passes
             mock_tarfile.data_filter = True
 
             custom_extractall_tarfile(mock_tar, extract_path)
@@ -225,6 +225,9 @@ def test_custom_extractall_tarfile_with_data_filter_uses_filter_param():
 
 def test_custom_extractall_tarfile_without_data_filter_uses_safe_members():
     """Test custom_extractall_tarfile uses safe members when data_filter is unavailable.
+
+    Uses spec=['TarFile'] to restrict the mock so that
+    hasattr(mock_tarfile, 'data_filter') returns False, forcing the fallback path.
 
     Verifies that:
     1. tar.getmembers() is called (not iterating over tar directly)

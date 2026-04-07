@@ -19,9 +19,11 @@ Note: Uses lazy imports via __getattr__ to avoid circular import issues.
 """
 from __future__ import absolute_import
 
-# Public API surface: only non-private functions are exported via __all__.
+# Public API surface.
+# Note: _save_model is underscore-prefixed but was already in __all__ (pre-existing).
+# custom_extractall_tarfile is the main public entry point for safe tar extraction.
 # Private helpers (_get_resolved_path, _is_bad_path, _is_bad_link, _get_safe_members)
-# are still importable directly but are not part of the public API.
+# are importable directly from sagemaker.core.common_utils but are not re-exported here.
 __all__ = [
     "_save_model",
     "download_file_from_url",
@@ -41,18 +43,10 @@ __all__ = [
     "get_config_value",
 ]
 
-# Internal helpers that are importable but not part of the public API
-_INTERNAL_NAMES = [
-    "_get_resolved_path",
-    "_is_bad_path",
-    "_is_bad_link",
-    "_get_safe_members",
-]
-
 
 def __getattr__(name):
     """Lazy import to avoid circular dependencies."""
-    if name in __all__ or name in _INTERNAL_NAMES:
+    if name in __all__:
         from sagemaker.core import common_utils
 
         return getattr(common_utils, name)
