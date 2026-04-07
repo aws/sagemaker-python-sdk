@@ -2331,7 +2331,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 )
             model_package = self._fetch_model_package()
             # Fetch recipe config first to set image_uri, instance_type, env_vars, and s3_upload_path
-            self._fetch_and_cache_recipe_config()
+            base_model = model_package.inference_specification.containers[0].base_model
+            if base_model is not None:
+                self._fetch_and_cache_recipe_config()
 
             # Nova models use a completely different deployment architecture
             if self._is_nova_model():
