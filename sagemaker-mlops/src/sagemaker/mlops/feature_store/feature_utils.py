@@ -44,6 +44,18 @@ _DTYPE_TO_FEATURE_TYPE_MAP = {
     "string": "String",
     "int64": "Integral",
     "float64": "Fractional",
+    # pandas nullable integer dtypes
+    "Int8": "Integral",
+    "Int16": "Integral",
+    "Int32": "Integral",
+    "Int64": "Integral",
+    "UInt8": "Integral",
+    "UInt16": "Integral",
+    "UInt32": "Integral",
+    "UInt64": "Integral",
+    # pandas nullable float dtypes
+    "Float32": "Fractional",
+    "Float64": "Fractional",
 }
 
 _INTEGER_TYPES = {
@@ -329,6 +341,8 @@ def _generate_feature_definition(
         return IntegralFeatureDefinition(series.name, collection_type)
     if dtype in _FLOAT_TYPES:
         return FractionalFeatureDefinition(series.name, collection_type)
+    if dtype in _STRING_TYPES:
+        return StringFeatureDefinition(series.name, collection_type)
     return StringFeatureDefinition(series.name, collection_type)
 
 
