@@ -54,7 +54,7 @@ from packaging.version import Version
 
 # SageMaker core imports
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.utils.utils import logger
+from sagemaker.core.utils.utils import logger, Unassigned
 
 from sagemaker.train import ModelTrainer
 
@@ -137,6 +137,98 @@ from sagemaker.core.remote_function.core.serialization import _MetaData
 from sagemaker.serve.model_server.triton.config_template import CONFIG_TEMPLATE
 
 SPECULATIVE_DRAFT_MODEL = "/opt/ml/additional-model-data-sources"
+
+
+def resolve_base_model_fields(base_model):
+    """Resolve missing BaseModel fields (hub_content_version, recipe_name).
+
+    When a ModelPackage's BaseModel has hub_content_name set but is missing
+    hub_content_version and/or recipe_name (returned as Unassigned from the
+    DescribeModelPackage API), this function attempts to resolve them
+    automatically by querying SageMakerPublicHub.
+
+    Args:
+        base_model: A BaseModel object with hub_content_name, hub_content_version,
+                    and recipe_name attributes.
+
+    Returns:
+        The mutated base_model with resolved fields where possible.
+    """
+    if base_model is None:
+        return base_model
+
+    # Check if hub_content_name is present and valid
+    hub_content_name = getattr(base_model, "hub_content_name", None)
+    if hub_content_name is None or isinstance(hub_content_name, Unassigned):
+        return base_model
+
+    if not hub_content_name or not str(hub_content_name).strip():
+        return base_model
+
+    hub_content_version = getattr(base_model, "hub_content_version", None)
+    recipe_name = getattr(base_model, "recipe_name", None)
+
+    version_missing = (
+        hub_content_version is None
+        or isinstance(hub_content_version, Unassigned)
+        or not str(hub_content_version).strip()
+    )
+    recipe_missing = (
+        recipe_name is None
+        or isinstance(recipe_name, Unassigned)
+        or not str(recipe_name).strip()
+    )
+
+    if not version_missing and not recipe_missing:
+        return base_model
+
+    # Attempt to resolve from SageMakerPublicHub
+    if version_missing:
+        try:
+            from sagemaker.core.resources import HubContent
+
+            logger.info(
+                "Resolving missing hub_content_version for hub_content_name='%s' "
+                "from SageMakerPublicHub...",
+                hub_content_name,
+            )
+            hc = HubContent.get(
+                hub_content_type="Model",
+                hub_name="SageMakerPublicHub",
+                hub_content_name=str(hub_content_name),
+            )
+            if hasattr(hc, "hub_content_version") and not isinstance(
+                hc.hub_content_version, Unassigned
+            ):
+                base_model.hub_content_version = hc.hub_content_version
+                logger.info(
+                    "Resolved hub_content_version='%s' for hub_content_name='%s'",
+                    base_model.hub_content_version,
+                    hub_content_name,
+                )
+            else:
+                logger.warning(
+                    "Could not resolve hub_content_version for hub_content_name='%s'. "
+                    "The HubContent response did not contain a valid version.",
+                    hub_content_name,
+                )
+        except Exception as e:
+            logger.warning(
+                "Failed to resolve hub_content_version for hub_content_name='%s' "
+                "from SageMakerPublicHub. You may need to set it manually. Error: %s",
+                hub_content_name,
+                e,
+            )
+
+    if recipe_missing:
+        logger.warning(
+            "recipe_name is missing (Unassigned) for hub_content_name='%s'. "
+            "ModelBuilder will proceed without it. If a recipe is required, "
+            "please set base_model.recipe_name manually before calling build().",
+            hub_content_name,
+        )
+
+    return base_model
 _DJL_MODEL_BUILDER_ENTRY_POINT = "inference.py"
 _NO_JS_MODEL_EX = "HuggingFace JumpStart Model ID not detected. Building for HuggingFace Model ID."
 _JS_SCOPE = "inference"
