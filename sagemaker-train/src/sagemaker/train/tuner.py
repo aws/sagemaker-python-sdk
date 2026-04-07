@@ -1504,6 +1504,11 @@ class HyperparameterTuner(object):
                     model_trainer.stopping_condition.max_wait_time_in_seconds
                 )
 
+        # Get environment variables from model_trainer
+        env = getattr(model_trainer, "environment", None)
+        if not env or not isinstance(env, dict):
+            env = None
+
         definition = HyperParameterTrainingJobDefinition(
             algorithm_specification=algorithm_spec,
             role_arn=model_trainer.role,
@@ -1513,12 +1518,8 @@ class HyperparameterTuner(object):
             stopping_condition=stopping_condition,
             static_hyper_parameters=getattr(self, "static_hyperparameters", None) or {},
             enable_managed_spot_training=model_trainer.compute.enable_managed_spot_training,
+            environment=env,
         )
-
-        # Pass through environment variables from model_trainer
-        env = getattr(model_trainer, "environment", None)
-        if env and isinstance(env, dict):
-            definition.environment = env
 
         # Pass through VPC config from model_trainer
         networking = getattr(model_trainer, "networking", None)
