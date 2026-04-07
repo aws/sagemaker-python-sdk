@@ -1689,7 +1689,10 @@ def _is_bad_path(path, base):
     """
     # joinpath will ignore base if path is absolute
     resolved = _get_resolved_path(joinpath(base, path))
-    return os.path.commonpath([resolved, base]) != base
+    try:
+        return os.path.commonpath([resolved, base]) != base
+    except ValueError:
+        return True  # If we can't determine safety, treat as bad path
 
 
 def _is_bad_link(info, base):
