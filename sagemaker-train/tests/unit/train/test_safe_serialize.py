@@ -31,26 +31,15 @@ from sagemaker.core.workflow.parameters import ParameterInteger, ParameterString
 class TestSafeSerializeWithPipelineVariables:
     """Test safe_serialize handles PipelineVariable objects correctly."""
 
-    def test_safe_serialize_with_parameter_integer(self):
-        """ParameterInteger should be returned as-is (identity preserved)."""
-        param = ParameterInteger(name="MaxDepth", default_value=5)
+    @pytest.mark.parametrize("param", [
+        ParameterInteger(name="MaxDepth", default_value=5),
+        ParameterString(name="Algorithm", default_value="xgboost"),
+    ])
+    def test_safe_serialize_returns_pipeline_variable_as_is(self, param):
+        """PipelineVariable objects should be returned as-is (identity preserved)."""
         result = safe_serialize(param)
         assert result is param
         assert isinstance(result, PipelineVariable)
-
-    def test_safe_serialize_with_parameter_string(self):
-        """ParameterString should be returned as-is (identity preserved)."""
-        param = ParameterString(name="Algorithm", default_value="xgboost")
-        result = safe_serialize(param)
-        assert result is param
-        assert isinstance(result, PipelineVariable)
-
-    def test_safe_serialize_does_not_call_str_on_pipeline_variable(self):
-        """Verify that PipelineVariable.__str__ is never invoked (would raise TypeError)."""
-        param = ParameterInteger(name="TestParam", default_value=10)
-        # This should NOT raise TypeError
-        result = safe_serialize(param)
-        assert result is param
 
     def test_pipeline_variable_str_raises_type_error(self):
         """Confirm PipelineVariable.__str__ raises TypeError (the root cause of the bug)."""
