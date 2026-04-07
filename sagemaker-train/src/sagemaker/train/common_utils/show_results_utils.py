@@ -211,7 +211,7 @@ def _display_metrics_tables(custom_metrics: Dict[str, float],
         ipython = get_ipython()
         if ipython is not None and 'IPKernelApp' in ipython.config:
             is_jupyter = True
-    except:
+    except Exception:
         pass
     
     # Display with Rich
@@ -644,7 +644,7 @@ def _show_llmaj_results(
         ipython = get_ipython()
         if ipython is not None and 'IPKernelApp' in ipython.config:
             is_jupyter = True
-    except:
+    except Exception:
         pass
     
     from rich.console import Console
