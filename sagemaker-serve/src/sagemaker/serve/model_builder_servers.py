@@ -320,7 +320,7 @@ class _ModelBuilderServers(object):
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
             # Configure HuggingFace model for DJL
-            self.env_vars.update({"HF_MODEL_ID": self.model})
+            self.env_vars.setdefault("HF_MODEL_ID", self.model)
             
             # Get model configuration for DJL optimization
             self.hf_model_config = _get_model_config_properties_from_hf(
@@ -345,7 +345,9 @@ class _ModelBuilderServers(object):
                 "SERVING_MAX_WORKERS": "1", 
                 "OPTION_MODEL_LOADING_TIMEOUT": "240",
                 "OPTION_PREDICT_TIMEOUT": "60",
-                "TENSOR_PARALLEL_DEGREE": "1"  # Default, will be overridden below
+                "TENSOR_PARALLEL_DEGREE": "1",  # Default, will be overridden below
+                "HF_HOME": "/tmp",
+                "HUGGINGFACE_HUB_CACHE": "/tmp",
             }
             
             # Add HuggingFace authentication
@@ -370,6 +372,9 @@ class _ModelBuilderServers(object):
         # Cache management based on mode
         if self.mode in LOCAL_MODES:
             self.env_vars.update({"HF_HUB_OFFLINE": "1"})
+        else:
+            self.env_vars["HF_HOME"] = "/tmp"
+            self.env_vars["HUGGINGFACE_HUB_CACHE"] = "/tmp"
 
         # GPU-based tensor parallel calculation for SAGEMAKER_ENDPOINT mode
         if self.mode == Mode.SAGEMAKER_ENDPOINT:
