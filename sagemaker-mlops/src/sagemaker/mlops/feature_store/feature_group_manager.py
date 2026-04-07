@@ -25,6 +25,7 @@ from sagemaker.core.helper.pipeline_variable import StrPipeVar
 from sagemaker.core.s3.utils import parse_s3_url
 from sagemaker.core.common_utils import aws_partition
 from boto3 import Session
+from botocore.exceptions import ClientError
 from pyiceberg.catalog import load_catalog
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from sagemaker.mlops.feature_store.feature_utils import _APPROVED_ICEBERG_PROPERTIES
@@ -75,6 +76,16 @@ class FeatureGroupManager(FeatureGroup):
     # Inherit parent docstring and append our additions
     if FeatureGroup.__doc__ and __doc__:
         __doc__ = FeatureGroup.__doc__
+
+    def _has_lake_formation_config(self) -> bool:
+        """Check if this feature group was created with Lake Formation governance.
+
+        Note: Returns False if the object was not hydrated via get()/describe
+        (i.e., constructed directly with just a name). In that case, the caller
+        falls back to the generic IAM error message, which is still valid advice.
+        """
+        lf_config = getattr(self, "lake_formation_config", None)
+        return lf_config is not None and lf_config != Unassigned()
 
     def _validate_table_ownership(self, table, database_name: str, table_name: str):
         """Validate that the Iceberg table belongs to this feature group by checking S3 location."""
@@ -174,9 +185,26 @@ class FeatureGroupManager(FeatureGroup):
                 "properties": dict(table.properties),
             }
 
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "AccessDeniedException":
+                if self._has_lake_formation_config():
+                    raise PermissionError(
+                        f"Access denied reading Iceberg properties for '{self.feature_group_name}'. "
+                        f"This feature group uses Lake Formation governance — ensure you have "
+                        f"SELECT and DESCRIBE permissions on the table in Lake Formation, "
+                        f"in addition to IAM permissions."
+                    ) from e
+                raise PermissionError(
+                    f"Access denied reading Iceberg properties for '{self.feature_group_name}'. "
+                    f"Ensure your role has glue:GetTable permission "
+                    f"on the feature group's Glue table."
+                ) from e
+            raise RuntimeError(
+                f"Failed to get Iceberg properties for '{self.feature_group_name}': {e}"
+            ) from e
         except Exception as e:
             raise RuntimeError(
-                f"Failed to get Iceberg properties for {self.feature_group_name}: {e}"
+                f"Failed to get Iceberg properties for '{self.feature_group_name}': {e}"
             ) from e
 
     @retry(
@@ -268,6 +296,27 @@ class FeatureGroupManager(FeatureGroup):
                 "properties_updated": iceberg_properties.properties,
             }
 
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "AccessDeniedException":
+                if self._has_lake_formation_config():
+                    raise PermissionError(
+                        f"Access denied updating Iceberg properties for '{self.feature_group_name}'. "
+                        f"This feature group uses Lake Formation governance — ensure you have "
+                        f"ALTER permission on the table in Lake Formation, "
+                        f"in addition to IAM permissions."
+                    ) from e
+                raise PermissionError(
+                    f"Access denied updating Iceberg properties for '{self.feature_group_name}'. "
+                    f"Ensure your role has glue:UpdateTable permission "
+                    f"on the feature group's Glue table."
+                ) from e
+            logger.error(
+                f"Failed to update Iceberg properties for feature group "
+                f"'{self.feature_group_name}'. Attempted changes: {changed}. Error: {e}"
+            )
+            raise RuntimeError(
+                f"Failed to update Iceberg properties for '{self.feature_group_name}': {e}"
+            ) from e
         except Exception as e:
             logger.error(
                 f"Failed to update Iceberg properties for feature group "
