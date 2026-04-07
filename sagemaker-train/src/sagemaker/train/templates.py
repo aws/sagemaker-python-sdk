@@ -39,6 +39,20 @@ echo "Installing requirements"
 $SM_PIP_CMD install -r {requirements_file}
 """
 
+INSTALL_DEPENDENCIES = """
+echo "Setting up additional dependencies"
+if [ -d /opt/ml/input/data/sm_dependencies ]; then
+    for dep_dir in /opt/ml/input/data/sm_dependencies/*/; do
+        if [ -d "$dep_dir" ]; then
+            echo "Adding $dep_dir to PYTHONPATH"
+            export PYTHONPATH="$dep_dir:$PYTHONPATH"
+        fi
+    done
+    # Also add the root dependencies dir in case of single files
+    export PYTHONPATH="/opt/ml/input/data/sm_dependencies:$PYTHONPATH"
+fi
+"""
+
 EXEUCTE_DISTRIBUTED_DRIVER = """
 echo "Running {driver_name} Driver"
 $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/distributed_drivers/{driver_script}
@@ -95,6 +109,7 @@ source /opt/ml/input/sm_training.env
 set -x
 
 {working_dir}
+{install_dependencies}
 {install_requirements}
 {execute_driver}
 
