@@ -1504,10 +1504,10 @@ class HyperparameterTuner(object):
                     model_trainer.stopping_condition.max_wait_time_in_seconds
                 )
 
-        # Get environment variables from model_trainer
-        env = getattr(model_trainer, "environment", None)
-        if not env or not isinstance(env, dict):
-            env = None
+        # Get environment variables from model_trainer.
+        # environment is a defined attribute on ModelTrainer (dict | None).
+        # We pass it through as-is; even an empty dict is valid for the API.
+        env = model_trainer.environment
 
         definition = HyperParameterTrainingJobDefinition(
             algorithm_specification=algorithm_spec,

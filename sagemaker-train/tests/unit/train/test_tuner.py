@@ -639,7 +639,11 @@ class TestHyperparameterTunerStaticMethods:
         assert definition.environment is None, "Environment should be None when not set"
 
     def test_build_training_job_definition_with_empty_environment(self):
-        """Test that _build_training_job_definition handles empty environment gracefully."""
+        """Test that _build_training_job_definition passes through empty environment.
+
+        An empty dict is valid for the SageMaker API, so we pass it through as-is
+        rather than silently converting it to None.
+        """
         mock_trainer = _create_mock_model_trainer()
         mock_trainer.environment = {}
 
@@ -651,6 +655,6 @@ class TestHyperparameterTunerStaticMethods:
 
         definition = tuner._build_training_job_definition(None)
 
-        assert definition.environment is None, (
-            "Environment should be None when empty dict is provided"
+        assert definition.environment == {}, (
+            "Empty dict environment should be passed through as-is"
         )
