@@ -26,7 +26,7 @@ from unittest.mock import patch, MagicMock
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.helper.pipeline_variable import PipelineVariable, StrPipeVar
-from sagemaker.core.workflow.parameters import ParameterString
+from sagemaker.core.workflow.parameters import ParameterString, ParameterInteger
 from sagemaker.train.model_trainer import ModelTrainer, Mode
 from sagemaker.train.configs import (
     Compute,
@@ -176,3 +176,61 @@ class TestModelTrainerRealValuesStillWork:
                 stopping_condition=DEFAULT_STOPPING,
                 output_data_config=DEFAULT_OUTPUT,
             )
+
+
+class TestModelTrainerPipelineVariableHyperparameters:
+    """Test that PipelineVariable objects work correctly in ModelTrainer hyperparameters."""
+
+    def test_hyperparameters_with_parameter_integer(self):
+        """ParameterInteger in hyperparameters should be preserved through _create_training_job_args."""
+        max_depth = ParameterInteger(name="MaxDepth", default_value=5)
+        trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE,
+            stopping_condition=DEFAULT_STOPPING,
+            output_data_config=DEFAULT_OUTPUT,
+            hyperparameters={"max_depth": max_depth},
+        )
+        args = trainer._create_training_job_args()
+        # PipelineVariable should be preserved as-is, not stringified
+        assert args["hyper_parameters"]["max_depth"] is max_depth
+
+    def test_hyperparameters_with_parameter_string(self):
+        """ParameterString in hyperparameters should be preserved through _create_training_job_args."""
+        algo = ParameterString(name="Algorithm", default_value="xgboost")
+        trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE,
+            stopping_condition=DEFAULT_STOPPING,
+            output_data_config=DEFAULT_OUTPUT,
+            hyperparameters={"algorithm": algo},
+        )
+        args = trainer._create_training_job_args()
+        assert args["hyper_parameters"]["algorithm"] is algo
+
+    def test_hyperparameters_with_mixed_pipeline_and_static_values(self):
+        """Mixed PipelineVariable and static values should both be handled correctly."""
+        max_depth = ParameterInteger(name="MaxDepth", default_value=5)
+        trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE,
+            stopping_condition=DEFAULT_STOPPING,
+            output_data_config=DEFAULT_OUTPUT,
+            hyperparameters={
+                "max_depth": max_depth,
+                "eta": 0.1,
+                "objective": "binary:logistic",
+                "num_round": 100,
+            },
+        )
+        args = trainer._create_training_job_args()
+        hp = args["hyper_parameters"]
+        # PipelineVariable preserved as-is
+        assert hp["max_depth"] is max_depth
+        # Static values serialized to strings
+        assert hp["eta"] == "0.1"
+        assert hp["objective"] == "binary:logistic"
+        assert hp["num_round"] == "100"
