@@ -483,10 +483,16 @@ class Processor(object):
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
-                if output.s3_output and output.s3_output.s3_uri is not None and is_pipeline_variable(output.s3_output.s3_uri):
+                if (
+                    output.s3_output
+                    and output.s3_output.s3_uri is not None
+                    and is_pipeline_variable(output.s3_output.s3_uri)
+                ):
                     normalized_outputs.append(output)
                     continue
-                # If s3_output is None or s3_uri is None, auto-generate an S3 URI
+                # If s3_output is None or s3_uri is None, auto-generate
+                # an S3 URI (V2 parity: destination=None delegates to
+                # SageMaker).
                 if not output.s3_output or output.s3_output.s3_uri is None:
                     if _pipeline_config:
                         s3_uri = Join(
@@ -495,7 +501,6 @@ class Processor(object):
                                 "s3:/",
                                 self.sagemaker_session.default_bucket(),
                                 *(
-                                    # don't include default_bucket_prefix if it is None or ""
                                     [self.sagemaker_session.default_bucket_prefix]
                                     if self.sagemaker_session.default_bucket_prefix
                                     else []
@@ -517,12 +522,19 @@ class Processor(object):
                             output.output_name,
                         )
                     if output.s3_output:
+                        # s3_output exists but s3_uri is None
                         output.s3_output.s3_uri = s3_uri
                     else:
-                        from sagemaker.core.shapes import ProcessingS3Output as _ProcessingS3Output
+                        # s3_output is None — create a new one with
+                        # sensible defaults.
+                        # Import here to avoid circular import with
+                        # shapes module.
+                        from sagemaker.core.shapes import (
+                            ProcessingS3Output as _ProcessingS3Output,
+                        )
                         output.s3_output = _ProcessingS3Output(
                             s3_uri=s3_uri,
-                            local_path=output.s3_output.local_path if output.s3_output else "/opt/ml/processing/output",
+                            local_path="/opt/ml/processing/output",
                             s3_upload_mode="EndOfJob",
                         )
                     normalized_outputs.append(output)
@@ -530,7 +542,12 @@ class Processor(object):
                 # If the output's s3_uri is not an s3_uri, create one.
                 parse_result = urlparse(output.s3_output.s3_uri)
                 if parse_result.scheme != "s3":
-                    if getattr(self.sagemaker_session, "local_mode", False) and parse_result.scheme == "file":
+                    if (
+                        getattr(
+                            self.sagemaker_session, "local_mode", False
+                        )
+                        and parse_result.scheme == "file"
+                    ):
                         normalized_outputs.append(output)
                         continue
                     if _pipeline_config:

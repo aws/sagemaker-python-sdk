@@ -1436,6 +1436,8 @@ class TestProcessingS3OutputOptionalS3Uri:
 
     def test_normalize_outputs_with_none_s3_uri_and_pipeline_config(self, mock_session):
         """When s3_uri is None and pipeline_config is set, use pipeline-based path."""
+        from sagemaker.core.workflow.functions import Join
+
         processor = Processor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
@@ -1459,7 +1461,11 @@ class TestProcessingS3OutputOptionalS3Uri:
 
         assert len(result) == 1
         # The result should be a Join object (pipeline variable) when pipeline_config is set
-        assert result[0].s3_output.s3_uri is not None
+        assert isinstance(result[0].s3_output.s3_uri, Join)
+        # Verify the Join contains expected pipeline-related values
+        join_obj = result[0].s3_output.s3_uri
+        assert join_obj.on == "/"
+        assert "test-pipeline" in join_obj.values
 
     def test_normalize_outputs_with_none_s3_uri_auto_generates_name(self, mock_session):
         """When output_name is None and s3_uri is None, both should be auto-generated."""
@@ -1487,6 +1493,29 @@ class TestProcessingS3OutputOptionalS3Uri:
         generated_uri = result[0].s3_output.s3_uri
         assert generated_uri.startswith("s3://")
         assert "output-1" in generated_uri
+
+    def test_normalize_outputs_with_no_s3_output_at_all(self, mock_session):
+        """When s3_output is None entirely, a new ProcessingS3Output is created."""
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "test-job"
+
+        outputs = [ProcessingOutput(output_name="my-output")]
+
+        with patch("sagemaker.core.workflow.utilities._pipeline_config", None):
+            result = processor._normalize_outputs(outputs)
+
+        assert len(result) == 1
+        assert result[0].s3_output is not None
+        assert result[0].s3_output.s3_uri.startswith("s3://")
+        assert result[0].s3_output.local_path == "/opt/ml/processing/output"
+        assert result[0].s3_output.s3_upload_mode == "EndOfJob"
+        assert "my-output" in result[0].s3_output.s3_uri
 
     def test_processing_output_to_request_dict_omits_s3_uri_when_none(self):
         """Verify _processing_output_to_request_dict omits S3Uri when s3_uri is None."""
