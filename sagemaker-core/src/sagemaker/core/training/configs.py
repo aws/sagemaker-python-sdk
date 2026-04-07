@@ -129,6 +129,7 @@ class SourceCode(BaseConfig):
     ]
     dependencies: Optional[List[str]] = None
 
+
 class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 

@@ -42,14 +42,23 @@ $SM_PIP_CMD install -r {requirements_file}
 INSTALL_DEPENDENCIES = """
 echo "Setting up additional dependencies"
 if [ -d /opt/ml/input/data/sm_dependencies ]; then
-    for dep_dir in /opt/ml/input/data/sm_dependencies/*/; do
-        if [ -d "$dep_dir" ]; then
-            echo "Adding $dep_dir to PYTHONPATH"
-            export PYTHONPATH="$dep_dir:$PYTHONPATH"
+    for dep in /opt/ml/input/data/sm_dependencies/*; do
+        if [ -d "$dep" ]; then
+            echo "Adding directory $dep to PYTHONPATH"
+            export PYTHONPATH="$dep:$PYTHONPATH"
+        elif [ -f "$dep" ]; then
+            case "$dep" in
+                *.whl|*.tar.gz)
+                    echo "Installing package $dep via pip"
+                    $SM_PIP_CMD install "$dep"
+                    ;;
+                *)
+                    echo "Adding parent directory of $dep to PYTHONPATH"
+                    export PYTHONPATH="/opt/ml/input/data/sm_dependencies:$PYTHONPATH"
+                    ;;
+            esac
         fi
     done
-    # Also add the root dependencies dir in case of single files
-    export PYTHONPATH="/opt/ml/input/data/sm_dependencies:$PYTHONPATH"
 fi
 """
 

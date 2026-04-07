@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for ModelTrainer dependencies feature."""
-from __future__ import absolute_import
+from __future__ import annotations
 
 import os
 import shutil
@@ -53,7 +53,7 @@ DEFAULT_STOPPING_CONDITION = StoppingCondition(
 )
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(autouse=True)
 def modules_session():
     with patch("sagemaker.train.Session", spec=Session) as session_mock:
         session_instance = session_mock.return_value
@@ -105,6 +105,27 @@ def test_validate_source_code_with_invalid_dependency_path_raises_value_error(mo
                 dependencies=["/nonexistent/path/to/dep"],
             ),
         )
+
+
+def test_validate_source_code_with_file_dependency_raises_value_error(modules_session):
+    """Verify _validate_source_code raises ValueError when a dependency is a file, not a directory."""
+    dep_file = tempfile.NamedTemporaryFile(suffix=".py", delete=False)
+    dep_file.close()
+    try:
+        with pytest.raises(ValueError, match="Invalid dependency path"):
+            ModelTrainer(
+                training_image=DEFAULT_IMAGE,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                source_code=SourceCode(
+                    source_dir=DEFAULT_SOURCE_DIR,
+                    entry_script="custom_script.py",
+                    dependencies=[dep_file.name],
+                ),
+            )
+    finally:
+        os.unlink(dep_file.name)
 
 
 def test_source_code_dependencies_validation_with_valid_dirs(modules_session):
@@ -250,22 +271,38 @@ def test_train_with_dependencies_generates_pythonpath_setup_in_train_script(
                 dependencies=[dep_dir],
             ),
         )
-        trainer.train()
+        # Call _create_training_job_args to generate the train script without cleanup
+        trainer._create_training_job_args()
 
-        # Check the generated train script in the temp directory
-        assert trainer._temp_code_dir is not None or True  # temp dir may be cleaned up
-        # The key assertion is that the template was used - check via the training job call
-        mock_training_job.create.assert_called_once()
+        # Read the generated train script and verify it contains PYTHONPATH setup
+        assert trainer._temp_code_dir is not None
+        train_script_path = os.path.join(trainer._temp_code_dir.name, "sm_train.sh")
+        with open(train_script_path) as f:
+            script_content = f.read()
+        assert "sm_dependencies" in script_content
+        assert "PYTHONPATH" in script_content
+        assert "Setting up additional dependencies" in script_content
     finally:
+        if trainer._temp_code_dir is not None:
+            trainer._temp_code_dir.cleanup()
+        if trainer._temp_deps_dir is not None:
+            trainer._temp_deps_dir.cleanup()
         shutil.rmtree(dep_dir)
 
 
-def test_dependencies_copied_to_temp_dir_preserving_basenames(modules_session):
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_dependencies_copied_to_temp_dir_preserving_basenames(
+    mock_training_job, modules_session
+):
     """Verify that each dependency directory's basename is preserved when copied."""
     dep_dir = tempfile.mkdtemp(suffix="_mylib")
     sub_file = os.path.join(dep_dir, "module.py")
     with open(sub_file, "w") as f:
         f.write("# test module")
+
+    modules_session.upload_data.return_value = (
+        f"s3://{DEFAULT_BUCKET}/prefix/sm_dependencies"
+    )
 
     try:
         trainer = ModelTrainer(
@@ -281,9 +318,22 @@ def test_dependencies_copied_to_temp_dir_preserving_basenames(modules_session):
                 dependencies=[dep_dir],
             ),
         )
-        # Verify the source_code has the dependencies set
-        assert trainer.source_code.dependencies == [dep_dir]
+        # Call _create_training_job_args to trigger the copy
+        trainer._create_training_job_args()
+
+        # Verify the dependencies were copied preserving basenames
+        assert trainer._temp_deps_dir is not None
         dep_basename = os.path.basename(os.path.normpath(dep_dir))
-        assert dep_basename.endswith("_mylib")
+        copied_dep_path = os.path.join(trainer._temp_deps_dir.name, dep_basename)
+        assert os.path.isdir(copied_dep_path), (
+            f"Expected dependency directory {copied_dep_path} to exist"
+        )
+        assert os.path.isfile(os.path.join(copied_dep_path, "module.py")), (
+            "Expected module.py to be copied into the dependency directory"
+        )
     finally:
+        if trainer._temp_code_dir is not None:
+            trainer._temp_code_dir.cleanup()
+        if trainer._temp_deps_dir is not None:
+            trainer._temp_deps_dir.cleanup()
         shutil.rmtree(dep_dir)

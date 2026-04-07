@@ -272,6 +272,7 @@ class ModelTrainer(BaseModel):
 
     # Private Attributes for AWS_Batch
     _temp_code_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
+    _temp_deps_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
 
     CONFIGURABLE_ATTRIBUTES: ClassVar[List[str]] = [
         "role",
@@ -411,6 +412,8 @@ class ModelTrainer(BaseModel):
                 self._temp_recipe_train_dir.cleanup()
             if self._temp_code_dir is not None:
                 self._temp_code_dir.cleanup()
+            if self._temp_deps_dir is not None:
+                self._temp_deps_dir.cleanup()
 
     def _validate_training_image_and_algorithm_name(
         self, training_image: Optional[str], algorithm_name: Optional[str]
@@ -489,10 +492,10 @@ class ModelTrainer(BaseModel):
                             )
             if source_code.dependencies:
                 for dep_path in source_code.dependencies:
-                    if not _is_valid_path(dep_path):
+                    if not _is_valid_path(dep_path, path_type="Directory"):
                         raise ValueError(
                             f"Invalid dependency path: {dep_path}. "
-                            "Each dependency must be a valid local directory or file path."
+                            "Each dependency must be a valid local directory path."
                         )
 
     @staticmethod
@@ -667,17 +670,14 @@ class ModelTrainer(BaseModel):
             # If dependencies are provided, create a channel for the dependencies
             # The dependencies will be mounted at /opt/ml/input/data/sm_dependencies
             if self.source_code.dependencies:
-                deps_tmp_dir = TemporaryDirectory()
+                self._temp_deps_dir = TemporaryDirectory()
                 for dep_path in self.source_code.dependencies:
                     dep_basename = os.path.basename(os.path.normpath(dep_path))
-                    dest_path = os.path.join(deps_tmp_dir.name, dep_basename)
-                    if os.path.isdir(dep_path):
-                        shutil.copytree(dep_path, dest_path, dirs_exist_ok=True)
-                    else:
-                        shutil.copy2(dep_path, dest_path)
+                    dest_path = os.path.join(self._temp_deps_dir.name, dep_basename)
+                    shutil.copytree(dep_path, dest_path, dirs_exist_ok=True)
                 dependencies_channel = self.create_input_data_channel(
                     channel_name=SM_DEPENDENCIES,
-                    data_source=deps_tmp_dir.name,
+                    data_source=self._temp_deps_dir.name,
                     key_prefix=input_data_key_prefix,
                 )
                 final_input_data_config.append(dependencies_channel)
@@ -841,6 +841,9 @@ class ModelTrainer(BaseModel):
             local_container.train(wait)
         if self._temp_code_dir is not None:
             self._temp_code_dir.cleanup()
+        if self._temp_deps_dir is not None:
+            self._temp_deps_dir.cleanup()
+            self._temp_deps_dir = None
 
 
     def create_input_data_channel(
