@@ -36,6 +36,10 @@ __all__ = [
     "sagemaker_timestamp",
     "sagemaker_short_timestamp",
     "get_config_value",
+    "_get_resolved_path",
+    "_is_bad_path",
+    "_is_bad_link",
+    "_get_safe_members",
 ]
 
 
