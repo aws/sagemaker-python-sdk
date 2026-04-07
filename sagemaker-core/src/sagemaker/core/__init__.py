@@ -1,3 +1,14 @@
+# Early pydantic compatibility check - must happen before any pydantic imports
+try:
+    from sagemaker.core._pydantic_compat import check_pydantic_compatibility
+    check_pydantic_compatibility()
+except ImportError as e:
+    if "pydantic" in str(e).lower() and ("incompatible" in str(e).lower() or "mismatch" in str(e).lower()):
+        raise
+    # If it's a different ImportError (e.g., pydantic not installed yet), let it pass
+    # and fail later with a more standard error
+    pass
+
 from sagemaker.core.utils.utils import enable_textual_rich_console_and_traceback
 
 

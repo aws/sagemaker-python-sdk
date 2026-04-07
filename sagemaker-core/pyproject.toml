@@ -13,7 +13,8 @@ readme = "README.rst"
 dependencies = [
   # Add your dependencies here (Include lower and upper bounds as applicable)
     "boto3>=1.42.2,<2.0.0",
-    "pydantic>=2.0.0,<3.0.0",
+    "pydantic>=2.10.0,<3.0.0",
+    "pydantic-core>=2.27.0,<3.0.0",
     "PyYAML>=6.0, <7.0",
     "jsonschema<5.0.0",
     "platformdirs>=4.0.0, <5.0.0",
