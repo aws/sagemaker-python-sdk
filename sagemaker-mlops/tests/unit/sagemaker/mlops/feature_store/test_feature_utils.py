@@ -49,6 +49,78 @@ class TestLoadFeatureDefinitionsFromDataframe:
         defs = load_feature_definitions_from_dataframe(sample_dataframe)
         assert len(defs) == 3
 
+    def test_infers_integral_type_with_pandas_nullable_Int64(self):
+        df = pd.DataFrame({"id": pd.Series([1, 2, 3], dtype="Int64")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Integral"
+
+    def test_infers_integral_type_with_pandas_nullable_Int32(self):
+        df = pd.DataFrame({"id": pd.Series([1, 2, 3], dtype="Int32")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Integral"
+
+    def test_infers_integral_type_with_pandas_nullable_Int16(self):
+        df = pd.DataFrame({"id": pd.Series([1, 2, 3], dtype="Int16")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Integral"
+
+    def test_infers_integral_type_with_pandas_nullable_Int8(self):
+        df = pd.DataFrame({"id": pd.Series([1, 2, 3], dtype="Int8")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Integral"
+
+    def test_infers_integral_type_with_pandas_nullable_UInt64(self):
+        df = pd.DataFrame({"id": pd.Series([1, 2, 3], dtype="UInt64")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Integral"
+
+    def test_infers_integral_type_with_pandas_nullable_UInt32(self):
+        df = pd.DataFrame({"id": pd.Series([1, 2, 3], dtype="UInt32")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Integral"
+
+    def test_infers_fractional_type_with_pandas_nullable_Float64(self):
+        df = pd.DataFrame({"value": pd.Series([1.1, 2.2, 3.3], dtype="Float64")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Fractional"
+
+    def test_infers_fractional_type_with_pandas_nullable_Float32(self):
+        df = pd.DataFrame({"value": pd.Series([1.1, 2.2], dtype="Float32")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Fractional"
+
+    def test_infers_string_type_with_pandas_string_dtype(self):
+        df = pd.DataFrame({"name": pd.Series(["a", "b", "c"], dtype="string")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "String"
+
+    def test_infers_correct_types_after_convert_dtypes(self):
+        df = pd.DataFrame({
+            "id": [1, 2, 3],
+            "price": [1.1, 2.2, 3.3],
+            "name": ["a", "b", "c"],
+        }).convert_dtypes()
+        defs = load_feature_definitions_from_dataframe(df)
+        id_def = next(d for d in defs if d.feature_name == "id")
+        price_def = next(d for d in defs if d.feature_name == "price")
+        name_def = next(d for d in defs if d.feature_name == "name")
+        assert id_def.feature_type == "Integral"
+        assert price_def.feature_type == "Fractional"
+        assert name_def.feature_type == "String"
+
+    def test_infers_correct_types_with_mixed_nullable_and_numpy_dtypes(self):
+        df = pd.DataFrame({
+            "numpy_int": pd.Series([1, 2, 3], dtype="int64"),
+            "nullable_float": pd.Series([1.1, 2.2, 3.3], dtype="Float64"),
+            "nullable_int": pd.Series([10, 20, 30], dtype="Int64"),
+            "numpy_float": pd.Series([0.1, 0.2, 0.3], dtype="float64"),
+        })
+        defs = load_feature_definitions_from_dataframe(df)
+        assert next(d for d in defs if d.feature_name == "numpy_int").feature_type == "Integral"
+        assert next(d for d in defs if d.feature_name == "nullable_float").feature_type == "Fractional"
+        assert next(d for d in defs if d.feature_name == "nullable_int").feature_type == "Integral"
+        assert next(d for d in defs if d.feature_name == "numpy_float").feature_type == "Fractional"
+
     def test_collection_type_with_in_memory_storage(self):
         df = pd.DataFrame({
             "id": pd.Series([1, 2], dtype="int64"),

@@ -46,8 +46,19 @@ _DTYPE_TO_FEATURE_TYPE_MAP = {
     "float64": "Fractional",
 }
 
-_INTEGER_TYPES = {"int_", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"}
-_FLOAT_TYPES = {"float_", "float16", "float32", "float64"}
+_INTEGER_TYPES = {
+    "int_", "int8", "int16", "int32", "int64",
+    "uint8", "uint16", "uint32", "uint64",
+    # pandas nullable integer dtypes
+    "Int8", "Int16", "Int32", "Int64",
+    "UInt8", "UInt16", "UInt32", "UInt64",
+}
+_FLOAT_TYPES = {
+    "float_", "float16", "float32", "float64",
+    # pandas nullable float dtypes
+    "Float32", "Float64",
+}
+_STRING_TYPES = {"object", "string"}
 
 
 def _get_athena_client(session: Session):
