@@ -67,19 +67,46 @@ def test_is_bad_path_returns_true_for_parent_traversal():
         assert _is_bad_path(traversal_path, base) is True
 
 
-def test_is_bad_path_with_similar_prefix_does_not_false_positive():
+def test_is_bad_path_with_similar_prefix_absolute_escape():
     """Test that base/x2 is correctly identified as bad when base is base/x.
 
-    This verifies the commonpath fix: startswith would incorrectly allow
-    base/x2 when base is base/x, but commonpath correctly rejects it.
+    This verifies the commonpath fix for absolute path escape:
+    With startswith, "tmpdir/x2".startswith("tmpdir/x") would be True (bug).
+    With commonpath, commonpath(["tmpdir/x2", "tmpdir/x"]) == "tmpdir" != "tmpdir/x" (correct).
     """
     with tempfile.TemporaryDirectory() as tmpdir:
         base = _get_resolved_path(os.path.join(tmpdir, "x"))
-        # A path like tmpdir/x2/file should NOT be under tmpdir/x
-        # With startswith, "tmpdir/x2".startswith("tmpdir/x") would be True (bug)
-        # With commonpath, commonpath(["tmpdir/x2", "tmpdir/x"]) == "tmpdir" != "tmpdir/x" (correct)
+        # An absolute path like tmpdir/x2/file should NOT be under tmpdir/x
+        # joinpath ignores base for absolute paths, so this tests absolute escape
         escape_path = os.path.join(tmpdir, "x2", "file")
         result = _is_bad_path(escape_path, base)
+        assert result is True
+
+
+def test_is_bad_path_with_similar_prefix_relative_traversal():
+    """Test the commonpath fix with a relative path that triggers the prefix issue.
+
+    Using ../x2/file as a relative path from base tmpdir/x should resolve to
+    tmpdir/x2/file which is outside tmpdir/x. This more directly tests the
+    commonpath fix for relative traversal.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base = _get_resolved_path(os.path.join(tmpdir, "x"))
+        # ../x2/file relative to base tmpdir/x resolves to tmpdir/x2/file
+        escape_path = "../x2/file"
+        result = _is_bad_path(escape_path, base)
+        assert result is True
+
+
+def test_is_bad_path_handles_value_error_gracefully():
+    """Test that _is_bad_path returns True when os.path.commonpath raises ValueError.
+
+    This can happen on Windows with paths on different drives, or with mixed
+    absolute/relative paths.
+    """
+    with patch("sagemaker.core.common_utils.os.path.commonpath", side_effect=ValueError):
+        # Should return True (treat as bad path) when commonpath raises ValueError
+        result = _is_bad_path("some/path", "/some/base")
         assert result is True
 
 
@@ -153,6 +180,32 @@ def test_get_safe_members_filters_bad_path_member():
         assert mock_member_safe in safe_members
 
 
+def test_get_safe_members_filters_directory_traversal_member():
+    """Test _get_safe_members filters out members with directory traversal.
+
+    This tests the common tar slip attack vector where archive entries
+    contain ../../ paths to escape the extraction directory.
+    """
+    with tempfile.TemporaryDirectory() as tmpdir:
+        base = _get_resolved_path(os.path.join(tmpdir, "extract"))
+
+        mock_member_safe = Mock()
+        mock_member_safe.name = "safe/file.txt"
+        mock_member_safe.issym = Mock(return_value=False)
+        mock_member_safe.islnk = Mock(return_value=False)
+
+        mock_member_traversal = Mock()
+        mock_member_traversal.name = "../../etc/passwd"
+        mock_member_traversal.issym = Mock(return_value=False)
+        mock_member_traversal.islnk = Mock(return_value=False)
+
+        members = [mock_member_safe, mock_member_traversal]
+        safe_members = list(_get_safe_members(members, base))
+
+        assert len(safe_members) == 1
+        assert mock_member_safe in safe_members
+
+
 def test_get_safe_members_filters_bad_symlink_member():
     """Test _get_safe_members filters out bad symlinks."""
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -199,6 +252,22 @@ def test_get_safe_members_filters_bad_hardlink_member():
         assert mock_member_safe in safe_members
 
 
+def test_get_safe_members_backward_compatible_without_base():
+    """Test _get_safe_members works without base parameter for backward compatibility.
+
+    When base is not provided, it defaults to the current working directory.
+    """
+    mock_member = Mock()
+    mock_member.name = "safe/file.txt"
+    mock_member.issym = Mock(return_value=False)
+    mock_member.islnk = Mock(return_value=False)
+
+    # Call without base parameter - should not raise TypeError
+    safe_members = list(_get_safe_members([mock_member]))
+    assert len(safe_members) == 1
+    assert mock_member in safe_members
+
+
 def test_custom_extractall_tarfile_with_data_filter_uses_filter_param():
     """Test custom_extractall_tarfile uses data_filter when available.
 
@@ -231,7 +300,7 @@ def test_custom_extractall_tarfile_without_data_filter_uses_safe_members():
 
     Verifies that:
     1. tar.getmembers() is called (not iterating over tar directly)
-    2. _get_safe_members is called with the members list and resolved extract_path as base
+    2. _get_safe_members is called with members list and resolved extract_path as base
     3. _validate_extracted_paths is called after extraction
     """
     mock_member = Mock()
@@ -248,39 +317,31 @@ def test_custom_extractall_tarfile_without_data_filter_uses_safe_members():
 
         # Use spec= to restrict the mock to only have 'TarFile' attribute,
         # so hasattr(mock_tarfile, 'data_filter') returns False
-        with patch(
-            "sagemaker.core.common_utils.tarfile", spec=["TarFile"]
-        ):
-            with patch("sagemaker.core.common_utils._get_safe_members") as mock_safe:
-                mock_safe.return_value = [mock_member]
+        with patch("sagemaker.core.common_utils.tarfile", spec=["TarFile"]), \
+             patch("sagemaker.core.common_utils._get_safe_members") as mock_safe, \
+             patch("sagemaker.core.common_utils._validate_extracted_paths") as mock_validate:
 
-                with patch("sagemaker.core.common_utils._validate_extracted_paths"):
-                    custom_extractall_tarfile(mock_tar, extract_path)
+            mock_safe.return_value = [mock_member]
 
-                    # Verify getmembers() was called (not iterating over tar directly)
-                    mock_tar.getmembers.assert_called_once()
+            custom_extractall_tarfile(mock_tar, extract_path)
 
-                    # Verify _get_safe_members was called with the members list and resolved base
-                    mock_safe.assert_called_once()
-                    call_args = mock_safe.call_args
-                    assert call_args[0][0] == [mock_member]  # members list
-                    # base should be resolved extract_path, not cwd
-                    expected_base = _get_resolved_path(extract_path)
-                    assert call_args[0][1] == expected_base
+            # Verify getmembers() was called (not iterating over tar directly)
+            mock_tar.getmembers.assert_called_once()
 
-                    mock_tar.extractall.assert_called_once()
-                    call_kwargs = mock_tar.extractall.call_args[1]
-                    assert call_kwargs["path"] == extract_path
-                    assert "members" in call_kwargs
+            # Verify _get_safe_members was called with:
+            #   arg 0: members list (from tar.getmembers())
+            #   arg 1: base (resolved extract_path, not cwd)
+            mock_safe.assert_called_once()
+            call_args = mock_safe.call_args
+            assert call_args[0][0] == [mock_member]  # members list
+            expected_base = _get_resolved_path(extract_path)
+            assert call_args[0][1] == expected_base  # base is resolved extract_path
 
+            # Verify extractall was called with path and members
+            mock_tar.extractall.assert_called_once()
+            call_kwargs = mock_tar.extractall.call_args[1]
+            assert call_kwargs["path"] == extract_path
+            assert "members" in call_kwargs
 
-def test_is_bad_path_handles_value_error_gracefully():
-    """Test that _is_bad_path returns True when os.path.commonpath raises ValueError.
-
-    This can happen on Windows with paths on different drives, or with mixed
-    absolute/relative paths.
-    """
-    with patch("sagemaker.core.common_utils.os.path.commonpath", side_effect=ValueError):
-        # Should return True (treat as bad path) when commonpath raises ValueError
-        result = _is_bad_path("some/path", "/some/base")
-        assert result is True
+            # Verify _validate_extracted_paths is called after extraction
+            mock_validate.assert_called_once_with(extract_path)

@@ -16,14 +16,19 @@ This package re-exports commonly used utility functions from common_utils
 for backward compatibility and convenience.
 
 Note: Uses lazy imports via __getattr__ to avoid circular import issues.
+
+Private tar extraction safety helpers (_get_resolved_path, _is_bad_path,
+_is_bad_link, _get_safe_members, _validate_extracted_paths) are internal
+implementation details and are NOT re-exported from this package. They can
+be imported directly from sagemaker.core.common_utils if needed.
+
+custom_extractall_tarfile is the public entry point for safe tar extraction.
 """
 from __future__ import absolute_import
 
 # Public API surface.
 # Note: _save_model is underscore-prefixed but was already in __all__ (pre-existing).
 # custom_extractall_tarfile is the main public entry point for safe tar extraction.
-# Private helpers (_get_resolved_path, _is_bad_path, _is_bad_link, _get_safe_members)
-# are importable directly from sagemaker.core.common_utils but are not re-exported here.
 __all__ = [
     "_save_model",
     "download_file_from_url",

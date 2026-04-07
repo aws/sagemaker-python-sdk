@@ -1708,22 +1708,26 @@ def _is_bad_link(info, base):
         bool: True if the link is not rooted under the base directory, False otherwise.
     """
     # Links are interpreted relative to the directory containing the link
+    # Wrap with _get_resolved_path to ensure consistent normalization for commonpath comparison
     tip = _get_resolved_path(joinpath(base, dirname(info.name)))
     return _is_bad_path(info.linkname, base=tip)
 
 
-def _get_safe_members(members, base):
+def _get_safe_members(members, base=None):
     """A generator that yields members that are safe to extract.
 
     It filters out bad paths and bad links.
 
     Args:
         members (list): A list of TarInfo members to check.
-        base (str): The base directory for extraction.
+        base (str): The base directory for extraction. If None, defaults to the
+            current working directory (for backward compatibility).
 
     Yields:
         tarfile.TarInfo: The tar file info.
     """
+    if base is None:
+        base = _get_resolved_path("")
     for file_info in members:
         if _is_bad_path(file_info.name, base):
             logger.error("%s is blocked (illegal path)", file_info.name)
