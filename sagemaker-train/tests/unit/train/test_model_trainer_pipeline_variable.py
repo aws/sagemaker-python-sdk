@@ -210,6 +210,32 @@ class TestModelTrainerPipelineVariableHyperparameters:
         args = trainer._create_training_job_args()
         assert args["hyper_parameters"]["algorithm"] is algo
 
+    def test_hyperparameters_with_parameter_integer_does_not_raise(self):
+        """Verify ParameterInteger in hyperparameters does NOT raise TypeError.
+
+        This test documents the exact bug scenario from GH#5504: safe_serialize
+        would fall back to str(data) for PipelineVariable objects, but
+        PipelineVariable.__str__ intentionally raises TypeError.
+        """
+        max_depth = ParameterInteger(name="MaxDepth", default_value=5)
+        trainer = ModelTrainer(
+            training_image=DEFAULT_IMAGE,
+            role=DEFAULT_ROLE,
+            compute=DEFAULT_COMPUTE,
+            stopping_condition=DEFAULT_STOPPING,
+            output_data_config=DEFAULT_OUTPUT,
+            hyperparameters={"max_depth": max_depth},
+        )
+        # This call would have raised TypeError before the fix
+        try:
+            args = trainer._create_training_job_args()
+        except TypeError:
+            pytest.fail(
+                "safe_serialize raised TypeError on PipelineVariable - "
+                "this is the bug described in GH#5504"
+            )
+        assert args["hyper_parameters"]["max_depth"] is max_depth
+
     def test_hyperparameters_with_mixed_pipeline_and_static_values(self):
         """Mixed PipelineVariable and static values should both be handled correctly."""
         max_depth = ParameterInteger(name="MaxDepth", default_value=5)

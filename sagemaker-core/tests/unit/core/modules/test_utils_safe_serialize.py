@@ -18,7 +18,7 @@ than attempting str() conversion which would raise TypeError.
 
 See: https://github.com/aws/sagemaker-python-sdk/issues/5504
 """
-from __future__ import absolute_import
+from __future__ import annotations
 
 import pytest
 
@@ -50,6 +50,12 @@ class TestSafeSerializeWithPipelineVariables:
         # This should NOT raise TypeError
         result = safe_serialize(param)
         assert result is param
+
+    def test_pipeline_variable_str_raises_type_error(self):
+        """Confirm PipelineVariable.__str__ raises TypeError (the root cause of the bug)."""
+        param = ParameterInteger(name="TestParam", default_value=10)
+        with pytest.raises(TypeError):
+            str(param)
 
 
 class TestSafeSerializeBasicTypes:
