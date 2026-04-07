@@ -24,11 +24,7 @@ from typing import Literal, Any
 
 from sagemaker.core.shapes import Unassigned
 from sagemaker.core.modules import logger
-
-try:
-    from sagemaker.core.helper.pipeline_variable import PipelineVariable
-except ImportError:
-    PipelineVariable = None
+from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
 
 def _is_valid_s3_uri(path: str, path_type: Literal["File", "Directory", "Any"] = "Any") -> bool:
@@ -145,11 +141,12 @@ def safe_serialize(data):
         data (Any): The data to serialize.
 
     Returns:
-        str: The serialized JSON-compatible string or the string representation of the input.
+        str | PipelineVariable: The serialized JSON-compatible string, the string
+            representation of the input, or the PipelineVariable object as-is.
     """
     if isinstance(data, str):
         return data
-    elif PipelineVariable is not None and isinstance(data, PipelineVariable):
+    elif isinstance(data, PipelineVariable):
         return data
     try:
         return json.dumps(data)

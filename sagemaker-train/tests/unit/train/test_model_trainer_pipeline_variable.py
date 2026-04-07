@@ -204,7 +204,7 @@ class TestModelTrainerPipelineVariableHyperparameters:
         assert args["hyper_parameters"]["max_depth"] is max_depth
 
     def test_hyperparameters_with_parameter_string(self):
-        """ParameterString in hyperparameters should be preserved through _create_training_job_args."""
+        """ParameterString in hyperparameters should be preserved."""
         algo = ParameterString(name="Algorithm", default_value="xgboost")
         trainer = ModelTrainer(
             training_image=DEFAULT_IMAGE,
