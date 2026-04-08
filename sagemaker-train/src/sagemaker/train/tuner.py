@@ -1505,11 +1505,15 @@ class HyperparameterTuner(object):
                 )
 
         # Get environment variables from model_trainer.
-        # environment is a defined attribute on ModelTrainer (dict | None).
-        # We pass it through as-is; even an empty dict is valid for the API.
+        # environment is a defined attribute on ModelTrainer (typed as dict | None).
+        # We access it directly (consistent with how role, compute, etc. are accessed).
+        # We pass it through as-is when it's a dict — even an empty dict is valid for the API.
+        # When it's None or not a dict, we omit it from the constructor so the Pydantic
+        # model keeps its default (Unassigned), which is then excluded during serialization.
         env = model_trainer.environment
 
-        definition = HyperParameterTrainingJobDefinition(
+        # Build base kwargs for the definition
+        definition_kwargs = dict(
             algorithm_specification=algorithm_spec,
             role_arn=model_trainer.role,
             input_data_config=input_data_config if input_data_config else None,
@@ -1518,8 +1522,15 @@ class HyperparameterTuner(object):
             stopping_condition=stopping_condition,
             static_hyper_parameters=getattr(self, "static_hyperparameters", None) or {},
             enable_managed_spot_training=model_trainer.compute.enable_managed_spot_training,
-            environment=env,
         )
+
+        # Only include environment when it's a dict (including empty dict).
+        # This avoids Pydantic validation errors for non-dict values and keeps
+        # the field as Unassigned (excluded from serialization) when not set.
+        if isinstance(env, dict):
+            definition_kwargs["environment"] = env
+
+        definition = HyperParameterTrainingJobDefinition(**definition_kwargs)
 
         # Pass through VPC config from model_trainer
         networking = getattr(model_trainer, "networking", None)

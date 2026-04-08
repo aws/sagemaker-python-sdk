@@ -624,7 +624,13 @@ class TestHyperparameterTunerStaticMethods:
         }, "Environment variables should match those set on ModelTrainer"
 
     def test_build_training_job_definition_with_none_environment(self):
-        """Test that _build_training_job_definition handles None environment gracefully."""
+        """Test that _build_training_job_definition handles None environment gracefully.
+
+        When environment is None, it should not be passed to the Pydantic constructor,
+        so the field stays as Unassigned (excluded from serialization).
+        """
+        from sagemaker.core.utils.utils import Unassigned
+
         mock_trainer = _create_mock_model_trainer()
         mock_trainer.environment = None
 
@@ -636,7 +642,9 @@ class TestHyperparameterTunerStaticMethods:
 
         definition = tuner._build_training_job_definition(None)
 
-        assert definition.environment is None, "Environment should be None when not set"
+        assert isinstance(definition.environment, Unassigned), (
+            "Environment should be Unassigned when model_trainer.environment is None"
+        )
 
     def test_build_training_job_definition_with_empty_environment(self):
         """Test that _build_training_job_definition passes through empty environment.
