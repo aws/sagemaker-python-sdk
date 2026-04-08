@@ -76,8 +76,8 @@ class TestGetModelConfigPropertiesFromHf(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             _get_model_config_properties_from_hf("non-existent-model")
 
-        self.assertIn("Did not find a config.json", str(context.exception))
-        self.assertEqual(mock_logger.warning.call_count, 2)
+        self.assertIn("Did not find any supported model config file", str(context.exception))
+        self.assertEqual(mock_logger.warning.call_count, 3)
 
     @patch('urllib.request.urlopen')
     @patch('sagemaker.serve.utils.hf_utils.logger')
@@ -88,8 +88,8 @@ class TestGetModelConfigPropertiesFromHf(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             _get_model_config_properties_from_hf("model-id")
 
-        self.assertIn("Did not find a config.json", str(context.exception))
-        self.assertEqual(mock_logger.warning.call_count, 2)
+        self.assertIn("Did not find any supported model config file", str(context.exception))
+        self.assertEqual(mock_logger.warning.call_count, 3)
 
     @patch('urllib.request.urlopen')
     @patch('sagemaker.serve.utils.hf_utils.logger')
@@ -100,8 +100,8 @@ class TestGetModelConfigPropertiesFromHf(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             _get_model_config_properties_from_hf("model-id")
 
-        self.assertIn("Did not find a config.json", str(context.exception))
-        self.assertEqual(mock_logger.warning.call_count, 2)
+        self.assertIn("Did not find any supported model config file", str(context.exception))
+        self.assertEqual(mock_logger.warning.call_count, 3)
 
     @patch('urllib.request.urlopen')
     @patch('sagemaker.serve.utils.hf_utils.logger')
@@ -116,8 +116,8 @@ class TestGetModelConfigPropertiesFromHf(unittest.TestCase):
             with self.assertRaises(ValueError) as context:
                 _get_model_config_properties_from_hf("model-id")
 
-        self.assertIn("Did not find a config.json", str(context.exception))
-        self.assertEqual(mock_logger.warning.call_count, 2)
+        self.assertIn("Did not find any supported model config file", str(context.exception))
+        self.assertEqual(mock_logger.warning.call_count, 3)
 
     @patch('urllib.request.urlopen')
     def test_get_model_config_url_format(self, mock_urlopen):
@@ -167,15 +167,53 @@ class TestGetModelConfigPropertiesFromHf(unittest.TestCase):
     @patch("urllib.request.urlopen")
     @patch("sagemaker.serve.utils.hf_utils.logger")
     def test_get_model_config_dual_file_error_when_both_missing(self, mock_logger, mock_urlopen):
-        """Test error when both config.json and model_index.json are missing."""
+        """Test error when all known config files are missing."""
         mock_urlopen.side_effect = HTTPError("url", 404, "Not Found", {}, None)
 
         with self.assertRaises(ValueError) as context:
             _get_model_config_properties_from_hf("model-id")
 
-        self.assertIn("config.json or model_index.json", str(context.exception))
-        self.assertEqual(mock_urlopen.call_count, 2)
-        self.assertEqual(mock_logger.warning.call_count, 2)
+        self.assertIn(
+            "Expected one of: config.json, model_index.json, adapter_config.json",
+            str(context.exception),
+        )
+        self.assertEqual(mock_urlopen.call_count, 3)
+        self.assertEqual(mock_logger.warning.call_count, 3)
+
+    @patch("urllib.request.urlopen")
+    def test_get_model_config_falls_back_to_adapter_config(self, mock_urlopen):
+        """Test fallback to adapter_config.json when config/model_index are missing."""
+        config_missing_error = HTTPError(
+            "https://huggingface.co/org/model/raw/main/config.json", 404, "Not Found", {}, None
+        )
+        model_index_missing_error = HTTPError(
+            "https://huggingface.co/org/model/raw/main/model_index.json", 404, "Not Found", {}, None
+        )
+        adapter_config = {
+            "base_model_name_or_path": "LiquidAI/LFM2.5-1.2B-Instruct",
+            "peft_type": "LORA",
+        }
+
+        mock_adapter_response = Mock()
+        mock_adapter_response.__enter__ = Mock(return_value=mock_adapter_response)
+        mock_adapter_response.__exit__ = Mock(return_value=False)
+
+        def _urlopen_side_effect(request):
+            url = request.full_url if hasattr(request, "full_url") else request
+            if url.endswith("/config.json"):
+                raise config_missing_error
+            if url.endswith("/model_index.json"):
+                raise model_index_missing_error
+            if url.endswith("/adapter_config.json"):
+                return mock_adapter_response
+            raise AssertionError(f"Unexpected URL called: {url}")
+
+        mock_urlopen.side_effect = _urlopen_side_effect
+
+        with patch("json.load", side_effect=[adapter_config]):
+            result = _get_model_config_properties_from_hf("org/model-name")
+
+        self.assertEqual(result, adapter_config)
 
 
 if __name__ == "__main__":

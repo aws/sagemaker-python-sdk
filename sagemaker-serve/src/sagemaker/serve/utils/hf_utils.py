@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utility functions for fetching model information from HuggingFace Hub"""
+
 from __future__ import absolute_import
 import json
 import urllib.request
@@ -24,7 +25,7 @@ logger = logging.getLogger(__name__)
 def _get_model_config_properties_from_hf(model_id: str, hf_hub_token: str = None):
     """Placeholder docstring"""
 
-    config_files = ["config.json", "model_index.json"]
+    config_files = ["config.json", "model_index.json", "adapter_config.json"]
 
     model_config = None
     for config_file in config_files:
@@ -54,9 +55,9 @@ def _get_model_config_properties_from_hf(model_id: str, hf_hub_token: str = None
             )
 
     if not model_config:
+        allowed_files = ", ".join(config_files)
         raise ValueError(
-            f"Did not find a config.json or model_index.json file in huggingface hub for "
-            f"{model_id}. Please make sure a config.json exists (or model_index.json for Stable "
-            f"Diffusion Models) for this model in the huggingface hub"
+            f"Did not find any supported model config file in Hugging Face Hub for {model_id}. "
+            f"Expected one of: {allowed_files}"
         )
     return model_config
