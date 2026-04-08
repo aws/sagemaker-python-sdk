@@ -452,6 +452,7 @@ class TorchTensorSerializer(SimpleBaseSerializer):
                 "Unable to import torch. Please install torch to use TorchTensorSerializer: "
                 "pip install 'sagemaker-core[torch]'"
             ) from e
+
         self.numpy_serializer = NumpySerializer()
 
     def serialize(self, data):
