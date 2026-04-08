@@ -71,40 +71,6 @@ class TestGetLakeFormationClient:
         assert client == mock_client
 
 
-class TestGetS3Client:
-    """Tests for _get_s3_client method."""
-
-    @patch("sagemaker.mlops.feature_store.feature_group_manager.Session")
-    def test_creates_client_with_default_session(self, mock_session_class):
-        """Test client creation with default session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-        mock_session_class.return_value = mock_session
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_s3_client = FeatureGroupManager._get_s3_client.__get__(fg)
-
-        client = fg._get_s3_client(region="us-west-2")
-
-        mock_session.client.assert_called_with("s3", region_name="us-west-2")
-        assert client == mock_client
-
-    def test_creates_client_with_provided_session(self):
-        """Test client creation with provided session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_s3_client = FeatureGroupManager._get_s3_client.__get__(fg)
-
-        client = fg._get_s3_client(session=mock_session, region="us-west-2")
-
-        mock_session.client.assert_called_with("s3", region_name="us-west-2")
-        assert client == mock_client
-
-
 class TestRegisterS3WithLakeFormation:
     """Tests for _register_s3_with_lake_formation method."""
 
@@ -127,6 +93,7 @@ class TestRegisterS3WithLakeFormation:
         assert result is True
         self.mock_client.register_resource.assert_called_with(
             ResourceArn="arn:aws:s3:::test-bucket/prefix",
+            WithFederation=True,
             UseServiceLinkedRole=True,
         )
 
@@ -161,6 +128,7 @@ class TestRegisterS3WithLakeFormation:
 
         call_args = self.mock_client.register_resource.call_args
         assert call_args[1]["UseServiceLinkedRole"] is True
+        assert call_args[1]["WithFederation"] is True
 
     def test_uses_custom_role_arn_when_service_linked_role_disabled(self):
         """Test custom role ARN is used when use_service_linked_role is False."""
@@ -175,6 +143,7 @@ class TestRegisterS3WithLakeFormation:
 
         call_args = self.mock_client.register_resource.call_args
         assert call_args[1]["RoleArn"] == custom_role
+        assert call_args[1]["WithFederation"] is True
         assert "UseServiceLinkedRole" not in call_args[1]
 
     def test_raises_error_when_role_arn_missing_and_service_linked_role_disabled(self):
@@ -387,7 +356,7 @@ class TestEnableLakeFormationValidation:
         fg.feature_group_status = "Created"
 
         with pytest.raises(ValueError, match="does not have an offline store configured"):
-            fg.enable_lake_formation()
+            fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         # Verify refresh was called
         mock_refresh.assert_called_once()
@@ -411,7 +380,7 @@ class TestEnableLakeFormationValidation:
         fg.feature_group_status = "Created"
 
         with pytest.raises(ValueError, match="does not have a role_arn configured"):
-            fg.enable_lake_formation()
+            fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         # Verify refresh was called
         mock_refresh.assert_called_once()
@@ -435,7 +404,7 @@ class TestEnableLakeFormationValidation:
         fg.feature_group_status = "Creating"
 
         with pytest.raises(ValueError, match="must be in 'Created' status"):
-            fg.enable_lake_formation()
+            fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         # Verify refresh was called
         mock_refresh.assert_called_once()
@@ -445,9 +414,8 @@ class TestEnableLakeFormationValidation:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
     def test_wait_for_active_calls_wait_for_status(
-        self, mock_apply_policy, mock_revoke, mock_grant, mock_register, mock_refresh, mock_wait
+        self, mock_revoke, mock_grant, mock_register, mock_refresh, mock_wait
     ):
         """Test that wait_for_active=True calls wait_for_status with 'Created' target."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
@@ -470,10 +438,9 @@ class TestEnableLakeFormationValidation:
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
 
         # Call with wait_for_active=True
-        fg.enable_lake_formation(wait_for_active=True)
+        fg.enable_lake_formation(wait_for_active=True, disable_hybrid_access_mode=True)
 
         # Verify wait_for_status was called with "Created"
         mock_wait.assert_called_once_with(target_status="Created")
@@ -485,9 +452,8 @@ class TestEnableLakeFormationValidation:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
     def test_wait_for_active_false_does_not_call_wait(
-        self, mock_apply_policy, mock_revoke, mock_grant, mock_register, mock_refresh, mock_wait
+        self, mock_revoke, mock_grant, mock_register, mock_refresh, mock_wait
     ):
         """Test that wait_for_active=False does not call wait_for_status."""
         from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
@@ -510,10 +476,9 @@ class TestEnableLakeFormationValidation:
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
 
         # Call with wait_for_active=False (default)
-        fg.enable_lake_formation(wait_for_active=False)
+        fg.enable_lake_formation(wait_for_active=False, disable_hybrid_access_mode=True)
 
         # Verify wait_for_status was NOT called
         mock_wait.assert_not_called()
@@ -599,7 +564,7 @@ class TestEnableLakeFormationValidation:
         with pytest.raises(
             RuntimeError, match="Failed to register S3 location with Lake Formation"
         ):
-            fg.enable_lake_formation()
+            fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         # Verify Phase 1 was called but Phase 2 and 3 were not
         mock_register.assert_called_once()
@@ -618,7 +583,7 @@ class TestEnableLakeFormationValidation:
         mock_revoke.return_value = True
 
         with pytest.raises(RuntimeError, match="Failed to grant Lake Formation permissions"):
-            fg.enable_lake_formation()
+            fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         # Verify Phase 1 and 2 were called but Phase 3 was not
         mock_register.assert_called_once()
@@ -638,7 +603,7 @@ class TestEnableLakeFormationValidation:
         mock_revoke.side_effect = Exception("Phase 3 failed")
 
         with pytest.raises(RuntimeError, match="Failed to revoke IAMAllowedPrincipal permissions"):
-            fg.enable_lake_formation()
+            fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         # Verify all phases were called
         mock_register.assert_called_once()
@@ -857,7 +822,7 @@ class TestCreateWithLakeFormation:
         ]
 
         # Test 1: lake_formation_config with enabled=False (explicit)
-        lf_config = LakeFormationConfig()
+        lf_config = LakeFormationConfig(disable_hybrid_access_mode=False)
         lf_config.enabled = False
         result = FeatureGroupManager.create(
             feature_group_name=feature_group_name,
@@ -979,7 +944,7 @@ class TestCreateWithLakeFormation:
         )
 
         # Create LakeFormationConfig with enabled=True
-        lf_config = LakeFormationConfig()
+        lf_config = LakeFormationConfig(disable_hybrid_access_mode=False)
         lf_config.enabled = True
 
         # Create with lake_formation_config enabled=True
@@ -1001,6 +966,7 @@ class TestCreateWithLakeFormation:
             region=None,
             use_service_linked_role=True,
             registration_role_arn=None,
+            disable_hybrid_access_mode=False,
         )
         # Verify the feature group was returned
         assert result == mock_fg
@@ -1031,7 +997,7 @@ class TestCreateWithLakeFormation:
         ]
 
         # Create LakeFormationConfig with enabled=True
-        lf_config = LakeFormationConfig()
+        lf_config = LakeFormationConfig(disable_hybrid_access_mode=False)
         lf_config.enabled = True
 
         # Test with lake_formation_config enabled=True but no offline_store_config
@@ -1094,7 +1060,7 @@ class TestCreateWithLakeFormation:
         )
 
         # Create LakeFormationConfig with enabled=True
-        lf_config = LakeFormationConfig()
+        lf_config = LakeFormationConfig(disable_hybrid_access_mode=False)
         lf_config.enabled = True
 
         # Test with lake_formation_config enabled=True but no role_arn
@@ -1182,7 +1148,7 @@ class TestCreateWithLakeFormation:
         )
 
         # Build LakeFormationConfig with use_service_linked_role
-        lf_config = LakeFormationConfig()
+        lf_config = LakeFormationConfig(disable_hybrid_access_mode=False)
         lf_config.enabled = True
         lf_config.use_service_linked_role = use_slr
         # When use_service_linked_role is False, registration_role_arn is required
@@ -1208,6 +1174,7 @@ class TestCreateWithLakeFormation:
             region=None,
             use_service_linked_role=use_slr,
             registration_role_arn=expected_registration_role,
+            disable_hybrid_access_mode=False,
         )
         # Verify the feature group was returned
         assert result == mock_fg
@@ -1238,33 +1205,66 @@ class TestDisableHybridAccessMode:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
-    def test_revoke_always_called(
-        self, mock_apply_policy, mock_revoke, mock_grant, mock_register, mock_refresh
+    def test_revoke_called_when_disable_hybrid_access_mode_true(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
     ):
-        """Test that IAMAllowedPrincipal is always revoked."""
+        """Test that IAMAllowedPrincipal is revoked when disable_hybrid_access_mode=True."""
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
 
-        result = self.fg.enable_lake_formation()
+        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         mock_revoke.assert_called_once()
-        assert result["iam_principal_revoked"] is True
+        assert result["hybrid_access_mode_disabled"] is True
+
+    @patch("builtins.input", return_value="y")
+    @patch.object(FeatureGroupManager, "refresh")
+    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
+    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
+    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
+    def test_revoke_not_called_when_disable_hybrid_access_mode_false(
+        self, mock_revoke, mock_grant, mock_register, mock_refresh, mock_input
+    ):
+        """Test that IAMAllowedPrincipal is NOT revoked when disable_hybrid_access_mode=False."""
+        mock_register.return_value = True
+        mock_grant.return_value = True
+
+        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=False)
+
+        mock_revoke.assert_not_called()
+        assert result["hybrid_access_mode_disabled"] is False
+
+    @patch("builtins.input", return_value="n")
+    @patch.object(FeatureGroupManager, "refresh")
+    def test_raises_error_when_user_declines_hybrid_access_prompt(
+        self, mock_refresh, mock_input
+    ):
+        """Test that RuntimeError is raised when user declines the hybrid access prompt."""
+        with pytest.raises(RuntimeError, match="User chose not to proceed"):
+            self.fg.enable_lake_formation(disable_hybrid_access_mode=False)
+
+    @patch("builtins.input", return_value="")
+    @patch.object(FeatureGroupManager, "refresh")
+    def test_raises_error_when_user_enters_empty_at_hybrid_access_prompt(
+        self, mock_refresh, mock_input
+    ):
+        """Test that RuntimeError is raised when user enters empty string at prompt."""
+        with pytest.raises(RuntimeError, match="User chose not to proceed"):
+            self.fg.enable_lake_formation(disable_hybrid_access_mode=False)
 
 
 class TestCreateWithLakeFormationDisableHybridAccessMode:
-    """Tests for create() no longer passing disable_hybrid_access_mode."""
+    """Tests for create() passing disable_hybrid_access_mode from config."""
 
     @patch("sagemaker.core.resources.Base.get_sagemaker_client")
     @patch.object(FeatureGroupManager, "get")
     @patch.object(FeatureGroupManager, "wait_for_status")
     @patch.object(FeatureGroupManager, "enable_lake_formation")
-    def test_enable_lake_formation_called_without_disable_hybrid_access_mode(
+    def test_enable_lake_formation_called_with_disable_hybrid_access_mode(
         self, mock_enable_lf, mock_wait, mock_get, mock_get_client
     ):
-        """Test that create() calls enable_lake_formation without disable_hybrid_access_mode."""
+        """Test that create() passes disable_hybrid_access_mode from config to enable_lake_formation."""
         from sagemaker.core.shapes import FeatureDefinition, OfflineStoreConfig, S3StorageConfig
 
         mock_client = MagicMock()
@@ -1283,8 +1283,9 @@ class TestCreateWithLakeFormationDisableHybridAccessMode:
             FeatureDefinition(feature_name="event_time", feature_type="String"),
         ]
 
-        lf_config = LakeFormationConfig()
+        lf_config = LakeFormationConfig(disable_hybrid_access_mode=False)
         lf_config.enabled = True
+        lf_config.disable_hybrid_access_mode = True
 
         FeatureGroupManager.create(
             feature_group_name="test-fg",
@@ -1303,6 +1304,7 @@ class TestCreateWithLakeFormationDisableHybridAccessMode:
             region=None,
             use_service_linked_role=True,
             registration_role_arn=None,
+            disable_hybrid_access_mode=True,
         )
 
 
@@ -1311,10 +1313,16 @@ class TestLakeFormationConfigDefaults:
 
     def test_has_expected_fields_only(self):
         """Test that LakeFormationConfig has only the expected fields."""
-        config = LakeFormationConfig()
+        config = LakeFormationConfig(disable_hybrid_access_mode=True)
         assert config.enabled is False
         assert config.use_service_linked_role is True
         assert config.registration_role_arn is None
+        assert config.disable_hybrid_access_mode is True
+
+    def test_disable_hybrid_access_mode_is_required(self):
+        """Test that disable_hybrid_access_mode is a required field."""
+        with pytest.raises(Exception):
+            LakeFormationConfig()
 
 
 class TestExtractAccountIdFromArn:
@@ -1577,150 +1585,17 @@ class TestGenerateS3DenyStatements:
 
 
 
-class TestApplyBucketPolicy:
-    """Tests for _apply_bucket_policy method."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._apply_bucket_policy = FeatureGroupManager._apply_bucket_policy.__get__(self.fg)
-        self.fg._generate_s3_deny_statements = FeatureGroupManager._generate_s3_deny_statements.__get__(self.fg)
-        self.mock_s3_client = MagicMock()
-        self.fg._get_s3_client = MagicMock(return_value=self.mock_s3_client)
-
-    def test_no_existing_policy_creates_fresh(self):
-        """Test that NoSuchBucketPolicy creates a fresh policy with our statements."""
-        self.mock_s3_client.get_bucket_policy.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "NoSuchBucketPolicy", "Message": "No policy"}},
-            "GetBucketPolicy",
-        )
-
-        result = self.fg._apply_bucket_policy(
-            "test-bucket", "prefix",
-            "arn:aws:iam::123456789012:role/LFRole",
-            "arn:aws:iam::123456789012:role/FSRole",
-        )
-
-        assert result is True
-        self.mock_s3_client.put_bucket_policy.assert_called_once()
-        put_args = self.mock_s3_client.put_bucket_policy.call_args
-        import json as _json
-        policy = _json.loads(put_args[1]["Policy"])
-        assert len(policy["Statement"]) == 2
-
-    def test_existing_policy_appends_statements(self):
-        """Test that existing policy gets our statements appended."""
-        import json as _json
-        existing_policy = {
-            "Version": "2012-10-17",
-            "Statement": [{"Sid": "ExistingStatement", "Effect": "Allow", "Principal": "*", "Action": "s3:GetObject", "Resource": "arn:aws:s3:::test-bucket/*"}]
-        }
-        self.mock_s3_client.get_bucket_policy.return_value = {"Policy": _json.dumps(existing_policy)}
-
-        result = self.fg._apply_bucket_policy(
-            "test-bucket", "prefix",
-            "arn:aws:iam::123456789012:role/LFRole",
-            "arn:aws:iam::123456789012:role/FSRole",
-        )
-
-        assert result is True
-        put_args = self.mock_s3_client.put_bucket_policy.call_args
-        policy = _json.loads(put_args[1]["Policy"])
-        assert len(policy["Statement"]) == 3  # 1 existing + 2 new
-
-    def test_sids_already_exist_skips_put(self):
-        """Test that if our Sids already exist, put_bucket_policy is not called."""
-        import json as _json
-        existing_policy = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {"Sid": "DenyFSObjectAccess_prefix", "Effect": "Deny"},
-                {"Sid": "DenyFSListAccess_prefix", "Effect": "Deny"},
-            ]
-        }
-        self.mock_s3_client.get_bucket_policy.return_value = {"Policy": _json.dumps(existing_policy)}
-
-        result = self.fg._apply_bucket_policy(
-            "test-bucket", "prefix",
-            "arn:aws:iam::123456789012:role/LFRole",
-            "arn:aws:iam::123456789012:role/FSRole",
-        )
-
-        assert result is True
-        self.mock_s3_client.put_bucket_policy.assert_not_called()
-
-    def test_put_bucket_policy_error_propagates(self):
-        """Test that put_bucket_policy errors propagate."""
-        self.mock_s3_client.get_bucket_policy.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "NoSuchBucketPolicy", "Message": "No policy"}},
-            "GetBucketPolicy",
-        )
-        self.mock_s3_client.put_bucket_policy.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "MalformedPolicy", "Message": "Bad policy"}},
-            "PutBucketPolicy",
-        )
-
-        with pytest.raises(botocore.exceptions.ClientError) as exc_info:
-            self.fg._apply_bucket_policy(
-                "test-bucket", "prefix",
-                "arn:aws:iam::123456789012:role/LFRole",
-                "arn:aws:iam::123456789012:role/FSRole",
-            )
-
-        assert exc_info.value.response["Error"]["Code"] == "MalformedPolicy"
-
-    def test_get_bucket_policy_non_nosuchbucketpolicy_error_propagates(self):
-        """Test that non-NoSuchBucketPolicy errors from get_bucket_policy propagate."""
-        self.mock_s3_client.get_bucket_policy.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
-            "GetBucketPolicy",
-        )
-
-        with pytest.raises(botocore.exceptions.ClientError) as exc_info:
-            self.fg._apply_bucket_policy(
-                "test-bucket", "prefix",
-                "arn:aws:iam::123456789012:role/LFRole",
-                "arn:aws:iam::123456789012:role/FSRole",
-            )
-
-        assert exc_info.value.response["Error"]["Code"] == "AccessDenied"
-
-    def test_partial_sid_overlap_appends_only_missing(self):
-        """Test that only missing statements are appended when one Sid already exists."""
-        import json as _json
-        existing_policy = {
-            "Version": "2012-10-17",
-            "Statement": [
-                {"Sid": "DenyFSObjectAccess_prefix", "Effect": "Deny"},
-            ]
-        }
-        self.mock_s3_client.get_bucket_policy.return_value = {"Policy": _json.dumps(existing_policy)}
-
-        result = self.fg._apply_bucket_policy(
-            "test-bucket", "prefix",
-            "arn:aws:iam::123456789012:role/LFRole",
-            "arn:aws:iam::123456789012:role/FSRole",
-        )
-
-        assert result is True
-        put_args = self.mock_s3_client.put_bucket_policy.call_args
-        policy = _json.loads(put_args[1]["Policy"])
-        assert len(policy["Statement"]) == 2  # 1 existing + 1 new
-        sids = [s["Sid"] for s in policy["Statement"]]
-        assert "DenyFSListAccess_prefix" in sids
-
-
 class TestEnableLakeFormationServiceLinkedRoleInPolicy:
-    """Tests for service-linked role ARN usage in Phase 4 bucket policy application."""
+    """Tests for service-linked role ARN usage in Phase 4 deny policy generation."""
 
     @patch.object(FeatureGroupManager, "refresh")
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_statements")
     def test_uses_service_linked_role_arn_when_use_service_linked_role_true(
         self,
-        mock_apply_policy,
+        mock_generate,
         mock_revoke,
         mock_grant,
         mock_register,
@@ -1746,13 +1621,13 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
+        mock_generate.return_value = []
 
-        fg.enable_lake_formation(use_service_linked_role=True)
+        fg.enable_lake_formation(use_service_linked_role=True, disable_hybrid_access_mode=True)
 
         expected_slr_arn = "arn:aws:iam::123456789012:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
-        mock_apply_policy.assert_called_once()
-        call_kwargs = mock_apply_policy.call_args[1]
+        mock_generate.assert_called_once()
+        call_kwargs = mock_generate.call_args[1]
         assert call_kwargs["lake_formation_role_arn"] == expected_slr_arn
         assert call_kwargs["feature_store_role_arn"] == fg.role_arn
 
@@ -1760,10 +1635,10 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_statements")
     def test_uses_service_linked_role_arn_by_default(
         self,
-        mock_apply_policy,
+        mock_generate,
         mock_revoke,
         mock_grant,
         mock_register,
@@ -1789,23 +1664,23 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
+        mock_generate.return_value = []
 
-        fg.enable_lake_formation()
+        fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         expected_slr_arn = "arn:aws:iam::987654321098:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
-        mock_apply_policy.assert_called_once()
-        call_kwargs = mock_apply_policy.call_args[1]
+        mock_generate.assert_called_once()
+        call_kwargs = mock_generate.call_args[1]
         assert call_kwargs["lake_formation_role_arn"] == expected_slr_arn
 
     @patch.object(FeatureGroupManager, "refresh")
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_statements")
     def test_service_linked_role_arn_uses_correct_account_id(
         self,
-        mock_apply_policy,
+        mock_generate,
         mock_revoke,
         mock_grant,
         mock_register,
@@ -1832,13 +1707,13 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
+        mock_generate.return_value = []
 
-        fg.enable_lake_formation(use_service_linked_role=True)
+        fg.enable_lake_formation(use_service_linked_role=True, disable_hybrid_access_mode=True)
 
         expected_slr_arn = f"arn:aws:iam::{account_id}:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
-        mock_apply_policy.assert_called_once()
-        call_kwargs = mock_apply_policy.call_args[1]
+        mock_generate.assert_called_once()
+        call_kwargs = mock_generate.call_args[1]
         assert call_kwargs["lake_formation_role_arn"] == expected_slr_arn
         assert account_id in call_kwargs["lake_formation_role_arn"]
 
@@ -1851,10 +1726,10 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_statements")
     def test_uses_registration_role_arn_when_use_service_linked_role_false(
         self,
-        mock_apply_policy,
+        mock_generate,
         mock_revoke,
         mock_grant,
         mock_register,
@@ -1880,17 +1755,18 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
+        mock_generate.return_value = []
 
         custom_registration_role = "arn:aws:iam::123456789012:role/CustomLakeFormationRole"
 
         fg.enable_lake_formation(
             use_service_linked_role=False,
             registration_role_arn=custom_registration_role,
+            disable_hybrid_access_mode=True,
         )
 
-        mock_apply_policy.assert_called_once()
-        call_kwargs = mock_apply_policy.call_args[1]
+        mock_generate.assert_called_once()
+        call_kwargs = mock_generate.call_args[1]
         assert call_kwargs["lake_formation_role_arn"] == custom_registration_role
 
         service_linked_role_pattern = "aws-service-role/lakeformation.amazonaws.com"
@@ -1900,10 +1776,10 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_statements")
     def test_registration_role_arn_passed_to_s3_registration(
         self,
-        mock_apply_policy,
+        mock_generate,
         mock_revoke,
         mock_grant,
         mock_register,
@@ -1929,13 +1805,14 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
+        mock_generate.return_value = []
 
         custom_registration_role = "arn:aws:iam::123456789012:role/CustomLakeFormationRole"
 
         fg.enable_lake_formation(
             use_service_linked_role=False,
             registration_role_arn=custom_registration_role,
+            disable_hybrid_access_mode=True,
         )
 
         mock_register.assert_called_once()
@@ -1947,10 +1824,10 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
+    @patch.object(FeatureGroupManager, "_generate_s3_deny_statements")
     def test_different_registration_role_arns_produce_different_policies(
         self,
-        mock_apply_policy,
+        mock_generate,
         mock_revoke,
         mock_grant,
         mock_register,
@@ -1976,17 +1853,18 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
+        mock_generate.return_value = []
 
         first_role = "arn:aws:iam::123456789012:role/FirstLakeFormationRole"
         fg.enable_lake_formation(
             use_service_linked_role=False,
             registration_role_arn=first_role,
+            disable_hybrid_access_mode=True,
         )
-        first_call_kwargs = mock_apply_policy.call_args[1]
+        first_call_kwargs = mock_generate.call_args[1]
         first_lf_role = first_call_kwargs["lake_formation_role_arn"]
 
-        mock_apply_policy.reset_mock()
+        mock_generate.reset_mock()
         mock_register.reset_mock()
         mock_grant.reset_mock()
         mock_revoke.reset_mock()
@@ -1995,8 +1873,9 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
         fg.enable_lake_formation(
             use_service_linked_role=False,
             registration_role_arn=second_role,
+            disable_hybrid_access_mode=True,
         )
-        second_call_kwargs = mock_apply_policy.call_args[1]
+        second_call_kwargs = mock_generate.call_args[1]
         second_lf_role = second_call_kwargs["lake_formation_role_arn"]
 
         assert first_lf_role == first_role
@@ -2085,17 +1964,15 @@ class TestEnableLakeFormationIcebergTableFormat:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
     def test_iceberg_strips_data_suffix_for_s3_registration(
-        self, mock_apply_policy, mock_revoke, mock_grant, mock_register, mock_refresh
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
     ):
         """Test that Iceberg tables register the parent S3 path (without /data suffix)."""
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
 
-        self.fg.enable_lake_formation()
+        self.fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         # The registered S3 location should NOT end with /data
         call_args = mock_register.call_args
@@ -2107,9 +1984,8 @@ class TestEnableLakeFormationIcebergTableFormat:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
     def test_non_iceberg_keeps_full_s3_path(
-        self, mock_apply_policy, mock_revoke, mock_grant, mock_register, mock_refresh
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
     ):
         """Test that non-Iceberg tables use the full resolved S3 URI."""
         self.fg.offline_store_config.table_format = None
@@ -2120,9 +1996,8 @@ class TestEnableLakeFormationIcebergTableFormat:
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
 
-        self.fg.enable_lake_formation()
+        self.fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         call_args = mock_register.call_args
         registered_location = call_args[0][0]
@@ -2161,7 +2036,7 @@ class TestEnableLakeFormationMissingArn:
         mock_revoke.return_value = True
 
         with pytest.raises(ValueError, match="Feature Group ARN is required"):
-            fg.enable_lake_formation()
+            fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
 
 class TestEnableLakeFormationHappyPath:
@@ -2188,23 +2063,20 @@ class TestEnableLakeFormationHappyPath:
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy")
     def test_returns_all_true_on_success(
-        self, mock_apply_policy, mock_revoke, mock_grant, mock_register, mock_refresh
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
     ):
         """Test full happy-path returns all phases as True."""
         mock_register.return_value = True
         mock_grant.return_value = True
         mock_revoke.return_value = True
-        mock_apply_policy.return_value = True
 
-        result = self.fg.enable_lake_formation()
+        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         assert result == {
-            "s3_registration": True,
-            "permissions_granted": True,
-            "iam_principal_revoked": True,
-            "bucket_policy_applied": True,
+            "s3_location_registered": True,
+            "lf_permissions_granted": True,
+            "hybrid_access_mode_disabled": True,
         }
 
 
@@ -2233,7 +2105,7 @@ class TestCreatePassesThroughSessionAndRegion:
         mock_get.return_value = mock_fg
 
         mock_session = MagicMock(spec=Session)
-        lf_config = LakeFormationConfig()
+        lf_config = LakeFormationConfig(disable_hybrid_access_mode=False)
         lf_config.enabled = True
 
         FeatureGroupManager.create(
@@ -2255,6 +2127,7 @@ class TestCreatePassesThroughSessionAndRegion:
             region="eu-west-1",
             use_service_linked_role=True,
             registration_role_arn=None,
+            disable_hybrid_access_mode=False,
         )
 
 
@@ -2315,1286 +2188,3 @@ class TestRegionInferenceFromSession:
         )
 
         fg._get_lake_formation_client.assert_called_with(mock_session, "ap-southeast-1")
-
-
-class TestGetCloudTrailClient:
-    """Tests for _get_cloudtrail_client method."""
-
-    @patch("sagemaker.mlops.feature_store.feature_group_manager.Session")
-    def test_creates_client_with_default_session(self, mock_session_class):
-        """Test client creation with default session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-        mock_session_class.return_value = mock_session
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_cloudtrail_client = FeatureGroupManager._get_cloudtrail_client.__get__(fg)
-
-        client = fg._get_cloudtrail_client(region="us-west-2")
-
-        mock_session.client.assert_called_with("cloudtrail", region_name="us-west-2")
-        assert client == mock_client
-
-    def test_creates_client_with_provided_session(self):
-        """Test client creation with provided session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_cloudtrail_client = FeatureGroupManager._get_cloudtrail_client.__get__(fg)
-
-        client = fg._get_cloudtrail_client(session=mock_session, region="us-west-2")
-
-        mock_session.client.assert_called_with("cloudtrail", region_name="us-west-2")
-        assert client == mock_client
-
-
-class TestGetSageMakerClient:
-    """Tests for _get_sagemaker_client method."""
-
-    @patch("sagemaker.mlops.feature_store.feature_group_manager.Session")
-    def test_creates_client_with_default_session(self, mock_session_class):
-        """Test client creation with default session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-        mock_session_class.return_value = mock_session
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_sagemaker_client = FeatureGroupManager._get_sagemaker_client.__get__(fg)
-
-        client = fg._get_sagemaker_client(region="us-west-2")
-
-        mock_session.client.assert_called_with("sagemaker", region_name="us-west-2")
-        assert client == mock_client
-
-    def test_creates_client_with_provided_session(self):
-        """Test client creation with provided session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_sagemaker_client = FeatureGroupManager._get_sagemaker_client.__get__(fg)
-
-        client = fg._get_sagemaker_client(session=mock_session, region="us-west-2")
-
-        mock_session.client.assert_called_with("sagemaker", region_name="us-west-2")
-        assert client == mock_client
-
-
-class TestQueryGlueTableAccessors:
-    """Tests for _query_glue_table_accessors method."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        import json as _json
-        self._json = _json
-        self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._query_glue_table_accessors = (
-            FeatureGroupManager._query_glue_table_accessors.__get__(self.fg)
-        )
-        self.mock_client = MagicMock()
-        self.fg._get_cloudtrail_client = MagicMock(return_value=self.mock_client)
-
-    def _make_event(self, event_name, username=None, resources=None, cloud_trail_event=None, event_time=None):
-        """Helper to build a CloudTrail event dict."""
-        from datetime import datetime, timezone
-        event = {
-            "EventName": event_name,
-            "EventTime": event_time or datetime(2024, 1, 15, 12, 0, 0, tzinfo=timezone.utc),
-        }
-        if username:
-            event["Username"] = username
-        if resources:
-            event["Resources"] = resources
-        if cloud_trail_event:
-            event["CloudTrailEvent"] = self._json.dumps(cloud_trail_event)
-        return event
-
-    def test_returns_matching_accessors(self):
-        """Test that accessors are returned when Resources match the table name."""
-        self.mock_client.lookup_events.return_value = {
-            "Events": [
-                self._make_event(
-                    "GetTable",
-                    username="arn:aws:iam::123:role/MyRole",
-                    resources=[{"ResourceName": "my_table"}],
-                ),
-            ],
-        }
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        assert len(result["accessors"]) == 1
-        assert result["accessors"][0]["principal_arn"] == "arn:aws:iam::123:role/MyRole"
-
-    def test_matches_via_request_parameters(self):
-        """Test matching via CloudTrailEvent requestParameters when Resources don't match."""
-        self.mock_client.lookup_events.return_value = {
-            "Events": [
-                self._make_event(
-                    "GetTable",
-                    username="arn:aws:iam::123:role/MyRole",
-                    resources=[{"ResourceName": "other_table"}],
-                    cloud_trail_event={
-                        "requestParameters": {
-                            "databaseName": "my_db",
-                            "tableName": "my_table",
-                        }
-                    },
-                ),
-            ],
-        }
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        assert len(result["accessors"]) == 1
-
-    def test_filters_non_table_events(self):
-        """Test that events with non-read EventNames are filtered out."""
-        self.mock_client.lookup_events.return_value = {
-            "Events": [
-                self._make_event(
-                    "CreateTable",
-                    username="arn:aws:iam::123:role/MyRole",
-                    resources=[{"ResourceName": "my_table"}],
-                ),
-            ],
-        }
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        assert len(result["accessors"]) == 0
-
-    def test_deduplicates_principals_keeps_latest(self):
-        """Test that duplicate principals keep the latest event time."""
-        from datetime import datetime, timezone
-        self.mock_client.lookup_events.return_value = {
-            "Events": [
-                self._make_event(
-                    "GetTable",
-                    username="arn:aws:iam::123:role/MyRole",
-                    resources=[{"ResourceName": "my_table"}],
-                    event_time=datetime(2024, 1, 10, tzinfo=timezone.utc),
-                ),
-                self._make_event(
-                    "GetTable",
-                    username="arn:aws:iam::123:role/MyRole",
-                    resources=[{"ResourceName": "my_table"}],
-                    event_time=datetime(2024, 1, 20, tzinfo=timezone.utc),
-                ),
-            ],
-        }
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        assert len(result["accessors"]) == 1
-        assert "2024-01-20" in result["accessors"][0]["last_access_time"]
-
-    def test_pagination_with_next_token(self):
-        """Test that pagination via NextToken processes all pages."""
-        self.mock_client.lookup_events.side_effect = [
-            {
-                "Events": [
-                    self._make_event("GetTable", username="arn:aws:iam::123:role/RoleA", resources=[{"ResourceName": "my_table"}]),
-                ],
-                "NextToken": "token1",
-            },
-            {
-                "Events": [
-                    self._make_event("GetTable", username="arn:aws:iam::123:role/RoleB", resources=[{"ResourceName": "my_table"}]),
-                ],
-            },
-        ]
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        assert len(result["accessors"]) == 2
-        arns = {a["principal_arn"] for a in result["accessors"]}
-        assert "arn:aws:iam::123:role/RoleA" in arns
-        assert "arn:aws:iam::123:role/RoleB" in arns
-
-    def test_max_events_cap(self):
-        """Test that processing stops after 1000 events."""
-        # Create 1001 events, all matching
-        events = [
-            self._make_event(
-                "GetTable",
-                username=f"arn:aws:iam::123:role/Role{i}",
-                resources=[{"ResourceName": "my_table"}],
-            )
-            for i in range(1001)
-        ]
-        self.mock_client.lookup_events.return_value = {"Events": events}
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        # Should have at most 1000 accessors (events_scanned caps at 1000)
-        assert len(result["accessors"]) <= 1000
-
-    def test_access_denied_returns_warning(self):
-        """Test that AccessDeniedException returns empty accessors with warning."""
-        self.mock_client.lookup_events.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "AccessDeniedException", "Message": "Access denied"}},
-            "LookupEvents",
-        )
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        assert result["accessors"] == []
-        assert len(result["warnings"]) == 1
-        assert "access denied" in result["warnings"][0].lower()
-
-    def test_client_creation_failure(self):
-        """Test that client creation failure returns empty accessors with warning."""
-        self.fg._get_cloudtrail_client = MagicMock(side_effect=Exception("Connection error"))
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        assert result["accessors"] == []
-        assert len(result["warnings"]) == 1
-        assert "Failed to create CloudTrail client" in result["warnings"][0]
-
-    def test_no_matching_events(self):
-        """Test that events not matching the table return empty accessors."""
-        self.mock_client.lookup_events.return_value = {
-            "Events": [
-                self._make_event(
-                    "GetTable",
-                    username="arn:aws:iam::123:role/MyRole",
-                    resources=[{"ResourceName": "other_table"}],
-                ),
-            ],
-        }
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        assert result["accessors"] == []
-
-    def test_extracts_principal_from_cloud_trail_event(self):
-        """Test principal extraction from CloudTrailEvent JSON when Username is absent."""
-        self.mock_client.lookup_events.return_value = {
-            "Events": [
-                self._make_event(
-                    "GetTable",
-                    resources=[{"ResourceName": "my_table"}],
-                    cloud_trail_event={
-                        "userIdentity": {"arn": "arn:aws:iam::123:role/ExtractedRole"},
-                    },
-                ),
-            ],
-        }
-
-        result = self.fg._query_glue_table_accessors("my_db", "my_table")
-
-        assert len(result["accessors"]) == 1
-        assert result["accessors"][0]["principal_arn"] == "arn:aws:iam::123:role/ExtractedRole"
-
-
-class TestQuerySageMakerExecutionRoles:
-    """Tests for _query_sagemaker_execution_roles method."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._query_sagemaker_execution_roles = (
-            FeatureGroupManager._query_sagemaker_execution_roles.__get__(self.fg)
-        )
-        self.mock_client = MagicMock()
-        self.fg._get_sagemaker_client = MagicMock(return_value=self.mock_client)
-
-    def _setup_paginator(self, api_method, pages):
-        """Helper to set up paginator mock for a specific API method."""
-        paginator = MagicMock()
-        paginator.paginate.return_value = pages
-        # Make get_paginator return the right paginator for the right method
-        original_side_effect = self.mock_client.get_paginator.side_effect
-
-        def get_paginator_side_effect(method_name):
-            if method_name == api_method:
-                return paginator
-            # Return empty paginator for other methods
-            empty = MagicMock()
-            empty.paginate.return_value = []
-            return empty
-
-        if original_side_effect is None:
-            # First call - set up a mapping
-            self._paginator_map = {api_method: paginator}
-            self.mock_client.get_paginator.side_effect = lambda m: self._paginator_map.get(
-                m, MagicMock(paginate=MagicMock(return_value=[]))
-            )
-        else:
-            self._paginator_map[api_method] = paginator
-
-    def test_returns_training_job_roles(self):
-        """Test that training job roles are extracted from summaries."""
-        self._setup_paginator("list_training_jobs", [
-            {"TrainingJobSummaries": [
-                {"TrainingJobName": "job1", "RoleArn": "arn:aws:iam::123:role/TrainRole"},
-            ]},
-        ])
-        self._setup_paginator("list_processing_jobs", [{"ProcessingJobSummaries": []}])
-        self._setup_paginator("list_transform_jobs", [{"TransformJobSummaries": []}])
-
-        result = self.fg._query_sagemaker_execution_roles()
-
-        assert len(result["roles"]) == 1
-        assert result["roles"][0]["role_arn"] == "arn:aws:iam::123:role/TrainRole"
-        assert result["roles"][0]["job_type"] == "TrainingJob"
-
-    def test_returns_processing_job_roles(self):
-        """Test that processing job roles are extracted from summaries."""
-        self._setup_paginator("list_training_jobs", [{"TrainingJobSummaries": []}])
-        self._setup_paginator("list_processing_jobs", [
-            {"ProcessingJobSummaries": [
-                {"ProcessingJobName": "proc1", "RoleArn": "arn:aws:iam::123:role/ProcRole"},
-            ]},
-        ])
-        self._setup_paginator("list_transform_jobs", [{"TransformJobSummaries": []}])
-
-        result = self.fg._query_sagemaker_execution_roles()
-
-        assert len(result["roles"]) == 1
-        assert result["roles"][0]["role_arn"] == "arn:aws:iam::123:role/ProcRole"
-        assert result["roles"][0]["job_type"] == "ProcessingJob"
-
-    def test_deduplicates_roles(self):
-        """Test that the same role from different job types appears only once."""
-        self._setup_paginator("list_training_jobs", [
-            {"TrainingJobSummaries": [
-                {"TrainingJobName": "job1", "RoleArn": "arn:aws:iam::123:role/SharedRole"},
-            ]},
-        ])
-        self._setup_paginator("list_processing_jobs", [
-            {"ProcessingJobSummaries": [
-                {"ProcessingJobName": "proc1", "RoleArn": "arn:aws:iam::123:role/SharedRole"},
-            ]},
-        ])
-        self._setup_paginator("list_transform_jobs", [{"TransformJobSummaries": []}])
-
-        result = self.fg._query_sagemaker_execution_roles()
-
-        assert len(result["roles"]) == 1
-
-    def test_transform_jobs_skip_role(self):
-        """Test that transform jobs don't extract roles (too indirect via ModelName)."""
-        self._setup_paginator("list_training_jobs", [{"TrainingJobSummaries": []}])
-        self._setup_paginator("list_processing_jobs", [{"ProcessingJobSummaries": []}])
-        self._setup_paginator("list_transform_jobs", [
-            {"TransformJobSummaries": [
-                {"TransformJobName": "transform1"},
-            ]},
-        ])
-        # describe_transform_job returns no RoleArn (role is on the model, not the job)
-        self.mock_client.describe_transform_job.return_value = {"ModelName": "my-model"}
-
-        result = self.fg._query_sagemaker_execution_roles()
-
-        assert len(result["roles"]) == 0
-
-    def test_access_denied_per_job_type(self):
-        """Test that AccessDeniedException on one job type still processes others."""
-        # Set up processing and transform first so the map exists
-        self._setup_paginator("list_processing_jobs", [
-            {"ProcessingJobSummaries": [
-                {"ProcessingJobName": "proc1", "RoleArn": "arn:aws:iam::123:role/ProcRole"},
-            ]},
-        ])
-        self._setup_paginator("list_transform_jobs", [{"TransformJobSummaries": []}])
-        # Training jobs paginator raises AccessDeniedException during iteration
-        training_paginator = MagicMock()
-        training_paginator.paginate.return_value = iter([])  # placeholder
-        training_paginator.paginate.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "AccessDeniedException", "Message": "Denied"}},
-            "ListTrainingJobs",
-        )
-        self._paginator_map["list_training_jobs"] = training_paginator
-
-        result = self.fg._query_sagemaker_execution_roles()
-
-        assert len(result["roles"]) == 1
-        assert result["roles"][0]["role_arn"] == "arn:aws:iam::123:role/ProcRole"
-        assert len(result["warnings"]) == 1
-        assert "access denied" in result["warnings"][0].lower()
-
-    def test_client_creation_failure(self):
-        """Test that client creation failure returns empty roles with warning."""
-        self.fg._get_sagemaker_client = MagicMock(side_effect=Exception("Connection error"))
-
-        result = self.fg._query_sagemaker_execution_roles()
-
-        assert result["roles"] == []
-        assert len(result["warnings"]) == 1
-        assert "Failed to create SageMaker client" in result["warnings"][0]
-
-    def test_no_jobs_found(self):
-        """Test that empty summaries return empty roles."""
-        self._setup_paginator("list_training_jobs", [{"TrainingJobSummaries": []}])
-        self._setup_paginator("list_processing_jobs", [{"ProcessingJobSummaries": []}])
-        self._setup_paginator("list_transform_jobs", [{"TransformJobSummaries": []}])
-
-        result = self.fg._query_sagemaker_execution_roles()
-
-        assert result["roles"] == []
-        assert result["warnings"] == []
-
-
-class TestRunAllAuditQueries:
-    """Tests for _run_all_audit_queries method."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._run_all_audit_queries = (
-            FeatureGroupManager._run_all_audit_queries.__get__(self.fg)
-        )
-        self.fg._query_glue_table_accessors = MagicMock(return_value={"accessors": [], "warnings": []})
-        self.fg._query_sagemaker_execution_roles = MagicMock(return_value={"roles": [], "warnings": []})
-        self.fg._query_athena_query_principals = MagicMock(return_value={"principals": [], "running_queries": [], "warnings": []})
-        self.fg._query_glue_etl_jobs = MagicMock(return_value={"jobs": [], "running_job_runs": [], "warnings": []})
-        self.fg._query_running_jobs = MagicMock(return_value={"running_jobs": [], "warnings": []})
-
-    def test_combines_all_query_results(self):
-        """Test that results from all five sub-methods are aggregated."""
-        self.fg._query_glue_table_accessors.return_value = {
-            "accessors": [{"principal_arn": "arn:aws:iam::123:role/A", "last_access_time": "t1"}],
-            "warnings": [],
-        }
-        self.fg._query_sagemaker_execution_roles.return_value = {
-            "roles": [{"role_arn": "arn:aws:iam::123:role/B", "job_type": "TrainingJob", "job_name": "j1"}],
-            "warnings": [],
-        }
-        self.fg._query_athena_query_principals.return_value = {
-            "principals": [{"query_execution_id": "id-1"}],
-            "running_queries": [{"query_execution_id": "id-2", "state": "RUNNING"}],
-            "warnings": [],
-        }
-        self.fg._query_glue_etl_jobs.return_value = {
-            "jobs": [{"job_name": "etl-1"}],
-            "running_job_runs": [{"job_name": "etl-1", "run_id": "r1", "state": "RUNNING"}],
-            "warnings": [],
-        }
-        self.fg._query_running_jobs.return_value = {
-            "running_jobs": [{"job_name": "train-1", "status": "InProgress"}],
-            "warnings": [],
-        }
-
-        result = self.fg._run_all_audit_queries("db", "tbl", "s3://bucket/path")
-
-        assert len(result["glue_table_accessors"]) == 1
-        assert len(result["sagemaker_execution_roles"]) == 1
-        assert len(result["athena_query_principals"]) == 1
-        assert len(result["athena_running_queries"]) == 1
-        assert len(result["glue_etl_jobs"]) == 1
-        assert len(result["glue_running_job_runs"]) == 1
-        assert len(result["sagemaker_running_jobs"]) == 1
-        assert result["glue_database"] == "db"
-        assert result["glue_table"] == "tbl"
-        assert result["s3_path"] == "s3://bucket/path"
-
-    def test_merges_warnings(self):
-        """Test that warnings from all sub-methods are merged."""
-        self.fg._query_glue_table_accessors.return_value = {"accessors": [], "warnings": ["warn1"]}
-        self.fg._query_sagemaker_execution_roles.return_value = {"roles": [], "warnings": ["warn2"]}
-        self.fg._query_athena_query_principals.return_value = {"principals": [], "running_queries": [], "warnings": ["warn3"]}
-        self.fg._query_glue_etl_jobs.return_value = {"jobs": [], "running_job_runs": [], "warnings": ["warn4"]}
-        self.fg._query_running_jobs.return_value = {"running_jobs": [], "warnings": ["warn5"]}
-
-        result = self.fg._run_all_audit_queries("db", "tbl", "s3://bucket/path")
-
-        assert result["warnings"] == ["warn1", "warn2", "warn3", "warn4", "warn5"]
-
-    def test_empty_results(self):
-        """Test structure with empty results from all sub-methods."""
-        result = self.fg._run_all_audit_queries("db", "tbl", "s3://bucket/path")
-
-        assert result["glue_table_accessors"] == []
-        assert result["sagemaker_execution_roles"] == []
-        assert result["athena_query_principals"] == []
-        assert result["athena_running_queries"] == []
-        assert result["glue_etl_jobs"] == []
-        assert result["glue_running_job_runs"] == []
-        assert result["sagemaker_running_jobs"] == []
-        assert result["warnings"] == []
-
-    def test_passes_parameters_through(self):
-        """Test that session, region, lookback_days are passed to all sub-methods."""
-        mock_session = MagicMock()
-
-        self.fg._run_all_audit_queries(
-            "db", "tbl", "s3://bucket/path",
-            session=mock_session, region="eu-west-1", lookback_days=7,
-        )
-
-        self.fg._query_glue_table_accessors.assert_called_once_with(
-            database_name="db", table_name="tbl",
-            session=mock_session, region="eu-west-1", lookback_days=7,
-        )
-        self.fg._query_sagemaker_execution_roles.assert_called_once_with(
-            session=mock_session, region="eu-west-1", lookback_days=7,
-        )
-        self.fg._query_athena_query_principals.assert_called_once_with(
-            database_name="db", table_name="tbl",
-            session=mock_session, region="eu-west-1", lookback_days=7,
-        )
-        self.fg._query_glue_etl_jobs.assert_called_once_with(
-            database_name="db", table_name="tbl",
-            session=mock_session, region="eu-west-1",
-        )
-        self.fg._query_running_jobs.assert_called_once_with(
-            session=mock_session, region="eu-west-1",
-        )
-
-
-class TestAuditGateInEnableLakeFormation:
-    """Tests for the audit gate logic between Phase 2 and Phase 3 in enable_lake_formation."""
-
-    def setup_method(self):
-        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
-
-        self.fg = FeatureGroupManager(feature_group_name="test-fg")
-        self.fg.offline_store_config = OfflineStoreConfig(
-            s3_storage_config=S3StorageConfig(
-                s3_uri="s3://test-bucket/path",
-                resolved_output_s3_uri="s3://test-bucket/resolved-path",
-            ),
-            data_catalog_config=DataCatalogConfig(
-                catalog="AwsDataCatalog", database="test_db", table_name="test_table"
-            ),
-        )
-        self.fg.role_arn = "arn:aws:iam::123456789012:role/TestRole"
-        self.fg.feature_group_arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/test-fg"
-        self.fg.feature_group_status = "Created"
-
-    def _empty_audit(self):
-        return {
-            "glue_table_accessors": [],
-            "sagemaker_execution_roles": [],
-            "athena_query_principals": [],
-            "athena_running_queries": [],
-            "glue_etl_jobs": [],
-            "glue_running_job_runs": [],
-            "sagemaker_running_jobs": [],
-            "glue_database": "test_db",
-            "glue_table": "test_table",
-            "s3_path": "s3://test-bucket/resolved-path",
-            "warnings": [],
-        }
-
-    def _audit_with_findings(self):
-        audit = self._empty_audit()
-        audit["glue_table_accessors"] = [{"principal_arn": "arn:aws:iam::123:role/Accessor"}]
-        audit["sagemaker_execution_roles"] = [{"role_arn": "arn:aws:iam::123:role/SMRole"}]
-        return audit
-
-    @patch("builtins.input", return_value="N")
-    @patch.object(FeatureGroupManager, "refresh")
-    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation", return_value=True)
-    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions", return_value=True)
-    @patch.object(FeatureGroupManager, "_run_all_audit_queries")
-    def test_prompts_user_when_findings_exist(
-        self, mock_audit, mock_grant, mock_register, mock_refresh, mock_input
-    ):
-        """Test that user is prompted and abort returned when declining."""
-        mock_audit.return_value = self._audit_with_findings()
-
-        result = self.fg.enable_lake_formation()
-
-        mock_input.assert_called_once()
-        assert result["aborted"] is True
-        assert "audit_results" in result
-
-    @patch.object(FeatureGroupManager, "refresh")
-    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation", return_value=True)
-    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions", return_value=True)
-    @patch.object(FeatureGroupManager, "_run_all_audit_queries")
-    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal", return_value=True)
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy", return_value=True)
-    def test_proceeds_silently_when_no_findings(
-        self, mock_apply, mock_revoke, mock_audit, mock_grant, mock_register, mock_refresh
-    ):
-        """Test that Phase 3 proceeds without input() when no findings."""
-        mock_audit.return_value = self._empty_audit()
-
-        result = self.fg.enable_lake_formation()
-
-        mock_revoke.assert_called_once()
-        assert result["iam_principal_revoked"] is True
-
-    @patch("builtins.input", return_value="y")
-    @patch.object(FeatureGroupManager, "refresh")
-    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation", return_value=True)
-    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions", return_value=True)
-    @patch.object(FeatureGroupManager, "_run_all_audit_queries")
-    @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal", return_value=True)
-    @patch.object(FeatureGroupManager, "_apply_bucket_policy", return_value=True)
-    def test_user_confirms_proceeds_to_phase3(
-        self, mock_apply, mock_revoke, mock_audit, mock_grant, mock_register, mock_refresh, mock_input
-    ):
-        """Test that confirming 'y' proceeds to Phase 3."""
-        mock_audit.return_value = self._audit_with_findings()
-
-        result = self.fg.enable_lake_formation()
-
-        mock_revoke.assert_called_once()
-        assert result["iam_principal_revoked"] is True
-
-    @patch("builtins.input", return_value="n")
-    @patch.object(FeatureGroupManager, "refresh")
-    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation", return_value=True)
-    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions", return_value=True)
-    @patch.object(FeatureGroupManager, "_run_all_audit_queries")
-    def test_user_declines_returns_audit_results(
-        self, mock_audit, mock_grant, mock_register, mock_refresh, mock_input
-    ):
-        """Test that declining returns aborted result with audit data."""
-        mock_audit.return_value = self._audit_with_findings()
-
-        result = self.fg.enable_lake_formation()
-
-        assert result["aborted"] is True
-        assert result["audit_results"]["glue_table_accessors"][0]["principal_arn"] == "arn:aws:iam::123:role/Accessor"
-
-    @patch("builtins.input", return_value="")
-    @patch.object(FeatureGroupManager, "refresh")
-    @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation", return_value=True)
-    @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions", return_value=True)
-    @patch.object(FeatureGroupManager, "_run_all_audit_queries")
-    def test_empty_input_defaults_to_abort(
-        self, mock_audit, mock_grant, mock_register, mock_refresh, mock_input
-    ):
-        """Test that empty input defaults to abort."""
-        mock_audit.return_value = self._audit_with_findings()
-
-        result = self.fg.enable_lake_formation()
-
-        assert result["aborted"] is True
-
-
-class TestQueryRunningJobs:
-    """Tests for _query_running_jobs method."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._query_running_jobs = (
-            FeatureGroupManager._query_running_jobs.__get__(self.fg)
-        )
-        self.mock_client = MagicMock()
-        self.fg._get_sagemaker_client = MagicMock(return_value=self.mock_client)
-
-    def _setup_paginator(self, api_method, pages):
-        """Helper to set up paginator mock for a specific API method."""
-        paginator = MagicMock()
-        paginator.paginate.return_value = pages
-        if not hasattr(self, "_paginator_map"):
-            self._paginator_map = {}
-            self.mock_client.get_paginator.side_effect = lambda m: self._paginator_map.get(
-                m, MagicMock(paginate=MagicMock(return_value=[]))
-            )
-        self._paginator_map[api_method] = paginator
-
-    def test_returns_in_progress_training_jobs(self):
-        """Test that in-progress training jobs are returned."""
-        self._setup_paginator("list_training_jobs", [
-            {"TrainingJobSummaries": [
-                {
-                    "TrainingJobName": "train-1",
-                    "TrainingJobArn": "arn:aws:sagemaker:us-east-1:123:training-job/train-1",
-                    "RoleArn": "arn:aws:iam::123:role/TrainRole",
-                },
-            ]},
-        ])
-        self._setup_paginator("list_processing_jobs", [{"ProcessingJobSummaries": []}])
-        self._setup_paginator("list_transform_jobs", [{"TransformJobSummaries": []}])
-
-        result = self.fg._query_running_jobs()
-
-        assert len(result["running_jobs"]) == 1
-        job = result["running_jobs"][0]
-        assert job["service"] == "SageMaker"
-        assert job["job_type"] == "TrainingJob"
-        assert job["job_name"] == "train-1"
-        assert job["status"] == "InProgress"
-        assert job["role_arn"] == "arn:aws:iam::123:role/TrainRole"
-        assert result["warnings"] == []
-
-    def test_returns_in_progress_processing_jobs(self):
-        """Test that in-progress processing jobs are returned."""
-        self._setup_paginator("list_training_jobs", [{"TrainingJobSummaries": []}])
-        self._setup_paginator("list_processing_jobs", [
-            {"ProcessingJobSummaries": [
-                {
-                    "ProcessingJobName": "proc-1",
-                    "ProcessingJobArn": "arn:aws:sagemaker:us-east-1:123:processing-job/proc-1",
-                    "RoleArn": "arn:aws:iam::123:role/ProcRole",
-                },
-            ]},
-        ])
-        self._setup_paginator("list_transform_jobs", [{"TransformJobSummaries": []}])
-
-        result = self.fg._query_running_jobs()
-
-        assert len(result["running_jobs"]) == 1
-        job = result["running_jobs"][0]
-        assert job["service"] == "SageMaker"
-        assert job["job_type"] == "ProcessingJob"
-        assert job["job_name"] == "proc-1"
-        assert job["role_arn"] == "arn:aws:iam::123:role/ProcRole"
-
-    def test_returns_in_progress_transform_jobs(self):
-        """Test that in-progress transform jobs are returned with role_arn as None."""
-        self._setup_paginator("list_training_jobs", [{"TrainingJobSummaries": []}])
-        self._setup_paginator("list_processing_jobs", [{"ProcessingJobSummaries": []}])
-        self._setup_paginator("list_transform_jobs", [
-            {"TransformJobSummaries": [
-                {
-                    "TransformJobName": "transform-1",
-                    "TransformJobArn": "arn:aws:sagemaker:us-east-1:123:transform-job/transform-1",
-                },
-            ]},
-        ])
-
-        result = self.fg._query_running_jobs()
-
-        assert len(result["running_jobs"]) == 1
-        job = result["running_jobs"][0]
-        assert job["job_type"] == "TransformJob"
-        assert job["job_name"] == "transform-1"
-        assert job["role_arn"] is None
-
-    def test_access_denied_per_service(self):
-        """Test that AccessDeniedException on one service still processes others."""
-        self._setup_paginator("list_processing_jobs", [
-            {"ProcessingJobSummaries": [
-                {"ProcessingJobName": "proc-1", "RoleArn": "arn:aws:iam::123:role/ProcRole"},
-            ]},
-        ])
-        self._setup_paginator("list_transform_jobs", [{"TransformJobSummaries": []}])
-        # Training jobs raises AccessDeniedException
-        training_paginator = MagicMock()
-        training_paginator.paginate.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "AccessDeniedException", "Message": "Denied"}},
-            "ListTrainingJobs",
-        )
-        self._paginator_map["list_training_jobs"] = training_paginator
-
-        result = self.fg._query_running_jobs()
-
-        assert len(result["running_jobs"]) == 1
-        assert result["running_jobs"][0]["job_name"] == "proc-1"
-        assert len(result["warnings"]) == 1
-        assert "access denied" in result["warnings"][0].lower()
-
-    def test_client_creation_failure(self):
-        """Test that client creation failure returns empty jobs with warning."""
-        self.fg._get_sagemaker_client = MagicMock(side_effect=Exception("Connection error"))
-
-        result = self.fg._query_running_jobs()
-
-        assert result["running_jobs"] == []
-        assert len(result["warnings"]) == 1
-        assert "Failed to create SageMaker client" in result["warnings"][0]
-
-    def test_no_running_jobs(self):
-        """Test that empty summaries return empty running_jobs."""
-        self._setup_paginator("list_training_jobs", [{"TrainingJobSummaries": []}])
-        self._setup_paginator("list_processing_jobs", [{"ProcessingJobSummaries": []}])
-        self._setup_paginator("list_transform_jobs", [{"TransformJobSummaries": []}])
-
-        result = self.fg._query_running_jobs()
-
-        assert result["running_jobs"] == []
-        assert result["warnings"] == []
-
-
-class TestGetAthenaClient:
-    """Tests for _get_athena_client method."""
-
-    @patch("sagemaker.mlops.feature_store.feature_group_manager.Session")
-    def test_creates_client_with_default_session(self, mock_session_class):
-        """Test client creation with default session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-        mock_session_class.return_value = mock_session
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_athena_client = FeatureGroupManager._get_athena_client.__get__(fg)
-
-        client = fg._get_athena_client(region="us-west-2")
-
-        mock_session.client.assert_called_with("athena", region_name="us-west-2")
-        assert client == mock_client
-
-    def test_creates_client_with_provided_session(self):
-        """Test client creation with provided session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_athena_client = FeatureGroupManager._get_athena_client.__get__(fg)
-
-        client = fg._get_athena_client(session=mock_session, region="us-west-2")
-
-        mock_session.client.assert_called_with("athena", region_name="us-west-2")
-        assert client == mock_client
-
-
-class TestQueryAthenaQueryPrincipals:
-    """Tests for _query_athena_query_principals method."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        from datetime import datetime, timedelta, timezone
-        self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._query_athena_query_principals = (
-            FeatureGroupManager._query_athena_query_principals.__get__(self.fg)
-        )
-        self.mock_client = MagicMock()
-        self.fg._get_athena_client = MagicMock(return_value=self.mock_client)
-        self.recent_time = datetime.now(timezone.utc) - timedelta(days=1)
-
-    def _make_query_execution(self, query_id, query_sql, database, state="SUCCEEDED", submission_time=None):
-        """Helper to build an Athena QueryExecution dict."""
-        from datetime import datetime, timezone
-        return {
-            "QueryExecutionId": query_id,
-            "Query": query_sql,
-            "QueryExecutionContext": {"Database": database},
-            "Status": {
-                "State": state,
-                "SubmissionDateTime": submission_time or self.recent_time,
-            },
-        }
-
-    def test_returns_matching_queries(self):
-        """Test that queries matching database and table are returned."""
-        self.mock_client.get_paginator.return_value.paginate.return_value = [
-            {"QueryExecutionIds": ["id-1"]},
-        ]
-        self.mock_client.batch_get_query_execution.return_value = {
-            "QueryExecutions": [
-                self._make_query_execution("id-1", "SELECT * FROM my_table", "my_db"),
-            ],
-        }
-
-        result = self.fg._query_athena_query_principals("my_db", "my_table")
-
-        assert len(result["principals"]) == 1
-        assert result["principals"][0]["query_execution_id"] == "id-1"
-        assert result["warnings"] == []
-
-    def test_matches_explicit_db_table_reference(self):
-        """Test matching when SQL contains database.table reference."""
-        self.mock_client.get_paginator.return_value.paginate.return_value = [
-            {"QueryExecutionIds": ["id-1"]},
-        ]
-        self.mock_client.batch_get_query_execution.return_value = {
-            "QueryExecutions": [
-                self._make_query_execution(
-                    "id-1", "SELECT * FROM my_db.my_table WHERE x=1", "other_db"
-                ),
-            ],
-        }
-
-        result = self.fg._query_athena_query_principals("my_db", "my_table")
-
-        assert len(result["principals"]) == 1
-
-    def test_filters_queries_outside_lookback(self):
-        """Test that queries older than lookback window are excluded."""
-        from datetime import datetime, timezone
-        old_time = datetime(2020, 1, 1, tzinfo=timezone.utc)
-        self.mock_client.get_paginator.return_value.paginate.return_value = [
-            {"QueryExecutionIds": ["id-1"]},
-        ]
-        self.mock_client.batch_get_query_execution.return_value = {
-            "QueryExecutions": [
-                self._make_query_execution(
-                    "id-1", "SELECT * FROM my_table", "my_db",
-                    submission_time=old_time,
-                ),
-            ],
-        }
-
-        result = self.fg._query_athena_query_principals("my_db", "my_table")
-
-        assert len(result["principals"]) == 0
-
-    def test_detects_running_queries(self):
-        """Test that RUNNING queries appear in running_queries."""
-        self.mock_client.get_paginator.return_value.paginate.return_value = [
-            {"QueryExecutionIds": ["id-1"]},
-        ]
-        self.mock_client.batch_get_query_execution.return_value = {
-            "QueryExecutions": [
-                self._make_query_execution(
-                    "id-1", "SELECT * FROM my_table", "my_db", state="RUNNING"
-                ),
-            ],
-        }
-
-        result = self.fg._query_athena_query_principals("my_db", "my_table")
-
-        assert len(result["running_queries"]) == 1
-        assert result["running_queries"][0]["state"] == "RUNNING"
-
-    def test_no_queries_found(self):
-        """Test empty result when no query executions exist."""
-        self.mock_client.get_paginator.return_value.paginate.return_value = [
-            {"QueryExecutionIds": []},
-        ]
-
-        result = self.fg._query_athena_query_principals("my_db", "my_table")
-
-        assert result["principals"] == []
-        assert result["running_queries"] == []
-        assert result["warnings"] == []
-
-    def test_access_denied_returns_warning(self):
-        """Test that AccessDeniedException returns empty results with warning."""
-        self.mock_client.get_paginator.return_value.paginate.return_value.__iter__ = MagicMock(
-            side_effect=botocore.exceptions.ClientError(
-                {"Error": {"Code": "AccessDeniedException", "Message": "Access denied"}},
-                "ListQueryExecutions",
-            )
-        )
-
-        result = self.fg._query_athena_query_principals("my_db", "my_table")
-
-        assert result["principals"] == []
-        assert result["running_queries"] == []
-        assert len(result["warnings"]) == 1
-        assert "access denied" in result["warnings"][0].lower()
-
-    def test_client_creation_failure(self):
-        """Test that client creation failure returns empty results with warning."""
-        self.fg._get_athena_client = MagicMock(side_effect=Exception("Connection error"))
-
-        result = self.fg._query_athena_query_principals("my_db", "my_table")
-
-        assert result["principals"] == []
-        assert result["running_queries"] == []
-        assert len(result["warnings"]) == 1
-        assert "Failed to create Athena client" in result["warnings"][0]
-
-    def test_batch_chunking(self):
-        """Test that >50 query IDs are batched correctly in chunks of 50."""
-        ids = [f"id-{i}" for i in range(75)]
-        self.mock_client.get_paginator.return_value.paginate.return_value = [
-            {"QueryExecutionIds": ids},
-        ]
-        # Return empty for both batches
-        self.mock_client.batch_get_query_execution.return_value = {"QueryExecutions": []}
-
-        self.fg._query_athena_query_principals("my_db", "my_table")
-
-        calls = self.mock_client.batch_get_query_execution.call_args_list
-        assert len(calls) == 2
-        assert len(calls[0][1]["QueryExecutionIds"]) == 50
-        assert len(calls[1][1]["QueryExecutionIds"]) == 25
-
-
-class TestGetGlueClient:
-    """Tests for _get_glue_client method."""
-
-    @patch("sagemaker.mlops.feature_store.feature_group_manager.Session")
-    def test_creates_client_with_default_session(self, mock_session_class):
-        """Test client creation with default session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-        mock_session_class.return_value = mock_session
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_glue_client = FeatureGroupManager._get_glue_client.__get__(fg)
-
-        client = fg._get_glue_client(region="us-west-2")
-
-        mock_session.client.assert_called_with("glue", region_name="us-west-2")
-        assert client == mock_client
-
-    def test_creates_client_with_provided_session(self):
-        """Test client creation with provided session."""
-        mock_session = MagicMock()
-        mock_client = MagicMock()
-        mock_session.client.return_value = mock_client
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._get_glue_client = FeatureGroupManager._get_glue_client.__get__(fg)
-
-        client = fg._get_glue_client(session=mock_session, region="us-west-2")
-
-        mock_session.client.assert_called_with("glue", region_name="us-west-2")
-        assert client == mock_client
-
-
-class TestQueryGlueEtlJobs:
-    """Tests for _query_glue_etl_jobs method."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg._query_glue_etl_jobs = (
-            FeatureGroupManager._query_glue_etl_jobs.__get__(self.fg)
-        )
-        self.mock_client = MagicMock()
-        self.fg._get_glue_client = MagicMock(return_value=self.mock_client)
-
-    def _make_visual_job(self, name, role, database, table, node_type="CatalogSource", use_tables=False):
-        """Helper to create a visual-mode Glue job definition."""
-        if use_tables:
-            node_config = {node_type: {"Database": database, "Tables": [table]}}
-        else:
-            node_config = {node_type: {"Database": database, "Table": table}}
-        return {
-            "Name": name,
-            "Role": role,
-            "Command": {"Name": "glueetl"},
-            "CodeGenConfigurationNodes": {"node1": node_config},
-        }
-
-    def test_returns_matching_visual_job(self):
-        """Test that a visual job with CatalogSource matching database+table is returned."""
-        job = self._make_visual_job("etl-job", "arn:aws:iam::123:role/GlueRole", "my_db", "my_table")
-        paginator = MagicMock()
-        paginator.paginate.return_value = [{"Jobs": [job]}]
-        self.mock_client.get_paginator.return_value = paginator
-        self.mock_client.get_job_runs.return_value = {"JobRuns": []}
-
-        result = self.fg._query_glue_etl_jobs("my_db", "my_table")
-
-        assert len(result["jobs"]) == 1
-        assert result["jobs"][0]["job_name"] == "etl-job"
-        assert result["jobs"][0]["role"] == "arn:aws:iam::123:role/GlueRole"
-        assert result["warnings"] == []
-
-    def test_filters_non_matching_table(self):
-        """Test that a job referencing a different table is not included."""
-        job = self._make_visual_job("etl-job", "role", "my_db", "other_table")
-        paginator = MagicMock()
-        paginator.paginate.return_value = [{"Jobs": [job]}]
-        self.mock_client.get_paginator.return_value = paginator
-
-        result = self.fg._query_glue_etl_jobs("my_db", "my_table")
-
-        assert result["jobs"] == []
-
-    def test_script_mode_job_skipped(self):
-        """Test that a job without CodeGenConfigurationNodes is skipped."""
-        job = {
-            "Name": "script-job",
-            "Role": "role",
-            "Command": {"Name": "glueetl"},
-        }
-        paginator = MagicMock()
-        paginator.paginate.return_value = [{"Jobs": [job]}]
-        self.mock_client.get_paginator.return_value = paginator
-
-        result = self.fg._query_glue_etl_jobs("my_db", "my_table")
-
-        assert result["jobs"] == []
-
-    def test_detects_running_job_runs(self):
-        """Test that running job runs are detected for matching jobs."""
-        job = self._make_visual_job("etl-job", "role", "my_db", "my_table")
-        paginator = MagicMock()
-        paginator.paginate.return_value = [{"Jobs": [job]}]
-        self.mock_client.get_paginator.return_value = paginator
-        self.mock_client.get_job_runs.return_value = {
-            "JobRuns": [
-                {"Id": "run-1", "JobRunState": "RUNNING"},
-                {"Id": "run-2", "JobRunState": "SUCCEEDED"},
-            ]
-        }
-
-        result = self.fg._query_glue_etl_jobs("my_db", "my_table")
-
-        assert len(result["running_job_runs"]) == 1
-        assert result["running_job_runs"][0]["run_id"] == "run-1"
-        assert result["running_job_runs"][0]["state"] == "RUNNING"
-
-    def test_no_jobs_found(self):
-        """Test that empty get_jobs response returns empty results."""
-        paginator = MagicMock()
-        paginator.paginate.return_value = [{"Jobs": []}]
-        self.mock_client.get_paginator.return_value = paginator
-
-        result = self.fg._query_glue_etl_jobs("my_db", "my_table")
-
-        assert result["jobs"] == []
-        assert result["running_job_runs"] == []
-        assert result["warnings"] == []
-
-    def test_access_denied_returns_warning(self):
-        """Test that AccessDeniedException on get_jobs returns a warning."""
-        paginator = MagicMock()
-        paginator.paginate.side_effect = botocore.exceptions.ClientError(
-            {"Error": {"Code": "AccessDeniedException", "Message": "Denied"}},
-            "GetJobs",
-        )
-        self.mock_client.get_paginator.return_value = paginator
-
-        result = self.fg._query_glue_etl_jobs("my_db", "my_table")
-
-        assert result["jobs"] == []
-        assert len(result["warnings"]) == 1
-        assert "access denied" in result["warnings"][0].lower()
-
-    def test_client_creation_failure(self):
-        """Test that client creation failure returns empty results with warning."""
-        self.fg._get_glue_client = MagicMock(side_effect=Exception("Connection error"))
-
-        result = self.fg._query_glue_etl_jobs("my_db", "my_table")
-
-        assert result["jobs"] == []
-        assert result["running_job_runs"] == []
-        assert len(result["warnings"]) == 1
-        assert "Failed to create Glue client" in result["warnings"][0]
-
-
-class TestFormatRiskReport:
-    """Tests for _format_risk_report method."""
-
-    def setup_method(self):
-        """Set up test fixtures."""
-        self.fg = MagicMock(spec=FeatureGroupManager)
-        self.fg.feature_group_name = "test-fg"
-        self.fg._format_risk_report = (
-            FeatureGroupManager._format_risk_report.__get__(self.fg)
-        )
-
-    def _base_audit(self):
-        return {
-            "glue_table_accessors": [],
-            "sagemaker_execution_roles": [],
-            "athena_query_principals": [],
-            "athena_running_queries": [],
-            "glue_etl_jobs": [],
-            "glue_running_job_runs": [],
-            "sagemaker_running_jobs": [],
-            "glue_database": "my_db",
-            "glue_table": "my_table",
-            "s3_path": "s3://bucket/path",
-            "warnings": [],
-        }
-
-    def test_all_sections_populated(self):
-        """Test report with all findings present."""
-        audit = self._base_audit()
-        audit["glue_table_accessors"] = [{"principal_arn": "arn:aws:iam::123:role/A"}]
-        audit["sagemaker_execution_roles"] = [{"role_arn": "arn:aws:iam::123:role/B"}]
-        audit["athena_query_principals"] = [{"query_execution_id": "id-1", "query": "SELECT *"}]
-        audit["glue_etl_jobs"] = [{"job_name": "etl-1"}]
-        audit["sagemaker_running_jobs"] = [{"job_name": "train-1", "status": "InProgress"}]
-        audit["warnings"] = ["some warning"]
-
-        report = self.fg._format_risk_report(audit)
-
-        assert "Glue table accessors" in report
-        assert "SageMaker execution roles" in report
-        assert "Athena query principals" in report
-        assert "Glue ETL jobs" in report
-        assert "[!] Running jobs/queries" in report
-        assert "Warnings:" in report
-        assert "[!] WARNING - Limitations:" in report
-
-    def test_empty_sections_omitted(self):
-        """Test that empty data sections are omitted."""
-        report = self.fg._format_risk_report(self._base_audit())
-
-        assert "Glue table accessors" not in report
-        assert "SageMaker execution roles" not in report
-        assert "Athena query principals" not in report
-        assert "Glue ETL jobs" not in report
-        assert "[!] Running jobs/queries" not in report
-        assert "=== Lake Formation Impact Report ===" in report
-
-    def test_limitations_always_shown(self):
-        """Test that limitations section is always present."""
-        report = self.fg._format_risk_report(self._base_audit())
-
-        assert "[!] WARNING - Limitations:" in report
-        assert "CloudTrail has 15-minute delivery delay" in report
-
-    def test_running_jobs_section_has_warning_prefix(self):
-        """Test that running jobs section uses [!] prefix."""
-        audit = self._base_audit()
-        audit["athena_running_queries"] = [{"query_execution_id": "id-1", "state": "RUNNING"}]
-
-        report = self.fg._format_risk_report(audit)
-
-        assert "[!] Running jobs/queries:" in report
-
-    def test_warnings_displayed(self):
-        """Test that warnings from audit results are shown."""
-        audit = self._base_audit()
-        audit["warnings"] = ["access denied warning"]
-
-        report = self.fg._format_risk_report(audit)
-
-        assert "Warnings:" in report
-        assert "access denied warning" in report
-
-
-class TestAuditLakeFormationImpact:
-    """Tests for audit_lake_formation_impact public method."""
-
-    def setup_method(self):
-        from sagemaker.core.shapes import OfflineStoreConfig, S3StorageConfig, DataCatalogConfig
-
-        self.fg = FeatureGroupManager(feature_group_name="test-fg")
-        self.fg.offline_store_config = OfflineStoreConfig(
-            s3_storage_config=S3StorageConfig(
-                s3_uri="s3://test-bucket/path",
-                resolved_output_s3_uri="s3://test-bucket/resolved-path",
-            ),
-            data_catalog_config=DataCatalogConfig(
-                catalog="AwsDataCatalog", database="test_db", table_name="test_table"
-            ),
-        )
-        self.fg.feature_group_status = "Created"
-
-    @patch.object(FeatureGroupManager, "refresh")
-    @patch.object(FeatureGroupManager, "_run_all_audit_queries")
-    @patch.object(FeatureGroupManager, "_format_risk_report", return_value="report")
-    def test_returns_audit_results(self, mock_format, mock_audit, mock_refresh):
-        """Test that audit results dict is returned."""
-        expected = {"glue_table_accessors": [], "warnings": []}
-        mock_audit.return_value = expected
-
-        result = self.fg.audit_lake_formation_impact()
-
-        assert result == expected
-
-    @patch("builtins.print")
-    @patch.object(FeatureGroupManager, "refresh")
-    @patch.object(FeatureGroupManager, "_run_all_audit_queries", return_value={})
-    @patch.object(FeatureGroupManager, "_format_risk_report", return_value="the report")
-    def test_prints_formatted_report(self, mock_format, mock_audit, mock_refresh, mock_print):
-        """Test that the formatted report is printed."""
-        self.fg.audit_lake_formation_impact()
-
-        mock_print.assert_called_once_with("the report")
-
-    @patch.object(FeatureGroupManager, "refresh")
-    def test_validates_fg_status(self, mock_refresh):
-        """Test that non-Created status raises ValueError."""
-        self.fg.feature_group_status = "Creating"
-
-        with pytest.raises(ValueError, match="must be in 'Created' status"):
-            self.fg.audit_lake_formation_impact()
-
-    @patch.object(FeatureGroupManager, "refresh")
-    def test_validates_offline_store(self, mock_refresh):
-        """Test that missing offline store raises ValueError."""
-        self.fg.offline_store_config = None
-
-        with pytest.raises(ValueError, match="does not have an offline store"):
-            self.fg.audit_lake_formation_impact()

@@ -40,12 +40,17 @@ class LakeFormationConfig(Base):
         registration_role_arn: IAM role ARN to use for S3 registration with Lake Formation.
             Required when use_service_linked_role is False. This can be different from the
             Feature Group's execution role.
+        disable_hybrid_access_mode: If True, revokes IAMAllowedPrincipal permissions
+            from the Glue table, enforcing Lake Formation-only governance. Warning: this
+            may break existing jobs that access the table via IAM-based permissions. After
+            this change, all principals must be granted access through Lake Formation.
+            If False, IAM-based access remains alongside Lake Formation permissions.
     """
 
     enabled: bool = False
     use_service_linked_role: bool = True
     registration_role_arn: Optional[str] = None
-    disable_hybrid_access_mode = False
+    disable_hybrid_access_mode: bool
 
 
 class FeatureGroupManager(FeatureGroup):
@@ -139,945 +144,6 @@ class FeatureGroupManager(FeatureGroup):
         """
         boto_session = session or Session()
         return boto_session.client("lakeformation", region_name=region)
-
-    def _get_s3_client(
-        self,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ):
-        """
-        Get an S3 client.
-
-        Args:
-            session: Boto3 session. If not provided, a new session will be created.
-            region: AWS region name.
-
-        Returns:
-            A boto3 S3 client.
-        """
-        boto_session = session or Session()
-        return boto_session.client("s3", region_name=region)
-
-    def _get_cloudtrail_client(
-        self,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ):
-        """Get a CloudTrail client.
-
-        Args:
-            session: Boto3 session. If not provided, a new session will be created.
-            region: AWS region name.
-
-        Returns:
-            A boto3 CloudTrail client.
-        """
-        boto_session = session or Session()
-        return boto_session.client("cloudtrail", region_name=region)
-
-    def _get_athena_client(
-        self,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ):
-        """Get an Athena client.
-
-        Args:
-            session: Boto3 session. If not provided, a new session will be created.
-            region: AWS region name.
-
-        Returns:
-            A boto3 Athena client.
-        """
-        boto_session = session or Session()
-        return boto_session.client("athena", region_name=region)
-
-    def _get_sagemaker_client(
-        self,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ):
-        """Get a SageMaker client.
-
-        Args:
-            session: Boto3 session. If not provided, a new session will be created.
-            region: AWS region name.
-
-        Returns:
-            A boto3 SageMaker client.
-        """
-        boto_session = session or Session()
-        return boto_session.client("sagemaker", region_name=region)
-    def _get_glue_client(
-        self,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ):
-        """Get a Glue client.
-
-        Args:
-            session: Boto3 session. If not provided, a new session will be created.
-            region: AWS region name.
-
-        Returns:
-            A boto3 Glue client.
-        """
-        boto_session = session or Session()
-        return boto_session.client("glue", region_name=region)
-
-    def _query_glue_table_accessors(
-        self,
-        database_name: str,
-        table_name: str,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-        lookback_days: int = 30,
-    ) -> dict:
-        """Query CloudTrail for IAM principals that accessed a Glue table.
-
-        Queries CloudTrail LookupEvents filtered by EventSource=glue.amazonaws.com,
-        then client-side filters for events targeting the specified table. Extracts
-        distinct principal ARNs with their last access time.
-
-        Args:
-            database_name: Glue database name.
-            table_name: Glue table name.
-            session: Boto3 session.
-            region: AWS region name.
-            lookback_days: Number of days to look back in CloudTrail. Default 30.
-
-        Returns:
-            Dict with keys:
-                - accessors: list of dicts with principal_arn and last_access_time
-                - warnings: list of warning strings
-        """
-        warnings = []
-        try:
-            client = self._get_cloudtrail_client(session=session, region=region)
-        except Exception as e:
-            logger.warning(f"Failed to create CloudTrail client: {e}")
-            return {"accessors": [], "warnings": [f"Failed to create CloudTrail client: {e}"]}
-
-        end_time = datetime.now(timezone.utc)
-        start_time = end_time - timedelta(days=lookback_days)
-
-        # principal_arn -> latest access time
-        principals: dict[str, str] = {}
-        events_scanned = 0
-        max_events = 1000
-
-        try:
-            paginator_kwargs = {
-                "LookupAttributes": [
-                    {"AttributeKey": "EventSource", "AttributeValue": "glue.amazonaws.com"}
-                ],
-                "StartTime": start_time,
-                "EndTime": end_time,
-                "MaxResults": 50,
-            }
-
-            next_token = None
-            glue_table_read_events = {
-                "GetTable", "GetTables", "GetTableVersion", "GetTableVersions",
-                "BatchGetTable", "GetPartition", "GetPartitions",
-                "BatchGetPartition", "SearchTables",
-            }
-            while events_scanned < max_events:
-                kwargs = dict(paginator_kwargs)
-                if next_token:
-                    kwargs["NextToken"] = next_token
-
-                response = client.lookup_events(**kwargs)
-
-                for event in response.get("Events", []):
-                    events_scanned += 1
-                    if events_scanned > max_events:
-                        break
-
-                    # Client-side filter: check if event references our table
-                    # Only consider read-access events on the table itself
-                    event_name = event.get("EventName", "")
-                    if event_name not in glue_table_read_events:
-                        continue
-
-                    resources = event.get("Resources", [])
-                    matches_table = False
-                    for resource in resources:
-                        resource_name = resource.get("ResourceName", "")
-                        # Exact match on table name or database/table path
-                        if resource_name == table_name:
-                            matches_table = True
-                            break
-                        if resource_name == f"{database_name}/{table_name}":
-                            matches_table = True
-                            break
-
-                    if not matches_table:
-                        # Check requestParameters for exact database + table match
-                        cloud_trail_event = event.get("CloudTrailEvent", "")
-                        if cloud_trail_event:
-                            try:
-                                event_detail = json.loads(cloud_trail_event)
-                                req_params = event_detail.get("requestParameters", {})
-                                req_db = req_params.get("databaseName", "")
-                                req_tbl = (
-                                    req_params.get("tableName", "")
-                                    or req_params.get("name", "")
-                                )
-                                if req_db == database_name and req_tbl == table_name:
-                                    matches_table = True
-                            except (json.JSONDecodeError, AttributeError):
-                                pass
-
-                    if matches_table:
-                        # Prefer the full ARN from CloudTrailEvent.userIdentity
-                        # because event["Username"] for AssumedRole events is just
-                        # the session name (e.g. "SageMaker..."), not a real ARN.
-                        principal_arn = ""
-                        try:
-                            event_detail = json.loads(event.get("CloudTrailEvent", "{}"))
-                            user_identity = event_detail.get("userIdentity", {})
-                            principal_arn = user_identity.get("arn", "")
-                        except (json.JSONDecodeError, AttributeError):
-                            pass
-
-                        if not principal_arn:
-                            principal_arn = event.get("Username", "")
-
-                        if not principal_arn:
-                            continue
-
-                        event_time = event.get("EventTime", "")
-                        event_time_str = (
-                            event_time.isoformat()
-                            if hasattr(event_time, "isoformat")
-                            else str(event_time)
-                        )
-                        # Keep the latest access time per principal
-                        if principal_arn not in principals:
-                            principals[principal_arn] = event_time_str
-                        else:
-                            if event_time_str > principals[principal_arn]:
-                                principals[principal_arn] = event_time_str
-
-                next_token = response.get("NextToken")
-                if not next_token:
-                    break
-
-        except botocore.exceptions.ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "")
-            if error_code == "AccessDeniedException":
-                logger.warning(
-                    "CloudTrail access denied. Results may be incomplete. "
-                    "Ensure the caller has cloudtrail:LookupEvents permission."
-                )
-                warnings.append("CloudTrail access denied, results may be incomplete")
-            else:
-                logger.warning(f"CloudTrail query failed: {e}")
-                warnings.append(f"CloudTrail query failed: {e}")
-
-        accessors = [
-            {"principal_arn": arn, "last_access_time": time}
-            for arn, time in principals.items()
-        ]
-
-        return {"accessors": accessors, "warnings": warnings}
-
-    def _query_athena_query_principals(
-        self,
-        database_name: str,
-        table_name: str,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-        lookback_days: int = 30,
-    ) -> dict:
-        """Query CloudTrail + Athena for recent queries that reference a specific table.
-
-        Uses CloudTrail to discover StartQueryExecution events from all principals
-        (not just the caller), then uses batch_get_query_execution to retrieve
-        query details and filter by table reference.
-
-        Args:
-            database_name: Glue database name.
-            table_name: Glue table name.
-            session: Boto3 session.
-            region: AWS region name.
-            lookback_days: Number of days to look back. Default 30.
-
-        Returns:
-            Dict with keys:
-                - principals: list of dicts with principal_arn, query_execution_id,
-                  query, submission_time, state
-                - running_queries: list of dicts with query_execution_id, query, state
-                - warnings: list of warning strings
-        """
-        warnings = []
-
-        # --- Phase 1: CloudTrail discovery ---
-        try:
-            ct_client = self._get_cloudtrail_client(session=session, region=region)
-        except Exception as e:
-            logger.warning(f"Failed to create CloudTrail client: {e}")
-            return {
-                "principals": [],
-                "running_queries": [],
-                "warnings": [f"Failed to create CloudTrail client: {e}"],
-            }
-
-        end_time = datetime.now(timezone.utc)
-        start_time = end_time - timedelta(days=lookback_days)
-
-        # query_execution_id -> principal_arn
-        candidate_queries: dict[str, str] = {}
-        events_scanned = 0
-        max_events_scanned = 10000
-        max_candidates = 500
-
-        try:
-            paginator_kwargs = {
-                "LookupAttributes": [
-                    {"AttributeKey": "EventSource", "AttributeValue": "athena.amazonaws.com"}
-                ],
-                "StartTime": start_time,
-                "EndTime": end_time,
-                "MaxResults": 50,
-            }
-
-            next_token = None
-            while events_scanned < max_events_scanned and len(candidate_queries) < max_candidates:
-                kwargs = dict(paginator_kwargs)
-                if next_token:
-                    kwargs["NextToken"] = next_token
-
-                response = ct_client.lookup_events(**kwargs)
-
-                for event in response.get("Events", []):
-                    events_scanned += 1
-                    if events_scanned > max_events_scanned:
-                        break
-                    if len(candidate_queries) >= max_candidates:
-                        break
-
-                    if event.get("EventName") != "StartQueryExecution":
-                        continue
-
-                    cloud_trail_event_str = event.get("CloudTrailEvent", "{}")
-                    try:
-                        event_detail = json.loads(cloud_trail_event_str)
-                    except (json.JSONDecodeError, AttributeError):
-                        continue
-
-                    resp_elements = event_detail.get("responseElements", {})
-                    query_id = resp_elements.get("queryExecutionId", "")
-                    if not query_id:
-                        continue
-
-                    user_identity = event_detail.get("userIdentity", {})
-                    principal_arn = user_identity.get("arn", "")
-                    if not principal_arn:
-                        principal_arn = event.get("Username", "")
-                    if not principal_arn:
-                        continue
-
-                    candidate_queries[query_id] = principal_arn
-
-                next_token = response.get("NextToken")
-                if not next_token:
-                    break
-
-        except botocore.exceptions.ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "")
-            if error_code == "AccessDeniedException":
-                logger.warning(
-                    "CloudTrail access denied. Athena query principal results may be incomplete."
-                )
-                warnings.append("CloudTrail access denied, Athena query principal results may be incomplete")
-            else:
-                logger.warning(f"CloudTrail query for Athena events failed: {e}")
-                warnings.append(f"CloudTrail query for Athena events failed: {e}")
-
-        if not candidate_queries:
-            return {"principals": [], "running_queries": [], "warnings": warnings}
-
-        # --- Phase 2: Athena query detail lookup ---
-        try:
-            athena_client = self._get_athena_client(session=session, region=region)
-        except Exception as e:
-            logger.warning(f"Failed to create Athena client: {e}")
-            warnings.append(f"Failed to create Athena client: {e}")
-            return {"principals": [], "running_queries": [], "warnings": warnings}
-
-        principals = []
-        running_queries = []
-        query_ids = list(candidate_queries.keys())
-
-        for i in range(0, len(query_ids), 50):
-            batch = query_ids[i : i + 50]
-            try:
-                response = athena_client.batch_get_query_execution(QueryExecutionIds=batch)
-            except botocore.exceptions.ClientError as e:
-                logger.warning(f"Athena batch_get_query_execution failed: {e}")
-                warnings.append(f"Athena batch_get_query_execution failed: {e}")
-                continue
-
-            for qe in response.get("QueryExecutions", []):
-                query_sql = qe.get("Query", "")
-                status = qe.get("Status", {})
-                state = status.get("State", "")
-                submission_time = status.get("SubmissionDateTime")
-                qe_id = qe.get("QueryExecutionId", "")
-
-                # Match if the table name appears anywhere in the SQL
-                # (handles quoted identifiers like "db"."table")
-                if table_name.lower() not in query_sql.lower():
-                    continue
-
-                if state in ("QUEUED", "RUNNING"):
-                    running_queries.append({
-                        "query_execution_id": qe_id,
-                        "query": query_sql[:200],
-                        "state": state,
-                    })
-
-                submission_str = (
-                    submission_time.isoformat()
-                    if hasattr(submission_time, "isoformat")
-                    else str(submission_time)
-                ) if submission_time else ""
-
-                principals.append({
-                    "principal_arn": candidate_queries.get(qe_id, ""),
-                    "query_execution_id": qe_id,
-                    "query": query_sql[:200],
-                    "submission_time": submission_str,
-                    "state": state,
-                })
-
-        return {"principals": principals, "running_queries": running_queries, "warnings": warnings}
-
-    @staticmethod
-    def _job_references_s3_path(detail: dict, s3_path: str, job_type: str) -> bool:
-        """Check if a described SageMaker job references the given S3 path.
-
-        Args:
-            detail: Response from describe_training_job / describe_processing_job /
-                describe_transform_job.
-            s3_path: S3 URI prefix of the feature group offline store.
-            job_type: One of TrainingJob, ProcessingJob, TransformJob.
-
-        Returns:
-            True if any input or output channel references s3_path.
-        """
-        uris: list[str] = []
-
-        if job_type == "TrainingJob":
-            for channel in detail.get("InputDataConfig", []):
-                ds = channel.get("DataSource", {}).get("S3DataSource", {})
-                if ds.get("S3Uri"):
-                    uris.append(ds["S3Uri"])
-            output_path = detail.get("OutputDataConfig", {}).get("S3OutputPath", "")
-            if output_path:
-                uris.append(output_path)
-
-        elif job_type == "ProcessingJob":
-            for inp in detail.get("ProcessingInputs", []):
-                s3_input = inp.get("S3Input", {})
-                if s3_input.get("S3Uri"):
-                    uris.append(s3_input["S3Uri"])
-            for out in detail.get("ProcessingOutputConfig", {}).get("Outputs", []):
-                s3_output = out.get("S3Output", {})
-                if s3_output.get("S3Uri"):
-                    uris.append(s3_output["S3Uri"])
-
-        elif job_type == "TransformJob":
-            transform_input = detail.get("TransformInput", {}).get("DataSource", {}).get("S3DataSource", {})
-            if transform_input.get("S3Uri"):
-                uris.append(transform_input["S3Uri"])
-            transform_output = detail.get("TransformOutput", {}).get("S3OutputPath", "")
-            if transform_output:
-                uris.append(transform_output)
-
-        normalized = s3_path.rstrip("/")
-        return any(uri.rstrip("/").startswith(normalized) or normalized.startswith(uri.rstrip("/")) for uri in uris)
-
-    def _query_sagemaker_jobs_for_s3_path(
-        self,
-        s3_path: str,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-        lookback_days: int = 30,
-    ) -> dict:
-        """Query SageMaker for recent jobs that reference a specific S3 path.
-
-        Lists recent training, processing, and transform jobs within the lookback
-        window, describes each, and returns only those whose input/output channels
-        reference the given S3 path.
-
-        Args:
-            s3_path: S3 URI prefix of the feature group offline store.
-            session: Boto3 session.
-            region: AWS region name.
-            lookback_days: Number of days to look back. Default 30.
-
-        Returns:
-            Dict with keys:
-                - jobs: list of dicts with job_type, job_name, role_arn, and s3_uris
-                - warnings: list of warning strings
-        """
-        warnings: list[str] = []
-        try:
-            client = self._get_sagemaker_client(session=session, region=region)
-        except Exception as e:
-            logger.warning(f"Failed to create SageMaker client: {e}")
-            return {"jobs": [], "warnings": [f"Failed to create SageMaker client: {e}"]}
-
-        creation_time_after = datetime.now(timezone.utc) - timedelta(days=lookback_days)
-        matching_jobs: list[dict] = []
-
-        job_listers = [
-            ("TrainingJob", "list_training_jobs", "TrainingJobSummaries", "TrainingJobName", "describe_training_job"),
-            ("ProcessingJob", "list_processing_jobs", "ProcessingJobSummaries", "ProcessingJobName", "describe_processing_job"),
-            ("TransformJob", "list_transform_jobs", "TransformJobSummaries", "TransformJobName", "describe_transform_job"),
-        ]
-
-        for job_type, api_method, summary_key, name_key, describe_method in job_listers:
-            try:
-                paginator = client.get_paginator(api_method)
-                page_kwargs = {
-                    "CreationTimeAfter": creation_time_after,
-                    "SortBy": "CreationTime",
-                    "SortOrder": "Descending",
-                }
-
-                for page in paginator.paginate(**page_kwargs):
-                    for job_summary in page.get(summary_key, []):
-                        job_name = job_summary.get(name_key, "")
-                        try:
-                            detail = getattr(client, describe_method)(**{name_key: job_name})
-                        except Exception:
-                            continue
-
-                        if self._job_references_s3_path(detail, s3_path, job_type):
-                            matching_jobs.append({
-                                "job_type": job_type,
-                                "job_name": job_name,
-                                "role_arn": detail.get("RoleArn"),
-                                "status": detail.get(f"{job_type}Status", "Unknown"),
-                            })
-
-            except botocore.exceptions.ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code", "")
-                if error_code == "AccessDeniedException":
-                    logger.warning(
-                        f"SageMaker {api_method} access denied. "
-                        "Results may be incomplete."
-                    )
-                    warnings.append(
-                        f"SageMaker {api_method} access denied, results may be incomplete"
-                    )
-                else:
-                    logger.warning(f"SageMaker {api_method} failed: {e}")
-                    warnings.append(f"SageMaker {api_method} failed: {e}")
-
-        return {"jobs": matching_jobs, "warnings": warnings}
-
-    def _query_running_jobs(
-        self,
-        s3_path: str,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> dict:
-        """Query SageMaker for currently running jobs that reference a specific S3 path.
-
-        Lists in-progress training, processing, and transform jobs, describes each,
-        and returns only those whose input/output channels reference the given S3 path.
-
-        Args:
-            s3_path: S3 URI prefix of the feature group offline store.
-            session: Boto3 session.
-            region: AWS region name.
-
-        Returns:
-            Dict with keys:
-                - running_jobs: list of dicts with service, job_type, job_name,
-                  status, and role_arn
-                - warnings: list of warning strings
-        """
-        warnings: list[str] = []
-        try:
-            client = self._get_sagemaker_client(session=session, region=region)
-        except Exception as e:
-            logger.warning(f"Failed to create SageMaker client: {e}")
-            return {"running_jobs": [], "warnings": [f"Failed to create SageMaker client: {e}"]}
-
-        running_jobs: list[dict] = []
-
-        job_listers = [
-            ("TrainingJob", "list_training_jobs", "TrainingJobSummaries", "TrainingJobName", "describe_training_job"),
-            ("ProcessingJob", "list_processing_jobs", "ProcessingJobSummaries", "ProcessingJobName", "describe_processing_job"),
-            ("TransformJob", "list_transform_jobs", "TransformJobSummaries", "TransformJobName", "describe_transform_job"),
-        ]
-
-        for job_type, api_method, summary_key, name_key, describe_method in job_listers:
-            try:
-                paginator = client.get_paginator(api_method)
-                for page in paginator.paginate(StatusEquals="InProgress"):
-                    for job_summary in page.get(summary_key, []):
-                        job_name = job_summary.get(name_key, "")
-                        try:
-                            detail = getattr(client, describe_method)(**{name_key: job_name})
-                        except Exception:
-                            continue
-
-                        if self._job_references_s3_path(detail, s3_path, job_type):
-                            running_jobs.append({
-                                "service": "SageMaker",
-                                "job_type": job_type,
-                                "job_name": job_name,
-                                "status": "InProgress",
-                                "role_arn": detail.get("RoleArn"),
-                            })
-            except botocore.exceptions.ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code", "")
-                if error_code == "AccessDeniedException":
-                    logger.warning(
-                        f"SageMaker {api_method} access denied. "
-                        "Results may be incomplete."
-                    )
-                    warnings.append(
-                        f"SageMaker {api_method} access denied, results may be incomplete"
-                    )
-                else:
-                    logger.warning(f"SageMaker {api_method} failed: {e}")
-                    warnings.append(f"SageMaker {api_method} failed: {e}")
-
-        return {"running_jobs": running_jobs, "warnings": warnings}
-
-    def _query_glue_etl_jobs(
-        self,
-        database_name: str,
-        table_name: str,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> dict:
-        """Query Glue for visual ETL jobs that reference a specific table.
-
-        Paginates through all Glue jobs, checks visual-mode jobs
-        (those with CodeGenConfigurationNodes) for references to the
-        specified database and table, and checks for running job runs.
-
-        Args:
-            database_name: Glue database name.
-            table_name: Glue table name.
-            session: Boto3 session.
-            region: AWS region name.
-
-        Returns:
-            Dict with keys:
-                - jobs: list of dicts with job_name and role
-                - running_job_runs: list of dicts with job_name, run_id, and state
-                - warnings: list of warning strings
-        """
-        warnings = []
-        try:
-            client = self._get_glue_client(session=session, region=region)
-        except Exception as e:
-            logger.warning(f"Failed to create Glue client: {e}")
-            return {
-                "jobs": [],
-                "running_job_runs": [],
-                "warnings": [f"Failed to create Glue client: {e}"],
-            }
-
-        matching_jobs = []
-        running_job_runs = []
-
-        catalog_node_keys = (
-            "CatalogSource", "CatalogTarget",
-            "GovernedCatalogSource", "GovernedCatalogTarget",
-            "S3CatalogSource", "S3CatalogTarget",
-        )
-
-        try:
-            paginator = client.get_paginator("get_jobs")
-            for page in paginator.paginate():
-                for job in page.get("Jobs", []):
-                    nodes = job.get("CodeGenConfigurationNodes")
-                    if not nodes:
-                        continue
-
-                    job_name = job.get("Name", "")
-                    matched = False
-
-                    for node_value in nodes.values():
-                        for catalog_key in catalog_node_keys:
-                            if catalog_key not in node_value:
-                                continue
-                            node_config = node_value[catalog_key]
-                            db = node_config.get("Database") or node_config.get("DatabaseName")
-                            tbl = node_config.get("Table")
-                            tables = node_config.get("Tables")
-                            if db == database_name and (
-                                tbl == table_name
-                                or (isinstance(tables, list) and table_name in tables)
-                            ):
-                                matched = True
-                                break
-                        if matched:
-                            break
-
-                    if matched:
-                        matching_jobs.append({
-                            "job_name": job_name,
-                            "role": job.get("Role", ""),
-                        })
-
-                        try:
-                            runs_resp = client.get_job_runs(
-                                JobName=job_name, MaxResults=20
-                            )
-                            for run in runs_resp.get("JobRuns", []):
-                                if run.get("JobRunState") in (
-                                    "STARTING", "RUNNING", "STOPPING", "WAITING"
-                                ):
-                                    running_job_runs.append({
-                                        "job_name": job_name,
-                                        "run_id": run.get("Id", ""),
-                                        "state": run.get("JobRunState", ""),
-                                    })
-                        except Exception as e:
-                            logger.warning(f"Failed to get job runs for {job_name}: {e}")
-
-        except botocore.exceptions.ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code", "")
-            if error_code == "AccessDeniedException":
-                logger.warning("Glue get_jobs access denied. Results may be incomplete.")
-                warnings.append("Glue get_jobs access denied, results may be incomplete")
-            else:
-                logger.warning(f"Glue get_jobs failed: {e}")
-                warnings.append(f"Glue get_jobs failed: {e}")
-
-        return {
-            "jobs": matching_jobs,
-            "running_job_runs": running_job_runs,
-            "warnings": warnings,
-        }
-
-    def _run_all_audit_queries(
-        self,
-        database_name: str,
-        table_name: str,
-        s3_path: str,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-        lookback_days: int = 30,
-    ) -> dict:
-        """Run all audit queries and aggregate results.
-
-        Args:
-            database_name: Glue database name.
-            table_name: Glue table name.
-            s3_path: S3 URI of the offline store.
-            session: Boto3 session.
-            region: AWS region name.
-            lookback_days: Number of days to look back. Default 30.
-
-        Returns:
-            Dict with keys: glue_table_accessors, sagemaker_jobs,
-            athena_query_principals, athena_running_queries, glue_etl_jobs,
-            glue_running_job_runs, sagemaker_running_jobs, glue_database,
-            glue_table, s3_path, warnings.
-        """
-        warnings = []
-
-        cloudtrail_result = self._query_glue_table_accessors(
-            database_name=database_name,
-            table_name=table_name,
-            session=session,
-            region=region,
-            lookback_days=lookback_days,
-        )
-        warnings.extend(cloudtrail_result.get("warnings", []))
-
-        sagemaker_result = self._query_sagemaker_jobs_for_s3_path(
-            s3_path=s3_path,
-            session=session,
-            region=region,
-            lookback_days=lookback_days,
-        )
-        warnings.extend(sagemaker_result.get("warnings", []))
-
-        athena_result = self._query_athena_query_principals(
-            database_name=database_name,
-            table_name=table_name,
-            session=session,
-            region=region,
-            lookback_days=lookback_days,
-        )
-        warnings.extend(athena_result.get("warnings", []))
-
-        glue_result = self._query_glue_etl_jobs(
-            database_name=database_name,
-            table_name=table_name,
-            session=session,
-            region=region,
-        )
-        warnings.extend(glue_result.get("warnings", []))
-
-        running_result = self._query_running_jobs(
-            s3_path=s3_path,
-            session=session,
-            region=region,
-        )
-        warnings.extend(running_result.get("warnings", []))
-
-        return {
-            "glue_table_accessors": cloudtrail_result.get("accessors", []),
-            "sagemaker_jobs": sagemaker_result.get("jobs", []),
-            "athena_query_principals": athena_result.get("principals", []),
-            "athena_running_queries": athena_result.get("running_queries", []),
-            "glue_etl_jobs": glue_result.get("jobs", []),
-            "glue_running_job_runs": glue_result.get("running_job_runs", []),
-            "sagemaker_running_jobs": running_result.get("running_jobs", []),
-            "glue_database": database_name,
-            "glue_table": table_name,
-            "s3_path": s3_path,
-            "warnings": warnings,
-        }
-
-    def _format_risk_report(self, audit_results: dict) -> str:
-        """Format audit results into a human-readable risk report.
-
-        Args:
-            audit_results: Dict returned by _run_all_audit_queries.
-
-        Returns:
-            Formatted report string.
-        """
-        lines = [
-            "=== Lake Formation Impact Report ===",
-            f"Feature Group : {self.feature_group_name}",
-            f"Glue table    : {audit_results.get('glue_table', '')}",
-            f"S3 path       : {audit_results.get('s3_path', '')}",
-        ]
-
-        accessors = audit_results.get("glue_table_accessors", [])
-        if accessors:
-            lines.append("")
-            lines.append("Glue table accessors (via CloudTrail):")
-            for entry in accessors:
-                lines.append(f"  - {entry.get('principal_arn', 'unknown')}")
-
-        jobs = audit_results.get("sagemaker_jobs", [])
-        if jobs:
-            lines.append("")
-            lines.append("SageMaker jobs referencing this S3 path:")
-            for entry in jobs:
-                role = entry.get("role_arn", "unknown")
-                lines.append(
-                    f"  - {entry.get('job_type', '')}: {entry.get('job_name', 'unknown')} "
-                    f"(role: {role}, status: {entry.get('status', 'unknown')})"
-                )
-
-        athena_principals = audit_results.get("athena_query_principals", [])
-        if athena_principals:
-            lines.append("")
-            lines.append("Athena query principals:")
-            for entry in athena_principals:
-                principal = entry.get("principal_arn", "")
-                prefix = f"{principal} — " if principal else ""
-                lines.append(
-                    f"  - {prefix}{entry.get('query_execution_id', 'unknown')}: "
-                    f"{entry.get('query', '')[:100]}"
-                )
-
-        glue_jobs = audit_results.get("glue_etl_jobs", [])
-        if glue_jobs:
-            lines.append("")
-            lines.append("Glue ETL jobs:")
-            for entry in glue_jobs:
-                lines.append(f"  - {entry.get('job_name', 'unknown')}")
-
-        running = []
-        running.extend(audit_results.get("sagemaker_running_jobs", []))
-        running.extend(audit_results.get("athena_running_queries", []))
-        running.extend(audit_results.get("glue_running_job_runs", []))
-        if running:
-            lines.append("")
-            lines.append("[!] Running jobs/queries:")
-            for entry in running:
-                name = entry.get("job_name", entry.get("query_execution_id", "unknown"))
-                state = entry.get("status", entry.get("state", ""))
-                lines.append(f"  - {name} ({state})")
-
-        warn = audit_results.get("warnings", [])
-        if warn:
-            lines.append("")
-            lines.append("Warnings:")
-            for w in warn:
-                lines.append(f"  - {w}")
-
-        lines.append("")
-        lines.append("[!] WARNING - Limitations:")
-        lines.append("  - CloudTrail has 15-minute delivery delay")
-        lines.append("  - SageMaker job scan uses S3 path matching on input/output channels")
-        lines.append("  - Athena query detection uses CloudTrail + SQL text matching (may have false positives)")
-        lines.append("  - Glue ETL detection only covers VISUAL mode jobs")
-
-        return "\n".join(lines)
-
-    def audit_lake_formation_impact(
-        self,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-        lookback_days: int = 30,
-    ) -> dict:
-        """Audit the impact of enabling Lake Formation on this Feature Group.
-
-        Runs all audit queries and prints a formatted risk report.
-
-        Args:
-            session: Boto3 session.
-            region: AWS region name.
-            lookback_days: Number of days to look back. Default 30.
-
-        Returns:
-            Dict with audit results from _run_all_audit_queries.
-
-        Raises:
-            ValueError: If Feature Group is not in 'Created' status or has no offline store.
-        """
-        self.refresh()
-
-        if self.feature_group_status not in ["Created"]:
-            raise ValueError(
-                f"Feature Group '{self.feature_group_name}' must be in 'Created' status. "
-                f"Current status: '{self.feature_group_status}'."
-            )
-
-        if self.offline_store_config is None or isinstance(self.offline_store_config, Unassigned):
-            raise ValueError(
-                f"Feature Group '{self.feature_group_name}' does not have an offline store configured."
-            )
-
-        data_catalog_config = self.offline_store_config.data_catalog_config
-        s3_config = self.offline_store_config.s3_storage_config
-        database_name = str(data_catalog_config.database)
-        table_name = str(data_catalog_config.table_name)
-        s3_path = str(s3_config.resolved_output_s3_uri)
-
-        audit_results = self._run_all_audit_queries(
-            database_name=database_name,
-            table_name=table_name,
-            s3_path=s3_path,
-            session=session,
-            region=region,
-            lookback_days=lookback_days,
-        )
-
-        print(self._format_risk_report(audit_results))
-
-        return audit_results
 
     def _register_s3_with_lake_formation(
         self,
@@ -1254,13 +320,12 @@ class FeatureGroupManager(FeatureGroup):
         lake_formation_role_arn: str,
         feature_store_role_arn: str,
         region: Optional[str] = None,
-        caller_arn: Optional[str] = None,
     ) -> list:
         """
         Generate S3 deny statements for Lake Formation governance.
 
         These statements deny S3 access to the offline store data prefix except for
-        the Lake Formation role, Feature Store execution role, and optionally the caller.
+        the Lake Formation role and Feature Store execution role.
 
         Args:
             bucket_name: S3 bucket name.
@@ -1269,7 +334,6 @@ class FeatureGroupManager(FeatureGroup):
             feature_store_role_arn: Feature Store execution role ARN.
             region: AWS region name (e.g., 'us-west-2'). Used to determine the correct
                 partition for S3 ARNs. If not provided, defaults to 'aws' partition.
-            caller_arn: ARN of the caller to exempt from deny statements.
 
         Returns:
             List of statement dicts containing:
@@ -1279,8 +343,6 @@ class FeatureGroupManager(FeatureGroup):
         partition = aws_partition(region) if region else "aws"
 
         allowed_principals = [lake_formation_role_arn, feature_store_role_arn]
-        if caller_arn:
-            allowed_principals.append(caller_arn)
 
         sid_suffix = s3_prefix.rstrip("/").rsplit("/", 1)[-1]
 
@@ -1308,79 +370,16 @@ class FeatureGroupManager(FeatureGroup):
             },
         ]
     
-    def _apply_bucket_policy(
-        self,
-        bucket_name: str,
-        s3_prefix: str,
-        lake_formation_role_arn: str,
-        feature_store_role_arn: str,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> bool:
-        """
-        Apply S3 deny statements to the bucket policy for Lake Formation governance.
-
-        Fetches the existing bucket policy, appends deny statements idempotently
-        (by Sid), and puts the merged policy back.
-
-        Args:
-            bucket_name: S3 bucket name.
-            s3_prefix: S3 prefix path (without bucket name).
-            lake_formation_role_arn: Lake Formation registration role ARN.
-            feature_store_role_arn: Feature Store execution role ARN.
-            session: Boto3 session.
-            region: AWS region name.
-
-        Returns:
-            True on success.
-
-        Raises:
-            ClientError: If S3 operations fail.
-        """
-        s3_client = self._get_s3_client(session, region)
-
-        # Get existing bucket policy
-        try:
-            response = s3_client.get_bucket_policy(Bucket=bucket_name)
-            policy = json.loads(response["Policy"])
-        except botocore.exceptions.ClientError as e:
-            if e.response["Error"]["Code"] == "NoSuchBucketPolicy":
-                policy = {"Version": "2012-10-17", "Statement": []}
-            else:
-                raise
-
-        # Generate deny statements
-        deny_statements = self._generate_s3_deny_statements(
-            bucket_name=bucket_name,
-            s3_prefix=s3_prefix,
-            lake_formation_role_arn=lake_formation_role_arn,
-            feature_store_role_arn=feature_store_role_arn,
-            region=region,
-        )
-
-        # Filter out statements whose Sid already exists
-        existing_sids = {stmt.get("Sid") for stmt in policy.get("Statement", [])}
-        new_statements = [s for s in deny_statements if s.get("Sid") not in existing_sids]
-
-        if not new_statements:
-            logger.info("Bucket policy already contains the deny statements. Skipping update.")
-            return True
-
-        policy["Statement"].extend(new_statements)
-        s3_client.put_bucket_policy(Bucket=bucket_name, Policy=json.dumps(policy))
-        logger.info(f"Applied bucket policy: {json.dumps(policy, indent=2)}")
-        return True
 
     @Base.add_validate_call
     def enable_lake_formation(
         self,
+        disable_hybrid_access_mode: bool,
         session: Optional[Session] = None,
         region: Optional[str] = None,
         use_service_linked_role: bool = True,
         registration_role_arn: Optional[str] = None,
-        wait_for_active: bool = False,
-        lookback_days: int = 30,
-        auto_confirm: bool = False,
+        wait_for_active: bool = False
     ) -> dict:
         """
         Enable Lake Formation governance for this Feature Group's offline store.
@@ -1390,21 +389,16 @@ class FeatureGroupManager(FeatureGroup):
         2. Validates Feature Group status is 'Created'
         3. Registers the offline store S3 location as data lake location
         4. Grants the execution role permissions on the Glue table
-        5. Runs access audit to discover affected principals
-        6. Revokes IAMAllowedPrincipal permissions from the Glue table
-        7. Applies S3 deny bucket policy
-
-        After Phase 2, an access audit runs automatically. If any IAM principals
-        are found that currently access the Glue table or any SageMaker execution
-        roles are in active use, the user is prompted for confirmation before
-        proceeding (unless auto_confirm=True). Use audit_lake_formation_impact()
-        to preview affected principals before calling this method.
-
-        The role ARN is automatically extracted from the Feature Group's configuration.
-        Each phase depends on the success of the previous phase - if any phase fails,
-        subsequent phases are not executed.
+        5. Optionally revokes IAMAllowedPrincipal permissions from the Glue table
+        6. Prints optional S3 deny bucket policy
 
         Parameters:
+            disable_hybrid_access_mode: If True, revokes IAMAllowedPrincipal permissions
+                from the Glue table, enforcing Lake Formation-only governance. Warning:
+                this may break existing jobs (e.g., training, processing, ETL) that access
+                the table via IAM-based permissions. After this change, all principals must
+                be granted access through Lake Formation. If False, prompts the user for
+                confirmation before proceeding with hybrid access.
             session: Boto3 session.
             region: Region name.
             use_service_linked_role: Whether to use the Lake Formation service-linked role
@@ -1415,17 +409,12 @@ class FeatureGroupManager(FeatureGroup):
                 Feature Group's execution role (role_arn)
             wait_for_active: If True, waits for the Feature Group to reach 'Created' status
                 before enabling Lake Formation. Default is False.
-            lookback_days: Number of days to look back when auditing CloudTrail
-                and SageMaker job history. Default is 30.
-            auto_confirm: If True, skip the interactive confirmation prompt when
-                audit findings exist and proceed directly to Phase 3. Default is False.
 
         Returns:
             Dict with status of each Lake Formation operation:
-            - s3_registration: bool
-            - permissions_granted: bool
-            - iam_principal_revoked: bool
-            - bucket_policy_applied: bool
+            - s3_location_registered: bool
+            - lf_permissions_granted: bool
+            - hybrid_access_mode_disabled: bool
 
         Raises:
             ValueError: If the Feature Group has no offline store configured,
@@ -1433,7 +422,8 @@ class FeatureGroupManager(FeatureGroup):
                 is False but registration_role_arn is not provided, or if the Feature
                 Group is not in 'Created' status.
             ClientError: If Lake Formation operations fail.
-            RuntimeError: If a phase fails and subsequent phases cannot proceed.
+            RuntimeError: If a phase fails and subsequent phases cannot proceed,
+                or if the user declines to proceed without disabling hybrid access mode.
         """
         # Get region from session if not provided
         if region is None and session is not None:
@@ -1499,63 +489,60 @@ class FeatureGroupManager(FeatureGroup):
         table_name_str = str(table_name)
         role_arn_str = str(self.role_arn)
 
-        # Determine the actual S3 location to register with Lake Formation.
-        # For Iceberg tables, the Glue table's StorageDescriptor.Location is the parent
-        # path (without /data suffix), while resolved_output_s3_uri always ends with /data.
-        s3_location_to_register = resolved_s3_uri_str
-        if (
-            self.offline_store_config.table_format is not None
-            and str(self.offline_store_config.table_format) == "Iceberg"
-            and resolved_s3_uri_str.endswith("/data")
-        ):
-            s3_location_to_register = resolved_s3_uri_str[: -len("/data")]
-            logger.info(
-                f"Iceberg table format detected. Using parent S3 path for LF registration: "
-                f"{s3_location_to_register}"
+        if not disable_hybrid_access_mode:
+            logger.warning(
+                f"Hybrid access mode is not disabled for table: {database_name_str}.{table_name_str}. "
+                f"IAMAllowedPrincipal permissions remain in effect, which means IAM-based access "
+                f"to the table is still allowed alongside Lake Formation permissions. "
+                f"For more info: https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
+            )
+            proceed = input(
+                "Hybrid access mode is not disabled. IAM-based access to the Glue table will "
+                "still be allowed. Do you want to proceed without revoking IAMAllowedPrincipal "
+                "permissions? (y/n): "
+            ).strip().lower()
+            if proceed != "y":
+                raise RuntimeError(
+                    "User chose not to proceed without disabling hybrid access mode. "
+                    "Re-run with disable_hybrid_access_mode=True to revoke IAMAllowedPrincipal permissions."
+                )
+        else:
+            logger.warning(
+                f"Disabling hybrid access mode for table: {database_name_str}.{table_name_str}. "
+                f"This will revoke IAMAllowedPrincipal permissions, which may break existing jobs "
+                f"(e.g., training, processing, ETL) that access this table via IAM-based permissions. "
+                f"After this change, all principals must be granted access through Lake Formation. "
+                f"For more info: https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
             )
 
+
         results = {
-            "s3_registration": False,
-            "iam_principal_revoked": False,
-            "permissions_granted": False,
-            "bucket_policy_applied": False,
+            "s3_location_registered": False,
+            "lf_permissions_granted": False,
+            "hybrid_access_mode_disabled": False
         }
-
-        # # --- Audit Gate ---
-        # audit_results = self._run_all_audit_queries(
-        #     database_name=database_name_str,
-        #     table_name=table_name_str,
-        #     s3_path=resolved_s3_uri_str,
-        #     session=session,
-        #     region=region,
-        #     lookback_days=lookback_days,
-        # )
-
-        # has_findings = any([
-        #     audit_results.get("glue_table_accessors"),
-        #     audit_results.get("sagemaker_jobs"),
-        #     audit_results.get("athena_query_principals"),
-        #     audit_results.get("glue_etl_jobs"),
-        #     audit_results.get("sagemaker_running_jobs"),
-        #     audit_results.get("athena_running_queries"),
-        #     audit_results.get("glue_running_job_runs"),
-        # ])
-
-        # if has_findings:
-        #     print(self._format_risk_report(audit_results))
-        #     if auto_confirm:
-        #         logger.info("auto_confirm=True, proceeding without user confirmation")
-        #     else:
-        #         response = input("Proceed with enabling Lake Formation? [y/N]: ")
-        #         if response.strip().lower() != "y":
-        #             return {"aborted": True, "audit_results": audit_results, **results}
-
 
         # Execute Lake Formation setup with fail-fast behavior
 
         # Phase 1: Register S3 with Lake Formation
         try:
-            results["s3_registration"] = self._register_s3_with_lake_formation(
+            # Determine the actual S3 location to register with Lake Formation.
+            # For Iceberg tables, the Glue table's StorageDescriptor.Location is the parent
+            # path (without /data suffix), while resolved_output_s3_uri always ends with /data.
+            s3_location_to_register = resolved_s3_uri_str
+
+            if (
+                self.offline_store_config.table_format is not None
+                and str(self.offline_store_config.table_format) == "Iceberg"
+                and resolved_s3_uri_str.endswith("/data")
+            ):
+                s3_location_to_register = resolved_s3_uri_str[: -len("/data")]
+                logger.info(
+                    f"Iceberg table format detected. Using parent S3 path for LF registration: "
+                    f"{s3_location_to_register}"
+                )
+
+            results["s3_location_registered"] = self._register_s3_with_lake_formation(
                 s3_location_to_register,
                 session,
                 region,
@@ -1568,7 +555,7 @@ class FeatureGroupManager(FeatureGroup):
                 f"Subsequent phases skipped. Results: {results}. Error: {e}"
             ) from e
 
-        if not results["s3_registration"]:
+        if not results["s3_location_registered"]:
             raise RuntimeError(
                 f"Failed to register S3 location with Lake Formation. "
                 f"Subsequent phases skipped. Results: {results}"
@@ -1576,7 +563,7 @@ class FeatureGroupManager(FeatureGroup):
 
         # Phase 2: Grant Lake Formation permissions to the role
         try:
-            results["permissions_granted"] = self._grant_lake_formation_permissions(
+            results["lf_permissions_granted"] = self._grant_lake_formation_permissions(
                 role_arn_str, database_name_str, table_name_str, session, region
             )
         except Exception as e:
@@ -1585,7 +572,7 @@ class FeatureGroupManager(FeatureGroup):
                 f"Subsequent phases skipped. Results: {results}. Error: {e}"
             ) from e
 
-        if not results["permissions_granted"]:
+        if not results["lf_permissions_granted"]:
             raise RuntimeError(
                 f"Failed to grant Lake Formation permissions. "
                 f"Subsequent phases skipped. Results: {results}"
@@ -1593,21 +580,23 @@ class FeatureGroupManager(FeatureGroup):
 
 
         # Phase 3: Revoke IAMAllowedPrincipal permissions
-        try:
-            results["iam_principal_revoked"] = self._revoke_iam_allowed_principal(
-                database_name_str, table_name_str, session, region
-            )
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}. Error: {e}"
-            ) from e
+        if disable_hybrid_access_mode:
+            try:
+                results["hybrid_access_mode_disabled"] = self._revoke_iam_allowed_principal(
+                    database_name_str, table_name_str, session, region
+                )
+            except Exception as e:
+                raise RuntimeError(
+                    f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}. Error: {e}"
+                ) from e
+    
+            if not results["hybrid_access_mode_disabled"]:
+                raise RuntimeError(
+                    f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}"
+                )
+            
 
-        if not results["iam_principal_revoked"]:
-            raise RuntimeError(
-                f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}"
-            )
-
-        # Phase 4: Apply S3 bucket policy
+        # Phase 4: Print S3 bucket policy
         # Validate feature_group_arn is available for account ID extraction
         if self.feature_group_arn is None or isinstance(self.feature_group_arn, Unassigned):
             raise ValueError(
@@ -1624,26 +613,59 @@ class FeatureGroupManager(FeatureGroup):
         else:
             lf_role_arn = str(registration_role_arn)
 
-        try:
-            results["bucket_policy_applied"] = self._apply_bucket_policy(
-                bucket_name=bucket_name,
-                s3_prefix=s3_prefix,
-                lake_formation_role_arn=lf_role_arn,
-                feature_store_role_arn=role_arn_str,
-                session=session,
-                region=region,
-            )
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to apply bucket policy. Results: {results}. Error: {e}"
-            ) from e
+    
+        bucket_deny_policy = self._generate_s3_deny_statements(
+            bucket_name=bucket_name,
+            s3_prefix=s3_prefix,
+            lake_formation_role_arn=lf_role_arn,
+            feature_store_role_arn=role_arn_str,
+            region=region
+        )
 
-        if not results["bucket_policy_applied"]:
-            raise RuntimeError(
-                f"Failed to apply bucket policy. Results: {results}"
-            )
+        policy_json = json.dumps(bucket_deny_policy, indent=2)
+        logger.warning(
+            "RECOMMENDED S3 BUCKET POLICY\n"
+            "\n"
+            "Lake Formation governs access through the Glue Data Catalog\n"
+            "but does not block direct S3 access. To enforce Lake\n"
+            "Formation-only access to the offline store data, add the\n"
+            "following deny statements to your S3 bucket policy for\n"
+            "bucket '%s'.\n"
+            "\n"
+            "WARNING: Applying this policy will deny direct S3 access\n"
+            "to any principal not in the allowed list. This may cause\n"
+            "existing jobs (e.g., training, processing, ETL) that read\n"
+            "from or write to this path to fail if they rely on direct\n"
+            "S3 access instead of Lake Formation vended credentials.\n"
+            "\n"
+            "%s",
+            bucket_name,
+            policy_json,
+        )
 
         logger.info(f"Lake Formation setup complete for {self.feature_group_name}: {results}")
+
+        # Warn about any steps that were not completed
+        if not results["s3_location_registered"]:
+            logger.warning(
+                "S3 location was not registered with Lake Formation. "
+                "Re-run enable_lake_formation() or manually register "
+                "the S3 location via the Lake Formation console."
+            )
+        if not results["lf_permissions_granted"]:
+            logger.warning(
+                "Lake Formation permissions were not granted to the "
+                "execution role. Grant permissions manually via the "
+                "Lake Formation console or re-run the method after fixing the issue."
+            )
+        if not results["hybrid_access_mode_disabled"]:
+            logger.warning(
+                "Hybrid access mode was not disabled. IAM-based access "
+                "to the Glue table is still allowed alongside Lake "
+                "Formation permissions. To disable, re-run with "
+                "disable_hybrid_access_mode=True. For more info: "
+                "https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
+            )
 
         return results
 
@@ -1684,6 +706,25 @@ class FeatureGroupManager(FeatureGroup):
             use_pre_prod_offline_store_replicator_lambda: Pre-prod replicator flag.
             lake_formation_config: Optional LakeFormationConfig to configure Lake Formation
                 governance. When enabled=True, requires offline_store_config and role_arn.
+                The config fields control the following behavior:
+
+                - **enabled** (bool, default False): When True, automatically enables Lake
+                  Formation governance after the Feature Group is created. This registers
+                  the offline store S3 location with Lake Formation and grants the execution
+                  role permissions on the Glue table.
+                - **use_service_linked_role** (bool, default True): When True, uses the Lake
+                  Formation service-linked role for S3 registration. When False,
+                  ``registration_role_arn`` must be provided.
+                - **registration_role_arn** (str, optional): Custom IAM role ARN for S3
+                  registration with Lake Formation. Required when ``use_service_linked_role``
+                  is False.
+                - **disable_hybrid_access_mode** (bool, required): When True, revokes
+                  IAMAllowedPrincipal permissions from the Glue table, enforcing Lake
+                  Formation-only governance. **Warning**: this may break existing jobs
+                  (e.g., training, processing, ETL) that access the table via IAM-based
+                  permissions. After this change, all principals must be granted access
+                  through Lake Formation. When False, an interactive prompt asks the user
+                  to confirm proceeding with hybrid access mode.
             session: Boto3 session.
             region: Region name.
 
@@ -1763,5 +804,6 @@ class FeatureGroupManager(FeatureGroup):
                 region=region,
                 use_service_linked_role=lake_formation_config.use_service_linked_role,
                 registration_role_arn=lake_formation_config.registration_role_arn,
+                disable_hybrid_access_mode=lake_formation_config.disable_hybrid_access_mode,
             )
         return feature_group

@@ -11,7 +11,6 @@ Run with: pytest tests/integ/test_featureStore_lakeformation.py -v -m integ
 
 import logging
 import uuid
-from unittest.mock import patch
 
 import boto3
 import pytest
@@ -162,12 +161,12 @@ def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance
-        result = fg.enable_lake_formation()
+        result = fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         # Verify all phases completed successfully
-        assert result["s3_registration"] is True
-        assert result["permissions_granted"] is True
-        assert result["iam_principal_revoked"] is True
+        assert result["s3_location_registered"] is True
+        assert result["lf_permissions_granted"] is True
+        assert result["hybrid_access_mode_disabled"] is True
 
     finally:
         print('done')
@@ -196,8 +195,10 @@ def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
         # Create the FeatureGroupManager with Lake Formation enabled
 
         offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
-        lake_formation_config = LakeFormationConfig()
-        lake_formation_config.enabled = True
+        lake_formation_config = LakeFormationConfig(
+            enabled=True,
+            disable_hybrid_access_mode = True
+        )
 
         fg = FeatureGroupManager.create(
             feature_group_name=fg_name,
@@ -286,7 +287,7 @@ def test_create_feature_group_with_lake_formation_fails_without_offline_store(ro
     """
     fg_name = generate_feature_group_name()
 
-    lake_formation_config = LakeFormationConfig()
+    lake_formation_config = LakeFormationConfig(disable_hybrid_access_mode=True)
     lake_formation_config.enabled = True
 
     # Attempt to create without offline store but with Lake Formation enabled
@@ -316,7 +317,7 @@ def test_create_feature_group_with_lake_formation_fails_without_role(s3_uri, reg
     fg_name = generate_feature_group_name()
 
     offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
-    lake_formation_config = LakeFormationConfig()
+    lake_formation_config = LakeFormationConfig(disable_hybrid_access_mode=True)
     lake_formation_config.enabled = True
 
     # Attempt to create without role_arn but with Lake Formation enabled
@@ -356,7 +357,7 @@ def test_enable_lake_formation_fails_for_non_created_status(s3_uri, role, region
         # Immediately try to enable Lake Formation without waiting for Created status
         # The Feature Group will be in 'Creating' status
         with pytest.raises(ValueError) as exc_info:
-            fg.enable_lake_formation(wait_for_active=False)
+            fg.enable_lake_formation(disable_hybrid_access_mode=True, wait_for_active=False)
 
         # Verify error message mentions status requirement
         error_msg = str(exc_info.value)
@@ -400,7 +401,7 @@ def test_enable_lake_formation_without_offline_store(role, region):
 
         # Attempt to enable Lake Formation
         with pytest.raises(ValueError) as exc_info:
-            fg.enable_lake_formation()
+            fg.enable_lake_formation(disable_hybrid_access_mode=True)
         # Verify error message mentions offline store requirement
         assert "does not have an offline store configured" in str(exc_info.value)
 
@@ -425,6 +426,7 @@ def test_enable_lake_formation_fails_with_invalid_registration_role(
     # Attempt to enable Lake Formation without service-linked role and without registration_role_arn
     with pytest.raises(ValueError) as exc_info:
         fg.enable_lake_formation(
+            disable_hybrid_access_mode=True,
             use_service_linked_role=False,
             registration_role_arn=None,
         )
@@ -457,6 +459,7 @@ def test_enable_lake_formation_fails_with_nonexistent_role(
         fg.enable_lake_formation(
             use_service_linked_role=False,
             registration_role_arn=nonexistent_role,
+            disable_hybrid_access_mode=True,
         )
 
     # Verify we got an appropriate error
@@ -473,17 +476,16 @@ def test_enable_lake_formation_fails_with_nonexistent_role(
 
 @pytest.mark.serial
 @pytest.mark.slow_test
-def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region):
+def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region, caplog):
     """
-    Test the full Lake Formation flow with S3 deny policy application.
+    Test the full Lake Formation flow with S3 deny policy logging.
 
     This test verifies:
     1. Creates a FeatureGroupManager with offline store
-    2. Enables Lake Formation (bucket policy is applied automatically)
-    3. Verifies all Lake Formation phases complete successfully (including bucket policy)
-    4. Fetches the actual bucket policy and verifies its structure
+    2. Enables Lake Formation with disable_hybrid_access_mode=True
+    3. Verifies all Lake Formation phases complete successfully
+    4. Verifies the recommended S3 deny policy is logged as a warning
     """
-    import json
 
     fg_name = generate_feature_group_name()
     fg = None
@@ -498,24 +500,17 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance
-        result = fg.enable_lake_formation()
+        with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
+            result = fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
         # Verify all phases completed successfully
-        assert result["s3_registration"] is True
-        assert result["permissions_granted"] is True
-        assert result["iam_principal_revoked"] is True
-        assert result["bucket_policy_applied"] is True
+        assert result["s3_location_registered"] is True
+        assert result["lf_permissions_granted"] is True
+        assert result["hybrid_access_mode_disabled"] is True
 
-        # Fetch the actual bucket policy from S3 and verify the role is allowed
-        bucket_name = s3_uri.replace("s3://", "").split("/")[0]
-        s3_client = boto3.client("s3")
-        policy = json.loads(s3_client.get_bucket_policy(Bucket=bucket_name)["Policy"])
-
-        # Find a DenyFS statement and verify the execution role is in allowed principals
-        deny_stmts = [s for s in policy["Statement"] if s.get("Sid", "").startswith("DenyFS")]
-        assert len(deny_stmts) >= 1
-        allowed = deny_stmts[0]["Condition"]["StringNotEquals"]["aws:PrincipalArn"]
-        assert role in allowed
+        # Verify the recommended S3 deny policy was logged
+        assert any("RECOMMENDED S3 BUCKET POLICY" in record.message for record in caplog.records)
+        assert any("DenyFS" in record.message for record in caplog.records)
 
     finally:
         # Cleanup
@@ -525,14 +520,15 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
 
 @pytest.mark.serial
 @pytest.mark.slow_test
-def test_enable_lake_formation_default_applies_bucket_policy(s3_uri, role, region, caplog):
+def test_enable_lake_formation_default_logs_recommended_policy(s3_uri, role, region, caplog):
     """
-    Test that bucket policy is applied automatically with default arguments.
+    Test that recommended bucket policy is logged with default arguments.
 
     This test verifies:
     1. Creates a FeatureGroupManager with offline store
-    2. Enables Lake Formation with default arguments
-    3. Verifies all four phases complete successfully (including bucket policy)
+    2. Enables Lake Formation with disable_hybrid_access_mode=True
+    3. Verifies phases complete successfully (hybrid_access_mode_disabled=True)
+    4. Verifies the recommended S3 deny policy is logged
     """
     fg_name = generate_feature_group_name()
     fg = None
@@ -546,15 +542,14 @@ def test_enable_lake_formation_default_applies_bucket_policy(s3_uri, role, regio
         fg.wait_for_status(target_status="Created", poll=30, timeout=300)
         assert fg.feature_group_status == "Created"
 
-        # Enable Lake Formation governance with defaults
-        with caplog.at_level(logging.INFO, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = fg.enable_lake_formation()
+        # Enable Lake Formation governance with disable_hybrid_access_mode=True
+        with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
+            result = fg.enable_lake_formation(disable_hybrid_access_mode=True)
 
-        # Verify all phases completed successfully
-        assert result["s3_registration"] is True
-        assert result["permissions_granted"] is True
-        assert result["iam_principal_revoked"] is True
-        assert result["bucket_policy_applied"] is True
+        # Verify phases completed successfully
+        assert result["s3_location_registered"] is True
+        assert result["lf_permissions_granted"] is True
+        assert result["hybrid_access_mode_disabled"] is True
 
     finally:
         # Cleanup
@@ -564,16 +559,16 @@ def test_enable_lake_formation_default_applies_bucket_policy(s3_uri, role, regio
 
 @pytest.mark.serial
 @pytest.mark.slow_test
-def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, region):
+def test_enable_lake_formation_with_custom_role_logs_policy(s3_uri, role, region, caplog):
     """
     Test the full Lake Formation flow with custom registration role.
 
     This test verifies:
     1. Creates a FeatureGroupManager with offline store
     2. Enables Lake Formation with use_service_linked_role=False and a custom registration_role_arn
-    3. Fetches the actual bucket policy and verifies the custom role ARN is in the allowed principals
+    3. Verifies all phases complete successfully
+    4. Verifies the recommended S3 deny policy is logged
     """
-    import json
 
     fg_name = generate_feature_group_name()
     fg = None
@@ -588,214 +583,23 @@ def test_enable_lake_formation_with_custom_role_policy_output(s3_uri, role, regi
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation with custom registration role
-        result = fg.enable_lake_formation(
-            use_service_linked_role=False,
-            registration_role_arn=role,
-        )
+        with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
+            result = fg.enable_lake_formation(
+                use_service_linked_role=False,
+                registration_role_arn=role,
+                disable_hybrid_access_mode=True,
+            )
 
         # Verify all phases completed successfully
-        assert result["s3_registration"] is True
-        assert result["permissions_granted"] is True
-        assert result["iam_principal_revoked"] is True
-        assert result["bucket_policy_applied"] is True
+        assert result["s3_location_registered"] is True
+        assert result["lf_permissions_granted"] is True
+        assert result["hybrid_access_mode_disabled"] is True
 
-        # Fetch the actual bucket policy from S3 and verify the role is in allowed principals
-        bucket_name = s3_uri.replace("s3://", "").split("/")[0]
-        s3_client = boto3.client("s3")
-        policy = json.loads(s3_client.get_bucket_policy(Bucket=bucket_name)["Policy"])
-
-        # Find the deny statements for this feature group's prefix
-        fg.refresh()
-        s3_resolved = fg.offline_store_config.s3_storage_config.resolved_output_s3_uri
-        fg_prefix = s3_resolved.replace(f"s3://{bucket_name}/", "").rstrip("/")
-        sid_suffix = fg_prefix.rsplit("/", 1)[-1]
-
-        object_sid = f"DenyFSObjectAccess_{sid_suffix}"
-        deny_stmts = [s for s in policy["Statement"] if s.get("Sid") == object_sid]
-        assert len(deny_stmts) == 1
-
-        # Verify the custom role ARN is in the allowed principals
-        allowed = deny_stmts[0]["Condition"]["StringNotEquals"]["aws:PrincipalArn"]
-        assert role in allowed
+        # Verify the recommended S3 deny policy was logged
+        assert any("RECOMMENDED S3 BUCKET POLICY" in record.message for record in caplog.records)
 
     finally:
         # Cleanup
         if fg:
             cleanup_feature_group(fg)
-
-# ============================================================================
-# Audit Gate Integration Tests
-# ============================================================================
-
-
-@pytest.mark.serial
-@pytest.mark.slow_test
-def test_audit_gate_detects_glue_table_access(s3_uri, role, region):
-    """
-    Test that the audit gate in enable_lake_formation() detects principals
-    that accessed the Glue table via CloudTrail.
-
-    Flow:
-    1. Create a FeatureGroup (without LF) and wait for Created status
-    2. Call glue:GetTable on the FG's Glue table to generate a CloudTrail event
-    3. Wait for CloudTrail propagation (~5 minutes)
-    4. Call enable_lake_formation() with input() mocked to decline ('N')
-    5. Verify the result contains aborted=True and audit_results with the accessor
-
-    This test is extensible: additional access patterns (training jobs, Athena
-    queries, etc.) can be added as separate test functions following the same
-    pattern.
-    """
-    import time
-
-    fg_name = generate_feature_group_name()
-    fg = None
-
-    try:
-        # Step 1: Create FG without Lake Formation
-        fg = create_test_feature_group(fg_name, s3_uri, role, region)
-        fg.wait_for_status(target_status="Created", poll=30, timeout=300)
-        fg.refresh()
-
-        # Extract Glue table info
-        data_catalog_config = fg.offline_store_config.data_catalog_config
-        database_name = str(data_catalog_config.database)
-        table_name = str(data_catalog_config.table_name)
-
-        # Step 2: Access the Glue table to generate a CloudTrail event
-        glue_client = boto3.client("glue", region_name=region)
-        response = glue_client.get_table(DatabaseName=database_name, Name=table_name)
-        assert "Table" in response, "glue:GetTable should return table metadata"
-        print(f"[TEST] Called glue:GetTable on {database_name}.{table_name}")
-
-        # Step 3: Wait for CloudTrail propagation
-        # CloudTrail events typically appear within 5 minutes
-        wait_minutes = 6
-        print(f"[TEST] Waiting {wait_minutes} minutes for CloudTrail propagation...")
-        time.sleep(wait_minutes * 60)
-
-        # Step 4: Call enable_lake_formation with user declining confirmation
-        with patch("builtins.input", return_value="N"):
-            result = fg.enable_lake_formation(lookback_days=1)
-
-        # Step 5: Verify the result indicates abort with audit findings
-        print(f"[TEST] Audit gate result:\n{result}")
-
-        assert result["aborted"] is True
-        audit_results = result["audit_results"]
-        assert "glue_table_accessors" in audit_results
-        assert len(audit_results["glue_table_accessors"]) > 0
-        assert audit_results["glue_table"] == table_name
-
-    finally:
-        if fg:
-            cleanup_feature_group(fg)
-
-
-@pytest.mark.serial
-@pytest.mark.slow_test
-def test_audit_lake_formation_impact_standalone(s3_uri, role, region):
-    """
-    Test that audit_lake_formation_impact() runs successfully and returns
-    the expected dict structure.
-
-    This test does not require CloudTrail data -- it just verifies the method
-    executes without error and returns the correct keys.
-    """
-    fg_name = generate_feature_group_name()
-    fg = None
-
-    try:
-        fg = create_test_feature_group(fg_name, s3_uri, role, region)
-        fg.wait_for_status(target_status="Created", poll=30, timeout=300)
-
-        result = fg.audit_lake_formation_impact()
-
-        expected_keys = {
-            "glue_table_accessors",
-            "sagemaker_execution_roles",
-            "athena_query_principals",
-            "athena_running_queries",
-            "glue_etl_jobs",
-            "glue_running_job_runs",
-            "sagemaker_running_jobs",
-            "glue_database",
-            "glue_table",
-            "s3_path",
-            "warnings",
-        }
-        assert expected_keys.issubset(result.keys()), f"Missing keys: {expected_keys - result.keys()}"
-
-    finally:
-        if fg:
-            cleanup_feature_group(fg)
-
-
-@pytest.mark.skip(reason="This is a full e2e test that could take 15 min to run.")
-@pytest.mark.serial
-@pytest.mark.slow_test
-def test_e2e_lf_put_record_athena_query(sagemaker_session, s3_uri, role, region):
-    """
-    End-to-end test: create FG with LF, put a record, wait for offline sync, query via Athena.
-
-    Skipped by default because offline store sync takes ~10 minutes.
-    """
-    import time
-    from datetime import datetime, timezone
-
-    from sagemaker.mlops.feature_store import (
-        FeatureValue,
-        create_athena_query,
-    )
-
-    fg_name = generate_feature_group_name()
-    fg = None
-
-    try:
-        # 1. Create feature group with LF enabled
-        fg = create_test_feature_group(fg_name, s3_uri, role, region)
-        fg.wait_for_status(target_status="Created", poll=30, timeout=300)
-
-        result = fg.enable_lake_formation()
-        assert result["s3_registration"] is True
-        assert result["permissions_granted"] is True
-        assert result["iam_principal_revoked"] is True
-        assert result["bucket_policy_applied"] is True
-
-        # 2. Put a record
-        record_id = uuid.uuid4().hex[:8]
-        event_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-        fg.put_record(
-            record=[
-                FeatureValue(feature_name="record_id", value_as_string=record_id),
-                FeatureValue(feature_name="event_time", value_as_string=event_time),
-                FeatureValue(feature_name="feature_value", value_as_string="3.14"),
-            ],
-        )
-        logging.info(f"Put record: record_id={record_id}, event_time={event_time}")
-
-        # 3. Wait for offline store sync (~10 min)
-        wait_minutes = 10
-        logging.info(f"Waiting {wait_minutes} minutes for offline store sync...")
-        time.sleep(wait_minutes * 60)
-
-        # 4. Query via Athena
-        bucket = sagemaker_session.default_bucket()
-        output_location = f"s3://{bucket}/athena-results/test-lf-e2e"
-
-        query = create_athena_query(fg_name, sagemaker_session)
-        query.run(
-            query_string=f'SELECT * FROM "{query.table_name}" WHERE record_id = \'{record_id}\'',
-            output_location=output_location,
-        )
-        query.wait()
-
-        df = query.as_dataframe()
-        assert len(df) >= 1, f"Expected at least 1 row, got {len(df)}"
-        assert df.iloc[0]["record_id"] == record_id
-
-    finally:
-        if fg:
-            cleanup_feature_group(fg)
-
 
