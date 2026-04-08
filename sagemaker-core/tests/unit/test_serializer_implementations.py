@@ -10,155 +10,319 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Unit tests for sagemaker.core.serializers.implementations module."""
-from __future__ import absolute_import
+"""Tests for serializer and deserializer implementations."""
+from __future__ import annotations
 
+import io
+import json
+
+import numpy as np
 import pytest
-from unittest.mock import Mock, patch
-from sagemaker.core.serializers import implementations
-from sagemaker.core.serializers.base import JSONSerializer
+
+from sagemaker.core.serializers.base import (
+    CSVSerializer,
+    NumpySerializer,
+    JSONSerializer,
+    IdentitySerializer,
+    JSONLinesSerializer,
+    StringSerializer,
+    DataSerializer,
+    LibSVMSerializer,
+)
+from sagemaker.core.deserializers.base import (
+    StringDeserializer,
+    BytesDeserializer,
+    CSVDeserializer,
+    NumpyDeserializer,
+    JSONDeserializer,
+    JSONLinesDeserializer,
+    StreamDeserializer,
+)
 
 
-class TestRetrieveOptions:
-    """Test retrieve_options function."""
+class TestCSVSerializer:
+    def test_serialize_list(self):
+        serializer = CSVSerializer()
+        result = serializer.serialize([1, 2, 3])
+        assert result == "1,2,3"
 
-    def test_retrieve_options_missing_model_id(self):
-        """Test that ValueError is raised when model_id is missing."""
-        with pytest.raises(ValueError, match="Must specify JumpStart"):
-            implementations.retrieve_options(region="us-west-2", model_version="1.0")
+    def test_serialize_numpy_array(self):
+        serializer = CSVSerializer()
+        result = serializer.serialize(np.array([1, 2, 3]))
+        assert result == "1,2,3"
 
-    def test_retrieve_options_missing_model_version(self):
-        """Test that ValueError is raised when model_version is missing."""
-        with pytest.raises(ValueError, match="Must specify JumpStart"):
-            implementations.retrieve_options(region="us-west-2", model_id="test-model")
+    def test_serialize_2d_list(self):
+        serializer = CSVSerializer()
+        result = serializer.serialize([[1, 2], [3, 4]])
+        assert result == "1,2\n3,4"
 
-    @patch("sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input")
-    @patch("sagemaker.core.serializers.implementations.artifacts._retrieve_serializer_options")
-    def test_retrieve_options_success(self, mock_retrieve, mock_is_jumpstart):
-        """Test successful retrieval of serializer options."""
-        mock_is_jumpstart.return_value = True
-        mock_serializers = [JSONSerializer()]
-        mock_retrieve.return_value = mock_serializers
+    def test_serialize_string(self):
+        serializer = CSVSerializer()
+        result = serializer.serialize("hello")
+        assert result == "hello"
 
-        result = implementations.retrieve_options(
-            region="us-west-2", model_id="test-model", model_version="1.0"
-        )
-
-        assert result == mock_serializers
-        mock_retrieve.assert_called_once()
-
-    @patch("sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input")
-    @patch("sagemaker.core.serializers.implementations.artifacts._retrieve_serializer_options")
-    def test_retrieve_options_with_all_params(self, mock_retrieve, mock_is_jumpstart):
-        """Test retrieve_options with all parameters."""
-        mock_is_jumpstart.return_value = True
-        mock_serializers = [JSONSerializer()]
-        mock_retrieve.return_value = mock_serializers
-        mock_session = Mock()
-
-        result = implementations.retrieve_options(
-            region="us-east-1",
-            model_id="test-model",
-            model_version="2.0",
-            hub_arn="arn:aws:sagemaker:us-east-1:123456789012:hub/test-hub",
-            tolerate_vulnerable_model=True,
-            tolerate_deprecated_model=True,
-            sagemaker_session=mock_session,
-            config_name="test-config",
-        )
-
-        assert result == mock_serializers
-        call_kwargs = mock_retrieve.call_args[1]
-        assert call_kwargs["model_id"] == "test-model"
-        assert call_kwargs["model_version"] == "2.0"
-        assert call_kwargs["region"] == "us-east-1"
-        assert call_kwargs["tolerate_vulnerable_model"] is True
-        assert call_kwargs["tolerate_deprecated_model"] is True
-        assert call_kwargs["config_name"] == "test-config"
+    def test_content_type(self):
+        serializer = CSVSerializer()
+        assert serializer.CONTENT_TYPE == "text/csv"
 
 
-class TestRetrieveDefault:
-    """Test retrieve_default function."""
+class TestNumpySerializer:
+    def test_serialize_numpy_array(self):
+        serializer = NumpySerializer()
+        data = np.array([1.0, 2.0, 3.0])
+        result = serializer.serialize(data)
+        assert result is not None
+        loaded = np.load(io.BytesIO(result))
+        assert np.array_equal(loaded, data)
 
-    def test_retrieve_default_missing_model_id(self):
-        """Test that ValueError is raised when model_id is missing."""
-        with pytest.raises(ValueError, match="Must specify JumpStart"):
-            implementations.retrieve_default(region="us-west-2", model_version="1.0")
+    def test_serialize_list(self):
+        serializer = NumpySerializer()
+        result = serializer.serialize([1, 2, 3])
+        assert result is not None
 
-    def test_retrieve_default_missing_model_version(self):
-        """Test that ValueError is raised when model_version is missing."""
-        with pytest.raises(ValueError, match="Must specify JumpStart"):
-            implementations.retrieve_default(region="us-west-2", model_id="test-model")
+    def test_serialize_empty_array_raises(self):
+        serializer = NumpySerializer()
+        with pytest.raises(ValueError, match="Cannot serialize empty array"):
+            serializer.serialize(np.array([]))
 
-    @patch("sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input")
-    @patch("sagemaker.core.serializers.implementations.artifacts._retrieve_default_serializer")
-    def test_retrieve_default_success(self, mock_retrieve, mock_is_jumpstart):
-        """Test successful retrieval of default serializer."""
-        mock_is_jumpstart.return_value = True
-        mock_serializer = JSONSerializer()
-        mock_retrieve.return_value = mock_serializer
-
-        result = implementations.retrieve_default(
-            region="us-west-2", model_id="test-model", model_version="1.0"
-        )
-
-        assert result == mock_serializer
-        mock_retrieve.assert_called_once()
-
-    @patch("sagemaker.core.serializers.implementations.jumpstart_utils.is_jumpstart_model_input")
-    @patch("sagemaker.core.serializers.implementations.artifacts._retrieve_default_serializer")
-    def test_retrieve_default_with_all_params(self, mock_retrieve, mock_is_jumpstart):
-        """Test retrieve_default with all parameters."""
-        mock_is_jumpstart.return_value = True
-        mock_serializer = JSONSerializer()
-        mock_retrieve.return_value = mock_serializer
-        mock_session = Mock()
-
-        result = implementations.retrieve_default(
-            region="us-east-1",
-            model_id="test-model",
-            model_version="2.0",
-            hub_arn="arn:aws:sagemaker:us-east-1:123456789012:hub/test-hub",
-            tolerate_vulnerable_model=True,
-            tolerate_deprecated_model=True,
-            sagemaker_session=mock_session,
-            config_name="test-config",
-        )
-
-        assert result == mock_serializer
-        call_kwargs = mock_retrieve.call_args[1]
-        assert call_kwargs["model_id"] == "test-model"
-        assert call_kwargs["model_version"] == "2.0"
-        assert call_kwargs["config_name"] == "test-config"
+    def test_content_type(self):
+        serializer = NumpySerializer()
+        assert serializer.CONTENT_TYPE == "application/x-npy"
 
 
-class TestBackwardCompatibility:
-    """Test backward compatibility imports."""
+class TestJSONSerializer:
+    def test_serialize_dict(self):
+        serializer = JSONSerializer()
+        result = serializer.serialize({"key": "value"})
+        assert json.loads(result) == {"key": "value"}
 
-    def test_base_serializer_import(self):
-        """Test that BaseSerializer can be imported."""
-        from sagemaker.core.serializers.implementations import BaseSerializer
+    def test_serialize_list(self):
+        serializer = JSONSerializer()
+        result = serializer.serialize([1, 2, 3])
+        assert json.loads(result) == [1, 2, 3]
 
-        assert BaseSerializer is not None
+    def test_serialize_numpy_array(self):
+        serializer = JSONSerializer()
+        result = serializer.serialize(np.array([1, 2, 3]))
+        assert json.loads(result) == [1, 2, 3]
 
-    def test_csv_serializer_import(self):
-        """Test that CSVSerializer can be imported."""
-        from sagemaker.core.serializers.implementations import CSVSerializer
+    def test_content_type(self):
+        serializer = JSONSerializer()
+        assert serializer.CONTENT_TYPE == "application/json"
 
-        assert CSVSerializer is not None
 
-    def test_json_serializer_import(self):
-        """Test that JSONSerializer can be imported."""
-        from sagemaker.core.serializers.implementations import JSONSerializer
+class TestIdentitySerializer:
+    def test_serialize(self):
+        serializer = IdentitySerializer()
+        data = b"raw bytes"
+        assert serializer.serialize(data) == data
 
-        assert JSONSerializer is not None
+    def test_content_type(self):
+        serializer = IdentitySerializer()
+        assert serializer.CONTENT_TYPE == "application/octet-stream"
 
-    def test_numpy_serializer_import(self):
-        """Test that NumpySerializer can be imported."""
-        from sagemaker.core.serializers.implementations import NumpySerializer
 
-        assert NumpySerializer is not None
+class TestJSONLinesSerializer:
+    def test_serialize_iterable(self):
+        serializer = JSONLinesSerializer()
+        result = serializer.serialize([{"a": 1}, {"b": 2}])
+        lines = result.strip().split("\n")
+        assert len(lines) == 2
+        assert json.loads(lines[0]) == {"a": 1}
+        assert json.loads(lines[1]) == {"b": 2}
 
-    def test_record_serializer_deprecated(self):
-        """Test that numpy_to_record_serializer is available as deprecated."""
-        assert hasattr(implementations, "numpy_to_record_serializer")
+    def test_serialize_string(self):
+        serializer = JSONLinesSerializer()
+        result = serializer.serialize("already formatted")
+        assert result == "already formatted"
+
+    def test_content_type(self):
+        serializer = JSONLinesSerializer()
+        assert serializer.CONTENT_TYPE == "application/jsonlines"
+
+
+class TestStringSerializer:
+    def test_serialize_string(self):
+        serializer = StringSerializer()
+        result = serializer.serialize("hello")
+        assert result == b"hello"
+
+    def test_serialize_non_string_raises(self):
+        serializer = StringSerializer()
+        with pytest.raises(ValueError, match="is not String serializable"):
+            serializer.serialize(123)
+
+    def test_content_type(self):
+        serializer = StringSerializer()
+        assert serializer.CONTENT_TYPE == "text/plain"
+
+
+class TestLibSVMSerializer:
+    def test_serialize_string(self):
+        serializer = LibSVMSerializer()
+        data = "1 1:1 2:2\n0 1:3 2:4"
+        assert serializer.serialize(data) == data
+
+    def test_serialize_invalid_raises(self):
+        serializer = LibSVMSerializer()
+        with pytest.raises(ValueError, match="Unable to handle input format"):
+            serializer.serialize(123)
+
+    def test_content_type(self):
+        serializer = LibSVMSerializer()
+        assert serializer.CONTENT_TYPE == "text/libsvm"
+
+
+class TestDataSerializer:
+    def test_serialize_bytes(self):
+        serializer = DataSerializer()
+        data = b"raw bytes"
+        assert serializer.serialize(data) == data
+
+    def test_serialize_invalid_raises(self):
+        serializer = DataSerializer()
+        with pytest.raises(ValueError, match="is not Data serializable"):
+            serializer.serialize(123)
+
+    def test_content_type(self):
+        serializer = DataSerializer()
+        assert serializer.CONTENT_TYPE == "file-path/raw-bytes"
+
+
+class MockStream:
+    """Mock stream for testing deserializers."""
+
+    def __init__(self, data):
+        self._stream = io.BytesIO(data)
+
+    def read(self):
+        return self._stream.read()
+
+    def close(self):
+        self._stream.close()
+
+
+class TestStringDeserializer:
+    def test_deserialize(self):
+        deserializer = StringDeserializer()
+        stream = MockStream(b"hello world")
+        result = deserializer.deserialize(stream, "application/json")
+        assert result == "hello world"
+
+
+class TestBytesDeserializer:
+    def test_deserialize(self):
+        deserializer = BytesDeserializer()
+        stream = MockStream(b"raw bytes")
+        result = deserializer.deserialize(stream, "application/octet-stream")
+        assert result == b"raw bytes"
+
+
+class TestCSVDeserializer:
+    def test_deserialize(self):
+        deserializer = CSVDeserializer()
+        stream = MockStream(b"1,2,3\n4,5,6")
+        result = deserializer.deserialize(stream, "text/csv")
+        assert result == [["1", "2", "3"], ["4", "5", "6"]]
+
+
+class TestNumpyDeserializer:
+    def test_deserialize_npy(self):
+        deserializer = NumpyDeserializer()
+        array = np.array([1.0, 2.0, 3.0])
+        buffer = io.BytesIO()
+        np.save(buffer, array)
+        stream = MockStream(buffer.getvalue())
+        result = deserializer.deserialize(stream, "application/x-npy")
+        assert np.array_equal(result, array)
+
+    def test_deserialize_csv(self):
+        deserializer = NumpyDeserializer()
+        stream = MockStream(b"1,2,3")
+        result = deserializer.deserialize(stream, "text/csv")
+        assert np.array_equal(result, np.array([1.0, 2.0, 3.0]))
+
+    def test_deserialize_json(self):
+        deserializer = NumpyDeserializer()
+        stream = MockStream(b"[1, 2, 3]")
+        result = deserializer.deserialize(stream, "application/json")
+        assert np.array_equal(result, np.array([1, 2, 3]))
+
+
+class TestJSONDeserializer:
+    def test_deserialize(self):
+        deserializer = JSONDeserializer()
+        stream = MockStream(json.dumps({"key": "value"}).encode("utf-8"))
+        result = deserializer.deserialize(stream, "application/json")
+        assert result == {"key": "value"}
+
+
+class TestJSONLinesDeserializer:
+    def test_deserialize(self):
+        deserializer = JSONLinesDeserializer()
+        data = '{"a": 1}\n{"b": 2}'.encode("utf-8")
+        stream = MockStream(data)
+        result = deserializer.deserialize(stream, "application/jsonlines")
+        assert result == [{"a": 1}, {"b": 2}]
+
+
+class TestStreamDeserializer:
+    def test_deserialize(self):
+        deserializer = StreamDeserializer()
+        stream = MockStream(b"data")
+        result_stream, result_type = deserializer.deserialize(stream, "application/octet-stream")
+        assert result_type == "application/octet-stream"
+
+
+class TestTorchTensorSerializer:
+    """Tests for TorchTensorSerializer that require torch."""
+
+    def test_serialize(self):
+        torch = pytest.importorskip("torch")
+        from sagemaker.core.serializers.base import TorchTensorSerializer
+
+        serializer = TorchTensorSerializer()
+        tensor = torch.tensor([1.0, 2.0, 3.0])
+        result = serializer.serialize(tensor)
+        assert result is not None
+        array = np.load(io.BytesIO(result))
+        assert np.array_equal(array, np.array([1.0, 2.0, 3.0]))
+
+    def test_serialize_non_tensor_raises(self):
+        pytest.importorskip("torch")
+        from sagemaker.core.serializers.base import TorchTensorSerializer
+
+        serializer = TorchTensorSerializer()
+        with pytest.raises(ValueError, match="is not a torch.Tensor"):
+            serializer.serialize("not a tensor")
+
+    def test_content_type(self):
+        pytest.importorskip("torch")
+        from sagemaker.core.serializers.base import TorchTensorSerializer
+
+        serializer = TorchTensorSerializer()
+        assert serializer.CONTENT_TYPE == "tensor/pt"
+
+
+class TestTorchTensorDeserializer:
+    """Tests for TorchTensorDeserializer that require torch."""
+
+    def test_deserialize(self):
+        torch = pytest.importorskip("torch")
+        from sagemaker.core.deserializers.base import TorchTensorDeserializer
+
+        deserializer = TorchTensorDeserializer()
+        array = np.array([1.0, 2.0, 3.0])
+        buffer = io.BytesIO()
+        np.save(buffer, array)
+        buffer.seek(0)
+        result = deserializer.deserialize(buffer, "tensor/pt")
+        assert isinstance(result, torch.Tensor)
+        assert torch.equal(result, torch.tensor([1.0, 2.0, 3.0]))
+
+    def test_content_type(self):
+        pytest.importorskip("torch")
+        from sagemaker.core.deserializers.base import TorchTensorDeserializer
+
+        deserializer = TorchTensorDeserializer()
+        assert deserializer.ACCEPT == ("tensor/pt",)

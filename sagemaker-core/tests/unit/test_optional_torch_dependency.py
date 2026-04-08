@@ -25,11 +25,8 @@ def _block_torch():
     """Block torch imports by setting sys.modules['torch'] to None.
 
     Returns a dict of saved torch submodule entries so they can be restored.
-
-    Note: This only saves and removes torch submodules that exist at the time
-    of the call. Submodules imported *during* the test (after blocking) are not
-    tracked and will not be cleaned up automatically.
     """
+    saved = {}
     torch_keys = [key for key in sys.modules if key.startswith("torch.")]
     saved = {key: sys.modules.pop(key) for key in torch_keys}
     saved["torch"] = sys.modules.get("torch")
@@ -50,11 +47,13 @@ def _restore_torch(saved):
 
 def test_serializer_module_imports_without_torch():
     """Verify that importing non-torch serializers succeeds without torch installed."""
-    import sagemaker.core.serializers.base as ser_module
-
-    saved = _block_torch()
+    saved = {}
     try:
+        saved = _block_torch()
+
         # Reload the module so it re-evaluates imports with torch blocked
+        import sagemaker.core.serializers.base as ser_module
+
         importlib.reload(ser_module)
 
         # Verify non-torch serializers can be instantiated
@@ -64,15 +63,16 @@ def test_serializer_module_imports_without_torch():
         assert ser_module.IdentitySerializer() is not None
     finally:
         _restore_torch(saved)
-        importlib.reload(ser_module)
 
 
 def test_deserializer_module_imports_without_torch():
     """Verify that importing non-torch deserializers succeeds without torch installed."""
-    import sagemaker.core.deserializers.base as deser_module
-
-    saved = _block_torch()
+    saved = {}
     try:
+        saved = _block_torch()
+
+        import sagemaker.core.deserializers.base as deser_module
+
         importlib.reload(deser_module)
 
         # Verify non-torch deserializers can be instantiated
@@ -83,45 +83,42 @@ def test_deserializer_module_imports_without_torch():
         assert deser_module.JSONDeserializer() is not None
     finally:
         _restore_torch(saved)
-        importlib.reload(deser_module)
 
 
 def test_torch_tensor_serializer_raises_import_error_without_torch():
     """Verify TorchTensorSerializer raises ImportError when torch is not installed."""
     import sagemaker.core.serializers.base as ser_module
 
-    saved = _block_torch()
+    saved = {}
     try:
-        # Reload after blocking torch for consistency — ensures the module
-        # does not cache torch at import time.
-        importlib.reload(ser_module)
+        saved = _block_torch()
 
         with pytest.raises(ImportError, match="Unable to import torch"):
             ser_module.TorchTensorSerializer()
     finally:
         _restore_torch(saved)
-        importlib.reload(ser_module)
 
 
 def test_torch_tensor_deserializer_raises_import_error_without_torch():
     """Verify TorchTensorDeserializer raises ImportError when torch is not installed."""
     import sagemaker.core.deserializers.base as deser_module
 
-    saved = _block_torch()
+    saved = {}
     try:
-        # Reload after blocking torch for consistency
-        importlib.reload(deser_module)
+        saved = _block_torch()
 
         with pytest.raises(ImportError, match="Unable to import torch"):
             deser_module.TorchTensorDeserializer()
     finally:
         _restore_torch(saved)
-        importlib.reload(deser_module)
 
 
 def test_torch_tensor_serializer_works_with_torch():
     """Verify TorchTensorSerializer works when torch is available."""
-    torch = pytest.importorskip("torch")
+    try:
+        import torch
+    except ImportError:
+        pytest.skip("torch is not installed")
 
     from sagemaker.core.serializers.base import TorchTensorSerializer
 
@@ -136,7 +133,10 @@ def test_torch_tensor_serializer_works_with_torch():
 
 def test_torch_tensor_deserializer_works_with_torch():
     """Verify TorchTensorDeserializer works when torch is available."""
-    torch = pytest.importorskip("torch")
+    try:
+        import torch
+    except ImportError:
+        pytest.skip("torch is not installed")
 
     from sagemaker.core.deserializers.base import TorchTensorDeserializer
 
