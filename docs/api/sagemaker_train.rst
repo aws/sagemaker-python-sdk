@@ -1,10 +1,32 @@
 SageMaker Train
 ===============
 
-Training capabilities including model training, fine-tuning, hyperparameter tuning, and distributed training.
+Training capabilities including model training, hyperparameter tuning, and distributed training.
 
-.. autosummary::
-   :toctree: generated/
-   :recursive:
+.. currentmodule:: sagemaker.train
 
-   sagemaker.train
+Model Training
+--------------
+
+.. automodule:: sagemaker.train
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Distributed Training
+--------------------
+
+.. automodule:: sagemaker.train.distributed
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Model Evaluation
+----------------
+
+.. automodule:: sagemaker.train.evaluate
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+

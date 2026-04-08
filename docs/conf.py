@@ -37,9 +37,10 @@ exclude_patterns = [
 
 # Suppress specific warnings
 suppress_warnings = [
-    'myst.header',  # Suppress header level warnings from notebooks
-    'toc.not_readable',  # Suppress toctree warnings for symlinked files
-    'ref.python',  # Suppress "more than one target found" for duplicate class names across modules
+    'myst.header',       # header level warnings from notebooks
+    'toc.not_readable',  # toctree warnings for symlinked files
+    'ref.python',        # "more than one target found" for duplicate class names
+    'autosummary',       # autosummary import failures for internal modules
 ]
 
 html_theme = 'sphinx_book_theme'
@@ -92,13 +93,18 @@ exclude_patterns += [
     '*/model_server*',
     '*/detector*',
     '*/validations*',
+    '*/image_retriever*',
 ]
 
 # Modules that fail to import due to runtime dependencies or side effects
 autodoc_mock_imports = [
     'triton_python_backend_utils',
+    'sagemaker.serve.model_server.in_process_model_server.app',
+    'sagemaker.serve.model_server.multi_model_server.inference',
+    'sagemaker.serve.model_server.tensorflow_serving.inference',
+    'sagemaker.serve.model_server.torchserve.inference',
+    'sagemaker.serve.model_server.torchserve.xgboost_inference',
+    'sagemaker.serve.model_server.triton.model',
 ]
 
-# Don't mock imports - let them fail gracefully and show what's available
-autodoc_mock_imports = []
 suppress_warnings = ['autodoc.import_error']

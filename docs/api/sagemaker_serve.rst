@@ -3,8 +3,14 @@ SageMaker Serve
 
 Model serving and inference capabilities for deploying and managing ML models.
 
-.. autosummary::
-   :toctree: generated/
-   :recursive:
+.. currentmodule:: sagemaker.serve
 
-   sagemaker.serve
+Model Deployment
+----------------
+
+.. automodule:: sagemaker.serve
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
