@@ -995,41 +995,6 @@ class TestGetWithIcebergProperties:
         mock_get_iceberg.assert_called_once_with(session=mock_session, region="us-east-1")
 
 
-class TestHasLakeFormationConfig:
-    """Tests for _has_lake_formation_config method."""
-
-    def test_returns_false_when_attribute_missing(self):
-        """Test returns False when lake_formation_config attribute does not exist."""
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._has_lake_formation_config = FeatureGroupManager._has_lake_formation_config.__get__(fg)
-        # MagicMock(spec=...) won't have lake_formation_config since it's not on the class
-        del fg.lake_formation_config
-        assert fg._has_lake_formation_config() is False
-
-    def test_returns_false_when_none(self):
-        """Test returns False when lake_formation_config is None."""
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._has_lake_formation_config = FeatureGroupManager._has_lake_formation_config.__get__(fg)
-        fg.lake_formation_config = None
-        assert fg._has_lake_formation_config() is False
-
-    def test_returns_false_when_unassigned(self):
-        """Test returns False when lake_formation_config is Unassigned()."""
-        from sagemaker.core.shapes import Unassigned
-
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._has_lake_formation_config = FeatureGroupManager._has_lake_formation_config.__get__(fg)
-        fg.lake_formation_config = Unassigned()
-        assert fg._has_lake_formation_config() is False
-
-    def test_returns_true_when_config_present(self):
-        """Test returns True when lake_formation_config has a real value."""
-        fg = MagicMock(spec=FeatureGroupManager)
-        fg._has_lake_formation_config = FeatureGroupManager._has_lake_formation_config.__get__(fg)
-        fg.lake_formation_config = MagicMock()
-        assert fg._has_lake_formation_config() is True
-
-
 class TestGetIcebergPropertiesAccessDenied:
     """Tests for AccessDeniedException handling in _get_iceberg_properties."""
 
@@ -1052,26 +1017,16 @@ class TestGetIcebergPropertiesAccessDenied:
         return ClientError({"Error": {"Code": code, "Message": "denied"}}, "GetTable")
 
     @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
-    def test_access_denied_with_lake_formation_raises_permission_error(self, mock_load_catalog):
-        """Test PermissionError with LF message when AccessDenied and LF config present."""
+    def test_access_denied_raises_permission_error_with_combined_message(self, mock_load_catalog):
+        """Test PermissionError with combined LF/IAM message on AccessDenied."""
         mock_catalog = MagicMock()
         mock_catalog.load_table.side_effect = self._make_client_error("AccessDeniedException")
         mock_load_catalog.return_value = mock_catalog
-        self.fg._has_lake_formation_config.return_value = True
 
-        with pytest.raises(PermissionError, match="Lake Formation governance"):
+        with pytest.raises(PermissionError, match="Lake Formation governance") as exc_info:
             self.fg._get_iceberg_properties(session=MagicMock())
-
-    @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
-    def test_access_denied_without_lake_formation_raises_permission_error(self, mock_load_catalog):
-        """Test PermissionError with IAM message when AccessDenied and no LF config."""
-        mock_catalog = MagicMock()
-        mock_catalog.load_table.side_effect = self._make_client_error("AccessDeniedException")
-        mock_load_catalog.return_value = mock_catalog
-        self.fg._has_lake_formation_config.return_value = False
-
-        with pytest.raises(PermissionError, match="glue:GetTable"):
-            self.fg._get_iceberg_properties(session=MagicMock())
+        assert "glue:GetTable" in str(exc_info.value)
+        assert "glue:UpdateTable" in str(exc_info.value)
 
     @patch("sagemaker.mlops.feature_store.feature_group_manager.load_catalog")
     def test_non_access_denied_client_error_raises_runtime_error(self, mock_load_catalog):
@@ -1090,7 +1045,6 @@ class TestGetIcebergPropertiesAccessDenied:
         mock_catalog = MagicMock()
         mock_catalog.load_table.side_effect = original
         mock_load_catalog.return_value = mock_catalog
-        self.fg._has_lake_formation_config.return_value = False
 
         with pytest.raises(PermissionError) as exc_info:
             self.fg._get_iceberg_properties(session=MagicMock())
@@ -1121,31 +1075,22 @@ class TestUpdateIcebergPropertiesAccessDenied:
         }
         return mock_table
 
-    def test_access_denied_with_lake_formation_raises_permission_error(self):
-        """Test PermissionError with LF message when AccessDenied and LF config present."""
+    def test_access_denied_raises_permission_error_with_combined_message(self):
+        """Test PermissionError with combined LF/IAM message on AccessDenied."""
         mock_table = self._setup_get_result()
         mock_table.transaction().__enter__().set_properties.side_effect = self._make_client_error("AccessDeniedException")
-        self.fg._has_lake_formation_config.return_value = True
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
-        with pytest.raises(PermissionError, match="Lake Formation governance"):
+        with pytest.raises(PermissionError, match="Lake Formation governance") as exc_info:
             self.fg._update_iceberg_properties(iceberg_properties=props)
-
-    def test_access_denied_without_lake_formation_raises_permission_error(self):
-        """Test PermissionError with IAM message when AccessDenied and no LF config."""
-        mock_table = self._setup_get_result()
-        mock_table.transaction().__enter__().set_properties.side_effect = self._make_client_error("AccessDeniedException")
-        self.fg._has_lake_formation_config.return_value = False
-
-        props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
-        with pytest.raises(PermissionError, match="glue:UpdateTable"):
-            self.fg._update_iceberg_properties(iceberg_properties=props)
+        assert "glue:GetTable" in str(exc_info.value)
+        assert "glue:UpdateTable" in str(exc_info.value)
+        assert "ALTER" in str(exc_info.value)
 
     def test_non_access_denied_client_error_raises_runtime_error(self):
         """Test RuntimeError for non-AccessDenied ClientError."""
         mock_table = self._setup_get_result()
         mock_table.transaction().__enter__().set_properties.side_effect = self._make_client_error("InternalServiceException")
-        self.fg._has_lake_formation_config.return_value = False
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
         with pytest.raises(RuntimeError, match="Failed to update Iceberg properties"):
@@ -1156,19 +1101,8 @@ class TestUpdateIcebergPropertiesAccessDenied:
         mock_table = self._setup_get_result()
         original = self._make_client_error("AccessDeniedException")
         mock_table.transaction().__enter__().set_properties.side_effect = original
-        self.fg._has_lake_formation_config.return_value = True
 
         props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
         with pytest.raises(PermissionError) as exc_info:
             self.fg._update_iceberg_properties(iceberg_properties=props)
         assert exc_info.value.__cause__ is original
-
-    def test_access_denied_lf_message_mentions_alter(self):
-        """Test that LF error message mentions ALTER permission."""
-        mock_table = self._setup_get_result()
-        mock_table.transaction().__enter__().set_properties.side_effect = self._make_client_error("AccessDeniedException")
-        self.fg._has_lake_formation_config.return_value = True
-
-        props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
-        with pytest.raises(PermissionError, match="ALTER permission"):
-            self.fg._update_iceberg_properties(iceberg_properties=props)

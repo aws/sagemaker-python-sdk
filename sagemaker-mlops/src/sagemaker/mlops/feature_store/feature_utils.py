@@ -66,6 +66,13 @@ _APPROVED_ICEBERG_PROPERTIES = {
     "write.target-file-size-bytes"
 }
 
+_ICEBERG_PERMISSIONS_ERROR_MESSAGE = (
+    "If this feature group uses Lake Formation governance, ensure you have "
+    "SELECT, DESCRIBE, and ALTER permissions on the table in Lake Formation, "
+    "in addition to IAM permissions.\n"
+    "If this feature group uses IAM governance, ensure your role has "
+    "glue:GetTable and glue:UpdateTable permissions on the feature group's Glue table."
+) 
 
 def _get_athena_client(session: Session):
     """Get Athena client from session."""
