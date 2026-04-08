@@ -39,6 +39,7 @@ exclude_patterns = [
 suppress_warnings = [
     'myst.header',  # Suppress header level warnings from notebooks
     'toc.not_readable',  # Suppress toctree warnings for symlinked files
+    'ref.python',  # Suppress "more than one target found" for duplicate class names across modules
 ]
 
 html_theme = 'sphinx_book_theme'
@@ -76,10 +77,27 @@ autodoc_default_options = {
     'members': True,
     'undoc-members': True,
     'show-inheritance': True,
+    'private-members': False,
 }
 
-# Generate autosummary stubs
+# Generate autosummary stubs recursively
 autosummary_generate = True
+
+# Suppress internal/implementation modules not intended for users
+exclude_patterns += [
+    '*/telemetry*',
+    '*/tools*',
+    '*/container_drivers*',
+    '*/runtime_environment*',
+    '*/model_server*',
+    '*/detector*',
+    '*/validations*',
+]
+
+# Modules that fail to import due to runtime dependencies or side effects
+autodoc_mock_imports = [
+    'triton_python_backend_utils',
+]
 
 # Don't mock imports - let them fail gracefully and show what's available
 autodoc_mock_imports = []
