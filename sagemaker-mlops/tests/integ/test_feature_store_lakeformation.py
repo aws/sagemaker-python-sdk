@@ -11,7 +11,6 @@ Run with: pytest tests/integ/test_featureStore_lakeformation.py -v -m integ
 
 import logging
 import uuid
-
 import boto3
 import pytest
 from botocore.exceptions import ClientError
@@ -161,7 +160,7 @@ def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance
-        result = fg.enable_lake_formation(disable_hybrid_access_mode=True)
+        result = fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         # Verify all phases completed successfully
         assert result["s3_location_registered"] is True
@@ -197,7 +196,8 @@ def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
         offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
         lake_formation_config = LakeFormationConfig(
             enabled=True,
-            disable_hybrid_access_mode = True
+            disable_hybrid_access_mode = True,
+            acknowledge_risk=True,
         )
 
         fg = FeatureGroupManager.create(
@@ -460,6 +460,7 @@ def test_enable_lake_formation_fails_with_nonexistent_role(
             use_service_linked_role=False,
             registration_role_arn=nonexistent_role,
             disable_hybrid_access_mode=True,
+            acknowledge_risk=True,
         )
 
     # Verify we got an appropriate error
@@ -501,7 +502,7 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
 
         # Enable Lake Formation governance
         with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = fg.enable_lake_formation(disable_hybrid_access_mode=True)
+            result = fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         # Verify all phases completed successfully
         assert result["s3_location_registered"] is True
@@ -544,7 +545,7 @@ def test_enable_lake_formation_default_logs_recommended_policy(s3_uri, role, reg
 
         # Enable Lake Formation governance with disable_hybrid_access_mode=True
         with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = fg.enable_lake_formation(disable_hybrid_access_mode=True)
+            result = fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         # Verify phases completed successfully
         assert result["s3_location_registered"] is True
@@ -588,6 +589,7 @@ def test_enable_lake_formation_with_custom_role_logs_policy(s3_uri, role, region
                 use_service_linked_role=False,
                 registration_role_arn=role,
                 disable_hybrid_access_mode=True,
+                acknowledge_risk=True,
             )
 
         # Verify all phases completed successfully

@@ -440,7 +440,7 @@ class TestEnableLakeFormationValidation:
         mock_revoke.return_value = True
 
         # Call with wait_for_active=True
-        fg.enable_lake_formation(wait_for_active=True, disable_hybrid_access_mode=True)
+        fg.enable_lake_formation(wait_for_active=True, disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         # Verify wait_for_status was called with "Created"
         mock_wait.assert_called_once_with(target_status="Created")
@@ -478,7 +478,7 @@ class TestEnableLakeFormationValidation:
         mock_revoke.return_value = True
 
         # Call with wait_for_active=False (default)
-        fg.enable_lake_formation(wait_for_active=False, disable_hybrid_access_mode=True)
+        fg.enable_lake_formation(wait_for_active=False, disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         # Verify wait_for_status was NOT called
         mock_wait.assert_not_called()
@@ -564,7 +564,7 @@ class TestEnableLakeFormationValidation:
         with pytest.raises(
             RuntimeError, match="Failed to register S3 location with Lake Formation"
         ):
-            fg.enable_lake_formation(disable_hybrid_access_mode=True)
+            fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         # Verify Phase 1 was called but Phase 2 and 3 were not
         mock_register.assert_called_once()
@@ -583,7 +583,7 @@ class TestEnableLakeFormationValidation:
         mock_revoke.return_value = True
 
         with pytest.raises(RuntimeError, match="Failed to grant Lake Formation permissions"):
-            fg.enable_lake_formation(disable_hybrid_access_mode=True)
+            fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         # Verify Phase 1 and 2 were called but Phase 3 was not
         mock_register.assert_called_once()
@@ -603,7 +603,7 @@ class TestEnableLakeFormationValidation:
         mock_revoke.side_effect = Exception("Phase 3 failed")
 
         with pytest.raises(RuntimeError, match="Failed to revoke IAMAllowedPrincipal permissions"):
-            fg.enable_lake_formation(disable_hybrid_access_mode=True)
+            fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         # Verify all phases were called
         mock_register.assert_called_once()
@@ -967,6 +967,7 @@ class TestCreateWithLakeFormation:
             use_service_linked_role=True,
             registration_role_arn=None,
             disable_hybrid_access_mode=False,
+            acknowledge_risk=None,
         )
         # Verify the feature group was returned
         assert result == mock_fg
@@ -1175,6 +1176,7 @@ class TestCreateWithLakeFormation:
             use_service_linked_role=use_slr,
             registration_role_arn=expected_registration_role,
             disable_hybrid_access_mode=False,
+            acknowledge_risk=None,
         )
         # Verify the feature group was returned
         assert result == mock_fg
@@ -1213,45 +1215,34 @@ class TestDisableHybridAccessMode:
         mock_grant.return_value = True
         mock_revoke.return_value = True
 
-        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=True)
+        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         mock_revoke.assert_called_once()
         assert result["hybrid_access_mode_disabled"] is True
 
-    @patch("builtins.input", return_value="y")
     @patch.object(FeatureGroupManager, "refresh")
     @patch.object(FeatureGroupManager, "_register_s3_with_lake_formation")
     @patch.object(FeatureGroupManager, "_grant_lake_formation_permissions")
     @patch.object(FeatureGroupManager, "_revoke_iam_allowed_principal")
     def test_revoke_not_called_when_disable_hybrid_access_mode_false(
-        self, mock_revoke, mock_grant, mock_register, mock_refresh, mock_input
+        self, mock_revoke, mock_grant, mock_register, mock_refresh
     ):
         """Test that IAMAllowedPrincipal is NOT revoked when disable_hybrid_access_mode=False."""
         mock_register.return_value = True
         mock_grant.return_value = True
 
-        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=False)
+        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=False, acknowledge_risk=True)
 
         mock_revoke.assert_not_called()
         assert result["hybrid_access_mode_disabled"] is False
 
-    @patch("builtins.input", return_value="n")
     @patch.object(FeatureGroupManager, "refresh")
     def test_raises_error_when_user_declines_hybrid_access_prompt(
-        self, mock_refresh, mock_input
+        self, mock_refresh
     ):
         """Test that RuntimeError is raised when user declines the hybrid access prompt."""
         with pytest.raises(RuntimeError, match="User chose not to proceed"):
-            self.fg.enable_lake_formation(disable_hybrid_access_mode=False)
-
-    @patch("builtins.input", return_value="")
-    @patch.object(FeatureGroupManager, "refresh")
-    def test_raises_error_when_user_enters_empty_at_hybrid_access_prompt(
-        self, mock_refresh, mock_input
-    ):
-        """Test that RuntimeError is raised when user enters empty string at prompt."""
-        with pytest.raises(RuntimeError, match="User chose not to proceed"):
-            self.fg.enable_lake_formation(disable_hybrid_access_mode=False)
+            self.fg.enable_lake_formation(disable_hybrid_access_mode=False, acknowledge_risk=False)
 
 
 class TestCreateWithLakeFormationDisableHybridAccessMode:
@@ -1305,6 +1296,7 @@ class TestCreateWithLakeFormationDisableHybridAccessMode:
             use_service_linked_role=True,
             registration_role_arn=None,
             disable_hybrid_access_mode=True,
+            acknowledge_risk=None,
         )
 
 
@@ -1623,7 +1615,7 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         mock_revoke.return_value = True
         mock_generate.return_value = []
 
-        fg.enable_lake_formation(use_service_linked_role=True, disable_hybrid_access_mode=True)
+        fg.enable_lake_formation(use_service_linked_role=True, disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         expected_slr_arn = "arn:aws:iam::123456789012:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
         mock_generate.assert_called_once()
@@ -1666,7 +1658,7 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         mock_revoke.return_value = True
         mock_generate.return_value = []
 
-        fg.enable_lake_formation(disable_hybrid_access_mode=True)
+        fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         expected_slr_arn = "arn:aws:iam::987654321098:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
         mock_generate.assert_called_once()
@@ -1709,7 +1701,7 @@ class TestEnableLakeFormationServiceLinkedRoleInPolicy:
         mock_revoke.return_value = True
         mock_generate.return_value = []
 
-        fg.enable_lake_formation(use_service_linked_role=True, disable_hybrid_access_mode=True)
+        fg.enable_lake_formation(use_service_linked_role=True, disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         expected_slr_arn = f"arn:aws:iam::{account_id}:role/aws-service-role/lakeformation.amazonaws.com/AWSServiceRoleForLakeFormationDataAccess"
         mock_generate.assert_called_once()
@@ -1763,6 +1755,7 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
             use_service_linked_role=False,
             registration_role_arn=custom_registration_role,
             disable_hybrid_access_mode=True,
+            acknowledge_risk=True,
         )
 
         mock_generate.assert_called_once()
@@ -1813,6 +1806,7 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
             use_service_linked_role=False,
             registration_role_arn=custom_registration_role,
             disable_hybrid_access_mode=True,
+            acknowledge_risk=True,
         )
 
         mock_register.assert_called_once()
@@ -1860,6 +1854,7 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
             use_service_linked_role=False,
             registration_role_arn=first_role,
             disable_hybrid_access_mode=True,
+            acknowledge_risk=True,
         )
         first_call_kwargs = mock_generate.call_args[1]
         first_lf_role = first_call_kwargs["lake_formation_role_arn"]
@@ -1874,6 +1869,7 @@ class TestRegistrationRoleArnUsedWhenServiceLinkedRoleFalse:
             use_service_linked_role=False,
             registration_role_arn=second_role,
             disable_hybrid_access_mode=True,
+            acknowledge_risk=True,
         )
         second_call_kwargs = mock_generate.call_args[1]
         second_lf_role = second_call_kwargs["lake_formation_role_arn"]
@@ -1972,7 +1968,7 @@ class TestEnableLakeFormationIcebergTableFormat:
         mock_grant.return_value = True
         mock_revoke.return_value = True
 
-        self.fg.enable_lake_formation(disable_hybrid_access_mode=True)
+        self.fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         # The registered S3 location should NOT end with /data
         call_args = mock_register.call_args
@@ -1997,7 +1993,7 @@ class TestEnableLakeFormationIcebergTableFormat:
         mock_grant.return_value = True
         mock_revoke.return_value = True
 
-        self.fg.enable_lake_formation(disable_hybrid_access_mode=True)
+        self.fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         call_args = mock_register.call_args
         registered_location = call_args[0][0]
@@ -2036,7 +2032,7 @@ class TestEnableLakeFormationMissingArn:
         mock_revoke.return_value = True
 
         with pytest.raises(ValueError, match="Feature Group ARN is required"):
-            fg.enable_lake_formation(disable_hybrid_access_mode=True)
+            fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
 
 class TestEnableLakeFormationHappyPath:
@@ -2071,7 +2067,7 @@ class TestEnableLakeFormationHappyPath:
         mock_grant.return_value = True
         mock_revoke.return_value = True
 
-        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=True)
+        result = self.fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
 
         assert result == {
             "s3_location_registered": True,
@@ -2128,6 +2124,7 @@ class TestCreatePassesThroughSessionAndRegion:
             use_service_linked_role=True,
             registration_role_arn=None,
             disable_hybrid_access_mode=False,
+            acknowledge_risk=None,
         )
 
 

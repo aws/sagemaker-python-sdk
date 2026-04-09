@@ -45,12 +45,17 @@ class LakeFormationConfig(Base):
             may break existing jobs that access the table via IAM-based permissions. After
             this change, all principals must be granted access through Lake Formation.
             If False, IAM-based access remains alongside Lake Formation permissions.
+        acknowledge_risk: Controls confirmation behavior for risky Lake Formation operations.
+            If True, skips interactive confirmation prompts and proceeds. If False, raises
+            RuntimeError without proceeding. If None (default), prompts the user interactively
+            via input().
     """
 
     enabled: bool = False
     use_service_linked_role: bool = True
     registration_role_arn: Optional[str] = None
     disable_hybrid_access_mode: bool
+    acknowledge_risk: Optional[bool] = None
 
 
 class FeatureGroupManager(FeatureGroup):
@@ -375,6 +380,7 @@ class FeatureGroupManager(FeatureGroup):
     def enable_lake_formation(
         self,
         disable_hybrid_access_mode: bool,
+        acknowledge_risk: Optional[bool] = None,
         session: Optional[Session] = None,
         region: Optional[str] = None,
         use_service_linked_role: bool = True,
@@ -399,6 +405,9 @@ class FeatureGroupManager(FeatureGroup):
                 the table via IAM-based permissions. After this change, all principals must
                 be granted access through Lake Formation. If False, prompts the user for
                 confirmation before proceeding with hybrid access.
+            acknowledge_risk: Controls confirmation behavior for risky operations.
+                If True, skips interactive prompts and proceeds. If False, raises
+                RuntimeError without proceeding. If None (default), prompts interactively.
             session: Boto3 session.
             region: Region name.
             use_service_linked_role: Whether to use the Lake Formation service-linked role
@@ -496,12 +505,15 @@ class FeatureGroupManager(FeatureGroup):
                 f"to the table is still allowed alongside Lake Formation permissions. "
                 f"For more info: https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
             )
-            proceed = input(
-                "Hybrid access mode is not disabled. IAM-based access to the Glue table will "
-                "still be allowed. Do you want to proceed without revoking IAMAllowedPrincipal "
-                "permissions? (y/n): "
-            ).strip().lower()
-            if proceed != "y":
+            if acknowledge_risk is None:
+                proceed = input(
+                    "Hybrid access mode is not disabled. IAM-based access to the Glue table will "
+                    "still be allowed. Do you want to proceed without revoking IAMAllowedPrincipal "
+                    "permissions? (y/n): "
+                ).strip().lower() == "y"
+            else:
+                proceed = acknowledge_risk
+            if not proceed:
                 raise RuntimeError(
                     "User chose not to proceed without disabling hybrid access mode. "
                     "Re-run with disable_hybrid_access_mode=True to revoke IAMAllowedPrincipal permissions."
@@ -514,6 +526,18 @@ class FeatureGroupManager(FeatureGroup):
                 f"After this change, all principals must be granted access through Lake Formation. "
                 f"For more info: https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
             )
+            if acknowledge_risk is None:
+                proceed = input(
+                    "This will revoke IAMAllowedPrincipal permissions and may break existing jobs "
+                    "that rely on IAM-based access. Do you want to proceed? (y/n): "
+                ).strip().lower() == "y"
+            else:
+                proceed = acknowledge_risk
+            if not proceed:
+                raise RuntimeError(
+                    "User chose not to proceed with disabling hybrid access mode. "
+                    "Re-run with disable_hybrid_access_mode=False to keep IAMAllowedPrincipal permissions."
+                )
 
 
         results = {
@@ -805,5 +829,6 @@ class FeatureGroupManager(FeatureGroup):
                 use_service_linked_role=lake_formation_config.use_service_linked_role,
                 registration_role_arn=lake_formation_config.registration_role_arn,
                 disable_hybrid_access_mode=lake_formation_config.disable_hybrid_access_mode,
+                acknowledge_risk=lake_formation_config.acknowledge_risk,
             )
         return feature_group
