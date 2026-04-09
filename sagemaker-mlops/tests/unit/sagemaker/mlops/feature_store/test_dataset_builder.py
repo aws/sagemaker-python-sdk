@@ -332,7 +332,9 @@ class TestDatasetBuilderCreate:
 class TestDatasetBuilderValidation:
     @pytest.fixture
     def mock_session(self):
-        return Mock()
+        session = Mock()
+        session.sagemaker_config = {}
+        return session
 
     def test_to_csv_raises_for_invalid_base(self, mock_session):
         builder = DatasetBuilder(

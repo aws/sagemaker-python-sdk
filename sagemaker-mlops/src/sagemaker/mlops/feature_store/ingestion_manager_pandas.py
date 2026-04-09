@@ -15,6 +15,8 @@ from pandas.api.types import is_list_like
 
 from sagemaker.core.resources import FeatureGroup as CoreFeatureGroup
 from sagemaker.core.shapes import FeatureValue
+from sagemaker.core.utils.utils import Unassigned
+from sagemaker.core.telemetry import Feature, _telemetry_emitter
 
 logger = logging.getLogger(__name__)
 
@@ -66,6 +68,7 @@ class IngestionManagerPandas:
         """
         return self._failed_indices
 
+    @_telemetry_emitter(Feature.FEATURE_STORE, "IngestionManagerPandas.run")
     def run(
         self,
         data_frame: DataFrame,
@@ -82,7 +85,17 @@ class IngestionManagerPandas:
             wait (bool): whether to wait for the ingestion to finish or not.
             timeout (Union[int, float]): ``concurrent.futures.TimeoutError`` will be raised
                 if timeout is reached.
+        
+        Raises:
+            ValueError: If wait=False with max_workers=1 and max_processes=1.
         """
+        # Validate async ingestion requirements
+        if not wait and self.max_workers == 1 and self.max_processes == 1:
+            raise ValueError(
+                "Async ingestion (wait=False) requires max_processes > 1 or max_workers > 1. "
+                "Single-threaded ingestion only supports synchronous mode (wait=True)."
+            )
+        
         if self.max_workers == 1 and self.max_processes == 1:
             self._run_single_process_single_thread(data_frame=data_frame, target_stores=target_stores)
         else:
@@ -293,7 +306,10 @@ class IngestionManagerPandas:
         """Check if the feature is a collection type."""
         feature_def = feature_definitions.get(feature_name)
         if feature_def:
-            return feature_def.get("CollectionType") is not None
+            collection_type = feature_def.get("CollectionType")
+            if isinstance(collection_type, Unassigned) or collection_type is None or collection_type == "":
+                return False
+            return True
         return False
 
     @staticmethod
