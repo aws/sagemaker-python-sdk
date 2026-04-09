@@ -22,6 +22,7 @@ from __future__ import absolute_import
 
 import re
 import subprocess
+import tempfile
 
 import pytest
 
@@ -77,12 +78,13 @@ def _make_local_container(container_cls):
     sagemaker_session is None since _get_compose_cmd_prefix doesn't use it,
     and the Pydantic model rejects Mock objects.
     """
+    container_root = tempfile.mkdtemp(prefix="sagemaker-integ-compose-")
     return container_cls(
         training_job_name="integ-test-compose-detection",
         instance_type="local",
         instance_count=1,
         image="test-image:latest",
-        container_root="/tmp/test",
+        container_root=container_root,
         input_data_config=[_make_basic_channel()],
         environment={},
         hyper_parameters={},
