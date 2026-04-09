@@ -96,19 +96,12 @@ def _basic_channel():
     return Channel(channel_name="training", data_source=data_source)
 
 
-@pytest.fixture
-def _mock_session():
-    """Create a mock SageMaker session."""
-    session = Mock()
-    session.boto_region_name = "us-west-2"
-    session.boto_session = Mock()
-    session.s3_resource = Mock()
-    session.s3_resource.meta.client._endpoint.host = "https://s3.us-west-2.amazonaws.com"
-    return session
+def _make_container(_basic_channel):
+    """Helper to create a _LocalContainer for compose prefix tests.
 
-
-def _make_container(_mock_session, _basic_channel):
-    """Helper to create a _LocalContainer for compose prefix tests."""
+    sagemaker_session is set to None because _get_compose_cmd_prefix does not
+    use it, and Pydantic validation rejects Mock objects for the Session type.
+    """
     return _LocalContainer(
         training_job_name="test-job",
         instance_type="local",
@@ -120,7 +113,7 @@ def _make_container(_mock_session, _basic_channel):
         hyper_parameters={},
         container_entrypoint=[],
         container_arguments=[],
-        sagemaker_session=_mock_session,
+        sagemaker_session=None,
     )
 
 
@@ -128,25 +121,25 @@ class TestGetComposeCmdPrefix:
     """Test cases for _get_compose_cmd_prefix version detection."""
 
     @patch("sagemaker.train.local.local_container.subprocess.check_output")
-    def test_get_compose_cmd_prefix_with_docker_compose_v2(self, mock_check_output, _mock_session, _basic_channel):
+    def test_get_compose_cmd_prefix_with_docker_compose_v2(self, mock_check_output, _basic_channel):
         """Docker Compose v2 should be accepted."""
-        container = _make_container(_mock_session, _basic_channel)
+        container = _make_container(_basic_channel)
         mock_check_output.return_value = "Docker Compose version v2.20.0"
         result = container._get_compose_cmd_prefix()
         assert result == ["docker", "compose"]
 
     @patch("sagemaker.train.local.local_container.subprocess.check_output")
-    def test_get_compose_cmd_prefix_with_docker_compose_v5(self, mock_check_output, _mock_session, _basic_channel):
+    def test_get_compose_cmd_prefix_with_docker_compose_v5(self, mock_check_output, _basic_channel):
         """Docker Compose v5 should be accepted."""
-        container = _make_container(_mock_session, _basic_channel)
+        container = _make_container(_basic_channel)
         mock_check_output.return_value = "Docker Compose version v5.1.1"
         result = container._get_compose_cmd_prefix()
         assert result == ["docker", "compose"]
 
     @patch("sagemaker.train.local.local_container.subprocess.check_output")
-    def test_get_compose_cmd_prefix_with_docker_compose_v3(self, mock_check_output, _mock_session, _basic_channel):
+    def test_get_compose_cmd_prefix_with_docker_compose_v3(self, mock_check_output, _basic_channel):
         """Docker Compose v3 should be accepted."""
-        container = _make_container(_mock_session, _basic_channel)
+        container = _make_container(_basic_channel)
         mock_check_output.return_value = "Docker Compose version v3.0.0"
         result = container._get_compose_cmd_prefix()
         assert result == ["docker", "compose"]
@@ -154,10 +147,10 @@ class TestGetComposeCmdPrefix:
     @patch("sagemaker.train.local.local_container.shutil.which")
     @patch("sagemaker.train.local.local_container.subprocess.check_output")
     def test_get_compose_cmd_prefix_with_docker_compose_v1_falls_through(
-        self, mock_check_output, mock_which, _mock_session, _basic_channel
+        self, mock_check_output, mock_which, _basic_channel
     ):
         """Docker Compose v1 should not be accepted; falls through to docker-compose standalone."""
-        container = _make_container(_mock_session, _basic_channel)
+        container = _make_container(_basic_channel)
         mock_check_output.return_value = "docker-compose version 1.29.2"
         mock_which.return_value = "/usr/bin/docker-compose"
         result = container._get_compose_cmd_prefix()
@@ -166,10 +159,10 @@ class TestGetComposeCmdPrefix:
     @patch("sagemaker.train.local.local_container.shutil.which")
     @patch("sagemaker.train.local.local_container.subprocess.check_output")
     def test_get_compose_cmd_prefix_with_docker_compose_v1_no_standalone_raises(
-        self, mock_check_output, mock_which, _mock_session, _basic_channel
+        self, mock_check_output, mock_which, _basic_channel
     ):
         """Docker Compose v1 with no standalone fallback should raise ImportError."""
-        container = _make_container(_mock_session, _basic_channel)
+        container = _make_container(_basic_channel)
         mock_check_output.return_value = "docker-compose version v1.29.2"
         mock_which.return_value = None
         with pytest.raises(ImportError, match="Docker Compose is not installed"):
@@ -178,10 +171,10 @@ class TestGetComposeCmdPrefix:
     @patch("sagemaker.train.local.local_container.shutil.which")
     @patch("sagemaker.train.local.local_container.subprocess.check_output")
     def test_get_compose_cmd_prefix_not_installed_raises(
-        self, mock_check_output, mock_which, _mock_session, _basic_channel
+        self, mock_check_output, mock_which, _basic_channel
     ):
         """When docker compose is not installed at all, should raise ImportError."""
-        container = _make_container(_mock_session, _basic_channel)
+        container = _make_container(_basic_channel)
         mock_check_output.side_effect = subprocess.CalledProcessError(1, "cmd")
         mock_which.return_value = None
         with pytest.raises(ImportError, match="Docker Compose is not installed"):
@@ -190,10 +183,10 @@ class TestGetComposeCmdPrefix:
     @patch("sagemaker.train.local.local_container.shutil.which")
     @patch("sagemaker.train.local.local_container.subprocess.check_output")
     def test_get_compose_cmd_prefix_standalone_fallback(
-        self, mock_check_output, mock_which, _mock_session, _basic_channel
+        self, mock_check_output, mock_which, _basic_channel
     ):
         """When docker compose plugin fails, falls back to docker-compose standalone."""
-        container = _make_container(_mock_session, _basic_channel)
+        container = _make_container(_basic_channel)
         mock_check_output.side_effect = subprocess.CalledProcessError(1, "cmd")
         mock_which.return_value = "/usr/local/bin/docker-compose"
         result = container._get_compose_cmd_prefix()
