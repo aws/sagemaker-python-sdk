@@ -1189,6 +1189,7 @@ class FrameworkProcessor(ScriptProcessor):
         job_name: Optional[str] = None,
         experiment_config: Optional[Dict[str, str]] = None,
         kms_key: Optional[str] = None,
+        entry_point: Optional[str] = None
     ):
         """Runs a processing job.
 
@@ -1216,6 +1217,9 @@ class FrameworkProcessor(ScriptProcessor):
             experiment_config (dict[str, str]): Experiment management configuration.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
+            entry_point (str): Path (absolute or relative) to a custom entrypoint script file
+                (e.g., runproc.sh). The python script call is appended automatically.
+
         Returns:
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
@@ -1227,6 +1231,7 @@ class FrameworkProcessor(ScriptProcessor):
             job_name,
             inputs,
             kms_key,
+            entry_point
         )
 
         # Submit a processing job.
@@ -1250,6 +1255,7 @@ class FrameworkProcessor(ScriptProcessor):
         job_name,
         inputs,
         kms_key=None,
+        entry_point=None
     ):
         """Pack local code bundle and upload to Amazon S3."""
         if code.startswith("s3://"):
@@ -1274,7 +1280,7 @@ class FrameworkProcessor(ScriptProcessor):
         script = os.path.basename(code)
         evaluated_kms_key = kms_key if kms_key else self.output_kms_key
         s3_runproc_sh = self._create_and_upload_runproc(
-            script, evaluated_kms_key, entrypoint_s3_uri
+            script, evaluated_kms_key, entrypoint_s3_uri, entry_point, source_dir
         )
 
         return s3_runproc_sh, inputs, job_name
@@ -1312,12 +1318,12 @@ class FrameworkProcessor(ScriptProcessor):
         )
         self.entrypoint = self.framework_entrypoint_command + [user_script_location]
 
-    def _create_and_upload_runproc(self, user_script, kms_key, entrypoint_s3_uri):
+    def _create_and_upload_runproc(self, user_script, kms_key, entrypoint_s3_uri, entry_point=None, source_dir=None):
         """Create runproc shell script and upload to S3 bucket."""
         from sagemaker.core.workflow.utilities import _pipeline_config, hash_object
 
         if _pipeline_config and _pipeline_config.pipeline_name:
-            runproc_file_str = self._generate_framework_script(user_script)
+            runproc_file_str = self._generate_framework_script(user_script, entry_point, source_dir)
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
                 "s3://",
@@ -1336,7 +1342,7 @@ class FrameworkProcessor(ScriptProcessor):
             )
         else:
             s3_runproc_sh = s3.S3Uploader.upload_string_as_file_body(
-                self._generate_framework_script(user_script),
+                self._generate_framework_script(user_script, entry_point, source_dir),
                 desired_s3_uri=entrypoint_s3_uri,
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
@@ -1344,8 +1350,11 @@ class FrameworkProcessor(ScriptProcessor):
 
         return s3_runproc_sh
 
-    def _generate_framework_script(self, user_script: str) -> str:
+    def _generate_framework_script(self, user_script: str, entry_point: str = None, source_dir: str = None) -> str:
         """Generate the framework entrypoint file (as text) for a processing job."""
+        if entry_point:
+            return self._generate_custom_framework_script(user_script, entry_point, source_dir)
+
         return dedent(
             """\
             #!/bin/bash
@@ -1379,6 +1388,45 @@ class FrameworkProcessor(ScriptProcessor):
             {entry_point_command} {entry_point} "$@"
         """
         ).format(
+            entry_point_command=" ".join(self.command),
+            entry_point=user_script,
+        )
+
+    def _generate_custom_framework_script(
+        self, user_script: str, entry_point: str, source_dir: str = None
+    ) -> str:
+        """
+        Generate a custom framework script with a user-provided entrypoint embedded.
+
+        Reads the entry_point file and embeds its content in the script,
+        then appends the command to execute the user script.
+
+        Args:
+            user_script (str): Relative path to the user script in the source bundle
+            entry_point (str): Path to the custom entrypoint script file
+            source_dir (str): Path to the source directory. If provided and entry_point
+                is relative, it will be combined with source_dir.
+
+        Returns:
+            str: The generated script content
+        """
+        # Resolve the full path to the entry_point file
+        if source_dir and not os.path.isabs(entry_point):
+            full_entry_point_path = os.path.join(source_dir, entry_point)
+        else:
+            full_entry_point_path = entry_point
+
+        # Read the entry_point file content
+        with open(full_entry_point_path, "r", encoding="utf-8") as f:
+            entry_point_content = f.read()
+
+        # Generate the script with embedded entry_point content
+        return dedent("""\
+            {entry_point_content}
+
+            {entry_point_command} {entry_point} "$@"
+            """).format(
+            entry_point_content=entry_point_content,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
         )

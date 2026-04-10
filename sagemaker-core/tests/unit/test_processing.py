@@ -863,6 +863,71 @@ class TestFrameworkProcessor:
                 )
                 assert result == "s3://bucket/runproc.sh"
 
+    def test_generate_framework_script_with_custom_entry_point(self, mock_session):
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            command=["python3"],
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        custom_script_content = "#!/bin/bash\necho 'THIS IS THE CUSTOM runproc.sh'\nset -e\n"
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".sh", delete=False) as f:
+            f.write(custom_script_content)
+            entry_point_path = f.name
+
+        try:
+            script = processor._generate_framework_script(
+                "train.py", entry_point=entry_point_path
+            )
+            assert custom_script_content in script
+            assert "python3 train.py" in script
+            assert "tar -xzf sourcedir.tar.gz" not in script
+        finally:
+            os.unlink(entry_point_path)
+
+    def test_generate_framework_script_with_custom_entry_point_and_source_dir(self, mock_session):
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            command=["python3"],
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            custom_script_content = "#!/bin/bash\necho 'custom from source_dir'\n"
+            script_path = os.path.join(tmpdir, "custom_runproc.sh")
+            with open(script_path, "w") as f:
+                f.write(custom_script_content)
+
+            script = processor._generate_framework_script(
+                "train.py",
+                entry_point="custom_runproc.sh",
+                source_dir=tmpdir,
+            )
+            assert custom_script_content in script
+            assert "python3 train.py" in script
+
+    def test_generate_framework_script_with_default_entry_point(self, mock_session):
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            command=["python3"],
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        script = processor._generate_framework_script("train.py")
+        assert "#!/bin/bash" in script
+        assert "tar -xzf sourcedir.tar.gz" in script
+        assert "python3 train.py" in script
+
 
 class TestHelperFunctions:
     def test_processing_input_to_request_dict(self):
