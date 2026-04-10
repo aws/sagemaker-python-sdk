@@ -13,15 +13,19 @@
 """Telemetry module for SageMaker Python SDK to collect usage data and metrics."""
 from __future__ import absolute_import
 import logging
+import os
 import platform
 import sys
 from time import perf_counter
 from typing import List
 import functools
 import requests
+from urllib.parse import quote
 
 import boto3
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
+from sagemaker.core.telemetry.resource_creation import get_resource_arn
 from sagemaker.core.common_utils import resolve_value_from_config
 from sagemaker.core.config.config_schema import TELEMETRY_OPT_OUT_PATH
 from sagemaker.core.telemetry.constants import (
@@ -57,6 +61,9 @@ FEATURE_TO_CODE = {
     str(Feature.MODEL_CUSTOMIZATION): 15,
     str(Feature.MLOPS): 16,
     str(Feature.FEATURE_STORE): 17,
+    str(Feature.PROCESSING): 18,
+    str(Feature.MODEL_CUSTOMIZATION_NOVA): 19,
+    str(Feature.MODEL_CUSTOMIZATION_OSS): 20,
 }
 
 STATUS_TO_CODE = {
@@ -81,7 +88,7 @@ def _telemetry_emitter(feature: str, func_name: str):
             sagemaker_session = None
             if len(args) > 0 and hasattr(args[0], "sagemaker_session"):
                 # Get the sagemaker_session from the instance method args
-                sagemaker_session = args[0].sagemaker_session
+                sagemaker_session = args[0].sagemaker_session or _get_default_sagemaker_session()
             elif len(args) > 0 and hasattr(args[0], "_sagemaker_session"):
                 # Get the sagemaker_session from the instance method args (private attribute)
                 sagemaker_session = args[0]._sagemaker_session
@@ -110,6 +117,25 @@ def _telemetry_emitter(feature: str, func_name: str):
                 # Construct the feature list to track feature combinations
                 feature_list: List[int] = [FEATURE_TO_CODE[str(feature)]]
 
+                # For MODEL_CUSTOMIZATION, append NOVA or OSS sub-feature
+                # based on the instance's _is_nova_model_for_telemetry() method
+                if feature == Feature.MODEL_CUSTOMIZATION and len(args) > 0:
+                    instance = args[0]
+                    try:
+                        if hasattr(instance, "_is_nova_model_for_telemetry"):
+                            if instance._is_nova_model_for_telemetry():
+                                feature_list.append(
+                                    FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION_NOVA)]
+                                )
+                            else:
+                                feature_list.append(
+                                    FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION_OSS)]
+                                )
+                    except Exception:  # pylint: disable=W0703
+                        logger.debug(
+                            "Unable to determine NOVA/OSS model type for telemetry."
+                        )
+
                 if (
                     hasattr(sagemaker_session, "sagemaker_config")
                     and sagemaker_session.sagemaker_config
@@ -137,6 +163,11 @@ def _telemetry_emitter(feature: str, func_name: str):
                 if hasattr(sagemaker_session, "endpoint_arn") and sagemaker_session.endpoint_arn:
                     extra += f"&x-endpointArn={sagemaker_session.endpoint_arn}"
 
+                # Add created_by from environment variable if available
+                created_by = os.environ.get(_CREATED_BY_ENV_VAR, "")
+                if created_by:
+                    extra += f"&x-createdBy={quote(created_by, safe='')}"
+
                 start_timer = perf_counter()
                 try:
                     # Call the original function
@@ -144,6 +175,11 @@ def _telemetry_emitter(feature: str, func_name: str):
                     stop_timer = perf_counter()
                     elapsed = stop_timer - start_timer
                     extra += f"&x-latency={round(elapsed, 2)}"
+                    # For specified response types (e.g., TrainingJob), obtain the ARN of the
+                    # resource created if present so that it can be included.
+                    resource_arn = get_resource_arn(response)
+                    if resource_arn:
+                        extra += f"&x-resourceArn={resource_arn}"
                     if not telemetry_opt_out_flag:
                         _send_telemetry_request(
                             STATUS_TO_CODE[str(Status.SUCCESS)],

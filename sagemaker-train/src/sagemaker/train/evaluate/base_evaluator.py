@@ -49,6 +49,10 @@ class BaseEvaluator(BaseModel):
     Attributes:
         region (Optional[str]): AWS region for evaluation jobs. If not provided, will use
             SAGEMAKER_REGION env var or default region.
+        role (Optional[str]): IAM execution role ARN for SageMaker pipeline and training jobs.
+            If not provided, will be derived from the session's caller identity. Use this when
+            running outside SageMaker-managed environments (e.g., local notebooks, CI/CD) where
+            the caller identity is not a SageMaker-assumable role.
         sagemaker_session (Optional[Any]): SageMaker session object. If not provided, a default
             session will be created automatically.
         model (Union[str, Any]): Model for evaluation. Can be:
@@ -88,6 +92,7 @@ class BaseEvaluator(BaseModel):
     """
     
     region: Optional[str] = None
+    role: Optional[str] = None
     sagemaker_session: Optional[Any] = None
     model: Union[str, BaseTrainer, ModelPackage]
     base_eval_name: Optional[str] = None
@@ -314,12 +319,6 @@ class BaseEvaluator(BaseModel):
                 sagemaker_session=session
             )
             
-            # Check if model is GPT OSS (not supported for evaluation)
-            if model_info.base_model_name in ["openai-reasoning-gpt-oss-20b", "openai-reasoning-gpt-oss-120b"]:
-                raise ValueError(
-                    "Evaluation is currently not supported for models created from GPT OSS 20B base model"
-                )
-            
             # If model is a ModelPackage object or ARN (has source_model_package_arn),
             # validate that the resolved base_model_arn is a hub content ARN
             if model_info.source_model_package_arn:
@@ -414,6 +413,12 @@ class BaseEvaluator(BaseModel):
         """Get the resolved source model package ARN (None for JumpStart models)."""
         info = self._get_resolved_model_info()
         return info.source_model_package_arn if info else None
+
+    def _is_nova_model_for_telemetry(self) -> bool:
+        """Check if the model is a Nova model for telemetry tracking."""
+        from ..common_utils.recipe_utils import _is_nova_model
+        base_model_name = self._base_model_name
+        return _is_nova_model(base_model_name) if base_model_name else False
 
     @property
     def _is_jumpstart_model(self) -> bool:
@@ -637,9 +642,12 @@ class BaseEvaluator(BaseModel):
                 - account_id (str): AWS account ID
         """
         # Get role ARN
-        role_arn = (self.sagemaker_session.get_caller_identity_arn() 
-                   if hasattr(self.sagemaker_session, 'get_caller_identity_arn') 
-                   else self.sagemaker_session.expand_role())
+        if self.role:
+            role_arn = self.role
+        else:
+            role_arn = (self.sagemaker_session.get_caller_identity_arn()
+                       if hasattr(self.sagemaker_session, 'get_caller_identity_arn')
+                       else self.sagemaker_session.expand_role())
         
         # Get region - prefer self.region if set, otherwise extract from session
         region = self.region or (self.sagemaker_session.boto_region_name 

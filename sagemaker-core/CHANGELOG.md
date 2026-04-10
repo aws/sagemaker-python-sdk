@@ -1,4 +1,51 @@
 # Changelog
+## v2.7.1 (2026-03-31)
+
+### Features
+
+- **Telemetry**: Added telemetry emitter to `ScriptProcessor` and `FrameworkProcessor`, enabling SDK usage tracking for processing jobs via the telemetry attribution module (new `PROCESSING` feature enum added to telemetry constants)
+
+### Bug Fixes
+
+- **ModelBuilder**: Fixed `accept_eula` handling in ModelBuilder's LoRA deployment path — previously hardcoded to `True`, now respects the user-provided value and raises a `ValueError` if not explicitly set to `True`
+- **Evaluate**: Fixed Lambda handler name derivation in the Evaluator — hardcoded the handler to `lambda_function.lambda_handler` instead of deriving it from the source filename, which caused invocation failures when the source file had a non-default name
+
+## v2.7.0 (2026-03-25)
+
+### Bug fixes and Other Changes
+
+- **Enhancement**: Add telemetry attribution module for SDK usage provenance (#5661)
+- **Enhancement**: Updated SDK to use latest LMIv22 image for v3.x (#5640)
+- **Enhancement**: Resources codegen update for eval job links (#5662)
+
+## v2.6.0 (2026-03-19)
+
+### Bug fixes and Other Changes
+
+- **Fix**: resolve PermissionError during local mode cleanup of root-owned Docker files (#5629)
+- **Enhancement**: Add EUSC region config for JumpStart
+  
+## v2.5.1 (2026-03-12)
+
+### Bug Fixes
+
+- Fix handling of training step dependencies to allow successful pipeline creation (#5618)
+- Fix model registration with a model card to support both `ModelCard` and `ModelPackageModelCard` objects (#5611)
+- Fix local mode cleanup by handling root-owned files from Docker containers with `PermissionError` recovery (#5601)
+- Fix local mode processing to allow `file://` scheme URIs for output S3 paths (#5601)
+- Relax `rich` dependency upper bound back to 15.0.0 (#5620)
+
+### Enhancements
+
+- Add EUCS region (`eusc-de-east-1`) to JumpStart region config (#5615)
+- Add ISO regions to DJL-LMI image URI config (#5595)
+- Update DJL-LMI to latest image `lmi21.0.0-cu129` for SDK v3.x (#5616)
+- Add additional ISO region domains (`us-iso-west-1`, `us-isob-west-1`) to alternate domains config
+
+### Removals
+
+- Remove unused legacy `_convert_expression` method from JumpStart search (#5593)
+
 ## v2.5.0 (2026-03-02)
 
 ### Features

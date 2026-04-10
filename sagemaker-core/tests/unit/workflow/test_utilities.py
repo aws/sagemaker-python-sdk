@@ -269,27 +269,44 @@ class TestWorkflowUtilities:
         with tempfile.TemporaryDirectory() as temp_dir:
             entry_file = Path(temp_dir, "train.py")
             entry_file.write_text("print('training')")
+            requirements_file = Path(temp_dir, "requirements.txt")
+            requirements_file.write_text("numpy==1.21.0")
 
-            result = get_training_code_hash(
-                entry_point=str(entry_file), source_dir=temp_dir, dependencies=[]
+            result_no_deps = get_training_code_hash(
+                entry_point=str(entry_file), source_dir=temp_dir, dependencies=None
+            )
+            result_with_deps = get_training_code_hash(
+                entry_point=str(entry_file), source_dir=temp_dir, dependencies=str(requirements_file)
             )
 
-            assert result is not None
-            assert len(result) == 64
+            assert result_no_deps is not None
+            assert result_with_deps is not None
+            assert len(result_no_deps) == 64
+            assert len(result_with_deps) == 64
+            assert result_no_deps != result_with_deps
 
     def test_get_training_code_hash_entry_point_only(self):
         """Test get_training_code_hash with entry_point only"""
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False) as f:
-            f.write("print('training')")
-            temp_file = f.name
+        with tempfile.TemporaryDirectory() as temp_dir:
+            entry_file = Path(temp_dir, "train.py")
+            entry_file.write_text("print('training')")
+            requirements_file = Path(temp_dir, "requirements.txt")
+            requirements_file.write_text("numpy==1.21.0")
 
-        try:
-            result = get_training_code_hash(entry_point=temp_file, source_dir=None, dependencies=[])
+            # Without dependencies
+            result_no_deps = get_training_code_hash(
+                entry_point=str(entry_file), source_dir=None, dependencies=None
+            )
+            # With dependencies
+            result_with_deps = get_training_code_hash(
+                entry_point=str(entry_file), source_dir=None, dependencies=str(requirements_file)
+            )
 
-            assert result is not None
-            assert len(result) == 64
-        finally:
-            os.unlink(temp_file)
+            assert result_no_deps is not None
+            assert result_with_deps is not None
+            assert len(result_no_deps) == 64
+            assert len(result_with_deps) == 64
+            assert result_no_deps != result_with_deps
 
     def test_get_training_code_hash_s3_uri(self):
         """Test get_training_code_hash with S3 URI returns None"""

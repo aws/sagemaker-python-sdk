@@ -133,7 +133,7 @@ from sagemaker.core.config.config_schema import (
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
     MODEL_CONTAINERS_PATH,
 )
-from sagemaker.serve.constants import SUPPORTED_MODEL_SERVERS, Framework
+from sagemaker.serve.constants import LOCAL_MODES, SUPPORTED_MODEL_SERVERS, Framework
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.core import fw_utils
 from sagemaker.core.helper.session_helper import container_def
@@ -957,6 +957,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     if not self.image_uri:
                         self.image_uri = config.get("EcrAddress")
 
+                    # Cache environment variables from recipe config
+                    if self.env_vars:
+                        self.env_vars.update(config.get("Environment", {}))
+                    else:
+                        self.env_vars = config.get("Environment", {})
+
                     # Infer instance type from JumpStart metadata if not provided
                     # This is only called for model_customization deployments
                     if not self.instance_type:
@@ -981,11 +987,131 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     )
                     return
 
+        # Fallback: Nova recipes don't have hosting configs in the hub document
+        if self._is_nova_model():
+            nova_config = self._get_nova_hosting_config(instance_type=self.instance_type)
+            if not self.image_uri:
+                self.image_uri = nova_config["image_uri"]
+            if self.env_vars:
+                self.env_vars.update(nova_config["env_vars"])
+            else:
+                self.env_vars = nova_config["env_vars"]
+            if not self.instance_type:
+                self.instance_type = nova_config["instance_type"]
+            return
+
         raise ValueError(
             f"Model with recipe '{recipe_name}' is not supported for deployment. "
             f"The recipe does not have hosting configuration. "
             f"Please use a model that supports deployment or contact AWS support for assistance."
         )
+
+    # Nova escrow ECR accounts per region
+    _NOVA_ESCROW_ACCOUNTS = {
+        "us-east-1": "708977205387",
+        "us-west-2": "176779409107",
+        "eu-west-2": "470633809225",
+        "ap-northeast-1": "878185805882",
+    }
+
+    # Nova hosting configs per model (from Rhinestone modelDeployment.ts)
+    # NOTE: The nova-inference container (:SM-Inference-latest) enforces per-tier
+    # MAX_CONCURRENCY limits based on CONTEXT_LENGTH. These values were updated
+    # ~2026-03-23 synced with AGISageMakerInference ALLOWLISTED_CONFIGURATIONS.
+    # Uses the highest tier's CONTEXT_LENGTH and its MAX_CONCURRENCY per instance.
+    # If deployments fail with "MAX_CONCURRENCY N exceeds tier limit M", the
+    # container has likely tightened limits — check CloudWatch logs for the cap.
+    _NOVA_HOSTING_CONFIGS = {
+        "nova-textgeneration-micro": [
+            {"InstanceType": "ml.g5.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}},
+            {"InstanceType": "ml.g5.24xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}},
+            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "12"}},
+            {"InstanceType": "ml.g6e.xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}},
+            {"InstanceType": "ml.g6e.2xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}},
+            {"InstanceType": "ml.g6e.4xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}},
+            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}},
+        ],
+        "nova-textgeneration-lite": [
+            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}},
+            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}},
+            {"InstanceType": "ml.g6.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}},
+        ],
+        "nova-textgeneration-pro": [
+            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "24000", "MAX_CONCURRENCY": "1"}},
+        ],
+        "nova-textgeneration-lite-v2": [
+            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}},
+        ],
+    }
+
+    def _is_nova_model(self) -> bool:
+        """Check if the model is a Nova model based on recipe name or hub content name."""
+        model_package = self._fetch_model_package()
+        if not model_package:
+            return False
+        containers = getattr(model_package.inference_specification, "containers", None)
+        if not containers:
+            return False
+        base_model = getattr(containers[0], "base_model", None)
+        if not base_model:
+            return False
+        recipe_name = getattr(base_model, "recipe_name", "") or ""
+        hub_content_name = getattr(base_model, "hub_content_name", "") or ""
+        return "nova" in recipe_name.lower() or "nova" in hub_content_name.lower()
+
+    def _is_nova_model_for_telemetry(self) -> bool:
+        """Check if the model is a Nova model for telemetry tracking."""
+        try:
+            return self._is_nova_model()
+        except Exception:
+            return False
+
+    def _get_nova_hosting_config(self, instance_type=None):
+        """Get Nova hosting config (image URI, env vars, instance type).
+
+        Nova training recipes don't have hosting configs in the JumpStart hub document.
+        This provides the hardcoded fallback, matching Rhinestone's getNovaHostingConfigs().
+        """
+        model_package = self._fetch_model_package()
+        hub_content_name = model_package.inference_specification.containers[0].base_model.hub_content_name
+
+        configs = self._NOVA_HOSTING_CONFIGS.get(hub_content_name)
+        if not configs:
+            raise ValueError(
+                f"Nova model '{hub_content_name}' is not supported for deployment. "
+                f"Supported: {list(self._NOVA_HOSTING_CONFIGS.keys())}"
+            )
+
+        region = self.sagemaker_session.boto_region_name
+        escrow_account = self._NOVA_ESCROW_ACCOUNTS.get(region)
+        if not escrow_account:
+            raise ValueError(
+                f"Nova deployment is not supported in region '{region}'. "
+                f"Supported: {list(self._NOVA_ESCROW_ACCOUNTS.keys())}"
+            )
+
+        image_uri = f"{escrow_account}.dkr.ecr.{region}.amazonaws.com/nova-inference-repo:SM-Inference-latest"
+
+        if instance_type:
+            config = next((c for c in configs if c["InstanceType"] == instance_type), None)
+            if not config:
+                supported = [c["InstanceType"] for c in configs]
+                raise ValueError(
+                    f"Instance type '{instance_type}' not supported for '{hub_content_name}'. "
+                    f"Supported: {supported}"
+                )
+        else:
+            config = next((c for c in configs if c.get("Profile") == "Default"), configs[0])
+
+        return {
+            "image_uri": image_uri,
+            "env_vars": config["Environment"],
+            "instance_type": config["InstanceType"],
+        }
 
     def _initialize_jumpstart_config(self) -> None:
         """Initialize JumpStart-specific configuration."""
@@ -1287,7 +1413,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if not self.image_uri:
             raise ValueError("image_uri is required for pass-through cases")
 
-        self.s3_upload_path = None
+        self.secret_key = ""
+
+        if self.model_path and self.model_path.startswith("s3://"):
+            self.s3_upload_path = self.model_path
+        else:
+            self.s3_upload_path = None
+
+        if self.mode in LOCAL_MODES:
+            self._prepare_for_mode()
+
         return self._create_model()
 
     def _build_default_async_inference_config(self, async_inference_config):
@@ -2202,21 +2337,96 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "Only SageMaker Endpoint Mode is supported for Model Customization use cases"
                 )
             model_package = self._fetch_model_package()
-            # Fetch recipe config first to set image_uri, instance_type, and s3_upload_path
-            self._fetch_and_cache_recipe_config()
-            self.s3_upload_path = model_package.inference_specification.containers[
-                0
-            ].model_data_source.s3_data_source.s3_uri
-            container_def = ContainerDefinition(
-                image=self.image_uri,
-                model_data_source={
-                    "s3_data_source": {
-                        "s3_uri": f"{self.s3_upload_path}/",
-                        "s3_data_type": "S3Prefix",
-                        "compression_type": "None",
-                    }
-                },
-            )
+            # Fetch recipe config first to set image_uri, instance_type, env_vars, and s3_upload_path
+            base_model = model_package.inference_specification.containers[0].base_model
+            if base_model is not None:
+                self._fetch_and_cache_recipe_config()
+
+            # Nova models use a completely different deployment architecture
+            if self._is_nova_model():
+                escrow_uri = self._resolve_nova_escrow_uri()
+                base_model = model_package.inference_specification.containers[0].base_model
+
+                container_def = ContainerDefinition(
+                    image=self.image_uri,
+                    environment=self.env_vars,
+                    model_data_source={
+                        "s3_data_source": {
+                            "s3_uri": escrow_uri.rstrip("/") + "/",
+                            "s3_data_type": "S3Prefix",
+                            "compression_type": "None",
+                        }
+                    },
+                )
+                model_name = self.model_name or f"model-{uuid.uuid4().hex[:10]}"
+                self.built_model = Model.create(
+                    execution_role_arn=self.role_arn,
+                    model_name=model_name,
+                    containers=[container_def],
+                    enable_network_isolation=True,
+                    tags=[
+                        {"key": "sagemaker-studio:jumpstart-model-id",
+                         "value": base_model.hub_content_name},
+                    ],
+                )
+                return self.built_model
+
+            peft_type = self._fetch_peft()
+
+            if peft_type == "LORA":
+                # For LORA: Model points at JumpStart base model, not training output
+                hub_document = self._fetch_hub_document_for_custom_model()
+                hosting_artifact_uri = hub_document.get("HostingArtifactUri")
+                if not hosting_artifact_uri:
+                    raise ValueError(
+                        "HostingArtifactUri not found in JumpStart hub metadata. "
+                        "Cannot deploy LORA adapter without base model artifacts."
+                    )
+                accept_eula = getattr(self, "accept_eula", None)
+                if not accept_eula:
+                    raise ValueError(
+                        "accept_eula must be set to True to deploy this model. "
+                        "Please set accept_eula=True on the ModelBuilder instance to confirm "
+                        "you have read and accepted the end-user license agreement for this model."
+                    )
+                container_def = ContainerDefinition(
+                    image=self.image_uri,
+                    environment=self.env_vars,
+                    model_data_source={
+                        "s3_data_source": {
+                            "s3_uri": hosting_artifact_uri,
+                            "s3_data_type": "S3Prefix",
+                            "compression_type": "None",
+                            "model_access_config": {"accept_eula": accept_eula},
+                        }
+                    },
+                )
+                # Store adapter path for use during deploy
+                if isinstance(self.model, TrainingJob):
+                    self._adapter_s3_uri = (
+                        f"{self.model.model_artifacts.s3_model_artifacts}/checkpoints/hf/"
+                    )
+                elif isinstance(self.model, ModelTrainer):
+                    self._adapter_s3_uri = (
+                        f"{self.model._latest_training_job.model_artifacts.s3_model_artifacts}"
+                        "/checkpoints/hf/"
+                    )
+            else:
+                # Non-LORA: Model points at training output
+                self.s3_upload_path = model_package.inference_specification.containers[
+                    0
+                ].model_data_source.s3_data_source.s3_uri
+                container_def = ContainerDefinition(
+                    image=self.image_uri,
+                    model_data_source={
+                        "s3_data_source": {
+                            "s3_uri": self.s3_upload_path.rstrip("/") + "/",
+                            "s3_data_type": "S3Prefix",
+                            "compression_type": "None",
+                        }
+                    },
+                )
+
             model_name = self.model_name or f"model-{uuid.uuid4().hex[:10]}"
             # Create model
             self.built_model = Model.create(
@@ -4133,17 +4343,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         """Deploy a model customization (fine-tuned) model to an endpoint with inference components.
 
         This method handles the special deployment flow for fine-tuned models, creating:
-        1. Core Model resource
-        2. EndpointConfig
-        3. Endpoint
-        4. InferenceComponent
+        1. EndpointConfig and Endpoint
+        2. Base model InferenceComponent (for LORA: from JumpStart base model)
+        3. Adapter InferenceComponent (for LORA: referencing base IC with adapter weights)
 
         Args:
             endpoint_name (str): Name of the endpoint to create or update
-            instance_type (str): EC2 instance type for deployment
             initial_instance_count (int): Number of instances (default: 1)
-            wait (bool): Whether to wait for deployment to complete (default: True)
-            container_timeout_in_seconds (int): Container timeout in seconds (default: 300)
             inference_component_name (Optional[str]): Name for the inference component
             inference_config (Optional[ResourceRequirements]): Inference configuration including
                 resource requirements (accelerator count, memory, CPU cores)
@@ -4152,30 +4358,29 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         Returns:
             Endpoint: The deployed sagemaker.core.resources.Endpoint
         """
-        from sagemaker.core.resources import (
-            Model as CoreModel,
-            EndpointConfig as CoreEndpointConfig,
-        )
-        from sagemaker.core.shapes import ContainerDefinition, ProductionVariant
         from sagemaker.core.shapes import (
             InferenceComponentSpecification,
             InferenceComponentContainerSpecification,
             InferenceComponentRuntimeConfig,
             InferenceComponentComputeResourceRequirements,
-            ModelDataSource,
-            S3ModelDataSource,
         )
+        from sagemaker.core.shapes import ProductionVariant
         from sagemaker.core.resources import InferenceComponent
-        from sagemaker.core.utils.utils import Unassigned
+        from sagemaker.core.resources import Tag as CoreTag
+
+        # Nova models use direct model-on-variant, no InferenceComponents
+        if self._is_nova_model():
+            return self._deploy_nova_model(
+                endpoint_name=endpoint_name,
+                initial_instance_count=initial_instance_count,
+                wait=kwargs.get("wait", True),
+            )
 
         # Fetch model package
         model_package = self._fetch_model_package()
 
         # Check if endpoint exists
         is_existing_endpoint = self._does_endpoint_exist(endpoint_name)
-
-        # Generate model name if not set
-        model_name = self.model_name or f"model-{uuid.uuid4().hex[:10]}"
 
         if not is_existing_endpoint:
             EndpointConfig.create(
@@ -4197,48 +4402,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         else:
             endpoint = Endpoint.get(endpoint_name=endpoint_name)
 
-        # Set inference component name
-        if not inference_component_name:
-            if not is_existing_endpoint:
-                inference_component_name = f"{endpoint_name}-inference-component"
-            else:
-                inference_component_name = f"{endpoint_name}-inference-component-adapter"
-
-        # Get PEFT type and base model recipe name
         peft_type = self._fetch_peft()
         base_model_recipe_name = model_package.inference_specification.containers[
             0
         ].base_model.recipe_name
-        base_inference_component_name = None
-        tag = None
 
-        # Resolve the correct model artifact URI based on deployment type
-        artifact_url = self._resolve_model_artifact_uri()
+        if peft_type == "LORA":
+            # LORA deployment: base IC + adapter IC
 
-        # Determine if this is a base model deployment
-        # A base model deployment uses HostingArtifactUri from JumpStart (not from model package)
-        is_base_model_deployment = False
-        if artifact_url and not peft_type:
-            # Check if artifact_url comes from JumpStart (not from model package)
-            # If model package has model_data_source, it's a full fine-tuned model
-            if (
-                hasattr(model_package.inference_specification.containers[0], "model_data_source")
-                and model_package.inference_specification.containers[0].model_data_source
-            ):
-                is_base_model_deployment = False  # Full fine-tuned model
-            else:
-                is_base_model_deployment = True  # Base model from JumpStart
-
-        # Handle tagging and base component lookup
-        if not is_existing_endpoint and is_base_model_deployment:
-            # Only tag as "Base" if we're actually deploying a base model
-            from sagemaker.core.resources import Tag as CoreTag
-
-            tag = CoreTag(key="Base", value=base_model_recipe_name)
-        elif peft_type == "LORA":
-            # For LORA adapters, look up the existing base component
-            from sagemaker.core.resources import Tag as CoreTag
-
+            # Find or create base IC
+            base_ic_name = None
             for component in InferenceComponent.get_all(
                 endpoint_name_equals=endpoint_name, status_equals="InService"
             ):
@@ -4246,65 +4419,131 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 if any(
                     t.key == "Base" and t.value == base_model_recipe_name for t in component_tags
                 ):
-                    base_inference_component_name = component.inference_component_name
+                    base_ic_name = component.inference_component_name
                     break
 
-        ic_spec = InferenceComponentSpecification(
-            container=InferenceComponentContainerSpecification(
-                image=self.image_uri, artifact_url=artifact_url, environment=self.env_vars
-            )
-        )
+            if not base_ic_name:
+                # Deploy base model IC
+                base_ic_name = f"{endpoint_name}-inference-component"
 
-        if peft_type == "LORA":
-            ic_spec.base_inference_component_name = base_inference_component_name
+                base_ic_spec = InferenceComponentSpecification(
+                    model_name=self.built_model.model_name,
+                )
+                if inference_config is not None:
+                    base_ic_spec.compute_resource_requirements = (
+                        InferenceComponentComputeResourceRequirements(
+                            min_memory_required_in_mb=inference_config.min_memory,
+                            max_memory_required_in_mb=inference_config.max_memory,
+                            number_of_cpu_cores_required=inference_config.num_cpus,
+                            number_of_accelerator_devices_required=inference_config.num_accelerators,
+                        )
+                    )
+                else:
+                    base_ic_spec.compute_resource_requirements = self._cached_compute_requirements
 
-        # Use inference_config if provided, otherwise fall back to cached requirements
-        if inference_config is not None:
-            # Extract compute requirements from inference_config (ResourceRequirements)
-            ic_spec.compute_resource_requirements = InferenceComponentComputeResourceRequirements(
-                min_memory_required_in_mb=inference_config.min_memory,
-                max_memory_required_in_mb=inference_config.max_memory,
-                number_of_cpu_cores_required=inference_config.num_cpus,
-                number_of_accelerator_devices_required=inference_config.num_accelerators,
+                InferenceComponent.create(
+                    inference_component_name=base_ic_name,
+                    endpoint_name=endpoint_name,
+                    variant_name=endpoint_name,
+                    specification=base_ic_spec,
+                    runtime_config=InferenceComponentRuntimeConfig(copy_count=1),
+                    tags=[{"key": "Base", "value": base_model_recipe_name}],
+                )
+                logger.info("Created base model InferenceComponent: '%s'", base_ic_name)
+
+                # Wait for base IC to be InService before creating adapter
+                base_ic = InferenceComponent.get(inference_component_name=base_ic_name)
+                base_ic.wait_for_status("InService")
+
+                # Wait for endpoint to stabilize after base IC creation
+                endpoint.wait_for_status("InService")
+
+            # Deploy adapter IC
+            adapter_ic_name = inference_component_name or f"{endpoint_name}-adapter"
+            adapter_s3_uri = getattr(self, "_adapter_s3_uri", None)
+
+            adapter_ic_spec = InferenceComponentSpecification(
+                base_inference_component_name=base_ic_name,
+                container=InferenceComponentContainerSpecification(
+                    artifact_url=adapter_s3_uri,
+                ),
             )
+
+            InferenceComponent.create(
+                inference_component_name=adapter_ic_name,
+                endpoint_name=endpoint_name,
+                specification=adapter_ic_spec,
+            )
+            logger.info("Created adapter InferenceComponent: '%s'", adapter_ic_name)
+
         else:
-            # Fall back to resolved compute requirements from build()
-            ic_spec.compute_resource_requirements = self._cached_compute_requirements
+            # Non-LORA deployment: single IC
+            if not inference_component_name:
+                inference_component_name = f"{endpoint_name}-inference-component"
 
-        InferenceComponent.create(
-            inference_component_name=inference_component_name,
-            endpoint_name=endpoint_name,
-            variant_name=endpoint_name,
-            specification=ic_spec,
-            runtime_config=InferenceComponentRuntimeConfig(copy_count=1),
-            tags=[{"key": tag.key, "value": tag.value}] if tag else [],
-        )
+            artifact_url = self._resolve_model_artifact_uri()
+
+            ic_spec = InferenceComponentSpecification(
+                container=InferenceComponentContainerSpecification(
+                    image=self.image_uri, artifact_url=artifact_url, environment=self.env_vars
+                )
+            )
+
+            if inference_config is not None:
+                ic_spec.compute_resource_requirements = (
+                    InferenceComponentComputeResourceRequirements(
+                        min_memory_required_in_mb=inference_config.min_memory,
+                        max_memory_required_in_mb=inference_config.max_memory,
+                        number_of_cpu_cores_required=inference_config.num_cpus,
+                        number_of_accelerator_devices_required=inference_config.num_accelerators,
+                    )
+                )
+            else:
+                ic_spec.compute_resource_requirements = self._cached_compute_requirements
+
+            InferenceComponent.create(
+                inference_component_name=inference_component_name,
+                endpoint_name=endpoint_name,
+                variant_name=endpoint_name,
+                specification=ic_spec,
+                runtime_config=InferenceComponentRuntimeConfig(copy_count=1),
+            )
 
         # Create lineage tracking for new endpoints
         if not is_existing_endpoint:
-            from sagemaker.core.resources import Action, Association, Artifact
-            from sagemaker.core.shapes import ActionSource, MetadataProperties
+            try:
+                from sagemaker.core.resources import Action, Association, Artifact
+                from sagemaker.core.shapes import ActionSource, MetadataProperties
 
-            inference_component = InferenceComponent.get(
-                inference_component_name=inference_component_name
-            )
+                ic_name = (
+                    inference_component_name
+                    if not peft_type == "LORA"
+                    else adapter_ic_name
+                )
+                inference_component = InferenceComponent.get(
+                    inference_component_name=ic_name
+                )
 
-            action = Action.create(
-                source=ActionSource(
-                    source_uri=self._fetch_model_package_arn(), source_type="SageMaker"
-                ),
-                action_name=f"{endpoint_name}-action",
-                action_type="ModelDeployment",
-                properties={"EndpointConfigName": endpoint_name},
-                metadata_properties=MetadataProperties(
-                    generated_by=inference_component.inference_component_arn
-                ),
-            )
+                action = Action.create(
+                    source=ActionSource(
+                        source_uri=self._fetch_model_package_arn(), source_type="SageMaker"
+                    ),
+                    action_name=f"{endpoint_name}-action",
+                    action_type="ModelDeployment",
+                    properties={"EndpointConfigName": endpoint_name},
+                    metadata_properties=MetadataProperties(
+                        generated_by=inference_component.inference_component_arn
+                    ),
+                )
 
-            artifacts = Artifact.get_all(source_uri=model_package.model_package_arn)
-            for artifact in artifacts:
-                Association.add(source_arn=artifact.artifact_arn, destination_arn=action.action_arn)
-                break
+                artifacts = Artifact.get_all(source_uri=model_package.model_package_arn)
+                for artifact in artifacts:
+                    Association.add(
+                        source_arn=artifact.artifact_arn, destination_arn=action.action_arn
+                    )
+                    break
+            except Exception as e:
+                logger.warning(f"Failed to create lineage tracking: {e}")
 
         logger.info("✅ Model customization deployment successful: Endpoint '%s'", endpoint_name)
         return endpoint
@@ -4320,11 +4559,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         from sagemaker.core.utils.utils import Unassigned
 
-        if (
-            training_job.serverless_job_config != Unassigned()
-            and training_job.serverless_job_config.job_spec != Unassigned()
-        ):
-            return training_job.serverless_job_config.job_spec.get("PEFT")
+        if training_job.serverless_job_config != Unassigned():
+            peft = getattr(training_job.serverless_job_config, "peft", None)
+            if peft and not isinstance(peft, Unassigned):
+                return peft
         return None
 
     def _does_endpoint_exist(self, endpoint_name: str) -> bool:
@@ -4336,6 +4574,91 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if e.response["Error"]["Code"] == "ValidationException":
                 return False
             raise
+
+    def _resolve_nova_escrow_uri(self) -> str:
+        """Resolve the escrow S3 URI for Nova model artifacts from manifest.json.
+
+        Nova training jobs write artifacts to an escrow S3 bucket. The location
+        is recorded in manifest.json in the training job output directory.
+        """
+        import json
+        from urllib.parse import urlparse
+
+        if isinstance(self.model, TrainingJob):
+            training_job = self.model
+        elif isinstance(self.model, ModelTrainer):
+            training_job = self.model._latest_training_job
+        else:
+            raise ValueError("Nova escrow URI resolution requires a TrainingJob or ModelTrainer")
+
+        output_path = training_job.output_data_config.s3_output_path.rstrip("/")
+        manifest_s3 = f"{output_path}/{training_job.training_job_name}/output/output/manifest.json"
+
+        parsed = urlparse(manifest_s3)
+        bucket = parsed.netloc
+        key = parsed.path.lstrip("/")
+
+        s3_client = self.sagemaker_session.boto_session.client("s3")
+        resp = s3_client.get_object(Bucket=bucket, Key=key)
+        manifest = json.loads(resp["Body"].read().decode())
+
+        escrow_uri = manifest.get("checkpoint_s3_bucket")
+        if not escrow_uri:
+            raise ValueError(
+                f"'checkpoint_s3_bucket' not found in manifest.json. "
+                f"Available keys: {list(manifest.keys())}"
+            )
+        return escrow_uri
+
+    def _deploy_nova_model(
+        self,
+        endpoint_name: str,
+        initial_instance_count: int = 1,
+        wait: bool = True,
+    ) -> Endpoint:
+        """Deploy a Nova model directly to an endpoint without inference components.
+
+        Nova models use a model-on-variant architecture:
+        - ModelName is embedded in the ProductionVariant
+        - No InferenceComponents are created
+        - EnableNetworkIsolation is set on the Model (during build)
+        """
+        from sagemaker.core.shapes import ProductionVariant
+
+        model_package = self._fetch_model_package()
+        base_model = model_package.inference_specification.containers[0].base_model
+
+        if not endpoint_name:
+            endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
+
+        EndpointConfig.create(
+            endpoint_config_name=endpoint_name,
+            production_variants=[
+                ProductionVariant(
+                    variant_name="AllTraffic",
+                    model_name=self.built_model.model_name,
+                    instance_type=self.instance_type,
+                    initial_instance_count=initial_instance_count,
+                )
+            ],
+        )
+
+        tags = [
+            {"key": "sagemaker-studio:jumpstart-model-id", "value": base_model.hub_content_name},
+        ]
+        if base_model.recipe_name:
+            tags.append({"key": "sagemaker-studio:recipe-name", "value": base_model.recipe_name})
+
+        endpoint = Endpoint.create(
+            endpoint_name=endpoint_name,
+            endpoint_config_name=endpoint_name,
+            tags=tags,
+        )
+
+        if wait:
+            endpoint.wait_for_status("InService")
+
+        return endpoint
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.deploy_local")
     def deploy_local(

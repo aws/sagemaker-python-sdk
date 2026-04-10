@@ -20,6 +20,7 @@ class _MLflowConstants:
     
     # Metric names
     TOTAL_LOSS_METRIC = 'total_loss'
+    LOSS_METRIC_KEYWORDS = ('loss',)
     EPOCH_KEYWORD = 'epoch'
     
     # MLflow run tags

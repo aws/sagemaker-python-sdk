@@ -15,6 +15,8 @@ from __future__ import absolute_import
 import boto3
 import botocore
 import pytest
+import random
+import string
 
 from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.train.configs import SourceCode, InputData, Compute
@@ -29,6 +31,15 @@ from tests.integ.train.test_model_trainer import (
 from .manager import BatchTestResourceManager
 
 
+class ShortId:
+    ALPHABET = string.ascii_lowercase + string.digits
+    DEFAULT_LENGTH = 8
+
+    @staticmethod
+    def get(length=DEFAULT_LENGTH):
+        return "".join(random.choices(ShortId.ALPHABET, k=length))
+
+
 @pytest.fixture(scope="module")
 def batch_client():
     return boto3.client("batch", region_name="us-west-2")
@@ -36,40 +47,32 @@ def batch_client():
 
 @pytest.fixture(scope="function")
 def batch_test_resource_manager(batch_client):
-    resource_manager = BatchTestResourceManager(batch_client=batch_client)
-    resource_manager.get_or_create_resources()
-    return resource_manager
+    # Guarantee AWS Batch resource name uniqueness across concurrent test runtimes
+    test_id = ShortId.get()
+    print(f"Integration test ID (used in AWS Batch resource naming): {test_id}")
+
+    resource_manager = BatchTestResourceManager(batch_client=batch_client, test_id=test_id)
+
+    try:
+        resource_manager.get_or_create_resources()
+        yield resource_manager
+    except Exception as e:
+        print(f"Exception thrown while creating or yielding AWS Batch resources: {str(e)}")
+
+    resource_manager.delete_resources()
 
 
 def test_model_trainer_submit(batch_test_resource_manager, sagemaker_session):  # noqa: F811
     queue_name = batch_test_resource_manager.queue_name
 
-    source_code = SourceCode(
-        source_dir=f"{DATA_DIR}/train/script_mode/",
-        requirements="requirements.txt",
-        entry_script="custom_script.py",
-    )
-    hyperparameters = {
-        "batch-size": 32,
-        "epochs": 1,
-        "learning-rate": 0.01,
-    }
+    source_code = SourceCode(command="echo 'Hello World'")
     compute = Compute(instance_type="ml.m5.2xlarge")
     model_trainer = ModelTrainer(
         sagemaker_session=sagemaker_session,
         training_image=DEFAULT_CPU_IMAGE,
         source_code=source_code,
         compute=compute,
-        hyperparameters=hyperparameters,
         base_job_name="test-batch-model-trainer",
-    )
-    train_data = InputData(
-        channel_name="train",
-        data_source=f"{DATA_DIR}/train/script_mode/data/train/",
-    )
-    test_data = InputData(
-        channel_name="test",
-        data_source=f"{DATA_DIR}/train/script_mode/data/test/",
     )
 
     training_queue = TrainingQueue(queue_name=queue_name)
@@ -77,17 +80,47 @@ def test_model_trainer_submit(batch_test_resource_manager, sagemaker_session):  
     try:
         queued_job = training_queue.submit(
             training_job=model_trainer,
-            inputs=[train_data, test_data],
+            inputs=None,
+            job_name="pysdk_integ_test_job",
+            retry_config={
+                "attempts": 1,
+                "evaluateOnExit": [
+                    {
+                        "action": "Retry",
+                        "onStatusReason": "Received status from SageMaker: AlgorithmError: *"
+                    },
+                    {
+                        "action": "EXIT",
+                        "onStatusReason": "*"
+                    }
+                ]
+            },
+            priority=1,
+            tags={"pysdk-integ-test-tag-key": "pysdk-integ-test-tag-value"},
+            quota_share_name=batch_test_resource_manager.quota_share_name,
+            preemption_config={"preemptionRetriesBeforeTermination": 0}
         )
     except botocore.exceptions.ClientError as e:
         print(e.response["ResponseMetadata"])
         print(e.response["Error"]["Message"])
         raise e
-    res = queued_job.describe()
-    assert res is not None
-    assert res["status"] == "SUBMITTED"
 
-    queued_job.wait(timeout=1800)
     res = queued_job.describe()
     assert res is not None
-    assert res["status"] == "SUCCEEDED"
+    assert res["status"] in {"SUBMITTED", "RUNNABLE", "SCHEDULED"}
+
+    res = queued_job.update(2)
+    assert res is not None
+    assert res["jobArn"] == queued_job.job_arn
+
+    # Job termination results in FAILED
+    queued_job.terminate()
+
+    res = queued_job.wait(timeout=900)
+    assert res is not None
+    assert res["status"] == "FAILED"
+
+    list_by_job_name = training_queue.list_jobs(queued_job.job_name)
+    list_by_job_status = training_queue.list_jobs(status="FAILED")
+    assert queued_job.job_arn in [job.job_arn for job in list_by_job_name]
+    assert queued_job.job_name in [job.job_name for job in list_by_job_status]

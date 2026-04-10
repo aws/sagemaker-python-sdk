@@ -1,4 +1,34 @@
 # Changelog
+## v1.7.1 (2026-03-31)
+
+### Features
+
+- **Telemetry**: Added telemetry emitter to `ScriptProcessor` and `FrameworkProcessor`, enabling SDK usage tracking for processing jobs via the telemetry attribution module (new `PROCESSING` feature enum added to telemetry constants)
+
+### Bug Fixes
+
+- **ModelBuilder**: Fixed `accept_eula` handling in ModelBuilder's LoRA deployment path — previously hardcoded to `True`, now respects the user-provided value and raises a `ValueError` if not explicitly set to `True`
+- **Evaluate**: Fixed Lambda handler name derivation in the Evaluator — hardcoded the handler to `lambda_function.lambda_handler` instead of deriving it from the source filename, which caused invocation failures when the source file had a non-default name
+
+## v1.7.0 (2026-03-25)
+
+### Bug fixes and Other Changes
+
+- **Feature**: Add support for AWS Batch Quota Management job submission and job priority update (#5659)
+- **Feature**: Extend list_jobs_by_share for quota_share_name (#5669)
+- **Feature**: MLflow metrics visualization, enhanced wait UI, and eval job links (#5662)
+- **Feature**: Support IAM role for BaseEvaluator (#5671)
+- **Fix**: Remove GPT OSS model evaluation restriction (#5658)
+- **Tests**: AWS Batch integ test resources are now uniquely named by test run (#5666)
+
+## v1.6.0 (2026-03-19)
+
+### Bug fixes and Other Changes
+
+- **Fix**: Include sm_drivers channel in HyperparameterTuner jobs (#5634)
+- **Fix**: resolve PermissionError during local mode cleanup of root-owned Docker files (#5629)
+- **Fix**: Add PipelineVariable support to ModelTrainer fields (#5608)
+  
 ## v1.5.0 (2026-03-02)
 
 ### Features

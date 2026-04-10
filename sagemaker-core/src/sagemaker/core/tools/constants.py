@@ -107,3 +107,9 @@ SHAPES_CODEGEN_FILE_NAME = "shapes.py"
 CONFIG_SCHEMA_FILE_NAME = "config_schema.py"
 
 API_COVERAGE_JSON_FILE_PATH = os.getcwd() + "/src/sagemaker/core/tools/api_coverage.json"
+
+# Members that the service model marks as required but the API returns as optional.
+# E.g. DescribeInferenceComponent returns empty ComputeResourceRequirements for adapter ICs.
+REQUIRED_TO_OPTIONAL_OVERRIDES = {
+    "InferenceComponentComputeResourceRequirements": ["MinMemoryRequiredInMb"],
+}
