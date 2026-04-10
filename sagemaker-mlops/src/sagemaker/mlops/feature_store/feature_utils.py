@@ -49,7 +49,7 @@ _DTYPE_TO_FEATURE_TYPE_MAP = {
 _INTEGER_TYPES = {"int_", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"}
 _FLOAT_TYPES = {"float_", "float16", "float32", "float64"}
 
-_APPROVED_ICEBERG_PROPERTIES = {
+_ALLOWED_ICEBERG_PROPERTIES = {
     "write.metadata.delete-after-commit.enabled",
     "write.metadata.previous-versions-max",
     "history.expire.max-snapshot-age-ms",
@@ -66,13 +66,13 @@ _APPROVED_ICEBERG_PROPERTIES = {
     "write.target-file-size-bytes"
 }
 
-_ICEBERG_PERMISSIONS_ERROR_MESSAGE = (
-    "If this feature group uses Lake Formation governance, ensure you have "
-    "SELECT, DESCRIBE, and ALTER permissions on the table in Lake Formation, "
-    "in addition to IAM permissions.\n"
-    "If this feature group uses IAM governance, ensure your role has "
-    "glue:GetTable and glue:UpdateTable permissions on the feature group's Glue table."
-) 
+_ICEBERG_PERMISSIONS_ERROR_MESSAGE = (                                                                                                                                                                                                                                                         
+      "If this feature group uses Lake Formation governance, ensure you have "                                                                                                                                                                                                                   
+      "SELECT, DESCRIBE, and ALTER permissions on the table in Lake Formation, "                                                                                                                                                                                                                 
+      "in addition to IAM permissions.\n"                                                                                                                                                                                                                                                        
+      "If this feature group uses IAM governance, ensure your role has "                                                                                                                                                                                                                         
+      "glue:GetTable and glue:UpdateTable permissions on the feature group's Glue table."                                                                                                                                                                                                        
+  ) 
 
 def _get_athena_client(session: Session):
     """Get Athena client from session."""

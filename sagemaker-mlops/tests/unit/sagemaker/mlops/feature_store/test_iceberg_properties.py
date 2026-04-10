@@ -22,8 +22,8 @@ class TestIcebergPropertiesConfig:
         config = IcebergProperties(properties=props)
         assert config.properties == props
 
-    def test_valid_approved_keys_accepted(self):
-        """Test that all approved keys are accepted."""
+    def test_valid_allowed_keys_accepted(self):
+        """Test that all allowed keys are accepted."""
         props = {
             "write.target-file-size-bytes": "536870912",
             "write.metadata.delete-after-commit.enabled": "true",
@@ -64,11 +64,11 @@ class TestIcebergPropertiesConfig:
             "write.target-file-size-bytes",
         ]
         object.__setattr__(config, "properties", mock_props)
-        with pytest.raises(ValueError, match="Invalid duplicate properties"):
+        with pytest.raises(ValueError, match="Invalid duplicate properties:.*write.target-file-size-bytes"):
             config.validate_property_keys()
 
     def test_no_duplicate_keys_passes(self):
-        """Test that unique approved keys pass duplicate validation."""
+        """Test that unique allowed keys pass duplicate validation."""
         config = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
         result = config.validate_property_keys()
         assert result is config
@@ -346,7 +346,7 @@ class TestUpdateIcebergProperties:
         mock_props.__bool__ = lambda self: True
         object.__setattr__(props, "properties", mock_props)
 
-        with pytest.raises(ValueError, match="Invalid duplicate properties"):
+        with pytest.raises(ValueError, match="Invalid duplicate properties:.*write.target-file-size-bytes"):
             self.fg._update_iceberg_properties(iceberg_properties=props)
 
     def test_logs_before_after_property_changes(self, caplog):

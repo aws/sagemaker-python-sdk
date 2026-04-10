@@ -4,6 +4,7 @@
 
 import json
 import logging
+from collections import Counter
 from typing import Dict, List, Optional
 
 from pydantic import model_validator
@@ -29,7 +30,7 @@ from botocore.exceptions import ClientError
 from pyiceberg.catalog import load_catalog
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from sagemaker.mlops.feature_store.feature_utils import (
-    _APPROVED_ICEBERG_PROPERTIES,
+    _ALLOWED_ICEBERG_PROPERTIES,
     _ICEBERG_PERMISSIONS_ERROR_MESSAGE,
 )
 
@@ -57,16 +58,18 @@ class IcebergProperties(Base):
     def validate_property_keys(self):
         if self.properties is None:
             return self
-        invalid_keys = set(self.properties.keys()) - _APPROVED_ICEBERG_PROPERTIES
+        invalid_keys = set(self.properties.keys()) - _ALLOWED_ICEBERG_PROPERTIES
         if invalid_keys:
             raise ValueError(
                 f"Invalid iceberg properties: {invalid_keys}. "
-                f"Approved properties are: {_APPROVED_ICEBERG_PROPERTIES}"
+                f"Allowed properties are: {_ALLOWED_ICEBERG_PROPERTIES}"
             )
         # Check for no duplicate keys
-        if len(set(self.properties.keys())) != len(self.properties.keys()):
+        keys = list(self.properties.keys())
+        duplicates = {k for k, count in Counter(keys).items() if count > 1}
+        if duplicates:
             raise ValueError(
-                f"Invalid duplicate properties. Please only have 1 of each property."
+                f"Invalid duplicate properties: {duplicates}. Please only have 1 of each property."
             )
         return self
 
@@ -232,17 +235,19 @@ class FeatureGroupManager(FeatureGroup):
                 "iceberg_properties must contain at least one property to update"
             )
 
-        invalid_keys = set(iceberg_properties.properties.keys()) - _APPROVED_ICEBERG_PROPERTIES
+        invalid_keys = set(iceberg_properties.properties.keys()) - _ALLOWED_ICEBERG_PROPERTIES
         if invalid_keys:
             raise ValueError(
                 f"Invalid iceberg properties: {invalid_keys}. "
-                f"Approved properties are: {_APPROVED_ICEBERG_PROPERTIES}"
+                f"Allowed properties are: {_ALLOWED_ICEBERG_PROPERTIES}"
             )
 
          # Check for no duplicate keys
-        if len(set(iceberg_properties.properties.keys())) != len(iceberg_properties.properties.keys()):
+        keys = list(iceberg_properties.properties.keys())
+        duplicates = {k for k, count in Counter(keys).items() if count > 1}
+        if duplicates:
             raise ValueError(
-                f"Invalid duplicate properties. Please only have 1 of each property."
+                f"Invalid duplicate properties: {duplicates}. Please only have 1 of each property."
             )
 
         result = self._get_iceberg_properties(session=session, region=region)
@@ -331,12 +336,12 @@ class FeatureGroupManager(FeatureGroup):
         if include_iceberg_properties:
             result = feature_group._get_iceberg_properties(session=session, region=region)
             all_properties = result["properties"]
-            approved_properties = {
+            allowed_properties = {
                 k: v for k, v in all_properties.items()
-                if k in _APPROVED_ICEBERG_PROPERTIES
+                if k in _ALLOWED_ICEBERG_PROPERTIES
             }
             feature_group.iceberg_properties = IcebergProperties(
-                properties=approved_properties
+                properties=allowed_properties
             )
 
         return feature_group
