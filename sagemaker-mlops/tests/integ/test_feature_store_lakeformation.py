@@ -287,7 +287,7 @@ def test_create_feature_group_with_lake_formation_fails_without_offline_store(ro
     """
     fg_name = generate_feature_group_name()
 
-    lake_formation_config = LakeFormationConfig(disable_hybrid_access_mode=True)
+    lake_formation_config = LakeFormationConfig(disable_hybrid_access_mode=True, acknowledge_risk=True)
     lake_formation_config.enabled = True
 
     # Attempt to create without offline store but with Lake Formation enabled
@@ -317,7 +317,7 @@ def test_create_feature_group_with_lake_formation_fails_without_role(s3_uri, reg
     fg_name = generate_feature_group_name()
 
     offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
-    lake_formation_config = LakeFormationConfig(disable_hybrid_access_mode=True)
+    lake_formation_config = LakeFormationConfig(disable_hybrid_access_mode=True, acknowledge_risk=True)
     lake_formation_config.enabled = True
 
     # Attempt to create without role_arn but with Lake Formation enabled
@@ -357,7 +357,7 @@ def test_enable_lake_formation_fails_for_non_created_status(s3_uri, role, region
         # Immediately try to enable Lake Formation without waiting for Created status
         # The Feature Group will be in 'Creating' status
         with pytest.raises(ValueError) as exc_info:
-            fg.enable_lake_formation(disable_hybrid_access_mode=True, wait_for_active=False)
+            fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True, wait_for_active=False)
 
         # Verify error message mentions status requirement
         error_msg = str(exc_info.value)
@@ -401,7 +401,7 @@ def test_enable_lake_formation_without_offline_store(role, region):
 
         # Attempt to enable Lake Formation
         with pytest.raises(ValueError) as exc_info:
-            fg.enable_lake_formation(disable_hybrid_access_mode=True)
+            fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
         # Verify error message mentions offline store requirement
         assert "does not have an offline store configured" in str(exc_info.value)
 
@@ -427,6 +427,7 @@ def test_enable_lake_formation_fails_with_invalid_registration_role(
     with pytest.raises(ValueError) as exc_info:
         fg.enable_lake_formation(
             disable_hybrid_access_mode=True,
+            acknowledge_risk=True,
             use_service_linked_role=False,
             registration_role_arn=None,
         )
