@@ -867,6 +867,7 @@ class _ModelBuilderServers(object):
             model_version=self.model_version or "*",
             region=self.region,
             instance_type=self.instance_type,
+            hub_arn=self.hub_arn,
             tolerate_vulnerable_model=getattr(self, 'tolerate_vulnerable_model', None),
             tolerate_deprecated_model=getattr(self, 'tolerate_deprecated_model', None),
             config_name=getattr(self, 'config_name', None),
