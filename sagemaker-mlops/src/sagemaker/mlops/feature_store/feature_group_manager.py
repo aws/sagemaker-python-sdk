@@ -45,17 +45,20 @@ class LakeFormationConfig(Base):
             may break existing jobs that access the table via IAM-based permissions. After
             this change, all principals must be granted access through Lake Formation.
             If False, IAM-based access remains alongside Lake Formation permissions.
-        acknowledge_risk: Controls confirmation behavior for risky Lake Formation operations.
-            If True, skips interactive confirmation prompts and proceeds. If False, raises
-            RuntimeError without proceeding. If None (default), prompts the user interactively
-            via input().
+        acknowledge_risk: If True, acknowledges the risks of the Lake Formation
+            operation and proceeds. When disable_hybrid_access_mode is True, this
+            acknowledges that revoking IAMAllowedPrincipal permissions may break
+            existing jobs (e.g., training, processing, ETL) that access the table
+            via IAM-based permissions. When disable_hybrid_access_mode is False,
+            this acknowledges that IAM-based access remains alongside Lake Formation
+            permissions. If False, raises RuntimeError without proceeding.
     """
 
     enabled: bool = False
     use_service_linked_role: bool = True
     registration_role_arn: Optional[str] = None
     disable_hybrid_access_mode: bool
-    acknowledge_risk: Optional[bool] = None
+    acknowledge_risk: bool
 
 
 class FeatureGroupManager(FeatureGroup):
@@ -380,7 +383,7 @@ class FeatureGroupManager(FeatureGroup):
     def enable_lake_formation(
         self,
         disable_hybrid_access_mode: bool,
-        acknowledge_risk: Optional[bool] = None,
+        acknowledge_risk: bool,
         session: Optional[Session] = None,
         region: Optional[str] = None,
         use_service_linked_role: bool = True,
@@ -405,9 +408,13 @@ class FeatureGroupManager(FeatureGroup):
                 the table via IAM-based permissions. After this change, all principals must
                 be granted access through Lake Formation. If False, prompts the user for
                 confirmation before proceeding with hybrid access.
-            acknowledge_risk: Controls confirmation behavior for risky operations.
-                If True, skips interactive prompts and proceeds. If False, raises
-                RuntimeError without proceeding. If None (default), prompts interactively.
+            acknowledge_risk: If True, acknowledges the risks of the Lake Formation
+                operation and proceeds. When disable_hybrid_access_mode is True, this
+                acknowledges that revoking IAMAllowedPrincipal permissions may break
+                existing jobs (e.g., training, processing, ETL) that access the table
+                via IAM-based permissions. When disable_hybrid_access_mode is False,
+                this acknowledges that IAM-based access remains alongside Lake Formation
+                permissions. If False, raises RuntimeError without proceeding.
             session: Boto3 session.
             region: Region name.
             use_service_linked_role: Whether to use the Lake Formation service-linked role
@@ -505,14 +512,7 @@ class FeatureGroupManager(FeatureGroup):
                 f"to the table is still allowed alongside Lake Formation permissions. "
                 f"For more info: https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
             )
-            if acknowledge_risk is None:
-                proceed = input(
-                    "Hybrid access mode is not disabled. IAM-based access to the Glue table will "
-                    "still be allowed. Do you want to proceed without revoking IAMAllowedPrincipal "
-                    "permissions? (y/n): "
-                ).strip().lower() == "y"
-            else:
-                proceed = acknowledge_risk
+            proceed = acknowledge_risk
             if not proceed:
                 raise RuntimeError(
                     "User chose not to proceed without disabling hybrid access mode. "
@@ -526,13 +526,7 @@ class FeatureGroupManager(FeatureGroup):
                 f"After this change, all principals must be granted access through Lake Formation. "
                 f"For more info: https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
             )
-            if acknowledge_risk is None:
-                proceed = input(
-                    "This will revoke IAMAllowedPrincipal permissions and may break existing jobs "
-                    "that rely on IAM-based access. Do you want to proceed? (y/n): "
-                ).strip().lower() == "y"
-            else:
-                proceed = acknowledge_risk
+            proceed = acknowledge_risk
             if not proceed:
                 raise RuntimeError(
                     "User chose not to proceed with disabling hybrid access mode. "
@@ -774,6 +768,11 @@ class FeatureGroupManager(FeatureGroup):
         """
         # Validation for Lake Formation
         if lake_formation_config is not None and lake_formation_config.enabled:
+            if not lake_formation_config.acknowledge_risk:
+                raise RuntimeError(
+                    "Lake Formation is enabled but acknowledge_risk is False. "
+                    "Set acknowledge_risk=True to proceed with Feature Group creation."
+                )
             if offline_store_config is None:
                 raise ValueError(
                     "lake_formation_config with enabled=True requires offline_store_config to be configured"
