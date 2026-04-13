@@ -366,7 +366,10 @@ class TorchTensorDeserializer(SimpleBaseDeserializer):
 
             self.convert_npy_to_tensor = from_numpy
         except ImportError:
-            raise Exception("Unable to import pytorch.")
+            raise ImportError(
+                "torch is required for TorchTensorDeserializer. "
+                "Install it with: pip install 'sagemaker-core[torch]'"
+            )
 
     def deserialize(self, stream, content_type="tensor/pt"):
         """Deserialize streamed data to TorchTensor

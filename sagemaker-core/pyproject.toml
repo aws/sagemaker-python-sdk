@@ -32,8 +32,6 @@ dependencies = [
     "smdebug_rulesconfig>=1.0.1",
     "schema>=0.7.5",
     "omegaconf>=2.1.0",
-    "torch>=1.9.0",
-    "scipy>=1.5.0",
     # Remote function dependencies
     "cloudpickle>=2.0.0",
     "paramiko>=2.11.0",
@@ -52,6 +50,13 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+torch = [
+    "torch>=1.9.0",
+    "scipy>=1.5.0",
+]
+all = [
+    "sagemaker-core[torch]",
+]
 codegen = [
     "black>=24.3.0, <25.0.0",
     "pandas>=2.0.0, <3.0.0",

@@ -443,7 +443,13 @@ class TorchTensorSerializer(SimpleBaseSerializer):
 
     def __init__(self, content_type="tensor/pt"):
         super(TorchTensorSerializer, self).__init__(content_type=content_type)
-        from torch import Tensor
+        try:
+            from torch import Tensor
+        except ImportError:
+            raise ImportError(
+                "torch is required for TorchTensorSerializer. "
+                "Install it with: pip install 'sagemaker-core[torch]'"
+            )
 
         self.torch_tensor = Tensor
         self.numpy_serializer = NumpySerializer()
