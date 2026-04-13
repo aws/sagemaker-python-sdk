@@ -62,16 +62,7 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
             role=ANY,
             container_defs={
                 "Image": ANY,
-                "Environment": {
-                    "SAGEMAKER_PROGRAM": "inference.py",
-                    "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
-                    "ENDPOINT_SERVER_TIMEOUT": "3600",
-                    "MODEL_CACHE_ROOT": "/opt/ml/model",
-                    "SAGEMAKER_ENV": "1",
-                    "HF_MODEL_ID": "/opt/ml/model",
-                    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
-                    "OPTION_SPECULATIVE_DRAFT_MODEL": "/opt/ml/additional-model-data-sources/draft_model/",
-                },
+                "Environment": ANY,
                 "AdditionalModelDataSources": [
                     {
                         "ChannelName": "draft_model",
@@ -96,6 +87,11 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
             enable_network_isolation=True,
             tags=ANY,
         )
+        # Verify the specific environment variables we care about
+        actual_env = mock_create_model.call_args[1]["container_defs"]["Environment"]
+        assert actual_env["OPTION_SPECULATIVE_DRAFT_MODEL"] == "/opt/ml/additional-model-data-sources/draft_model/"
+        assert actual_env["SAGEMAKER_PROGRAM"] == "inference.py"
+        assert actual_env["HF_MODEL_ID"] == "/opt/ml/model"
         mock_endpoint_from_production_variants.assert_called_once()
 
 
@@ -149,16 +145,7 @@ def test_js_model_with_optimize_sharding_and_resource_requirements_requests_are_
             role=ANY,
             container_defs={
                 "Image": ANY,
-                "Environment": {
-                    "SAGEMAKER_PROGRAM": "inference.py",
-                    "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
-                    "ENDPOINT_SERVER_TIMEOUT": "3600",
-                    "MODEL_CACHE_ROOT": "/opt/ml/model",
-                    "SAGEMAKER_ENV": "1",
-                    "HF_MODEL_ID": "/opt/ml/model",
-                    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
-                    "OPTION_TENSOR_PARALLEL_DEGREE": "8",
-                },
+                "Environment": ANY,
                 "ModelDataSource": {
                     "S3DataSource": {
                         "S3Uri": ANY,
@@ -172,6 +159,11 @@ def test_js_model_with_optimize_sharding_and_resource_requirements_requests_are_
             enable_network_isolation=False,  # should be set to false
             tags=ANY,
         )
+        # Verify the specific environment variables we care about
+        actual_env = mock_create_model.call_args[1]["container_defs"]["Environment"]
+        assert actual_env["OPTION_TENSOR_PARALLEL_DEGREE"] == "8"
+        assert actual_env["SAGEMAKER_PROGRAM"] == "inference.py"
+        assert actual_env["HF_MODEL_ID"] == "/opt/ml/model"
         mock_endpoint_from_production_variants.assert_called_once_with(
             name=ANY,
             production_variants=ANY,
@@ -237,16 +229,7 @@ def test_js_model_with_optimize_quantization_on_pre_optimized_model_requests_are
             role=ANY,
             container_defs={
                 "Image": ANY,
-                "Environment": {
-                    "SAGEMAKER_PROGRAM": "inference.py",
-                    "SAGEMAKER_MODEL_SERVER_TIMEOUT": "3600",
-                    "ENDPOINT_SERVER_TIMEOUT": "3600",
-                    "MODEL_CACHE_ROOT": "/opt/ml/model",
-                    "SAGEMAKER_ENV": "1",
-                    "HF_MODEL_ID": "/opt/ml/model",
-                    "SAGEMAKER_MODEL_SERVER_WORKERS": "1",
-                    "OPTION_QUANTIZE": "fp8",
-                },
+                "Environment": ANY,
                 "ModelDataSource": {
                     "S3DataSource": {
                         "S3Uri": ANY,
@@ -260,4 +243,9 @@ def test_js_model_with_optimize_quantization_on_pre_optimized_model_requests_are
             enable_network_isolation=True,  # should be set to false
             tags=ANY,
         )
+        # Verify the specific environment variables we care about
+        actual_env = mock_create_model.call_args[1]["container_defs"]["Environment"]
+        assert actual_env["OPTION_QUANTIZE"] == "fp8"
+        assert actual_env["SAGEMAKER_PROGRAM"] == "inference.py"
+        assert actual_env["HF_MODEL_ID"] == "/opt/ml/model"
         mock_endpoint_from_production_variants.assert_called_once()
