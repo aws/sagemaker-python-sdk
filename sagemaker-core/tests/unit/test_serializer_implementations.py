@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.serializers.implementations module."""
-from __future__ import absolute_import
+from __future__ import annotations
 
 import pytest
 from unittest.mock import Mock, patch
@@ -162,3 +162,25 @@ class TestBackwardCompatibility:
     def test_record_serializer_deprecated(self):
         """Test that numpy_to_record_serializer is available as deprecated."""
         assert hasattr(implementations, "numpy_to_record_serializer")
+
+
+class TestTorchSerializerWithOptionalDependency:
+    """Test torch serializer/deserializer with optional torch dependency."""
+
+    def test_torch_tensor_serializer_instantiation(self):
+        """Test that TorchTensorSerializer can be instantiated when torch is available."""
+        torch = pytest.importorskip("torch")
+        from sagemaker.core.serializers.base import TorchTensorSerializer
+
+        serializer = TorchTensorSerializer()
+        assert serializer is not None
+        assert serializer.content_type == "tensor/pt"
+
+    def test_torch_tensor_deserializer_instantiation(self):
+        """Test that TorchTensorDeserializer can be instantiated when torch is available."""
+        torch = pytest.importorskip("torch")
+        from sagemaker.core.deserializers.base import TorchTensorDeserializer
+
+        deserializer = TorchTensorDeserializer()
+        assert deserializer is not None
+        assert deserializer.accept == "tensor/pt"
