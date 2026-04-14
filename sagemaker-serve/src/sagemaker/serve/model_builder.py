@@ -2980,6 +2980,34 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "StartupParameters": startup_parameters,
                 "ComputeResourceRequirements": resources.get_compute_resource_requirements(),
             }
+
+            # Wire optional IC-level parameters into the specification
+            ic_data_cache_config = kwargs.get("data_cache_config")
+            if ic_data_cache_config is not None:
+                resolved_cache_config = self._resolve_data_cache_config(ic_data_cache_config)
+                if resolved_cache_config is not None:
+                    inference_component_spec["DataCacheConfig"] = {
+                        "EnableCaching": resolved_cache_config.enable_caching
+                    }
+
+            ic_base_component_name = kwargs.get("base_inference_component_name")
+            if ic_base_component_name is not None:
+                inference_component_spec["BaseInferenceComponentName"] = ic_base_component_name
+
+            ic_container = kwargs.get("container")
+            if ic_container is not None:
+                resolved_container = self._resolve_container_spec(ic_container)
+                if resolved_container is not None:
+                    container_dict = {}
+                    if hasattr(resolved_container, "image") and resolved_container.image:
+                        container_dict["Image"] = resolved_container.image
+                    if hasattr(resolved_container, "artifact_url") and resolved_container.artifact_url:
+                        container_dict["ArtifactUrl"] = resolved_container.artifact_url
+                    if hasattr(resolved_container, "environment") and resolved_container.environment:
+                        container_dict["Environment"] = resolved_container.environment
+                    if container_dict:
+                        inference_component_spec["Container"] = container_dict
+
             runtime_config = {"CopyCount": resources.copy_count}
             self.inference_component_name = (
                 inference_component_name
@@ -2987,11 +3015,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 or unique_name_from_base(self.model_name)
             )
 
+            # Use user-provided variant_name or default to "AllTraffic"
+            ic_variant_name = kwargs.get("variant_name", "AllTraffic")
+
             # [TODO]: Add endpoint_logging support
             self.sagemaker_session.create_inference_component(
                 inference_component_name=self.inference_component_name,
                 endpoint_name=self.endpoint_name,
-                variant_name="AllTraffic",  # default variant name
+                variant_name=ic_variant_name,
                 specification=inference_component_spec,
                 runtime_config=runtime_config,
                 tags=tags,
@@ -4129,6 +4160,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         ] = None,
         custom_orchestrator_instance_type: str = None,
         custom_orchestrator_initial_instance_count: int = None,
+        data_cache_config: Optional[Union["InferenceComponentDataCacheConfig", Dict[str, Any]]] = None,
+        base_inference_component_name: Optional[str] = None,
+        container: Optional[Union["InferenceComponentContainerSpecification", Dict[str, Any]]] = None,
+        variant_name: Optional[str] = None,
         **kwargs,
     ) -> Union[Endpoint, LocalEndpoint, Transformer]:
         """Deploy the built model to an ``Endpoint``.
@@ -4162,6 +4197,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 orchestrator deployment. (Default: None).
             custom_orchestrator_initial_instance_count (int, optional): Initial instance count
                 for custom orchestrator deployment. (Default: None).
+            data_cache_config (Union[InferenceComponentDataCacheConfig, dict], optional):
+                Data cache configuration for the inference component. Enables caching of model
+                artifacts and container images on instances for faster auto-scaling cold starts.
+                Can be a dict with 'enable_caching' key (e.g., {'enable_caching': True}) or an
+                InferenceComponentDataCacheConfig instance. (Default: None).
+            base_inference_component_name (str, optional): Name of the base inference component
+                for adapter deployments (e.g., LoRA adapters attached to a base model).
+                (Default: None).
+            container (Union[InferenceComponentContainerSpecification, dict], optional):
+                Custom container specification for the inference component, including image URI,
+                artifact URL, and environment variables. Can be a dict with keys 'image',
+                'artifact_url', 'environment' or an InferenceComponentContainerSpecification
+                instance. (Default: None).
+            variant_name (str, optional): The name of the production variant to deploy to.
+                If not specified, defaults to 'AllTraffic'. (Default: None).
         Returns:
             Union[Endpoint, LocalEndpoint, Transformer]: A ``sagemaker.core.resources.Endpoint``
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,
@@ -4183,6 +4233,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")
+
+        # Store IC-level parameters for use in _deploy_core_endpoint
+        if data_cache_config is not None:
+            kwargs["data_cache_config"] = data_cache_config
+        if base_inference_component_name is not None:
+            kwargs["base_inference_component_name"] = base_inference_component_name
+        if container is not None:
+            kwargs["container"] = container
+        if variant_name is not None:
+            kwargs["variant_name"] = variant_name
 
         # Handle model customization deployment
         if self._is_model_customization():

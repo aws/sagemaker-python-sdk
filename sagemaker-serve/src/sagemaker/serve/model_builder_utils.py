@@ -80,6 +80,10 @@ from sagemaker.serve.utils.types import ModelServer
 from sagemaker.core.resources import Model
 
 # MLflow imports
+from sagemaker.core.shapes import (
+    InferenceComponentDataCacheConfig,
+    InferenceComponentContainerSpecification,
+)
 from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_METADATA_FILE,
     MLFLOW_MODEL_PATH,
@@ -3369,7 +3373,10 @@ class _ModelBuilderUtils:
 
         return "auto"
 
-    def _resolve_data_cache_config(self, data_cache_config):
+    def _resolve_data_cache_config(
+        self,
+        data_cache_config: Union[InferenceComponentDataCacheConfig, Dict[str, Any], None],
+    ) -> Optional[InferenceComponentDataCacheConfig]:
         """Resolve data_cache_config to InferenceComponentDataCacheConfig.
 
         Args:
@@ -3380,18 +3387,22 @@ class _ModelBuilderUtils:
             InferenceComponentDataCacheConfig or None.
 
         Raises:
-            ValueError: If data_cache_config is an unsupported type.
+            ValueError: If data_cache_config is an unsupported type or dict
+                is missing the required 'enable_caching' key.
         """
         if data_cache_config is None:
             return None
 
-        from sagemaker.core.shapes import InferenceComponentDataCacheConfig
-
         if isinstance(data_cache_config, InferenceComponentDataCacheConfig):
             return data_cache_config
         elif isinstance(data_cache_config, dict):
+            if "enable_caching" not in data_cache_config:
+                raise ValueError(
+                    "data_cache_config dict must contain the required 'enable_caching' key. "
+                    "Example: {'enable_caching': True}"
+                )
             return InferenceComponentDataCacheConfig(
-                enable_caching=data_cache_config.get("enable_caching", False)
+                enable_caching=data_cache_config["enable_caching"]
             )
         else:
             raise ValueError(
@@ -3399,7 +3410,10 @@ class _ModelBuilderUtils:
                 f"InferenceComponentDataCacheConfig instance, got {type(data_cache_config)}"
             )
 
-    def _resolve_container_spec(self, container):
+    def _resolve_container_spec(
+        self,
+        container: Union[InferenceComponentContainerSpecification, Dict[str, Any], None],
+    ) -> Optional[InferenceComponentContainerSpecification]:
         """Resolve container to InferenceComponentContainerSpecification.
 
         Args:
@@ -3414,8 +3428,6 @@ class _ModelBuilderUtils:
         """
         if container is None:
             return None
-
-        from sagemaker.core.shapes import InferenceComponentContainerSpecification
 
         if isinstance(container, InferenceComponentContainerSpecification):
             return container
