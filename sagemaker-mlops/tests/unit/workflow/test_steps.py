@@ -409,7 +409,7 @@ def test_step_find_dependencies_in_step_arguments_with_json_get():
     obj = {"key": json_get}
     
     with patch('sagemaker.mlops.workflow.steps.TYPE_CHECKING', False):
-        with patch.dict('sys.modules', {'sagemaker.core.workflow.function_step': Mock()}):
+        with patch.dict('sys.modules', {'sagemaker.mlops.workflow.function_step': Mock()}):
             dependencies = Step._find_dependencies_in_step_arguments(step2, obj, {"step1": step1})
             assert "step1" in dependencies
 
@@ -445,7 +445,7 @@ def test_step_find_dependencies_in_step_arguments_with_delayed_return():
     mock_module = Mock()
     mock_module.DelayedReturn = delayed_return_class
     
-    with patch.dict('sys.modules', {'sagemaker.core.workflow.function_step': mock_module}):
+    with patch.dict('sys.modules', {'sagemaker.mlops.workflow.function_step': mock_module}):
         dependencies = Step._find_dependencies_in_step_arguments(step2, obj, {"step1": step1})
         assert "step1" in dependencies
 
@@ -473,7 +473,7 @@ def test_step_find_dependencies_in_step_arguments_with_string_reference():
     mock_module = Mock()
     mock_module.DelayedReturn = delayed_return_class
     
-    with patch.dict('sys.modules', {'sagemaker.core.workflow.function_step': mock_module}):
+    with patch.dict('sys.modules', {'sagemaker.mlops.workflow.function_step': mock_module}):
         dependencies = Step._find_dependencies_in_step_arguments(step2, obj, step_map)
         assert "step1" in dependencies
 
