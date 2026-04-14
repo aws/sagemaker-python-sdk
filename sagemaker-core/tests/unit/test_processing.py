@@ -493,6 +493,148 @@ class TestPreservationNonLocalFileBehavior:
         assert result[1].s3_output.s3_uri == "s3://my-bucket/second"
 
 
+class TestProcessingS3OutputOptionalS3Uri:
+    """Tests for ProcessingS3Output with optional s3_uri (issue #5559)."""
+
+    def test_processing_s3_output_with_none_s3_uri_creates_successfully(self):
+        """Verify ProcessingS3Output can be created with s3_uri=None."""
+        s3_output = ProcessingS3Output(
+            s3_uri=None,
+            local_path="/opt/ml/processing/output",
+            s3_upload_mode="EndOfJob",
+        )
+        assert s3_output.s3_uri is None
+        assert s3_output.local_path == "/opt/ml/processing/output"
+        assert s3_output.s3_upload_mode == "EndOfJob"
+
+    def test_processing_s3_output_without_s3_uri_param_creates_successfully(self):
+        """Verify ProcessingS3Output works with default None for s3_uri."""
+        s3_output = ProcessingS3Output(
+            local_path="/opt/ml/processing/output",
+            s3_upload_mode="EndOfJob",
+        )
+        assert s3_output.s3_uri is None
+
+    def test_normalize_outputs_with_none_s3_uri_generates_s3_path(self, mock_session):
+        """When s3_uri is None, _normalize_outputs should auto-generate an S3 URI."""
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "test-job"
+
+        s3_output = ProcessingS3Output(
+            s3_uri=None,
+            local_path="/opt/ml/processing/output",
+            s3_upload_mode="EndOfJob",
+        )
+        outputs = [ProcessingOutput(output_name="my-output", s3_output=s3_output)]
+
+        with patch("sagemaker.core.workflow.utilities._pipeline_config", None):
+            result = processor._normalize_outputs(outputs)
+
+        assert len(result) == 1
+        assert result[0].s3_output.s3_uri is not None
+        assert result[0].s3_output.s3_uri.startswith("s3://")
+        assert "test-job" in result[0].s3_output.s3_uri
+        assert "my-output" in result[0].s3_output.s3_uri
+
+    def test_normalize_outputs_with_none_s3_uri_and_pipeline_config_generates_join(self, mock_session):
+        """When in pipeline context with s3_uri=None, should generate a Join expression."""
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "test-job"
+
+        s3_output = ProcessingS3Output(
+            s3_uri=None,
+            local_path="/opt/ml/processing/output",
+            s3_upload_mode="EndOfJob",
+        )
+        outputs = [ProcessingOutput(output_name="my-output", s3_output=s3_output)]
+
+        with patch("sagemaker.core.workflow.utilities._pipeline_config") as mock_config:
+            mock_config.pipeline_name = "test-pipeline"
+            mock_config.step_name = "test-step"
+            result = processor._normalize_outputs(outputs)
+
+        assert len(result) == 1
+        # In pipeline context, the s3_uri should be a Join object
+        from sagemaker.core.workflow.functions import Join
+        assert isinstance(result[0].s3_output.s3_uri, Join)
+
+    def test_normalize_outputs_with_none_s3_output_generates_s3_path(self, mock_session):
+        """When s3_output is None, _normalize_outputs should create s3_output and auto-generate URI."""
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "test-job"
+
+        outputs = [ProcessingOutput(output_name="my-output")]
+
+        with patch("sagemaker.core.workflow.utilities._pipeline_config", None):
+            result = processor._normalize_outputs(outputs)
+
+        assert len(result) == 1
+        assert result[0].s3_output is not None
+        assert result[0].s3_output.s3_uri is not None
+        assert result[0].s3_output.s3_uri.startswith("s3://")
+        assert result[0].s3_output.local_path == "/opt/ml/processing/output"
+        assert result[0].s3_output.s3_upload_mode == "EndOfJob"
+
+    def test_processing_output_to_request_dict_with_none_s3_uri_omits_key(self):
+        """When s3_uri is None, S3Uri should be omitted from the request dict."""
+        s3_output = ProcessingS3Output(
+            s3_uri=None,
+            local_path="/opt/ml/processing/output",
+            s3_upload_mode="EndOfJob",
+        )
+        processing_output = ProcessingOutput(output_name="results", s3_output=s3_output)
+
+        result = _processing_output_to_request_dict(processing_output)
+
+        assert result["OutputName"] == "results"
+        assert "S3Output" in result
+        assert "S3Uri" not in result["S3Output"]
+        assert result["S3Output"]["LocalPath"] == "/opt/ml/processing/output"
+        assert result["S3Output"]["S3UploadMode"] == "EndOfJob"
+
+    def test_normalize_outputs_with_explicit_s3_uri_unchanged(self, mock_session):
+        """Regression test: explicit s3:// URIs should be preserved."""
+        processor = Processor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+        processor._current_job_name = "test-job"
+
+        s3_output = ProcessingS3Output(
+            s3_uri="s3://my-bucket/my-output",
+            local_path="/opt/ml/processing/output",
+            s3_upload_mode="EndOfJob",
+        )
+        outputs = [ProcessingOutput(output_name="my-output", s3_output=s3_output)]
+
+        with patch("sagemaker.core.workflow.utilities._pipeline_config", None):
+            result = processor._normalize_outputs(outputs)
+
+        assert len(result) == 1
+        assert result[0].s3_output.s3_uri == "s3://my-bucket/my-output"
+
+
 class TestProcessorStartNew:
     def test_start_new_with_pipeline_session(self, mock_session):
         from sagemaker.core.workflow.pipeline_context import PipelineSession
