@@ -168,6 +168,82 @@ class TestResolveContainerSpec:
 
 
 # ============================================================
+# Tests for _apply_optional_ic_params helper
+# ============================================================
+
+class TestApplyOptionalIcParams:
+    """Tests for the static helper that wires optional IC params into a spec dict."""
+
+    def test_no_params_no_mutation(self):
+        from sagemaker.serve.model_builder import ModelBuilder
+        spec = {"ModelName": "m"}
+        ModelBuilder._apply_optional_ic_params(spec)
+        assert "DataCacheConfig" not in spec
+        assert "BaseInferenceComponentName" not in spec
+        assert "Container" not in spec
+
+    def test_data_cache_config_dict(self):
+        from sagemaker.serve.model_builder import ModelBuilder
+        spec = {"ModelName": "m"}
+        ModelBuilder._apply_optional_ic_params(
+            spec, data_cache_config={"enable_caching": True}
+        )
+        assert spec["DataCacheConfig"] == {"EnableCaching": True}
+
+    def test_data_cache_config_typed(self):
+        from sagemaker.serve.model_builder import ModelBuilder
+        spec = {"ModelName": "m"}
+        cfg = InferenceComponentDataCacheConfig(enable_caching=False)
+        ModelBuilder._apply_optional_ic_params(spec, data_cache_config=cfg)
+        assert spec["DataCacheConfig"] == {"EnableCaching": False}
+
+    def test_base_inference_component_name(self):
+        from sagemaker.serve.model_builder import ModelBuilder
+        spec = {"ModelName": "m"}
+        ModelBuilder._apply_optional_ic_params(
+            spec, base_inference_component_name="base-ic"
+        )
+        assert spec["BaseInferenceComponentName"] == "base-ic"
+
+    def test_container_dict(self):
+        from sagemaker.serve.model_builder import ModelBuilder
+        spec = {"ModelName": "m"}
+        ModelBuilder._apply_optional_ic_params(
+            spec,
+            container={
+                "image": "img:latest",
+                "artifact_url": "s3://b/a",
+                "environment": {"K": "V"},
+            },
+        )
+        assert spec["Container"] == {
+            "Image": "img:latest",
+            "ArtifactUrl": "s3://b/a",
+            "Environment": {"K": "V"},
+        }
+
+    def test_container_typed(self):
+        from sagemaker.serve.model_builder import ModelBuilder
+        spec = {"ModelName": "m"}
+        c = InferenceComponentContainerSpecification(image="img")
+        ModelBuilder._apply_optional_ic_params(spec, container=c)
+        assert spec["Container"] == {"Image": "img"}
+
+    def test_all_params_together(self):
+        from sagemaker.serve.model_builder import ModelBuilder
+        spec = {"ModelName": "m"}
+        ModelBuilder._apply_optional_ic_params(
+            spec,
+            data_cache_config={"enable_caching": True},
+            base_inference_component_name="base",
+            container={"image": "img"},
+        )
+        assert spec["DataCacheConfig"] == {"EnableCaching": True}
+        assert spec["BaseInferenceComponentName"] == "base"
+        assert spec["Container"] == {"Image": "img"}
+
+
+# ============================================================
 # Tests for core wiring logic in _deploy_core_endpoint
 # ============================================================
 
@@ -419,5 +495,163 @@ class TestDeployCoreEndpointWiring:
             # Verify production_variant was called with variant_name="CustomVariant"
             mock_pv.assert_called_once()
             pv_kwargs = mock_pv.call_args
-            assert pv_kwargs.kwargs.get("variant_name") == "CustomVariant" or \
-                (len(pv_kwargs.args) > 0 and False)  # variant_name is always a kwarg
+            assert pv_kwargs.kwargs.get("variant_name") == "CustomVariant"
+
+
+# ============================================================
+# Tests for _update_inference_component wiring
+# ============================================================
+
+class TestUpdateInferenceComponentWiring:
+    """Tests that _update_inference_component correctly wires optional IC params."""
+
+    def _make_model_builder(self):
+        from sagemaker.serve.model_builder import ModelBuilder
+
+        mb = object.__new__(ModelBuilder)
+        mb.model_name = "test-model"
+        mb.sagemaker_session = MagicMock()
+        return mb
+
+    def test_update_ic_with_data_cache_config(self):
+        mb = self._make_model_builder()
+        from sagemaker.core.inference_config import ResourceRequirements
+        resources = ResourceRequirements(
+            requests={"memory": 8192, "num_accelerators": 1, "num_cpus": 2, "copies": 1}
+        )
+
+        mb._update_inference_component(
+            "my-ic", resources, data_cache_config={"enable_caching": True}
+        )
+
+        call_kwargs = mb.sagemaker_session.update_inference_component.call_args
+        spec = call_kwargs.kwargs["specification"]
+        assert spec["DataCacheConfig"] == {"EnableCaching": True}
+
+    def test_update_ic_with_container(self):
+        mb = self._make_model_builder()
+        from sagemaker.core.inference_config import ResourceRequirements
+        resources = ResourceRequirements(
+            requests={"memory": 8192, "num_accelerators": 1, "num_cpus": 2, "copies": 1}
+        )
+
+        mb._update_inference_component(
+            "my-ic", resources, container={"image": "img:v1"}
+        )
+
+        call_kwargs = mb.sagemaker_session.update_inference_component.call_args
+        spec = call_kwargs.kwargs["specification"]
+        assert spec["Container"] == {"Image": "img:v1"}
+
+    def test_update_ic_with_base_inference_component_name(self):
+        mb = self._make_model_builder()
+        from sagemaker.core.inference_config import ResourceRequirements
+        resources = ResourceRequirements(
+            requests={"memory": 8192, "num_accelerators": 1, "num_cpus": 2, "copies": 1}
+        )
+
+        mb._update_inference_component(
+            "my-ic", resources, base_inference_component_name="base-ic"
+        )
+
+        call_kwargs = mb.sagemaker_session.update_inference_component.call_args
+        spec = call_kwargs.kwargs["specification"]
+        assert spec["BaseInferenceComponentName"] == "base-ic"
+
+    def test_update_ic_no_optional_params(self):
+        mb = self._make_model_builder()
+        from sagemaker.core.inference_config import ResourceRequirements
+        resources = ResourceRequirements(
+            requests={"memory": 8192, "num_accelerators": 1, "num_cpus": 2, "copies": 1}
+        )
+
+        mb._update_inference_component("my-ic", resources)
+
+        call_kwargs = mb.sagemaker_session.update_inference_component.call_args
+        spec = call_kwargs.kwargs["specification"]
+        assert "DataCacheConfig" not in spec
+        assert "BaseInferenceComponentName" not in spec
+        assert "Container" not in spec
+
+
+# ============================================================
+# Tests for deploy() parameter forwarding
+# ============================================================
+
+class TestDeployParameterForwarding:
+    """Tests that deploy() correctly forwards new IC params into kwargs."""
+
+    def test_deploy_forwards_variant_name_to_kwargs(self):
+        """deploy() should set kwargs['variant_name'] to the provided value."""
+        from sagemaker.serve.model_builder import ModelBuilder
+
+        mb = object.__new__(ModelBuilder)
+        mb.built_model = MagicMock()
+        mb._deployed = False
+        mb._is_sharded_model = False
+        mb.model_name = "test"
+        mb.instance_type = "ml.m5.large"
+        mb.endpoint_name = None
+        mb.mode = None
+        mb.model_server = None
+
+        # Mock _is_model_customization to return False
+        mb._is_model_customization = MagicMock(return_value=False)
+        # Mock _deploy to capture kwargs
+        captured = {}
+
+        def fake_deploy(**kw):
+            captured.update(kw)
+            return MagicMock()
+
+        mb._deploy = fake_deploy
+
+        mb.deploy(
+            endpoint_name="ep",
+            instance_type="ml.m5.large",
+            initial_instance_count=1,
+            variant_name="MyVariant",
+            data_cache_config={"enable_caching": True},
+            base_inference_component_name="base-ic",
+            container={"image": "img"},
+        )
+
+        assert captured["variant_name"] == "MyVariant"
+        assert captured["data_cache_config"] == {"enable_caching": True}
+        assert captured["base_inference_component_name"] == "base-ic"
+        assert captured["container"] == {"image": "img"}
+
+    def test_deploy_defaults_variant_name_to_all_traffic(self):
+        """deploy() should default variant_name to 'AllTraffic' when not provided."""
+        from sagemaker.serve.model_builder import ModelBuilder
+
+        mb = object.__new__(ModelBuilder)
+        mb.built_model = MagicMock()
+        mb._deployed = False
+        mb._is_sharded_model = False
+        mb.model_name = "test"
+        mb.instance_type = "ml.m5.large"
+        mb.endpoint_name = None
+        mb.mode = None
+        mb.model_server = None
+        mb._is_model_customization = MagicMock(return_value=False)
+
+        captured = {}
+
+        def fake_deploy(**kw):
+            captured.update(kw)
+            return MagicMock()
+
+        mb._deploy = fake_deploy
+
+        mb.deploy(
+            endpoint_name="ep",
+            instance_type="ml.m5.large",
+            initial_instance_count=1,
+        )
+
+        assert captured["variant_name"] == "AllTraffic"
+        # Optional params should not be in kwargs when not provided
+        assert "data_cache_config" not in captured
+        assert "base_inference_component_name" not in captured
+        assert "container" not in captured

@@ -2702,6 +2702,52 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         return desc
 
+    @staticmethod
+    def _apply_optional_ic_params(inference_component_spec, **kwargs):
+        """Apply optional IC-level parameters to an inference component spec dict.
+
+        Wires data_cache_config, base_inference_component_name, and container
+        into the given inference_component_spec dict.  Shared by
+        _deploy_core_endpoint and _update_inference_component to avoid
+        code duplication.
+
+        Args:
+            inference_component_spec (dict): The spec dict to mutate in-place.
+            **kwargs: May contain data_cache_config, base_inference_component_name,
+                and container.
+        """
+        from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
+
+        ic_data_cache_config = kwargs.get("data_cache_config")
+        if ic_data_cache_config is not None:
+            resolved = _ModelBuilderUtils._resolve_data_cache_config(
+                None, ic_data_cache_config
+            )
+            if resolved is not None:
+                inference_component_spec["DataCacheConfig"] = {
+                    "EnableCaching": resolved.enable_caching
+                }
+
+        ic_base_component_name = kwargs.get("base_inference_component_name")
+        if ic_base_component_name is not None:
+            inference_component_spec["BaseInferenceComponentName"] = ic_base_component_name
+
+        ic_container = kwargs.get("container")
+        if ic_container is not None:
+            resolved_container = _ModelBuilderUtils._resolve_container_spec(
+                None, ic_container
+            )
+            if resolved_container is not None:
+                container_dict = {}
+                if resolved_container.image:
+                    container_dict["Image"] = resolved_container.image
+                if resolved_container.artifact_url:
+                    container_dict["ArtifactUrl"] = resolved_container.artifact_url
+                if resolved_container.environment:
+                    container_dict["Environment"] = resolved_container.environment
+                if container_dict:
+                    inference_component_spec["Container"] = container_dict
+
     def _deploy_core_endpoint(self, **kwargs):
         # Extract and update self parameters
         initial_instance_count = kwargs.get(
@@ -2930,31 +2976,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             }
 
             # Wire optional IC-level parameters into the specification
-            ic_data_cache_config = kwargs.get("data_cache_config")
-            if ic_data_cache_config is not None:
-                resolved_cache_config = self._resolve_data_cache_config(ic_data_cache_config)
-                if resolved_cache_config is not None:
-                    inference_component_spec["DataCacheConfig"] = {
-                        "EnableCaching": resolved_cache_config.enable_caching
-                    }
-
-            ic_base_component_name = kwargs.get("base_inference_component_name")
-            if ic_base_component_name is not None:
-                inference_component_spec["BaseInferenceComponentName"] = ic_base_component_name
-
-            ic_container = kwargs.get("container")
-            if ic_container is not None:
-                resolved_container = self._resolve_container_spec(ic_container)
-                if resolved_container is not None:
-                    container_dict = {}
-                    if resolved_container.image:
-                        container_dict["Image"] = resolved_container.image
-                    if resolved_container.artifact_url:
-                        container_dict["ArtifactUrl"] = resolved_container.artifact_url
-                    if resolved_container.environment:
-                        container_dict["Environment"] = resolved_container.environment
-                    if container_dict:
-                        inference_component_spec["Container"] = container_dict
+            self._apply_optional_ic_params(inference_component_spec, **kwargs)
 
             runtime_config = {"CopyCount": resources.copy_count}
             self.inference_component_name = (
@@ -3148,31 +3170,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         }
 
         # Wire optional IC-level parameters into the update specification
-        ic_data_cache_config = kwargs.get("data_cache_config")
-        if ic_data_cache_config is not None:
-            resolved_cache_config = self._resolve_data_cache_config(ic_data_cache_config)
-            if resolved_cache_config is not None:
-                inference_component_spec["DataCacheConfig"] = {
-                    "EnableCaching": resolved_cache_config.enable_caching
-                }
-
-        ic_base_component_name = kwargs.get("base_inference_component_name")
-        if ic_base_component_name is not None:
-            inference_component_spec["BaseInferenceComponentName"] = ic_base_component_name
-
-        ic_container = kwargs.get("container")
-        if ic_container is not None:
-            resolved_container = self._resolve_container_spec(ic_container)
-            if resolved_container is not None:
-                container_dict = {}
-                if resolved_container.image:
-                    container_dict["Image"] = resolved_container.image
-                if resolved_container.artifact_url:
-                    container_dict["ArtifactUrl"] = resolved_container.artifact_url
-                if resolved_container.environment:
-                    container_dict["Environment"] = resolved_container.environment
-                if container_dict:
-                    inference_component_spec["Container"] = container_dict
+        self._apply_optional_ic_params(inference_component_spec, **kwargs)
 
         runtime_config = {"CopyCount": resource_requirements.copy_count}
 
@@ -4384,6 +4382,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         data_cache_config: Optional[Union["InferenceComponentDataCacheConfig", Dict[str, Any]]] = None,
         **kwargs,
     ) -> Endpoint:
+        # NOTE: For backward compatibility, model customization deployments
+        # default variant_name to endpoint_name (not "AllTraffic") when the
+        # caller does not provide an explicit value.
         """Deploy a model customization (fine-tuned) model to an endpoint with inference components.
 
         This method handles the special deployment flow for fine-tuned models, creating:
@@ -4423,8 +4424,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Fetch model package
         model_package = self._fetch_model_package()
 
-        # Resolve variant_name: use provided value or default to "AllTraffic"
-        effective_variant_name = variant_name or "AllTraffic"
+        # Resolve variant_name: preserve backward-compatible default of
+        # endpoint_name for model customization deployments.
+        effective_variant_name = variant_name or endpoint_name or "AllTraffic"
 
         # Resolve data_cache_config if provided
         resolved_data_cache_config = None
