@@ -15,11 +15,23 @@
 This module provides an early check for pydantic/pydantic-core version
 compatibility to give users a clear error message with fix instructions
 instead of a cryptic SystemError.
+
+When pydantic-core is upgraded independently of pydantic (e.g., via
+``pip install --force-reinstall --no-deps``), Python raises a ``SystemError``
+at import time.  This module catches that error and converts it into a
+helpful ``ImportError`` with remediation steps.
 """
 
 
 def check_pydantic_compatibility():
     """Check that pydantic and pydantic-core versions are compatible.
+
+    Pydantic internally requires an exact matching pydantic-core version
+    (e.g., pydantic 2.11.5 requires pydantic-core==2.41.5).  If the two
+    packages are out of sync, ``import pydantic`` raises a ``SystemError``.
+
+    This function catches that ``SystemError`` and re-raises it as an
+    ``ImportError`` with clear instructions on how to fix the issue.
 
     Raises:
         ImportError: If pydantic and pydantic-core versions are incompatible,
@@ -37,44 +49,3 @@ def check_pydantic_compatibility():
             "    pip install pydantic pydantic-core --force-reinstall\n\n"
             "This will ensure both packages are installed at compatible versions."
         ) from e
-
-    try:
-        import pydantic_core  # noqa: F401
-    except ImportError:
-        # pydantic_core not installed separately is fine;
-        # pydantic manages it as a dependency
-        return
-
-    # Additional version check: pydantic declares the exact pydantic-core
-    # version it requires. Verify they match.
-    try:
-        pydantic_version = pydantic.VERSION
-        pydantic_core_version = pydantic_core.VERSION
-
-        # pydantic >= 2.x stores the required core version
-        expected_core_version = getattr(pydantic, '__pydantic_core_version__', None)
-        if expected_core_version is None:
-            # Try alternative attribute name used in some pydantic versions
-            expected_core_version = getattr(
-                pydantic, '_internal', None
-            ) and getattr(
-                getattr(pydantic, '_internal', None),
-                '_generate_schema',
-                None,
-            )
-            # If we can't determine the expected version, skip the check
-            return
-
-        if pydantic_core_version != expected_core_version:
-            raise ImportError(
-                f"Pydantic/pydantic-core version mismatch detected: "
-                f"pydantic {pydantic_version} requires pydantic-core=={expected_core_version}, "
-                f"but pydantic-core {pydantic_core_version} is installed.\n\n"
-                "To fix this, run:\n"
-                "    pip install pydantic pydantic-core --force-reinstall\n\n"
-                "This will ensure both packages are installed at compatible versions."
-            )
-    except (AttributeError, TypeError):
-        # If we can't determine versions, skip the check
-        # The SystemError catch above will handle the most common case
-        pass
