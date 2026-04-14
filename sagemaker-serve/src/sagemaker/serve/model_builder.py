@@ -45,6 +45,8 @@ from sagemaker.core.shapes import (
     ModelLifeCycle,
     DriftCheckBaselines,
     InferenceComponentComputeResourceRequirements,
+    InferenceComponentDataCacheConfig,
+    InferenceComponentContainerSpecification,
 )
 from sagemaker.core.resources import (
     ModelPackage,

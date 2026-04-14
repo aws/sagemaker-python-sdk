@@ -3369,6 +3369,71 @@ class _ModelBuilderUtils:
 
         return "auto"
 
+    def _resolve_data_cache_config(self, data_cache_config):
+        """Resolve data_cache_config to InferenceComponentDataCacheConfig.
+
+        Args:
+            data_cache_config: Either a dict with 'enable_caching' key,
+                an InferenceComponentDataCacheConfig instance, or None.
+
+        Returns:
+            InferenceComponentDataCacheConfig or None.
+
+        Raises:
+            ValueError: If data_cache_config is an unsupported type.
+        """
+        if data_cache_config is None:
+            return None
+
+        from sagemaker.core.shapes import InferenceComponentDataCacheConfig
+
+        if isinstance(data_cache_config, InferenceComponentDataCacheConfig):
+            return data_cache_config
+        elif isinstance(data_cache_config, dict):
+            return InferenceComponentDataCacheConfig(
+                enable_caching=data_cache_config.get("enable_caching", False)
+            )
+        else:
+            raise ValueError(
+                f"data_cache_config must be a dict with 'enable_caching' key or an "
+                f"InferenceComponentDataCacheConfig instance, got {type(data_cache_config)}"
+            )
+
+    def _resolve_container_spec(self, container):
+        """Resolve container to InferenceComponentContainerSpecification.
+
+        Args:
+            container: Either a dict with container config keys (image, artifact_url,
+                environment), an InferenceComponentContainerSpecification instance, or None.
+
+        Returns:
+            InferenceComponentContainerSpecification or None.
+
+        Raises:
+            ValueError: If container is an unsupported type.
+        """
+        if container is None:
+            return None
+
+        from sagemaker.core.shapes import InferenceComponentContainerSpecification
+
+        if isinstance(container, InferenceComponentContainerSpecification):
+            return container
+        elif isinstance(container, dict):
+            kwargs = {}
+            if "image" in container:
+                kwargs["image"] = container["image"]
+            if "artifact_url" in container:
+                kwargs["artifact_url"] = container["artifact_url"]
+            if "environment" in container:
+                kwargs["environment"] = container["environment"]
+            return InferenceComponentContainerSpecification(**kwargs)
+        else:
+            raise ValueError(
+                f"container must be a dict or an InferenceComponentContainerSpecification "
+                f"instance, got {type(container)}"
+            )
+
     def get_huggingface_model_metadata(
         self, model_id: str, hf_hub_token: Optional[str] = None
     ) -> dict:
