@@ -925,6 +925,37 @@ class TestBaseTemplateContext:
         assert context['dataset_artifact_arn'] == DEFAULT_ARTIFACT_ARN
         assert 'action_arn_prefix' in context
 
+    @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
+    def test_get_base_template_context_deferred_mlflow_resolution(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
+        """Test that mlflow_resource_arn is resolved in _get_base_template_context when session was None at construction."""
+        mock_resolve.return_value = mock_model_info
+        # Validator returns None because session was None at construction time
+        mock_resolve_mlflow.return_value = None
+
+        evaluator = BaseEvaluator(
+            model=DEFAULT_MODEL,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+        # Simulate the case where ARN was not resolved at construction (session was None)
+        evaluator.mlflow_resource_arn = None
+
+        resolved_arn = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/deferred"
+        mock_resolve_mlflow.return_value = resolved_arn
+
+        context = evaluator._get_base_template_context(
+            role_arn=DEFAULT_ROLE_ARN,
+            region=DEFAULT_REGION,
+            account_id="123456789012",
+            model_package_group_arn=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            resolved_model_artifact_arn=DEFAULT_ARTIFACT_ARN,
+        )
+
+        assert context['mlflow_resource_arn'] == resolved_arn
+        mock_resolve_mlflow.assert_called_with(mock_session)
+
 
 class TestResolveModelArtifacts:
     """Tests for model artifacts resolution."""
