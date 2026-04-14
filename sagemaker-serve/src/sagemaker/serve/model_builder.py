@@ -2851,62 +2851,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self.role_arn is None:
             raise ValueError("Role can not be null for deploying a model")
 
-        routing_config = _resolve_routing_config(routing_config)
-
-        if (
-            inference_recommendation_id is not None
-            or self.inference_recommender_job_results is not None
-        ):
-            instance_type, initial_instance_count = self._update_params(
-                instance_type=instance_type,
-                initial_instance_count=initial_instance_count,
-                accelerator_type=accelerator_type,
-                async_inference_config=async_inference_config,
-                serverless_inference_config=serverless_inference_config,
-                explainer_config=explainer_config,
-                inference_recommendation_id=inference_recommendation_id,
-                inference_recommender_job_results=self.inference_recommender_job_results,
-            )
-
-        is_async = async_inference_config is not None
-        if is_async and not isinstance(async_inference_config, AsyncInferenceConfig):
-            raise ValueError("async_inference_config needs to be a AsyncInferenceConfig object")
-
-        is_explainer_enabled = explainer_config is not None
-        if is_explainer_enabled and not isinstance(explainer_config, ExplainerConfig):
-            raise ValueError("explainer_config needs to be a ExplainerConfig object")
-
-        is_serverless = serverless_inference_config is not None
-        if not is_serverless and not (instance_type and initial_instance_count):
-            raise ValueError(
-                "Must specify instance type and instance count unless using serverless inference"
-            )
-
-        if is_serverless and not isinstance(serverless_inference_config, ServerlessInferenceConfig):
-            raise ValueError(
-                "serverless_inference_config needs to be a ServerlessInferenceConfig object"
-            )
-
-        if self._is_sharded_model:
-            if endpoint_type != EndpointType.INFERENCE_COMPONENT_BASED:
-                logger.warning(
-                    "Forcing INFERENCE_COMPONENT_BASED endpoint for sharded model. ADVISORY - "
-                    "Use INFERENCE_COMPONENT_BASED endpoints over MODEL_BASED endpoints."
-                )
-                endpoint_type = EndpointType.INFERENCE_COMPONENT_BASED
-
-            if self._enable_network_isolation:
-                raise ValueError(
-                    "EnableNetworkIsolation cannot be set to True since SageMaker Fast Model "
-                    "Loading of model requires network access."
-                )
-
-            if resources and resources.num_cpus and resources.num_cpus > 0:
-                logger.warning(
-                    "NumberOfCpuCoresRequired should be 0 for the best experience with SageMaker "
-                    "Fast Model Loading. Configure by setting `num_cpus` to 0 in `resources`."
-                )
-
         if endpoint_type == EndpointType.INFERENCE_COMPONENT_BASED:
             if update_endpoint:
                 raise ValueError(
@@ -2933,10 +2877,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 else:
                     managed_instance_scaling_config["MinInstanceCount"] = initial_instance_count
 
+            # Use user-provided variant_name or default to "AllTraffic"
+            ic_variant_name = kwargs.get("variant_name", "AllTraffic")
+
             if not self.sagemaker_session.endpoint_in_service_or_not(self.endpoint_name):
                 production_variant = session_helper.production_variant(
                     instance_type=instance_type,
                     initial_instance_count=initial_instance_count,
+                    variant_name=ic_variant_name,
                     volume_size=volume_size,
                     model_data_download_timeout=model_data_download_timeout,
                     container_startup_health_check_timeout=container_startup_health_check_timeout,
@@ -2986,9 +2934,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if ic_data_cache_config is not None:
                 resolved_cache_config = self._resolve_data_cache_config(ic_data_cache_config)
                 if resolved_cache_config is not None:
-                    cache_dict = {"EnableCaching": resolved_cache_config.enable_caching}
-                    # Forward any additional fields from the shape as they become available
-                    inference_component_spec["DataCacheConfig"] = cache_dict
+                    inference_component_spec["DataCacheConfig"] = {
+                        "EnableCaching": resolved_cache_config.enable_caching
+                    }
 
             ic_base_component_name = kwargs.get("base_inference_component_name")
             if ic_base_component_name is not None:
@@ -3014,9 +2962,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 or self.inference_component_name
                 or unique_name_from_base(self.model_name)
             )
-
-            # Use user-provided variant_name or default to "AllTraffic"
-            ic_variant_name = kwargs.get("variant_name", "AllTraffic")
 
             # [TODO]: Add endpoint_logging support
             self.sagemaker_session.create_inference_component(
@@ -3201,6 +3146,34 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             "StartupParameters": startup_parameters,
             "ComputeResourceRequirements": compute_rr,
         }
+
+        # Wire optional IC-level parameters into the update specification
+        ic_data_cache_config = kwargs.get("data_cache_config")
+        if ic_data_cache_config is not None:
+            resolved_cache_config = self._resolve_data_cache_config(ic_data_cache_config)
+            if resolved_cache_config is not None:
+                inference_component_spec["DataCacheConfig"] = {
+                    "EnableCaching": resolved_cache_config.enable_caching
+                }
+
+        ic_base_component_name = kwargs.get("base_inference_component_name")
+        if ic_base_component_name is not None:
+            inference_component_spec["BaseInferenceComponentName"] = ic_base_component_name
+
+        ic_container = kwargs.get("container")
+        if ic_container is not None:
+            resolved_container = self._resolve_container_spec(ic_container)
+            if resolved_container is not None:
+                container_dict = {}
+                if resolved_container.image:
+                    container_dict["Image"] = resolved_container.image
+                if resolved_container.artifact_url:
+                    container_dict["ArtifactUrl"] = resolved_container.artifact_url
+                if resolved_container.environment:
+                    container_dict["Environment"] = resolved_container.environment
+                if container_dict:
+                    inference_component_spec["Container"] = container_dict
+
         runtime_config = {"CopyCount": resource_requirements.copy_count}
 
         return self.sagemaker_session.update_inference_component(
@@ -4160,6 +4133,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         ] = None,
         custom_orchestrator_instance_type: str = None,
         custom_orchestrator_initial_instance_count: int = None,
+        inference_component_name: Optional[str] = None,
         data_cache_config: Optional[Union["InferenceComponentDataCacheConfig", Dict[str, Any]]] = None,
         base_inference_component_name: Optional[str] = None,
         container: Optional[Union["InferenceComponentContainerSpecification", Dict[str, Any]]] = None,
@@ -4197,6 +4171,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 orchestrator deployment. (Default: None).
             custom_orchestrator_initial_instance_count (int, optional): Initial instance count
                 for custom orchestrator deployment. (Default: None).
+            inference_component_name (str, optional): The name of the inference component
+                to create. Only used for inference-component-based endpoints. If not specified,
+                a unique name is generated from the model name. (Default: None).
             data_cache_config (Union[InferenceComponentDataCacheConfig, dict], optional):
                 Data cache configuration for the inference component. Enables caching of model
                 artifacts and container images on instances for faster auto-scaling cold starts.
@@ -4213,6 +4190,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             variant_name (str, optional): The name of the production variant to deploy to.
                 If not provided (or explicitly ``None``), defaults to ``'AllTraffic'``.
                 (Default: None).
+
         Returns:
             Union[Endpoint, LocalEndpoint, Transformer]: A ``sagemaker.core.resources.Endpoint``
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,
@@ -4235,15 +4213,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")
 
-        # Store IC-level parameters for use in _deploy_core_endpoint
+        # Centralize variant_name defaulting and always forward IC-level params
+        kwargs["variant_name"] = variant_name or "AllTraffic"
+        if inference_component_name is not None:
+            kwargs["inference_component_name"] = inference_component_name
         if data_cache_config is not None:
             kwargs["data_cache_config"] = data_cache_config
         if base_inference_component_name is not None:
             kwargs["base_inference_component_name"] = base_inference_component_name
         if container is not None:
             kwargs["container"] = container
-        if variant_name is not None:
-            kwargs["variant_name"] = variant_name
 
         # Handle model customization deployment
         if self._is_model_customization():
@@ -4401,6 +4380,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         initial_instance_count: int = 1,
         inference_component_name: Optional[str] = None,
         inference_config: Optional[ResourceRequirements] = None,
+        variant_name: Optional[str] = None,
+        data_cache_config: Optional[Union["InferenceComponentDataCacheConfig", Dict[str, Any]]] = None,
         **kwargs,
     ) -> Endpoint:
         """Deploy a model customization (fine-tuned) model to an endpoint with inference components.
@@ -4442,6 +4423,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Fetch model package
         model_package = self._fetch_model_package()
 
+        # Resolve variant_name: use provided value or default to "AllTraffic"
+        effective_variant_name = variant_name or "AllTraffic"
+
+        # Resolve data_cache_config if provided
+        resolved_data_cache_config = None
+        if data_cache_config is not None:
+            resolved_data_cache_config = self._resolve_data_cache_config(data_cache_config)
+
         # Check if endpoint exists
         is_existing_endpoint = self._does_endpoint_exist(endpoint_name)
 
@@ -4450,7 +4439,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 endpoint_config_name=endpoint_name,
                 production_variants=[
                     ProductionVariant(
-                        variant_name=endpoint_name,
+                        variant_name=effective_variant_name,
                         instance_type=self.instance_type,
                         initial_instance_count=initial_instance_count or 1,
                     )
@@ -4491,6 +4480,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
                 base_ic_spec = InferenceComponentSpecification(
                     model_name=self.built_model.model_name,
+                    data_cache_config=resolved_data_cache_config,
                 )
                 if inference_config is not None:
                     base_ic_spec.compute_resource_requirements = (
@@ -4507,7 +4497,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 InferenceComponent.create(
                     inference_component_name=base_ic_name,
                     endpoint_name=endpoint_name,
-                    variant_name=endpoint_name,
+                    variant_name=effective_variant_name,
                     specification=base_ic_spec,
                     runtime_config=InferenceComponentRuntimeConfig(copy_count=1),
                     tags=[{"key": "Base", "value": base_model_recipe_name}],
@@ -4549,7 +4539,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             ic_spec = InferenceComponentSpecification(
                 container=InferenceComponentContainerSpecification(
                     image=self.image_uri, artifact_url=artifact_url, environment=self.env_vars
-                )
+                ),
+                data_cache_config=resolved_data_cache_config,
             )
 
             if inference_config is not None:
@@ -4567,7 +4558,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             InferenceComponent.create(
                 inference_component_name=inference_component_name,
                 endpoint_name=endpoint_name,
-                variant_name=endpoint_name,
+                variant_name=effective_variant_name,
                 specification=ic_spec,
                 runtime_config=InferenceComponentRuntimeConfig(copy_count=1),
             )

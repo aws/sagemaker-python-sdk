@@ -24,7 +24,11 @@ from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 
 
 class ConcreteUtils(_ModelBuilderUtils):
-    """Concrete class to test mixin methods."""
+    """Concrete class to test mixin methods.
+
+    _ModelBuilderUtils is a mixin that does not define __init__,
+    so this can be instantiated without arguments.
+    """
     pass
 
 
@@ -62,16 +66,19 @@ class TestResolveDataCacheConfig:
             utils._resolve_data_cache_config({})
 
     def test_dict_with_extra_keys_still_works(self, utils):
-        """Extra keys in the input dict are ignored (not forwarded to the Pydantic constructor).
+        """Extra keys in the input dict are ignored.
 
         The resolver only extracts 'enable_caching' from the dict, so extra keys
         do not cause Pydantic validation errors even if the model forbids extras.
+        We verify the result has enable_caching=True and does not expose extra_key.
         """
         result = utils._resolve_data_cache_config(
             {"enable_caching": True, "extra_key": "ignored"}
         )
         assert isinstance(result, InferenceComponentDataCacheConfig)
         assert result.enable_caching is True
+        # Verify extra_key is not present on the result object
+        assert not hasattr(result, "extra_key") or getattr(result, "extra_key", None) is None
 
     def test_invalid_type_raises(self, utils):
         with pytest.raises(ValueError, match="data_cache_config must be a dict"):
@@ -230,8 +237,7 @@ class TestDeployCoreEndpointWiring:
         # Verify create_inference_component was called with variant_name="AllTraffic"
         mb.sagemaker_session.create_inference_component.assert_called_once()
         call_kwargs = mb.sagemaker_session.create_inference_component.call_args
-        assert call_kwargs[1]["variant_name"] == "AllTraffic" or \
-            (len(call_kwargs[0]) > 2 and call_kwargs[0][2] == "AllTraffic")
+        assert call_kwargs.kwargs["variant_name"] == "AllTraffic"
 
     @patch("sagemaker.serve.model_builder.Endpoint")
     def test_variant_name_custom(self, mock_endpoint_cls):
@@ -254,8 +260,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         call_kwargs = mb.sagemaker_session.create_inference_component.call_args
-        assert call_kwargs[1]["variant_name"] == "MyVariant" or \
-            (len(call_kwargs[0]) > 2 and call_kwargs[0][2] == "MyVariant")
+        assert call_kwargs.kwargs["variant_name"] == "MyVariant"
 
     @patch("sagemaker.serve.model_builder.Endpoint")
     def test_data_cache_config_wired_into_spec(self, mock_endpoint_cls):
@@ -278,7 +283,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         call_kwargs = mb.sagemaker_session.create_inference_component.call_args
-        spec = call_kwargs[1]["specification"]
+        spec = call_kwargs.kwargs["specification"]
         assert "DataCacheConfig" in spec
         assert spec["DataCacheConfig"]["EnableCaching"] is True
 
@@ -303,7 +308,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         call_kwargs = mb.sagemaker_session.create_inference_component.call_args
-        spec = call_kwargs[1]["specification"]
+        spec = call_kwargs.kwargs["specification"]
         assert spec["BaseInferenceComponentName"] == "base-ic-name"
 
     @patch("sagemaker.serve.model_builder.Endpoint")
@@ -331,7 +336,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         call_kwargs = mb.sagemaker_session.create_inference_component.call_args
-        spec = call_kwargs[1]["specification"]
+        spec = call_kwargs.kwargs["specification"]
         assert "Container" in spec
         assert spec["Container"]["Image"] == "my-image:latest"
         assert spec["Container"]["ArtifactUrl"] == "s3://bucket/artifact"
@@ -357,7 +362,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         call_kwargs = mb.sagemaker_session.create_inference_component.call_args
-        spec = call_kwargs[1]["specification"]
+        spec = call_kwargs.kwargs["specification"]
         assert "DataCacheConfig" not in spec
         assert "BaseInferenceComponentName" not in spec
         assert "Container" not in spec
@@ -384,5 +389,35 @@ class TestDeployCoreEndpointWiring:
         )
 
         call_kwargs = mb.sagemaker_session.create_inference_component.call_args
-        spec = call_kwargs[1]["specification"]
+        spec = call_kwargs.kwargs["specification"]
         assert spec["DataCacheConfig"]["EnableCaching"] is True
+
+    @patch("sagemaker.serve.model_builder.Endpoint")
+    def test_variant_name_passed_to_production_variant_on_new_endpoint(self, mock_endpoint_cls):
+        """When creating a new endpoint, variant_name is passed to production_variant."""
+        mb = self._make_model_builder()
+        mock_endpoint_cls.get.return_value = MagicMock()
+        # Simulate endpoint does NOT exist yet
+        mb.sagemaker_session.endpoint_in_service_or_not.return_value = False
+
+        from sagemaker.core.inference_config import ResourceRequirements
+        resources = ResourceRequirements(
+            requests={"memory": 8192, "num_accelerators": 1, "num_cpus": 2, "copies": 1}
+        )
+
+        with patch("sagemaker.serve.model_builder.session_helper.production_variant") as mock_pv:
+            mock_pv.return_value = {"VariantName": "CustomVariant"}
+            mb._deploy_core_endpoint(
+                endpoint_type="INFERENCE_COMPONENT_BASED",
+                resources=resources,
+                instance_type="ml.g5.2xlarge",
+                initial_instance_count=1,
+                variant_name="CustomVariant",
+                wait=False,
+            )
+
+            # Verify production_variant was called with variant_name="CustomVariant"
+            mock_pv.assert_called_once()
+            pv_kwargs = mock_pv.call_args
+            assert pv_kwargs.kwargs.get("variant_name") == "CustomVariant" or \
+                (len(pv_kwargs.args) > 0 and False)  # variant_name is always a kwarg

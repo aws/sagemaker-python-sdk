@@ -78,12 +78,12 @@ from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.hardware_detector import _total_inference_model_size_mib
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.core.resources import Model
-
-# MLflow imports
 from sagemaker.core.shapes import (
     InferenceComponentDataCacheConfig,
     InferenceComponentContainerSpecification,
 )
+
+# MLflow imports
 from sagemaker.serve.model_format.mlflow.constants import (
     MLFLOW_METADATA_FILE,
     MLFLOW_MODEL_PATH,
@@ -3380,7 +3380,8 @@ class _ModelBuilderUtils:
         """Resolve data_cache_config to InferenceComponentDataCacheConfig.
 
         Args:
-            data_cache_config: Either a dict with 'enable_caching' key,
+            data_cache_config: Either a dict with 'enable_caching' key (and any future
+                fields supported by InferenceComponentDataCacheConfig),
                 an InferenceComponentDataCacheConfig instance, or None.
 
         Returns:
@@ -3401,6 +3402,9 @@ class _ModelBuilderUtils:
                     "data_cache_config dict must contain the required 'enable_caching' key. "
                     "Example: {'enable_caching': True}"
                 )
+            # Pass only 'enable_caching' to avoid Pydantic validation errors
+            # if the model has extra='forbid'. As new fields are added to
+            # InferenceComponentDataCacheConfig, add them here.
             return InferenceComponentDataCacheConfig(
                 enable_caching=data_cache_config["enable_caching"]
             )
