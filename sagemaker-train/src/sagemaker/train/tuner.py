@@ -1504,12 +1504,9 @@ class HyperparameterTuner(object):
                     model_trainer.stopping_condition.max_wait_time_in_seconds
                 )
 
-        # Get environment variables from model_trainer.
-        # environment is a defined attribute on ModelTrainer (typed as dict | None).
-        # We access it directly (consistent with how role, compute, etc. are accessed).
-        # We pass it through as-is when it's a dict — even an empty dict is valid for the API.
-        # When it's None or not a dict, we omit it from the constructor so the Pydantic
-        # model keeps its default (Unassigned), which is then excluded during serialization.
+        # Propagate environment variables from ModelTrainer.
+        # Only include when it's a dict (even empty); omit otherwise so the
+        # Pydantic field stays Unassigned and is excluded during serialization.
         env = model_trainer.environment
 
         # Build base kwargs for the definition
@@ -1524,9 +1521,7 @@ class HyperparameterTuner(object):
             enable_managed_spot_training=model_trainer.compute.enable_managed_spot_training,
         )
 
-        # Only include environment when it's a dict (including empty dict).
-        # This avoids Pydantic validation errors for non-dict values and keeps
-        # the field as Unassigned (excluded from serialization) when not set.
+        # Include environment only when it's a dict (including empty).
         if isinstance(env, dict):
             definition_kwargs["environment"] = env
 
