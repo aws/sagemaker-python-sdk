@@ -2986,9 +2986,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if ic_data_cache_config is not None:
                 resolved_cache_config = self._resolve_data_cache_config(ic_data_cache_config)
                 if resolved_cache_config is not None:
-                    inference_component_spec["DataCacheConfig"] = {
-                        "EnableCaching": resolved_cache_config.enable_caching
-                    }
+                    cache_dict = {"EnableCaching": resolved_cache_config.enable_caching}
+                    # Forward any additional fields from the shape as they become available
+                    inference_component_spec["DataCacheConfig"] = cache_dict
 
             ic_base_component_name = kwargs.get("base_inference_component_name")
             if ic_base_component_name is not None:
@@ -2999,11 +2999,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 resolved_container = self._resolve_container_spec(ic_container)
                 if resolved_container is not None:
                     container_dict = {}
-                    if hasattr(resolved_container, "image") and resolved_container.image:
+                    if resolved_container.image:
                         container_dict["Image"] = resolved_container.image
-                    if hasattr(resolved_container, "artifact_url") and resolved_container.artifact_url:
+                    if resolved_container.artifact_url:
                         container_dict["ArtifactUrl"] = resolved_container.artifact_url
-                    if hasattr(resolved_container, "environment") and resolved_container.environment:
+                    if resolved_container.environment:
                         container_dict["Environment"] = resolved_container.environment
                     if container_dict:
                         inference_component_spec["Container"] = container_dict
@@ -4211,7 +4211,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 'artifact_url', 'environment' or an InferenceComponentContainerSpecification
                 instance. (Default: None).
             variant_name (str, optional): The name of the production variant to deploy to.
-                If not specified, defaults to 'AllTraffic'. (Default: None).
+                If not provided (or explicitly ``None``), defaults to ``'AllTraffic'``.
+                (Default: None).
         Returns:
             Union[Endpoint, LocalEndpoint, Transformer]: A ``sagemaker.core.resources.Endpoint``
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,

@@ -3432,14 +3432,11 @@ class _ModelBuilderUtils:
         if isinstance(container, InferenceComponentContainerSpecification):
             return container
         elif isinstance(container, dict):
-            kwargs = {}
-            if "image" in container:
-                kwargs["image"] = container["image"]
-            if "artifact_url" in container:
-                kwargs["artifact_url"] = container["artifact_url"]
-            if "environment" in container:
-                kwargs["environment"] = container["environment"]
-            return InferenceComponentContainerSpecification(**kwargs)
+            # Only pass known keys to avoid Pydantic validation errors
+            # if the model has extra='forbid' configured
+            known_keys = {"image", "artifact_url", "environment"}
+            filtered = {k: v for k, v in container.items() if k in known_keys}
+            return InferenceComponentContainerSpecification(**filtered)
         else:
             raise ValueError(
                 f"container must be a dict or an InferenceComponentContainerSpecification "
