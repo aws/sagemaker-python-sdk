@@ -14,10 +14,12 @@ from __future__ import absolute_import
 
 import io
 import json
+import sys
 
 import numpy as np
 import pandas as pd
 import pytest
+from unittest.mock import patch
 
 from sagemaker.core.deserializers.base import (
     StringDeserializer,
@@ -28,6 +30,7 @@ from sagemaker.core.deserializers.base import (
     JSONDeserializer,
     PandasDeserializer,
     JSONLinesDeserializer,
+    TorchTensorDeserializer,
 )
 
 
@@ -251,3 +254,9 @@ def test_json_lines_deserializer(json_lines_deserializer, source, expected):
     content_type = "application/jsonlines"
     actual = json_lines_deserializer.deserialize(stream, content_type)
     assert actual == expected
+
+
+def test_torch_tensor_deserializer_import_error():
+    with patch.dict(sys.modules, {"torch": None}):
+        with pytest.raises(ImportError, match="pip install sagemaker-core\\[torch\\]"):
+            TorchTensorDeserializer()
