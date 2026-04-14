@@ -4,7 +4,6 @@
 
 import json
 import logging
-from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 import botocore.exceptions
@@ -198,7 +197,6 @@ class FeatureGroupManager(FeatureGroup):
                 register_params["UseServiceLinkedRole"] = True
             else:
                 register_params["RoleArn"] = role_arn
-            # print(register_params)
             client.register_resource(**register_params)
             logger.info(f"Successfully registered S3 location: {resource_arn}")
             return True
@@ -399,7 +397,7 @@ class FeatureGroupManager(FeatureGroup):
         3. Registers the offline store S3 location as data lake location
         4. Grants the execution role permissions on the Glue table
         5. Optionally revokes IAMAllowedPrincipal permissions from the Glue table
-        6. Prints optional S3 deny bucket policy
+        6. Prints recommended S3 deny bucket policy
 
         Parameters:
             disable_hybrid_access_mode: If True, revokes IAMAllowedPrincipal permissions
@@ -540,7 +538,9 @@ class FeatureGroupManager(FeatureGroup):
             "hybrid_access_mode_disabled": False
         }
 
-        # Execute Lake Formation setup with fail-fast behavior
+        # Execute Lake Formation setup with fail-fast behavior.
+        # On failure, log warnings for incomplete steps before re-raising.
+        phase_error = None
 
         # Phase 1: Register S3 with Lake Formation
         try:
@@ -568,51 +568,60 @@ class FeatureGroupManager(FeatureGroup):
                 role_arn=registration_role_arn,
             )
         except Exception as e:
-            raise RuntimeError(
+            phase_error = RuntimeError(
                 f"Failed to register S3 location with Lake Formation. "
                 f"Subsequent phases skipped. Results: {results}. Error: {e}"
-            ) from e
-
-        if not results["s3_location_registered"]:
-            raise RuntimeError(
-                f"Failed to register S3 location with Lake Formation. "
-                f"Subsequent phases skipped. Results: {results}"
             )
+            phase_error.__cause__ = e
 
         # Phase 2: Grant Lake Formation permissions to the role
-        try:
-            results["lf_permissions_granted"] = self._grant_lake_formation_permissions(
-                role_arn_str, database_name_str, table_name_str, session, region
-            )
-        except Exception as e:
-            raise RuntimeError(
-                f"Failed to grant Lake Formation permissions. "
-                f"Subsequent phases skipped. Results: {results}. Error: {e}"
-            ) from e
-
-        if not results["lf_permissions_granted"]:
-            raise RuntimeError(
-                f"Failed to grant Lake Formation permissions. "
-                f"Subsequent phases skipped. Results: {results}"
-            )
-
+        if phase_error is None:
+            try:
+                results["lf_permissions_granted"] = self._grant_lake_formation_permissions(
+                    role_arn_str, database_name_str, table_name_str, session, region
+                )
+            except Exception as e:
+                phase_error = RuntimeError(
+                    f"Failed to grant Lake Formation permissions. "
+                    f"Subsequent phases skipped. Results: {results}. Error: {e}"
+                )
+                phase_error.__cause__ = e
 
         # Phase 3: Revoke IAMAllowedPrincipal permissions
-        if disable_hybrid_access_mode:
+        if phase_error is None and disable_hybrid_access_mode:
             try:
                 results["hybrid_access_mode_disabled"] = self._revoke_iam_allowed_principal(
                     database_name_str, table_name_str, session, region
                 )
             except Exception as e:
-                raise RuntimeError(
+                phase_error = RuntimeError(
                     f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}. Error: {e}"
-                ) from e
-    
-            if not results["hybrid_access_mode_disabled"]:
-                raise RuntimeError(
-                    f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}"
                 )
-            
+                phase_error.__cause__ = e
+
+        # Warn about any steps that were not completed
+        if not results["s3_location_registered"]:
+            logger.warning(
+                "S3 location was not registered with Lake Formation. "
+                "Re-run enable_lake_formation() after fixing the issue."
+            )
+        if not results["lf_permissions_granted"]:
+            logger.warning(
+                "Lake Formation permissions were not granted to the "
+                "execution role. Re-run enable_lake_formation() after fixing the issue."
+            )
+        if not results["hybrid_access_mode_disabled"]:
+            logger.warning(
+                "Hybrid access mode was not disabled. IAM-based access "
+                "to the Glue table is still allowed alongside Lake "
+                "Formation permissions. To disable, re-run with "
+                "disable_hybrid_access_mode=True. For more info: "
+                "https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
+            )
+
+        # Re-raise after warnings so the caller sees what was incomplete
+        if phase_error is not None:
+            raise phase_error
 
         # Phase 4: Print S3 bucket policy
         # Validate feature_group_arn is available for account ID extraction
@@ -662,28 +671,6 @@ class FeatureGroupManager(FeatureGroup):
         )
 
         logger.info(f"Lake Formation setup complete for {self.feature_group_name}: {results}")
-
-        # Warn about any steps that were not completed
-        if not results["s3_location_registered"]:
-            logger.warning(
-                "S3 location was not registered with Lake Formation. "
-                "Re-run enable_lake_formation() or manually register "
-                "the S3 location via the Lake Formation console."
-            )
-        if not results["lf_permissions_granted"]:
-            logger.warning(
-                "Lake Formation permissions were not granted to the "
-                "execution role. Grant permissions manually via the "
-                "Lake Formation console or re-run the method after fixing the issue."
-            )
-        if not results["hybrid_access_mode_disabled"]:
-            logger.warning(
-                "Hybrid access mode was not disabled. IAM-based access "
-                "to the Glue table is still allowed alongside Lake "
-                "Formation permissions. To disable, re-run with "
-                "disable_hybrid_access_mode=True. For more info: "
-                "https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
-            )
 
         return results
 
