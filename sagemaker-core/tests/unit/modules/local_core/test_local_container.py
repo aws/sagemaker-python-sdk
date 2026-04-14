@@ -638,6 +638,82 @@ class TestLocalContainer:
         with pytest.raises(ImportError, match="Docker Compose is not installed"):
             container._get_compose_cmd_prefix()
 
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_docker_compose_v5(
+        self, mock_check_output, mock_session, basic_channel
+    ):
+        """Test _get_compose_cmd_prefix accepts Docker Compose v5"""
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.return_value = "Docker Compose version v5.1.1"
+
+        result = container._get_compose_cmd_prefix()
+
+        assert result == ["docker", "compose"]
+
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_docker_compose_v3(
+        self, mock_check_output, mock_session, basic_channel
+    ):
+        """Test _get_compose_cmd_prefix accepts Docker Compose v3"""
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.return_value = "Docker Compose version v3.0.0"
+
+        result = container._get_compose_cmd_prefix()
+
+        assert result == ["docker", "compose"]
+
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    @patch("sagemaker.core.modules.local_core.local_container.shutil.which")
+    def test_get_compose_cmd_prefix_docker_compose_v1_rejected(
+        self, mock_which, mock_check_output, mock_session, basic_channel
+    ):
+        """Test _get_compose_cmd_prefix rejects Docker Compose v1"""
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.return_value = "docker-compose version v1.29.2"
+        mock_which.return_value = None
+
+        with pytest.raises(ImportError, match="Docker Compose is not installed"):
+            container._get_compose_cmd_prefix()
+
     def test_init_with_container_entrypoint(self, mock_session, basic_channel):
         """Test initialization with container entrypoint"""
         container = _LocalContainer(
