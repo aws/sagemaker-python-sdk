@@ -15,10 +15,12 @@ from __future__ import absolute_import
 import io
 import json
 import os
+import sys
 
 import numpy as np
 import pytest
 import scipy.sparse
+from unittest.mock import patch
 
 from sagemaker.core.serializers.base import (
     CSVSerializer,
@@ -29,6 +31,7 @@ from sagemaker.core.serializers.base import (
     JSONLinesSerializer,
     LibSVMSerializer,
     DataSerializer,
+    TorchTensorSerializer,
 )
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
@@ -358,3 +361,9 @@ def test_data_serializer_file_like(data_serializer):
     with open(validation_image_file_path, "rb") as f:
         validation_image_data = f.read()
     assert input_image_data == validation_image_data
+
+
+def test_torch_tensor_serializer_import_error():
+    with patch.dict(sys.modules, {"torch": None}):
+        with pytest.raises(ImportError, match="pip install sagemaker-core\\[torch\\]"):
+            TorchTensorSerializer()
