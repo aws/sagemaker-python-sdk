@@ -515,6 +515,17 @@ class TestProcessingS3OutputOptionalS3Uri:
         )
         assert s3_output.s3_uri is None
 
+    def test_processing_s3_output_with_explicit_s3_uri_preserves_value(self):
+        """Regression test: explicit s3_uri string is preserved in the model."""
+        s3_output = ProcessingS3Output(
+            s3_uri="s3://my-bucket/my-output",
+            local_path="/opt/ml/processing/output",
+            s3_upload_mode="EndOfJob",
+        )
+        assert s3_output.s3_uri == "s3://my-bucket/my-output"
+        assert s3_output.local_path == "/opt/ml/processing/output"
+        assert s3_output.s3_upload_mode == "EndOfJob"
+
     def test_normalize_outputs_with_none_s3_uri_generates_s3_path(self, mock_session):
         """When s3_uri is None, _normalize_outputs should auto-generate an S3 URI."""
         processor = Processor(
