@@ -11,7 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Unit tests for sagemaker.core.serializers.implementations module."""
-from __future__ import annotations
+from __future__ import absolute_import
 
 import pytest
 from unittest.mock import Mock, patch

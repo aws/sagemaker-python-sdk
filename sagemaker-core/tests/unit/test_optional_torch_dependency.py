@@ -10,12 +10,21 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Tests to verify torch dependency is optional in sagemaker-core."""
-from __future__ import annotations
+"""Tests to verify torch dependency is optional in sagemaker-core.
 
-import importlib
+The "module imports without torch" tests use subprocess instead of
+importlib.reload to avoid poisoning the class hierarchy in the current
+process.  six.with_metaclass + old-style super() breaks when a module
+is reloaded because the class identity changes, causing
+``TypeError: super(type, obj): obj must be an instance or subtype of type``
+in subsequent tests that instantiate serializers/deserializers.
+"""
+from __future__ import absolute_import
+
 import io
+import subprocess
 import sys
+import textwrap
 
 import numpy as np
 import pytest
@@ -26,7 +35,6 @@ def _block_torch():
 
     Returns a dict of saved torch submodule entries so they can be restored.
     """
-    saved = {}
     torch_keys = [key for key in sys.modules if key.startswith("torch.")]
     saved = {key: sys.modules.pop(key) for key in torch_keys}
     saved["torch"] = sys.modules.get("torch")
@@ -46,43 +54,71 @@ def _restore_torch(saved):
 
 
 def test_serializer_module_imports_without_torch():
-    """Verify that importing non-torch serializers succeeds without torch installed."""
-    saved = {}
-    try:
-        saved = _block_torch()
+    """Verify that non-torch serializers can be imported and instantiated without torch.
 
-        # Reload the module so it re-evaluates imports with torch blocked
-        import sagemaker.core.serializers.base as ser_module
+    Runs in a subprocess to avoid polluting the current process's class
+    hierarchy via importlib.reload (which breaks six.with_metaclass).
+    """
+    code = textwrap.dedent("""\
+        import sys
+        # Block torch before any sagemaker imports
+        sys.modules["torch"] = None
 
-        importlib.reload(ser_module)
+        from sagemaker.core.serializers.base import (
+            CSVSerializer,
+            NumpySerializer,
+            JSONSerializer,
+            IdentitySerializer,
+        )
 
-        # Verify non-torch serializers can be instantiated
-        assert ser_module.CSVSerializer() is not None
-        assert ser_module.NumpySerializer() is not None
-        assert ser_module.JSONSerializer() is not None
-        assert ser_module.IdentitySerializer() is not None
-    finally:
-        _restore_torch(saved)
+        assert CSVSerializer() is not None
+        assert NumpySerializer() is not None
+        assert JSONSerializer() is not None
+        assert IdentitySerializer() is not None
+        print("OK")
+    """)
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
 
 
 def test_deserializer_module_imports_without_torch():
-    """Verify that importing non-torch deserializers succeeds without torch installed."""
-    saved = {}
-    try:
-        saved = _block_torch()
+    """Verify that non-torch deserializers can be imported and instantiated without torch.
 
-        import sagemaker.core.deserializers.base as deser_module
+    Runs in a subprocess for the same reason as the serializer test above.
+    """
+    code = textwrap.dedent("""\
+        import sys
+        sys.modules["torch"] = None
 
-        importlib.reload(deser_module)
+        from sagemaker.core.deserializers.base import (
+            StringDeserializer,
+            BytesDeserializer,
+            CSVDeserializer,
+            NumpyDeserializer,
+            JSONDeserializer,
+        )
 
-        # Verify non-torch deserializers can be instantiated
-        assert deser_module.StringDeserializer() is not None
-        assert deser_module.BytesDeserializer() is not None
-        assert deser_module.CSVDeserializer() is not None
-        assert deser_module.NumpyDeserializer() is not None
-        assert deser_module.JSONDeserializer() is not None
-    finally:
-        _restore_torch(saved)
+        assert StringDeserializer() is not None
+        assert BytesDeserializer() is not None
+        assert CSVDeserializer() is not None
+        assert NumpyDeserializer() is not None
+        assert JSONDeserializer() is not None
+        print("OK")
+    """)
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, (
+        f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
+    )
 
 
 def test_torch_tensor_serializer_raises_import_error_without_torch():
