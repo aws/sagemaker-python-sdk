@@ -44,10 +44,33 @@ _DTYPE_TO_FEATURE_TYPE_MAP = {
     "string": "String",
     "int64": "Integral",
     "float64": "Fractional",
+    # pandas nullable integer dtypes
+    "Int8": "Integral",
+    "Int16": "Integral",
+    "Int32": "Integral",
+    "Int64": "Integral",
+    "UInt8": "Integral",
+    "UInt16": "Integral",
+    "UInt32": "Integral",
+    "UInt64": "Integral",
+    # pandas nullable float dtypes
+    "Float32": "Fractional",
+    "Float64": "Fractional",
 }
 
-_INTEGER_TYPES = {"int_", "int8", "int16", "int32", "int64", "uint8", "uint16", "uint32", "uint64"}
-_FLOAT_TYPES = {"float_", "float16", "float32", "float64"}
+_INTEGER_TYPES = {
+    "int_", "int8", "int16", "int32", "int64",
+    "uint8", "uint16", "uint32", "uint64",
+    # pandas nullable integer dtypes
+    "Int8", "Int16", "Int32", "Int64",
+    "UInt8", "UInt16", "UInt32", "UInt64",
+}
+_FLOAT_TYPES = {
+    "float_", "float16", "float32", "float64",
+    # pandas nullable float dtypes
+    "Float32", "Float64",
+}
+_STRING_TYPES = {"object", "string"}
 
 
 def _get_athena_client(session: Session):
@@ -318,6 +341,8 @@ def _generate_feature_definition(
         return IntegralFeatureDefinition(series.name, collection_type)
     if dtype in _FLOAT_TYPES:
         return FractionalFeatureDefinition(series.name, collection_type)
+    if dtype in _STRING_TYPES:
+        return StringFeatureDefinition(series.name, collection_type)
     return StringFeatureDefinition(series.name, collection_type)
 
 
