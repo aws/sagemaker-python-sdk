@@ -160,12 +160,12 @@ def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance
-        result = fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
+        result = fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
 
         # Verify all phases completed successfully
         assert result["s3_location_registered"] is True
         assert result["lf_permissions_granted"] is True
-        assert result["hybrid_access_mode_disabled"] is True
+        assert result["hybrid_access_mode_enabled"] is False
 
     finally:
         print('done')
@@ -196,7 +196,7 @@ def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
         offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
         lake_formation_config = LakeFormationConfig(
             enabled=True,
-            disable_hybrid_access_mode = True,
+            hybrid_access_mode_enabled = False,
             acknowledge_risk=True,
         )
 
@@ -287,7 +287,7 @@ def test_create_feature_group_with_lake_formation_fails_without_offline_store(ro
     """
     fg_name = generate_feature_group_name()
 
-    lake_formation_config = LakeFormationConfig(disable_hybrid_access_mode=True, acknowledge_risk=True)
+    lake_formation_config = LakeFormationConfig(hybrid_access_mode_enabled=False, acknowledge_risk=True)
     lake_formation_config.enabled = True
 
     # Attempt to create without offline store but with Lake Formation enabled
@@ -317,7 +317,7 @@ def test_create_feature_group_with_lake_formation_fails_without_role(s3_uri, reg
     fg_name = generate_feature_group_name()
 
     offline_store_config = OfflineStoreConfig(s3_storage_config=S3StorageConfig(s3_uri=s3_uri))
-    lake_formation_config = LakeFormationConfig(disable_hybrid_access_mode=True, acknowledge_risk=True)
+    lake_formation_config = LakeFormationConfig(hybrid_access_mode_enabled=False, acknowledge_risk=True)
     lake_formation_config.enabled = True
 
     # Attempt to create without role_arn but with Lake Formation enabled
@@ -357,7 +357,7 @@ def test_enable_lake_formation_fails_for_non_created_status(s3_uri, role, region
         # Immediately try to enable Lake Formation without waiting for Created status
         # The Feature Group will be in 'Creating' status
         with pytest.raises(ValueError) as exc_info:
-            fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True, wait_for_active=False)
+            fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True, wait_for_active=False)
 
         # Verify error message mentions status requirement
         error_msg = str(exc_info.value)
@@ -401,7 +401,7 @@ def test_enable_lake_formation_without_offline_store(role, region):
 
         # Attempt to enable Lake Formation
         with pytest.raises(ValueError) as exc_info:
-            fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
+            fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
         # Verify error message mentions offline store requirement
         assert "does not have an offline store configured" in str(exc_info.value)
 
@@ -426,7 +426,7 @@ def test_enable_lake_formation_fails_with_invalid_registration_role(
     # Attempt to enable Lake Formation without service-linked role and without registration_role_arn
     with pytest.raises(ValueError) as exc_info:
         fg.enable_lake_formation(
-            disable_hybrid_access_mode=True,
+            hybrid_access_mode_enabled=False,
             acknowledge_risk=True,
             use_service_linked_role=False,
             registration_role_arn=None,
@@ -460,7 +460,7 @@ def test_enable_lake_formation_fails_with_nonexistent_role(
         fg.enable_lake_formation(
             use_service_linked_role=False,
             registration_role_arn=nonexistent_role,
-            disable_hybrid_access_mode=True,
+            hybrid_access_mode_enabled=False,
             acknowledge_risk=True,
         )
 
@@ -484,7 +484,7 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
 
     This test verifies:
     1. Creates a FeatureGroupManager with offline store
-    2. Enables Lake Formation with disable_hybrid_access_mode=True
+    2. Enables Lake Formation with hybrid_access_mode_enabled=False
     3. Verifies all Lake Formation phases complete successfully
     4. Verifies the recommended S3 deny policy is logged as a warning
     """
@@ -503,12 +503,12 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
 
         # Enable Lake Formation governance
         with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
+            result = fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
 
         # Verify all phases completed successfully
         assert result["s3_location_registered"] is True
         assert result["lf_permissions_granted"] is True
-        assert result["hybrid_access_mode_disabled"] is True
+        assert result["hybrid_access_mode_enabled"] is False
 
         # Verify the recommended S3 deny policy was logged
         assert any("RECOMMENDED S3 BUCKET POLICY" in record.message for record in caplog.records)
@@ -528,8 +528,8 @@ def test_enable_lake_formation_default_logs_recommended_policy(s3_uri, role, reg
 
     This test verifies:
     1. Creates a FeatureGroupManager with offline store
-    2. Enables Lake Formation with disable_hybrid_access_mode=True
-    3. Verifies phases complete successfully (hybrid_access_mode_disabled=True)
+    2. Enables Lake Formation with hybrid_access_mode_enabled=False
+    3. Verifies phases complete successfully (hybrid_access_mode_enabled=False)
     4. Verifies the recommended S3 deny policy is logged
     """
     fg_name = generate_feature_group_name()
@@ -544,14 +544,14 @@ def test_enable_lake_formation_default_logs_recommended_policy(s3_uri, role, reg
         fg.wait_for_status(target_status="Created", poll=30, timeout=300)
         assert fg.feature_group_status == "Created"
 
-        # Enable Lake Formation governance with disable_hybrid_access_mode=True
+        # Enable Lake Formation governance with hybrid_access_mode_enabled=False
         with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = fg.enable_lake_formation(disable_hybrid_access_mode=True, acknowledge_risk=True)
+            result = fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
 
         # Verify phases completed successfully
         assert result["s3_location_registered"] is True
         assert result["lf_permissions_granted"] is True
-        assert result["hybrid_access_mode_disabled"] is True
+        assert result["hybrid_access_mode_enabled"] is False
 
     finally:
         # Cleanup
@@ -589,14 +589,14 @@ def test_enable_lake_formation_with_custom_role_logs_policy(s3_uri, role, region
             result = fg.enable_lake_formation(
                 use_service_linked_role=False,
                 registration_role_arn=role,
-                disable_hybrid_access_mode=True,
+                hybrid_access_mode_enabled=False,
                 acknowledge_risk=True,
             )
 
         # Verify all phases completed successfully
         assert result["s3_location_registered"] is True
         assert result["lf_permissions_granted"] is True
-        assert result["hybrid_access_mode_disabled"] is True
+        assert result["hybrid_access_mode_enabled"] is False
 
         # Verify the recommended S3 deny policy was logged
         assert any("RECOMMENDED S3 BUCKET POLICY" in record.message for record in caplog.records)

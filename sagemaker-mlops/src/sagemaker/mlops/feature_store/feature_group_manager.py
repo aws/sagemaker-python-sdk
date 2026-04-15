@@ -39,16 +39,17 @@ class LakeFormationConfig(Base):
         registration_role_arn: IAM role ARN to use for S3 registration with Lake Formation.
             Required when use_service_linked_role is False. This can be different from the
             Feature Group's execution role.
-        disable_hybrid_access_mode: If True, revokes IAMAllowedPrincipal permissions
-            from the Glue table, enforcing Lake Formation-only governance. Warning: this
-            may break existing jobs that access the table via IAM-based permissions. After
+        hybrid_access_mode_enabled: If True, IAM-based access remains alongside
+            Lake Formation permissions (hybrid access mode). If False, revokes
+            IAMAllowedPrincipal permissions from the Glue table, enforcing Lake
+            Formation-only governance. Warning: setting this to False may break
+            existing jobs that access the table via IAM-based permissions. After
             this change, all principals must be granted access through Lake Formation.
-            If False, IAM-based access remains alongside Lake Formation permissions.
         acknowledge_risk: If True, acknowledges the risks of the Lake Formation
-            operation and proceeds. When disable_hybrid_access_mode is True, this
+            operation and proceeds. When hybrid_access_mode_enabled is False, this
             acknowledges that revoking IAMAllowedPrincipal permissions may break
             existing jobs (e.g., training, processing, ETL) that access the table
-            via IAM-based permissions. When disable_hybrid_access_mode is False,
+            via IAM-based permissions. When hybrid_access_mode_enabled is True,
             this acknowledges that IAM-based access remains alongside Lake Formation
             permissions. If False, raises RuntimeError without proceeding.
     """
@@ -56,7 +57,7 @@ class LakeFormationConfig(Base):
     enabled: bool = False
     use_service_linked_role: bool = True
     registration_role_arn: Optional[str] = None
-    disable_hybrid_access_mode: bool
+    hybrid_access_mode_enabled: bool
     acknowledge_risk: bool
 
 
@@ -380,7 +381,7 @@ class FeatureGroupManager(FeatureGroup):
     @Base.add_validate_call
     def enable_lake_formation(
         self,
-        disable_hybrid_access_mode: bool,
+        hybrid_access_mode_enabled: bool,
         acknowledge_risk: bool,
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -400,17 +401,18 @@ class FeatureGroupManager(FeatureGroup):
         6. Prints recommended S3 deny bucket policy
 
         Parameters:
-            disable_hybrid_access_mode: If True, revokes IAMAllowedPrincipal permissions
-                from the Glue table, enforcing Lake Formation-only governance. Warning:
-                this may break existing jobs (e.g., training, processing, ETL) that access
-                the table via IAM-based permissions. After this change, all principals must
-                be granted access through Lake Formation. If False, prompts the user for
-                confirmation before proceeding with hybrid access.
+            hybrid_access_mode_enabled: If True, IAM-based access remains alongside
+                Lake Formation permissions (hybrid access mode). If False, revokes
+                IAMAllowedPrincipal permissions from the Glue table, enforcing Lake
+                Formation-only governance. Warning: setting this to False may break
+                existing jobs (e.g., training, processing, ETL) that access the table
+                via IAM-based permissions. After this change, all principals must be
+                granted access through Lake Formation.
             acknowledge_risk: If True, acknowledges the risks of the Lake Formation
-                operation and proceeds. When disable_hybrid_access_mode is True, this
+                operation and proceeds. When hybrid_access_mode_enabled is False, this
                 acknowledges that revoking IAMAllowedPrincipal permissions may break
                 existing jobs (e.g., training, processing, ETL) that access the table
-                via IAM-based permissions. When disable_hybrid_access_mode is False,
+                via IAM-based permissions. When hybrid_access_mode_enabled is True,
                 this acknowledges that IAM-based access remains alongside Lake Formation
                 permissions. If False, raises RuntimeError without proceeding.
             session: Boto3 session.
@@ -428,7 +430,7 @@ class FeatureGroupManager(FeatureGroup):
             Dict with status of each Lake Formation operation:
             - s3_location_registered: bool
             - lf_permissions_granted: bool
-            - hybrid_access_mode_disabled: bool
+            - hybrid_access_mode_enabled: bool
 
         Raises:
             ValueError: If the Feature Group has no offline store configured,
@@ -503,9 +505,9 @@ class FeatureGroupManager(FeatureGroup):
         table_name_str = str(table_name)
         role_arn_str = str(self.role_arn)
 
-        if not disable_hybrid_access_mode:
+        if hybrid_access_mode_enabled:
             logger.warning(
-                f"Hybrid access mode is not disabled for table: {database_name_str}.{table_name_str}. "
+                f"Hybrid access mode is enabled for table: {database_name_str}.{table_name_str}. "
                 f"IAMAllowedPrincipal permissions remain in effect, which means IAM-based access "
                 f"to the table is still allowed alongside Lake Formation permissions. "
                 f"For more info: https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
@@ -513,8 +515,8 @@ class FeatureGroupManager(FeatureGroup):
             proceed = acknowledge_risk
             if not proceed:
                 raise RuntimeError(
-                    "User chose not to proceed without disabling hybrid access mode. "
-                    "Re-run with disable_hybrid_access_mode=True to revoke IAMAllowedPrincipal permissions."
+                    "User chose not to proceed with hybrid access mode enabled. "
+                    "Re-run with hybrid_access_mode_enabled=False to revoke IAMAllowedPrincipal permissions."
                 )
         else:
             logger.warning(
@@ -528,14 +530,14 @@ class FeatureGroupManager(FeatureGroup):
             if not proceed:
                 raise RuntimeError(
                     "User chose not to proceed with disabling hybrid access mode. "
-                    "Re-run with disable_hybrid_access_mode=False to keep IAMAllowedPrincipal permissions."
+                    "Re-run with hybrid_access_mode_enabled=True to keep IAMAllowedPrincipal permissions."
                 )
 
 
         results = {
             "s3_location_registered": False,
             "lf_permissions_granted": False,
-            "hybrid_access_mode_disabled": False
+            "hybrid_access_mode_enabled": True
         }
 
         # Execute Lake Formation setup with fail-fast behavior.
@@ -588,11 +590,12 @@ class FeatureGroupManager(FeatureGroup):
                 phase_error.__cause__ = e
 
         # Phase 3: Revoke IAMAllowedPrincipal permissions
-        if phase_error is None and disable_hybrid_access_mode:
+        if phase_error is None and not hybrid_access_mode_enabled:
             try:
-                results["hybrid_access_mode_disabled"] = self._revoke_iam_allowed_principal(
+                revoked = self._revoke_iam_allowed_principal(
                     database_name_str, table_name_str, session, region
                 )
+                results["hybrid_access_mode_enabled"] = not revoked
             except Exception as e:
                 phase_error = RuntimeError(
                     f"Failed to revoke IAMAllowedPrincipal permissions. Results: {results}. Error: {e}"
@@ -610,12 +613,12 @@ class FeatureGroupManager(FeatureGroup):
                 "Lake Formation permissions were not granted to the "
                 "execution role. Re-run enable_lake_formation() after fixing the issue."
             )
-        if not results["hybrid_access_mode_disabled"]:
+        if results["hybrid_access_mode_enabled"]:
             logger.warning(
-                "Hybrid access mode was not disabled. IAM-based access "
+                "Hybrid access mode is still enabled. IAM-based access "
                 "to the Glue table is still allowed alongside Lake "
                 "Formation permissions. To disable, re-run with "
-                "disable_hybrid_access_mode=True. For more info: "
+                "hybrid_access_mode_enabled=False. For more info: "
                 "https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
             )
 
@@ -723,13 +726,13 @@ class FeatureGroupManager(FeatureGroup):
                 - **registration_role_arn** (str, optional): Custom IAM role ARN for S3
                   registration with Lake Formation. Required when ``use_service_linked_role``
                   is False.
-                - **disable_hybrid_access_mode** (bool, required): When True, revokes
-                  IAMAllowedPrincipal permissions from the Glue table, enforcing Lake
-                  Formation-only governance. **Warning**: this may break existing jobs
-                  (e.g., training, processing, ETL) that access the table via IAM-based
-                  permissions. After this change, all principals must be granted access
-                  through Lake Formation. When False, an interactive prompt asks the user
-                  to confirm proceeding with hybrid access mode.
+                - **hybrid_access_mode_enabled** (bool, required): When True, IAM-based
+                  access remains alongside Lake Formation permissions (hybrid access mode).
+                  When False, revokes IAMAllowedPrincipal permissions from the Glue table,
+                  enforcing Lake Formation-only governance. **Warning**: setting this to
+                  False may break existing jobs (e.g., training, processing, ETL) that
+                  access the table via IAM-based permissions. After this change, all
+                  principals must be granted access through Lake Formation.
             session: Boto3 session.
             region: Region name.
 
@@ -814,7 +817,7 @@ class FeatureGroupManager(FeatureGroup):
                 region=region,
                 use_service_linked_role=lake_formation_config.use_service_linked_role,
                 registration_role_arn=lake_formation_config.registration_role_arn,
-                disable_hybrid_access_mode=lake_formation_config.disable_hybrid_access_mode,
+                hybrid_access_mode_enabled=lake_formation_config.hybrid_access_mode_enabled,
                 acknowledge_risk=lake_formation_config.acknowledge_risk,
             )
         return feature_group
