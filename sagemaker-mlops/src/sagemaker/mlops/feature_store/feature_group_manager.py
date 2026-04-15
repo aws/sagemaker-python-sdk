@@ -613,12 +613,12 @@ class FeatureGroupManager(FeatureGroup):
                 "Lake Formation permissions were not granted to the "
                 "execution role. Re-run enable_lake_formation() after fixing the issue."
             )
-        if results["hybrid_access_mode_enabled"]:
+        if not hybrid_access_mode_enabled and results["hybrid_access_mode_enabled"]:
             logger.warning(
-                "Hybrid access mode is still enabled. IAM-based access "
+                "Failed to disable hybrid access mode. IAM-based access "
                 "to the Glue table is still allowed alongside Lake "
-                "Formation permissions. To disable, re-run with "
-                "hybrid_access_mode_enabled=False. For more info: "
+                "Formation permissions. Re-run with "
+                "hybrid_access_mode_enabled=False to retry. For more info: "
                 "https://docs.aws.amazon.com/lake-formation/latest/dg/hybrid-access-mode.html"
             )
 
