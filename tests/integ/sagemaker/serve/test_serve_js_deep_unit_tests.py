@@ -89,7 +89,10 @@ def test_js_model_with_optimize_speculative_decoding_config_gated_requests_are_e
         )
         # Verify the specific environment variables we care about
         actual_env = mock_create_model.call_args[1]["container_defs"]["Environment"]
-        assert actual_env["OPTION_SPECULATIVE_DRAFT_MODEL"] == "/opt/ml/additional-model-data-sources/draft_model/"
+        assert (
+            actual_env["OPTION_SPECULATIVE_DRAFT_MODEL"]
+            == "/opt/ml/additional-model-data-sources/draft_model/"
+        )
         assert actual_env["SAGEMAKER_PROGRAM"] == "inference.py"
         assert actual_env["HF_MODEL_ID"] == "/opt/ml/model"
         mock_endpoint_from_production_variants.assert_called_once()
