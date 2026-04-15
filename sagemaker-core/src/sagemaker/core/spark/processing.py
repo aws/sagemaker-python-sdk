@@ -37,7 +37,12 @@ from typing import Union, List, Dict, Optional
 from sagemaker.core import image_uris
 from sagemaker.core import s3
 from sagemaker.core.local.image import _ecr_login_if_needed, _pull_image
-from sagemaker.core.processing import ProcessingInput, ProcessingOutput, ScriptProcessor
+from sagemaker.core.processing import (
+    ProcessingInput,
+    ProcessingOutput,
+    ProcessingS3Input,
+    ScriptProcessor,
+)
 from sagemaker.core.s3 import S3Uploader
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.network import NetworkConfig
@@ -50,6 +55,18 @@ from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core.workflow.functions import Join
 
 logger = logging.getLogger(__name__)
+
+
+def _make_s3_processing_input(input_name: str, s3_uri: str, local_path: str) -> ProcessingInput:
+    """Build a V3-compatible ProcessingInput backed by an S3 channel."""
+    return ProcessingInput(
+        input_name=input_name,
+        s3_input=ProcessingS3Input(
+            s3_uri=s3_uri,
+            s3_data_type="S3Prefix",
+            local_path=local_path,
+        ),
+    )
 
 
 class _SparkProcessorBase(ScriptProcessor):
@@ -404,10 +421,10 @@ class _SparkProcessorBase(ScriptProcessor):
             sagemaker_session=self.sagemaker_session,
         )
 
-        conf_input = ProcessingInput(
-            source=s3_uri,
-            destination=f"{self._conf_container_base_path}{self._conf_container_input_name}",
-            input_name=_SparkProcessorBase._conf_container_input_name,
+        conf_input = _make_s3_processing_input(
+            input_name=self._conf_container_input_name,
+            s3_uri=s3_uri,
+            local_path=f"{self._conf_container_base_path}{self._conf_container_input_name}",
         )
         return conf_input
 
@@ -505,15 +522,16 @@ class _SparkProcessorBase(ScriptProcessor):
         # them to the Spark container  and form the spark-submit option from a
         # combination of S3 URIs and container's local input path
         if use_input_channel:
-            input_channel = ProcessingInput(
-                source=input_channel_s3_uri,
-                destination=f"{self._conf_container_base_path}{input_channel_name}",
+            local_path = f"{self._conf_container_base_path}{input_channel_name}"
+            input_channel = _make_s3_processing_input(
                 input_name=input_channel_name,
+                s3_uri=input_channel_s3_uri,
+                local_path=local_path,
             )
             spark_opt = (
-                Join(on=",", values=spark_opt_s3_uris + [input_channel.destination])
+                Join(on=",", values=spark_opt_s3_uris + [local_path])
                 if spark_opt_s3_uris_has_pipeline_var
-                else ",".join(spark_opt_s3_uris + [input_channel.destination])
+                else ",".join(spark_opt_s3_uris + [local_path])
             )
         # If no local files were uploaded, form the spark-submit option from a list of S3 URIs
         else:
