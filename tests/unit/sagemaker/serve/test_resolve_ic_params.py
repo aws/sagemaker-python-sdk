@@ -621,8 +621,13 @@ class TestDeployParameterForwarding:
         assert captured["base_inference_component_name"] == "base-ic"
         assert captured["container"] == {"image": "img"}
 
-    def test_deploy_defaults_variant_name_to_all_traffic(self):
-        """deploy() should default variant_name to 'AllTraffic' when not provided."""
+    def test_deploy_does_not_set_variant_name_when_not_provided(self):
+        """deploy() should NOT set variant_name in kwargs when not provided.
+
+        This allows downstream methods to use their own defaults:
+        - _deploy_core_endpoint defaults to 'AllTraffic'
+        - _deploy_model_customization defaults to endpoint_name
+        """
         from sagemaker.serve.model_builder import ModelBuilder
 
         mb = object.__new__(ModelBuilder)
@@ -650,8 +655,45 @@ class TestDeployParameterForwarding:
             initial_instance_count=1,
         )
 
-        assert captured["variant_name"] == "AllTraffic"
+        # variant_name should NOT be in kwargs when not explicitly provided
+        assert "variant_name" not in captured
         # Optional params should not be in kwargs when not provided
         assert "data_cache_config" not in captured
         assert "base_inference_component_name" not in captured
         assert "container" not in captured
+
+    def test_deploy_forwards_variant_name_none_is_not_forwarded(self):
+        """deploy(variant_name=None) should NOT forward variant_name.
+
+        None is the default, so it should behave the same as not providing it.
+        """
+        from sagemaker.serve.model_builder import ModelBuilder
+
+        mb = object.__new__(ModelBuilder)
+        mb.built_model = MagicMock()
+        mb._deployed = False
+        mb._is_sharded_model = False
+        mb.model_name = "test"
+        mb.instance_type = "ml.m5.large"
+        mb.endpoint_name = None
+        mb.mode = None
+        mb.model_server = None
+        mb._is_model_customization = MagicMock(return_value=False)
+
+        captured = {}
+
+        def fake_deploy(**kw):
+            captured.update(kw)
+            return MagicMock()
+
+        mb._deploy = fake_deploy
+
+        mb.deploy(
+            endpoint_name="ep",
+            instance_type="ml.m5.large",
+            initial_instance_count=1,
+            variant_name=None,
+        )
+
+        # variant_name=None should not be forwarded
+        assert "variant_name" not in captured

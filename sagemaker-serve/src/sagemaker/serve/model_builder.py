@@ -4211,8 +4211,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")
 
-        # Centralize variant_name defaulting and always forward IC-level params
-        kwargs["variant_name"] = variant_name or "AllTraffic"
+        # Only forward variant_name when explicitly provided by the caller.
+        # Each downstream path has its own default:
+        #   - _deploy_core_endpoint defaults to "AllTraffic"
+        #   - _deploy_model_customization defaults to endpoint_name
+        if variant_name is not None:
+            kwargs["variant_name"] = variant_name
         if inference_component_name is not None:
             kwargs["inference_component_name"] = inference_component_name
         if data_cache_config is not None:

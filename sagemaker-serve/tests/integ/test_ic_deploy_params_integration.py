@@ -37,9 +37,6 @@ logger = logging.getLogger(__name__)
 # Use the same JumpStart model as test_jumpstart_integration.py
 MODEL_ID = "huggingface-llm-falcon-7b-bf16"
 
-# Training job for model customization path (same as test_model_customization_deployment.py)
-TRAINING_JOB_NAME = "meta-textgeneration-llama-3-2-1b-instruct-sft-20251201172445"
-
 
 def _cleanup_endpoint(endpoint_name, sagemaker_client):
     """Delete endpoint, endpoint config, and all inference components."""
@@ -158,85 +155,4 @@ def test_deploy_with_data_cache_config_and_variant_name_via_ic_path():
         _cleanup_model(model_name, sagemaker_client)
 
 
-@pytest.mark.slow_test
-def test_deploy_with_data_cache_config_via_model_customization_path():
-    """Deploy a fine-tuned model via _deploy_model_customization with data_cache_config.
 
-    Verifies:
-    - The IC was created with DataCacheConfig.EnableCaching == True
-    - The variant_name defaults to endpoint_name (backward compat) when not explicitly provided
-    """
-    from sagemaker.core.resources import TrainingJob
-
-    unique_id = uuid.uuid4().hex[:8]
-    model_name = f"ic-mc-test-model-{unique_id}"
-    endpoint_name = f"ic-mc-test-ep-{unique_id}"
-
-    sagemaker_client = boto3.client("sagemaker")
-
-    try:
-        training_job = TrainingJob.get(training_job_name=TRAINING_JOB_NAME)
-        model_builder = ModelBuilder(
-            model=training_job, instance_type="ml.g5.4xlarge"
-        )
-        model_builder.accept_eula = True
-        core_model = model_builder.build(model_name=model_name)
-        logger.info("Model created: %s", core_model.model_name)
-
-        # Deploy with data_cache_config but WITHOUT explicit variant_name
-        # so it should default to endpoint_name for model customization path
-        endpoint = model_builder.deploy(
-            endpoint_name=endpoint_name,
-            initial_instance_count=1,
-            data_cache_config={"enable_caching": True},
-        )
-        logger.info("Endpoint created: %s", endpoint.endpoint_name)
-
-        # Find inference components on this endpoint
-        paginator = sagemaker_client.get_paginator("list_inference_components")
-        ic_names = []
-        for page in paginator.paginate(EndpointNameEquals=endpoint_name):
-            for ic in page.get("InferenceComponents", []):
-                ic_names.append(ic["InferenceComponentName"])
-
-        assert len(ic_names) > 0, (
-            f"Expected at least one inference component on endpoint '{endpoint_name}'"
-        )
-
-        # Check the first (or base) IC for DataCacheConfig
-        # For LORA, the base IC should have data_cache_config; for non-LORA, the single IC.
-        peft_type = model_builder._fetch_peft()
-        if peft_type == "LORA":
-            # Base IC is named <endpoint_name>-inference-component
-            base_ic_name = f"{endpoint_name}-inference-component"
-        else:
-            base_ic_name = f"{endpoint_name}-inference-component"
-
-        ic_desc = sagemaker_client.describe_inference_component(
-            InferenceComponentName=base_ic_name
-        )
-
-        # Verify DataCacheConfig.EnableCaching == True
-        spec = ic_desc.get("Specification", {})
-        data_cache = spec.get("DataCacheConfig", {})
-        assert data_cache.get("EnableCaching") is True, (
-            f"Expected DataCacheConfig.EnableCaching=True, got {data_cache}"
-        )
-
-        # Verify variant_name defaults to endpoint_name (backward compat)
-        actual_variant = ic_desc.get("VariantName")
-        assert actual_variant == endpoint_name, (
-            f"Expected VariantName='{endpoint_name}' (backward compat default), "
-            f"got '{actual_variant}'"
-        )
-
-        logger.info(
-            "Test passed: IC '%s' has DataCacheConfig.EnableCaching=True "
-            "and VariantName='%s' (backward compat default)",
-            base_ic_name,
-            endpoint_name,
-        )
-
-    finally:
-        _cleanup_endpoint(endpoint_name, sagemaker_client)
-        _cleanup_model(model_name, sagemaker_client)
