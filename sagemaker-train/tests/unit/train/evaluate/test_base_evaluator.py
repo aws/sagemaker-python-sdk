@@ -222,7 +222,7 @@ class TestMLFlowARNValidation:
                 )
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_mlflow_arn_optional_with_resolution(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
         """Test that MLflow ARN is optional and gets resolved automatically."""
         mock_resolve.return_value = mock_model_info
@@ -240,7 +240,7 @@ class TestMLFlowARNValidation:
         mock_resolve_mlflow.assert_called_once_with(mock_session, None)
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_mlflow_arn_provided_skips_resolution(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
         """Test that provided MLflow ARN is used instead of resolution."""
         mock_resolve.return_value = mock_model_info
@@ -261,7 +261,7 @@ class TestMLFlowARNValidation:
         mock_resolve_mlflow.assert_called_once_with(mock_session, provided_arn)
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_mlflow_arn_resolution_returns_none(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
         """Test that MLflow resolution can return None (disabled tracking)."""
         mock_resolve.return_value = mock_model_info
@@ -278,7 +278,7 @@ class TestMLFlowARNValidation:
         mock_resolve_mlflow.assert_called_once_with(mock_session, None)
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_mlflow_arn_resolution_with_exception(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
         """Test that MLflow resolution exceptions are handled gracefully by returning None."""
         mock_resolve.return_value = mock_model_info
