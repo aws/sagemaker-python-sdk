@@ -10,149 +10,177 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Integration tests for IC-level deploy parameters (data_cache_config, variant_name)."""
+"""Integration test for IC-level deploy parameters (data_cache_config, variant_name).
+
+Uses ModelBuilder with a simple PyTorch model and ResourceRequirements to deploy
+via the IC-based endpoint path, then verifies DataCacheConfig and custom VariantName
+on the created InferenceComponent.
+"""
 from __future__ import absolute_import
 
 import json
+import os
+import tempfile
 import uuid
-import time
-import random
 import logging
 
 import boto3
 import pytest
+import torch
+import torch.nn as nn
 
 from sagemaker.serve.model_builder import ModelBuilder
-from sagemaker.core.jumpstart.configs import JumpStartConfig
+from sagemaker.serve.spec.inference_spec import InferenceSpec
+from sagemaker.serve.builder.schema_builder import SchemaBuilder
+from sagemaker.serve.utils.types import ModelServer
 from sagemaker.core.inference_config import ResourceRequirements
-from sagemaker.core.resources import (
-    Endpoint,
-    EndpointConfig,
-    InferenceComponent,
-)
-from sagemaker.train.configs import Compute
+from sagemaker.core.resources import EndpointConfig
 
 logger = logging.getLogger(__name__)
 
-# Use the same JumpStart model as test_jumpstart_integration.py
-MODEL_ID = "huggingface-llm-falcon-7b-bf16"
+
+class SimpleModel(nn.Module):
+    """Tiny PyTorch model for testing."""
+
+    def __init__(self):
+        super().__init__()
+        self.linear = nn.Linear(4, 2)
+
+    def forward(self, x):
+        return torch.softmax(self.linear(x), dim=1)
 
 
-def _cleanup_endpoint(endpoint_name, sagemaker_client):
-    """Delete endpoint, endpoint config, and all inference components."""
+class SimpleInferenceSpec(InferenceSpec):
+    """InferenceSpec for the simple model."""
+
+    def load(self, model_dir: str):
+        model = SimpleModel()
+        model_path = os.path.join(model_dir, "model.pth")
+        if os.path.exists(model_path):
+            model = torch.jit.load(model_path, map_location="cpu")
+        model.eval()
+        return model
+
+    def invoke(self, input_object, model):
+        input_tensor = torch.tensor(input_object, dtype=torch.float32)
+        with torch.no_grad():
+            return model(input_tensor).tolist()
+
+
+def _save_model(path):
+    """Save a traced PyTorch model to disk."""
+    os.makedirs(path, exist_ok=True)
+    m = SimpleModel()
+    traced = torch.jit.trace(m, torch.randn(1, 4))
+    torch.jit.save(traced, os.path.join(path, "model.pth"))
+
+
+def _cleanup(endpoint_name, sagemaker_client):
+    """Best-effort cleanup."""
     try:
-        # Delete inference components first
         paginator = sagemaker_client.get_paginator("list_inference_components")
         for page in paginator.paginate(EndpointNameEquals=endpoint_name):
             for ic in page.get("InferenceComponents", []):
-                ic_name = ic["InferenceComponentName"]
                 try:
                     sagemaker_client.delete_inference_component(
-                        InferenceComponentName=ic_name
+                        InferenceComponentName=ic["InferenceComponentName"]
                     )
-                    logger.info("Deleted inference component: %s", ic_name)
-                except Exception as e:
-                    logger.warning("Failed to delete IC %s: %s", ic_name, e)
-    except Exception as e:
-        logger.warning("Failed to list/delete ICs for %s: %s", endpoint_name, e)
-
+                except Exception:
+                    pass
+    except Exception:
+        pass
     try:
         sagemaker_client.delete_endpoint(EndpointName=endpoint_name)
-        logger.info("Deleted endpoint: %s", endpoint_name)
-    except Exception as e:
-        logger.warning("Failed to delete endpoint %s: %s", endpoint_name, e)
-
+    except Exception:
+        pass
     try:
         sagemaker_client.delete_endpoint_config(EndpointConfigName=endpoint_name)
-        logger.info("Deleted endpoint config: %s", endpoint_name)
-    except Exception as e:
-        logger.warning("Failed to delete endpoint config %s: %s", endpoint_name, e)
-
-
-def _cleanup_model(model_name, sagemaker_client):
-    """Delete a SageMaker model."""
-    try:
-        sagemaker_client.delete_model(ModelName=model_name)
-        logger.info("Deleted model: %s", model_name)
-    except Exception as e:
-        logger.warning("Failed to delete model %s: %s", model_name, e)
+    except Exception:
+        pass
 
 
 @pytest.mark.slow_test
-def test_deploy_with_data_cache_config_and_variant_name_via_ic_path():
-    """Deploy a JumpStart model via the IC-based path with data_cache_config and custom variant_name.
+def test_deploy_ic_with_data_cache_config_and_variant_name():
+    """Deploy a simple model via ModelBuilder IC path with data_cache_config and variant_name.
 
-    Verifies:
-    - The IC was created with DataCacheConfig.EnableCaching == True
-    - The variant name matches the custom value (not 'AllTraffic')
+    Uses a tiny PyTorch model on ml.m5.xlarge (CPU) to keep costs low and avoid
+    GPU capacity issues. Verifies the IC was created with the correct DataCacheConfig
+    and VariantName via boto3 describe.
     """
-    unique_id = uuid.uuid4().hex[:8]
-    model_name = f"ic-params-test-model-{unique_id}"
-    endpoint_name = f"ic-params-test-ep-{unique_id}"
-    custom_variant = f"Variant-{unique_id}"
+    uid = uuid.uuid4().hex[:8]
+    endpoint_name = f"ic-params-ep-{uid}"
+    ic_name = f"ic-params-component-{uid}"
+    custom_variant = f"Variant-{uid}"
+    model_name = f"ic-params-model-{uid}"
 
-    sagemaker_client = boto3.client("sagemaker")
-    ic_name = None
+    sagemaker_client = boto3.client("sagemaker", region_name="us-west-2")
+    model_path = tempfile.mkdtemp()
+    _save_model(model_path)
 
     try:
-        # Build
-        compute = Compute(instance_type="ml.g5.2xlarge")
-        jumpstart_config = JumpStartConfig(model_id=MODEL_ID)
-        model_builder = ModelBuilder.from_jumpstart_config(
-            jumpstart_config=jumpstart_config, compute=compute
+        schema = SchemaBuilder(
+            sample_input=[[0.1, 0.2, 0.3, 0.4]],
+            sample_output=[[0.6, 0.4]],
         )
-        core_model = model_builder.build(model_name=model_name)
-        logger.info("Model created: %s", core_model.model_name)
 
-        # Deploy with IC path (ResourceRequirements triggers IC-based endpoint)
-        resources = ResourceRequirements(
-            requests={
-                "memory": 8192,
-                "num_accelerators": 1,
-                "num_cpus": 2,
-                "copies": 1,
-            }
+        model_builder = ModelBuilder(
+            inference_spec=SimpleInferenceSpec(),
+            model_path=model_path,
+            model_server=ModelServer.TORCHSERVE,
+            schema_builder=schema,
+            instance_type="ml.m5.xlarge",
+            dependencies={"auto": False},
         )
-        core_endpoint = model_builder.deploy(
+
+        model_builder.build(model_name=model_name)
+        logger.info("Model built: %s", model_name)
+
+        resources = ResourceRequirements(
+            requests={"memory": 1024, "num_cpus": 1, "copies": 1}
+        )
+
+        endpoint = model_builder.deploy(
             endpoint_name=endpoint_name,
             initial_instance_count=1,
             inference_config=resources,
+            inference_component_name=ic_name,
             data_cache_config={"enable_caching": True},
             variant_name=custom_variant,
         )
-        logger.info("Endpoint created: %s", core_endpoint.endpoint_name)
+        logger.info("Endpoint deployed: %s", endpoint.endpoint_name)
 
-        # Find the inference component that was created
-        ic_name = model_builder.inference_component_name
-        assert ic_name is not None, "inference_component_name should be set after deploy"
+        # Wait for the IC to be fully ready before describing it.
+        # deploy() creates the IC with wait=False, so it may still be Creating.
+        import time
+        for _ in range(40):
+            ic_status = sagemaker_client.describe_inference_component(
+                InferenceComponentName=ic_name
+            ).get("InferenceComponentStatus")
+            if ic_status == "InService":
+                break
+            logger.info("IC status: %s, waiting...", ic_status)
+            time.sleep(15)
+        logger.info("IC InService: %s", ic_name)
 
-        # Describe the inference component via boto3
+        # Verify the IC was created with correct params
         ic_desc = sagemaker_client.describe_inference_component(
             InferenceComponentName=ic_name
         )
 
-        # Verify DataCacheConfig.EnableCaching == True
+        # Check DataCacheConfig
         spec = ic_desc.get("Specification", {})
         data_cache = spec.get("DataCacheConfig", {})
         assert data_cache.get("EnableCaching") is True, (
             f"Expected DataCacheConfig.EnableCaching=True, got {data_cache}"
         )
 
-        # Verify variant name matches custom value
+        # Check VariantName
         actual_variant = ic_desc.get("VariantName")
         assert actual_variant == custom_variant, (
             f"Expected VariantName='{custom_variant}', got '{actual_variant}'"
         )
 
-        logger.info(
-            "Test passed: IC '%s' has DataCacheConfig.EnableCaching=True and VariantName='%s'",
-            ic_name,
-            custom_variant,
-        )
+        logger.info("Test passed: IC has correct DataCacheConfig and VariantName")
 
     finally:
-        _cleanup_endpoint(endpoint_name, sagemaker_client)
-        _cleanup_model(model_name, sagemaker_client)
-
-
-
+        _cleanup(endpoint_name, sagemaker_client)
