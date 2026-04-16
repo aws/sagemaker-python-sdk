@@ -34,6 +34,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
     download_inference_assets,
     get_sm_session,
     get_tabular_data,
+    x_fail_if_ice,
 )
 
 INF2_SUPPORTED_REGIONS = {
@@ -191,7 +192,10 @@ def test_jumpstart_gated_model(setup):
     assert response is not None
 
 
+@x_fail_if_ice
 def test_jumpstart_gated_model_inference_component_enabled(setup):
+    # x_fail_if_ice marks this test as xfail on CapacityError — ml.g5.2xlarge capacity
+    # is shared across parallel CI runs and may be transiently exhausted.
 
     model_id = "meta-textgeneration-llama-2-7b"
 

@@ -38,7 +38,6 @@ MAX_INIT_TIME_SECONDS = 5
 
 TEST_MODEL_IDS = {
     "huggingface-spc-bert-base-cased",
-    "huggingface-llm-gemma-7b",
     "catboost-regression-model",
 }
 
@@ -136,9 +135,18 @@ def test_jumpstart_hub_estimator_with_session(setup, add_model_references):
     assert response is not None
 
 
+@pytest.mark.skip(
+    reason=(
+        "meta-textgeneration-llama-2-7b has been removed from the SageMaker public JumpStart hub. "
+        "Gated model EULA enforcement is covered by test_jumpstart_hub_gated_model in "
+        "test_jumpstart_private_hub_model.py and test_gated_model_training_v1/v2 in "
+        "test_jumpstart_estimator.py. TODO: replace with a suitable gated model that supports "
+        "training via private hub without requiring specific VPC endpoint configuration."
+    )
+)
 def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
 
-    model_id, model_version = "huggingface-llm-gemma-7b", "*"
+    model_id, model_version = "meta-textgeneration-llama-2-7b", "*"
 
     estimator = JumpStartEstimator(
         model_id=model_id,
@@ -170,9 +178,18 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
     assert response is not None
 
 
+@pytest.mark.skip(
+    reason=(
+        "meta-textgeneration-llama-2-7b has been removed from the SageMaker public JumpStart hub. "
+        "Gated model EULA enforcement is covered by test_jumpstart_hub_gated_model in "
+        "test_jumpstart_private_hub_model.py and test_gated_model_training_v1/v2 in "
+        "test_jumpstart_estimator.py. TODO: replace with a suitable gated model that supports "
+        "training via private hub without requiring specific VPC endpoint configuration."
+    )
+)
 def test_jumpstart_hub_gated_estimator_without_eula(setup, add_model_references):
 
-    model_id, model_version = "huggingface-llm-gemma-7b", "*"
+    model_id, model_version = "meta-textgeneration-llama-2-7b", "*"
 
     estimator = JumpStartEstimator(
         model_id=model_id,

@@ -105,6 +105,11 @@ def test_model_builder_ic_sagemaker_endpoint(
             if caught_ex:
                 logger.exception(caught_ex)
                 cleanup_resources(sagemaker_session, [LLAMA_IC_NAME])
+                if "ResourceLimitExceeded" in str(caught_ex) or "CapacityError" in str(caught_ex):
+                    # Mark as xfail rather than hard-failing — ml.g5.24xlarge capacity is shared
+                    # across parallel CI runs and may be transiently exhausted. This is not a
+                    # code regression; the test should be retried when capacity is available.
+                    pytest.xfail(str(caught_ex))
                 assert False, f"{caught_ex} thrown when running mb-IC deployment test."
 
             cleanup_resources(sagemaker_session, [LLAMA_IC_NAME])
