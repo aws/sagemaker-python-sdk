@@ -1,4 +1,10 @@
 # Changelog
+## v1.8.0 (2026-04-16)
+
+### Bug Fixes
+
+- **HuggingFace**: Improve SDK v3 Hugging Face support
+
 ## v1.7.1 (2026-03-31)
 
 ### Features
