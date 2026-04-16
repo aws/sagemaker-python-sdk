@@ -6,7 +6,9 @@ from unittest.mock import Mock, patch, MagicMock
 
 import pytest
 
-from sagemaker.serve.model_builder_servers import _ModelBuilderServers
+from sagemaker.serve.model_builder_servers import (
+    _ModelBuilderServers,
+)
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 
@@ -22,7 +24,9 @@ def _create_mock_builder(
     """Create a mock builder with common attributes set."""
     builder = MagicMock(spec=_ModelBuilderServers)
     builder.model = model
-    builder.env_vars = env_vars if env_vars is not None else {}
+    builder.env_vars = (
+        env_vars if env_vars is not None else {}
+    )
     builder.model_path = "/tmp/test_model_path"
     builder.mode = Mode.SAGEMAKER_ENDPOINT
     builder.model_server = ModelServer.DJL_SERVING
@@ -43,7 +47,9 @@ def _create_mock_builder(
     builder.hf_model_config = {}
     builder.model_data_download_timeout = None
     builder._user_provided_instance_type = True
-    builder._is_jumpstart_model_id = Mock(return_value=False)
+    builder._is_jumpstart_model_id = Mock(
+        return_value=False
+    )
     builder._auto_detect_image_uri = Mock()
     builder._prepare_for_mode = Mock(
         return_value=("s3://model-data", None)
@@ -68,25 +74,27 @@ def _create_mock_builder(
 
 @pytest.fixture
 def mock_builder() -> MagicMock:
-    """Create a mock builder with default (empty) env_vars."""
+    """Create a mock builder with default env_vars."""
     return _create_mock_builder(env_vars={})
 
 
 @pytest.fixture
 def mock_builder_with_s3() -> MagicMock:
-    """Create a mock builder with user-provided S3 HF_MODEL_ID."""
+    """Mock builder with user-provided S3 HF_MODEL_ID."""
     return _create_mock_builder(
         env_vars={"HF_MODEL_ID": S3_PATH}
     )
 
 
-# -- Patch sets for each server type ----------------------------------
+# -- Patch targets for each server type --------------------------
 
 _DJL_PATCHES: List[str] = [
     "sagemaker.serve.model_builder_servers"
     "._get_default_tensor_parallel_degree",
-    "sagemaker.serve.model_builder_servers._get_gpu_info",
-    "sagemaker.serve.model_builder_servers._get_nb_instance",
+    "sagemaker.serve.model_builder_servers"
+    "._get_gpu_info",
+    "sagemaker.serve.model_builder_servers"
+    "._get_nb_instance",
     "sagemaker.serve.model_builder_servers"
     "._get_default_djl_configurations",
     "sagemaker.serve.model_builder_servers"
@@ -96,19 +104,21 @@ _DJL_PATCHES: List[str] = [
 ]
 
 _DJL_RETURN_VALUES = [
-    1,       # tensor_parallel_degree
-    1,       # gpu_info
-    None,    # nb_instance
+    1,          # tensor_parallel_degree
+    1,          # gpu_info
+    None,       # nb_instance
     ({}, 256),  # djl_configurations
-    {},      # hf_model_config
-    None,    # _create_dir_structure
+    {},         # hf_model_config
+    None,       # _create_dir_structure
 ]
 
 _TGI_PATCHES: List[str] = [
     "sagemaker.serve.model_builder_servers"
     "._get_default_tensor_parallel_degree",
-    "sagemaker.serve.model_builder_servers._get_gpu_info",
-    "sagemaker.serve.model_builder_servers._get_nb_instance",
+    "sagemaker.serve.model_builder_servers"
+    "._get_gpu_info",
+    "sagemaker.serve.model_builder_servers"
+    "._get_nb_instance",
     "sagemaker.serve.model_builder_servers"
     "._get_default_tgi_configurations",
     "sagemaker.serve.model_builder_servers"
@@ -118,16 +128,17 @@ _TGI_PATCHES: List[str] = [
 ]
 
 _TGI_RETURN_VALUES = [
-    1,       # tensor_parallel_degree
-    1,       # gpu_info
-    None,    # nb_instance
+    1,          # tensor_parallel_degree
+    1,          # gpu_info
+    None,       # nb_instance
     ({}, 256),  # tgi_configurations
-    {},      # hf_model_config
-    None,    # _create_dir_structure
+    {},         # hf_model_config
+    None,       # _create_dir_structure
 ]
 
 _TEI_PATCHES: List[str] = [
-    "sagemaker.serve.model_builder_servers._get_nb_instance",
+    "sagemaker.serve.model_builder_servers"
+    "._get_nb_instance",
     "sagemaker.serve.model_builder_servers"
     "._get_model_config_properties_from_hf",
     "sagemaker.serve.model_server.tgi"
@@ -140,8 +151,21 @@ _TEI_RETURN_VALUES = [
     None,  # _create_dir_structure
 ]
 
+_TORCHSERVE_PATCHES: List[str] = [
+    "sagemaker.serve.model_builder_servers"
+    ".prepare_for_torchserve",
+]
+
+_TORCHSERVE_RETURN_VALUES = [
+    "mock-secret-key",  # prepare_for_torchserve
+]
+
+_TRITON_PATCHES: List[str] = []
+_TRITON_RETURN_VALUES: list = []
+
 _MMS_PATCHES: List[str] = [
-    "sagemaker.serve.model_builder_servers._get_nb_instance",
+    "sagemaker.serve.model_builder_servers"
+    "._get_nb_instance",
     "sagemaker.serve.model_builder_servers"
     "._get_model_config_properties_from_hf",
     "sagemaker.serve.model_server.multi_model_server"
@@ -201,14 +225,14 @@ def _stop_patches(patchers: List) -> None:
         (
             "_build_for_torchserve",
             ModelServer.TORCHSERVE,
-            [],
-            [],
+            _TORCHSERVE_PATCHES,
+            _TORCHSERVE_RETURN_VALUES,
         ),
         (
             "_build_for_triton",
             ModelServer.TRITON,
-            [],
-            [],
+            _TRITON_PATCHES,
+            _TRITON_RETURN_VALUES,
         ),
     ],
     ids=[
@@ -231,7 +255,9 @@ def test_preserves_user_provided_hf_model_id(
     builder.model_server = server_type
     patchers = _apply_patches(patch_targets, patch_rvs)
     try:
-        getattr(_ModelBuilderServers, build_method)(builder)
+        getattr(
+            _ModelBuilderServers, build_method
+        )(builder)
     finally:
         _stop_patches(patchers)
     assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
@@ -261,14 +287,14 @@ def test_preserves_user_provided_hf_model_id(
         (
             "_build_for_torchserve",
             ModelServer.TORCHSERVE,
-            [],
-            [],
+            _TORCHSERVE_PATCHES,
+            _TORCHSERVE_RETURN_VALUES,
         ),
         (
             "_build_for_triton",
             ModelServer.TRITON,
-            [],
-            [],
+            _TRITON_PATCHES,
+            _TRITON_RETURN_VALUES,
         ),
     ],
     ids=[
@@ -291,21 +317,25 @@ def test_sets_default_hf_model_id_when_not_provided(
     builder.model_server = server_type
     patchers = _apply_patches(patch_targets, patch_rvs)
     try:
-        getattr(_ModelBuilderServers, build_method)(builder)
+        getattr(
+            _ModelBuilderServers, build_method
+        )(builder)
     finally:
         _stop_patches(patchers)
     assert builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
 
 
 # ---------------------------------------------------------------
-# Transformers (MMS) — needs extra patches for _create_dir_structure
+# Transformers (MMS) — needs extra patches
 # ---------------------------------------------------------------
 class TestBuildForTransformersHfModelId:
-    """_build_for_transformers preserves user-provided HF_MODEL_ID."""
+    """_build_for_transformers preserves HF_MODEL_ID."""
 
     def test_preserves_user_provided_s3_uri(
-        self, mock_builder_with_s3: MagicMock
+        self,
+        mock_builder_with_s3: MagicMock,
     ) -> None:
+        """User S3 URI is preserved."""
         builder = mock_builder_with_s3
         builder.model_server = ModelServer.MMS
         patchers = _apply_patches(
@@ -320,8 +350,10 @@ class TestBuildForTransformersHfModelId:
         assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
 
     def test_sets_default_when_not_provided(
-        self, mock_builder: MagicMock
+        self,
+        mock_builder: MagicMock,
     ) -> None:
+        """HF_MODEL_ID defaults to self.model."""
         builder = mock_builder
         builder.model_server = ModelServer.MMS
         patchers = _apply_patches(
@@ -333,9 +365,13 @@ class TestBuildForTransformersHfModelId:
             )
         finally:
             _stop_patches(patchers)
-        assert builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
+        assert (
+            builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
+        )
 
-    @patch("sagemaker.serve.model_builder_servers.save_pkl")
+    @patch(
+        "sagemaker.serve.model_builder_servers.save_pkl"
+    )
     @patch(
         "sagemaker.serve.model_builder_servers"
         "._get_model_config_properties_from_hf",
@@ -347,7 +383,8 @@ class TestBuildForTransformersHfModelId:
         return_value=None,
     )
     @patch(
-        "sagemaker.serve.model_server.multi_model_server"
+        "sagemaker.serve.model_server"
+        ".multi_model_server"
         ".prepare._create_dir_structure",
     )
     @patch("os.makedirs")
@@ -359,7 +396,7 @@ class TestBuildForTransformersHfModelId:
         _mock_hf: Mock,
         _mock_pkl: Mock,
     ) -> None:
-        """User-provided HF_MODEL_ID preserved with inference_spec."""
+        """User HF_MODEL_ID preserved with inference_spec."""
         builder = _create_mock_builder(
             env_vars={"HF_MODEL_ID": S3_PATH}
         )
@@ -373,5 +410,7 @@ class TestBuildForTransformersHfModelId:
         builder._is_jumpstart_model_id = Mock(
             return_value=False
         )
-        _ModelBuilderServers._build_for_transformers(builder)
+        _ModelBuilderServers._build_for_transformers(
+            builder
+        )
         assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
