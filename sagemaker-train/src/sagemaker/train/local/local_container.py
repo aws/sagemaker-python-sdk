@@ -601,7 +601,7 @@ class _LocalContainer(BaseModel):
     def _get_compose_cmd_prefix(self) -> List[str]:
         """Gets the Docker Compose command.
 
-        The method initially looks for 'docker compose' v2
+        The method initially looks for 'docker compose' v2+
         executable, if not found looks for 'docker-compose' executable.
 
         Returns:
@@ -625,10 +625,12 @@ class _LocalContainer(BaseModel):
                 "Proceeding to check for 'docker-compose' CLI."
             )
 
-        if output and "v2" in output.strip():
-            logger.info("'Docker Compose' found using Docker CLI.")
-            compose_cmd_prefix.extend(["docker", "compose"])
-            return compose_cmd_prefix
+        if output:
+            match = re.search(r"v(\d+)", output.strip())
+            if match and int(match.group(1)) >= 2:
+                logger.info("'Docker Compose' found using Docker CLI.")
+                compose_cmd_prefix.extend(["docker", "compose"])
+                return compose_cmd_prefix
 
         if shutil.which("docker-compose") is not None:
             logger.info("'Docker Compose' found using Docker Compose CLI.")

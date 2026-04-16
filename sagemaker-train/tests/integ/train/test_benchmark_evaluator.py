@@ -307,7 +307,7 @@ class TestBenchmarkEvaluatorIntegration:
             benchmark=Benchmark.MMLU,
             model=BASE_MODEL_ONLY_CONFIG["base_model_id"],
             s3_output_path=BASE_MODEL_ONLY_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=BASE_MODEL_ONLY_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=BASE_MODEL_ONLY_CONFIG["mlflow_tracking_server_arn"],
             base_eval_name="integ-test-base-model-only",
             # Note: model_package_group not needed for JumpStart models
         )

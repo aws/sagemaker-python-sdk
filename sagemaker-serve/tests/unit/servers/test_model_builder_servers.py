@@ -781,6 +781,10 @@ class TestBuildForTransformers(unittest.TestCase):
         result = self.builder._build_for_transformers()
 
         self.assertEqual(self.builder.env_vars["HF_MODEL_ID"], "gpt2")
+        mock_hf_config.assert_called_once_with(
+            "gpt2",
+            "token",
+        )
         mock_create.assert_called_once()
 
     @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
