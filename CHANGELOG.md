@@ -1,4 +1,16 @@
 # Changelog
+## v3.8.0 (2026-04-16)
+
+### New Features
+- **Feature Group Manager**: Feature Group Manager support
+- **Image Upgrades**: Image upgrades
+
+### Bug Fixes
+- **ModelBuilder**: Add MLFlowConfig to Base Model
+- **Docker**: Support for docker compose > v2
+- **HuggingFace**: Improve SDK v3 Hugging Face support
+- **Dependencies**: Remove Pytorch hard dependency
+
 ## v3.7.1 (2026-03-31)
 
 ### Features
