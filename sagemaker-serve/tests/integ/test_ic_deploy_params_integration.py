@@ -123,12 +123,25 @@ def test_deploy_ic_with_data_cache_config_and_variant_name():
             sample_output=[[0.6, 0.4]],
         )
 
+        # Use a PyTorch inference image that works across CI (py310) and local (py312).
+        # The container has its own Python, so py310 works regardless of host Python.
+        from sagemaker.core import image_uris
+        inference_image = image_uris.retrieve(
+            framework="pytorch",
+            region="us-west-2",
+            version="2.2.0",
+            py_version="py310",
+            instance_type="ml.m5.xlarge",
+            image_scope="inference",
+        )
+
         model_builder = ModelBuilder(
             inference_spec=SimpleInferenceSpec(),
             model_path=model_path,
             model_server=ModelServer.TORCHSERVE,
             schema_builder=schema,
             instance_type="ml.m5.xlarge",
+            image_uri=inference_image,
             dependencies={"auto": False},
         )
 
