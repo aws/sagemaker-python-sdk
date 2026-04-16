@@ -342,8 +342,8 @@ class ModelTrainer(BaseModel):
                     config_path=TRAINING_JOB_SUBNETS_PATH
                 )
             if self.networking.security_group_ids is None:
-                self.networking.subnets = self.config_mgr.resolve_value_from_config(
-                    config_path=TRAINING_JOB_SUBNETS_PATH
+                self.networking.security_group_ids = self.config_mgr.resolve_value_from_config(
+                    config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
                 )
 
         if not self.output_data_config:
