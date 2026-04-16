@@ -49,6 +49,88 @@ class TestLoadFeatureDefinitionsFromDataframe:
         defs = load_feature_definitions_from_dataframe(sample_dataframe)
         assert len(defs) == 3
 
+    @pytest.mark.parametrize(
+        "dtype",
+        ["Int8", "Int16", "Int32", "Int64",
+         "UInt8", "UInt16", "UInt32", "UInt64"],
+    )
+    def test_infers_integral_type_with_pandas_nullable_int(
+        self, dtype
+    ):
+        df = pd.DataFrame(
+            {"id": pd.Series([1, 2, 3], dtype=dtype)}
+        )
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Integral"
+
+    @pytest.mark.parametrize(
+        "dtype", ["Float32", "Float64"],
+    )
+    def test_infers_fractional_type_with_pandas_nullable_float(
+        self, dtype
+    ):
+        df = pd.DataFrame(
+            {"value": pd.Series([1.1, 2.2, 3.3], dtype=dtype)}
+        )
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "Fractional"
+
+    def test_infers_string_type_with_pandas_string_dtype(self):
+        df = pd.DataFrame({"name": pd.Series(["a", "b", "c"], dtype="string")})
+        defs = load_feature_definitions_from_dataframe(df)
+        assert defs[0].feature_type == "String"
+
+    def test_infers_correct_types_after_convert_dtypes(self):
+        df = pd.DataFrame({
+            "id": [1, 2, 3],
+            "price": [1.1, 2.2, 3.3],
+            "name": ["a", "b", "c"],
+        }).convert_dtypes()
+        defs = load_feature_definitions_from_dataframe(df)
+        id_def = next(d for d in defs if d.feature_name == "id")
+        price_def = next(d for d in defs if d.feature_name == "price")
+        name_def = next(d for d in defs if d.feature_name == "name")
+        assert id_def.feature_type == "Integral"
+        assert price_def.feature_type == "Fractional"
+        assert name_def.feature_type == "String"
+
+    def test_infers_correct_types_with_mixed_nullable_and_numpy_dtypes(
+        self,
+    ):
+        df = pd.DataFrame({
+            "numpy_int": pd.Series([1, 2, 3], dtype="int64"),
+            "nullable_float": pd.Series(
+                [1.1, 2.2, 3.3], dtype="Float64"
+            ),
+            "nullable_int": pd.Series(
+                [10, 20, 30], dtype="Int64"
+            ),
+            "numpy_float": pd.Series(
+                [0.1, 0.2, 0.3], dtype="float64"
+            ),
+        })
+        defs = load_feature_definitions_from_dataframe(df)
+
+        result = next(
+            d for d in defs if d.feature_name == "numpy_int"
+        )
+        assert result.feature_type == "Integral"
+
+        result = next(
+            d for d in defs if d.feature_name == "nullable_float"
+        )
+        assert result.feature_type == "Fractional"
+
+        result = next(
+            d for d in defs if d.feature_name == "nullable_int"
+        )
+        assert result.feature_type == "Integral"
+
+        result = next(
+            d for d in defs if d.feature_name == "numpy_float"
+        )
+        assert result.feature_type == "Fractional"
+
     def test_collection_type_with_in_memory_storage(self):
         df = pd.DataFrame({
             "id": pd.Series([1, 2], dtype="int64"),

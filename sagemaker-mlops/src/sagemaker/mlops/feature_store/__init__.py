@@ -2,7 +2,7 @@
 # Licensed under the Apache License, Version 2.0
 """SageMaker FeatureStore V3 - powered by sagemaker-core."""
 
-# Resources from core
+# FeatureGroup with additional operational support
 from sagemaker.core.resources import FeatureGroup, FeatureMetadata
 from sagemaker.mlops.feature_store.feature_group_manager import FeatureGroupManager, LakeFormationConfig
 
