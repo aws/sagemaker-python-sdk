@@ -16,6 +16,20 @@ from sagemaker.serve.mode.function_pointers import Mode
 S3_PATH = "s3://my-bucket/models/Qwen/"
 DEFAULT_MODEL = "Qwen/Qwen3-VL-4B-Instruct"
 
+_MOD = "sagemaker.serve.model_builder_servers"
+_DJL_PREP = (
+    "sagemaker.serve.model_server"
+    ".djl_serving.prepare._create_dir_structure"
+)
+_TGI_PREP = (
+    "sagemaker.serve.model_server"
+    ".tgi.prepare._create_dir_structure"
+)
+_MMS_PREP = (
+    "sagemaker.serve.model_server"
+    ".multi_model_server.prepare._create_dir_structure"
+)
+
 
 def _create_mock_builder(
     env_vars: Optional[Dict[str, str]] = None,
@@ -54,7 +68,9 @@ def _create_mock_builder(
     builder._prepare_for_mode = Mock(
         return_value=("s3://model-data", None)
     )
-    builder._create_model = Mock(return_value=Mock())
+    builder._create_model = Mock(
+        return_value=Mock()
+    )
     builder._optimizing = False
     builder._validate_djl_serving_sample_data = Mock()
     builder._validate_tgi_serving_sample_data = Mock()
@@ -86,21 +102,15 @@ def mock_builder_with_s3() -> MagicMock:
     )
 
 
-# -- Patch targets for each server type --------------------------
+# -- Patch targets for each server type ----------------------
 
 _DJL_PATCHES: List[str] = [
-    "sagemaker.serve.model_builder_servers"
-    "._get_default_tensor_parallel_degree",
-    "sagemaker.serve.model_builder_servers"
-    "._get_gpu_info",
-    "sagemaker.serve.model_builder_servers"
-    "._get_nb_instance",
-    "sagemaker.serve.model_builder_servers"
-    "._get_default_djl_configurations",
-    "sagemaker.serve.model_builder_servers"
-    "._get_model_config_properties_from_hf",
-    "sagemaker.serve.model_server.djl_serving"
-    ".prepare._create_dir_structure",
+    f"{_MOD}._get_default_tensor_parallel_degree",
+    f"{_MOD}._get_gpu_info",
+    f"{_MOD}._get_nb_instance",
+    f"{_MOD}._get_default_djl_configurations",
+    f"{_MOD}._get_model_config_properties_from_hf",
+    _DJL_PREP,
 ]
 
 _DJL_RETURN_VALUES = [
@@ -113,18 +123,12 @@ _DJL_RETURN_VALUES = [
 ]
 
 _TGI_PATCHES: List[str] = [
-    "sagemaker.serve.model_builder_servers"
-    "._get_default_tensor_parallel_degree",
-    "sagemaker.serve.model_builder_servers"
-    "._get_gpu_info",
-    "sagemaker.serve.model_builder_servers"
-    "._get_nb_instance",
-    "sagemaker.serve.model_builder_servers"
-    "._get_default_tgi_configurations",
-    "sagemaker.serve.model_builder_servers"
-    "._get_model_config_properties_from_hf",
-    "sagemaker.serve.model_server.tgi"
-    ".prepare._create_dir_structure",
+    f"{_MOD}._get_default_tensor_parallel_degree",
+    f"{_MOD}._get_gpu_info",
+    f"{_MOD}._get_nb_instance",
+    f"{_MOD}._get_default_tgi_configurations",
+    f"{_MOD}._get_model_config_properties_from_hf",
+    _TGI_PREP,
 ]
 
 _TGI_RETURN_VALUES = [
@@ -137,12 +141,9 @@ _TGI_RETURN_VALUES = [
 ]
 
 _TEI_PATCHES: List[str] = [
-    "sagemaker.serve.model_builder_servers"
-    "._get_nb_instance",
-    "sagemaker.serve.model_builder_servers"
-    "._get_model_config_properties_from_hf",
-    "sagemaker.serve.model_server.tgi"
-    ".prepare._create_dir_structure",
+    f"{_MOD}._get_nb_instance",
+    f"{_MOD}._get_model_config_properties_from_hf",
+    _TGI_PREP,
 ]
 
 _TEI_RETURN_VALUES = [
@@ -152,24 +153,20 @@ _TEI_RETURN_VALUES = [
 ]
 
 _TORCHSERVE_PATCHES: List[str] = [
-    "sagemaker.serve.model_builder_servers"
-    ".prepare_for_torchserve",
+    f"{_MOD}.prepare_for_torchserve",
 ]
 
 _TORCHSERVE_RETURN_VALUES = [
-    "mock-secret-key",  # prepare_for_torchserve
+    "mock-secret-key",
 ]
 
 _TRITON_PATCHES: List[str] = []
 _TRITON_RETURN_VALUES: list = []
 
 _MMS_PATCHES: List[str] = [
-    "sagemaker.serve.model_builder_servers"
-    "._get_nb_instance",
-    "sagemaker.serve.model_builder_servers"
-    "._get_model_config_properties_from_hf",
-    "sagemaker.serve.model_server.multi_model_server"
-    ".prepare._create_dir_structure",
+    f"{_MOD}._get_nb_instance",
+    f"{_MOD}._get_model_config_properties_from_hf",
+    _MMS_PREP,
 ]
 
 _MMS_RETURN_VALUES = [
@@ -198,50 +195,55 @@ def _stop_patches(patchers: List) -> None:
         p.stop()
 
 
-# ---------------------------------------------------------------
+# -----------------------------------------------------------
 # Parametrised tests: preserve user-provided HF_MODEL_ID
-# ---------------------------------------------------------------
+# -----------------------------------------------------------
+_SERVER_PARAMS = [
+    (
+        "_build_for_djl",
+        ModelServer.DJL_SERVING,
+        _DJL_PATCHES,
+        _DJL_RETURN_VALUES,
+    ),
+    (
+        "_build_for_tgi",
+        ModelServer.TGI,
+        _TGI_PATCHES,
+        _TGI_RETURN_VALUES,
+    ),
+    (
+        "_build_for_tei",
+        ModelServer.TEI,
+        _TEI_PATCHES,
+        _TEI_RETURN_VALUES,
+    ),
+    (
+        "_build_for_torchserve",
+        ModelServer.TORCHSERVE,
+        _TORCHSERVE_PATCHES,
+        _TORCHSERVE_RETURN_VALUES,
+    ),
+    (
+        "_build_for_triton",
+        ModelServer.TRITON,
+        _TRITON_PATCHES,
+        _TRITON_RETURN_VALUES,
+    ),
+]
+
+_SERVER_IDS = [
+    "djl",
+    "tgi",
+    "tei",
+    "torchserve",
+    "triton",
+]
+
+
 @pytest.mark.parametrize(
     "build_method, server_type, patch_targets, patch_rvs",
-    [
-        (
-            "_build_for_djl",
-            ModelServer.DJL_SERVING,
-            _DJL_PATCHES,
-            _DJL_RETURN_VALUES,
-        ),
-        (
-            "_build_for_tgi",
-            ModelServer.TGI,
-            _TGI_PATCHES,
-            _TGI_RETURN_VALUES,
-        ),
-        (
-            "_build_for_tei",
-            ModelServer.TEI,
-            _TEI_PATCHES,
-            _TEI_RETURN_VALUES,
-        ),
-        (
-            "_build_for_torchserve",
-            ModelServer.TORCHSERVE,
-            _TORCHSERVE_PATCHES,
-            _TORCHSERVE_RETURN_VALUES,
-        ),
-        (
-            "_build_for_triton",
-            ModelServer.TRITON,
-            _TRITON_PATCHES,
-            _TRITON_RETURN_VALUES,
-        ),
-    ],
-    ids=[
-        "djl",
-        "tgi",
-        "tei",
-        "torchserve",
-        "triton",
-    ],
+    _SERVER_PARAMS,
+    ids=_SERVER_IDS,
 )
 def test_preserves_user_provided_hf_model_id(
     build_method: str,
@@ -265,45 +267,8 @@ def test_preserves_user_provided_hf_model_id(
 
 @pytest.mark.parametrize(
     "build_method, server_type, patch_targets, patch_rvs",
-    [
-        (
-            "_build_for_djl",
-            ModelServer.DJL_SERVING,
-            _DJL_PATCHES,
-            _DJL_RETURN_VALUES,
-        ),
-        (
-            "_build_for_tgi",
-            ModelServer.TGI,
-            _TGI_PATCHES,
-            _TGI_RETURN_VALUES,
-        ),
-        (
-            "_build_for_tei",
-            ModelServer.TEI,
-            _TEI_PATCHES,
-            _TEI_RETURN_VALUES,
-        ),
-        (
-            "_build_for_torchserve",
-            ModelServer.TORCHSERVE,
-            _TORCHSERVE_PATCHES,
-            _TORCHSERVE_RETURN_VALUES,
-        ),
-        (
-            "_build_for_triton",
-            ModelServer.TRITON,
-            _TRITON_PATCHES,
-            _TRITON_RETURN_VALUES,
-        ),
-    ],
-    ids=[
-        "djl",
-        "tgi",
-        "tei",
-        "torchserve",
-        "triton",
-    ],
+    _SERVER_PARAMS,
+    ids=_SERVER_IDS,
 )
 def test_sets_default_hf_model_id_when_not_provided(
     build_method: str,
@@ -322,12 +287,14 @@ def test_sets_default_hf_model_id_when_not_provided(
         )(builder)
     finally:
         _stop_patches(patchers)
-    assert builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
+    assert (
+        builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
+    )
 
 
-# ---------------------------------------------------------------
+# -----------------------------------------------------------
 # Transformers (MMS) — needs extra patches
-# ---------------------------------------------------------------
+# -----------------------------------------------------------
 class TestBuildForTransformersHfModelId:
     """_build_for_transformers preserves HF_MODEL_ID."""
 
@@ -347,7 +314,9 @@ class TestBuildForTransformersHfModelId:
             )
         finally:
             _stop_patches(patchers)
-        assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
+        assert (
+            builder.env_vars["HF_MODEL_ID"] == S3_PATH
+        )
 
     def test_sets_default_when_not_provided(
         self,
@@ -366,27 +335,21 @@ class TestBuildForTransformersHfModelId:
         finally:
             _stop_patches(patchers)
         assert (
-            builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
+            builder.env_vars["HF_MODEL_ID"]
+            == DEFAULT_MODEL
         )
 
+    @patch(f"{_MOD}.prepare_for_mms")
+    @patch(f"{_MOD}.save_pkl")
     @patch(
-        "sagemaker.serve.model_builder_servers.save_pkl"
-    )
-    @patch(
-        "sagemaker.serve.model_builder_servers"
-        "._get_model_config_properties_from_hf",
+        f"{_MOD}._get_model_config_properties_from_hf",
         return_value={},
     )
     @patch(
-        "sagemaker.serve.model_builder_servers"
-        "._get_nb_instance",
+        f"{_MOD}._get_nb_instance",
         return_value=None,
     )
-    @patch(
-        "sagemaker.serve.model_server"
-        ".multi_model_server"
-        ".prepare._create_dir_structure",
-    )
+    @patch(_MMS_PREP)
     @patch("os.makedirs")
     def test_preserves_with_inference_spec(
         self,
@@ -395,6 +358,7 @@ class TestBuildForTransformersHfModelId:
         _mock_nb: Mock,
         _mock_hf: Mock,
         _mock_pkl: Mock,
+        _mock_mms: Mock,
     ) -> None:
         """User HF_MODEL_ID preserved with inference_spec."""
         builder = _create_mock_builder(
@@ -413,4 +377,6 @@ class TestBuildForTransformersHfModelId:
         _ModelBuilderServers._build_for_transformers(
             builder
         )
-        assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
+        assert (
+            builder.env_vars["HF_MODEL_ID"] == S3_PATH
+        )
