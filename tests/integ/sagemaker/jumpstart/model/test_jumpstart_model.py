@@ -414,7 +414,7 @@ def test_jumpstart_session_with_config_name():
             pass
 
     assert (
-        "md/js_model_id#meta-textgeneration-llama-2-7b md/js_model_ver#* md/js_config#tgi"
+        f"md/js_model_id#meta-textgeneration-llama-2-7b md/js_model_ver#* md/js_config#{model.config_name}"
         in mock_make_request.call_args[0][1]["headers"]["User-Agent"]
     )
 
