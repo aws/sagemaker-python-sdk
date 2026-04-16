@@ -38,7 +38,7 @@ MAX_INIT_TIME_SECONDS = 5
 
 TEST_MODEL_IDS = {
     "huggingface-spc-bert-base-cased",
-    "meta-textgeneration-llama-2-7b",
+    "huggingface-llm-gemma-7b",
     "catboost-regression-model",
 }
 
@@ -138,7 +138,7 @@ def test_jumpstart_hub_estimator_with_session(setup, add_model_references):
 
 def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
 
-    model_id, model_version = "meta-textgeneration-llama-2-7b", "*"
+    model_id, model_version = "huggingface-llm-gemma-7b", "*"
 
     estimator = JumpStartEstimator(
         model_id=model_id,
@@ -172,7 +172,7 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
 
 def test_jumpstart_hub_gated_estimator_without_eula(setup, add_model_references):
 
-    model_id, model_version = "meta-textgeneration-llama-2-7b", "*"
+    model_id, model_version = "huggingface-llm-gemma-7b", "*"
 
     estimator = JumpStartEstimator(
         model_id=model_id,

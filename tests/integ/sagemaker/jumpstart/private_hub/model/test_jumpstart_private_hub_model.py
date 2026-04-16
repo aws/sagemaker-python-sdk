@@ -40,8 +40,8 @@ MAX_INIT_TIME_SECONDS = 5
 TEST_MODEL_IDS = {
     "catboost-classification-model",
     "model-txt2img-stabilityai-stable-diffusion-v2-1-base",
-    "meta-textgeneration-llama-2-7b",
-    "meta-textgeneration-llama-3-2-1b",
+    "huggingface-llm-gemma-7b",
+    "huggingface-llm-gemma-3-1b-instruct",
     "catboost-regression-model",
 }
 
@@ -104,7 +104,7 @@ def test_jumpstart_hub_model_with_default_session(setup, add_model_references):
 
 def test_jumpstart_hub_gated_model(setup, add_model_references):
 
-    model_id = "meta-textgeneration-llama-3-2-1b"
+    model_id = "huggingface-llm-gemma-3-1b-instruct"
 
     model = JumpStartModel(
         model_id=model_id,
@@ -128,7 +128,7 @@ def test_jumpstart_hub_gated_model(setup, add_model_references):
 @pytest.mark.skip(reason="blocking PR checks and release pipeline.")
 def test_jumpstart_gated_model_inference_component_enabled(setup, add_model_references):
 
-    model_id = "meta-textgeneration-llama-3-2-1b"
+    model_id = "huggingface-llm-gemma-3-1b-instruct"
 
     hub_name = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
 
