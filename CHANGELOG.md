@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.257.2 (2026-04-10)
+
+### Enhancements
+* Update SDK to use latest LMI v23 image for sdk v2.x (#5710)
+* Update SDK to use latest LMIv22 image for sdk v2.x (#5641)
+* Update SDK to use latest LMI image for sdk v2.x (#5617)
+
+### Bug Fixes
+* Security fixes for Triton HMAC key exposure and missing integrity check (v2) (#5656)
+* Include jumpstart/region_config.json in MANIFEST.in (#5605)
+* Apply default experiment config for pipelines only in regions with SageMaker Experiments (#5570)
+
+### Other Changes
+* Remove record-related telemetry decorators (#5626)
+* Fix integ tests (#5674)
+
+
 ## v2.257.1 (2026-03-04)
 
 ### Bug Fixes
