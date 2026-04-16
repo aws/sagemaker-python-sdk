@@ -1696,7 +1696,7 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
 
         assert mock_lmi_js_model.set_deployment_config.call_args_list[0].kwargs == {
             "instance_type": "ml.g5.24xlarge",
-            "config_name": "lmi",
+            "config_name": mock_lmi_js_model.config_name,
         }
         assert optimized_model.env == {
             "SAGEMAKER_PROGRAM": "inference.py",
@@ -1784,7 +1784,7 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
 
         assert mock_lmi_js_model.set_deployment_config.call_args_list[0].kwargs == {
             "instance_type": "ml.g5.24xlarge",
-            "config_name": "lmi",
+            "config_name": mock_lmi_js_model.config_name,
         }
         assert optimized_model.env == {
             "SAGEMAKER_PROGRAM": "inference.py",
