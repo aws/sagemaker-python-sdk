@@ -406,7 +406,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
                 specified, uses the latest version ID.
 
         Returns:
-            A `_PipelineExecution` instance, if successful.
+            A `PipelineExecution` instance, if successful.
         """
         if selective_execution_config is not None:
             if (
@@ -438,7 +438,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             lambda: self.sagemaker_session.sagemaker_client.start_pipeline_execution(**kwargs),
             botocore_client_error_code="AccessDeniedException",
         )
-        return _PipelineExecution(
+        return PipelineExecution(
             arn=response["PipelineExecutionArn"],
             sagemaker_session=self.sagemaker_session,
         )
@@ -602,7 +602,7 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         Returns:
             A parameter dict from the execution.
         """
-        pipeline_execution = _PipelineExecution(
+        pipeline_execution = PipelineExecution(
             arn=pipeline_execution_arn,
             sagemaker_session=self.sagemaker_session,
         )
@@ -950,8 +950,21 @@ def _generate_step_map(steps: Sequence[Step], step_map: dict):
 
 
 @attr.s
-class _PipelineExecution:
-    """Internal class for encapsulating pipeline execution instances.
+class PipelineExecution:
+    """Encapsulates a pipeline execution instance.
+
+    This class can be used to interact with pipeline executions that were
+    started from any source (Python SDK, Studio UI, console, etc.).
+
+    Example::
+
+        execution = PipelineExecution(
+            arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/my-pipeline/execution/abc123",
+            sagemaker_session=sagemaker_session,
+        )
+        execution.describe()
+        execution.wait()
+        execution.list_steps()
 
     Attributes:
         arn (str): The arn of the pipeline execution.

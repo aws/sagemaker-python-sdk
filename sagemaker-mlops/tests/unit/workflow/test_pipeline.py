@@ -175,7 +175,7 @@ def test_pipeline_get_latest_execution_arn_none(mock_session, mock_step):
 
 
 def test_pipeline_build_parameters_from_execution(mock_session, mock_step):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
     
     mock_session.sagemaker_client.list_pipeline_parameters_for_execution.return_value = {
@@ -268,43 +268,43 @@ def test_pipeline_delete_triggers_not_found(mock_session, mock_step):
 
 
 def test_pipeline_execution_stop(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     execution.stop()
     mock_session.sagemaker_client.stop_pipeline_execution.assert_called_once()
 
 
 def test_pipeline_execution_describe(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     execution.describe()
     mock_session.sagemaker_client.describe_pipeline_execution.assert_called_once()
 
 
 def test_pipeline_execution_list_steps(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     
     mock_session.sagemaker_client.list_pipeline_execution_steps.return_value = {"PipelineExecutionSteps": []}
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     result = execution.list_steps()
     assert result == []
 
 
 def test_pipeline_execution_list_parameters(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     execution.list_parameters(max_results=10, next_token="token")
     mock_session.sagemaker_client.list_pipeline_parameters_for_execution.assert_called_once()
 
 
 def test_pipeline_execution_wait(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     import botocore.waiter
     
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     with patch("botocore.waiter.create_waiter_with_client") as mock_waiter:
         mock_waiter.return_value.wait = Mock()
         execution.wait(delay=10, max_attempts=5)
@@ -477,10 +477,10 @@ def test_pipeline_list_versions(mock_session, mock_step):
 
 
 def test_pipeline_execution_result_waiter_error(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     from botocore.exceptions import WaiterError
     
-    execution = _PipelineExecution(arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/test/execution/exec-id", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/test/execution/exec-id", sagemaker_session=mock_session)
     
     with patch.object(execution, "wait", side_effect=WaiterError("name", "reason", {})):
         with pytest.raises(WaiterError):
@@ -488,11 +488,11 @@ def test_pipeline_execution_result_waiter_error(mock_session):
 
 
 def test_pipeline_execution_result_terminal_failure(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     from botocore.exceptions import WaiterError
     from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
     
-    execution = _PipelineExecution(arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/test/execution/exec-id", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/test/execution/exec-id", sagemaker_session=mock_session)
     mock_session.sagemaker_client.list_pipeline_execution_steps.return_value = {
         "PipelineExecutionSteps": [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
     }
