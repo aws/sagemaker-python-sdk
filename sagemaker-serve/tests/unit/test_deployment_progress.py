@@ -157,29 +157,29 @@ class TestLiveLoggingDeployDoneWithProgress(unittest.TestCase):
         self.assertEqual(result, expected_desc)
 
     def test_with_progress_tracker_and_logs(self):
-        """Test with progress tracker and CloudWatch logs."""
+        """Test with progress tracker when endpoint is InService.
+
+        When the endpoint is InService, the function returns immediately
+        after logging the success message — it does not fetch CloudWatch
+        logs or call update_status (those only happen while Creating).
+        """
         mock_client = Mock()
-        mock_client.describe_endpoint.return_value = {
-            "EndpointStatus": "InService"
-        }
+        expected_desc = {"EndpointStatus": "InService"}
+        mock_client.describe_endpoint.return_value = expected_desc
         mock_paginator = Mock()
-        mock_paginator.paginate.return_value = [
-            {
-                "events": [
-                    {"message": "Log line 1"},
-                    {"message": "Log line 2"}
-                ]
-            }
-        ]
         mock_tracker = Mock()
-        
+
         result = _live_logging_deploy_done_with_progress(
             mock_client, "test-endpoint", mock_paginator, {}, 5, mock_tracker
         )
-        
-        # Should log success message when InService
-        self.assertGreaterEqual(mock_tracker.log.call_count, 1)
-        mock_tracker.update_status.assert_called_once_with("InService")
+
+        # Should return desc immediately when InService
+        self.assertEqual(result, expected_desc)
+        # Should log success message
+        mock_tracker.log.assert_called_once()
+        self.assertIn("Created endpoint", mock_tracker.log.call_args[0][0])
+        # Paginator should NOT be called (logs are skipped when done)
+        mock_paginator.paginate.assert_not_called()
 
     def test_resource_not_found_exception(self):
         """Test ResourceNotFoundException during log fetching."""
@@ -200,10 +200,14 @@ class TestLiveLoggingDeployDoneWithProgress(unittest.TestCase):
         self.assertIsNone(result)
 
     def test_pagination_with_next_token(self):
-        """Test pagination with nextToken."""
+        """Test pagination with nextToken during Creating status.
+
+        Pagination and log fetching only happen while the endpoint is
+        Creating. When InService, the function returns immediately.
+        """
         mock_client = Mock()
         mock_client.describe_endpoint.return_value = {
-            "EndpointStatus": "InService"
+            "EndpointStatus": "Creating"
         }
         mock_paginator = Mock()
         paginator_config = {}
@@ -213,11 +217,14 @@ class TestLiveLoggingDeployDoneWithProgress(unittest.TestCase):
                 "events": [{"message": "Log 1"}]
             }
         ]
-        
+
         result = _live_logging_deploy_done_with_progress(
             mock_client, "test-endpoint", mock_paginator, paginator_config, 5
         )
-        
+
+        # Should return None (still Creating)
+        self.assertIsNone(result)
+        # Paginator should have been called and token stored
         self.assertEqual(paginator_config.get("StartingToken"), "token123")
 
 
