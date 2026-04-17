@@ -20,6 +20,7 @@ from sagemaker.core.shapes import (
     InferenceComponentDataCacheConfig,
     InferenceComponentContainerSpecification,
 )
+from sagemaker.core.enums import EndpointType
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 
 
@@ -303,7 +304,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         mb._deploy_core_endpoint(
-            endpoint_type="INFERENCE_COMPONENT_BASED",
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
             resources=resources,
             instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
@@ -327,7 +328,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         mb._deploy_core_endpoint(
-            endpoint_type="INFERENCE_COMPONENT_BASED",
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
             resources=resources,
             instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
@@ -350,7 +351,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         mb._deploy_core_endpoint(
-            endpoint_type="INFERENCE_COMPONENT_BASED",
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
             resources=resources,
             instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
@@ -375,7 +376,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         mb._deploy_core_endpoint(
-            endpoint_type="INFERENCE_COMPONENT_BASED",
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
             resources=resources,
             instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
@@ -399,7 +400,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         mb._deploy_core_endpoint(
-            endpoint_type="INFERENCE_COMPONENT_BASED",
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
             resources=resources,
             instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
@@ -430,7 +431,7 @@ class TestDeployCoreEndpointWiring:
         )
 
         mb._deploy_core_endpoint(
-            endpoint_type="INFERENCE_COMPONENT_BASED",
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
             resources=resources,
             instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
@@ -456,7 +457,7 @@ class TestDeployCoreEndpointWiring:
 
         config = InferenceComponentDataCacheConfig(enable_caching=True)
         mb._deploy_core_endpoint(
-            endpoint_type="INFERENCE_COMPONENT_BASED",
+            endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
             resources=resources,
             instance_type="ml.g5.2xlarge",
             initial_instance_count=1,
@@ -484,7 +485,7 @@ class TestDeployCoreEndpointWiring:
         with patch("sagemaker.serve.model_builder.session_helper.production_variant") as mock_pv:
             mock_pv.return_value = {"VariantName": "CustomVariant"}
             mb._deploy_core_endpoint(
-                endpoint_type="INFERENCE_COMPONENT_BASED",
+                endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
                 resources=resources,
                 instance_type="ml.g5.2xlarge",
                 initial_instance_count=1,
@@ -494,8 +495,12 @@ class TestDeployCoreEndpointWiring:
 
             # Verify production_variant was called with variant_name="CustomVariant"
             mock_pv.assert_called_once()
-            pv_kwargs = mock_pv.call_args
-            assert pv_kwargs.kwargs.get("variant_name") == "CustomVariant"
+            pv_call = mock_pv.call_args
+            # variant_name may be in kwargs or positional args
+            variant = pv_call.kwargs.get("variant_name") or (
+                pv_call.args[3] if len(pv_call.args) > 3 else None
+            )
+            assert variant == "CustomVariant"
 
 
 # ============================================================
