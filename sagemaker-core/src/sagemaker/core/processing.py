@@ -51,7 +51,12 @@ from sagemaker.core.config.config_schema import (
 )
 from sagemaker.core.local.local_session import LocalSession
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.shapes import ProcessingInput, ProcessingOutput, ProcessingS3Input
+from sagemaker.core.shapes import (
+    ProcessingInput,
+    ProcessingOutput,
+    ProcessingS3Input,
+    ProcessingS3Output,
+)
 from sagemaker.core.resources import ProcessingJob
 from sagemaker.core.workflow.pipeline_context import PipelineSession
 from sagemaker.core.common_utils import (
@@ -85,6 +90,11 @@ from sagemaker.core.config.config_utils import _append_sagemaker_config_tags
 from sagemaker.core.utils.utils import serialize
 
 logger = logging.getLogger(__name__)
+
+# Default values used when creating a ProcessingS3Output for outputs
+# that don't have an explicit s3_output configured.
+DEFAULT_PROCESSING_LOCAL_OUTPUT_PATH = "/opt/ml/processing/output"
+DEFAULT_S3_UPLOAD_MODE = "EndOfJob"
 
 
 class Processor(object):
@@ -483,13 +493,25 @@ class Processor(object):
                 # Generate a name for the ProcessingOutput if it doesn't have one.
                 if output.output_name is None:
                     output.output_name = "output-{}".format(count)
+                # If s3_output is None, create a default one with None s3_uri.
+                # The s3_uri will be auto-generated below based on job/pipeline context.
+                if output.s3_output is None:
+                    output.s3_output = ProcessingS3Output(
+                        s3_uri=None,
+                        local_path=DEFAULT_PROCESSING_LOCAL_OUTPUT_PATH,
+                        s3_upload_mode=DEFAULT_S3_UPLOAD_MODE,
+                    )
+                # is_pipeline_variable handles None gracefully (returns False)
                 if output.s3_output and is_pipeline_variable(output.s3_output.s3_uri):
                     normalized_outputs.append(output)
                     continue
-                # If the output's s3_uri is not an s3_uri, create one.
-                parse_result = urlparse(output.s3_output.s3_uri)
-                if parse_result.scheme != "s3":
-                    if getattr(self.sagemaker_session, "local_mode", False) and parse_result.scheme == "file":
+                # If the output's s3_uri is None or not an s3_uri, create one.
+                if output.s3_output.s3_uri is None:
+                    parse_result_scheme = ""
+                else:
+                    parse_result_scheme = urlparse(output.s3_output.s3_uri).scheme
+                if parse_result_scheme != "s3":
+                    if getattr(self.sagemaker_session, "local_mode", False) and parse_result_scheme == "file":
                         normalized_outputs.append(output)
                         continue
                     if _pipeline_config:
@@ -1421,11 +1443,17 @@ def _processing_output_to_request_dict(processing_output):
     }
 
     if processing_output.s3_output:
-        request_dict["S3Output"] = {
-            "S3Uri": processing_output.s3_output.s3_uri,
+        s3_output_dict = {
             "LocalPath": processing_output.s3_output.local_path,
             "S3UploadMode": processing_output.s3_output.s3_upload_mode,
         }
+        # After _normalize_outputs, s3_uri should always be populated.
+        # If it is still None at serialization time, omit S3Uri from the dict
+        # rather than sending None to the API. This is a defensive guard;
+        # _normalize_outputs is expected to fill in s3_uri before we reach here.
+        if processing_output.s3_output.s3_uri is not None:
+            s3_output_dict["S3Uri"] = processing_output.s3_output.s3_uri
+        request_dict["S3Output"] = s3_output_dict
 
     return request_dict
 

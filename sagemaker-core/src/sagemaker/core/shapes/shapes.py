@@ -10370,12 +10370,12 @@ class ProcessingS3Output(Base):
 
     Attributes
     ----------------------
-    s3_uri: A URI that identifies the Amazon S3 bucket where you want Amazon SageMaker to save the results of a processing job.
+    s3_uri: A URI that identifies the Amazon S3 bucket where you want Amazon SageMaker to save the results of a processing job. When set to None, the SDK auto-generates an S3 path based on the job name and output name.
     local_path: The local path of a directory where you want Amazon SageMaker to upload its contents to Amazon S3. LocalPath is an absolute path to a directory containing output files. This directory will be created by the platform and exist when your container's entrypoint is invoked.
     s3_upload_mode: Whether to upload the results of the processing job continuously or after the job completes.
     """
 
-    s3_uri: StrPipeVar
+    s3_uri: Optional[StrPipeVar] = None
     s3_upload_mode: StrPipeVar
     local_path: Optional[StrPipeVar] = Unassigned()
 
