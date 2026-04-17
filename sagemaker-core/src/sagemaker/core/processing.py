@@ -1271,6 +1271,18 @@ class FrameworkProcessor(ScriptProcessor):
 
         entrypoint_s3_uri = s3_payload.replace("sourcedir.tar.gz", "runproc.sh")
 
+        # Upload the CodeArtifact-aware install_requirements script alongside the source code
+        import sagemaker.core.utils.install_requirements as _ir_mod
+
+        install_req_s3_uri = s3_payload.replace("sourcedir.tar.gz", "install_requirements.py")
+        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
+        s3.S3Uploader.upload_string_as_file_body(
+            body=open(_ir_mod.__file__, "r").read(),
+            desired_s3_uri=install_req_s3_uri,
+            kms_key=evaluated_kms_key,
+            sagemaker_session=self.sagemaker_session,
+        )
+
         script = os.path.basename(code)
         evaluated_kms_key = kms_key if kms_key else self.output_kms_key
         s3_runproc_sh = self._create_and_upload_runproc(
@@ -1373,7 +1385,7 @@ class FrameworkProcessor(ScriptProcessor):
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 
-                pip install -r requirements.txt
+                python3 /opt/ml/processing/input/code/install_requirements.py requirements.txt
             fi
 
             {entry_point_command} {entry_point} "$@"

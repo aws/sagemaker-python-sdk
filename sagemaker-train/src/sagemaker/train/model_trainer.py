@@ -637,6 +637,14 @@ class ModelTrainer(BaseModel):
             # Copy everything under container_drivers/ to a temporary directory
             shutil.copytree(SM_DRIVERS_LOCAL_PATH, self._temp_code_dir.name, dirs_exist_ok=True)
 
+            # Copy the CodeArtifact-aware install_requirements script from sagemaker-core
+            # so it's available in the container at /opt/ml/input/data/sm_drivers/scripts/
+            import sagemaker.core.utils.install_requirements as _ir_mod
+            shutil.copy2(
+                _ir_mod.__file__,
+                os.path.join(self._temp_code_dir.name, "scripts", "install_requirements.py"),
+            )
+
             # If distributed is provided, overwrite code under <root>/drivers
             if self.distributed:
                 distributed_driver_dir = self.distributed.driver_dir
