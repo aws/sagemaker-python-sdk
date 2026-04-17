@@ -78,6 +78,10 @@ from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.hardware_detector import _total_inference_model_size_mib
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.core.resources import Model
+from sagemaker.core.shapes import (
+    InferenceComponentDataCacheConfig,
+    InferenceComponentContainerSpecification,
+)
 
 # MLflow imports
 from sagemaker.serve.model_format.mlflow.constants import (
@@ -3368,6 +3372,80 @@ class _ModelBuilderUtils:
             return "sagemaker"
 
         return "auto"
+
+    def _resolve_data_cache_config(
+        self,
+        data_cache_config: Union[InferenceComponentDataCacheConfig, Dict[str, Any], None],
+    ) -> Optional[InferenceComponentDataCacheConfig]:
+        """Resolve data_cache_config to InferenceComponentDataCacheConfig.
+
+        Args:
+            data_cache_config: Either a dict with 'enable_caching' key (and any future
+                fields supported by InferenceComponentDataCacheConfig),
+                an InferenceComponentDataCacheConfig instance, or None.
+
+        Returns:
+            InferenceComponentDataCacheConfig or None.
+
+        Raises:
+            ValueError: If data_cache_config is an unsupported type or dict
+                is missing the required 'enable_caching' key.
+        """
+        if data_cache_config is None:
+            return None
+
+        if isinstance(data_cache_config, InferenceComponentDataCacheConfig):
+            return data_cache_config
+        elif isinstance(data_cache_config, dict):
+            if "enable_caching" not in data_cache_config:
+                raise ValueError(
+                    "data_cache_config dict must contain the required 'enable_caching' key. "
+                    "Example: {'enable_caching': True}"
+                )
+            # Pass only 'enable_caching' to avoid Pydantic validation errors
+            # if the model has extra='forbid'. As new fields are added to
+            # InferenceComponentDataCacheConfig, add them here.
+            return InferenceComponentDataCacheConfig(
+                enable_caching=data_cache_config["enable_caching"]
+            )
+        else:
+            raise ValueError(
+                f"data_cache_config must be a dict with 'enable_caching' key or an "
+                f"InferenceComponentDataCacheConfig instance, got {type(data_cache_config)}"
+            )
+
+    def _resolve_container_spec(
+        self,
+        container: Union[InferenceComponentContainerSpecification, Dict[str, Any], None],
+    ) -> Optional[InferenceComponentContainerSpecification]:
+        """Resolve container to InferenceComponentContainerSpecification.
+
+        Args:
+            container: Either a dict with container config keys (image, artifact_url,
+                environment), an InferenceComponentContainerSpecification instance, or None.
+
+        Returns:
+            InferenceComponentContainerSpecification or None.
+
+        Raises:
+            ValueError: If container is an unsupported type.
+        """
+        if container is None:
+            return None
+
+        if isinstance(container, InferenceComponentContainerSpecification):
+            return container
+        elif isinstance(container, dict):
+            # Only pass known keys to avoid Pydantic validation errors
+            # if the model has extra='forbid' configured
+            known_keys = {"image", "artifact_url", "environment"}
+            filtered = {k: v for k, v in container.items() if k in known_keys}
+            return InferenceComponentContainerSpecification(**filtered)
+        else:
+            raise ValueError(
+                f"container must be a dict or an InferenceComponentContainerSpecification "
+                f"instance, got {type(container)}"
+            )
 
     def get_huggingface_model_metadata(
         self, model_id: str, hf_hub_token: Optional[str] = None
