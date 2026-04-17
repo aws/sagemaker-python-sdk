@@ -83,6 +83,8 @@ from sagemaker.train.constants import (
     SM_CODE_CONTAINER_PATH,
     SM_DRIVERS,
     SM_DRIVERS_LOCAL_PATH,
+    SM_DEPENDENCIES,
+    SM_DEPENDENCIES_CONTAINER_PATH,
     SM_RECIPE,
     SM_RECIPE_YAML,
     SM_RECIPE_CONTAINER_PATH,
@@ -99,6 +101,7 @@ from sagemaker.train.templates import (
     EXECUTE_BASIC_SCRIPT_DRIVER,
     INSTALL_AUTO_REQUIREMENTS,
     INSTALL_REQUIREMENTS,
+    INSTALL_DEPENDENCIES,
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
@@ -269,6 +272,7 @@ class ModelTrainer(BaseModel):
 
     # Private Attributes for AWS_Batch
     _temp_code_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
+    _temp_deps_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
 
     CONFIGURABLE_ATTRIBUTES: ClassVar[List[str]] = [
         "role",
@@ -408,6 +412,8 @@ class ModelTrainer(BaseModel):
                 self._temp_recipe_train_dir.cleanup()
             if self._temp_code_dir is not None:
                 self._temp_code_dir.cleanup()
+            if self._temp_deps_dir is not None:
+                self._temp_deps_dir.cleanup()
 
     def _validate_training_image_and_algorithm_name(
         self, training_image: Optional[str], algorithm_name: Optional[str]
@@ -484,6 +490,13 @@ class ModelTrainer(BaseModel):
                                 f"Invalid 'entry_script': {entry_script}. "
                                 "Must be a valid file within the 'source_dir'.",
                             )
+            if source_code.dependencies:
+                for dep_path in source_code.dependencies:
+                    if not _is_valid_path(dep_path, path_type="Directory"):
+                        raise ValueError(
+                            f"Invalid dependency path: {dep_path}. "
+                            "Each dependency must be a valid local directory path."
+                        )
 
     @staticmethod
     def _validate_and_fetch_hyperparameters_file(hyperparameters_file: str):
@@ -654,6 +667,21 @@ class ModelTrainer(BaseModel):
                 )
                 final_input_data_config.append(source_code_channel)
 
+            # If dependencies are provided, create a channel for the dependencies
+            # The dependencies will be mounted at /opt/ml/input/data/sm_dependencies
+            if self.source_code.dependencies:
+                self._temp_deps_dir = TemporaryDirectory()
+                for dep_path in self.source_code.dependencies:
+                    dep_basename = os.path.basename(os.path.normpath(dep_path))
+                    dest_path = os.path.join(self._temp_deps_dir.name, dep_basename)
+                    shutil.copytree(dep_path, dest_path, dirs_exist_ok=True)
+                dependencies_channel = self.create_input_data_channel(
+                    channel_name=SM_DEPENDENCIES,
+                    data_source=self._temp_deps_dir.name,
+                    key_prefix=input_data_key_prefix,
+                )
+                final_input_data_config.append(dependencies_channel)
+
             self._prepare_train_script(
                 tmp_dir=self._temp_code_dir,
                 source_code=self.source_code,
@@ -813,6 +841,9 @@ class ModelTrainer(BaseModel):
             local_container.train(wait)
         if self._temp_code_dir is not None:
             self._temp_code_dir.cleanup()
+        if self._temp_deps_dir is not None:
+            self._temp_deps_dir.cleanup()
+            self._temp_deps_dir = None
 
 
     def create_input_data_channel(
@@ -1010,6 +1041,10 @@ class ModelTrainer(BaseModel):
             base_command = source_code.command.split()
             base_command = " ".join(base_command)
 
+        install_dependencies = ""
+        if source_code.dependencies:
+            install_dependencies = INSTALL_DEPENDENCIES
+
         install_requirements = ""
         if source_code.requirements:
             if self._jumpstart_config and source_code.requirements == "auto":
@@ -1049,6 +1084,7 @@ class ModelTrainer(BaseModel):
 
         train_script = TRAIN_SCRIPT_TEMPLATE.format(
             working_dir=working_dir,
+            install_dependencies=install_dependencies,
             install_requirements=install_requirements,
             execute_driver=execute_driver,
         )

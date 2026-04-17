@@ -109,6 +109,10 @@ class SourceCode(BaseConfig):
         ignore_patterns: (Optional[List[str]]) :
             The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
             default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
+        dependencies (Optional[List[str]]):
+            A list of paths to local directories (absolute or relative) containing additional
+            libraries that will be copied into the training container and added to PYTHONPATH.
+            Each path must be a valid local directory or file.
     """
 
     source_dir: Optional[StrPipeVar] = None
@@ -123,6 +127,8 @@ class SourceCode(BaseConfig):
         ".cache",
         ".ipynb_checkpoints",
     ]
+    dependencies: Optional[List[str]] = None
+
 
 class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
