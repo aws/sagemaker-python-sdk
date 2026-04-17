@@ -319,43 +319,43 @@ class _ModelBuilderServers(object):
             logger.debug(f"Using detected notebook instance type: {nb_instance}")
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
-            # Configure HuggingFace model for DJL
-            self.env_vars.update({"HF_MODEL_ID": self.model})
-            
+            # Configure HuggingFace model for DJL (preserve user-provided HF_MODEL_ID)
+            self.env_vars.setdefault("HF_MODEL_ID", self.model)
+
             # Get model configuration for DJL optimization
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
             )
-            
+
             # Apply DJL-specific configurations
             default_djl_configurations, _default_max_new_tokens = _get_default_djl_configurations(
                 self.model, self.hf_model_config, self.schema_builder
             )
             self.env_vars.update(default_djl_configurations)
-            
+
             # Configure schema builder for text generation
             if "parameters" not in self.schema_builder.sample_input:
                 self.schema_builder.sample_input["parameters"] = {}
             self.schema_builder.sample_input["parameters"]["max_new_tokens"] = _default_max_new_tokens
-            
-            # Set DJL serving defaults
+
+            # Set DJL serving defaults (only if not already set by user)
             djl_env_vars = {
                 "OPTION_ENGINE": "Python",
                 "SERVING_MIN_WORKERS": "1",
-                "SERVING_MAX_WORKERS": "1", 
+                "SERVING_MAX_WORKERS": "1",
                 "OPTION_MODEL_LOADING_TIMEOUT": "240",
                 "OPTION_PREDICT_TIMEOUT": "60",
-                "TENSOR_PARALLEL_DEGREE": "1"  # Default, will be overridden below
+                "TENSOR_PARALLEL_DEGREE": "1",
             }
-            
+
             # Add HuggingFace authentication
             if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
                 djl_env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
-            
+
             # Update with defaults only if not already set
             for key, value in djl_env_vars.items():
                 self.env_vars.setdefault(key, value)
-            
+
             # DJL downloads models directly from HuggingFace Hub
             self.s3_upload_path = None
 
@@ -366,6 +366,12 @@ class _ModelBuilderServers(object):
                 self._prepare_for_mode(should_upload_artifacts=True)
             else:
                 self.s3_model_data_url, _ = self._prepare_for_mode()
+
+        # Set HF cache env vars to writable location (unconditionally, using setdefault
+        # to preserve user-provided values). This is needed because /opt/ml/model/ may be
+        # read-only when source_code artifacts are mounted there.
+        self.env_vars.setdefault("HF_HOME", "/tmp")
+        self.env_vars.setdefault("HUGGINGFACE_HUB_CACHE", "/tmp")
 
         # Cache management based on mode
         if self.mode in LOCAL_MODES:
