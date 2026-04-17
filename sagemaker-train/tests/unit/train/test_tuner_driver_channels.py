@@ -405,8 +405,31 @@ class TestBuildTrainingJobDefinitionPassthrough:
         definition = tuner._build_training_job_definition(inputs=None)
         assert definition.environment == {"MY_VAR": "value", "OTHER": "123"}
 
+    def test_passes_empty_environment(self):
+        """Should pass through empty dict environment as-is.
+
+        An empty dict is valid for the SageMaker API, so we pass it through
+        rather than silently converting it to None/Unassigned.
+        """
+        trainer = _mock_model_trainer(environment={})
+
+        tuner = HyperparameterTuner(
+            model_trainer=trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_hp_ranges(),
+        )
+
+        definition = tuner._build_training_job_definition(inputs=None)
+        assert definition.environment == {}, (
+            "Empty dict environment should be passed through as-is"
+        )
+
     def test_skips_environment_when_none(self):
-        """Should not set environment when model_trainer.environment is None."""
+        """Should not set environment when model_trainer.environment is None.
+
+        When environment is None, it is not passed to the Pydantic constructor,
+        so the field stays as Unassigned (excluded from serialization).
+        """
         trainer = _mock_model_trainer(environment=None)
 
         tuner = HyperparameterTuner(
@@ -416,10 +439,16 @@ class TestBuildTrainingJobDefinitionPassthrough:
         )
 
         definition = tuner._build_training_job_definition(inputs=None)
-        assert _is_unassigned(definition.environment)
+        assert _is_unassigned(definition.environment), (
+            "Environment should be Unassigned when model_trainer.environment is None"
+        )
 
     def test_skips_environment_when_not_dict(self):
-        """Should not set environment when it's not a dict (e.g. MagicMock)."""
+        """Should not set environment when it's not a dict (e.g. MagicMock).
+
+        Non-dict values are not passed to the Pydantic constructor to avoid
+        validation errors. The field stays as Unassigned.
+        """
         trainer = _mock_model_trainer(environment=MagicMock())
 
         tuner = HyperparameterTuner(
@@ -429,7 +458,9 @@ class TestBuildTrainingJobDefinitionPassthrough:
         )
 
         definition = tuner._build_training_job_definition(inputs=None)
-        assert _is_unassigned(definition.environment)
+        assert _is_unassigned(definition.environment), (
+            "Environment should be Unassigned when model_trainer.environment is not a dict"
+        )
 
     def test_passes_vpc_config(self):
         """Should set definition.vpc_config from model_trainer.networking._to_vpc_config()."""
