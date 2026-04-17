@@ -235,6 +235,11 @@ def _refresh_training_job(
     and update its attributes. This avoids using the global default client,
     which fixes NoCredentialsError when using assumed-role sessions.
 
+    TODO: Ideally sagemaker-core's TrainingJob.refresh() should accept a
+    session/client parameter so we don't need to call boto3 directly here.
+    This workaround should be removed once sagemaker-core supports
+    session-aware refresh. See: https://github.com/aws/sagemaker-python-sdk/issues/5765
+
     Args:
         training_job (TrainingJob): The training job to refresh.
         sagemaker_session (Optional[Session]): SageMaker session with the
@@ -250,8 +255,12 @@ def _refresh_training_job(
             if hasattr(training_job, snake_key):
                 try:
                     setattr(training_job, snake_key, value)
-                except (AttributeError, TypeError, ValueError):
-                    pass
+                except (AttributeError, TypeError, ValueError) as e:
+                    logger.debug(
+                        "Could not set attribute %s on training job: %s",
+                        snake_key,
+                        e,
+                    )
     else:
         training_job.refresh()
 

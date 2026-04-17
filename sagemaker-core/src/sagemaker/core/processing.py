@@ -298,7 +298,7 @@ class Processor(object):
             if wait:
                 self._wait_for_job(self.latest_job, logs=logs)
 
-    def _wait_for_job(self, processing_job, logs=True):
+    def _wait_for_job(self, processing_job, logs=True, timeout=3600):
         """Wait for a processing job using the stored sagemaker_session.
 
         This method uses the sagemaker_session from the Processor instance
@@ -308,6 +308,8 @@ class Processor(object):
         Args:
             processing_job: ProcessingJob resource object.
             logs (bool): Whether to show logs (default: True).
+            timeout (int): Maximum time in seconds to wait (default: 3600).
+                If None, waits indefinitely.
         """
         job_name = processing_job.processing_job_name
         if logs:
@@ -316,7 +318,16 @@ class Processor(object):
             )
         else:
             poll = 10
+            start_time = time.time()
             while True:
+                if timeout and (time.time() - start_time) > timeout:
+                    raise RuntimeError(
+                        f"Timed out waiting for processing job {job_name} "
+                        f"after {timeout} seconds"
+                    )
+                # TODO: Ideally sagemaker-core's ProcessingJob.refresh()/wait()
+                # should accept a session parameter. Using ProcessingJob.get()
+                # with the user's boto_session as a workaround.
                 processing_job = ProcessingJob.get(
                     processing_job_name=job_name,
                     session=self.sagemaker_session.boto_session,
@@ -972,26 +983,6 @@ class ScriptProcessor(Processor):
             )
         return user_code_s3_uri
 
-    def _get_code_upload_bucket_and_prefix(self):
-        """Get the S3 bucket and prefix for code uploads.
-
-        If code_location is set (on FrameworkProcessor), parse it to extract
-        bucket and prefix. Otherwise, use the session's default bucket.
-
-        Returns:
-            tuple: (bucket, prefix) for S3 uploads.
-        """
-        code_location = getattr(self, "code_location", None)
-        if code_location:
-            parsed = urlparse(code_location)
-            bucket = parsed.netloc
-            prefix = parsed.path.lstrip("/")
-            return bucket, prefix
-        return (
-            self.sagemaker_session.default_bucket(),
-            self.sagemaker_session.default_bucket_prefix or "",
-        )
-
     def _upload_code(self, code, kms_key=None):
         """Uploads a code file or directory specified as a string and returns the S3 URI.
 
@@ -1006,13 +997,11 @@ class ScriptProcessor(Processor):
         """
         from sagemaker.core.workflow.utilities import _pipeline_config
 
-        bucket, prefix = self._get_code_upload_bucket_and_prefix()
-
         if _pipeline_config and _pipeline_config.code_hash:
             desired_s3_uri = s3.s3_path_join(
                 "s3://",
-                bucket,
-                prefix,
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 _pipeline_config.pipeline_name,
                 self._CODE_CONTAINER_INPUT_NAME,
                 _pipeline_config.code_hash,
@@ -1020,8 +1009,8 @@ class ScriptProcessor(Processor):
         else:
             desired_s3_uri = s3.s3_path_join(
                 "s3://",
-                bucket,
-                prefix,
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix,
                 self._current_job_name,
                 "input",
                 self._CODE_CONTAINER_INPUT_NAME,
@@ -1211,12 +1200,10 @@ class FrameworkProcessor(ScriptProcessor):
                     item_path = os.path.join(source_dir, item)
                     tar.add(item_path, arcname=item)
 
-            # Upload to S3 - honor code_location if set
-            bucket, prefix = self._get_code_upload_bucket_and_prefix()
-            s3_uri = s3.s3_path_join(
+                s3_uri = s3.s3_path_join(
                 "s3://",
-                bucket,
-                prefix,
+                self.sagemaker_session.default_bucket(),
+                self.sagemaker_session.default_bucket_prefix or "",
                 job_name,
                 "source",
                 "sourcedir.tar.gz",
@@ -1233,46 +1220,6 @@ class FrameworkProcessor(ScriptProcessor):
             os.unlink(tmp.name)
             return s3_uri
 
-    _CODEARTIFACT_ARN_PATTERN = re.compile(
-        r"^arn:aws:codeartifact:([a-z0-9-]+):(\d{12}):repository/([a-zA-Z0-9-]+)/([a-zA-Z0-9-]+)$"
-    )
-
-    @staticmethod
-    def _get_codeartifact_command(codeartifact_repo_arn: str) -> str:
-        """Parse a CodeArtifact repository ARN and return the login command.
-
-        Args:
-            codeartifact_repo_arn (str): The ARN of the CodeArtifact repository.
-                Format: arn:aws:codeartifact:{region}:{account}:repository/{domain}/{repository}
-
-        Returns:
-            str: The bash command to login to CodeArtifact via pip.
-
-        Raises:
-            ValueError: If the ARN format is invalid.
-        """
-        match = FrameworkProcessor._CODEARTIFACT_ARN_PATTERN.match(codeartifact_repo_arn)
-        if not match:
-            raise ValueError(
-                f"Invalid CodeArtifact repository ARN: {codeartifact_repo_arn}. "
-                "Expected format: "
-                "arn:aws:codeartifact:{region}:{account}:repository/{domain}/{repository}"
-            )
-        region = match.group(1)
-        domain_owner = match.group(2)
-        domain = match.group(3)
-        repository = match.group(4)
-
-        return (
-            "if ! hash aws 2>/dev/null; then\n"
-            "    echo \"AWS CLI is not installed. Skipping CodeArtifact login.\"\n"
-            "else\n"
-            f"    aws codeartifact login --tool pip "
-            f"--domain {domain} --domain-owner {domain_owner} "
-            f"--repository {repository} --region {region}\n"
-            "fi"
-        )
-
     @_telemetry_emitter(feature=Feature.PROCESSING, func_name="FrameworkProcessor.run")
     @runnable_by_pipeline
     def run(
@@ -1288,7 +1235,6 @@ class FrameworkProcessor(ScriptProcessor):
         job_name: Optional[str] = None,
         experiment_config: Optional[Dict[str, str]] = None,
         kms_key: Optional[str] = None,
-        codeartifact_repo_arn: Optional[str] = None,
     ):
         """Runs a processing job.
 
@@ -1316,16 +1262,10 @@ class FrameworkProcessor(ScriptProcessor):
             experiment_config (dict[str, str]): Experiment management configuration.
             kms_key (str): The ARN of the KMS key that is used to encrypt the
                 user code file (default: None).
-            codeartifact_repo_arn (str): The ARN of the CodeArtifact repository to use
-                for pip authentication when installing requirements.txt dependencies
-                (default: None). Format:
-                arn:aws:codeartifact:{region}:{account}:repository/{domain}/{repository}
         Returns:
             None or pipeline step arguments in case the Processor instance is built with
             :class:`~sagemaker.workflow.pipeline_context.PipelineSession`
         """
-        self._codeartifact_repo_arn = codeartifact_repo_arn
-
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
             code,
             source_dir,
@@ -1452,32 +1392,16 @@ class FrameworkProcessor(ScriptProcessor):
 
     def _generate_framework_script(self, user_script: str) -> str:
         """Generate the framework entrypoint file (as text) for a processing job."""
-        codeartifact_repo_arn = getattr(self, "_codeartifact_repo_arn", None)
+        requirements_block = dedent(
+            """\
+            if [[ -f 'requirements.txt' ]]; then
+                # Some py3 containers has typing, which may breaks pip install
+                pip uninstall --yes typing
 
-        if codeartifact_repo_arn:
-            codeartifact_login = self._get_codeartifact_command(codeartifact_repo_arn)
-            requirements_block = dedent(
-                """\
-                if [[ -f 'requirements.txt' ]]; then
-                    # Some py3 containers has typing, which may breaks pip install
-                    pip uninstall --yes typing
-
-                    {codeartifact_login}
-                    pip install -r requirements.txt
-                fi
-                """
-            ).format(codeartifact_login=codeartifact_login)
-        else:
-            requirements_block = dedent(
-                """\
-                if [[ -f 'requirements.txt' ]]; then
-                    # Some py3 containers has typing, which may breaks pip install
-                    pip uninstall --yes typing
-
-                    pip install -r requirements.txt
-                fi
-                """
-            )
+                pip install -r requirements.txt
+            fi
+            """
+        )
 
         return dedent(
             """\

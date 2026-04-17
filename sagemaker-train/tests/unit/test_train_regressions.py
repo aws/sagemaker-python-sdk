@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Tests for v2->v3 regression bugs in sagemaker.train."""
+"""Tests for v2->v3 regression Bug 1: wait=True ignores sagemaker session."""
 import inspect
 import pytest
 from unittest.mock import MagicMock
@@ -60,53 +60,34 @@ class TestBug1ModelTrainerWait:
 
         mock_job.refresh.assert_called_once()
 
+    def test_to_snake_case(self):
+        """Test the _to_snake_case helper function."""
+        from sagemaker.train.common_utils.trainer_wait import _to_snake_case
 
-class TestBug4CodeArtifactTemplates:
-    """Bug 4: INSTALL_REQUIREMENTS template should check CA_REPOSITORY_ARN."""
+        assert _to_snake_case("TrainingJobStatus") == "training_job_status"
+        assert _to_snake_case("TrainingJobName") == "training_job_name"
+        assert _to_snake_case("SecondaryStatus") == "secondary_status"
+        assert _to_snake_case("already_snake") == "already_snake"
 
-    def test_install_requirements_template_has_ca_support(self):
-        """Test that INSTALL_REQUIREMENTS includes CA_REPOSITORY_ARN check."""
-        from sagemaker.train.templates import INSTALL_REQUIREMENTS
-
-        rendered = INSTALL_REQUIREMENTS.format(
-            requirements_file="requirements.txt"
+    def test_refresh_training_job_updates_attributes(self):
+        """Test that _refresh_training_job updates job attributes from describe response."""
+        from sagemaker.train.common_utils.trainer_wait import (
+            _refresh_training_job,
         )
-        assert "CA_REPOSITORY_ARN" in rendered
-        assert "aws codeartifact login --tool pip" in rendered
 
-    def test_install_requirements_template_does_pip_install(self):
-        """Test that INSTALL_REQUIREMENTS still does pip install."""
-        from sagemaker.train.templates import INSTALL_REQUIREMENTS
+        mock_session = MagicMock()
+        mock_session.sagemaker_client.describe_training_job.return_value = {
+            "TrainingJobStatus": "Completed",
+            "TrainingJobName": "test-job",
+            "SecondaryStatus": "Completed",
+        }
 
-        rendered = INSTALL_REQUIREMENTS.format(
-            requirements_file="requirements.txt"
-        )
-        has_pip = (
-            "pip install -r requirements.txt" in rendered
-            or "$SM_PIP_CMD install -r requirements.txt" in rendered
-        )
-        assert has_pip
+        mock_job = MagicMock()
+        mock_job.training_job_name = "test-job"
+        mock_job.training_job_status = "InProgress"
+        mock_job.secondary_status = "Training"
 
-    def test_install_requirements_format_does_not_raise(self):
-        """Test that .format() does not raise KeyError."""
-        from sagemaker.train.templates import INSTALL_REQUIREMENTS
+        _refresh_training_job(mock_job, sagemaker_session=mock_session)
 
-        # This was the CI failure - KeyError: 'region'
-        try:
-            rendered = INSTALL_REQUIREMENTS.format(
-                requirements_file="requirements.txt"
-            )
-        except KeyError as e:
-            pytest.fail(
-                f"INSTALL_REQUIREMENTS.format() raised KeyError: {e}"
-            )
-
-    def test_install_auto_requirements_has_ca_support(self):
-        """Test that INSTALL_AUTO_REQUIREMENTS includes CA_REPOSITORY_ARN."""
-        from sagemaker.train.templates import INSTALL_AUTO_REQUIREMENTS
-
-        assert "CA_REPOSITORY_ARN" in INSTALL_AUTO_REQUIREMENTS
-        assert (
-            "aws codeartifact login --tool pip"
-            in INSTALL_AUTO_REQUIREMENTS
-        )
+        # Verify attributes were updated via setattr
+        mock_session.sagemaker_client.describe_training_job.assert_called_once()

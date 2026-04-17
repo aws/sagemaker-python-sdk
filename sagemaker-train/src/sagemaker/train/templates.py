@@ -24,33 +24,9 @@ echo "Running Basic Script driver"
 $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/distributed_drivers/basic_script_driver.py
 """
 
-# CodeArtifact login block using only shell variables.
-# All curly braces are doubled to escape them from Python's str.format().
-CODEARTIFACT_LOGIN = """
-# Check for CodeArtifact configuration via CA_REPOSITORY_ARN environment variable
-if [ -n "$CA_REPOSITORY_ARN" ]; then
-    echo "CodeArtifact repository ARN detected: $CA_REPOSITORY_ARN"
-    # Validate ARN format: arn:aws:codeartifact:REGION:ACCOUNT:repository/DOMAIN/REPO
-    if ! echo "$CA_REPOSITORY_ARN" | grep -qE '^arn:aws:codeartifact:[a-z0-9-]+:[0-9]{{12}}:repository/[a-zA-Z0-9-]+/[a-zA-Z0-9-]+$'; then
-        echo "WARNING: CA_REPOSITORY_ARN does not match expected format. Skipping CodeArtifact login."
-    elif ! hash aws 2>/dev/null; then
-        echo "AWS CLI is not installed. Skipping CodeArtifact login."
-    else
-        CA_REGION=$(echo "$CA_REPOSITORY_ARN" | cut -d: -f4)
-        CA_OWNER=$(echo "$CA_REPOSITORY_ARN" | cut -d: -f5)
-        CA_RESOURCE=$(echo "$CA_REPOSITORY_ARN" | cut -d: -f6)
-        CA_DOMAIN=$(echo "$CA_RESOURCE" | cut -d/ -f2)
-        CA_REPO=$(echo "$CA_RESOURCE" | cut -d/ -f3)
-        echo "Logging into CodeArtifact: domain=$CA_DOMAIN owner=$CA_OWNER repo=$CA_REPO region=$CA_REGION"
-        aws codeartifact login --tool pip --domain "$CA_DOMAIN" --domain-owner "$CA_OWNER" --repository "$CA_REPO" --region "$CA_REGION"
-    fi
-fi
-"""
-
 INSTALL_AUTO_REQUIREMENTS = """
 if [ -f requirements.txt ]; then
     echo "Installing requirements"
-""" + CODEARTIFACT_LOGIN + """
     cat requirements.txt
     $SM_PIP_CMD install -r requirements.txt
 else
@@ -60,7 +36,6 @@ fi
 
 INSTALL_REQUIREMENTS = """
 echo "Installing requirements"
-""" + CODEARTIFACT_LOGIN + """
 $SM_PIP_CMD install -r {requirements_file}
 """
 

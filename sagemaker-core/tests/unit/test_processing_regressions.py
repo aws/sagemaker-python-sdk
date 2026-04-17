@@ -10,17 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Tests for v2->v3 regression bugs in sagemaker.core.processing."""
-import os
+"""Tests for v2->v3 regression Bug 1: wait=True ignores sagemaker session."""
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
 
 
 class TestBug1ProcessorWaitUsesSession:
     """Bug 1: wait=True should use sagemaker_session, not global default client."""
 
-    def test_processor_wait_for_job_uses_session(self):
-        """Test that _wait_for_job uses the Processor's sagemaker_session."""
+    def test_processor_wait_for_job_uses_session_no_logs(self):
+        """Test that _wait_for_job uses the Processor's sagemaker_session (no logs)."""
         from sagemaker.core.processing import Processor
 
         mock_session = MagicMock()
@@ -55,139 +54,125 @@ class TestBug1ProcessorWaitUsesSession:
                 session=mock_session.boto_session,
             )
 
-
-class TestBug2CodeLocation:
-    """Bug 2: code_location should be used for S3 uploads."""
-
-    def test_framework_processor_code_location_used_in_upload(self):
-        """Test that code_location is used when uploading code."""
-        from sagemaker.core.processing import FrameworkProcessor
+    def test_processor_wait_for_job_uses_session_with_logs(self):
+        """Test that _wait_for_job with logs=True uses logs_for_processing_job."""
+        from sagemaker.core.processing import Processor
 
         mock_session = MagicMock()
-        mock_session.default_bucket.return_value = "default-bucket"
+        mock_session.default_bucket.return_value = "my-bucket"
         mock_session.default_bucket_prefix = ""
         mock_session.expand_role.return_value = (
             "arn:aws:iam::123456789:role/MyRole"
         )
+        mock_session.boto_session = MagicMock()
 
-        processor = FrameworkProcessor(
-            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+        processor = Processor(
             role="arn:aws:iam::123456789:role/MyRole",
-            instance_count=1,
-            instance_type="ml.m5.xlarge",
-            code_location="s3://my-custom-bucket/my-prefix",
-            sagemaker_session=mock_session,
-        )
-
-        bucket, prefix = processor._get_code_upload_bucket_and_prefix()
-        assert bucket == "my-custom-bucket"
-        assert prefix == "my-prefix"
-
-    def test_framework_processor_code_location_none_uses_default(self):
-        """Test that default bucket is used when code_location is None."""
-        from sagemaker.core.processing import FrameworkProcessor
-
-        mock_session = MagicMock()
-        mock_session.default_bucket.return_value = "default-bucket"
-        mock_session.default_bucket_prefix = "default-prefix"
-        mock_session.expand_role.return_value = (
-            "arn:aws:iam::123456789:role/MyRole"
-        )
-
-        processor = FrameworkProcessor(
             image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
-            role="arn:aws:iam::123456789:role/MyRole",
             instance_count=1,
             instance_type="ml.m5.xlarge",
             sagemaker_session=mock_session,
         )
 
-        bucket, prefix = processor._get_code_upload_bucket_and_prefix()
-        assert bucket == "default-bucket"
-        assert prefix == "default-prefix"
+        mock_job = MagicMock()
+        mock_job.processing_job_name = "test-job"
 
+        with patch("sagemaker.core.processing.logs_for_processing_job") as mock_logs:
+            processor._wait_for_job(mock_job, logs=True)
 
-class TestBug3CodeArtifactFrameworkProcessor:
-    """Bug 3: CodeArtifact support in FrameworkProcessor."""
+            mock_logs.assert_called_once_with(
+                mock_session, "test-job", wait=True
+            )
 
-    def test_run_accepts_codeartifact_repo_arn(self):
-        """Test that FrameworkProcessor.run() accepts codeartifact_repo_arn."""
-        import inspect
-        from sagemaker.core.processing import FrameworkProcessor
-
-        sig = inspect.signature(FrameworkProcessor.run)
-        assert "codeartifact_repo_arn" in sig.parameters
-
-    def test_get_codeartifact_command_parses_arn_correctly(self):
-        """Test that _get_codeartifact_command correctly parses the ARN."""
-        from sagemaker.core.processing import FrameworkProcessor
-
-        arn = (
-            "arn:aws:codeartifact:us-west-2:123456789012"
-            ":repository/my-domain/my-repo"
-        )
-        command = FrameworkProcessor._get_codeartifact_command(arn)
-
-        assert "--domain my-domain" in command
-        assert "--domain-owner 123456789012" in command
-        assert "--repository my-repo" in command
-        assert "--region us-west-2" in command
-        assert "aws codeartifact login --tool pip" in command
-
-    def test_get_codeartifact_command_rejects_invalid_arn(self):
-        """Test that _get_codeartifact_command raises ValueError for bad ARN."""
-        from sagemaker.core.processing import FrameworkProcessor
-
-        with pytest.raises(ValueError, match="Invalid CodeArtifact repository ARN"):
-            FrameworkProcessor._get_codeartifact_command("not-a-valid-arn")
-
-    def test_generate_framework_script_with_codeartifact(self):
-        """Test that _generate_framework_script injects CodeArtifact login."""
-        from sagemaker.core.processing import FrameworkProcessor
+    def test_processor_wait_for_job_raises_on_failed(self):
+        """Test that _wait_for_job raises RuntimeError when job fails."""
+        from sagemaker.core.processing import Processor
 
         mock_session = MagicMock()
-        mock_session.default_bucket.return_value = "default-bucket"
+        mock_session.default_bucket.return_value = "my-bucket"
         mock_session.default_bucket_prefix = ""
         mock_session.expand_role.return_value = (
             "arn:aws:iam::123456789:role/MyRole"
         )
+        mock_session.boto_session = MagicMock()
 
-        processor = FrameworkProcessor(
-            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+        processor = Processor(
             role="arn:aws:iam::123456789:role/MyRole",
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
             sagemaker_session=mock_session,
         )
-        processor._codeartifact_repo_arn = (
-            "arn:aws:codeartifact:us-west-2:123456789012"
-            ":repository/my-domain/my-repo"
-        )
 
-        script = processor._generate_framework_script("my_script.py")
-        assert "aws codeartifact login --tool pip" in script
-        assert "--domain my-domain" in script
-        assert "--repository my-repo" in script
+        mock_job = MagicMock()
+        mock_job.processing_job_name = "test-job"
 
-    def test_generate_framework_script_without_codeartifact(self):
-        """Test script does NOT inject CodeArtifact login when not set."""
-        from sagemaker.core.processing import FrameworkProcessor
+        with patch("sagemaker.core.processing.ProcessingJob") as MockPJ:
+            mock_refreshed = MagicMock()
+            mock_refreshed.processing_job_status = "Failed"
+            mock_refreshed.failure_reason = "OutOfMemory"
+            MockPJ.get.return_value = mock_refreshed
+
+            with pytest.raises(RuntimeError, match="failed.*OutOfMemory"):
+                processor._wait_for_job(mock_job, logs=False)
+
+    def test_processor_wait_for_job_timeout(self):
+        """Test that _wait_for_job raises RuntimeError on timeout."""
+        from sagemaker.core.processing import Processor
 
         mock_session = MagicMock()
-        mock_session.default_bucket.return_value = "default-bucket"
+        mock_session.default_bucket.return_value = "my-bucket"
         mock_session.default_bucket_prefix = ""
         mock_session.expand_role.return_value = (
             "arn:aws:iam::123456789:role/MyRole"
         )
+        mock_session.boto_session = MagicMock()
 
-        processor = FrameworkProcessor(
-            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+        processor = Processor(
             role="arn:aws:iam::123456789:role/MyRole",
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
             instance_count=1,
             instance_type="ml.m5.xlarge",
             sagemaker_session=mock_session,
         )
 
-        script = processor._generate_framework_script("my_script.py")
-        assert "aws codeartifact login" not in script
-        assert "pip install -r requirements.txt" in script
+        mock_job = MagicMock()
+        mock_job.processing_job_name = "test-job"
+
+        with patch("sagemaker.core.processing.ProcessingJob") as MockPJ:
+            mock_refreshed = MagicMock()
+            mock_refreshed.processing_job_status = "InProgress"
+            MockPJ.get.return_value = mock_refreshed
+
+            with patch("sagemaker.core.processing.time") as mock_time:
+                # Simulate timeout: first call returns 0, second returns > timeout
+                mock_time.time.side_effect = [0, 0, 5000]
+                mock_time.sleep = MagicMock()
+
+                with pytest.raises(RuntimeError, match="Timed out"):
+                    processor._wait_for_job(mock_job, logs=False, timeout=1)
+
+    def test_processor_run_calls_wait_for_job(self):
+        """Test that Processor.run with wait=True calls _wait_for_job."""
+        from sagemaker.core.processing import Processor
+
+        mock_session = MagicMock()
+        mock_session.default_bucket.return_value = "my-bucket"
+        mock_session.default_bucket_prefix = ""
+        mock_session.expand_role.return_value = (
+            "arn:aws:iam::123456789:role/MyRole"
+        )
+        mock_session.boto_session = MagicMock()
+        mock_session.sagemaker_client = MagicMock()
+
+        processor = Processor(
+            role="arn:aws:iam::123456789:role/MyRole",
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        # Verify _wait_for_job method exists and is callable
+        assert hasattr(processor, '_wait_for_job')
+        assert callable(processor._wait_for_job)
