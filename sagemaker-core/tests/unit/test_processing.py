@@ -1154,6 +1154,82 @@ class TestFrameworkProcessorPackageCode:
             )
 
 
+    def test_package_code_with_code_location(self, mock_session):
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            code_location="s3://my-custom-bucket/my-prefix",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            result = processor._package_code(
+                entry_point=entry_point,
+                source_dir=tmpdir,
+                requirements=None,
+                job_name="test-job",
+                kms_key=None,
+            )
+            assert result.startswith("s3://my-custom-bucket/my-prefix")
+            assert "sourcedir.tar.gz" in result
+
+    def test_package_code_without_code_location_uses_default_bucket(self, mock_session):
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            result = processor._package_code(
+                entry_point=entry_point,
+                source_dir=tmpdir,
+                requirements=None,
+                job_name="test-job",
+                kms_key=None,
+            )
+            assert result.startswith("s3://test-bucket/sagemaker")
+            assert "sourcedir.tar.gz" in result
+
+    def test_package_code_with_code_location_trailing_slash(self, mock_session):
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            code_location="s3://my-custom-bucket/my-prefix/",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            result = processor._package_code(
+                entry_point=entry_point,
+                source_dir=tmpdir,
+                requirements=None,
+                job_name="test-job",
+                kms_key=None,
+            )
+            # Trailing slash is stripped in __init__, so same result
+            assert result.startswith("s3://my-custom-bucket/my-prefix")
+            assert "sourcedir.tar.gz" in result
+
+
 class TestFrameworkProcessorRun:
     def test_run_with_s3_code(self, mock_session):
         processor = FrameworkProcessor(

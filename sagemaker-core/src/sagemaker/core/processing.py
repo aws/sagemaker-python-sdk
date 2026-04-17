@@ -1119,6 +1119,16 @@ class FrameworkProcessor(ScriptProcessor):
             code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
         )
 
+    def _s3_code_prefix(self):
+        """Return the S3 prefix for code uploads, respecting code_location if set."""
+        if self.code_location:
+            return self.code_location
+        return s3.s3_path_join(
+            "s3://",
+            self.sagemaker_session.default_bucket(),
+            self.sagemaker_session.default_bucket_prefix or "",
+        )
+
     def _package_code(
         self,
         entry_point,
@@ -1155,9 +1165,7 @@ class FrameworkProcessor(ScriptProcessor):
 
             # Upload to S3
             s3_uri = s3.s3_path_join(
-                "s3://",
-                self.sagemaker_session.default_bucket(),
-                self.sagemaker_session.default_bucket_prefix or "",
+                self._s3_code_prefix(),
                 job_name,
                 "source",
                 "sourcedir.tar.gz",
@@ -1320,9 +1328,7 @@ class FrameworkProcessor(ScriptProcessor):
             runproc_file_str = self._generate_framework_script(user_script)
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
-                "s3://",
-                self.sagemaker_session.default_bucket(),
-                self.sagemaker_session.default_bucket_prefix,
+                self._s3_code_prefix(),
                 _pipeline_config.pipeline_name,
                 "code",
                 runproc_file_hash,
