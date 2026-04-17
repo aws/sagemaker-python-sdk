@@ -18,32 +18,33 @@ from sagemaker.train.common_utils.mlflow_metrics_util import _MLflowMetricsUtil
 def _refresh_training_job(training_job, sagemaker_session=None):
     """Refresh a training job using the session-aware client if available.
 
-    When sagemaker_session is provided, re-fetches the training job via
-    TrainingJob.get() with the user's boto_session, which avoids the
-    NoCredentialsError that occurs when refresh() uses the global default client.
+    When sagemaker_session is provided, uses the session's sagemaker_client
+    to describe the training job directly, avoiding the global default client.
 
     Args:
         training_job (TrainingJob): The training job to refresh.
         sagemaker_session: SageMaker session with the correct credentials.
-            If None, falls back to the default _refresh_training_job(training_job, sagemaker_session).
+            If None, falls back to training_job.refresh().
     """
     if sagemaker_session is not None:
-        refreshed = TrainingJob.get(
-            training_job_name=training_job.training_job_name,
-            session=sagemaker_session.boto_session,
-        )
-        # Copy refreshed attributes back to the original object.
-        # Skip Unassigned values to avoid Pydantic validation errors.
-        from sagemaker.core.utils.utils import Unassigned
-        for attr in ("training_job_status", "secondary_status", "failure_reason"):
-            if hasattr(refreshed, attr):
-                value = getattr(refreshed, attr)
-                if isinstance(value, Unassigned):
-                    continue
-                try:
-                    setattr(training_job, attr, value)
-                except (AttributeError, TypeError, ValueError):
-                    pass
+        try:
+            response = sagemaker_session.sagemaker_client.describe_training_job(
+                TrainingJobName=training_job.training_job_name
+            )
+            # Update key status attributes from the describe response
+            for api_key, attr_name in (
+                ("TrainingJobStatus", "training_job_status"),
+                ("SecondaryStatus", "secondary_status"),
+                ("FailureReason", "failure_reason"),
+            ):
+                if api_key in response:
+                    try:
+                        setattr(training_job, attr_name, response[api_key])
+                    except (AttributeError, TypeError, ValueError):
+                        pass
+        except Exception:
+            # Fall back to default refresh if session-aware call fails
+            training_job.refresh()
     else:
         training_job.refresh()
 

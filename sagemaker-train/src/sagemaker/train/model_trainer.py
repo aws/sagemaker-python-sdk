@@ -118,6 +118,7 @@ from sagemaker.train.defaults import TrainDefaults, JumpStartTrainDefaults
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.core.helper.pipeline_variable import StrPipeVar
 
+from sagemaker.train.common_utils.trainer_wait import wait as trainer_wait
 from sagemaker.train.local.local_container import _LocalContainer
 
 
@@ -790,7 +791,6 @@ class ModelTrainer(BaseModel):
             self._latest_training_job = training_job
 
             if wait:
-                from sagemaker.train.common_utils.trainer_wait import wait as trainer_wait
                 trainer_wait(
                     training_job=training_job,
                     sagemaker_session=self.sagemaker_session,

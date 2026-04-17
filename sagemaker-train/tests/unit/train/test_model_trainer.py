@@ -245,14 +245,13 @@ def test_model_trainer_param_validation(test_case, modules_session):
         assert trainer.base_job_name == DEFAULT_BASE_NAME
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_train_with_default_params(mock_training_job, model_trainer):
+def test_train_with_default_params(mock_training_job, mock_trainer_wait, model_trainer):
     model_trainer.train()
 
     mock_training_job.create.assert_called_once()
-
-    training_job_instance = mock_training_job.create.return_value
-    training_job_instance.wait.assert_called_once_with(logs=True)
+    mock_trainer_wait.assert_called_once()
 
 
 @pytest.mark.parametrize(
@@ -292,6 +291,7 @@ def test_train_with_default_params(mock_training_job, model_trainer):
         },
     ],
 )
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 @patch("sagemaker.train.model_trainer.SageMakerConfig")
 @patch("sagemaker.train.model_trainer.ModelTrainer.create_input_data_channel")
@@ -299,6 +299,7 @@ def test_train_with_intelligent_defaults(
     mock_create_input_data_channel,
     mock_sagemaker_config,
     mock_training_job,
+    mock_trainer_wait,
     default_config,
     model_trainer,
 ):
@@ -314,15 +315,14 @@ def test_train_with_intelligent_defaults(
     model_trainer.train()
 
     mock_training_job.create.assert_called_once()
-
-    training_job_instance = mock_training_job.create.return_value
-    training_job_instance.wait.assert_called_once_with(logs=True)
+    mock_trainer_wait.assert_called_once()
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 @patch("sagemaker.train.model_trainer.SageMakerConfig")
 def test_train_with_intelligent_defaults_training_job_space(
-    mock_sagemaker_config, mock_training_job, model_trainer
+    mock_sagemaker_config, mock_training_job, mock_trainer_wait, model_trainer
 ):
     mock_config_instance = MagicMock()
     mock_sagemaker_config.return_value = mock_config_instance
@@ -379,12 +379,13 @@ def test_train_with_intelligent_defaults_training_job_space(
     )
 
     training_job_instance = mock_training_job.create.return_value
-    training_job_instance.wait.assert_called_once_with(logs=True)
+    mock_trainer_wait.assert_called_once()
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 @patch.object(ModelTrainer, "_get_input_data_config")
-def test_train_with_input_data_channels(mock_get_input_config, mock_training_job, model_trainer):
+def test_train_with_input_data_channels(mock_get_input_config, mock_training_job, mock_trainer_wait, model_trainer):
     train_data = InputData(channel_name="train", data_source="train/dir")
     test_data = InputData(channel_name="test", data_source="test/dir")
     mock_input_data_config = [train_data, test_data]
@@ -517,6 +518,7 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
         "mpi",
     ],
 )
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 @patch("sagemaker.train.model_trainer.TemporaryDirectory")
 @patch("sagemaker.train.model_trainer.SageMakerConfig")
@@ -524,6 +526,7 @@ def test_train_with_distributed_config(
     mock_sagemaker_config,
     mock_tmp_dir,
     mock_training_job,
+    mock_trainer_wait,
     test_case,
     request,
     modules_session,
@@ -580,16 +583,18 @@ def test_train_with_distributed_config(
         assert not os.path.exists(tmp_dir.name)
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_train_stores_created_training_job(mock_training_job, model_trainer):
+def test_train_stores_created_training_job(mock_training_job, mock_trainer_wait, model_trainer):
     mock_training_job.create.return_value = TrainingJob(training_job_name="Created-job")
     model_trainer.train(wait=False)
     assert model_trainer._latest_training_job is not None
     assert model_trainer._latest_training_job == TrainingJob(training_job_name="Created-job")
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_tensorboard_output_config(mock_training_job, modules_session):
+def test_tensorboard_output_config(mock_training_job, mock_trainer_wait, modules_session):
     image_uri = DEFAULT_IMAGE
     role = DEFAULT_ROLE
     tensorboard_output_config = TensorBoardOutputConfig(
@@ -616,8 +621,9 @@ def test_tensorboard_output_config(mock_training_job, modules_session):
         )
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_retry_strategy(mock_training_job, modules_session):
+def test_retry_strategy(mock_training_job, mock_trainer_wait, modules_session):
     image_uri = DEFAULT_IMAGE
     role = DEFAULT_ROLE
     retry_strategy = RetryStrategy(
@@ -640,8 +646,9 @@ def test_retry_strategy(mock_training_job, modules_session):
         assert mock_training_job.create.call_args.kwargs["retry_strategy"] == retry_strategy
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_infra_check_config(mock_training_job, modules_session):
+def test_infra_check_config(mock_training_job, mock_trainer_wait, modules_session):
     image_uri = DEFAULT_IMAGE
     role = DEFAULT_ROLE
     infra_check_config = InfraCheckConfig(
@@ -664,8 +671,9 @@ def test_infra_check_config(mock_training_job, modules_session):
         assert mock_training_job.create.call_args.kwargs["infra_check_config"] == infra_check_config
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_session_chaining_config(mock_training_job, modules_session):
+def test_session_chaining_config(mock_training_job, mock_trainer_wait, modules_session):
     image_uri = DEFAULT_IMAGE
     role = DEFAULT_ROLE
     session_chaining_config = SessionChainingConfig(
@@ -691,8 +699,9 @@ def test_session_chaining_config(mock_training_job, modules_session):
         )
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_remote_debug_config(mock_training_job, modules_session):
+def test_remote_debug_config(mock_training_job, mock_trainer_wait, modules_session):
     image_uri = DEFAULT_IMAGE
     role = DEFAULT_ROLE
     remote_debug_config = RemoteDebugConfig(
@@ -717,9 +726,10 @@ def test_remote_debug_config(mock_training_job, modules_session):
         )
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_model_trainer_full_init(mock_training_job, mock_unique_name, modules_session):
+def test_model_trainer_full_init(mock_training_job, mock_unique_name, mock_trainer_wait, modules_session):
     def mock_upload_data(path, bucket, key_prefix):
         return f"s3://{bucket}/{key_prefix}"
 
@@ -1249,9 +1259,10 @@ def test_hyperparameters_invalid(mock_exists, modules_session):
             )
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_model_trainer_default_paths(mock_training_job, mock_unique_name, modules_session):
+def test_model_trainer_default_paths(mock_training_job, mock_unique_name, mock_trainer_wait, modules_session):
     def mock_upload_data(path, bucket, key_prefix):
         return f"s3://{bucket}/{key_prefix}"
 
@@ -1287,8 +1298,9 @@ def test_model_trainer_default_paths(mock_training_job, mock_unique_name, module
     assert kwargs["tensor_board_output_config"].local_path == "/opt/ml/output/tensorboard"
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_input_merge(mock_training_job, modules_session):
+def test_input_merge(mock_training_job, mock_trainer_wait, modules_session):
     model_input = InputData(channel_name="model", data_source="s3://bucket/model/model.tar.gz")
     model_trainer = ModelTrainer(
         training_image=DEFAULT_IMAGE,
@@ -1327,8 +1339,9 @@ def test_input_merge(mock_training_job, modules_session):
         ),
     ]
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_metric_definitions(mock_training_job, modules_session):
+def test_metric_definitions(mock_training_job, mock_trainer_wait, modules_session):
     image_uri = DEFAULT_IMAGE
     role = DEFAULT_ROLE
     metric_definitions = [
@@ -1352,9 +1365,10 @@ def test_metric_definitions(mock_training_job, modules_session):
         )
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.core.resources.TrainingJob")
-def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
+def test_nova_recipe(mock_training_job, mock_unique_name, mock_trainer_wait, modules_session):
     def mock_upload_data(path, bucket, key_prefix):
         if os.path.isfile(path):
             file_name = os.path.basename(path)
@@ -1442,9 +1456,10 @@ def test_nova_recipe_with_distillation(modules_session):
         os.unlink(recipe.name)
 
 
+@patch("sagemaker.train.model_trainer.trainer_wait")
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
-def test_llmft_recipe(mock_training_job, mock_unique_name, modules_session):
+def test_llmft_recipe(mock_training_job, mock_unique_name, mock_trainer_wait, modules_session):
     def mock_upload_data(path, bucket, key_prefix):
         if os.path.isfile(path):
             file_name = os.path.basename(path)
