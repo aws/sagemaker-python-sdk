@@ -296,7 +296,42 @@ class Processor(object):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                self._wait_for_job(self.latest_job, logs=logs)
+
+    def _wait_for_job(self, processing_job, logs=True):
+        """Wait for a processing job using the stored sagemaker_session.
+
+        This method uses the sagemaker_session from the Processor instance
+        instead of the global default client, which fixes NoCredentialsError
+        when using assumed-role sessions.
+
+        Args:
+            processing_job: ProcessingJob resource object.
+            logs (bool): Whether to show logs (default: True).
+        """
+        job_name = processing_job.processing_job_name
+        if logs:
+            logs_for_processing_job(
+                self.sagemaker_session, job_name, wait=True
+            )
+        else:
+            poll = 10
+            while True:
+                processing_job = ProcessingJob.get(
+                    processing_job_name=job_name,
+                    session=self.sagemaker_session.boto_session,
+                )
+                status = processing_job.processing_job_status
+                if status in ("Completed", "Failed", "Stopped"):
+                    if status == "Failed":
+                        reason = getattr(
+                            processing_job, "failure_reason", "Unknown"
+                        )
+                        raise RuntimeError(
+                            f"Processing job {job_name} failed: {reason}"
+                        )
+                    break
+                time.sleep(poll)
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):  # pylint: disable=W0613
         """Extend inputs and outputs based on extra parameters"""
@@ -633,8 +668,6 @@ class Processor(object):
         # Remove tags from transformed dict as ProcessingJob resource doesn't accept it
         transformed.pop("tags", None)
         processing_job = ProcessingJob(**transformed)
-        # Store the sagemaker_session on the job so wait/refresh can use it
-        processing_job._sagemaker_session = self.sagemaker_session
         return processing_job
 
     def _get_process_args(self, inputs, outputs, experiment_config):
@@ -849,7 +882,7 @@ class ScriptProcessor(Processor):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                self._wait_for_job(self.latest_job, logs=logs)
 
     def _include_code_in_inputs(self, inputs, code, kms_key=None):
         """Converts code to appropriate input and includes in input list.
@@ -948,11 +981,11 @@ class ScriptProcessor(Processor):
         Returns:
             tuple: (bucket, prefix) for S3 uploads.
         """
-        code_location = getattr(self, 'code_location', None)
+        code_location = getattr(self, "code_location", None)
         if code_location:
             parsed = urlparse(code_location)
             bucket = parsed.netloc
-            prefix = parsed.path.lstrip('/')
+            prefix = parsed.path.lstrip("/")
             return bucket, prefix
         return (
             self.sagemaker_session.default_bucket(),
@@ -1200,8 +1233,12 @@ class FrameworkProcessor(ScriptProcessor):
             os.unlink(tmp.name)
             return s3_uri
 
+    _CODEARTIFACT_ARN_PATTERN = re.compile(
+        r"^arn:aws:codeartifact:([a-z0-9-]+):(\d{12}):repository/([a-zA-Z0-9-]+)/([a-zA-Z0-9-]+)$"
+    )
+
     @staticmethod
-    def _get_codeartifact_command(codeartifact_repo_arn):
+    def _get_codeartifact_command(codeartifact_repo_arn: str) -> str:
         """Parse a CodeArtifact repository ARN and return the login command.
 
         Args:
@@ -1210,24 +1247,30 @@ class FrameworkProcessor(ScriptProcessor):
 
         Returns:
             str: The bash command to login to CodeArtifact via pip.
+
+        Raises:
+            ValueError: If the ARN format is invalid.
         """
-        # Parse ARN: arn:aws:codeartifact:{region}:{account}:repository/{domain}/{repository}
-        parts = codeartifact_repo_arn.split(':')
-        region = parts[3]
-        domain_owner = parts[4]
-        resource = parts[5]  # repository/{domain}/{repository}
-        resource_parts = resource.split('/')
-        domain = resource_parts[1]
-        repository = resource_parts[2]
+        match = FrameworkProcessor._CODEARTIFACT_ARN_PATTERN.match(codeartifact_repo_arn)
+        if not match:
+            raise ValueError(
+                f"Invalid CodeArtifact repository ARN: {codeartifact_repo_arn}. "
+                "Expected format: "
+                "arn:aws:codeartifact:{region}:{account}:repository/{domain}/{repository}"
+            )
+        region = match.group(1)
+        domain_owner = match.group(2)
+        domain = match.group(3)
+        repository = match.group(4)
 
         return (
-            f'if ! hash aws 2>/dev/null; then\n'
-            f'    echo "AWS CLI is not installed. Skipping CodeArtifact login."\n'
-            f'else\n'
-            f'    aws codeartifact login --tool pip '
-            f'--domain {domain} --domain-owner {domain_owner} '
-            f'--repository {repository} --region {region}\n'
-            f'fi'
+            "if ! hash aws 2>/dev/null; then\n"
+            "    echo \"AWS CLI is not installed. Skipping CodeArtifact login.\"\n"
+            "else\n"
+            f"    aws codeartifact login --tool pip "
+            f"--domain {domain} --domain-owner {domain_owner} "
+            f"--repository {repository} --region {region}\n"
+            "fi"
         )
 
     @_telemetry_emitter(feature=Feature.PROCESSING, func_name="FrameworkProcessor.run")
@@ -1409,7 +1452,7 @@ class FrameworkProcessor(ScriptProcessor):
 
     def _generate_framework_script(self, user_script: str) -> str:
         """Generate the framework entrypoint file (as text) for a processing job."""
-        codeartifact_repo_arn = getattr(self, '_codeartifact_repo_arn', None)
+        codeartifact_repo_arn = getattr(self, "_codeartifact_repo_arn", None)
 
         if codeartifact_repo_arn:
             codeartifact_login = self._get_codeartifact_command(codeartifact_repo_arn)
@@ -1468,68 +1511,6 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
         )
-
-
-def _wait_for_processing_job(processing_job, logs=True):
-    """Wait for a processing job using the stored sagemaker_session.
-
-    This function uses the sagemaker_session stored on the processing_job
-    (if available) instead of the global default client, which fixes
-    NoCredentialsError when using assumed-role sessions.
-
-    Args:
-        processing_job: ProcessingJob resource object with _sagemaker_session attached.
-        logs (bool): Whether to show logs (default: True).
-    """
-    sagemaker_session = getattr(processing_job, '_sagemaker_session', None)
-    job_name = processing_job.processing_job_name
-
-    if sagemaker_session is not None:
-        if logs:
-            logs_for_processing_job(sagemaker_session, job_name, wait=True)
-        else:
-            # Poll using the session's client
-            poll = 10
-            while True:
-                response = sagemaker_session.sagemaker_client.describe_processing_job(
-                    ProcessingJobName=job_name
-                )
-                status = response.get('ProcessingJobStatus', 'Unknown')
-                if status in ('Completed', 'Failed', 'Stopped'):
-                    if status == 'Failed':
-                        reason = response.get('FailureReason', 'Unknown')
-                        raise RuntimeError(
-                            f"Processing job {job_name} failed: {reason}"
-                        )
-                    break
-                time.sleep(poll)
-    else:
-        # Fallback to the original refresh-based wait
-        processing_job.wait(logs=logs)
-
-
-# Monkey-patch ProcessingJob.wait to use session-aware waiting
-_original_processing_job_wait = getattr(ProcessingJob, 'wait', None)
-
-
-def _patched_processing_job_wait(self, logs=True):
-    """Session-aware wait for ProcessingJob."""
-    if hasattr(self, '_sagemaker_session') and self._sagemaker_session is not None:
-        _wait_for_processing_job(self, logs=logs)
-    elif _original_processing_job_wait:
-        _original_processing_job_wait(self, logs=logs)
-    else:
-        # Fallback polling
-        poll = 10
-        while True:
-            self.refresh()
-            status = self.processing_job_status
-            if status in ('Completed', 'Failed', 'Stopped'):
-                break
-            time.sleep(poll)
-
-
-ProcessingJob.wait = _patched_processing_job_wait
 
 
 class FeatureStoreOutput(ApiObject):

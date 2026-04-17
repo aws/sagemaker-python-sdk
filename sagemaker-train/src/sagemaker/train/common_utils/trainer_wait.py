@@ -5,14 +5,24 @@ with progress tracking and MLflow integration.
 """
 
 import logging
+import re
 import time
 from contextlib import contextmanager
 from typing import Optional, Tuple
 
+from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.resources import TrainingJob
 from sagemaker.core.utils.exceptions import FailedStatusError, TimeoutExceededError
 
 from sagemaker.train.common_utils.mlflow_metrics_util import _MLflowMetricsUtil
+
+logger = logging.getLogger(__name__)
+
+
+def _to_snake_case(name: str) -> str:
+    """Convert a CamelCase string to snake_case."""
+    s1 = re.sub("(.)([A-Z][a-z]+)", r"\1_\2", name)
+    return re.sub("([a-z0-9])([A-Z])", r"\1_\2", s1).lower()
 
 
 @contextmanager
@@ -215,30 +225,33 @@ def get_mlflow_url(training_job) -> str:
 
 
 
-def _refresh_training_job(training_job: TrainingJob, sagemaker_session=None):
+def _refresh_training_job(
+    training_job: TrainingJob,
+    sagemaker_session: Optional[Session] = None,
+) -> None:
     """Refresh training job using session-aware client if available.
+
+    Uses the provided sagemaker_session's client to describe the training job
+    and update its attributes. This avoids using the global default client,
+    which fixes NoCredentialsError when using assumed-role sessions.
 
     Args:
         training_job (TrainingJob): The training job to refresh.
-        sagemaker_session: Optional SageMaker session with the correct credentials.
+        sagemaker_session (Optional[Session]): SageMaker session with the
+            correct credentials. If None, falls back to default refresh.
     """
     if sagemaker_session is not None:
-        try:
-            response = sagemaker_session.sagemaker_client.describe_training_job(
-                TrainingJobName=training_job.training_job_name
-            )
-            # Update training_job attributes from the describe response
-            from graphene.utils.str_converters import to_snake_case
-            for key, value in response.items():
-                snake_key = to_snake_case(key)
-                if hasattr(training_job, snake_key):
-                    try:
-                        setattr(training_job, snake_key, value)
-                    except (AttributeError, TypeError):
-                        pass
-        except Exception:
-            # Fallback to default refresh
-            training_job.refresh()
+        response = sagemaker_session.sagemaker_client.describe_training_job(
+            TrainingJobName=training_job.training_job_name
+        )
+        # Update training_job attributes from the describe response
+        for key, value in response.items():
+            snake_key = _to_snake_case(key)
+            if hasattr(training_job, snake_key):
+                try:
+                    setattr(training_job, snake_key, value)
+                except (AttributeError, TypeError, ValueError):
+                    pass
     else:
         training_job.refresh()
 
@@ -247,18 +260,18 @@ def wait(
         training_job: TrainingJob,
         poll: int = 5,
         timeout: Optional[int] = 3000,
-        sagemaker_session=None,
+        sagemaker_session: Optional[Session] = None,
 ) -> None:
     """Wait for training job to complete with progress tracking.
 
     Args:
         training_job (TrainingJob): The SageMaker training job to monitor.
-        poll (int): Polling interval in seconds. Defaults to 3.
-        timeout (Optional[int]): Maximum wait time in seconds. Defaults to None.
-        sagemaker_session: Optional SageMaker session to use for describe calls.
-            If provided, uses the session's sagemaker_client instead of the
-            global default client, which fixes NoCredentialsError when using
-            assumed-role sessions.
+        poll (int): Polling interval in seconds. Defaults to 5.
+        timeout (Optional[int]): Maximum wait time in seconds. Defaults to 3000.
+        sagemaker_session (Optional[Session]): SageMaker session to use for
+            describe calls. If provided, uses the session's sagemaker_client
+            instead of the global default client, which fixes
+            NoCredentialsError when using assumed-role sessions.
 
     Raises:
         FailedStatusError: If the training job fails.
