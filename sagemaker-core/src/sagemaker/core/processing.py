@@ -296,7 +296,9 @@ class Processor(object):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                self.sagemaker_session._wait_for_processing_job(
+                    self.latest_job.processing_job_name
+                )
 
     def _extend_processing_args(self, inputs, outputs, **kwargs):  # pylint: disable=W0613
         """Extend inputs and outputs based on extra parameters"""
@@ -846,7 +848,9 @@ class ScriptProcessor(Processor):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.latest_job.wait(logs=logs)
+                self.sagemaker_session._wait_for_processing_job(
+                    self.latest_job.processing_job_name
+                )
 
     def _include_code_in_inputs(self, inputs, code, kms_key=None):
         """Converts code to appropriate input and includes in input list.

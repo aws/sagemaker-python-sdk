@@ -1036,6 +1036,7 @@ class TestScriptProcessorRun:
         )
 
         mock_job = Mock()
+        mock_job.processing_job_name = "test-processing-job"
         mock_job.wait = Mock()
 
         with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".py") as f:
@@ -1049,7 +1050,7 @@ class TestScriptProcessorRun:
                         "sagemaker.core.s3.S3Uploader.upload", return_value="s3://bucket/code.py"
                     ):
                         processor.run(code=temp_file, wait=True, logs=False)
-                        mock_job.wait.assert_called_once()
+                        mock_session._wait_for_processing_job.assert_called_once()
         finally:
             if os.path.exists(temp_file):
                 os.unlink(temp_file)

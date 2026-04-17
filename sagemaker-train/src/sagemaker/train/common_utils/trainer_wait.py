@@ -15,6 +15,40 @@ from sagemaker.core.utils.exceptions import FailedStatusError, TimeoutExceededEr
 from sagemaker.train.common_utils.mlflow_metrics_util import _MLflowMetricsUtil
 
 
+def _refresh_training_job(training_job, sagemaker_session=None):
+    """Refresh a training job using the session-aware client if available.
+
+    When sagemaker_session is provided, uses the session's sagemaker_client
+    to describe the training job directly, avoiding the global default client.
+
+    Args:
+        training_job (TrainingJob): The training job to refresh.
+        sagemaker_session: SageMaker session with the correct credentials.
+            If None, falls back to training_job.refresh().
+    """
+    if sagemaker_session is not None:
+        try:
+            response = sagemaker_session.sagemaker_client.describe_training_job(
+                TrainingJobName=training_job.training_job_name
+            )
+            # Update key status attributes from the describe response
+            for api_key, attr_name in (
+                ("TrainingJobStatus", "training_job_status"),
+                ("SecondaryStatus", "secondary_status"),
+                ("FailureReason", "failure_reason"),
+            ):
+                if api_key in response:
+                    try:
+                        setattr(training_job, attr_name, response[api_key])
+                    except (AttributeError, TypeError, ValueError):
+                        pass
+        except Exception:
+            # Fall back to default refresh if session-aware call fails
+            training_job.refresh()
+    else:
+        training_job.refresh()
+
+
 @contextmanager
 def _suppress_info_logging():
     """Context manager to temporarily suppress INFO level logging."""
@@ -218,14 +252,18 @@ def get_mlflow_url(training_job) -> str:
 def wait(
         training_job: TrainingJob,
         poll: int = 5,
-        timeout: Optional[int] = 3000
+        timeout: Optional[int] = 3000,
+        sagemaker_session=None,
 ) -> None:
     """Wait for training job to complete with progress tracking.
 
     Args:
         training_job (TrainingJob): The SageMaker training job to monitor.
-        poll (int): Polling interval in seconds. Defaults to 3.
-        timeout (Optional[int]): Maximum wait time in seconds. Defaults to None.
+        poll (int): Polling interval in seconds. Defaults to 5.
+        timeout (Optional[int]): Maximum wait time in seconds. Defaults to 3000.
+        sagemaker_session: SageMaker session to use for describe calls.
+            If provided, uses the session's sagemaker_client instead of the
+            global default client, fixing NoCredentialsError with assumed-role sessions.
 
     Raises:
         FailedStatusError: If the training job fails.
@@ -277,7 +315,7 @@ def wait(
                     iteration += 1
                     time.sleep(0.5)
                     if iteration >= poll * 2:
-                        training_job.refresh()
+                        _refresh_training_job(training_job, sagemaker_session)
                         iteration = 0
                     
                     status = training_job.training_job_status
@@ -360,7 +398,7 @@ def wait(
                         if not progress_started:
                             progress_started = True
                             time.sleep(poll)
-                            training_job.refresh()
+                            _refresh_training_job(training_job, sagemaker_session)
 
                         training_progress_pct, training_progress_text = _calculate_training_progress(
                             training_job.progress_info, metrics_util, mlflow_run_name, training_job
@@ -442,7 +480,7 @@ def wait(
             while True:
                 iteration += 1
                 time.sleep(poll)
-                training_job.refresh()
+                _refresh_training_job(training_job, sagemaker_session)
 
                 status = training_job.training_job_status
                 secondary_status = training_job.secondary_status
@@ -462,7 +500,7 @@ def wait(
                             if not progress_started:
                                 progress_started = True
                                 time.sleep(20)
-                                training_job.refresh()
+                                _refresh_training_job(training_job, sagemaker_session)
 
                             progress_pct, progress_text = _calculate_training_progress(
                                 training_job.progress_info, metrics_util, mlflow_run_name, training_job
