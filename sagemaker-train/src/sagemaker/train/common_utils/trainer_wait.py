@@ -32,15 +32,20 @@ def _refresh_training_job(training_job, sagemaker_session=None):
             training_job_name=training_job.training_job_name,
             session=sagemaker_session.boto_session,
         )
-        # Copy refreshed attributes back to the original object
+        # Copy refreshed attributes back to the original object.
+        # Skip Unassigned values to avoid Pydantic validation errors.
+        from sagemaker.core.utils.utils import Unassigned
         for attr in ("training_job_status", "secondary_status", "failure_reason"):
             if hasattr(refreshed, attr):
+                value = getattr(refreshed, attr)
+                if isinstance(value, Unassigned):
+                    continue
                 try:
-                    setattr(training_job, attr, getattr(refreshed, attr))
-                except (AttributeError, TypeError):
+                    setattr(training_job, attr, value)
+                except (AttributeError, TypeError, ValueError):
                     pass
     else:
-        _refresh_training_job(training_job, sagemaker_session)
+        training_job.refresh()
 
 
 @contextmanager

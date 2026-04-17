@@ -296,7 +296,7 @@ class Processor(object):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.sagemaker_session.wait_for_processing_job(
+                self.sagemaker_session._wait_for_processing_job(
                     self.latest_job.processing_job_name
                 )
 
@@ -848,7 +848,7 @@ class ScriptProcessor(Processor):
         if not isinstance(self.sagemaker_session, PipelineSession):
             self.jobs.append(self.latest_job)
             if wait:
-                self.sagemaker_session.wait_for_processing_job(
+                self.sagemaker_session._wait_for_processing_job(
                     self.latest_job.processing_job_name
                 )
 

@@ -1625,7 +1625,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         _check_job_status(job, desc, "OptimizationJobStatus")
         return desc
 
-    def wait_for_processing_job(self, job, poll=5):
+    def _wait_for_processing_job(self, job, poll=5):
         """Wait for an Amazon SageMaker Processing job to complete.
 
         Args:
@@ -1645,7 +1645,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         _check_job_status(job, desc, "ProcessingJobStatus")
         return desc
 
-    def wait_for_training_job(self, job, poll=5):
+    def _wait_for_training_job(self, job, poll=5):
         """Wait for an Amazon SageMaker Training job to complete.
 
         Args:
