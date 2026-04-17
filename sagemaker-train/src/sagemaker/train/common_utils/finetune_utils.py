@@ -447,7 +447,7 @@ def _resolve_model_and_name(model, sagemaker_session=None):
             try:
                 import boto3
                 region_name = boto3.Session().region_name or os.environ.get('AWS_DEFAULT_REGION')
-            except:
+            except Exception:
                 pass
     
     if isinstance(model, str):
