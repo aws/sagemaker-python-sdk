@@ -823,6 +823,8 @@ class TestFrameworkProcessor:
         assert "#!/bin/bash" in script
         assert "train.py" in script
         assert "python3" in script
+        assert "install_requirements.py" in script
+        assert "pip install -r requirements.txt" not in script
 
     def test_create_and_upload_runproc_with_pipeline(self, mock_session):
         processor = FrameworkProcessor(
@@ -1240,7 +1242,7 @@ class TestFrameworkProcessorPackAndUpload:
                 with patch(
                     "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
                     return_value="s3://bucket/runproc.sh",
-                ):
+                ) as mock_upload:
                     result_uri, result_inputs, result_job_name = processor._pack_and_upload_code(
                         code=entry_point,
                         source_dir=None,
@@ -1252,6 +1254,15 @@ class TestFrameworkProcessorPackAndUpload:
 
                     assert result_uri == "s3://bucket/runproc.sh"
                     assert len(result_inputs) == 1
+
+                    # Verify both install_requirements.py and runproc.sh were uploaded
+                    upload_uris = [
+                        call.kwargs.get("desired_s3_uri") or call.args[1]
+                        for call in mock_upload.call_args_list
+                    ]
+                    assert any("install_requirements.py" in uri for uri in upload_uris)
+                    assert any("runproc.sh" in uri for uri in upload_uris)
+                    assert mock_upload.call_count == 2
 
 
 class TestProcessingInputOutputHelpers:
