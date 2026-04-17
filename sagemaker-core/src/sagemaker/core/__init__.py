@@ -15,6 +15,7 @@ from sagemaker.core.transformer import Transformer  # noqa: F401
 
 # Partner App
 from sagemaker.core.partner_app.auth_provider import PartnerAppAuthProvider  # noqa: F401
+from sagemaker.core.partner_app.auth_provider import RequestsAuth  # noqa: F401
 
 # Attribution
 from sagemaker.core.telemetry.attribution import Attribution, set_attribution  # noqa: F401
