@@ -1214,7 +1214,7 @@ class ModelTrainer(BaseModel):
             )
         if is_nova:
             if hyperparameters and isinstance(hyperparameters, str):
-                hyperparameters = cls._validate_and_load_hyperparameters_file(hyperparameters)
+                hyperparameters = cls._validate_and_fetch_hyperparameters_file(hyperparameters)
                 model_trainer_args["hyperparameters"].update(hyperparameters)
             elif hyperparameters and isinstance(hyperparameters, dict):
                 model_trainer_args["hyperparameters"].update(hyperparameters)
