@@ -215,10 +215,39 @@ def get_mlflow_url(training_job) -> str:
 
 
 
+def _refresh_training_job(training_job: TrainingJob, sagemaker_session=None):
+    """Refresh training job using session-aware client if available.
+
+    Args:
+        training_job (TrainingJob): The training job to refresh.
+        sagemaker_session: Optional SageMaker session with the correct credentials.
+    """
+    if sagemaker_session is not None:
+        try:
+            response = sagemaker_session.sagemaker_client.describe_training_job(
+                TrainingJobName=training_job.training_job_name
+            )
+            # Update training_job attributes from the describe response
+            from graphene.utils.str_converters import to_snake_case
+            for key, value in response.items():
+                snake_key = to_snake_case(key)
+                if hasattr(training_job, snake_key):
+                    try:
+                        setattr(training_job, snake_key, value)
+                    except (AttributeError, TypeError):
+                        pass
+        except Exception:
+            # Fallback to default refresh
+            training_job.refresh()
+    else:
+        training_job.refresh()
+
+
 def wait(
         training_job: TrainingJob,
         poll: int = 5,
-        timeout: Optional[int] = 3000
+        timeout: Optional[int] = 3000,
+        sagemaker_session=None,
 ) -> None:
     """Wait for training job to complete with progress tracking.
 
@@ -226,6 +255,10 @@ def wait(
         training_job (TrainingJob): The SageMaker training job to monitor.
         poll (int): Polling interval in seconds. Defaults to 3.
         timeout (Optional[int]): Maximum wait time in seconds. Defaults to None.
+        sagemaker_session: Optional SageMaker session to use for describe calls.
+            If provided, uses the session's sagemaker_client instead of the
+            global default client, which fixes NoCredentialsError when using
+            assumed-role sessions.
 
     Raises:
         FailedStatusError: If the training job fails.
@@ -277,7 +310,7 @@ def wait(
                     iteration += 1
                     time.sleep(0.5)
                     if iteration >= poll * 2:
-                        training_job.refresh()
+                        _refresh_training_job(training_job, sagemaker_session)
                         iteration = 0
                     
                     status = training_job.training_job_status
@@ -442,7 +475,7 @@ def wait(
             while True:
                 iteration += 1
                 time.sleep(poll)
-                training_job.refresh()
+                _refresh_training_job(training_job, sagemaker_session)
 
                 status = training_job.training_job_status
                 secondary_status = training_job.secondary_status

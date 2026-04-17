@@ -788,9 +788,15 @@ class ModelTrainer(BaseModel):
                 **training_request
             )
             self._latest_training_job = training_job
+            # Store the sagemaker_session on the job so wait/refresh can use it
+            training_job._sagemaker_session = self.sagemaker_session
 
             if wait:
-                training_job.wait(logs=logs)
+                from sagemaker.train.common_utils.trainer_wait import wait as trainer_wait
+                trainer_wait(
+                    training_job=training_job,
+                    sagemaker_session=self.sagemaker_session,
+                )
             if logs and not wait:
                 logger.warning(
                     "Not displaing the training container logs as 'wait' is set to False."
