@@ -136,7 +136,7 @@ class _ModelBuilderServers(object):
         if isinstance(self.model, str):
             # Configure HuggingFace model support
             if not self._is_jumpstart_model_id():
-                self.env_vars.update({"HF_MODEL_ID": self.model})
+                self.env_vars.setdefault("HF_MODEL_ID", self.model)
                 
                 # Add HuggingFace token if available
                 if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
@@ -212,7 +212,7 @@ class _ModelBuilderServers(object):
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
             # Configure HuggingFace model for TGI
-            self.env_vars.update({"HF_MODEL_ID": self.model})
+            self.env_vars.setdefault("HF_MODEL_ID", self.model)
             
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
@@ -319,9 +319,9 @@ class _ModelBuilderServers(object):
             logger.debug(f"Using detected notebook instance type: {nb_instance}")
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
-            # Configure HuggingFace model for DJL (preserve user-provided HF_MODEL_ID)
+            # Configure HuggingFace model for DJL
             self.env_vars.setdefault("HF_MODEL_ID", self.model)
-
+            
             # Get model configuration for DJL optimization
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
@@ -432,7 +432,7 @@ class _ModelBuilderServers(object):
                     self.env_vars.update({"HF_TASK": model_task})
                 
                 # Configure HuggingFace authentication
-                self.env_vars.update({"HF_MODEL_ID": self.model})
+                self.env_vars.setdefault("HF_MODEL_ID", self.model)
                 if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
                     self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
                 
@@ -538,7 +538,7 @@ class _ModelBuilderServers(object):
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
             # Configure HuggingFace model for TEI
-            self.env_vars.update({"HF_MODEL_ID": self.model})
+            self.env_vars.setdefault("HF_MODEL_ID", self.model)
             
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
@@ -682,7 +682,7 @@ class _ModelBuilderServers(object):
             if self.inference_spec is not None:
                 hf_model_id = self.inference_spec.get_model()
                 if isinstance(hf_model_id, str):  # Only if it's a valid HF model ID
-                    self.env_vars.update({"HF_MODEL_ID": hf_model_id})
+                    self.env_vars.setdefault("HF_MODEL_ID", hf_model_id)
                     # Get HF config only for string model IDs
                     if hasattr(self.env_vars, "HF_API_TOKEN"):
                         self.hf_model_config = _get_model_config_properties_from_hf(
@@ -701,7 +701,7 @@ class _ModelBuilderServers(object):
                 if model_task:
                     self.env_vars.update({"HF_TASK": model_task})
                 
-                self.env_vars.update({"HF_MODEL_ID": self.model})
+                self.env_vars.setdefault("HF_MODEL_ID", self.model)
                 
                 # Add HuggingFace token if available
                 if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
