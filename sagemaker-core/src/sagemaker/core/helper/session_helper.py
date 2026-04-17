@@ -1625,6 +1625,46 @@ class Session(object):  # pylint: disable=too-many-public-methods
         _check_job_status(job, desc, "OptimizationJobStatus")
         return desc
 
+    def wait_for_processing_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker Processing job to complete.
+
+        Args:
+            job (str): Name of the processing job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeProcessingJob`` API.
+
+        Raises:
+            exceptions.CapacityError: If the processing job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If the processing job fails.
+        """
+        desc = _wait_until(
+            lambda: _processing_job_status(self.sagemaker_client, job), poll
+        )
+        _check_job_status(job, desc, "ProcessingJobStatus")
+        return desc
+
+    def wait_for_training_job(self, job, poll=5):
+        """Wait for an Amazon SageMaker Training job to complete.
+
+        Args:
+            job (str): Name of the training job to wait for.
+            poll (int): Polling interval in seconds (default: 5).
+
+        Returns:
+            (dict): Return value from the ``DescribeTrainingJob`` API.
+
+        Raises:
+            exceptions.CapacityError: If the training job fails with CapacityError.
+            exceptions.UnexpectedStatusException: If the training job fails.
+        """
+        desc = _wait_until(
+            lambda: _training_job_status(self.sagemaker_client, job), poll
+        )
+        _check_job_status(job, desc, "TrainingJobStatus")
+        return desc
+
     def update_inference_component(
         self, inference_component_name, specification=None, runtime_config=None, wait=True
     ):
@@ -2893,6 +2933,70 @@ def _optimization_job_status(sagemaker_client, job_name):
         return None
 
     print("")
+    return desc
+
+
+def _processing_job_status(sagemaker_client, job_name):
+    """Check the status of a processing job.
+
+    Args:
+        sagemaker_client: The boto3 SageMaker client.
+        job_name (str): The name of the processing job.
+
+    Returns:
+        dict: The processing job description if complete, None if still in progress.
+    """
+    status_codes = {
+        "Completed": "!",
+        "InProgress": ".",
+        "Failed": "*",
+        "Stopped": "s",
+        "Stopping": "_",
+    }
+    in_progress_statuses = ["InProgress", "Stopping", "Starting"]
+
+    desc = sagemaker_client.describe_processing_job(ProcessingJobName=job_name)
+    status = desc["ProcessingJobStatus"]
+
+    status = _STATUS_CODE_TABLE.get(status, status)
+    print(status_codes.get(status, "?"), end="")
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
+    return desc
+
+
+def _training_job_status(sagemaker_client, job_name):
+    """Check the status of a training job.
+
+    Args:
+        sagemaker_client: The boto3 SageMaker client.
+        job_name (str): The name of the training job.
+
+    Returns:
+        dict: The training job description if complete, None if still in progress.
+    """
+    status_codes = {
+        "Completed": "!",
+        "InProgress": ".",
+        "Failed": "*",
+        "Stopped": "s",
+        "Stopping": "_",
+    }
+    in_progress_statuses = ["InProgress", "Stopping", "Starting"]
+
+    desc = sagemaker_client.describe_training_job(TrainingJobName=job_name)
+    status = desc["TrainingJobStatus"]
+
+    status = _STATUS_CODE_TABLE.get(status, status)
+    print(status_codes.get(status, "?"), end="")
+    sys.stdout.flush()
+
+    if status in in_progress_statuses:
+        return None
+
     return desc
 
 
