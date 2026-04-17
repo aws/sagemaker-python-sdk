@@ -68,7 +68,7 @@ version = { file = "VERSION"}
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["sagemaker*"]
-namespaces = true
+namespaces = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
