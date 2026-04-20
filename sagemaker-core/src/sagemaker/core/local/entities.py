@@ -332,7 +332,11 @@ class _LocalTransformJob(object):
         self.container.serve(self.primary_container["ModelDataUrl"], environment)
 
         serving_port = get_config_value("local.serving_port", self.local_session.config) or 8080
-        _wait_for_serving_container(serving_port)
+        health_check_timeout = (
+            get_config_value("local.health_check_timeout", self.local_session.config)
+            or HEALTH_CHECK_TIMEOUT_LIMIT
+        )
+        _wait_for_serving_container(serving_port, timeout=health_check_timeout)
 
         # Get capabilities from Container if needed
         endpoint_url = "http://%s:%d/execution-parameters" % (get_docker_host(), serving_port)
@@ -623,7 +627,11 @@ class _LocalEndpoint(object):
         )
 
         serving_port = get_config_value("local.serving_port", self.local_session.config) or 8080
-        _wait_for_serving_container(serving_port)
+        health_check_timeout = (
+            get_config_value("local.health_check_timeout", self.local_session.config)
+            or HEALTH_CHECK_TIMEOUT_LIMIT
+        )
+        _wait_for_serving_container(serving_port, timeout=health_check_timeout)
         # the container is running and it passed the healthcheck status is now InService
         self.state = _LocalEndpoint._IN_SERVICE
 
@@ -646,15 +654,21 @@ class _LocalEndpoint(object):
         return response
 
 
-def _wait_for_serving_container(serving_port):
-    """Placeholder docstring."""
+def _wait_for_serving_container(serving_port, timeout=HEALTH_CHECK_TIMEOUT_LIMIT):
+    """Wait for the serving container to become healthy.
+
+    Args:
+        serving_port (int): The port the serving container is listening on.
+        timeout (int): Maximum number of seconds to wait for the container to become healthy.
+            Defaults to ``HEALTH_CHECK_TIMEOUT_LIMIT``.
+    """
     i = 0
     http = urllib3.PoolManager()
 
     endpoint_url = "http://%s:%d/ping" % (get_docker_host(), serving_port)
     while True:
         i += 5
-        if i >= HEALTH_CHECK_TIMEOUT_LIMIT:
+        if i >= timeout:
             raise RuntimeError("Giving up, endpoint didn't launch correctly")
 
         logger.info("Checking if serving container is up, attempt: %s", i)
