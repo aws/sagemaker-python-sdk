@@ -197,12 +197,11 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
 
     model = JumpStartModel(
         model_id=model_id,
-        model_version="*",  # version >=3.0.0 stores artifacts in jumpstart-private-cache-* buckets
+        model_version="4.*",  # pin: v5.0.0 default image fails to start
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.g5.2xlarge instance
     model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         accept_eula=True,
