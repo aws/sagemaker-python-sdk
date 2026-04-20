@@ -225,6 +225,8 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             available for providing s3 path to fine-tuned model artifacts. ``FINE_TUNING_JOB_NAME``
             is available for providing fine-tuned job name. Both ``FINE_TUNING_MODEL_PATH`` and
             ``FINE_TUNING_JOB_NAME`` are mutually exclusive.
+        model_version (Optional[str]): Override the JumpStart model version to resolve.
+            Defaults to ``"*"`` (latest) when not set. Ignored for non-JumpStart models.
         inference_component_name (Optional[str]): The name for an inference component
             created from this ModelBuilder instance. This or ``resource_requirements`` must be set
             to denote that this instance refers to an inference component.
@@ -335,6 +337,13 @@ class ModelBuilder(Triton, DJL, JumpStart, TGI, Transformers, TensorflowServing,
             "`MLFLOW_MODEL_PATH`, `FINE_TUNING_MODEL_PATH`, `FINE_TUNING_JOB_NAME`, and "
             "`CUSTOM_MODEL_PATH`. HF_TASK should be set for new models without task metadata "
             "in the Hub, Adding unsupported task types will throw an exception."
+        },
+    )
+    model_version: Optional[str] = field(
+        default=None,
+        metadata={
+            "help": "Override the JumpStart model version to resolve. Defaults to the "
+            "latest version ('*') when not set. Ignored for non-JumpStart models."
         },
     )
     inference_component_name: Optional[str] = field(

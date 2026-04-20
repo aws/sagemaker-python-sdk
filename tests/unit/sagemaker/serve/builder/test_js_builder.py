@@ -1957,3 +1957,38 @@ class TestJumpStartModelBuilderOptimizationUseCases(unittest.TestCase):
             optimization_args["OptimizationConfigs"][0]["ModelQuantizationConfig"]["Image"],
             "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.29.0-lmi13.0.1-cu124",
         )
+
+
+class TestModelBuilderJumpStartModelVersion(unittest.TestCase):
+    """``ModelBuilder.model_version`` should be threaded into JumpStart resolution."""
+
+    @patch("sagemaker.serve.builder.jumpstart_builder.model_uris.retrieve")
+    def test_is_jumpstart_model_id_defaults_to_star(self, mock_retrieve):
+        mb = ModelBuilder(model=mock_model_id, schema_builder=mock_schema_builder)
+        self.assertTrue(mb._is_jumpstart_model_id())
+        mock_retrieve.assert_called_once()
+        self.assertEqual(mock_retrieve.call_args.kwargs["model_version"], "*")
+
+    @patch("sagemaker.serve.builder.jumpstart_builder.model_uris.retrieve")
+    def test_is_jumpstart_model_id_uses_override(self, mock_retrieve):
+        mb = ModelBuilder(
+            model=mock_model_id, schema_builder=mock_schema_builder, model_version="4.*"
+        )
+        self.assertTrue(mb._is_jumpstart_model_id())
+        self.assertEqual(mock_retrieve.call_args.kwargs["model_version"], "4.*")
+
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
+    def test_create_pre_trained_js_model_defaults_to_star(self, mock_js_model_cls):
+        mock_js_model_cls.return_value = MagicMock(deploy=MagicMock())
+        mb = ModelBuilder(model=mock_model_id, schema_builder=mock_schema_builder)
+        mb._create_pre_trained_js_model()
+        self.assertEqual(mock_js_model_cls.call_args.kwargs["model_version"], "*")
+
+    @patch("sagemaker.serve.builder.jumpstart_builder.JumpStartModel")
+    def test_create_pre_trained_js_model_uses_override(self, mock_js_model_cls):
+        mock_js_model_cls.return_value = MagicMock(deploy=MagicMock())
+        mb = ModelBuilder(
+            model=mock_model_id, schema_builder=mock_schema_builder, model_version="4.*"
+        )
+        mb._create_pre_trained_js_model()
+        self.assertEqual(mock_js_model_cls.call_args.kwargs["model_version"], "4.*")
