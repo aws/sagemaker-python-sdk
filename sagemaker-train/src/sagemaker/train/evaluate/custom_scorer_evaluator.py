@@ -240,7 +240,7 @@ class CustomScorerEvaluator(BaseEvaluator):
             
             override_params = _get_evaluation_override_params(
                 hub_content_name=hub_content_name,
-                hub_name="SageMakerPublicHub",
+                hub_name=self.hub_name or "SageMakerPublicHub",
                 evaluation_type="DeterministicEvaluation",
                 region=region,
                 session=boto_session
@@ -365,7 +365,7 @@ class CustomScorerEvaluator(BaseEvaluator):
             _logger.info(f"Fetching evaluation recipe override parameters from hub for model: {hub_content_name}")
             override_params = _get_evaluation_override_params(
                 hub_content_name=hub_content_name,
-                hub_name="SageMakerPublicHub",
+                hub_name=self.hub_name or "SageMakerPublicHub",
                 evaluation_type="DeterministicEvaluation",
                 region=region,
                 session=session

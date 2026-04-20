@@ -163,7 +163,8 @@ class RLAIFTrainer(BaseTrainer):
                                                                      self.training_type,
                                                                      self.sagemaker_session or TrainDefaults.get_sagemaker_session(
                                                                      sagemaker_session=self.sagemaker_session
-                                                                    ))
+                                                                    ),
+                                                                     hub_name=self.hub_name)
         
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
@@ -263,7 +264,7 @@ class RLAIFTrainer(BaseTrainer):
         )
 
         vpc_config = self.networking if self.networking else None
-        tags = _get_studio_tags(self._model_name, HUB_NAME)
+        tags = _get_studio_tags(self._model_name, self.hub_name)
 
         # Build TrainingJob.create() arguments
         create_args = {
@@ -358,7 +359,7 @@ class RLAIFTrainer(BaseTrainer):
             sagemaker_session=self.sagemaker_session
         )
                 hub_content = _get_hub_content_metadata(
-                    hub_name=HUB_NAME,
+                    hub_name=self.hub_name,
                     hub_content_type="JsonDoc",
                     hub_content_name=self.reward_prompt,
                     session=session.boto_session,

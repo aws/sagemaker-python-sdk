@@ -392,3 +392,35 @@ class TestSFTTrainer:
         
         trainer = SFTTrainer(model="test-model", model_package_group="test-group")
         assert trainer.stopping_condition is None
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def test_hub_name_defaults_to_public_hub(self, mock_finetuning_options, mock_validate_group):
+        """hub_name defaults to 'SageMakerPublicHub' and is forwarded to fine-tuning options lookup."""
+        mock_validate_group.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+
+        trainer = SFTTrainer(model="test-model", model_package_group="test-group")
+
+        assert trainer.hub_name == "SageMakerPublicHub"
+        assert mock_finetuning_options.call_args.kwargs["hub_name"] == "SageMakerPublicHub"
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def test_custom_hub_name_forwarded(self, mock_finetuning_options, mock_validate_group):
+        """Custom hub_name is stored on the trainer and forwarded to fine-tuning options lookup."""
+        mock_validate_group.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+
+        trainer = SFTTrainer(
+            model="test-model",
+            model_package_group="test-group",
+            hub_name="MyPrivateHub",
+        )
+
+        assert trainer.hub_name == "MyPrivateHub"
+        assert mock_finetuning_options.call_args.kwargs["hub_name"] == "MyPrivateHub"

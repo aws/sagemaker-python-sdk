@@ -1013,3 +1013,52 @@ def test_benchmark_evaluator_uses_evaluation_metric_key_for_non_nova(mock_artifa
     assert 'evaluation_metric' in additions
     assert additions['evaluation_metric'] == 'accuracy'
     assert 'metric' not in additions
+
+
+@patch('sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn')
+@patch('sagemaker.train.common_utils.recipe_utils._is_nova_model')
+@patch('sagemaker.train.common_utils.recipe_utils._extract_eval_override_options')
+@patch('sagemaker.train.common_utils.recipe_utils._get_evaluation_override_params')
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_benchmark_evaluator_custom_hub_name_forwarded(
+    mock_artifact, mock_resolve, mock_get_params, mock_extract_options, mock_is_nova, mock_resolve_mlflow
+):
+    """Custom hub_name on BenchMarkEvaluator is forwarded to hub override-params lookup."""
+    mock_resolve_mlflow.return_value = DEFAULT_MLFLOW_ARN
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    mock_session.sagemaker_config = None
+
+    mock_is_nova.return_value = False
+    mock_get_params.return_value = {'temperature': 0.7}
+    mock_extract_options.return_value = {'temperature': {'value': 0.7}}
+
+    evaluator = BenchMarkEvaluator(
+        benchmark=_Benchmark.MMLU,
+        model=DEFAULT_MODEL,
+        s3_output_path=DEFAULT_S3_OUTPUT,
+        mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+        model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+        sagemaker_session=mock_session,
+        hub_name="MyPrivateHub",
+    )
+
+    # Trigger lazy-loaded hyperparameters to hit the hub lookup
+    _ = evaluator.hyperparameters
+
+    assert evaluator.hub_name == "MyPrivateHub"
+    assert mock_get_params.call_args.kwargs["hub_name"] == "MyPrivateHub"

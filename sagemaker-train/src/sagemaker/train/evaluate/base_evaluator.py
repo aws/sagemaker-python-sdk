@@ -104,6 +104,7 @@ class BaseEvaluator(BaseModel):
     networking: Optional[VpcConfig] = None
     kms_key_id: Optional[str] = None
     model_package_group: Optional[Union[str, ModelPackageGroup]] = None
+    hub_name: Optional[str] = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -315,7 +316,8 @@ class BaseEvaluator(BaseModel):
             # Resolve model information
             model_info = _resolve_base_model(
                 base_model=v,
-                sagemaker_session=session
+                sagemaker_session=session,
+                hub_name=values.get('hub_name')
             )
             
             # If model is a ModelPackage object or ARN (has source_model_package_arn),

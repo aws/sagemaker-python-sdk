@@ -466,7 +466,7 @@ class BenchMarkEvaluator(BaseEvaluator):
             
             override_params = _get_evaluation_override_params(
                 hub_content_name=hub_content_name,
-                hub_name="SageMakerPublicHub",
+                hub_name=self.hub_name or "SageMakerPublicHub",
                 evaluation_type=evaluation_type,
                 region=region,
                 session=boto_session

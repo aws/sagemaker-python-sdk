@@ -142,7 +142,8 @@ class DPOTrainer(BaseTrainer):
                                                                                       self.sagemaker_session or TrainDefaults.get_sagemaker_session(
                                                                                       sagemaker_session=self.sagemaker_session
        
-                                                                                    ))
+                                                                                    ),
+                                                                                      hub_name=self.hub_name)
         
         # Process hyperparameters
         self._process_hyperparameters()
@@ -244,7 +245,7 @@ class DPOTrainer(BaseTrainer):
         )
 
         vpc_config = self.networking if self.networking else None
-        tags = _get_studio_tags(self._model_name, HUB_NAME)
+        tags = _get_studio_tags(self._model_name, self.hub_name)
 
         # Build TrainingJob.create() arguments
         create_args = {

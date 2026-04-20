@@ -4,6 +4,7 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel
 from sagemaker.core.shapes import shapes
 from sagemaker.core.resources import TrainingJob
+from sagemaker.train.constants import HUB_NAME
 
 
 class BaseTrainer(ABC):
@@ -36,6 +37,10 @@ class BaseTrainer(ABC):
             Can include training and validation datasets.
         environment (Optional[Dict[str, str]]):
             Environment variables to set in the training container.
+        hub_name (Optional[str]):
+            Name of the SageMaker Hub to pull model recipes and metadata from.
+            Defaults to ``"SageMakerPublicHub"``. Set to a private hub name to test
+            pre-release recipes (e.g., during development or E2E testing).
     """
     
     # Class-level attributes with default values
@@ -48,6 +53,7 @@ class BaseTrainer(ABC):
     input_data_config: Optional[List[Union[Channel, InputData]]] = None
     environment: Optional[Dict[str, str]] = None
     latest_training_job: Optional[TrainingJob] = None
+    hub_name: str = HUB_NAME
 
     def __init__(
         self,
@@ -59,6 +65,7 @@ class BaseTrainer(ABC):
         output_data_config: Optional[shapes.OutputDataConfig] = None,
         input_data_config: Optional[List[Union[Channel, InputData]]] = None,
         environment: Optional[Dict[str, str]] = None,
+        hub_name: Optional[str] = None,
     ):
         self.sagemaker_session = sagemaker_session
         self.role = role
@@ -68,6 +75,7 @@ class BaseTrainer(ABC):
         self.output_data_config = output_data_config
         self.input_data_config = input_data_config
         self.environment = environment or {}
+        self.hub_name = hub_name or HUB_NAME
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
