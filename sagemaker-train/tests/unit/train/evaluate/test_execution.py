@@ -37,8 +37,8 @@ from sagemaker.train.evaluate.execution import (
     _start_pipeline_execution,
     _create_execution_from_pipeline_execution,
     _extract_output_s3_location_from_steps,
-    _get_mlflow_experiment_url,
 )
+from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
 from sagemaker.train.evaluate.constants import EvalType, _get_pipeline_name, _get_pipeline_name_prefix
 
 # Test constants
@@ -1477,7 +1477,7 @@ MOCK_PRESIGNED_URL = "https://mlflow.example.com/auth?authToken=abc123"
 
 
 class TestGetMlflowExperimentUrl:
-    """Tests for _get_mlflow_experiment_url function."""
+    """Tests for get_presigned_mlflow_experiment_url function."""
 
     @patch("sagemaker.core.utils.utils.SageMakerClient")
     def test_returns_deep_link_with_experiment(self, mock_sm_client_cls):
@@ -1495,7 +1495,7 @@ class TestGetMlflowExperimentUrl:
              patch("mlflow.tracking.MlflowClient") as mock_mlflow_client:
             mock_mlflow_client.return_value.get_experiment_by_name.return_value = mock_experiment
 
-            result = _get_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
+            result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
 
         assert result == f"{MOCK_PRESIGNED_URL}#/experiments/42"
 
@@ -1508,7 +1508,7 @@ class TestGetMlflowExperimentUrl:
         }
         mock_sm_client_cls.return_value = mock_client
 
-        result = _get_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
+        result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
 
         assert result == MOCK_PRESIGNED_URL
 
@@ -1525,7 +1525,7 @@ class TestGetMlflowExperimentUrl:
              patch("mlflow.tracking.MlflowClient") as mock_mlflow_client:
             mock_mlflow_client.return_value.get_experiment_by_name.side_effect = Exception("connection error")
 
-            result = _get_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
+            result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
 
         assert result == MOCK_PRESIGNED_URL
 
@@ -1542,7 +1542,7 @@ class TestGetMlflowExperimentUrl:
              patch("mlflow.tracking.MlflowClient") as mock_mlflow_client:
             mock_mlflow_client.return_value.get_experiment_by_name.return_value = None
 
-            result = _get_mlflow_experiment_url(MOCK_MLFLOW_ARN, "nonexistent")
+            result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "nonexistent")
 
         assert result == MOCK_PRESIGNED_URL
 
@@ -1553,7 +1553,7 @@ class TestGetMlflowExperimentUrl:
         mock_client.sagemaker_client.create_presigned_mlflow_app_url.side_effect = Exception("access denied")
         mock_sm_client_cls.return_value = mock_client
 
-        result = _get_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
+        result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
 
         assert result is None
 
@@ -1564,7 +1564,7 @@ class TestGetMlflowExperimentUrl:
         mock_client.sagemaker_client.create_presigned_mlflow_app_url.return_value = {}
         mock_sm_client_cls.return_value = mock_client
 
-        result = _get_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
+        result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
 
         assert result is None
 
@@ -1585,7 +1585,7 @@ class TestGetCachedMlflowUrl:
 
         def get_cached(current_time):
             if mlflow_link_cache["url"] is None or (current_time - mlflow_link_cache["timestamp"]) > 240:
-                mlflow_link_cache["url"] = _get_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
+                mlflow_link_cache["url"] = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
                 mlflow_link_cache["timestamp"] = current_time
             return mlflow_link_cache["url"]
 
@@ -1612,7 +1612,7 @@ class TestGetCachedMlflowUrl:
 
         def get_cached(current_time):
             if mlflow_link_cache["url"] is None or (current_time - mlflow_link_cache["timestamp"]) > 240:
-                mlflow_link_cache["url"] = _get_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
+                mlflow_link_cache["url"] = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
                 mlflow_link_cache["timestamp"] = current_time
             return mlflow_link_cache["url"]
 
