@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Region mappings for model availability
 OPEN_WEIGHTS_REGIONS = ['us-east-1', 'us-west-2', 'ap-northeast-1', 'eu-west-1']  # IAD, PDX, NRT, DUB
-NOVA_REGIONS = ['us-east-1']  # IAD only
+NOVA_REGIONS = ['us-east-1', 'us-west-2']  # IAD, PDX
 # Constants
 DEFAULT_REGION = "us-west-2"
 
