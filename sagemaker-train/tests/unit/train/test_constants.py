@@ -1,26 +1,20 @@
-"""Tests for SAGEMAKER_HUB_NAME env-var override of the HUB_NAME constant."""
+"""Tests for SAGEMAKER_HUB_NAME env-var override via get_sagemaker_hub_name."""
 from __future__ import absolute_import
 
-import importlib
 import os
 from unittest.mock import patch
 
-
-def _reload_hub_name():
-    """Reload the constants module under the current env and return HUB_NAME."""
-    from sagemaker.train import constants
-    importlib.reload(constants)
-    return constants.HUB_NAME
+from sagemaker.train.constants import get_sagemaker_hub_name
 
 
-def test_hub_name_defaults_to_public_hub():
-    """When SAGEMAKER_HUB_NAME is unset, HUB_NAME is SageMakerPublicHub."""
+def test_get_sagemaker_hub_name_defaults_to_public_hub():
+    """When SAGEMAKER_HUB_NAME is unset, returns SageMakerPublicHub."""
     env = {k: v for k, v in os.environ.items() if k != "SAGEMAKER_HUB_NAME"}
     with patch.dict(os.environ, env, clear=True):
-        assert _reload_hub_name() == "SageMakerPublicHub"
+        assert get_sagemaker_hub_name() == "SageMakerPublicHub"
 
 
-def test_hub_name_overridden_by_env_var():
-    """When SAGEMAKER_HUB_NAME is set, HUB_NAME reflects the override."""
+def test_get_sagemaker_hub_name_overridden_by_env_var():
+    """When SAGEMAKER_HUB_NAME is set, returns the override value."""
     with patch.dict(os.environ, {"SAGEMAKER_HUB_NAME": "MyPrivateHub"}):
-        assert _reload_hub_name() == "MyPrivateHub"
+        assert get_sagemaker_hub_name() == "MyPrivateHub"

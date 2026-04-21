@@ -27,7 +27,7 @@ from sagemaker.train.common_utils.finetune_utils import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train.constants import HUB_NAME, _ALLOWED_REWARD_MODEL_IDS
+from sagemaker.train.constants import get_sagemaker_hub_name, _ALLOWED_REWARD_MODEL_IDS
 
 logger = logging.getLogger(__name__)
 
@@ -263,7 +263,7 @@ class RLAIFTrainer(BaseTrainer):
         )
 
         vpc_config = self.networking if self.networking else None
-        tags = _get_studio_tags(self._model_name, HUB_NAME)
+        tags = _get_studio_tags(self._model_name, get_sagemaker_hub_name())
 
         # Build TrainingJob.create() arguments
         create_args = {
@@ -358,7 +358,7 @@ class RLAIFTrainer(BaseTrainer):
             sagemaker_session=self.sagemaker_session
         )
                 hub_content = _get_hub_content_metadata(
-                    hub_name=HUB_NAME,
+                    hub_name=get_sagemaker_hub_name(),
                     hub_content_type="JsonDoc",
                     hub_content_name=self.reward_prompt,
                     session=session.boto_session,
