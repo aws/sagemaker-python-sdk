@@ -40,7 +40,7 @@ DEFAULT_CONTAINER_ARGUMENTS = [
     + f"&& {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT}",
 ]
 
-HUB_NAME = "SageMakerPublicHub"
+HUB_NAME = os.environ.get("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
 
 # Allowed reward model IDs for RLAIF trainer with region restrictions
 _ALLOWED_REWARD_MODEL_IDS = {

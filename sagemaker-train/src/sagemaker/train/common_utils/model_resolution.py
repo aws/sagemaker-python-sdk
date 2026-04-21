@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 import re
 from sagemaker.train.base_trainer import BaseTrainer
+from sagemaker.train.constants import HUB_NAME
 from sagemaker.core.utils.utils import Unassigned
 
 
@@ -52,7 +53,7 @@ class _ModelResolver:
     and fine-tuned ModelPackage objects/ARNs.
     """
     
-    DEFAULT_HUB_NAME = "SageMakerPublicHub"
+    DEFAULT_HUB_NAME = HUB_NAME
     
     def __init__(self, sagemaker_session=None):
         """
