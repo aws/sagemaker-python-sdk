@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """Recipe validation integ test for the HP-ModelCustomization-RecipeValidator pipeline.
 
-Iterates through every model in the private hub referenced by the ``HYPERPOD_HUB_NAME``
+Iterates through every model in the private hub referenced by the ``SAGEMAKER_HUB_NAME``
 env var and validates that each fine-tuning recipe can be used to instantiate the
 appropriate ``sagemaker.train`` Trainer class (SFT/DPO/RLAIF/RLVR).
 """
@@ -66,8 +66,8 @@ def detect_lora_or_full(recipe_path: str) -> TrainingType:
 
 def test_new_recipes_create_valid_trainers():
     """Validate every new/modified recipe in the private hub yields a valid Trainer."""
-    hub_name = os.environ.get("HYPERPOD_HUB_NAME")
-    assert hub_name, "HYPERPOD_HUB_NAME environment variable must be set"
+    hub_name = os.environ.get("SAGEMAKER_HUB_NAME")
+    assert hub_name, "SAGEMAKER_HUB_NAME environment variable must be set"
 
     sm = boto3.client("sagemaker", region_name="us-west-2")
 
