@@ -446,7 +446,7 @@ def test_custom_scorer_evaluator_get_custom_scorer_template_additions_with_aggre
     
     # Mock recipe utils
     mock_get_params.return_value = {'temperature': 0.5}
-    mock_extract_options.return_value = {'temperature': {'value': 0.5}}
+    mock_extract_options.return_value = {'temperature': {'default': 0.5}}
     
     evaluator = CustomScorerEvaluator(
         evaluator=DEFAULT_EVALUATOR_ARN,
@@ -610,7 +610,7 @@ def test_custom_scorer_evaluator_evaluate_method(
     
     # Mock recipe utils
     mock_get_params.return_value = {'temperature': 0.7}
-    mock_extract_options.return_value = {'temperature': {'value': 0.7}}
+    mock_extract_options.return_value = {'temperature': {'default': 0.7}}
     
     # Mock Pipeline and execution
     mock_pipeline_instance = Mock()
@@ -673,7 +673,7 @@ def test_custom_scorer_evaluator_evaluate_with_model_package(
     
     # Mock recipe utils
     mock_get_params.return_value = {'temperature': 0.7}
-    mock_extract_options.return_value = {'temperature': {'value': 0.7}}
+    mock_extract_options.return_value = {'temperature': {'default': 0.7}}
     
     # Mock Pipeline and execution
     mock_pipeline_instance = Mock()
@@ -839,8 +839,8 @@ def test_custom_scorer_evaluator_hyperparameters_property(mock_artifact, mock_re
     # Mock recipe utils
     mock_get_params.return_value = {'temperature': 0.7, 'max_new_tokens': 2048}
     mock_extract_options.return_value = {
-        'temperature': {'value': 0.7, 'type': 'float', 'min': 0.0, 'max': 1.0},
-        'max_new_tokens': {'value': 2048, 'type': 'int', 'min': 1, 'max': 8192}
+        'temperature': {'default': 0.7, 'type': 'float', 'min': 0.0, 'max': 1.0},
+        'max_new_tokens': {'default': 2048, 'type': 'int', 'min': 1, 'max': 8192}
     }
     
     evaluator = CustomScorerEvaluator(
@@ -933,7 +933,7 @@ def test_custom_scorer_evaluator_get_custom_scorer_template_additions_builtin(
     
     # Mock recipe utils
     mock_get_params.return_value = {'temperature': 0.7}
-    mock_extract_options.return_value = {'temperature': {'value': 0.7}}
+    mock_extract_options.return_value = {'temperature': {'default': 0.7}}
     
     evaluator = CustomScorerEvaluator(
         evaluator=_BuiltInMetric.PRIME_MATH,
@@ -988,8 +988,8 @@ def test_custom_scorer_evaluator_get_custom_scorer_template_additions_custom_arn
     # Mock recipe utils
     mock_get_params.return_value = {'temperature': 0.5, 'aggregation': 'median'}
     mock_extract_options.return_value = {
-        'temperature': {'value': 0.5},
-        'aggregation': {'value': 'median'}
+        'temperature': {'default': 0.5},
+        'aggregation': {'default': 'median'}
     }
     
     evaluator = CustomScorerEvaluator(
@@ -1048,7 +1048,7 @@ def test_custom_scorer_evaluator_lambda_type_for_nova_models(
     
     # Mock recipe utils
     mock_get_params.return_value = {'temperature': 0.7}
-    mock_extract_options.return_value = {'temperature': {'value': 0.7}}
+    mock_extract_options.return_value = {'temperature': {'default': 0.7}}
     
     # Mock is_nova_model to return True
     mock_is_nova.return_value = True
@@ -1105,7 +1105,7 @@ def test_custom_scorer_evaluator_no_lambda_type_for_non_nova_models(
     
     # Mock recipe utils
     mock_get_params.return_value = {'temperature': 0.7}
-    mock_extract_options.return_value = {'temperature': {'value': 0.7}}
+    mock_extract_options.return_value = {'temperature': {'default': 0.7}}
     
     # Mock is_nova_model to return False
     mock_is_nova.return_value = False
