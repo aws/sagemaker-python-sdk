@@ -21,6 +21,7 @@ from .constants import EvalType
 from .execution import EvaluationPipelineExecution
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.train.constants import get_sagemaker_hub_name
 
 _logger = logging.getLogger(__name__)
 
@@ -466,7 +467,7 @@ class BenchMarkEvaluator(BaseEvaluator):
             
             override_params = _get_evaluation_override_params(
                 hub_content_name=hub_content_name,
-                hub_name="SageMakerPublicHub",
+                hub_name=get_sagemaker_hub_name(),
                 evaluation_type=evaluation_type,
                 region=region,
                 session=boto_session

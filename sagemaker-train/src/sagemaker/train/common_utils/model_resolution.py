@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from enum import Enum
 import re
 from sagemaker.train.base_trainer import BaseTrainer
+from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.core.utils.utils import Unassigned
 
 
@@ -52,8 +53,6 @@ class _ModelResolver:
     and fine-tuned ModelPackage objects/ARNs.
     """
     
-    DEFAULT_HUB_NAME = "SageMakerPublicHub"
-    
     def __init__(self, sagemaker_session=None):
         """
         Initialize the resolver.
@@ -89,7 +88,7 @@ class _ModelResolver:
             if base_model.startswith("arn:aws:sagemaker:") and ":model-package/" in base_model:
                 return self._resolve_model_package_arn(base_model)
             else:
-                return self._resolve_jumpstart_model(base_model, hub_name or self.DEFAULT_HUB_NAME)
+                return self._resolve_jumpstart_model(base_model, hub_name or get_sagemaker_hub_name())
         # Handle BaseTrainer type
         elif isinstance(base_model, BaseTrainer):
             if hasattr(base_model, '_latest_training_job') and hasattr(base_model._latest_training_job,
