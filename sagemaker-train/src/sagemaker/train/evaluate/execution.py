@@ -426,6 +426,45 @@ def _extract_output_s3_location_from_steps(raw_steps: List[Any], session: Option
         return None
 
 
+def _get_mlflow_experiment_url(mlflow_resource_arn: str, mlflow_experiment_name: Optional[str] = None) -> Optional[str]:
+    """Generate a presigned MLflow URL deep-linked to the experiment.
+
+    Args:
+        mlflow_resource_arn: MLflow tracking server or app ARN.
+        mlflow_experiment_name: Optional experiment name for deep-linking.
+
+    Returns:
+        Presigned URL with experiment fragment, or None on failure.
+    """
+    try:
+        from sagemaker.core.utils.utils import SageMakerClient
+
+        sm_client = SageMakerClient().sagemaker_client
+        response = sm_client.create_presigned_mlflow_app_url(Arn=mlflow_resource_arn)
+        base_url = response.get('AuthorizedUrl')
+        if not base_url:
+            return None
+
+        if mlflow_experiment_name:
+            try:
+                import mlflow
+                from mlflow.tracking import MlflowClient
+
+                mlflow.set_tracking_uri(mlflow_resource_arn)
+                experiment = MlflowClient(tracking_uri=mlflow_resource_arn).get_experiment_by_name(
+                    mlflow_experiment_name
+                )
+                if experiment:
+                    return f"{base_url}#/experiments/{experiment.experiment_id}"
+            except Exception:
+                pass
+
+        return base_url
+    except Exception as e:
+        logger.debug(f"Failed to generate MLflow experiment URL: {e}")
+        return None
+
+
 class StepDetail(BaseModel):
     """Pipeline step details for tracking execution progress.
 
@@ -920,6 +959,27 @@ class EvaluationPipelineExecution(BaseModel):
             # Create console with Jupyter support
             console = Console(force_jupyter=True)
             
+            # MLflow link caching (presigned URLs expire after 5 min)
+            mlflow_link_cache = {'url': None, 'timestamp': 0}
+            
+            def get_cached_mlflow_url():
+                """Get cached MLflow URL, regenerating every 4 minutes."""
+                from sagemaker.train.common_utils.trainer_wait import _is_unassigned_attribute
+
+                current_time = time.time()
+                if mlflow_link_cache['url'] is None or (current_time - mlflow_link_cache['timestamp']) > 240:
+                    pe = self._pipeline_execution
+                    mlflow_cfg = getattr(pe, 'm_lflow_config', None) if pe else None
+                    if mlflow_cfg and not _is_unassigned_attribute(mlflow_cfg):
+                        arn = getattr(mlflow_cfg, 'mlflow_resource_arn', None)
+                        if arn and not _is_unassigned_attribute(arn):
+                            exp_name = getattr(mlflow_cfg, 'mlflow_experiment_name', None)
+                            if exp_name and _is_unassigned_attribute(exp_name):
+                                exp_name = None
+                            mlflow_link_cache['url'] = _get_mlflow_experiment_url(arn, exp_name)
+                            mlflow_link_cache['timestamp'] = current_time
+                return mlflow_link_cache['url']
+            
             while True:
                 clear_output(wait=True)
                 self.refresh()
@@ -960,6 +1020,10 @@ class EvaluationPipelineExecution(BaseModel):
                             links.append(f"[bright_blue underline][link={pipeline_url}]🔗 Pipeline Execution (Studio)[/link][/bright_blue underline]")
                 except Exception:
                     pass
+                # Add MLflow experiment link if available
+                cached_mlflow_url = get_cached_mlflow_url()
+                if cached_mlflow_url:
+                    links.append(f"[bright_blue underline][link={cached_mlflow_url}]🔗 MLflow Experiment[/link][/bright_blue underline]")
                 if links:
                     header_table.add_row("Links", " | ".join(links))
 
