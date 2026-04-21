@@ -15,6 +15,7 @@ from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYP
 from sagemaker.core.shapes import ServerlessJobConfig, Channel, DataSource, ModelPackageConfig, MlflowConfig
 from sagemaker.train.configs import InputData, OutputDataConfig
 from sagemaker.train.defaults import TrainDefaults
+from sagemaker.train.constants import get_sagemaker_hub_name
 
 logger = logging.getLogger(__name__)
 
@@ -317,13 +318,15 @@ def _resolve_model_package_arn(model_package) -> Optional[str]:
 
 
 def _get_fine_tuning_options_and_model_arn(model_name: str, customization_technique: str, training_type, sagemaker_session,
-                                         hub_name: str = "SageMakerPublicHub") -> tuple:
+                                         hub_name: Optional[str] = None) -> tuple:
     """Get fine-tuning options and model ARN for given customization technique.
     
     Returns:
         tuple: (FineTuningOptions, model_arn, is_gated_model)
     """
-    
+    if hub_name is None:
+        hub_name = get_sagemaker_hub_name()
+
     try:
 
         hub_content = _get_hub_content_metadata(

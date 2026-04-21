@@ -33,7 +33,7 @@ class FineTuningOptions:
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert back to dictionary for hyperparameters with string values."""
-        return {k: str(getattr(self, k)) for k in self._specs.keys()}
+        return {k: str(v) for k in self._specs.keys() if (v := getattr(self, k)) is not None}
     
     def __setattr__(self, name: str, value: Any):
         if name.startswith('_'):
