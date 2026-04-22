@@ -39,7 +39,7 @@ CREATE_METHOD_TEMPLATE = """
 def create(
     cls,
 {create_args}
-    session: Optional[Session] = None,
+    session: Optional[Boto3Session] = None,
     region: Optional[StrPipeVar] = None,
 ) -> Optional["{resource_name}"]:
 {docstring}
@@ -70,7 +70,7 @@ CREATE_METHOD_TEMPLATE_WITHOUT_DEFAULTS = """
 def create(
     cls,
 {create_args}
-    session: Optional[Session] = None,
+    session: Optional[Boto3Session] = None,
     region: Optional[StrPipeVar] = None,
 ) -> Optional["{resource_name}"]:
 {docstring}
@@ -101,7 +101,7 @@ IMPORT_METHOD_TEMPLATE = """
 def load(
     cls,
 {import_args}
-    session: Optional[Session] = None,
+    session: Optional[Boto3Session] = None,
     region: Optional[StrPipeVar] = None,
 ) -> Optional["{resource_name}"]:
 {docstring}
@@ -152,7 +152,7 @@ def update(
 ) -> Optional["{resource_name}"]:
 {docstring}
     logger.info("Updating {resource_lower} resource.")
-    client = Base.get_sagemaker_client()
+    client = Base.get_sagemaker_client(session=getattr(self, '_session', None))
 
     operation_input_args = {{
 {operation_input_args}
@@ -179,7 +179,7 @@ def update(
 ) -> Optional["{resource_name}"]:
 {docstring}
     logger.info("Updating {resource_lower} resource.")
-    client = Base.get_sagemaker_client()
+    client = Base.get_sagemaker_client(session=getattr(self, '_session', None))
 
     operation_input_args = {{
 {operation_input_args}
@@ -213,7 +213,7 @@ GET_METHOD_TEMPLATE = """
 def get(
     cls,
 {describe_args}
-    session: Optional[Session] = None,
+    session: Optional[Boto3Session] = None,
     region: Optional[StrPipeVar] = None,
 ) -> Optional["{resource_name}"]:
 {docstring}
@@ -232,6 +232,7 @@ def get(
     # deserialize the response
     transformed_response = transform(response, '{describe_operation_output_shape}')
     {resource_lower} = cls(**transformed_response)
+    {resource_lower}._session = session
     return {resource_lower}
 """
 
@@ -249,7 +250,7 @@ def refresh(
     operation_input_args = serialize(operation_input_args)
     logger.debug(f"Serialized input request: {{operation_input_args}}")
 
-    client = Base.get_sagemaker_client()
+    client = Base.get_sagemaker_client(session=getattr(self, '_session', None))
     response = client.{operation}(**operation_input_args)
 
     # deserialize response and update self
@@ -465,7 +466,7 @@ def delete(
 {delete_args}
     ) -> None:
 {docstring}
-    client = Base.get_sagemaker_client()
+    client = Base.get_sagemaker_client(session=getattr(self, '_session', None))
 
     operation_input_args = {{
 {operation_input_args}
@@ -483,7 +484,7 @@ STOP_METHOD_TEMPLATE = """
 @Base.add_validate_call
 def stop(self) -> None:
 {docstring}
-    client = SageMakerClient().sagemaker_client
+    client = Base.get_sagemaker_client(session=getattr(self, '_session', None))
 
     operation_input_args = {{
 {operation_input_args}
@@ -503,7 +504,7 @@ GET_ALL_METHOD_WITH_ARGS_TEMPLATE = """
 def get_all(
     cls,
 {get_all_args}
-    session: Optional[Session] = None,
+    session: Optional[Boto3Session] = None,
     region: Optional[StrPipeVar] = None,
 ) -> ResourceIterator["{resource}"]:
 {docstring}
@@ -527,7 +528,7 @@ GET_ALL_METHOD_NO_ARGS_TEMPLATE = '''
 @Base.add_validate_call
 def get_all(
     cls,
-    session: Optional[Session] = None,
+    session: Optional[Boto3Session] = None,
     region: Optional[StrPipeVar] = None,
 ) -> ResourceIterator["{resource}"]:
     """

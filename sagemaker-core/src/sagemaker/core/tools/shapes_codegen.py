@@ -16,6 +16,7 @@ To run the script be sure to set the PYTHONPATH
 export PYTHONPATH=<sagemaker-code-gen repo directory>:$PYTHONPATH
 """
 import os
+from functools import lru_cache
 
 from sagemaker.core.utils.code_injection.codec import pascal_to_snake
 from sagemaker.core.tools.constants import (
@@ -247,12 +248,60 @@ class ShapesCodeGen:
                 required_output_shapes.add(method.return_type)
 
         if shape in operation_input_output_shapes and shape not in required_output_shapes:
+            # Before filtering out, check if this shape is transitively referenced
+            # by any operation input/output shape that is itself used as a resource
+            # class attribute. For example, CreateEndpointConfigInput is an operation
+            # input shape but is also a member type inside
+            # CreateEndpointConfigInputInternal, which feeds the
+            # EndpointConfigInternal resource class.
+            if shape in self._get_shapes_required_by_resources():
+                return True
             return False
         return True
 
+    @lru_cache(maxsize=1)
+    def _get_shapes_required_by_resources(self):
+        """Collect all shapes transitively referenced by resource class attributes.
+
+        Resource classes derive their attributes from operation input/output shapes.
+        Some of those attributes reference shapes that are also operation input/output
+        shapes (and would normally be filtered out). This method finds those shapes
+        so they can be kept.
+        """
+        required = set()
+        resource_plan = self.resources_extractor.get_resource_plan()
+
+        for _, row in resource_plan.iterrows():
+            resource_name = row["resource_name"]
+            class_methods = row["class_methods"]
+
+            # Determine which shapes feed this resource's class attributes
+            attr_shapes = []
+            if "get" in class_methods:
+                op = self.combined_operations.get("Describe" + resource_name)
+                if op:
+                    attr_shapes.append(op["output"]["shape"])
+            elif "create" in class_methods:
+                op = self.combined_operations.get("Create" + resource_name)
+                if op:
+                    attr_shapes.append(op["input"]["shape"])
+                    attr_shapes.append(op["output"]["shape"])
+
+            # Walk one level of members to find referenced structure shapes
+            for attr_shape in attr_shapes:
+                shape_def = self.combined_shapes.get(attr_shape, {})
+                for member_attrs in shape_def.get("members", {}).values():
+                    member_shape_name = member_attrs.get("shape")
+                    if member_shape_name and member_shape_name in self.combined_shapes:
+                        member_shape_def = self.combined_shapes[member_shape_name]
+                        if member_shape_def.get("type") == "structure":
+                            required.add(member_shape_name)
+
+        return required
+
     def generate_shapes(
         self,
-        output_folder=GENERATED_CLASSES_LOCATION,
+        output_folder=GENERATED_CLASSES_LOCATION + "/shapes",
         file_name=SHAPES_CODEGEN_FILE_NAME,
     ) -> None:
         """

@@ -11,12 +11,19 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Generates the code for the service model."""
-from sagemaker.core.utils.utils import reformat_file_with_black
 from sagemaker.core.tools.shapes_codegen import ShapesCodeGen
 from sagemaker.core.tools.resources_codegen import ResourcesCodeGen
 from typing import Optional
 
 from sagemaker.core.tools.data_extractor import ServiceJsonData, load_service_jsons
+
+
+# Generated files that should be reformatted after codegen
+_GENERATED_FILES = [
+    "src/sagemaker/core/resources.py",
+    "src/sagemaker/core/shapes/shapes.py",
+    "src/sagemaker/core/config_schema.py",
+]
 
 
 def generate_code(
@@ -37,6 +44,10 @@ def generate_code(
     Returns:
         None
     """
+    # Import lazily to avoid circular import through sagemaker.core.__init__
+    # which imports processing -> resources (the file we are generating)
+    from sagemaker.core.utils.utils import reformat_file_with_black
+
     service_json_data: ServiceJsonData = load_service_jsons()
 
     shapes_code_gen = shapes_code_gen or ShapesCodeGen()
@@ -45,7 +56,10 @@ def generate_code(
     )
 
     shapes_code_gen.generate_shapes()
-    reformat_file_with_black(".")
+
+    # Only reformat the generated files, not the entire directory
+    for generated_file in _GENERATED_FILES:
+        reformat_file_with_black(generated_file)
 
 
 """

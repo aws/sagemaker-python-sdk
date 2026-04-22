@@ -16,7 +16,7 @@ import time
 import functools
 from pydantic import validate_call
 from typing import Dict, List, Literal, Optional, Union, Any
-from boto3.session import Session
+from boto3.session import Session as Boto3Session
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
@@ -45,7 +45,6 @@ from sagemaker.core.utils.exceptions import *
 from typing import ClassVar
 from sagemaker.core.serializers.base import BaseSerializer
 from sagemaker.core.deserializers.base import BaseDeserializer
-
 
 logger = get_textual_rich_logger(__name__)
 
@@ -208,7 +207,7 @@ class Action(Base):
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Action"]:
         """
@@ -281,7 +280,7 @@ class Action(Base):
     def get(
         cls,
         action_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Action"]:
         """
@@ -325,6 +324,7 @@ class Action(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeActionResponse")
         action = cls(**transformed_response)
+        action._session = session
         return action
 
     @Base.add_validate_call
@@ -357,7 +357,7 @@ class Action(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_action(**operation_input_args)
 
         # deserialize response and update self
@@ -396,7 +396,7 @@ class Action(Base):
         """
 
         logger.info("Updating action resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ActionName": self.action_name,
@@ -437,7 +437,7 @@ class Action(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ActionName": self.action_name,
@@ -460,7 +460,7 @@ class Action(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Action"]:
         """
@@ -582,7 +582,7 @@ class ActionInternal(Base):
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ActionInternal"]:
         """
@@ -704,6 +704,7 @@ class Algorithm(Base):
                     "additional_s3_data_source": {
                         "s3_data_type": {"type": "string"},
                         "s3_uri": {"type": "string"},
+                        "manifest_s3_uri": {"type": "string"},
                     }
                 },
                 "validation_specification": {"validation_role": {"type": "string"}},
@@ -731,7 +732,7 @@ class Algorithm(Base):
         require_image_scan: Optional[bool] = Unassigned(),
         workflow_disabled: Optional[bool] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Algorithm"]:
         """
@@ -805,7 +806,7 @@ class Algorithm(Base):
     def get(
         cls,
         algorithm_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Algorithm"]:
         """
@@ -848,6 +849,7 @@ class Algorithm(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAlgorithmOutput")
         algorithm = cls(**transformed_response)
+        algorithm._session = session
         return algorithm
 
     @Base.add_validate_call
@@ -879,7 +881,7 @@ class Algorithm(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_algorithm(**operation_input_args)
 
         # deserialize response and update self
@@ -906,7 +908,7 @@ class Algorithm(Base):
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "AlgorithmName": self.algorithm_name,
@@ -1045,7 +1047,7 @@ class Algorithm(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Algorithm"]:
         """
@@ -1176,7 +1178,7 @@ class App(Base):
         persistent_volume_names: Optional[List[StrPipeVar]] = Unassigned(),
         app_launch_configuration: Optional[AppLaunchConfiguration] = Unassigned(),
         recovery_mode: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["App"]:
         """
@@ -1264,7 +1266,7 @@ class App(Base):
         app_name: StrPipeVar,
         user_profile_name: Optional[StrPipeVar] = Unassigned(),
         space_name: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["App"]:
         """
@@ -1316,6 +1318,7 @@ class App(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAppResponse")
         app = cls(**transformed_response)
+        app._session = session
         return app
 
     @Base.add_validate_call
@@ -1352,7 +1355,7 @@ class App(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_app(**operation_input_args)
 
         # deserialize response and update self
@@ -1387,7 +1390,7 @@ class App(Base):
         """
 
         logger.info("Updating app resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -1429,7 +1432,7 @@ class App(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -1576,7 +1579,7 @@ class App(Base):
         domain_id_equals: Optional[StrPipeVar] = Unassigned(),
         user_profile_name_equals: Optional[StrPipeVar] = Unassigned(),
         space_name_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["App"]:
         """
@@ -1685,7 +1688,7 @@ class AppImageConfig(Base):
         savitur_app_image_config: Optional[SaviturAppImageConfig] = Unassigned(),
         jupyter_lab_app_image_config: Optional[JupyterLabAppImageConfig] = Unassigned(),
         code_editor_app_image_config: Optional[CodeEditorAppImageConfig] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AppImageConfig"]:
         """
@@ -1754,7 +1757,7 @@ class AppImageConfig(Base):
     def get(
         cls,
         app_image_config_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AppImageConfig"]:
         """
@@ -1798,6 +1801,7 @@ class AppImageConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAppImageConfigResponse")
         app_image_config = cls(**transformed_response)
+        app_image_config._session = session
         return app_image_config
 
     @Base.add_validate_call
@@ -1830,7 +1834,7 @@ class AppImageConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_app_image_config(**operation_input_args)
 
         # deserialize response and update self
@@ -1865,7 +1869,7 @@ class AppImageConfig(Base):
         """
 
         logger.info("Updating app_image_config resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "AppImageConfigName": self.app_image_config_name,
@@ -1906,7 +1910,7 @@ class AppImageConfig(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "AppImageConfigName": self.app_image_config_name,
@@ -1930,7 +1934,7 @@ class AppImageConfig(Base):
         modified_time_after: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["AppImageConfig"]:
         """
@@ -2049,7 +2053,7 @@ class Artifact(Base):
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Artifact"]:
         """
@@ -2118,7 +2122,7 @@ class Artifact(Base):
     def get(
         cls,
         artifact_arn: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Artifact"]:
         """
@@ -2162,6 +2166,7 @@ class Artifact(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeArtifactResponse")
         artifact = cls(**transformed_response)
+        artifact._session = session
         return artifact
 
     @Base.add_validate_call
@@ -2194,7 +2199,7 @@ class Artifact(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_artifact(**operation_input_args)
 
         # deserialize response and update self
@@ -2232,7 +2237,7 @@ class Artifact(Base):
         """
 
         logger.info("Updating artifact resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ArtifactArn": self.artifact_arn,
@@ -2272,7 +2277,7 @@ class Artifact(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ArtifactArn": self.artifact_arn,
@@ -2296,7 +2301,7 @@ class Artifact(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Artifact"]:
         """
@@ -2412,7 +2417,7 @@ class ArtifactInternal(Base):
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ArtifactInternal"]:
         """
@@ -2538,7 +2543,7 @@ class Association(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "SourceArn": self.source_arn,
@@ -2565,7 +2570,7 @@ class Association(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Association"]:
         """
@@ -2638,7 +2643,7 @@ class Association(Base):
         source_arn: StrPipeVar,
         destination_arn: StrPipeVar,
         association_type: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -2681,6 +2686,13 @@ class Association(Base):
         logger.debug(f"Calling add_association API")
         response = client.add_association(**operation_input_args)
         logger.debug(f"Response: {response}")
+
+
+class AssociationInternal(Base):
+    """
+    Class representing resource AssociationInternal
+
+    """
 
 
 class AutoMLJob(Base):
@@ -2799,7 +2811,7 @@ class AutoMLJob(Base):
         tags: Optional[List[Tag]] = Unassigned(),
         image_url_overrides: Optional[ImageUrlOverrides] = Unassigned(),
         model_deploy_config: Optional[ModelDeployConfig] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AutoMLJob"]:
         """
@@ -2879,7 +2891,7 @@ class AutoMLJob(Base):
     def get(
         cls,
         auto_ml_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AutoMLJob"]:
         """
@@ -2923,6 +2935,7 @@ class AutoMLJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAutoMLJobResponse")
         auto_ml_job = cls(**transformed_response)
+        auto_ml_job._session = session
         return auto_ml_job
 
     @Base.add_validate_call
@@ -2955,7 +2968,7 @@ class AutoMLJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_auto_ml_job(**operation_input_args)
 
         # deserialize response and update self
@@ -2984,7 +2997,7 @@ class AutoMLJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "AutoMLJobName": self.auto_ml_job_name,
@@ -3015,7 +3028,7 @@ class AutoMLJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "AutoMLJobName": self.auto_ml_job_name,
@@ -3099,7 +3112,7 @@ class AutoMLJob(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["AutoMLJob"]:
         """
@@ -3169,7 +3182,7 @@ class AutoMLJob(Base):
         candidate_name_equals: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[AutoMLCandidate]:
         """
@@ -3355,7 +3368,7 @@ class AutoMLJobV2(Base):
         auto_ml_execution_mode: Optional[StrPipeVar] = Unassigned(),
         external_feature_transformers: Optional[AutoMLExternalFeatureTransformers] = Unassigned(),
         auto_ml_compute_config: Optional[AutoMLComputeConfig] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AutoMLJobV2"]:
         """
@@ -3441,7 +3454,7 @@ class AutoMLJobV2(Base):
     def get(
         cls,
         auto_ml_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AutoMLJobV2"]:
         """
@@ -3485,6 +3498,7 @@ class AutoMLJobV2(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAutoMLJobV2Response")
         auto_ml_job_v2 = cls(**transformed_response)
+        auto_ml_job_v2._session = session
         return auto_ml_job_v2
 
     @Base.add_validate_call
@@ -3517,7 +3531,7 @@ class AutoMLJobV2(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_auto_ml_job_v2(**operation_input_args)
 
         # deserialize response and update self
@@ -3636,7 +3650,7 @@ class AutoMLTask(Base):
         auto_ml_job_name: StrPipeVar,
         auto_ml_task_context: AutoMLTaskContext,
         auto_ml_task_type: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AutoMLTask"]:
         """
@@ -3700,7 +3714,7 @@ class AutoMLTask(Base):
     def get(
         cls,
         auto_ml_task_arn: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["AutoMLTask"]:
         """
@@ -3744,6 +3758,7 @@ class AutoMLTask(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeAutoMLTaskResponse")
         auto_ml_task = cls(**transformed_response)
+        auto_ml_task._session = session
         return auto_ml_task
 
     @Base.add_validate_call
@@ -3776,7 +3791,7 @@ class AutoMLTask(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_auto_ml_task(**operation_input_args)
 
         # deserialize response and update self
@@ -3913,7 +3928,7 @@ class CapacitySchedule(Base):
         capacity_schedule_offering_id: StrPipeVar,
         target_services: Optional[List[StrPipeVar]] = Unassigned(),
         max_wait_time_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CapacitySchedule"]:
         """
@@ -3982,7 +3997,7 @@ class CapacitySchedule(Base):
     def get(
         cls,
         capacity_schedule_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CapacitySchedule"]:
         """
@@ -4026,6 +4041,7 @@ class CapacitySchedule(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeCapacityScheduleResponse")
         capacity_schedule = cls(**transformed_response)
+        capacity_schedule._session = session
         return capacity_schedule
 
     @Base.add_validate_call
@@ -4059,7 +4075,7 @@ class CapacitySchedule(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_capacity_schedule(**operation_input_args)
 
         # deserialize response and update self
@@ -4101,7 +4117,7 @@ class CapacitySchedule(Base):
         """
 
         logger.info("Updating capacity_schedule resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "CapacityScheduleName": capacity_schedule_name,
@@ -4140,7 +4156,7 @@ class CapacitySchedule(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "CapacityScheduleName": self.capacity_schedule_name,
@@ -4222,7 +4238,7 @@ class CapacitySchedule(Base):
         capacity_schedule_name: StrPipeVar,
         capacity_resource_arn: StrPipeVar,
         target_resources: List[StrPipeVar],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CapacitySchedule"]:
         """
@@ -4343,7 +4359,8 @@ class Cluster(Base):
                 "vpc_config": {
                     "security_group_ids": {"type": "array", "items": {"type": "string"}},
                     "subnets": {"type": "array", "items": {"type": "string"}},
-                }
+                },
+                "cluster_role": {"type": "string"},
             }
             return create_func(
                 *args,
@@ -4375,7 +4392,7 @@ class Cluster(Base):
         cluster_role: Optional[StrPipeVar] = Unassigned(),
         auto_scaling: Optional[ClusterAutoScalingConfig] = Unassigned(),
         custom_metadata: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Cluster"]:
         """
@@ -4462,7 +4479,7 @@ class Cluster(Base):
     def get(
         cls,
         cluster_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Cluster"]:
         """
@@ -4506,6 +4523,7 @@ class Cluster(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeClusterResponse")
         cluster = cls(**transformed_response)
+        cluster._session = session
         return cluster
 
     @Base.add_validate_call
@@ -4538,7 +4556,7 @@ class Cluster(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_cluster(**operation_input_args)
 
         # deserialize response and update self
@@ -4590,7 +4608,7 @@ class Cluster(Base):
         """
 
         logger.info("Updating cluster resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ClusterName": self.cluster_name,
@@ -4641,7 +4659,7 @@ class Cluster(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ClusterName": self.cluster_name,
@@ -4790,7 +4808,7 @@ class Cluster(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         training_plan_arn: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Cluster"]:
         """
@@ -4854,7 +4872,7 @@ class Cluster(Base):
         self,
         node_id: Optional[StrPipeVar] = Unassigned(),
         node_logical_id: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[ClusterNodeDetails]:
         """
@@ -4911,7 +4929,7 @@ class Cluster(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         include_node_logical_ids: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[ClusterNodeDetails]:
         """
@@ -4977,7 +4995,7 @@ class Cluster(Base):
         deployment_config: Optional[DeploymentConfiguration] = Unassigned(),
         dry_run: Optional[bool] = Unassigned(),
         image_id: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -5030,7 +5048,7 @@ class Cluster(Base):
         node_ids: Optional[List[StrPipeVar]] = Unassigned(),
         node_logical_ids: Optional[List[StrPipeVar]] = Unassigned(),
         dry_run: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[BatchDeleteClusterNodesResponse]:
         """
@@ -5157,7 +5175,7 @@ class ClusterSchedulerConfig(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         dry_run: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ClusterSchedulerConfig"]:
         """
@@ -5233,7 +5251,7 @@ class ClusterSchedulerConfig(Base):
         cls,
         cluster_scheduler_config_id: StrPipeVar,
         cluster_scheduler_config_version: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ClusterSchedulerConfig"]:
         """
@@ -5279,6 +5297,7 @@ class ClusterSchedulerConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeClusterSchedulerConfigResponse")
         cluster_scheduler_config = cls(**transformed_response)
+        cluster_scheduler_config._session = session
         return cluster_scheduler_config
 
     @Base.add_validate_call
@@ -5312,7 +5331,7 @@ class ClusterSchedulerConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_cluster_scheduler_config(**operation_input_args)
 
         # deserialize response and update self
@@ -5354,7 +5373,7 @@ class ClusterSchedulerConfig(Base):
         """
 
         logger.info("Updating cluster_scheduler_config resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ClusterSchedulerConfigId": self.cluster_scheduler_config_id,
@@ -5397,7 +5416,7 @@ class ClusterSchedulerConfig(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ClusterSchedulerConfigId": self.cluster_scheduler_config_id,
@@ -5564,7 +5583,7 @@ class ClusterSchedulerConfig(Base):
         status: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ClusterSchedulerConfig"]:
         """
@@ -5668,7 +5687,7 @@ class CodeRepository(Base):
         code_repository_name: StrPipeVar,
         git_config: GitConfig,
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CodeRepository"]:
         """
@@ -5730,7 +5749,7 @@ class CodeRepository(Base):
     def get(
         cls,
         code_repository_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CodeRepository"]:
         """
@@ -5773,6 +5792,7 @@ class CodeRepository(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeCodeRepositoryOutput")
         code_repository = cls(**transformed_response)
+        code_repository._session = session
         return code_repository
 
     @Base.add_validate_call
@@ -5804,7 +5824,7 @@ class CodeRepository(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_code_repository(**operation_input_args)
 
         # deserialize response and update self
@@ -5836,7 +5856,7 @@ class CodeRepository(Base):
         """
 
         logger.info("Updating code_repository resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "CodeRepositoryName": self.code_repository_name,
@@ -5873,7 +5893,7 @@ class CodeRepository(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "CodeRepositoryName": self.code_repository_name,
@@ -5897,7 +5917,7 @@ class CodeRepository(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["CodeRepository"]:
         """
@@ -6032,6 +6052,7 @@ class CompilationJob(Base):
                     "s3_output_location": {"type": "string"},
                     "kms_key_id": {"type": "string"},
                 },
+                "resource_config": {"volume_kms_key_id": {"type": "string"}},
                 "vpc_config": {
                     "security_group_ids": {"type": "array", "items": {"type": "string"}},
                     "subnets": {"type": "array", "items": {"type": "string"}},
@@ -6060,7 +6081,7 @@ class CompilationJob(Base):
         resource_config: Optional[NeoResourceConfig] = Unassigned(),
         vpc_config: Optional[NeoVpcConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CompilationJob"]:
         """
@@ -6136,7 +6157,7 @@ class CompilationJob(Base):
     def get(
         cls,
         compilation_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CompilationJob"]:
         """
@@ -6180,6 +6201,7 @@ class CompilationJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeCompilationJobResponse")
         compilation_job = cls(**transformed_response)
+        compilation_job._session = session
         return compilation_job
 
     @Base.add_validate_call
@@ -6212,7 +6234,7 @@ class CompilationJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_compilation_job(**operation_input_args)
 
         # deserialize response and update self
@@ -6239,7 +6261,7 @@ class CompilationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "CompilationJobName": self.compilation_job_name,
@@ -6270,7 +6292,7 @@ class CompilationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "CompilationJobName": self.compilation_job_name,
@@ -6354,7 +6376,7 @@ class CompilationJob(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["CompilationJob"]:
         """
@@ -6485,7 +6507,7 @@ class ComputeQuota(Base):
         activation_state: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         dry_run: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ComputeQuota"]:
         """
@@ -6561,7 +6583,7 @@ class ComputeQuota(Base):
         cls,
         compute_quota_id: StrPipeVar,
         compute_quota_version: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ComputeQuota"]:
         """
@@ -6607,6 +6629,7 @@ class ComputeQuota(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeComputeQuotaResponse")
         compute_quota = cls(**transformed_response)
+        compute_quota._session = session
         return compute_quota
 
     @Base.add_validate_call
@@ -6640,7 +6663,7 @@ class ComputeQuota(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_compute_quota(**operation_input_args)
 
         # deserialize response and update self
@@ -6684,7 +6707,7 @@ class ComputeQuota(Base):
         """
 
         logger.info("Updating compute_quota resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ComputeQuotaId": self.compute_quota_id,
@@ -6729,7 +6752,7 @@ class ComputeQuota(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ComputeQuotaId": self.compute_quota_id,
@@ -6892,7 +6915,7 @@ class ComputeQuota(Base):
         cluster_arn: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ComputeQuota"]:
         """
@@ -7011,7 +7034,7 @@ class Context(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Context"]:
         """
@@ -7080,7 +7103,7 @@ class Context(Base):
     def get(
         cls,
         context_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Context"]:
         """
@@ -7124,6 +7147,7 @@ class Context(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeContextResponse")
         context = cls(**transformed_response)
+        context._session = session
         return context
 
     @Base.add_validate_call
@@ -7156,7 +7180,7 @@ class Context(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_context(**operation_input_args)
 
         # deserialize response and update self
@@ -7194,7 +7218,7 @@ class Context(Base):
         """
 
         logger.info("Updating context resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ContextName": self.context_name,
@@ -7234,7 +7258,7 @@ class Context(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ContextName": self.context_name,
@@ -7257,7 +7281,7 @@ class Context(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Context"]:
         """
@@ -7373,7 +7397,7 @@ class ContextInternal(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ContextInternal"]:
         """
@@ -7506,7 +7530,7 @@ class CrossAccountTrainingJob(Base):
         environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         source_arn: Optional[StrPipeVar] = Unassigned(),
         source_account: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["CrossAccountTrainingJob"]:
         """
@@ -7625,7 +7649,43 @@ class CustomMonitoringJobDefinition(Base):
         logger.error("Name attribute not found for object custom_monitoring_job_definition")
         return None
 
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {
+                "custom_monitoring_job_input": {
+                    "endpoint_input": {
+                        "s3_input_mode": {"type": "string"},
+                        "s3_data_distribution_type": {"type": "string"},
+                    },
+                    "batch_transform_input": {
+                        "data_captured_destination_s3_uri": {"type": "string"},
+                        "s3_input_mode": {"type": "string"},
+                        "s3_data_distribution_type": {"type": "string"},
+                    },
+                    "ground_truth_s3_input": {"s3_uri": {"type": "string"}},
+                },
+                "job_resources": {"cluster_config": {"volume_kms_key_id": {"type": "string"}}},
+                "role_arn": {"type": "string"},
+                "custom_monitoring_job_output_config": {"kms_key_id": {"type": "string"}},
+                "network_config": {
+                    "vpc_config": {
+                        "security_group_ids": {"type": "array", "items": {"type": "string"}},
+                        "subnets": {"type": "array", "items": {"type": "string"}},
+                    }
+                },
+            }
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "CustomMonitoringJobDefinition", **kwargs
+                ),
+            )
+
+        return wrapper
+
     @classmethod
+    @populate_inputs_decorator
     @Base.add_validate_call
     def create(
         cls,
@@ -7638,7 +7698,7 @@ class CustomMonitoringJobDefinition(Base):
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CustomMonitoringJobDefinition"]:
         """
@@ -7714,7 +7774,7 @@ class CustomMonitoringJobDefinition(Base):
     def get(
         cls,
         job_definition_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["CustomMonitoringJobDefinition"]:
         """
@@ -7758,6 +7818,7 @@ class CustomMonitoringJobDefinition(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeCustomMonitoringJobDefinitionResponse")
         custom_monitoring_job_definition = cls(**transformed_response)
+        custom_monitoring_job_definition._session = session
         return custom_monitoring_job_definition
 
     @Base.add_validate_call
@@ -7790,7 +7851,7 @@ class CustomMonitoringJobDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_custom_monitoring_job_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -7817,7 +7878,7 @@ class CustomMonitoringJobDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "JobDefinitionName": self.job_definition_name,
@@ -7840,7 +7901,7 @@ class CustomMonitoringJobDefinition(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["CustomMonitoringJobDefinition"]:
         """
@@ -8004,7 +8065,7 @@ class DataQualityJobDefinition(Base):
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["DataQualityJobDefinition"]:
         """
@@ -8082,7 +8143,7 @@ class DataQualityJobDefinition(Base):
     def get(
         cls,
         job_definition_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["DataQualityJobDefinition"]:
         """
@@ -8126,6 +8187,7 @@ class DataQualityJobDefinition(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeDataQualityJobDefinitionResponse")
         data_quality_job_definition = cls(**transformed_response)
+        data_quality_job_definition._session = session
         return data_quality_job_definition
 
     @Base.add_validate_call
@@ -8158,7 +8220,7 @@ class DataQualityJobDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_data_quality_job_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -8185,7 +8247,7 @@ class DataQualityJobDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "JobDefinitionName": self.job_definition_name,
@@ -8208,7 +8270,7 @@ class DataQualityJobDefinition(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["DataQualityJobDefinition"]:
         """
@@ -8326,7 +8388,7 @@ class Device(Base):
         device_name: StrPipeVar,
         device_fleet_name: StrPipeVar,
         next_token: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Device"]:
         """
@@ -8374,6 +8436,7 @@ class Device(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeDeviceResponse")
         device = cls(**transformed_response)
+        device._session = session
         return device
 
     @Base.add_validate_call
@@ -8408,7 +8471,7 @@ class Device(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_device(**operation_input_args)
 
         # deserialize response and update self
@@ -8422,7 +8485,7 @@ class Device(Base):
         latest_heartbeat_after: Optional[datetime.datetime] = Unassigned(),
         model_name: Optional[StrPipeVar] = Unassigned(),
         device_fleet_name: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Device"]:
         """
@@ -8548,7 +8611,7 @@ class DeviceFleet(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         enable_iot_role_alias: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["DeviceFleet"]:
         """
@@ -8618,7 +8681,7 @@ class DeviceFleet(Base):
     def get(
         cls,
         device_fleet_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["DeviceFleet"]:
         """
@@ -8662,6 +8725,7 @@ class DeviceFleet(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeDeviceFleetResponse")
         device_fleet = cls(**transformed_response)
+        device_fleet._session = session
         return device_fleet
 
     @Base.add_validate_call
@@ -8694,7 +8758,7 @@ class DeviceFleet(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_device_fleet(**operation_input_args)
 
         # deserialize response and update self
@@ -8733,7 +8797,7 @@ class DeviceFleet(Base):
         """
 
         logger.info("Updating device_fleet resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DeviceFleetName": self.device_fleet_name,
@@ -8774,7 +8838,7 @@ class DeviceFleet(Base):
             ResourceInUse: Resource being accessed is in use.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DeviceFleetName": self.device_fleet_name,
@@ -8798,7 +8862,7 @@ class DeviceFleet(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["DeviceFleet"]:
         """
@@ -8863,7 +8927,7 @@ class DeviceFleet(Base):
     def deregister_devices(
         self,
         device_names: List[StrPipeVar],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -8905,7 +8969,7 @@ class DeviceFleet(Base):
     @Base.add_validate_call
     def get_report(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[GetDeviceFleetReportResponse]:
         """
@@ -8953,7 +9017,7 @@ class DeviceFleet(Base):
         self,
         devices: List[Device],
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -8999,7 +9063,7 @@ class DeviceFleet(Base):
     def update_devices(
         self,
         devices: List[Device],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -9121,6 +9185,10 @@ class Domain(Base):
                 "security_group_id_for_domain_boundary": {"type": "string"},
                 "default_user_settings": {
                     "execution_role": {"type": "string"},
+                    "environment_settings": {
+                        "default_s3_artifact_path": {"type": "string"},
+                        "default_s3_kms_key_id": {"type": "string"},
+                    },
                     "security_groups": {"type": "array", "items": {"type": "string"}},
                     "sharing_settings": {
                         "s3_output_path": {"type": "string"},
@@ -9146,6 +9214,10 @@ class Domain(Base):
                             "execution_role_arns": {"type": "array", "items": {"type": "string"}},
                         }
                     },
+                    "emr_settings": {
+                        "assumable_role_arns": {"type": "array", "items": {"type": "string"}},
+                        "execution_role_arns": {"type": "array", "items": {"type": "string"}},
+                    },
                 },
                 "domain_settings": {
                     "security_group_ids": {"type": "array", "items": {"type": "string"}},
@@ -9153,6 +9225,7 @@ class Domain(Base):
                         "domain_execution_role_arn": {"type": "string"}
                     },
                     "execution_role_identity_config": {"type": "string"},
+                    "unified_studio_settings": {"project_s3_path": {"type": "string"}},
                 },
                 "home_efs_file_system_kms_key_id": {"type": "string"},
                 "subnet_ids": {"type": "array", "items": {"type": "string"}},
@@ -9198,7 +9271,7 @@ class Domain(Base):
         app_storage_type: Optional[StrPipeVar] = Unassigned(),
         tag_propagation: Optional[StrPipeVar] = Unassigned(),
         default_space_settings: Optional[DefaultSpaceSettings] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Domain"]:
         """
@@ -9286,7 +9359,7 @@ class Domain(Base):
     def get(
         cls,
         domain_id: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Domain"]:
         """
@@ -9330,6 +9403,7 @@ class Domain(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeDomainResponse")
         domain = cls(**transformed_response)
+        domain._session = session
         return domain
 
     @Base.add_validate_call
@@ -9362,7 +9436,7 @@ class Domain(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_domain(**operation_input_args)
 
         # deserialize response and update self
@@ -9407,7 +9481,7 @@ class Domain(Base):
         """
 
         logger.info("Updating domain resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -9454,7 +9528,7 @@ class Domain(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -9605,7 +9679,7 @@ class Domain(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Domain"]:
         """
@@ -9688,7 +9762,7 @@ class EdgeDeploymentPlan(Base):
         device_fleet_name: Union[StrPipeVar, object],
         stages: Optional[List[DeploymentStage]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EdgeDeploymentPlan"]:
         """
@@ -9759,7 +9833,7 @@ class EdgeDeploymentPlan(Base):
         edge_deployment_plan_name: StrPipeVar,
         next_token: Optional[StrPipeVar] = Unassigned(),
         max_results: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EdgeDeploymentPlan"]:
         """
@@ -9807,6 +9881,7 @@ class EdgeDeploymentPlan(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeEdgeDeploymentPlanResponse")
         edge_deployment_plan = cls(**transformed_response)
+        edge_deployment_plan._session = session
         return edge_deployment_plan
 
     @Base.add_validate_call
@@ -9842,7 +9917,7 @@ class EdgeDeploymentPlan(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_edge_deployment_plan(**operation_input_args)
 
         # deserialize response and update self
@@ -9869,7 +9944,7 @@ class EdgeDeploymentPlan(Base):
             ResourceInUse: Resource being accessed is in use.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "EdgeDeploymentPlanName": self.edge_deployment_plan_name,
@@ -9894,7 +9969,7 @@ class EdgeDeploymentPlan(Base):
         device_fleet_name_contains: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["EdgeDeploymentPlan"]:
         """
@@ -9960,7 +10035,7 @@ class EdgeDeploymentPlan(Base):
     @Base.add_validate_call
     def create_stage(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -10003,7 +10078,7 @@ class EdgeDeploymentPlan(Base):
     def delete_stage(
         self,
         stage_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -10047,7 +10122,7 @@ class EdgeDeploymentPlan(Base):
     def start_stage(
         self,
         stage_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -10090,7 +10165,7 @@ class EdgeDeploymentPlan(Base):
     def stop_stage(
         self,
         stage_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -10134,7 +10209,7 @@ class EdgeDeploymentPlan(Base):
         self,
         stage_name: StrPipeVar,
         exclude_devices_deployed_in_other_stage: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[DeviceDeploymentSummary]:
         """
@@ -10272,7 +10347,7 @@ class EdgePackagingJob(Base):
         output_config: EdgeOutputConfig,
         resource_key: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EdgePackagingJob"]:
         """
@@ -10347,7 +10422,7 @@ class EdgePackagingJob(Base):
     def get(
         cls,
         edge_packaging_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EdgePackagingJob"]:
         """
@@ -10391,6 +10466,7 @@ class EdgePackagingJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeEdgePackagingJobResponse")
         edge_packaging_job = cls(**transformed_response)
+        edge_packaging_job._session = session
         return edge_packaging_job
 
     @Base.add_validate_call
@@ -10423,7 +10499,7 @@ class EdgePackagingJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_edge_packaging_job(**operation_input_args)
 
         # deserialize response and update self
@@ -10447,7 +10523,7 @@ class EdgePackagingJob(Base):
                 ```
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "EdgePackagingJobName": self.edge_packaging_job_name,
@@ -10534,7 +10610,7 @@ class EdgePackagingJob(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["EdgePackagingJob"]:
         """
@@ -10697,7 +10773,7 @@ class Endpoint(Base):
         deletion_condition: Optional[EndpointDeletionCondition] = Unassigned(),
         deployment_config: Optional[DeploymentConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Endpoint"]:
         """
@@ -10766,7 +10842,7 @@ class Endpoint(Base):
     def get(
         cls,
         endpoint_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Endpoint"]:
         """
@@ -10809,6 +10885,7 @@ class Endpoint(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeEndpointOutput")
         endpoint = cls(**transformed_response)
+        endpoint._session = session
         return endpoint
 
     @Base.add_validate_call
@@ -10840,7 +10917,7 @@ class Endpoint(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_endpoint(**operation_input_args)
 
         # deserialize response and update self
@@ -10882,7 +10959,7 @@ class Endpoint(Base):
         """
 
         logger.info("Updating endpoint resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "EndpointName": self.endpoint_name,
@@ -10924,7 +11001,7 @@ class Endpoint(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "EndpointName": self.endpoint_name,
@@ -10954,7 +11031,6 @@ class Endpoint(Base):
         ],
         poll: int = 5,
         timeout: Optional[int] = None,
-        logs: Optional[bool] = False,
     ) -> None:
         """
         Wait for a Endpoint resource to reach certain status.
@@ -10963,7 +11039,6 @@ class Endpoint(Base):
             target_status: The status to wait for.
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
-            logs: Whether to print logs while waiting.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
@@ -10980,21 +11055,6 @@ class Endpoint(Base):
         progress.add_task(f"Waiting for Endpoint to reach [bold]{target_status} status...")
         status = Status("Current status:")
 
-        if logs:
-            instance_count = (
-                sum(variant.current_instance_count for variant in self.production_variants)
-                if self.production_variants and not isinstance(self.production_variants, Unassigned)
-                else 1
-            )
-            log_group_name = f"/aws/sagemaker/Endpoints/{self.get_name()}"
-            logger.info(f"log_group_name")
-            logger.info(log_group_name)
-            multi_stream_logger = MultiLogStreamHandler(
-                log_group_name=f"/aws/sagemaker/Endpoints/{self.get_name()}",
-                log_stream_name_prefix=self.get_name(),
-                expected_stream_count=instance_count,
-            )
-
         with Live(
             Panel(
                 Group(progress, status),
@@ -11007,11 +11067,6 @@ class Endpoint(Base):
                 self.refresh()
                 current_status = self.endpoint_status
                 status.update(f"Current status: [bold]{current_status}")
-
-                if logs and multi_stream_logger.ready():
-                    stream_log_events = multi_stream_logger.get_latest_log_events()
-                    for stream_id, event in stream_log_events:
-                        logger.info(f"{stream_id}:\n{event['message']}")
 
                 if target_status == current_status:
                     logger.info(f"Final Resource Status: [bold]{current_status}")
@@ -11099,7 +11154,7 @@ class Endpoint(Base):
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         status_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Endpoint"]:
         """
@@ -11166,7 +11221,7 @@ class Endpoint(Base):
     def update_weights_and_capacities(
         self,
         desired_weights_and_capacities: List[DesiredWeightAndCapacity],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -11220,7 +11275,7 @@ class Endpoint(Base):
         enable_explanations: Optional[StrPipeVar] = Unassigned(),
         inference_component_name: Optional[StrPipeVar] = Unassigned(),
         session_id: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[InvokeEndpointOutput]:
         """
@@ -11319,7 +11374,7 @@ class Endpoint(Base):
         inference_id: Optional[StrPipeVar] = Unassigned(),
         request_ttl_seconds: Optional[int] = Unassigned(),
         invocation_timeout_seconds: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[InvokeEndpointAsyncOutput]:
         """
@@ -11391,7 +11446,7 @@ class Endpoint(Base):
         inference_id: Optional[StrPipeVar] = Unassigned(),
         inference_component_name: Optional[StrPipeVar] = Unassigned(),
         session_id: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[InvokeEndpointWithResponseStreamOutput]:
         """
@@ -11558,7 +11613,7 @@ class EndpointConfig(Base):
         vpc_config: Optional[VpcConfig] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
         metrics_config: Optional[MetricsConfig] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EndpointConfig"]:
         """
@@ -11639,7 +11694,7 @@ class EndpointConfig(Base):
     def get(
         cls,
         endpoint_config_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EndpointConfig"]:
         """
@@ -11682,6 +11737,7 @@ class EndpointConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeEndpointConfigOutput")
         endpoint_config = cls(**transformed_response)
+        endpoint_config._session = session
         return endpoint_config
 
     @Base.add_validate_call
@@ -11713,7 +11769,7 @@ class EndpointConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_endpoint_config(**operation_input_args)
 
         # deserialize response and update self
@@ -11739,7 +11795,7 @@ class EndpointConfig(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "EndpointConfigName": self.endpoint_config_name,
@@ -11761,7 +11817,7 @@ class EndpointConfig(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["EndpointConfig"]:
         """
@@ -11818,7 +11874,7 @@ class EndpointConfig(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
+
 class EndpointConfigInternal(Base):
     """
     Class representing resource EndpointConfigInternal
@@ -11859,7 +11915,7 @@ class EndpointConfigInternal(Base):
         endpoint_config_input: CreateEndpointConfigInput,
         account_id: StrPipeVar,
         auto_ml_job_arn: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["EndpointConfigInternal"]:
         """
@@ -11929,7 +11985,7 @@ class EndpointConfigInternal(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "EndpointConfigInput": self.endpoint_config_input,
@@ -11994,7 +12050,7 @@ class EndpointInternal(Base):
         fas_credentials: Optional[StrPipeVar] = Unassigned(),
         encrypted_fas_credentials: Optional[StrPipeVar] = Unassigned(),
         billing_mode: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["EndpointInternal"]:
         """
@@ -12070,7 +12126,7 @@ class EndpointInternal(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "EndpointInput": self.endpoint_input,
@@ -12141,7 +12197,35 @@ class EvaluationJob(Base):
         logger.error("Name attribute not found for object evaluation_job")
         return None
 
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {
+                "output_data_config": {
+                    "s3_uri": {"type": "string"},
+                    "kms_key_id": {"type": "string"},
+                },
+                "role_arn": {"type": "string"},
+                "upstream_platform_config": {
+                    "upstream_platform_customer_output_data_config": {
+                        "s3_uri": {"type": "string"},
+                        "kms_key_id": {"type": "string"},
+                        "s3_kms_encryption_context": {"type": "string"},
+                    },
+                    "upstream_platform_customer_execution_role": {"type": "string"},
+                },
+            }
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "EvaluationJob", **kwargs
+                ),
+            )
+
+        return wrapper
+
     @classmethod
+    @populate_inputs_decorator
     @Base.add_validate_call
     def create(
         cls,
@@ -12155,7 +12239,7 @@ class EvaluationJob(Base):
         tags: Optional[List[Tag]] = Unassigned(),
         model_config: Optional[EvaluationJobModelConfig] = Unassigned(),
         upstream_platform_config: Optional[EvaluationJobUpstreamPlatformConfig] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EvaluationJob"]:
         """
@@ -12233,7 +12317,7 @@ class EvaluationJob(Base):
     def get(
         cls,
         evaluation_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["EvaluationJob"]:
         """
@@ -12277,6 +12361,7 @@ class EvaluationJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeEvaluationJobResponse")
         evaluation_job = cls(**transformed_response)
+        evaluation_job._session = session
         return evaluation_job
 
     @Base.add_validate_call
@@ -12309,7 +12394,7 @@ class EvaluationJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_evaluation_job(**operation_input_args)
 
         # deserialize response and update self
@@ -12337,7 +12422,7 @@ class EvaluationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "EvaluationJobName": self.evaluation_job_name,
@@ -12368,7 +12453,7 @@ class EvaluationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "EvaluationJobName": self.evaluation_job_name,
@@ -12450,7 +12535,7 @@ class EvaluationJob(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         status_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["EvaluationJob"]:
         """
@@ -12508,7 +12593,7 @@ class EvaluationJob(Base):
             resource_cls=EvaluationJob,
             list_method_kwargs=operation_input_args,
         )
-'''
+
 
 class Experiment(Base):
     """
@@ -12561,7 +12646,7 @@ class Experiment(Base):
         display_name: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Experiment"]:
         """
@@ -12626,7 +12711,7 @@ class Experiment(Base):
     def get(
         cls,
         experiment_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Experiment"]:
         """
@@ -12670,6 +12755,7 @@ class Experiment(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeExperimentResponse")
         experiment = cls(**transformed_response)
+        experiment._session = session
         return experiment
 
     @Base.add_validate_call
@@ -12702,7 +12788,7 @@ class Experiment(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_experiment(**operation_input_args)
 
         # deserialize response and update self
@@ -12736,7 +12822,7 @@ class Experiment(Base):
         """
 
         logger.info("Updating experiment resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ExperimentName": self.experiment_name,
@@ -12775,7 +12861,7 @@ class Experiment(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ExperimentName": self.experiment_name,
@@ -12796,7 +12882,7 @@ class Experiment(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Experiment"]:
         """
@@ -12904,7 +12990,7 @@ class ExperimentInternal(Base):
         source: Optional[InputExperimentSource] = Unassigned(),
         creation_time: Optional[datetime.datetime] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ExperimentInternal"]:
         """
@@ -13075,7 +13161,7 @@ class FeatureGroup(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         use_pre_prod_offline_store_replicator_lambda: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FeatureGroup"]:
         """
@@ -13156,7 +13242,7 @@ class FeatureGroup(Base):
         cls,
         feature_group_name: StrPipeVar,
         next_token: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FeatureGroup"]:
         """
@@ -13202,6 +13288,7 @@ class FeatureGroup(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeFeatureGroupResponse")
         feature_group = cls(**transformed_response)
+        feature_group._session = session
         return feature_group
 
     @Base.add_validate_call
@@ -13235,7 +13322,7 @@ class FeatureGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_feature_group(**operation_input_args)
 
         # deserialize response and update self
@@ -13277,7 +13364,7 @@ class FeatureGroup(Base):
         """
 
         logger.info("Updating feature_group resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "FeatureGroupName": self.feature_group_name,
@@ -13319,7 +13406,7 @@ class FeatureGroup(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "FeatureGroupName": self.feature_group_name,
@@ -13464,7 +13551,7 @@ class FeatureGroup(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["FeatureGroup"]:
         """
@@ -13531,7 +13618,7 @@ class FeatureGroup(Base):
         record_identifier_value_as_string: StrPipeVar,
         feature_names: Optional[List[StrPipeVar]] = Unassigned(),
         expiration_time_response: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[GetRecordResponse]:
         """
@@ -13591,7 +13678,7 @@ class FeatureGroup(Base):
         record: List[FeatureValue],
         target_stores: Optional[List[StrPipeVar]] = Unassigned(),
         ttl_duration: Optional[TtlDuration] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -13645,7 +13732,7 @@ class FeatureGroup(Base):
         event_time: StrPipeVar,
         target_stores: Optional[List[StrPipeVar]] = Unassigned(),
         deletion_mode: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -13699,7 +13786,7 @@ class FeatureGroup(Base):
         self,
         identifiers: List[BatchGetRecordIdentifier],
         expiration_time_response: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[BatchGetRecordResponse]:
         """
@@ -13835,7 +13922,7 @@ class FeatureGroupInternal(Base):
         storage_account_stage_test_override: Optional[StrPipeVar] = Unassigned(),
         online_store_metadata: Optional[OnlineStoreMetadata] = Unassigned(),
         online_store_replica_metadata: Optional[OnlineStoreReplicaMetadata] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["FeatureGroupInternal"]:
         """
@@ -13968,7 +14055,7 @@ class FeatureMetadata(Base):
         cls,
         feature_group_name: StrPipeVar,
         feature_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FeatureMetadata"]:
         """
@@ -14014,6 +14101,7 @@ class FeatureMetadata(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeFeatureMetadataResponse")
         feature_metadata = cls(**transformed_response)
+        feature_metadata._session = session
         return feature_metadata
 
     @Base.add_validate_call
@@ -14047,7 +14135,7 @@ class FeatureMetadata(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_feature_metadata(**operation_input_args)
 
         # deserialize response and update self
@@ -14085,7 +14173,7 @@ class FeatureMetadata(Base):
         """
 
         logger.info("Updating feature_metadata resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "FeatureGroupName": self.feature_group_name,
@@ -14167,6 +14255,8 @@ class FlowDefinition(Base):
                     "kms_key_id": {"type": "string"},
                 },
                 "role_arn": {"type": "string"},
+                "task_rendering_role_arn": {"type": "string"},
+                "kms_key_id": {"type": "string"},
             }
             return create_func(
                 *args,
@@ -14192,7 +14282,7 @@ class FlowDefinition(Base):
         task_rendering_role_arn: Optional[StrPipeVar] = Unassigned(),
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FlowDefinition"]:
         """
@@ -14270,7 +14360,7 @@ class FlowDefinition(Base):
     def get(
         cls,
         flow_definition_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FlowDefinition"]:
         """
@@ -14314,6 +14404,7 @@ class FlowDefinition(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeFlowDefinitionResponse")
         flow_definition = cls(**transformed_response)
+        flow_definition._session = session
         return flow_definition
 
     @Base.add_validate_call
@@ -14346,7 +14437,7 @@ class FlowDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_flow_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -14374,7 +14465,7 @@ class FlowDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "FlowDefinitionName": self.flow_definition_name,
@@ -14515,7 +14606,7 @@ class FlowDefinition(Base):
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["FlowDefinition"]:
         """
@@ -14614,7 +14705,24 @@ class GroundTruthJob(Base):
         logger.error("Name attribute not found for object ground_truth_job")
         return None
 
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {
+                "input_config": {"data_source": {"s3_data_source": {"s3_uri": {"type": "string"}}}},
+                "output_config": {"s3_output_path": {"type": "string"}},
+            }
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "GroundTruthJob", **kwargs
+                ),
+            )
+
+        return wrapper
+
     @classmethod
+    @populate_inputs_decorator
     @Base.add_validate_call
     def create(
         cls,
@@ -14624,7 +14732,7 @@ class GroundTruthJob(Base):
         input_config: GroundTruthJobInputConfig,
         output_config: GroundTruthJobOutputConfig,
         ground_truth_job_description: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["GroundTruthJob"]:
         """
@@ -14702,7 +14810,7 @@ class GroundTruthJob(Base):
         ground_truth_project_name: StrPipeVar,
         ground_truth_workflow_name: StrPipeVar,
         ground_truth_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["GroundTruthJob"]:
         """
@@ -14750,6 +14858,7 @@ class GroundTruthJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeGroundTruthJobResponse")
         ground_truth_job = cls(**transformed_response)
+        ground_truth_job._session = session
         return ground_truth_job
 
     @Base.add_validate_call
@@ -14786,7 +14895,7 @@ class GroundTruthJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_ground_truth_job(**operation_input_args)
 
         # deserialize response and update self
@@ -14897,7 +15006,7 @@ class GroundTruthProject(Base):
         ground_truth_project_name: StrPipeVar,
         ground_truth_project_description: Optional[StrPipeVar] = Unassigned(),
         point_of_contact: Optional[GroundTruthProjectPointOfContact] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["GroundTruthProject"]:
         """
@@ -14962,7 +15071,7 @@ class GroundTruthProject(Base):
     def get(
         cls,
         ground_truth_project_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["GroundTruthProject"]:
         """
@@ -15006,6 +15115,7 @@ class GroundTruthProject(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeGroundTruthProjectResponse")
         ground_truth_project = cls(**transformed_response)
+        ground_truth_project._session = session
         return ground_truth_project
 
     @Base.add_validate_call
@@ -15038,7 +15148,7 @@ class GroundTruthProject(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_ground_truth_project(**operation_input_args)
 
         # deserialize response and update self
@@ -15104,7 +15214,7 @@ class GroundTruthProject(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["GroundTruthProject"]:
         """
@@ -15168,7 +15278,21 @@ class GroundTruthWorkflow(Base):
         logger.error("Name attribute not found for object ground_truth_workflow")
         return None
 
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {"execution_role_arn": {"type": "string"}}
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "GroundTruthWorkflow", **kwargs
+                ),
+            )
+
+        return wrapper
+
     @classmethod
+    @populate_inputs_decorator
     @Base.add_validate_call
     def create(
         cls,
@@ -15176,7 +15300,7 @@ class GroundTruthWorkflow(Base):
         ground_truth_workflow_name: StrPipeVar,
         ground_truth_workflow_definition_spec: StrPipeVar,
         execution_role_arn: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["GroundTruthWorkflow"]:
         """
@@ -15248,7 +15372,7 @@ class GroundTruthWorkflow(Base):
         cls,
         ground_truth_project_name: StrPipeVar,
         ground_truth_workflow_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["GroundTruthWorkflow"]:
         """
@@ -15294,6 +15418,7 @@ class GroundTruthWorkflow(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeGroundTruthWorkflowResponse")
         ground_truth_workflow = cls(**transformed_response)
+        ground_truth_workflow._session = session
         return ground_truth_workflow
 
     @Base.add_validate_call
@@ -15328,7 +15453,7 @@ class GroundTruthWorkflow(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_ground_truth_workflow(**operation_input_args)
 
         # deserialize response and update self
@@ -15407,7 +15532,7 @@ class Hub(Base):
         hub_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
         s3_storage_config: Optional[HubS3StorageConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Hub"]:
         """
@@ -15477,7 +15602,7 @@ class Hub(Base):
     def get(
         cls,
         hub_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Hub"]:
         """
@@ -15521,6 +15646,7 @@ class Hub(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeHubResponse")
         hub = cls(**transformed_response)
+        hub._session = session
         return hub
 
     @Base.add_validate_call
@@ -15553,7 +15679,7 @@ class Hub(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_hub(**operation_input_args)
 
         # deserialize response and update self
@@ -15588,7 +15714,7 @@ class Hub(Base):
         """
 
         logger.info("Updating hub resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -15629,7 +15755,7 @@ class Hub(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -15778,7 +15904,7 @@ class Hub(Base):
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Hub"]:
         """
@@ -15914,7 +16040,7 @@ class HubContent(Base):
         hub_content_type: StrPipeVar,
         hub_content_name: StrPipeVar,
         hub_content_version: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HubContent"]:
         """
@@ -15964,6 +16090,7 @@ class HubContent(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeHubContentResponse")
         hub_content = cls(**transformed_response)
+        hub_content._session = session
         return hub_content
 
     @Base.add_validate_call
@@ -15999,7 +16126,7 @@ class HubContent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_hub_content(**operation_input_args)
 
         # deserialize response and update self
@@ -16038,7 +16165,7 @@ class HubContent(Base):
         """
 
         logger.info("Updating hub_content resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -16084,7 +16211,7 @@ class HubContent(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -16167,7 +16294,7 @@ class HubContent(Base):
         support_status: Optional[StrPipeVar] = Unassigned(),
         hub_content_search_keywords: Optional[List[StrPipeVar]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HubContent"]:
         """
@@ -16253,7 +16380,7 @@ class HubContent(Base):
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator["HubContent"]:
         """
@@ -16368,7 +16495,7 @@ class HubContentPresignedUrls(Base):
         access_config: Optional[PresignedUrlAccessConfig] = Unassigned(),
         max_results: Optional[int] = Unassigned(),
         next_token: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HubContentPresignedUrls"]:
         """
@@ -16476,7 +16603,7 @@ class HubContentReference(Base):
         hub_content_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         min_version: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HubContentReference"]:
         """
@@ -16564,7 +16691,7 @@ class HubContentReference(Base):
         """
 
         logger.info("Updating hub_content_reference resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -16605,7 +16732,7 @@ class HubContentReference(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HubName": self.hub_name,
@@ -16658,7 +16785,21 @@ class HumanTaskUi(Base):
         logger.error("Name attribute not found for object human_task_ui")
         return None
 
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {"kms_key_id": {"type": "string"}}
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "HumanTaskUi", **kwargs
+                ),
+            )
+
+        return wrapper
+
     @classmethod
+    @populate_inputs_decorator
     @Base.add_validate_call
     def create(
         cls,
@@ -16666,7 +16807,7 @@ class HumanTaskUi(Base):
         ui_template: UiTemplate,
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HumanTaskUi"]:
         """
@@ -16732,7 +16873,7 @@ class HumanTaskUi(Base):
     def get(
         cls,
         human_task_ui_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HumanTaskUi"]:
         """
@@ -16776,6 +16917,7 @@ class HumanTaskUi(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeHumanTaskUiResponse")
         human_task_ui = cls(**transformed_response)
+        human_task_ui._session = session
         return human_task_ui
 
     @Base.add_validate_call
@@ -16808,13 +16950,14 @@ class HumanTaskUi(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_human_task_ui(**operation_input_args)
 
         # deserialize response and update self
         transform(response, "DescribeHumanTaskUiResponse", self)
         return self
 
+    @populate_inputs_decorator
     @Base.add_validate_call
     def update(
         self,
@@ -16841,7 +16984,7 @@ class HumanTaskUi(Base):
         """
 
         logger.info("Updating human_task_ui resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HumanTaskUiName": self.human_task_ui_name,
@@ -16879,7 +17022,7 @@ class HumanTaskUi(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HumanTaskUiName": self.human_task_ui_name,
@@ -17013,7 +17156,7 @@ class HumanTaskUi(Base):
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["HumanTaskUi"]:
         """
@@ -17139,6 +17282,7 @@ class HyperParameterTuningJob(Base):
                     "output_data_config": {
                         "s3_output_path": {"type": "string"},
                         "kms_key_id": {"type": "string"},
+                        "remove_job_name_from_s3_output_path": {"type": "boolean"},
                     },
                     "vpc_config": {
                         "security_group_ids": {"type": "array", "items": {"type": "string"}},
@@ -17174,7 +17318,7 @@ class HyperParameterTuningJob(Base):
         warm_start_config: Optional[HyperParameterTuningJobWarmStartConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         autotune: Optional[Autotune] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HyperParameterTuningJob"]:
         """
@@ -17250,7 +17394,7 @@ class HyperParameterTuningJob(Base):
     def get(
         cls,
         hyper_parameter_tuning_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["HyperParameterTuningJob"]:
         """
@@ -17294,6 +17438,7 @@ class HyperParameterTuningJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeHyperParameterTuningJobResponse")
         hyper_parameter_tuning_job = cls(**transformed_response)
+        hyper_parameter_tuning_job._session = session
         return hyper_parameter_tuning_job
 
     @Base.add_validate_call
@@ -17326,7 +17471,7 @@ class HyperParameterTuningJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_hyper_parameter_tuning_job(**operation_input_args)
 
         # deserialize response and update self
@@ -17352,7 +17497,7 @@ class HyperParameterTuningJob(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HyperParameterTuningJobName": self.hyper_parameter_tuning_job_name,
@@ -17383,7 +17528,7 @@ class HyperParameterTuningJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HyperParameterTuningJobName": self.hyper_parameter_tuning_job_name,
@@ -17532,7 +17677,7 @@ class HyperParameterTuningJob(Base):
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         status_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["HyperParameterTuningJob"]:
         """
@@ -17601,7 +17746,7 @@ class HyperParameterTuningJob(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[HyperParameterTrainingJobSummary]:
         """
@@ -17728,7 +17873,7 @@ class HyperParameterTuningJobInternal(Base):
         billing_mode: Optional[StrPipeVar] = Unassigned(),
         source_identity: Optional[StrPipeVar] = Unassigned(),
         identity_center_user_token: Optional[IdentityCenterUserToken] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HyperParameterTuningJobInternal"]:
         """
@@ -17819,7 +17964,7 @@ class HyperParameterTuningJobInternal(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "HyperParameterTuningJobName": self.hyper_parameter_tuning_job_name,
@@ -17900,7 +18045,7 @@ class Image(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         display_name: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Image"]:
         """
@@ -17968,7 +18113,7 @@ class Image(Base):
     def get(
         cls,
         image_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Image"]:
         """
@@ -18012,6 +18157,7 @@ class Image(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeImageResponse")
         image = cls(**transformed_response)
+        image._session = session
         return image
 
     @Base.add_validate_call
@@ -18044,7 +18190,7 @@ class Image(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_image(**operation_input_args)
 
         # deserialize response and update self
@@ -18084,7 +18230,7 @@ class Image(Base):
         """
 
         logger.info("Updating image resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DeleteProperties": delete_properties,
@@ -18126,7 +18272,7 @@ class Image(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ImageName": self.image_name,
@@ -18283,7 +18429,7 @@ class Image(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Image"]:
         """
@@ -18349,7 +18495,7 @@ class Image(Base):
         self,
         alias: Optional[StrPipeVar] = Unassigned(),
         version: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[str]:
         """
@@ -18480,7 +18626,7 @@ class ImageVersion(Base):
         horovod: Optional[bool] = Unassigned(),
         override_alias_image_version: Optional[bool] = Unassigned(),
         release_notes: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ImageVersion"]:
         """
@@ -18565,7 +18711,7 @@ class ImageVersion(Base):
         image_name: StrPipeVar,
         version: Optional[int] = Unassigned(),
         alias: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ImageVersion"]:
         """
@@ -18613,6 +18759,7 @@ class ImageVersion(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeImageVersionResponse")
         image_version = cls(**transformed_response)
+        image_version._session = session
         return image_version
 
     @Base.add_validate_call
@@ -18648,7 +18795,7 @@ class ImageVersion(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_image_version(**operation_input_args)
 
         # deserialize response and update self
@@ -18696,7 +18843,7 @@ class ImageVersion(Base):
         """
 
         logger.info("Updating image_version resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ImageName": self.image_name,
@@ -18746,7 +18893,7 @@ class ImageVersion(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ImageName": self.image_name,
@@ -18950,7 +19097,7 @@ class InferenceComponent(Base):
         variant_name: Optional[StrPipeVar] = Unassigned(),
         runtime_config: Optional[InferenceComponentRuntimeConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceComponent"]:
         """
@@ -19021,7 +19168,7 @@ class InferenceComponent(Base):
     def get(
         cls,
         inference_component_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceComponent"]:
         """
@@ -19064,6 +19211,7 @@ class InferenceComponent(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeInferenceComponentOutput")
         inference_component = cls(**transformed_response)
+        inference_component._session = session
         return inference_component
 
     @Base.add_validate_call
@@ -19095,7 +19243,7 @@ class InferenceComponent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_inference_component(**operation_input_args)
 
         # deserialize response and update self
@@ -19132,7 +19280,7 @@ class InferenceComponent(Base):
         """
 
         logger.info("Updating inference_component resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "InferenceComponentName": self.inference_component_name,
@@ -19171,7 +19319,7 @@ class InferenceComponent(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "InferenceComponentName": self.inference_component_name,
@@ -19323,7 +19471,7 @@ class InferenceComponent(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         endpoint_name_equals: Optional[StrPipeVar] = Unassigned(),
         variant_name_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["InferenceComponent"]:
         """
@@ -19394,7 +19542,7 @@ class InferenceComponent(Base):
     def update_runtime_configs(
         self,
         desired_runtime_config: InferenceComponentRuntimeConfig,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -19525,7 +19673,7 @@ class InferenceExperiment(Base):
         data_storage_config: Optional[InferenceExperimentDataStorageConfig] = Unassigned(),
         kms_key: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceExperiment"]:
         """
@@ -19605,7 +19753,7 @@ class InferenceExperiment(Base):
     def get(
         cls,
         name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceExperiment"]:
         """
@@ -19649,6 +19797,7 @@ class InferenceExperiment(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeInferenceExperimentResponse")
         inference_experiment = cls(**transformed_response)
+        inference_experiment._session = session
         return inference_experiment
 
     @Base.add_validate_call
@@ -19681,7 +19830,7 @@ class InferenceExperiment(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_inference_experiment(**operation_input_args)
 
         # deserialize response and update self
@@ -19719,7 +19868,7 @@ class InferenceExperiment(Base):
         """
 
         logger.info("Updating inference_experiment resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "Name": self.name,
@@ -19762,7 +19911,7 @@ class InferenceExperiment(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "Name": self.name,
@@ -19778,7 +19927,7 @@ class InferenceExperiment(Base):
     @Base.add_validate_call
     def start(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -19836,7 +19985,7 @@ class InferenceExperiment(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "Name": self.name,
@@ -19930,7 +20079,7 @@ class InferenceExperiment(Base):
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["InferenceExperiment"]:
         """
@@ -20067,6 +20216,11 @@ class InferenceRecommendationsJob(Base):
                         "subnets": {"type": "array", "items": {"type": "string"}},
                     },
                 },
+                "output_config": {
+                    "kms_key_id": {"type": "string"},
+                    "compiled_output_config": {"s3_output_uri": {"type": "string"}},
+                    "benchmark_results_output_config": {"s3_output_uri": {"type": "string"}},
+                },
             }
             return create_func(
                 *args,
@@ -20093,7 +20247,7 @@ class InferenceRecommendationsJob(Base):
         ] = Unassigned(),
         output_config: Optional[RecommendationJobOutputConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceRecommendationsJob"]:
         """
@@ -20169,7 +20323,7 @@ class InferenceRecommendationsJob(Base):
     def get(
         cls,
         job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["InferenceRecommendationsJob"]:
         """
@@ -20213,6 +20367,7 @@ class InferenceRecommendationsJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeInferenceRecommendationsJobResponse")
         inference_recommendations_job = cls(**transformed_response)
+        inference_recommendations_job._session = session
         return inference_recommendations_job
 
     @Base.add_validate_call
@@ -20245,7 +20400,7 @@ class InferenceRecommendationsJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_inference_recommendations_job(**operation_input_args)
 
         # deserialize response and update self
@@ -20272,7 +20427,7 @@ class InferenceRecommendationsJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "JobName": self.job_name,
@@ -20303,7 +20458,7 @@ class InferenceRecommendationsJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "JobName": self.job_name,
@@ -20458,7 +20613,7 @@ class InferenceRecommendationsJob(Base):
         sort_order: Optional[StrPipeVar] = Unassigned(),
         model_name_equals: Optional[StrPipeVar] = Unassigned(),
         model_package_version_arn_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["InferenceRecommendationsJob"]:
         """
@@ -20529,7 +20684,7 @@ class InferenceRecommendationsJob(Base):
     def get_all_steps(
         self,
         step_type: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[InferenceRecommendationsJobStep]:
         """
@@ -20657,6 +20812,7 @@ class LabelingJob(Base):
                 },
                 "role_arn": {"type": "string"},
                 "human_task_config": {"ui_config": {"ui_template_s3_uri": {"type": "string"}}},
+                "task_rendering_role_arn": {"type": "string"},
                 "label_category_config_s3_uri": {"type": "string"},
                 "labeling_job_algorithms_config": {
                     "labeling_job_resource_config": {
@@ -20694,7 +20850,7 @@ class LabelingJob(Base):
         stopping_conditions: Optional[LabelingJobStoppingConditions] = Unassigned(),
         labeling_job_algorithms_config: Optional[LabelingJobAlgorithmsConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["LabelingJob"]:
         """
@@ -20774,7 +20930,7 @@ class LabelingJob(Base):
     def get(
         cls,
         labeling_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["LabelingJob"]:
         """
@@ -20818,6 +20974,7 @@ class LabelingJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeLabelingJobResponse")
         labeling_job = cls(**transformed_response)
+        labeling_job._session = session
         return labeling_job
 
     @Base.add_validate_call
@@ -20850,7 +21007,7 @@ class LabelingJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_labeling_job(**operation_input_args)
 
         # deserialize response and update self
@@ -20878,7 +21035,7 @@ class LabelingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "LabelingJobName": self.labeling_job_name,
@@ -20910,7 +21067,7 @@ class LabelingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "LabelingJobName": self.labeling_job_name,
@@ -20994,7 +21151,7 @@ class LabelingJob(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         status_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["LabelingJob"]:
         """
@@ -21107,7 +21264,7 @@ class LineageGroup(Base):
         display_name: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["LineageGroup"]:
         """
@@ -21172,7 +21329,7 @@ class LineageGroup(Base):
     def get(
         cls,
         lineage_group_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["LineageGroup"]:
         """
@@ -21216,6 +21373,7 @@ class LineageGroup(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeLineageGroupResponse")
         lineage_group = cls(**transformed_response)
+        lineage_group._session = session
         return lineage_group
 
     @Base.add_validate_call
@@ -21248,7 +21406,7 @@ class LineageGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_lineage_group(**operation_input_args)
 
         # deserialize response and update self
@@ -21275,7 +21433,7 @@ class LineageGroup(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "LineageGroupName": self.lineage_group_name,
@@ -21296,7 +21454,7 @@ class LineageGroup(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["LineageGroup"]:
         """
@@ -21354,7 +21512,7 @@ class LineageGroup(Base):
     @Base.add_validate_call
     def get_policy(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[GetLineageGroupPolicyResponse]:
         """
@@ -21448,7 +21606,7 @@ class LineageGroupInternal(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         creation_time: Optional[datetime.datetime] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["LineageGroupInternal"]:
         """
@@ -21564,7 +21722,21 @@ class MlflowApp(Base):
         logger.error("Name attribute not found for object mlflow_app")
         return None
 
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {"role_arn": {"type": "string"}}
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "MlflowApp", **kwargs
+                ),
+            )
+
+        return wrapper
+
     @classmethod
+    @populate_inputs_decorator
     @Base.add_validate_call
     def create(
         cls,
@@ -21576,7 +21748,7 @@ class MlflowApp(Base):
         account_default_status: Optional[StrPipeVar] = Unassigned(),
         default_domain_id_list: Optional[List[StrPipeVar]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MlflowApp"]:
         """
@@ -21649,7 +21821,7 @@ class MlflowApp(Base):
     def get(
         cls,
         arn: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MlflowApp"]:
         """
@@ -21693,6 +21865,7 @@ class MlflowApp(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeMlflowAppResponse")
         mlflow_app = cls(**transformed_response)
+        mlflow_app._session = session
         return mlflow_app
 
     @Base.add_validate_call
@@ -21725,13 +21898,14 @@ class MlflowApp(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_mlflow_app(**operation_input_args)
 
         # deserialize response and update self
         transform(response, "DescribeMlflowAppResponse", self)
         return self
 
+    @populate_inputs_decorator
     @Base.add_validate_call
     def update(
         self,
@@ -21763,7 +21937,7 @@ class MlflowApp(Base):
         """
 
         logger.info("Updating mlflow_app resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "Arn": self.arn,
@@ -21806,7 +21980,7 @@ class MlflowApp(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "Arn": self.arn,
@@ -21962,7 +22136,7 @@ class MlflowApp(Base):
         account_default_status: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["MlflowApp"]:
         """
@@ -22111,7 +22285,7 @@ class MlflowTrackingServer(Base):
         automatic_model_registration: Optional[bool] = Unassigned(),
         weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MlflowTrackingServer"]:
         """
@@ -22184,7 +22358,7 @@ class MlflowTrackingServer(Base):
     def get(
         cls,
         tracking_server_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MlflowTrackingServer"]:
         """
@@ -22228,6 +22402,7 @@ class MlflowTrackingServer(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeMlflowTrackingServerResponse")
         mlflow_tracking_server = cls(**transformed_response)
+        mlflow_tracking_server._session = session
         return mlflow_tracking_server
 
     @Base.add_validate_call
@@ -22260,7 +22435,7 @@ class MlflowTrackingServer(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_mlflow_tracking_server(**operation_input_args)
 
         # deserialize response and update self
@@ -22298,7 +22473,7 @@ class MlflowTrackingServer(Base):
         """
 
         logger.info("Updating mlflow_tracking_server resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrackingServerName": self.tracking_server_name,
@@ -22339,7 +22514,7 @@ class MlflowTrackingServer(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrackingServerName": self.tracking_server_name,
@@ -22355,7 +22530,7 @@ class MlflowTrackingServer(Base):
     @Base.add_validate_call
     def start(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -22413,7 +22588,7 @@ class MlflowTrackingServer(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrackingServerName": self.tracking_server_name,
@@ -22585,7 +22760,7 @@ class MlflowTrackingServer(Base):
         mlflow_version: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["MlflowTrackingServer"]:
         """
@@ -22731,7 +22906,7 @@ class Model(Base):
         tags: Optional[List[Tag]] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Model"]:
         """
@@ -22804,7 +22979,7 @@ class Model(Base):
     def get(
         cls,
         model_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Model"]:
         """
@@ -22847,6 +23022,7 @@ class Model(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelOutput")
         model = cls(**transformed_response)
+        model._session = session
         return model
 
     @Base.add_validate_call
@@ -22878,7 +23054,7 @@ class Model(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_model(**operation_input_args)
 
         # deserialize response and update self
@@ -22904,7 +23080,7 @@ class Model(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ModelName": self.model_name,
@@ -22926,7 +23102,7 @@ class Model(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Model"]:
         """
@@ -22987,7 +23163,7 @@ class Model(Base):
     def get_all_metadata(
         self,
         search_expression: Optional[ModelMetadataSearchExpression] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[ModelMetadataSummary]:
         """
@@ -23136,7 +23312,7 @@ class ModelBiasJobDefinition(Base):
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelBiasJobDefinition"]:
         """
@@ -23214,7 +23390,7 @@ class ModelBiasJobDefinition(Base):
     def get(
         cls,
         job_definition_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelBiasJobDefinition"]:
         """
@@ -23258,6 +23434,7 @@ class ModelBiasJobDefinition(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelBiasJobDefinitionResponse")
         model_bias_job_definition = cls(**transformed_response)
+        model_bias_job_definition._session = session
         return model_bias_job_definition
 
     @Base.add_validate_call
@@ -23290,7 +23467,7 @@ class ModelBiasJobDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_model_bias_job_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -23317,7 +23494,7 @@ class ModelBiasJobDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "JobDefinitionName": self.job_definition_name,
@@ -23340,7 +23517,7 @@ class ModelBiasJobDefinition(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ModelBiasJobDefinition"]:
         """
@@ -23474,7 +23651,7 @@ class ModelCard(Base):
         model_card_status: StrPipeVar,
         security_config: Optional[ModelCardSecurityConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelCard"]:
         """
@@ -23543,7 +23720,7 @@ class ModelCard(Base):
         cls,
         model_card_name: StrPipeVar,
         model_card_version: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelCard"]:
         """
@@ -23589,6 +23766,7 @@ class ModelCard(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelCardResponse")
         model_card = cls(**transformed_response)
+        model_card._session = session
         return model_card
 
     @Base.add_validate_call
@@ -23622,7 +23800,7 @@ class ModelCard(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_model_card(**operation_input_args)
 
         # deserialize response and update self
@@ -23658,7 +23836,7 @@ class ModelCard(Base):
         """
 
         logger.info("Updating model_card resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ModelCardName": self.model_card_name,
@@ -23698,7 +23876,7 @@ class ModelCard(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ModelCardName": self.model_card_name,
@@ -23772,7 +23950,7 @@ class ModelCard(Base):
         model_card_status: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ModelCard"]:
         """
@@ -23838,7 +24016,7 @@ class ModelCard(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[ModelCardVersionSummary]:
         """
@@ -23966,7 +24144,7 @@ class ModelCardExportJob(Base):
         model_card_export_job_name: StrPipeVar,
         output_config: ModelCardExportOutputConfig,
         model_card_version: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelCardExportJob"]:
         """
@@ -24037,7 +24215,7 @@ class ModelCardExportJob(Base):
     def get(
         cls,
         model_card_export_job_arn: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelCardExportJob"]:
         """
@@ -24081,6 +24259,7 @@ class ModelCardExportJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelCardExportJobResponse")
         model_card_export_job = cls(**transformed_response)
+        model_card_export_job._session = session
         return model_card_export_job
 
     @Base.add_validate_call
@@ -24113,7 +24292,7 @@ class ModelCardExportJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_model_card_export_job(**operation_input_args)
 
         # deserialize response and update self
@@ -24193,7 +24372,7 @@ class ModelCardExportJob(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ModelCardExportJob"]:
         """
@@ -24360,7 +24539,7 @@ class ModelExplainabilityJobDefinition(Base):
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelExplainabilityJobDefinition"]:
         """
@@ -24439,7 +24618,7 @@ class ModelExplainabilityJobDefinition(Base):
     def get(
         cls,
         job_definition_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelExplainabilityJobDefinition"]:
         """
@@ -24485,6 +24664,7 @@ class ModelExplainabilityJobDefinition(Base):
             response, "DescribeModelExplainabilityJobDefinitionResponse"
         )
         model_explainability_job_definition = cls(**transformed_response)
+        model_explainability_job_definition._session = session
         return model_explainability_job_definition
 
     @Base.add_validate_call
@@ -24517,7 +24697,7 @@ class ModelExplainabilityJobDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_model_explainability_job_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -24544,7 +24724,7 @@ class ModelExplainabilityJobDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "JobDefinitionName": self.job_definition_name,
@@ -24567,7 +24747,7 @@ class ModelExplainabilityJobDefinition(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ModelExplainabilityJobDefinition"]:
         """
@@ -24630,7 +24810,7 @@ class ModelExplainabilityJobDefinition(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
+
 class ModelInternal(Base):
     """
     Class representing resource ModelInternal
@@ -24671,7 +24851,7 @@ class ModelInternal(Base):
         model_input: CreateModelInput,
         account_id: Optional[StrPipeVar] = Unassigned(),
         auto_ml_job_arn: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ModelInternal"]:
         """
@@ -24741,7 +24921,7 @@ class ModelInternal(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ModelInput": self.model_input,
@@ -24756,7 +24936,7 @@ class ModelInternal(Base):
 
         logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
 
-'''
+
 class ModelPackage(Base):
     """
     Class representing resource ModelPackage
@@ -24798,7 +24978,7 @@ class ModelPackage(Base):
 
     """
 
-    model_package_name: Optional[str] = Unassigned()
+    model_package_name: StrPipeVar
     model_package_group_name: Optional[StrPipeVar] = Unassigned()
     model_package_version: Optional[int] = Unassigned()
     model_package_registration_type: Optional[StrPipeVar] = Unassigned()
@@ -24871,6 +25051,17 @@ class ModelPackage(Base):
                     },
                     "explainability": {"report": {"s3_uri": {"type": "string"}}},
                 },
+                "deployment_specification": {
+                    "test_input": {
+                        "data_source": {
+                            "s3_data_source": {
+                                "s3_data_type": {"type": "string"},
+                                "s3_uri": {"type": "string"},
+                                "s3_data_distribution_type": {"type": "string"},
+                            }
+                        }
+                    }
+                },
                 "drift_check_baselines": {
                     "bias": {
                         "config_file": {"s3_uri": {"type": "string"}},
@@ -24936,7 +25127,7 @@ class ModelPackage(Base):
         security_config: Optional[ModelPackageSecurityConfig] = Unassigned(),
         model_card: Optional[ModelPackageModelCard] = Unassigned(),
         model_life_cycle: Optional[ModelLifeCycle] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelPackage"]:
         """
@@ -25052,7 +25243,7 @@ class ModelPackage(Base):
     def get(
         cls,
         model_package_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelPackage"]:
         """
@@ -25095,6 +25286,7 @@ class ModelPackage(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelPackageOutput")
         model_package = cls(**transformed_response)
+        model_package._session = session
         return model_package
 
     @Base.add_validate_call
@@ -25126,7 +25318,7 @@ class ModelPackage(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_model_package(**operation_input_args)
 
         # deserialize response and update self
@@ -25176,7 +25368,7 @@ class ModelPackage(Base):
         """
 
         logger.info("Updating model_package resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ModelPackageArn": self.model_package_arn,
@@ -25224,7 +25416,7 @@ class ModelPackage(Base):
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ModelPackageName": self.model_package_name,
@@ -25368,7 +25560,7 @@ class ModelPackage(Base):
         model_package_type: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ModelPackage"]:
         """
@@ -25435,7 +25627,7 @@ class ModelPackage(Base):
     def batch_get(
         self,
         model_package_arn_list: List[StrPipeVar],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[BatchDescribeModelPackageOutput]:
         """
@@ -25524,7 +25716,7 @@ class ModelPackageGroup(Base):
         model_package_group_name: StrPipeVar,
         model_package_group_description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelPackageGroup"]:
         """
@@ -25589,7 +25781,7 @@ class ModelPackageGroup(Base):
     def get(
         cls,
         model_package_group_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelPackageGroup"]:
         """
@@ -25632,6 +25824,7 @@ class ModelPackageGroup(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelPackageGroupOutput")
         model_package_group = cls(**transformed_response)
+        model_package_group._session = session
         return model_package_group
 
     @Base.add_validate_call
@@ -25663,7 +25856,7 @@ class ModelPackageGroup(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_model_package_group(**operation_input_args)
 
         # deserialize response and update self
@@ -25690,7 +25883,7 @@ class ModelPackageGroup(Base):
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ModelPackageGroupName": self.model_package_group_name,
@@ -25836,7 +26029,7 @@ class ModelPackageGroup(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         cross_account_filter_option: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ModelPackageGroup"]:
         """
@@ -25898,7 +26091,7 @@ class ModelPackageGroup(Base):
     @Base.add_validate_call
     def get_policy(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[str]:
         """
@@ -25944,7 +26137,7 @@ class ModelPackageGroup(Base):
     @Base.add_validate_call
     def delete_policy(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -25986,7 +26179,7 @@ class ModelPackageGroup(Base):
     def put_policy(
         self,
         resource_policy: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -26128,7 +26321,7 @@ class ModelQualityJobDefinition(Base):
         network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
         stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelQualityJobDefinition"]:
         """
@@ -26206,7 +26399,7 @@ class ModelQualityJobDefinition(Base):
     def get(
         cls,
         job_definition_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelQualityJobDefinition"]:
         """
@@ -26250,6 +26443,7 @@ class ModelQualityJobDefinition(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeModelQualityJobDefinitionResponse")
         model_quality_job_definition = cls(**transformed_response)
+        model_quality_job_definition._session = session
         return model_quality_job_definition
 
     @Base.add_validate_call
@@ -26282,7 +26476,7 @@ class ModelQualityJobDefinition(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_model_quality_job_definition(**operation_input_args)
 
         # deserialize response and update self
@@ -26309,7 +26503,7 @@ class ModelQualityJobDefinition(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "JobDefinitionName": self.job_definition_name,
@@ -26333,7 +26527,7 @@ class ModelQualityJobDefinition(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         variant_name: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ModelQualityJobDefinition"]:
         """
@@ -26469,7 +26663,7 @@ class MonitoringAlert(Base):
         """
 
         logger.info("Updating monitoring_alert resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "MonitoringScheduleName": monitoring_schedule_name,
@@ -26494,7 +26688,7 @@ class MonitoringAlert(Base):
     def get_all(
         cls,
         monitoring_schedule_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["MonitoringAlert"]:
         """
@@ -26555,7 +26749,7 @@ class MonitoringAlert(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         status_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[MonitoringAlertHistorySummary]:
         """
@@ -26668,7 +26862,7 @@ class MonitoringExecution(Base):
     def get(
         cls,
         monitoring_execution_id: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MonitoringExecution"]:
         """
@@ -26712,6 +26906,7 @@ class MonitoringExecution(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeMonitoringExecutionResponse")
         monitoring_execution = cls(**transformed_response)
+        monitoring_execution._session = session
         return monitoring_execution
 
     @Base.add_validate_call
@@ -26744,7 +26939,7 @@ class MonitoringExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_monitoring_execution(**operation_input_args)
 
         # deserialize response and update self
@@ -26839,7 +27034,7 @@ class MonitoringExecution(Base):
         monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned(),
         monitoring_type_equals: Optional[StrPipeVar] = Unassigned(),
         variant_name: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["MonitoringExecution"]:
         """
@@ -26997,7 +27192,133 @@ class MonitoringSchedule(Base):
                             }
                         },
                     }
-                }
+                },
+                "custom_monitoring_job_definition": {
+                    "custom_monitoring_job_input": {
+                        "endpoint_input": {
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                        "batch_transform_input": {
+                            "data_captured_destination_s3_uri": {"type": "string"},
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                        "ground_truth_s3_input": {"s3_uri": {"type": "string"}},
+                    },
+                    "custom_monitoring_job_output_config": {"kms_key_id": {"type": "string"}},
+                    "job_resources": {"cluster_config": {"volume_kms_key_id": {"type": "string"}}},
+                    "role_arn": {"type": "string"},
+                    "network_config": {
+                        "vpc_config": {
+                            "security_group_ids": {"type": "array", "items": {"type": "string"}},
+                            "subnets": {"type": "array", "items": {"type": "string"}},
+                        }
+                    },
+                },
+                "data_quality_job_definition": {
+                    "data_quality_job_input": {
+                        "endpoint_input": {
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                        "batch_transform_input": {
+                            "data_captured_destination_s3_uri": {"type": "string"},
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                    },
+                    "data_quality_job_output_config": {"kms_key_id": {"type": "string"}},
+                    "job_resources": {"cluster_config": {"volume_kms_key_id": {"type": "string"}}},
+                    "role_arn": {"type": "string"},
+                    "data_quality_baseline_config": {
+                        "constraints_resource": {"s3_uri": {"type": "string"}},
+                        "statistics_resource": {"s3_uri": {"type": "string"}},
+                    },
+                    "network_config": {
+                        "vpc_config": {
+                            "security_group_ids": {"type": "array", "items": {"type": "string"}},
+                            "subnets": {"type": "array", "items": {"type": "string"}},
+                        }
+                    },
+                },
+                "model_quality_job_definition": {
+                    "model_quality_job_input": {
+                        "ground_truth_s3_input": {"s3_uri": {"type": "string"}},
+                        "endpoint_input": {
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                        "batch_transform_input": {
+                            "data_captured_destination_s3_uri": {"type": "string"},
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                    },
+                    "model_quality_job_output_config": {"kms_key_id": {"type": "string"}},
+                    "job_resources": {"cluster_config": {"volume_kms_key_id": {"type": "string"}}},
+                    "role_arn": {"type": "string"},
+                    "model_quality_baseline_config": {
+                        "constraints_resource": {"s3_uri": {"type": "string"}}
+                    },
+                    "network_config": {
+                        "vpc_config": {
+                            "security_group_ids": {"type": "array", "items": {"type": "string"}},
+                            "subnets": {"type": "array", "items": {"type": "string"}},
+                        }
+                    },
+                },
+                "model_bias_job_definition": {
+                    "model_bias_job_input": {
+                        "ground_truth_s3_input": {"s3_uri": {"type": "string"}},
+                        "endpoint_input": {
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                        "batch_transform_input": {
+                            "data_captured_destination_s3_uri": {"type": "string"},
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                    },
+                    "model_bias_job_output_config": {"kms_key_id": {"type": "string"}},
+                    "job_resources": {"cluster_config": {"volume_kms_key_id": {"type": "string"}}},
+                    "role_arn": {"type": "string"},
+                    "model_bias_baseline_config": {
+                        "constraints_resource": {"s3_uri": {"type": "string"}}
+                    },
+                    "network_config": {
+                        "vpc_config": {
+                            "security_group_ids": {"type": "array", "items": {"type": "string"}},
+                            "subnets": {"type": "array", "items": {"type": "string"}},
+                        }
+                    },
+                },
+                "model_explainability_job_definition": {
+                    "model_explainability_job_input": {
+                        "endpoint_input": {
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                        "batch_transform_input": {
+                            "data_captured_destination_s3_uri": {"type": "string"},
+                            "s3_input_mode": {"type": "string"},
+                            "s3_data_distribution_type": {"type": "string"},
+                        },
+                    },
+                    "model_explainability_job_output_config": {"kms_key_id": {"type": "string"}},
+                    "job_resources": {"cluster_config": {"volume_kms_key_id": {"type": "string"}}},
+                    "role_arn": {"type": "string"},
+                    "model_explainability_baseline_config": {
+                        "constraints_resource": {"s3_uri": {"type": "string"}}
+                    },
+                    "network_config": {
+                        "vpc_config": {
+                            "security_group_ids": {"type": "array", "items": {"type": "string"}},
+                            "subnets": {"type": "array", "items": {"type": "string"}},
+                        }
+                    },
+                },
             }
             return create_func(
                 *args,
@@ -27016,7 +27337,7 @@ class MonitoringSchedule(Base):
         monitoring_schedule_name: StrPipeVar,
         monitoring_schedule_config: MonitoringScheduleConfig,
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MonitoringSchedule"]:
         """
@@ -27082,7 +27403,7 @@ class MonitoringSchedule(Base):
     def get(
         cls,
         monitoring_schedule_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MonitoringSchedule"]:
         """
@@ -27126,6 +27447,7 @@ class MonitoringSchedule(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeMonitoringScheduleResponse")
         monitoring_schedule = cls(**transformed_response)
+        monitoring_schedule._session = session
         return monitoring_schedule
 
     @Base.add_validate_call
@@ -27158,7 +27480,7 @@ class MonitoringSchedule(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_monitoring_schedule(**operation_input_args)
 
         # deserialize response and update self
@@ -27192,7 +27514,7 @@ class MonitoringSchedule(Base):
         """
 
         logger.info("Updating monitoring_schedule resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "MonitoringScheduleName": self.monitoring_schedule_name,
@@ -27230,7 +27552,7 @@ class MonitoringSchedule(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "MonitoringScheduleName": self.monitoring_schedule_name,
@@ -27246,7 +27568,7 @@ class MonitoringSchedule(Base):
     @Base.add_validate_call
     def start(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -27302,7 +27624,7 @@ class MonitoringSchedule(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "MonitoringScheduleName": self.monitoring_schedule_name,
@@ -27393,7 +27715,7 @@ class MonitoringSchedule(Base):
         monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned(),
         monitoring_type_equals: Optional[StrPipeVar] = Unassigned(),
         variant_name: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["MonitoringSchedule"]:
         """
@@ -27580,7 +27902,7 @@ class NotebookInstance(Base):
         instance_metadata_service_configuration: Optional[
             InstanceMetadataServiceConfiguration
         ] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["NotebookInstance"]:
         """
@@ -27673,7 +27995,7 @@ class NotebookInstance(Base):
     def get(
         cls,
         notebook_instance_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["NotebookInstance"]:
         """
@@ -27716,6 +28038,7 @@ class NotebookInstance(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeNotebookInstanceOutput")
         notebook_instance = cls(**transformed_response)
+        notebook_instance._session = session
         return notebook_instance
 
     @Base.add_validate_call
@@ -27747,7 +28070,7 @@ class NotebookInstance(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_notebook_instance(**operation_input_args)
 
         # deserialize response and update self
@@ -27803,7 +28126,7 @@ class NotebookInstance(Base):
         """
 
         logger.info("Updating notebook_instance resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "NotebookInstanceName": self.notebook_instance_name,
@@ -27854,7 +28177,7 @@ class NotebookInstance(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "NotebookInstanceName": self.notebook_instance_name,
@@ -27870,7 +28193,7 @@ class NotebookInstance(Base):
     @Base.add_validate_call
     def start(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -27925,7 +28248,7 @@ class NotebookInstance(Base):
                 ```
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "NotebookInstanceName": self.notebook_instance_name,
@@ -28078,7 +28401,7 @@ class NotebookInstance(Base):
         notebook_instance_lifecycle_config_name_contains: Optional[StrPipeVar] = Unassigned(),
         default_code_repository_contains: Optional[StrPipeVar] = Unassigned(),
         additional_code_repository_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["NotebookInstance"]:
         """
@@ -28193,7 +28516,7 @@ class NotebookInstanceLifecycleConfig(Base):
         on_create: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned(),
         on_start: Optional[List[NotebookInstanceLifecycleHook]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["NotebookInstanceLifecycleConfig"]:
         """
@@ -28263,7 +28586,7 @@ class NotebookInstanceLifecycleConfig(Base):
     def get(
         cls,
         notebook_instance_lifecycle_config_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["NotebookInstanceLifecycleConfig"]:
         """
@@ -28306,6 +28629,7 @@ class NotebookInstanceLifecycleConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeNotebookInstanceLifecycleConfigOutput")
         notebook_instance_lifecycle_config = cls(**transformed_response)
+        notebook_instance_lifecycle_config._session = session
         return notebook_instance_lifecycle_config
 
     @Base.add_validate_call
@@ -28337,7 +28661,7 @@ class NotebookInstanceLifecycleConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_notebook_instance_lifecycle_config(**operation_input_args)
 
         # deserialize response and update self
@@ -28370,7 +28694,7 @@ class NotebookInstanceLifecycleConfig(Base):
         """
 
         logger.info("Updating notebook_instance_lifecycle_config resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "NotebookInstanceLifecycleConfigName": self.notebook_instance_lifecycle_config_name,
@@ -28408,7 +28732,7 @@ class NotebookInstanceLifecycleConfig(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "NotebookInstanceLifecycleConfigName": self.notebook_instance_lifecycle_config_name,
@@ -28432,7 +28756,7 @@ class NotebookInstanceLifecycleConfig(Base):
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
         last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["NotebookInstanceLifecycleConfig"]:
         """
@@ -28595,7 +28919,7 @@ class OptimizationJob(Base):
         optimization_environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         vpc_config: Optional[OptimizationVpcConfig] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["OptimizationJob"]:
         """
@@ -28675,7 +28999,7 @@ class OptimizationJob(Base):
     def get(
         cls,
         optimization_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["OptimizationJob"]:
         """
@@ -28719,6 +29043,7 @@ class OptimizationJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeOptimizationJobResponse")
         optimization_job = cls(**transformed_response)
+        optimization_job._session = session
         return optimization_job
 
     @Base.add_validate_call
@@ -28751,7 +29076,7 @@ class OptimizationJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_optimization_job(**operation_input_args)
 
         # deserialize response and update self
@@ -28778,7 +29103,7 @@ class OptimizationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "OptimizationJobName": self.optimization_job_name,
@@ -28809,7 +29134,7 @@ class OptimizationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "OptimizationJobName": self.optimization_job_name,
@@ -28896,7 +29221,7 @@ class OptimizationJob(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["OptimizationJob"]:
         """
@@ -29030,7 +29355,10 @@ class PartnerApp(Base):
     def populate_inputs_decorator(create_func):
         @functools.wraps(create_func)
         def wrapper(*args, **kwargs):
-            config_schema_for_resource = {"execution_role_arn": {"type": "string"}}
+            config_schema_for_resource = {
+                "execution_role_arn": {"type": "string"},
+                "kms_key_id": {"type": "string"},
+            }
             return create_func(
                 *args,
                 **Base.get_updated_kwargs_with_configured_attributes(
@@ -29058,7 +29386,7 @@ class PartnerApp(Base):
         enable_auto_minor_version_upgrade: Optional[bool] = Unassigned(),
         client_token: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["PartnerApp"]:
         """
@@ -29143,7 +29471,7 @@ class PartnerApp(Base):
         cls,
         arn: StrPipeVar,
         include_available_upgrade: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["PartnerApp"]:
         """
@@ -29189,6 +29517,7 @@ class PartnerApp(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribePartnerAppResponse")
         partner_app = cls(**transformed_response)
+        partner_app._session = session
         return partner_app
 
     @Base.add_validate_call
@@ -29223,7 +29552,7 @@ class PartnerApp(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_partner_app(**operation_input_args)
 
         # deserialize response and update self
@@ -29269,7 +29598,7 @@ class PartnerApp(Base):
         """
 
         logger.info("Updating partner_app resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "Arn": self.arn,
@@ -29316,7 +29645,7 @@ class PartnerApp(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "Arn": self.arn,
@@ -29334,7 +29663,7 @@ class PartnerApp(Base):
     def start(
         self,
         partner_app_arn: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -29390,7 +29719,7 @@ class PartnerApp(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "PartnerAppArn": self.partner_app_arn,
@@ -29530,7 +29859,7 @@ class PartnerApp(Base):
     @Base.add_validate_call
     def get_all(
         cls,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["PartnerApp"]:
         """
@@ -29597,7 +29926,7 @@ class PartnerAppPresignedUrl(Base):
         arn: StrPipeVar,
         expires_in_seconds: Optional[int] = Unassigned(),
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PartnerAppPresignedUrl"]:
         """
@@ -29703,7 +30032,7 @@ class PersistentVolume(Base):
         persistent_volume_configuration: PersistentVolumeConfiguration,
         tags: Optional[List[Tag]] = Unassigned(),
         owning_entity_arn: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["PersistentVolume"]:
         """
@@ -29777,7 +30106,7 @@ class PersistentVolume(Base):
         cls,
         persistent_volume_name: StrPipeVar,
         domain_id: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["PersistentVolume"]:
         """
@@ -29823,6 +30152,7 @@ class PersistentVolume(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribePersistentVolumeResponse")
         persistent_volume = cls(**transformed_response)
+        persistent_volume._session = session
         return persistent_volume
 
     @Base.add_validate_call
@@ -29856,7 +30186,7 @@ class PersistentVolume(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_persistent_volume(**operation_input_args)
 
         # deserialize response and update self
@@ -29884,7 +30214,7 @@ class PersistentVolume(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "PersistentVolumeName": self.persistent_volume_name,
@@ -30104,7 +30434,7 @@ class Pipeline(Base):
         pipeline_description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         parallelism_configuration: Optional[ParallelismConfiguration] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Pipeline"]:
         """
@@ -30182,7 +30512,7 @@ class Pipeline(Base):
         cls,
         pipeline_name: StrPipeVar,
         pipeline_version_id: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Pipeline"]:
         """
@@ -30228,6 +30558,7 @@ class Pipeline(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribePipelineResponse")
         pipeline = cls(**transformed_response)
+        pipeline._session = session
         return pipeline
 
     @Base.add_validate_call
@@ -30262,7 +30593,7 @@ class Pipeline(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_pipeline(**operation_input_args)
 
         # deserialize response and update self
@@ -30304,7 +30635,7 @@ class Pipeline(Base):
         """
 
         logger.info("Updating pipeline resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "PipelineName": self.pipeline_name,
@@ -30349,7 +30680,7 @@ class Pipeline(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "PipelineName": self.pipeline_name,
@@ -30484,7 +30815,7 @@ class Pipeline(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Pipeline"]:
         """
@@ -30602,7 +30933,7 @@ class PipelineExecution(Base):
     def get(
         cls,
         pipeline_execution_arn: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["PipelineExecution"]:
         """
@@ -30646,6 +30977,7 @@ class PipelineExecution(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribePipelineExecutionResponse")
         pipeline_execution = cls(**transformed_response)
+        pipeline_execution._session = session
         return pipeline_execution
 
     @Base.add_validate_call
@@ -30678,7 +31010,7 @@ class PipelineExecution(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_pipeline_execution(**operation_input_args)
 
         # deserialize response and update self
@@ -30713,7 +31045,7 @@ class PipelineExecution(Base):
         """
 
         logger.info("Updating pipeline_execution resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "PipelineExecutionArn": self.pipeline_execution_arn,
@@ -30740,7 +31072,7 @@ class PipelineExecution(Base):
         client_request_token: StrPipeVar,
         pipeline_parameters: Optional[List[Parameter]] = Unassigned(),
         mlflow_experiment_name: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -30807,7 +31139,7 @@ class PipelineExecution(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "PipelineExecutionArn": self.pipeline_execution_arn,
@@ -30890,7 +31222,7 @@ class PipelineExecution(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["PipelineExecution"]:
         """
@@ -30951,7 +31283,7 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def get_pipeline_definition(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[DescribePipelineDefinitionForExecutionResponse]:
         """
@@ -30999,7 +31331,7 @@ class PipelineExecution(Base):
     def get_all_steps(
         self,
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[PipelineExecutionStep]:
         """
@@ -31052,7 +31384,7 @@ class PipelineExecution(Base):
     @Base.add_validate_call
     def get_all_parameters(
         self,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[Parameter]:
         """
@@ -31104,7 +31436,7 @@ class PipelineExecution(Base):
     def retry(
         self,
         client_request_token: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -31152,7 +31484,7 @@ class PipelineExecution(Base):
         self,
         callback_token: StrPipeVar,
         client_request_token: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -31202,7 +31534,7 @@ class PipelineExecution(Base):
         callback_token: StrPipeVar,
         output_parameters: Optional[List[OutputParameter]] = Unassigned(),
         client_request_token: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -31306,7 +31638,7 @@ class PresignedDomainUrl(Base):
         space_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         landing_uri: Optional[StrPipeVar] = Unassigned(),
         is_dual_stack_endpoint: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedDomainUrl"]:
         """
@@ -31417,7 +31749,7 @@ class PresignedDomainUrlWithPrincipalTag(Base):
         expires_in_seconds: Optional[int] = Unassigned(),
         landing_uri: Optional[StrPipeVar] = Unassigned(),
         is_dual_stack_endpoint: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedDomainUrlWithPrincipalTag"]:
         """
@@ -31516,7 +31848,7 @@ class PresignedMlflowAppUrl(Base):
         arn: StrPipeVar,
         expires_in_seconds: Optional[int] = Unassigned(),
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedMlflowAppUrl"]:
         """
@@ -31609,7 +31941,7 @@ class PresignedMlflowTrackingServerUrl(Base):
         tracking_server_name: StrPipeVar,
         expires_in_seconds: Optional[int] = Unassigned(),
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedMlflowTrackingServerUrl"]:
         """
@@ -31699,7 +32031,7 @@ class PresignedNotebookInstanceUrl(Base):
         cls,
         notebook_instance_name: Union[StrPipeVar, object],
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedNotebookInstanceUrl"]:
         """
@@ -31862,7 +32194,7 @@ class ProcessingJob(Base):
         tags: Optional[List[Tag]] = Unassigned(),
         workflow_type: Optional[StrPipeVar] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ProcessingJob"]:
         """
@@ -31945,7 +32277,7 @@ class ProcessingJob(Base):
     def get(
         cls,
         processing_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ProcessingJob"]:
         """
@@ -31989,6 +32321,7 @@ class ProcessingJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeProcessingJobResponse")
         processing_job = cls(**transformed_response)
+        processing_job._session = session
         return processing_job
 
     @Base.add_validate_call
@@ -32021,7 +32354,7 @@ class ProcessingJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_processing_job(**operation_input_args)
 
         # deserialize response and update self
@@ -32049,7 +32382,7 @@ class ProcessingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ProcessingJobName": self.processing_job_name,
@@ -32080,7 +32413,7 @@ class ProcessingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ProcessingJobName": self.processing_job_name,
@@ -32179,7 +32512,7 @@ class ProcessingJob(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ProcessingJob"]:
         """
@@ -32242,7 +32575,7 @@ class ProcessingJob(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
+
 class ProcessingJobInternal(Base):
     """
     Class representing resource ProcessingJobInternal
@@ -32364,7 +32697,7 @@ class ProcessingJobInternal(Base):
         fas_source_account: Optional[StrPipeVar] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
         identity_center_user_token: Optional[IdentityCenterUserToken] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["ProcessingJobInternal"]:
         """
@@ -32494,7 +32827,7 @@ class ProcessingJobInternal(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ProcessingJobName": self.processing_job_name,
@@ -32528,7 +32861,7 @@ class ProcessingJobInternal(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ProcessingJobName": self.processing_job_name,
@@ -32543,7 +32876,7 @@ class ProcessingJobInternal(Base):
 
         logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
 
-'''
+
 class Project(Base):
     """
     Class representing resource Project
@@ -32607,7 +32940,7 @@ class Project(Base):
         tags: Optional[List[Tag]] = Unassigned(),
         template_providers: Optional[List[CreateTemplateProvider]] = Unassigned(),
         workflow_disabled: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Project"]:
         """
@@ -32676,7 +33009,7 @@ class Project(Base):
     def get(
         cls,
         project_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Project"]:
         """
@@ -32719,6 +33052,7 @@ class Project(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeProjectOutput")
         project = cls(**transformed_response)
+        project._session = session
         return project
 
     @Base.add_validate_call
@@ -32750,7 +33084,7 @@ class Project(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_project(**operation_input_args)
 
         # deserialize response and update self
@@ -32794,7 +33128,7 @@ class Project(Base):
         """
 
         logger.info("Updating project resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ProjectName": self.project_name,
@@ -32836,7 +33170,7 @@ class Project(Base):
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "ProjectName": self.project_name,
@@ -32926,7 +33260,7 @@ class Project(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         project_status: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Project"]:
         """
@@ -33045,7 +33379,23 @@ class QuotaAllocation(Base):
         logger.error("Name attribute not found for object quota_allocation")
         return None
 
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {
+                "quota_allocation_target": {"roles": {"type": "array", "items": {"type": "string"}}}
+            }
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "QuotaAllocation", **kwargs
+                ),
+            )
+
+        return wrapper
+
     @classmethod
+    @populate_inputs_decorator
     @Base.add_validate_call
     def create(
         cls,
@@ -33058,7 +33408,7 @@ class QuotaAllocation(Base):
         activation_state: Optional[ActivationStateV1] = Unassigned(),
         quota_allocation_description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["QuotaAllocation"]:
         """
@@ -33137,7 +33487,7 @@ class QuotaAllocation(Base):
         cls,
         quota_allocation_arn: StrPipeVar,
         quota_allocation_version: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["QuotaAllocation"]:
         """
@@ -33183,6 +33533,7 @@ class QuotaAllocation(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeQuotaAllocationResponse")
         quota_allocation = cls(**transformed_response)
+        quota_allocation._session = session
         return quota_allocation
 
     @Base.add_validate_call
@@ -33216,13 +33567,14 @@ class QuotaAllocation(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_quota_allocation(**operation_input_args)
 
         # deserialize response and update self
         transform(response, "DescribeQuotaAllocationResponse", self)
         return self
 
+    @populate_inputs_decorator
     @Base.add_validate_call
     def update(
         self,
@@ -33256,7 +33608,7 @@ class QuotaAllocation(Base):
         """
 
         logger.info("Updating quota_allocation resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "QuotaAllocationArn": self.quota_allocation_arn,
@@ -33300,7 +33652,7 @@ class QuotaAllocation(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "QuotaAllocationArn": self.quota_allocation_arn,
@@ -33464,7 +33816,7 @@ class QuotaAllocation(Base):
         cluster_arn: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["QuotaAllocation"]:
         """
@@ -33568,7 +33920,7 @@ class ResourceCatalog(Base):
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ResourceCatalog"]:
         """
@@ -33635,7 +33987,7 @@ class SagemakerServicecatalogPortfolio(Base):
     @staticmethod
     @Base.add_validate_call
     def disable(
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -33668,7 +34020,7 @@ class SagemakerServicecatalogPortfolio(Base):
     @staticmethod
     @Base.add_validate_call
     def enable(
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -33701,7 +34053,7 @@ class SagemakerServicecatalogPortfolio(Base):
     @staticmethod
     @Base.add_validate_call
     def get_status(
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[str]:
         """
@@ -33735,6 +34087,13 @@ class SagemakerServicecatalogPortfolio(Base):
         logger.debug(f"Response: {response}")
 
         return list(response.values())[0]
+
+
+class Session(Base):
+    """
+    Class representing resource Session
+
+    """
 
 
 class SharedModel(Base):
@@ -33787,7 +34146,7 @@ class SharedModel(Base):
         comment: Optional[StrPipeVar] = Unassigned(),
         model_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         origin: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["SharedModel"]:
         """
@@ -33859,7 +34218,7 @@ class SharedModel(Base):
         cls,
         shared_model_id: StrPipeVar,
         shared_model_version: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["SharedModel"]:
         """
@@ -33904,6 +34263,7 @@ class SharedModel(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeSharedModelResponse")
         shared_model = cls(**transformed_response)
+        shared_model._session = session
         return shared_model
 
     @Base.add_validate_call
@@ -33936,7 +34296,7 @@ class SharedModel(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_shared_model(**operation_input_args)
 
         # deserialize response and update self
@@ -33973,7 +34333,7 @@ class SharedModel(Base):
         """
 
         logger.info("Updating shared_model resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "SharedModelId": self.shared_model_id,
@@ -34013,7 +34373,7 @@ class SharedModel(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "SharedModelId": self.shared_model_id,
@@ -34035,7 +34395,7 @@ class SharedModel(Base):
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["SharedModel"]:
         """
@@ -34160,7 +34520,7 @@ class Space(Base):
         ownership_settings: Optional[OwnershipSettings] = Unassigned(),
         space_sharing_settings: Optional[SpaceSharingSettings] = Unassigned(),
         space_display_name: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Space"]:
         """
@@ -34233,7 +34593,7 @@ class Space(Base):
         cls,
         domain_id: StrPipeVar,
         space_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Space"]:
         """
@@ -34279,6 +34639,7 @@ class Space(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeSpaceResponse")
         space = cls(**transformed_response)
+        space._session = session
         return space
 
     @Base.add_validate_call
@@ -34312,7 +34673,7 @@ class Space(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_space(**operation_input_args)
 
         # deserialize response and update self
@@ -34347,7 +34708,7 @@ class Space(Base):
         """
 
         logger.info("Updating space resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -34388,7 +34749,7 @@ class Space(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -34543,7 +34904,7 @@ class Space(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         domain_id_equals: Optional[StrPipeVar] = Unassigned(),
         space_name_contains: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Space"]:
         """
@@ -34644,7 +35005,7 @@ class StudioLifecycleConfig(Base):
         studio_lifecycle_config_content: StrPipeVar,
         studio_lifecycle_config_app_type: StrPipeVar,
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["StudioLifecycleConfig"]:
         """
@@ -34713,7 +35074,7 @@ class StudioLifecycleConfig(Base):
     def get(
         cls,
         studio_lifecycle_config_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["StudioLifecycleConfig"]:
         """
@@ -34757,6 +35118,7 @@ class StudioLifecycleConfig(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeStudioLifecycleConfigResponse")
         studio_lifecycle_config = cls(**transformed_response)
+        studio_lifecycle_config._session = session
         return studio_lifecycle_config
 
     @Base.add_validate_call
@@ -34789,7 +35151,7 @@ class StudioLifecycleConfig(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_studio_lifecycle_config(**operation_input_args)
 
         # deserialize response and update self
@@ -34817,7 +35179,7 @@ class StudioLifecycleConfig(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "StudioLifecycleConfigName": self.studio_lifecycle_config_name,
@@ -34842,7 +35204,7 @@ class StudioLifecycleConfig(Base):
         modified_time_after: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["StudioLifecycleConfig"]:
         """
@@ -34940,7 +35302,7 @@ class SubscribedWorkteam(Base):
     def get(
         cls,
         workteam_arn: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["SubscribedWorkteam"]:
         """
@@ -34983,6 +35345,7 @@ class SubscribedWorkteam(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeSubscribedWorkteamResponse")
         subscribed_workteam = cls(**transformed_response)
+        subscribed_workteam._session = session
         return subscribed_workteam
 
     @Base.add_validate_call
@@ -35014,7 +35377,7 @@ class SubscribedWorkteam(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_subscribed_workteam(**operation_input_args)
 
         # deserialize response and update self
@@ -35026,7 +35389,7 @@ class SubscribedWorkteam(Base):
     def get_all(
         cls,
         name_contains: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["SubscribedWorkteam"]:
         """
@@ -35110,7 +35473,7 @@ class Tag(Base):
     def get_all(
         cls,
         resource_arn: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Tag"]:
         """
@@ -35165,7 +35528,7 @@ class Tag(Base):
         cls,
         resource_arn: StrPipeVar,
         tags: List[Tag],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -35211,7 +35574,7 @@ class Tag(Base):
         cls,
         resource_arn: StrPipeVar,
         tag_keys: List[StrPipeVar],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -35400,12 +35763,14 @@ class TrainingJob(Base):
         def wrapper(*args, **kwargs):
             config_schema_for_resource = {
                 "model_artifacts": {"s3_model_artifacts": {"type": "string"}},
-                "resource_config": {"volume_kms_key_id": {"type": "string"}},
+                "training_job_output": {"s3_training_job_output": {"type": "string"}},
                 "role_arn": {"type": "string"},
                 "output_data_config": {
                     "s3_output_path": {"type": "string"},
                     "kms_key_id": {"type": "string"},
+                    "remove_job_name_from_s3_output_path": {"type": "boolean"},
                 },
+                "resource_config": {"volume_kms_key_id": {"type": "string"}},
                 "vpc_config": {
                     "security_group_ids": {"type": "array", "items": {"type": "string"}},
                     "subnets": {"type": "array", "items": {"type": "string"}},
@@ -35413,7 +35778,25 @@ class TrainingJob(Base):
                 "checkpoint_config": {"s3_uri": {"type": "string"}},
                 "debug_hook_config": {"s3_output_path": {"type": "string"}},
                 "tensor_board_output_config": {"s3_output_path": {"type": "string"}},
+                "upstream_platform_config": {
+                    "credential_proxy_config": {
+                        "customer_credential_provider_kms_key_id": {"type": "string"},
+                        "platform_credential_provider_kms_key_id": {"type": "string"},
+                    },
+                    "vpc_config": {
+                        "security_group_ids": {"type": "array", "items": {"type": "string"}},
+                        "subnets": {"type": "array", "items": {"type": "string"}},
+                    },
+                    "output_data_config": {"kms_key_id": {"type": "string"}},
+                    "checkpoint_config": {"s3_uri": {"type": "string"}},
+                    "enable_s3_context_keys_on_input_data": {"type": "boolean"},
+                    "execution_role": {"type": "string"},
+                },
                 "profiler_config": {"s3_output_path": {"type": "string"}},
+                "processing_job_config": {
+                    "processing_output_config": {"kms_key_id": {"type": "string"}},
+                    "upstream_processing_output_config": {"kms_key_id": {"type": "string"}},
+                },
             }
             return create_func(
                 *args,
@@ -35467,7 +35850,7 @@ class TrainingJob(Base):
         mlflow_config: Optional[MlflowConfig] = Unassigned(),
         with_warm_pool_validation_error: Optional[bool] = Unassigned(),
         model_package_config: Optional[ModelPackageConfig] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrainingJob"]:
         """
@@ -35602,7 +35985,7 @@ class TrainingJob(Base):
     def get(
         cls,
         training_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrainingJob"]:
         """
@@ -35646,6 +36029,7 @@ class TrainingJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTrainingJobResponse")
         training_job = cls(**transformed_response)
+        training_job._session = session
         return training_job
 
     @Base.add_validate_call
@@ -35678,7 +36062,7 @@ class TrainingJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_training_job(**operation_input_args)
 
         # deserialize response and update self
@@ -35715,7 +36099,7 @@ class TrainingJob(Base):
         """
 
         logger.info("Updating training_job resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrainingJobName": self.training_job_name,
@@ -35757,7 +36141,7 @@ class TrainingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrainingJobName": self.training_job_name,
@@ -35788,7 +36172,7 @@ class TrainingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().sagemaker_client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrainingJobName": self.training_job_name,
@@ -35835,16 +36219,17 @@ class TrainingJob(Base):
 
         instance_count = 1  # Default
         if not isinstance(self.resource_config, Unassigned):
-            if (hasattr(self.resource_config, 'instance_groups') and 
-                self.resource_config.instance_groups and
-                not isinstance(self.resource_config.instance_groups, Unassigned)):
+            if (
+                hasattr(self.resource_config, "instance_groups")
+                and self.resource_config.instance_groups
+                and not isinstance(self.resource_config.instance_groups, Unassigned)
+            ):
                 instance_count = sum(
                     instance_group.instance_count
                     for instance_group in self.resource_config.instance_groups
                 )
-            elif hasattr(self.resource_config, 'instance_count'):
+            elif hasattr(self.resource_config, "instance_count"):
                 instance_count = self.resource_config.instance_count
-
         if logs:
             multi_stream_logger = MultiLogStreamHandler(
                 log_group_name=f"/aws/sagemaker/TrainingJobs",
@@ -35963,7 +36348,7 @@ class TrainingJob(Base):
         sort_order: Optional[StrPipeVar] = Unassigned(),
         warm_pool_status_equals: Optional[StrPipeVar] = Unassigned(),
         training_plan_arn_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["TrainingJob"]:
         """
@@ -36030,7 +36415,7 @@ class TrainingJob(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
+
 class TrainingJobInternal(Base):
     """
     Class representing resource TrainingJobInternal
@@ -36170,7 +36555,7 @@ class TrainingJobInternal(Base):
         fas_source_account: Optional[StrPipeVar] = Unassigned(),
         sts_context_map: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         identity_center_user_token: Optional[IdentityCenterUserToken] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["TrainingJobInternal"]:
         """
@@ -36312,7 +36697,7 @@ class TrainingJobInternal(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrainingJobName": self.training_job_name,
@@ -36346,7 +36731,7 @@ class TrainingJobInternal(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrainingJobName": self.training_job_name,
@@ -36360,7 +36745,7 @@ class TrainingJobInternal(Base):
 
         logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
 
-'''
+
 class TrainingPlan(Base):
     """
     Class representing resource TrainingPlan
@@ -36432,7 +36817,7 @@ class TrainingPlan(Base):
         training_plan_offering_id: StrPipeVar,
         spare_instance_count_per_ultra_server: Optional[int] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrainingPlan"]:
         """
@@ -36499,7 +36884,7 @@ class TrainingPlan(Base):
     def get(
         cls,
         training_plan_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrainingPlan"]:
         """
@@ -36543,6 +36928,7 @@ class TrainingPlan(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTrainingPlanResponse")
         training_plan = cls(**transformed_response)
+        training_plan._session = session
         return training_plan
 
     @Base.add_validate_call
@@ -36575,7 +36961,7 @@ class TrainingPlan(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_training_plan(**operation_input_args)
 
         # deserialize response and update self
@@ -36617,7 +37003,7 @@ class TrainingPlan(Base):
         """
 
         logger.info("Updating training_plan resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrainingPlanName": self.training_plan_name,
@@ -36656,7 +37042,7 @@ class TrainingPlan(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrainingPlanName": self.training_plan_name,
@@ -36734,7 +37120,7 @@ class TrainingPlan(Base):
         training_plan_arn: StrPipeVar,
         capacity_resource_arn: StrPipeVar,
         target_resources: List[StrPipeVar],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrainingPlan"]:
         """
@@ -36799,7 +37185,7 @@ class TrainingPlan(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         filters: Optional[List[TrainingPlanFilter]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["TrainingPlan"]:
         """
@@ -36986,7 +37372,7 @@ class TransformJob(Base):
         credential_provider_function: Optional[StrPipeVar] = Unassigned(),
         credential_provider_encryption_key: Optional[StrPipeVar] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TransformJob"]:
         """
@@ -37085,7 +37471,7 @@ class TransformJob(Base):
     def get(
         cls,
         transform_job_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TransformJob"]:
         """
@@ -37129,6 +37515,7 @@ class TransformJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTransformJobResponse")
         transform_job = cls(**transformed_response)
+        transform_job._session = session
         return transform_job
 
     @Base.add_validate_call
@@ -37161,7 +37548,7 @@ class TransformJob(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_transform_job(**operation_input_args)
 
         # deserialize response and update self
@@ -37189,7 +37576,7 @@ class TransformJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TransformJobName": self.transform_job_name,
@@ -37220,7 +37607,7 @@ class TransformJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TransformJobName": self.transform_job_name,
@@ -37319,7 +37706,7 @@ class TransformJob(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["TransformJob"]:
         """
@@ -37382,7 +37769,7 @@ class TransformJob(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
+
 class TransformJobInternal(Base):
     """
     Class representing resource TransformJobInternal
@@ -37498,7 +37885,7 @@ class TransformJobInternal(Base):
         billing_mode: Optional[StrPipeVar] = Unassigned(),
         fas_source_arn: Optional[StrPipeVar] = Unassigned(),
         fas_source_account: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["TransformJobInternal"]:
         """
@@ -37619,7 +38006,7 @@ class TransformJobInternal(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TransformJobName": self.transform_job_name,
@@ -37633,7 +38020,7 @@ class TransformJobInternal(Base):
 
         logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
 
-'''
+
 class Trial(Base):
     """
     Class representing resource Trial
@@ -37688,7 +38075,7 @@ class Trial(Base):
         display_name: Optional[StrPipeVar] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Trial"]:
         """
@@ -37756,7 +38143,7 @@ class Trial(Base):
     def get(
         cls,
         trial_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Trial"]:
         """
@@ -37800,6 +38187,7 @@ class Trial(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTrialResponse")
         trial = cls(**transformed_response)
+        trial._session = session
         return trial
 
     @Base.add_validate_call
@@ -37832,7 +38220,7 @@ class Trial(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_trial(**operation_input_args)
 
         # deserialize response and update self
@@ -37865,7 +38253,7 @@ class Trial(Base):
         """
 
         logger.info("Updating trial resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrialName": self.trial_name,
@@ -37903,7 +38291,7 @@ class Trial(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrialName": self.trial_name,
@@ -37926,7 +38314,7 @@ class Trial(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Trial"]:
         """
@@ -38062,7 +38450,7 @@ class TrialComponent(Base):
         output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrialComponent"]:
         """
@@ -38139,7 +38527,7 @@ class TrialComponent(Base):
     def get(
         cls,
         trial_component_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["TrialComponent"]:
         """
@@ -38183,6 +38571,7 @@ class TrialComponent(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTrialComponentResponse")
         trial_component = cls(**transformed_response)
+        trial_component._session = session
         return trial_component
 
     @Base.add_validate_call
@@ -38215,7 +38604,7 @@ class TrialComponent(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_trial_component(**operation_input_args)
 
         # deserialize response and update self
@@ -38262,7 +38651,7 @@ class TrialComponent(Base):
         """
 
         logger.info("Updating trial_component resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrialComponentName": self.trial_component_name,
@@ -38309,7 +38698,7 @@ class TrialComponent(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrialComponentName": self.trial_component_name,
@@ -38454,7 +38843,7 @@ class TrialComponent(Base):
         created_before: Optional[datetime.datetime] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["TrialComponent"]:
         """
@@ -38520,7 +38909,7 @@ class TrialComponent(Base):
     def associate_trail(
         self,
         trial_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -38565,7 +38954,7 @@ class TrialComponent(Base):
     def disassociate_trail(
         self,
         trial_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -38610,7 +38999,7 @@ class TrialComponent(Base):
         self,
         resource_arn: StrPipeVar,
         metric_data: List[RawMetricData],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
@@ -38655,7 +39044,7 @@ class TrialComponent(Base):
     def batch_get_metrics(
         cls,
         metric_queries: List[MetricQuery],
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional[BatchGetMetricsResponse]:
         """
@@ -38770,7 +39159,7 @@ class TrialComponentInternal(Base):
         output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["TrialComponentInternal"]:
         """
@@ -38883,7 +39272,7 @@ class TrialComponentInternal(Base):
         """
 
         logger.info("Updating trial_component_internal resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "TrialComponentName": self.trial_component_name,
@@ -38967,7 +39356,7 @@ class TrialInternal(Base):
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         source: Optional[InputTrialSource] = Unassigned(),
         customer_details: Optional[CustomerDetails] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> Optional["TrialInternal"]:
         """
@@ -39086,6 +39475,10 @@ class UserProfile(Base):
             config_schema_for_resource = {
                 "user_settings": {
                     "execution_role": {"type": "string"},
+                    "environment_settings": {
+                        "default_s3_artifact_path": {"type": "string"},
+                        "default_s3_kms_key_id": {"type": "string"},
+                    },
                     "security_groups": {"type": "array", "items": {"type": "string"}},
                     "sharing_settings": {
                         "s3_output_path": {"type": "string"},
@@ -39111,6 +39504,10 @@ class UserProfile(Base):
                             "execution_role_arns": {"type": "array", "items": {"type": "string"}},
                         }
                     },
+                    "emr_settings": {
+                        "assumable_role_arns": {"type": "array", "items": {"type": "string"}},
+                        "execution_role_arns": {"type": "array", "items": {"type": "string"}},
+                    },
                 }
             }
             return create_func(
@@ -39134,7 +39531,7 @@ class UserProfile(Base):
         tags: Optional[List[Tag]] = Unassigned(),
         user_policy: Optional[StrPipeVar] = Unassigned(),
         user_settings: Optional[UserSettings] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["UserProfile"]:
         """
@@ -39210,7 +39607,7 @@ class UserProfile(Base):
         cls,
         domain_id: StrPipeVar,
         user_profile_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["UserProfile"]:
         """
@@ -39258,6 +39655,7 @@ class UserProfile(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeUserProfileResponse")
         user_profile = cls(**transformed_response)
+        user_profile._session = session
         return user_profile
 
     @Base.add_validate_call
@@ -39293,7 +39691,7 @@ class UserProfile(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_user_profile(**operation_input_args)
 
         # deserialize response and update self
@@ -39329,7 +39727,7 @@ class UserProfile(Base):
         """
 
         logger.info("Updating user_profile resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -39370,7 +39768,7 @@ class UserProfile(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "DomainId": self.domain_id,
@@ -39529,7 +39927,7 @@ class UserProfile(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         domain_id_equals: Optional[StrPipeVar] = Unassigned(),
         user_profile_name_contains: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["UserProfile"]:
         """
@@ -39645,7 +40043,7 @@ class Workforce(Base):
         tags: Optional[List[Tag]] = Unassigned(),
         workforce_vpc_config: Optional[WorkforceVpcConfigRequest] = Unassigned(),
         ip_address_type: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Workforce"]:
         """
@@ -39715,7 +40113,7 @@ class Workforce(Base):
     def get(
         cls,
         workforce_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Workforce"]:
         """
@@ -39758,6 +40156,7 @@ class Workforce(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeWorkforceResponse")
         workforce = cls(**transformed_response)
+        workforce._session = session
         return workforce
 
     @Base.add_validate_call
@@ -39789,7 +40188,7 @@ class Workforce(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_workforce(**operation_input_args)
 
         # deserialize response and update self
@@ -39831,7 +40230,7 @@ class Workforce(Base):
         """
 
         logger.info("Updating workforce resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "WorkforceName": self.workforce_name,
@@ -39871,7 +40270,7 @@ class Workforce(Base):
                 ```
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "WorkforceName": self.workforce_name,
@@ -40008,7 +40407,7 @@ class Workforce(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         name_contains: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Workforce"]:
         """
@@ -40103,7 +40502,7 @@ class Workteam(Base):
         notification_configuration: Optional[NotificationConfiguration] = Unassigned(),
         worker_access_configuration: Optional[WorkerAccessConfiguration] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Workteam"]:
         """
@@ -40179,7 +40578,7 @@ class Workteam(Base):
     def get(
         cls,
         workteam_name: StrPipeVar,
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Workteam"]:
         """
@@ -40222,6 +40621,7 @@ class Workteam(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeWorkteamResponse")
         workteam = cls(**transformed_response)
+        workteam._session = session
         return workteam
 
     @Base.add_validate_call
@@ -40253,7 +40653,7 @@ class Workteam(Base):
         operation_input_args = serialize(operation_input_args)
         logger.debug(f"Serialized input request: {operation_input_args}")
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
         response = client.describe_workteam(**operation_input_args)
 
         # deserialize response and update self
@@ -40298,7 +40698,7 @@ class Workteam(Base):
         """
 
         logger.info("Updating workteam resource.")
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "WorkteamName": self.workteam_name,
@@ -40341,7 +40741,7 @@ class Workteam(Base):
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
         """
 
-        client = Base.get_sagemaker_client()
+        client = Base.get_sagemaker_client(session=getattr(self, "_session", None))
 
         operation_input_args = {
             "WorkteamName": self.workteam_name,
@@ -40361,7 +40761,7 @@ class Workteam(Base):
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
         name_contains: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Workteam"]:
         """
@@ -40423,7 +40823,7 @@ class Workteam(Base):
         job_reference_code_contains: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
+        session: Optional[Boto3Session] = None,
         region: Optional[str] = None,
     ) -> ResourceIterator[LabelingJob]:
         """
