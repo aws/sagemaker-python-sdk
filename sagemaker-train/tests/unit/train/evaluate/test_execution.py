@@ -1135,7 +1135,7 @@ class TestEvaluationPipelineExecutionWait:
         with pytest.raises(TimeoutExceededError, match="EvaluationJob") as exc_info:
             execution.wait(target_status="Succeeded", poll=1, timeout=5)
         assert "still running" in str(exc_info.value)
-        assert "refresh()" in str(exc_info.value)
+        assert ".refresh()" in str(exc_info.value)
 
     def test_wait_without_pipeline_execution(self):
         """Test wait when no pipeline execution is set."""

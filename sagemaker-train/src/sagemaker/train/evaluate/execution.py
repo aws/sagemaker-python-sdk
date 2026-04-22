@@ -1130,7 +1130,7 @@ class EvaluationPipelineExecution(BaseModel):
                     raise TimeoutExceededError(
                         resource_type="EvaluationJob", 
                         status=current_status,
-                        message="Your evaluation job is still running. Use execution.refresh() to check its current status.",
+                        message="Your evaluation job is still running. Call .refresh() to check its current status.",
                     )
                 
                 time.sleep(poll)
@@ -1182,7 +1182,7 @@ class EvaluationPipelineExecution(BaseModel):
                             raise TimeoutExceededError(
                                 resource_type="EvaluationJob",
                                 status=current_status,
-                                message="Your evaluation job is still running. Use execution.refresh() to check its current status.",
+                                message="Your evaluation job is still running. Call .refresh() to check its current status.",
                             )
                         
                         time.sleep(poll)
@@ -1212,7 +1212,7 @@ class EvaluationPipelineExecution(BaseModel):
                         raise TimeoutExceededError(
                             resource_type="EvaluationJob",
                             status=current_status,
-                            message="Your evaluation job is still running. Use execution.refresh() to check its current status.",
+                            message="Your evaluation job is still running. Call .refresh() to check its current status.",
                         )
                     
                     time.sleep(poll)
