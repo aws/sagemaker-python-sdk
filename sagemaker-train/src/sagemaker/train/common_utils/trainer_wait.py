@@ -182,35 +182,17 @@ def get_mlflow_url(training_job) -> str:
     if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
         raise ValueError("Training job does not have MLflow configured")
     
-    import os
-    from mlflow.tracking import MlflowClient
-    import mlflow
-    from sagemaker.core.utils.utils import SageMakerClient
+    from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
 
     mlflow_arn = training_job.mlflow_config.mlflow_resource_arn
     exp_name = training_job.mlflow_config.mlflow_experiment_name
+    if _is_unassigned_attribute(exp_name):
+        exp_name = None
 
-    # Get presigned base URL
-    sm_client = SageMakerClient().sagemaker_client
-    response = sm_client.create_presigned_mlflow_app_url(Arn=mlflow_arn)
-    base_url = response.get('AuthorizedUrl')
-    
-    # Try to get experiment ID and append to URL
-    try:
-        os.environ['MLFLOW_TRACKING_URI'] = mlflow_arn
-        mlflow.set_tracking_uri(mlflow_arn)
-        
-        mlflow_client = MlflowClient(tracking_uri=mlflow_arn)
-        experiment = mlflow_client.get_experiment_by_name(exp_name)
-        
-        if experiment:
-            # Format: base_url#/experiments/{id}
-            # The base_url already has /auth?authToken=...
-            return f"{base_url}#/experiments/{experiment.experiment_id}"
-    except Exception:
-        pass
-    
-    return base_url
+    url = get_presigned_mlflow_experiment_url(mlflow_arn, exp_name)
+    if url is None:
+        raise ValueError("Failed to generate presigned MLflow URL")
+    return url
 
 
 

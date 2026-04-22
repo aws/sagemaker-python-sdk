@@ -25,6 +25,7 @@ from sagemaker.train.common_utils.trainer_wait import (
     _is_unassigned_attribute,
     _calculate_training_progress,
     _calculate_transition_duration,
+    get_mlflow_url,
     wait
 )
 
@@ -489,3 +490,66 @@ class TestWaitFunction:
 
         # Should complete successfully despite metrics exception
         training_job.refresh.assert_called()
+
+
+class TestGetMlflowUrl:
+    """Test cases for get_mlflow_url function."""
+
+    @patch("sagemaker.train.common_utils.mlflow_url_utils.get_presigned_mlflow_experiment_url")
+    def test_delegates_to_shared_helper(self, mock_helper):
+        """Test that get_mlflow_url extracts config and delegates to shared helper."""
+        mock_helper.return_value = "https://mlflow.example.com/auth?token=abc#/experiments/42"
+
+        training_job = MagicMock()
+        training_job.mlflow_config.mlflow_resource_arn = "arn:aws:sagemaker:us-west-2:123:mlflow-app/test"
+        training_job.mlflow_config.mlflow_experiment_name = "my-experiment"
+
+        result = get_mlflow_url(training_job)
+
+        mock_helper.assert_called_once_with(
+            "arn:aws:sagemaker:us-west-2:123:mlflow-app/test",
+            "my-experiment",
+        )
+        assert result == "https://mlflow.example.com/auth?token=abc#/experiments/42"
+
+    @patch("sagemaker.train.common_utils.trainer_wait.TrainingJob")
+    @patch("sagemaker.train.common_utils.mlflow_url_utils.get_presigned_mlflow_experiment_url")
+    def test_accepts_job_name_string(self, mock_helper, mock_tj_class):
+        """Test that a string job name is resolved via TrainingJob.get()."""
+        mock_helper.return_value = "https://mlflow.example.com/auth"
+        mock_tj = MagicMock()
+        mock_tj.mlflow_config.mlflow_resource_arn = "arn:aws:sagemaker:us-west-2:123:mlflow-app/test"
+        mock_tj.mlflow_config.mlflow_experiment_name = None
+        mock_tj_class.get.return_value = mock_tj
+
+        result = get_mlflow_url("my-training-job")
+
+        mock_tj_class.get.assert_called_once_with(training_job_name="my-training-job")
+        assert result == "https://mlflow.example.com/auth"
+
+    def test_raises_when_no_mlflow_config(self):
+        """Test raises ValueError when training job has no mlflow config."""
+        training_job = MagicMock()
+        training_job.mlflow_config = MockUnassignedAttribute()
+
+        with pytest.raises(ValueError, match="does not have MLflow configured"):
+            get_mlflow_url(training_job)
+
+    def test_raises_when_mlflow_config_missing(self):
+        """Test raises ValueError when training job lacks mlflow_config attribute."""
+        training_job = MagicMock(spec=[])  # no attributes
+
+        with pytest.raises(ValueError, match="does not have MLflow configured"):
+            get_mlflow_url(training_job)
+
+    @patch("sagemaker.train.common_utils.mlflow_url_utils.get_presigned_mlflow_experiment_url")
+    def test_raises_when_helper_returns_none(self, mock_helper):
+        """Test raises ValueError when presigned URL generation fails."""
+        mock_helper.return_value = None
+
+        training_job = MagicMock()
+        training_job.mlflow_config.mlflow_resource_arn = "arn:aws:sagemaker:us-west-2:123:mlflow-app/test"
+        training_job.mlflow_config.mlflow_experiment_name = "exp"
+
+        with pytest.raises(ValueError, match="Failed to generate presigned MLflow URL"):
+            get_mlflow_url(training_job)

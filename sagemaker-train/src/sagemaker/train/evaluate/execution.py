@@ -920,6 +920,28 @@ class EvaluationPipelineExecution(BaseModel):
             # Create console with Jupyter support
             console = Console(force_jupyter=True)
             
+            # MLflow link caching (presigned URLs expire after 5 min)
+            mlflow_link_cache = {'url': None, 'timestamp': 0}
+            
+            def get_cached_mlflow_url():
+                """Get cached MLflow URL, regenerating every 4 minutes."""
+                from sagemaker.train.common_utils.trainer_wait import _is_unassigned_attribute
+                from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
+
+                current_time = time.time()
+                if mlflow_link_cache['url'] is None or (current_time - mlflow_link_cache['timestamp']) > 240:
+                    pe = self._pipeline_execution
+                    mlflow_cfg = getattr(pe, 'm_lflow_config', None) if pe else None
+                    if mlflow_cfg and not _is_unassigned_attribute(mlflow_cfg):
+                        arn = getattr(mlflow_cfg, 'mlflow_resource_arn', None)
+                        if arn and not _is_unassigned_attribute(arn):
+                            exp_name = getattr(mlflow_cfg, 'mlflow_experiment_name', None)
+                            if exp_name and _is_unassigned_attribute(exp_name):
+                                exp_name = None
+                            mlflow_link_cache['url'] = get_presigned_mlflow_experiment_url(arn, exp_name)
+                            mlflow_link_cache['timestamp'] = current_time
+                return mlflow_link_cache['url']
+            
             while True:
                 clear_output(wait=True)
                 self.refresh()
@@ -960,6 +982,10 @@ class EvaluationPipelineExecution(BaseModel):
                             links.append(f"[bright_blue underline][link={pipeline_url}]🔗 Pipeline Execution (Studio)[/link][/bright_blue underline]")
                 except Exception:
                     pass
+                # Add MLflow experiment link if available
+                cached_mlflow_url = get_cached_mlflow_url()
+                if cached_mlflow_url:
+                    links.append(f"[bright_blue underline][link={cached_mlflow_url}]🔗 MLflow Experiment[/link][/bright_blue underline]")
                 if links:
                     header_table.add_row("Links", " | ".join(links))
 
