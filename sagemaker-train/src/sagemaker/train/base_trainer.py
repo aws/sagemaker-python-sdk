@@ -76,6 +76,6 @@ class BaseTrainer(ABC):
         return _is_nova_model(model_name) if model_name else False
 
     @abstractmethod
-    def train(self, input_data_config: List[InputData], wait: bool = True, logs: bool = True):
+    def train(self, input_data_config: List[InputData], wait: bool = True, logs: bool = True, wait_timeout: Optional[int] = None):
         """Common training method that calls the specific implementation."""
         pass
