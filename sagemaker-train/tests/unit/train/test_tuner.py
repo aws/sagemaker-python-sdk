@@ -54,8 +54,9 @@ def _create_mock_model_trainer(with_internal_channels=False, with_spot_training=
     trainer.training_image = "test-image:latest"
     trainer.training_input_mode = "File"
     trainer.role = "arn:aws:iam::123456789012:role/SageMakerRole"
-    trainer.output_data_config = MagicMock()
-    trainer.output_data_config.s3_output_path = "s3://bucket/output"
+    from sagemaker.core.shapes import OutputDataConfig
+
+    trainer.output_data_config = OutputDataConfig(s3_output_path="s3://bucket/output")
     trainer.compute = MagicMock()
     trainer.compute.instance_type = "ml.m5.xlarge"
     trainer.compute.instance_count = 1
@@ -665,4 +666,41 @@ class TestHyperparameterTunerStaticMethods:
 
         assert definition.environment == {}, (
             "Empty dict environment should be passed through as-is"
+        )
+
+    def test_build_training_job_definition_passes_through_output_data_config(self):
+        """Test that _build_training_job_definition passes through the full OutputDataConfig.
+
+        This verifies that fields like kms_key_id and compression_type from
+        ModelTrainer.output_data_config are preserved in the tuning job definition,
+        rather than only copying s3_output_path.
+        """
+        from sagemaker.core.shapes import OutputDataConfig
+
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.output_data_config = OutputDataConfig(
+            s3_output_path="s3://bucket/output",
+            kms_key_id="arn:aws:kms:us-west-2:123456789012:key/abc123",
+            compression_type="NONE",
+        )
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert definition.output_data_config is mock_trainer.output_data_config, (
+            "output_data_config should be the same object from ModelTrainer"
+        )
+        assert definition.output_data_config.kms_key_id == (
+            "arn:aws:kms:us-west-2:123456789012:key/abc123"
+        ), "kms_key_id should be preserved"
+        assert definition.output_data_config.compression_type == "NONE", (
+            "compression_type should be preserved"
+        )
+        assert definition.output_data_config.s3_output_path == "s3://bucket/output", (
+            "s3_output_path should be preserved"
         )

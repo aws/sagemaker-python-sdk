@@ -1472,13 +1472,10 @@ class HyperparameterTuner(object):
                 if not any(c.channel_name == channel.channel_name for c in input_data_config):
                     input_data_config.append(channel)
 
-        # Build output data config
-        output_config = OutputDataConfig(
-            s3_output_path=(
-                model_trainer.output_data_config.s3_output_path
-                if model_trainer.output_data_config
-                else None
-            )
+        # Pass through the full OutputDataConfig from ModelTrainer so that
+        # kms_key_id, compression_type, and any other fields are preserved.
+        output_config = model_trainer.output_data_config or OutputDataConfig(
+            s3_output_path=None
         )
 
         # Build resource config
