@@ -24,7 +24,7 @@ from sagemaker.train.common_utils.finetune_utils import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train.constants import HUB_NAME
+from sagemaker.train.constants import get_sagemaker_hub_name
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -245,7 +245,7 @@ class SFTTrainer(BaseTrainer):
         )
 
         vpc_config = self.networking if self.networking else None
-        tags = _get_studio_tags(self._model_name, HUB_NAME)
+        tags = _get_studio_tags(self._model_name, get_sagemaker_hub_name())
 
         # Build TrainingJob.create() arguments
         create_args = {

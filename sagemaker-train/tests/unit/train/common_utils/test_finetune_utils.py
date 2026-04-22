@@ -488,11 +488,12 @@ class TestFinetuneUtils:
         """Test Nova model validation passes for valid region"""
         # Should not raise any exception
         _validate_model_region_availability("nova-textgeneration-lite-v2", "us-east-1")
+        _validate_model_region_availability("nova-textgeneration-lite-v2", "us-west-2")
 
     def test__validate_model_region_availability_nova_invalid_region(self):
         """Test Nova model validation fails for invalid region"""
-        with pytest.raises(ValueError, match="Region 'us-west-2' does not support model customization"):
-            _validate_model_region_availability("nova-textgeneration-lite-v2", "us-west-2")
+        with pytest.raises(ValueError, match="Region 'eu-west-1' does not support model customization"):
+            _validate_model_region_availability("nova-textgeneration-lite-v2", "eu-west-1")
 
     def test__validate_model_region_availability_open_weights_valid_region(self):
         """Test open weights model validation passes for valid region"""
