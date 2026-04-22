@@ -22,6 +22,11 @@ TERMINAL_STATES = set(["Completed", "Stopped", "Deleted", "Failed", "Succeeded",
 
 RESOURCE_WITH_LOGS = set(["TrainingJob", "ProcessingJob", "TransformJob"])
 
+DEFAULT_TIMEOUT_MESSAGE = "Increase the timeout and try again."
+RESOURCE_TIMEOUT_MESSAGES = {
+    "TrainingJob": "Your training job is still running. Call .refresh() to check its current status.",
+}
+
 CONFIGURABLE_ATTRIBUTE_SUBSTRINGS = [
     "kms",
     "s3",

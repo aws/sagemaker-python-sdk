@@ -332,7 +332,7 @@ def wait(
                 return
 
             if timeout is not None and time.time() - start_time >= timeout:
-                raise TimeoutExceededError(resource_type="{resource_name}", status=current_status)
+                raise TimeoutExceededError(resource_type="{resource_name}", status=current_status, message="{timeout_message}")
             time.sleep(poll)
 '''
 
