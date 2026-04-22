@@ -35883,7 +35883,11 @@ class TrainingJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrainingJob", status=current_status)
+                    raise TimeoutExceededError(
+                        resource_type="TrainingJob",
+                        status=current_status,
+                        message="Your training job is still running. Call .refresh() to check its current status.",
+                    )
                 time.sleep(poll)
 
     @Base.add_validate_call
