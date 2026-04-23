@@ -17,6 +17,7 @@ import pytest
 
 from sagemaker.core.jumpstart import JumpStartConfig
 from sagemaker.train import ModelTrainer
+from sagemaker.train.configs import Compute
 
 
 @pytest.mark.parametrize(
@@ -27,6 +28,9 @@ from sagemaker.train import ModelTrainer
             "hyperparameters": {
                 "epochs": 1,  # Set to 1 for testing purposes
             },
+            # Override default instance type; the model's default
+            # (ml.p3.2xlarge) is deprecated.
+            "compute": Compute(instance_type="ml.g5.xlarge"),
         },
         {"model_id": "xgboost-classification-model"},
         {"model_id": "catboost-regression-model"},
@@ -47,5 +51,6 @@ def test_jumpstart_train(test_case):
         jumpstart,
         base_job_name=test_case["model_id"],
         hyperparameters=test_case.get("hyperparameters", {}),
+        compute=test_case.get("compute"),
     )
     model_trainer.train()
