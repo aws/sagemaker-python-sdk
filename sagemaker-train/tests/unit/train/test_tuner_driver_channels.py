@@ -38,6 +38,7 @@ from sagemaker.core.shapes import (
     DataSource,
     S3DataSource,
     VpcConfig,
+    OutputDataConfig,
 )
 from sagemaker.core.utils.utils import Unassigned
 
@@ -76,8 +77,7 @@ def _mock_model_trainer(**overrides):
     trainer.training_image = "test-image:latest"
     trainer.training_input_mode = "File"
     trainer.role = "arn:aws:iam::123456789012:role/SageMakerRole"
-    trainer.output_data_config = MagicMock()
-    trainer.output_data_config.s3_output_path = "s3://bucket/output"
+    trainer.output_data_config = OutputDataConfig(s3_output_path="s3://bucket/output")
     trainer.compute = MagicMock()
     trainer.compute.instance_type = "ml.m5.xlarge"
     trainer.compute.instance_count = 1
