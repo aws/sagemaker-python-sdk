@@ -79,16 +79,17 @@ class DeleteFailedStatusError(WaiterError):
 class TimeoutExceededError(WaiterError):
     """Raised when a specified timeout is exceeded"""
 
-    fmt = "Timeout exceeded while waiting for {resource_type}. Final Resource State: {status}. Increase the timeout and try again."
+    fmt = "Timeout exceeded while waiting for {resource_type}. Final Resource State: {status}. {message}"
 
-    def __init__(self, resource_type="(Unkown)", status="(Unkown)", reason="(Unkown)"):
+    def __init__(self, resource_type="(Unkown)", status="(Unkown)", reason="(Unkown)", message="Increase the timeout and try again."):
         """Initialize a TimeoutExceededError exception.
         Args:
             resource_type (str): The type of resource being waited on.
             status (str): The final status of the resource.
             reason (str): The reason the resource entered a failed state.
+            message (str): Additional context or guidance for the user.
         """
-        super().__init__(resource_type=resource_type, status=status, reason=reason)
+        super().__init__(resource_type=resource_type, status=status, reason=reason, message=message)
 
 
 ### Intelligent Defaults Errors

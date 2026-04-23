@@ -1154,8 +1154,9 @@ class EvaluationPipelineExecution(BaseModel):
                 if timeout is not None and time.time() - start_time >= timeout:
                     from sagemaker.core.utils.exceptions import TimeoutExceededError
                     raise TimeoutExceededError(
-                        resource_type="PipelineExecution", 
-                        status=current_status
+                        resource_type="EvaluationJob", 
+                        status=current_status,
+                        message="Your evaluation job is still running. Call .refresh() to check its current status.",
                     )
                 
                 time.sleep(poll)
@@ -1205,8 +1206,9 @@ class EvaluationPipelineExecution(BaseModel):
                         if timeout is not None and time.time() - start_time >= timeout:
                             from sagemaker.core.utils.exceptions import TimeoutExceededError
                             raise TimeoutExceededError(
-                                resource_type="PipelineExecution",
-                                status=current_status
+                                resource_type="EvaluationJob",
+                                status=current_status,
+                                message="Your evaluation job is still running. Call .refresh() to check its current status.",
                             )
                         
                         time.sleep(poll)
@@ -1234,8 +1236,9 @@ class EvaluationPipelineExecution(BaseModel):
                     if timeout is not None and elapsed >= timeout:
                         from sagemaker.core.utils.exceptions import TimeoutExceededError
                         raise TimeoutExceededError(
-                            resource_type="PipelineExecution",
-                            status=current_status
+                            resource_type="EvaluationJob",
+                            status=current_status,
+                            message="Your evaluation job is still running. Call .refresh() to check its current status.",
                         )
                     
                     time.sleep(poll)

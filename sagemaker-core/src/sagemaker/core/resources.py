@@ -972,7 +972,7 @@ class Algorithm(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Algorithm", status=current_status)
+                    raise TimeoutExceededError(resource_type="Algorithm", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -1026,7 +1026,7 @@ class Algorithm(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Algorithm", status=current_status)
+                        raise TimeoutExceededError(resource_type="Algorithm", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -1499,7 +1499,7 @@ class App(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="App", status=current_status)
+                    raise TimeoutExceededError(resource_type="App", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -1557,7 +1557,7 @@ class App(Base):
                         return
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="App", status=current_status)
+                        raise TimeoutExceededError(resource_type="App", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -3084,7 +3084,7 @@ class AutoMLJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="AutoMLJob", status=current_status)
+                    raise TimeoutExceededError(resource_type="AutoMLJob", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -3580,7 +3580,7 @@ class AutoMLJobV2(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="AutoMLJobV2", status=current_status)
+                    raise TimeoutExceededError(resource_type="AutoMLJobV2", status=current_status)
                 time.sleep(poll)
 
 
@@ -3838,7 +3838,7 @@ class AutoMLTask(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="AutoMLTask", status=current_status)
+                    raise TimeoutExceededError(resource_type="AutoMLTask", status=current_status)
                 time.sleep(poll)
 
 
@@ -4211,7 +4211,7 @@ class CapacitySchedule(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="CapacitySchedule", status=current_status
+                        resource_type="CapacitySchedule", status=current_status
                     )
                 time.sleep(poll)
 
@@ -4716,7 +4716,7 @@ class Cluster(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Cluster", status=current_status)
+                    raise TimeoutExceededError(resource_type="Cluster", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -4770,7 +4770,7 @@ class Cluster(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Cluster", status=current_status)
+                        raise TimeoutExceededError(resource_type="Cluster", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -5482,7 +5482,7 @@ class ClusterSchedulerConfig(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="ClusterSchedulerConfig", status=current_status
+                        resource_type="ClusterSchedulerConfig", status=current_status
                     )
                 time.sleep(poll)
 
@@ -5542,7 +5542,7 @@ class ClusterSchedulerConfig(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ClusterSchedulerConfig", status=current_status
+                            resource_type="ClusterSchedulerConfig", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -6339,7 +6339,7 @@ class CompilationJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="CompilationJob", status=current_status)
+                    raise TimeoutExceededError(resource_type="CompilationJob", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -6811,7 +6811,7 @@ class ComputeQuota(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ComputeQuota", status=current_status)
+                    raise TimeoutExceededError(resource_type="ComputeQuota", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -6870,7 +6870,7 @@ class ComputeQuota(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ComputeQuota", status=current_status
+                            resource_type="ComputeQuota", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -9529,7 +9529,7 @@ class Domain(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Domain", status=current_status)
+                    raise TimeoutExceededError(resource_type="Domain", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -9591,7 +9591,7 @@ class Domain(Base):
                         )
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Domain", status=current_status)
+                        raise TimeoutExceededError(resource_type="Domain", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -10517,7 +10517,7 @@ class EdgePackagingJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="EdgePackagingJob", status=current_status
+                        resource_type="EdgePackagingJob", status=current_status
                     )
                 time.sleep(poll)
 
@@ -11023,7 +11023,7 @@ class Endpoint(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Endpoint", status=current_status)
+                    raise TimeoutExceededError(resource_type="Endpoint", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -11077,7 +11077,7 @@ class Endpoint(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Endpoint", status=current_status)
+                        raise TimeoutExceededError(resource_type="Endpoint", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -12437,7 +12437,7 @@ class EvaluationJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="EvaluationJob", status=current_status)
+                    raise TimeoutExceededError(resource_type="EvaluationJob", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -13387,7 +13387,7 @@ class FeatureGroup(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="FeatureGroup", status=current_status)
+                    raise TimeoutExceededError(resource_type="FeatureGroup", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -13442,7 +13442,7 @@ class FeatureGroup(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="FeatureGroup", status=current_status
+                            resource_type="FeatureGroup", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -14442,7 +14442,7 @@ class FlowDefinition(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="FlowDefinition", status=current_status)
+                    raise TimeoutExceededError(resource_type="FlowDefinition", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -14497,7 +14497,7 @@ class FlowDefinition(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="FlowDefinition", status=current_status
+                            resource_type="FlowDefinition", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -14849,7 +14849,7 @@ class GroundTruthJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="GroundTruthJob", status=current_status)
+                    raise TimeoutExceededError(resource_type="GroundTruthJob", status=current_status)
                 time.sleep(poll)
 
 
@@ -15096,7 +15096,7 @@ class GroundTruthProject(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="GroundTruthProject", status=current_status
+                        resource_type="GroundTruthProject", status=current_status
                     )
                 time.sleep(poll)
 
@@ -15703,7 +15703,7 @@ class Hub(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Hub", status=current_status)
+                    raise TimeoutExceededError(resource_type="Hub", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -15757,7 +15757,7 @@ class Hub(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Hub", status=current_status)
+                        raise TimeoutExceededError(resource_type="Hub", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -16148,7 +16148,7 @@ class HubContent(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="HubContent", status=current_status)
+                    raise TimeoutExceededError(resource_type="HubContent", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -16940,7 +16940,7 @@ class HumanTaskUi(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="HumanTaskUi", status=current_status)
+                    raise TimeoutExceededError(resource_type="HumanTaskUi", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -16995,7 +16995,7 @@ class HumanTaskUi(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="HumanTaskUi", status=current_status
+                            resource_type="HumanTaskUi", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -17453,7 +17453,7 @@ class HyperParameterTuningJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="HyperParameterTuningJob", status=current_status
+                        resource_type="HyperParameterTuningJob", status=current_status
                     )
                 time.sleep(poll)
 
@@ -17509,7 +17509,7 @@ class HyperParameterTuningJob(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="HyperParameterTuningJob", status=current_status
+                            resource_type="HyperParameterTuningJob", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -18200,7 +18200,7 @@ class Image(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Image", status=current_status)
+                    raise TimeoutExceededError(resource_type="Image", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -18262,7 +18262,7 @@ class Image(Base):
                         )
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Image", status=current_status)
+                        raise TimeoutExceededError(resource_type="Image", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -18816,7 +18816,7 @@ class ImageVersion(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ImageVersion", status=current_status)
+                    raise TimeoutExceededError(resource_type="ImageVersion", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -18879,7 +18879,7 @@ class ImageVersion(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ImageVersion", status=current_status
+                            resource_type="ImageVersion", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -19242,7 +19242,7 @@ class InferenceComponent(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="InferenceComponent", status=current_status
+                        resource_type="InferenceComponent", status=current_status
                     )
                 time.sleep(poll)
 
@@ -19298,7 +19298,7 @@ class InferenceComponent(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="InferenceComponent", status=current_status
+                            resource_type="InferenceComponent", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -19913,7 +19913,7 @@ class InferenceExperiment(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="InferenceExperiment", status=current_status
+                        resource_type="InferenceExperiment", status=current_status
                     )
                 time.sleep(poll)
 
@@ -20373,7 +20373,7 @@ class InferenceRecommendationsJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="InferenceRecommendationsJob", status=current_status
+                        resource_type="InferenceRecommendationsJob", status=current_status
                     )
                 time.sleep(poll)
 
@@ -20433,7 +20433,7 @@ class InferenceRecommendationsJob(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="InferenceRecommendationsJob", status=current_status
+                            resource_type="InferenceRecommendationsJob", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -20979,7 +20979,7 @@ class LabelingJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="LabelingJob", status=current_status)
+                    raise TimeoutExceededError(resource_type="LabelingJob", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -21882,7 +21882,7 @@ class MlflowApp(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="MlflowApp", status=current_status)
+                    raise TimeoutExceededError(resource_type="MlflowApp", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -21940,7 +21940,7 @@ class MlflowApp(Base):
                         return
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="MlflowApp", status=current_status)
+                        raise TimeoutExceededError(resource_type="MlflowApp", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -22508,7 +22508,7 @@ class MlflowTrackingServer(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="MlflowTrackingServer", status=current_status
+                        resource_type="MlflowTrackingServer", status=current_status
                     )
                 time.sleep(poll)
 
@@ -22564,7 +22564,7 @@ class MlflowTrackingServer(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="MlflowTrackingServer", status=current_status
+                            resource_type="MlflowTrackingServer", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -23759,7 +23759,7 @@ class ModelCard(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ModelCard", status=current_status)
+                    raise TimeoutExceededError(resource_type="ModelCard", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -24177,7 +24177,7 @@ class ModelCardExportJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="ModelCardExportJob", status=current_status
+                        resource_type="ModelCardExportJob", status=current_status
                     )
                 time.sleep(poll)
 
@@ -25290,7 +25290,7 @@ class ModelPackage(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ModelPackage", status=current_status)
+                    raise TimeoutExceededError(resource_type="ModelPackage", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -25345,7 +25345,7 @@ class ModelPackage(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ModelPackage", status=current_status
+                            resource_type="ModelPackage", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -25759,7 +25759,7 @@ class ModelPackageGroup(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="ModelPackageGroup", status=current_status
+                        resource_type="ModelPackageGroup", status=current_status
                     )
                 time.sleep(poll)
 
@@ -25815,7 +25815,7 @@ class ModelPackageGroup(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ModelPackageGroup", status=current_status
+                            resource_type="ModelPackageGroup", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -26817,7 +26817,7 @@ class MonitoringExecution(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="MonitoringExecution", status=current_status
+                        resource_type="MonitoringExecution", status=current_status
                     )
                 time.sleep(poll)
 
@@ -27373,7 +27373,7 @@ class MonitoringSchedule(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="MonitoringSchedule", status=current_status
+                        resource_type="MonitoringSchedule", status=current_status
                     )
                 time.sleep(poll)
 
@@ -27996,7 +27996,7 @@ class NotebookInstance(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="NotebookInstance", status=current_status
+                        resource_type="NotebookInstance", status=current_status
                     )
                 time.sleep(poll)
 
@@ -28052,7 +28052,7 @@ class NotebookInstance(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="NotebookInstance", status=current_status
+                            resource_type="NotebookInstance", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -28879,7 +28879,7 @@ class OptimizationJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="OptimizationJob", status=current_status
+                        resource_type="OptimizationJob", status=current_status
                     )
                 time.sleep(poll)
 
@@ -29458,7 +29458,7 @@ class PartnerApp(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="PartnerApp", status=current_status)
+                    raise TimeoutExceededError(resource_type="PartnerApp", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -29516,7 +29516,7 @@ class PartnerApp(Base):
                         return
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="PartnerApp", status=current_status)
+                        raise TimeoutExceededError(resource_type="PartnerApp", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -29954,7 +29954,7 @@ class PersistentVolume(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="PersistentVolume", status=current_status
+                        resource_type="PersistentVolume", status=current_status
                     )
                 time.sleep(poll)
 
@@ -30010,7 +30010,7 @@ class PersistentVolume(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="PersistentVolume", status=current_status
+                            resource_type="PersistentVolume", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -30411,7 +30411,7 @@ class Pipeline(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Pipeline", status=current_status)
+                    raise TimeoutExceededError(resource_type="Pipeline", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -30465,7 +30465,7 @@ class Pipeline(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Pipeline", status=current_status)
+                        raise TimeoutExceededError(resource_type="Pipeline", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -30877,7 +30877,7 @@ class PipelineExecution(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="PipelineExecution", status=current_status
+                        resource_type="PipelineExecution", status=current_status
                     )
                 time.sleep(poll)
 
@@ -32164,7 +32164,7 @@ class ProcessingJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ProcessingJob", status=current_status)
+                    raise TimeoutExceededError(resource_type="ProcessingJob", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -32913,7 +32913,7 @@ class Project(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Project", status=current_status)
+                    raise TimeoutExceededError(resource_type="Project", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -33382,7 +33382,7 @@ class QuotaAllocation(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="QuotaAllocation", status=current_status
+                        resource_type="QuotaAllocation", status=current_status
                     )
                 time.sleep(poll)
 
@@ -33442,7 +33442,7 @@ class QuotaAllocation(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="QuotaAllocation", status=current_status
+                            resource_type="QuotaAllocation", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -34463,7 +34463,7 @@ class Space(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Space", status=current_status)
+                    raise TimeoutExceededError(resource_type="Space", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -34525,7 +34525,7 @@ class Space(Base):
                         )
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Space", status=current_status)
+                        raise TimeoutExceededError(resource_type="Space", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -35883,7 +35883,11 @@ class TrainingJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrainingJob", status=current_status)
+                    raise TimeoutExceededError(
+                        resource_type="TrainingJob",
+                        status=current_status,
+                        message="Your training job is still running. Call .refresh() to check its current status.",
+                    )
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -35938,7 +35942,7 @@ class TrainingJob(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="TrainingJob", status=current_status
+                            resource_type="TrainingJob", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -36724,7 +36728,7 @@ class TrainingPlan(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrainingPlan", status=current_status)
+                    raise TimeoutExceededError(resource_type="TrainingPlan", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -37304,7 +37308,7 @@ class TransformJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="TransformJob", status=current_status)
+                    raise TimeoutExceededError(resource_type="TransformJob", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -38377,7 +38381,7 @@ class TrialComponent(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrialComponent", status=current_status)
+                    raise TimeoutExceededError(resource_type="TrialComponent", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -38432,7 +38436,7 @@ class TrialComponent(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="TrialComponent", status=current_status
+                            resource_type="TrialComponent", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -39447,7 +39451,7 @@ class UserProfile(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="UserProfile", status=current_status)
+                    raise TimeoutExceededError(resource_type="UserProfile", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -39510,7 +39514,7 @@ class UserProfile(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="UserProfile", status=current_status
+                            resource_type="UserProfile", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -39937,7 +39941,7 @@ class Workforce(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Workforce", status=current_status)
+                    raise TimeoutExceededError(resource_type="Workforce", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -39991,7 +39995,7 @@ class Workforce(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Workforce", status=current_status)
+                        raise TimeoutExceededError(resource_type="Workforce", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
