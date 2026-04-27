@@ -34,35 +34,66 @@ ENDPOINT_NAME_PREFIX = "jumpstart-optimize-test-endpoint"
 AWS_ACCOUNT_ID = "593793038179"
 AWS_REGION = "us-east-2"
 
-
-@pytest.mark.skip(reason="Test takes too long to run")
+# @pytest.mark.skip(reason="Test takes too long to run")
 def test_optimize_build_deploy_invoke_cleanup():
     """Integration test for Optimize workflow"""
     logger.info("Starting Optimize integration test...")
-    
+    test_started_at = time.perf_counter()
+
     optimized_model = None
     core_endpoint = None
-    
+    build_deploy_elapsed = None
+    predict_elapsed = None
+
     try:
         # Build and deploy
         logger.info("Optimizing and deploying model...")
+        phase_started = time.perf_counter()
         optimized_model, core_endpoint = build_and_deploy()
-        
+        build_deploy_elapsed = time.perf_counter() - phase_started
+        logger.info(
+            "[timing] build_and_deploy completed in %.2fs",
+            build_deploy_elapsed,
+        )
+
         # Make prediction
         logger.info("Making prediction...")
+        phase_started = time.perf_counter()
         make_prediction(core_endpoint)
-        
+        predict_elapsed = time.perf_counter() - phase_started
+        logger.info(
+            "[timing] make_prediction completed in %.2fs",
+            predict_elapsed,
+        )
+
         # Test passed successfully
         logger.info("Optimize integration test completed successfully")
-        
+
     except Exception as e:
         logger.error(f"Optimize integration test failed: {str(e)}")
         raise
     finally:
         # Cleanup resources
+        cleanup_elapsed = None
         if optimized_model and core_endpoint:
             logger.info("Cleaning up resources...")
+            phase_started = time.perf_counter()
             cleanup_resources(optimized_model, core_endpoint)
+            cleanup_elapsed = time.perf_counter() - phase_started
+            logger.info(
+                "[timing] cleanup_resources completed in %.2fs",
+                cleanup_elapsed,
+            )
+
+        total_elapsed = time.perf_counter() - test_started_at
+        logger.info(
+            "[timing] test_optimize_build_deploy_invoke_cleanup total=%.2fs "
+            "(build_and_deploy=%s, make_prediction=%s, cleanup=%s)",
+            total_elapsed,
+            f"{build_deploy_elapsed:.2f}s" if build_deploy_elapsed is not None else "skipped",
+            f"{predict_elapsed:.2f}s" if predict_elapsed is not None else "skipped",
+            f"{cleanup_elapsed:.2f}s" if cleanup_elapsed is not None else "skipped",
+        )
 
 
 def create_schema_builder():
@@ -91,6 +122,7 @@ def build_and_deploy():
     # Optimize the model
     logger.info("Optimizing JumpStart model...")
     default_bucket = sagemaker_session.default_bucket()
+    optimize_started = time.perf_counter()
     optimized_model = model_builder.optimize(
         model_name=f"{MODEL_NAME_PREFIX}-{unique_id}",
         instance_type="ml.g5.2xlarge",
@@ -100,17 +132,26 @@ def build_and_deploy():
         job_name=f"js-optimize-{int(time.time())}",
         image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.31.0-lmi13.0.0-cu124"
     )
-    logger.info(f"Model Successfully Optimized: {optimized_model.model_name}")
-    
+    logger.info(
+        "[timing] model_builder.optimize completed in %.2fs (model=%s)",
+        time.perf_counter() - optimize_started,
+        optimized_model.model_name,
+    )
+
     # Deploy the optimized model
     logger.info("Deploying optimized model to endpoint...")
+    deploy_started = time.perf_counter()
     core_endpoint = model_builder.deploy(
         endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}",
         initial_instance_count=1,
         instance_type="ml.g5.2xlarge"
     )
-    logger.info(f"Endpoint Successfully Created: {core_endpoint.endpoint_name}")
-    
+    logger.info(
+        "[timing] model_builder.deploy completed in %.2fs (endpoint=%s)",
+        time.perf_counter() - deploy_started,
+        core_endpoint.endpoint_name,
+    )
+
     return optimized_model, core_endpoint
 
 
