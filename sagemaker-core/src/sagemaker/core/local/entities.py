@@ -509,13 +509,27 @@ class _LocalTransformJob(object):
 
         working_dir = self._get_working_directory()
         dataset_dir = data_source.get_root_dir()
+        working_dir_real = os.path.realpath(working_dir)
 
         for fn in data_source.get_file_list():
 
             relative_path = os.path.dirname(os.path.relpath(fn, dataset_dir))
             filename = os.path.basename(fn)
-            copy_directory_structure(working_dir, relative_path)
             destination_path = os.path.join(working_dir, relative_path, filename + ".out")
+
+            # Validate that the destination stays within the working directory
+            destination_path_real = os.path.realpath(destination_path)
+            if (
+                not destination_path_real.startswith(working_dir_real + os.sep)
+                and destination_path_real != working_dir_real
+            ):
+                raise ValueError(
+                    f"Path traversal detected: file '{fn}' resolves to "
+                    f"'{destination_path_real}' which is outside the working "
+                    f"directory '{working_dir_real}'"
+                )
+
+            copy_directory_structure(working_dir, relative_path)
 
             with open(destination_path, "wb") as f:
                 for item in batch_provider.pad(fn, max_payload):
