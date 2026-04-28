@@ -17,8 +17,7 @@ import time
 import functools
 from pydantic import validate_call
 from typing import Dict, List, Literal, Optional, Union, Any
-from boto3.session import Session as Boto3Session
-Session = Boto3Session
+from boto3.session import Session
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
@@ -13847,7 +13846,7 @@ class HubContentPresignedUrls(Base):
         access_config: Optional[PresignedUrlAccessConfig] = Unassigned(),
         max_results: Optional[int] = Unassigned(),
         next_token: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Boto3Session] = None,
+        session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HubContentPresignedUrls"]:
         """
@@ -13953,7 +13952,7 @@ class HubContentReference(Base):
         hub_content_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         min_version: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Boto3Session] = None,
+        session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["HubContentReference"]:
         """
@@ -26057,7 +26056,7 @@ class PartnerAppPresignedUrl(Base):
         arn: StrPipeVar,
         expires_in_seconds: Optional[int] = Unassigned(),
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Boto3Session] = None,
+        session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PartnerAppPresignedUrl"]:
         """
@@ -27365,7 +27364,7 @@ class PresignedDomainUrl(Base):
         expires_in_seconds: Optional[int] = Unassigned(),
         space_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         landing_uri: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Boto3Session] = None,
+        session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedDomainUrl"]:
         """
@@ -27462,7 +27461,7 @@ class PresignedMlflowAppUrl(Base):
         arn: StrPipeVar,
         expires_in_seconds: Optional[int] = Unassigned(),
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Boto3Session] = None,
+        session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedMlflowAppUrl"]:
         """
@@ -27553,7 +27552,7 @@ class PresignedMlflowTrackingServerUrl(Base):
         tracking_server_name: StrPipeVar,
         expires_in_seconds: Optional[int] = Unassigned(),
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Boto3Session] = None,
+        session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedMlflowTrackingServerUrl"]:
         """
@@ -27641,7 +27640,7 @@ class PresignedNotebookInstanceUrl(Base):
         cls,
         notebook_instance_name: Union[StrPipeVar, object],
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Boto3Session] = None,
+        session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedNotebookInstanceUrl"]:
         """
@@ -28798,13 +28797,6 @@ class SagemakerServicecatalogPortfolio(Base):
         logger.debug(f"Response: {response}")
     
         return list(response.values())[0]
-
-
-class Session(Base):
-    """
-    Class representing resource Session
-    
-    """
 
 
 class Space(Base):
@@ -30476,7 +30468,7 @@ class TrainingJob(Base):
         )
         progress.add_task("Waiting for TrainingJob...")
         status = Status("Current status:")
-
+            
         instance_count = 1  # Default
         if not isinstance(self.resource_config, Unassigned):
             if (

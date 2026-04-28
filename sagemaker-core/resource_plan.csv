@@ -70,7 +70,6 @@ ProcessingJob,resource,"['create', 'get', 'get_all']","['delete', 'refresh', 'st
 Project,resource,"['create', 'get', 'get_all']","['delete', 'refresh', 'update', 'wait_for_status']",[],[],"['CreateProject', 'DeleteProject', 'DescribeProject', 'ListProjects', 'UpdateProject']","[{'name': 'ProjectStatus', 'shape_name': 'ProjectStatus'}]","['Pending', 'CreateInProgress', 'CreateCompleted', 'CreateFailed', 'DeleteInProgress', 'DeleteFailed', 'DeleteCompleted', 'UpdateInProgress', 'UpdateCompleted', 'UpdateFailed']"
 ResourceCatalog,resource,['get_all'],[],[],[],['ListResourceCatalogs'],[],[]
 SagemakerServicecatalogPortfolio,resource,[],[],[],[],[],[],[]
-Session,resource,[],['start'],[],[],['StartSession'],[],[]
 Space,resource,"['create', 'get', 'get_all']","['delete', 'refresh', 'update', 'wait_for_delete', 'wait_for_status']",[],[],"['CreateSpace', 'DeleteSpace', 'DescribeSpace', 'ListSpaces', 'UpdateSpace']","[{'name': 'Status', 'shape_name': 'SpaceStatus'}]","['Deleting', 'Failed', 'InService', 'Pending', 'Updating', 'Update_Failed', 'Delete_Failed']"
 StudioLifecycleConfig,resource,"['create', 'get', 'get_all']","['delete', 'refresh']",[],[],"['CreateStudioLifecycleConfig', 'DeleteStudioLifecycleConfig', 'DescribeStudioLifecycleConfig', 'ListStudioLifecycleConfigs']",[],[]
 SubscribedWorkteam,resource,"['get', 'get_all']",['refresh'],[],[],"['DescribeSubscribedWorkteam', 'ListSubscribedWorkteams']",[],[]
