@@ -152,38 +152,38 @@ def cleanup_e2e_endpoints():
     )
 
 
-# @pytest.fixture(scope="module")
-# def cleanup_endpoints():
-#     """Track endpoints to cleanup after tests."""
-#     endpoints_to_cleanup = []
-#     logger.info("[cleanup_endpoints] setup: tracker initialized")
-#     yield endpoints_to_cleanup
+@pytest.fixture(scope="module")
+def cleanup_endpoints():
+    """Track endpoints to cleanup after tests."""
+    endpoints_to_cleanup = []
+    logger.info("[cleanup_endpoints] setup: tracker initialized")
+    yield endpoints_to_cleanup
 
-#     logger.info(
-#         "[cleanup_endpoints] teardown: processing %d tracked endpoint(s)",
-#         len(endpoints_to_cleanup),
-#     )
-#     deleted = 0
-#     failed = 0
-#     for ep_name in endpoints_to_cleanup:
-#         try:
-#             from sagemaker.core.resources import Endpoint
-#             logger.info("[cleanup_endpoints] teardown: deleting %s", ep_name)
-#             endpoint = Endpoint.get(endpoint_name=ep_name)
-#             endpoint.delete()
-#             deleted += 1
-#         except Exception as exc:
-#             failed += 1
-#             logger.warning(
-#                 "[cleanup_endpoints] teardown: failed to delete %s: %s",
-#                 ep_name,
-#                 exc,
-#             )
-#     logger.info(
-#         "[cleanup_endpoints] teardown: complete (deleted=%d, failed=%d)",
-#         deleted,
-#         failed,
-#     )
+    logger.info(
+        "[cleanup_endpoints] teardown: processing %d tracked endpoint(s)",
+        len(endpoints_to_cleanup),
+    )
+    deleted = 0
+    failed = 0
+    for ep_name in endpoints_to_cleanup:
+        try:
+            from sagemaker.core.resources import Endpoint
+            logger.info("[cleanup_endpoints] teardown: deleting %s", ep_name)
+            endpoint = Endpoint.get(endpoint_name=ep_name)
+            # endpoint.delete()
+            deleted += 1
+        except Exception as exc:
+            failed += 1
+            logger.warning(
+                "[cleanup_endpoints] teardown: failed to delete %s: %s",
+                ep_name,
+                exc,
+            )
+    logger.info(
+        "[cleanup_endpoints] teardown: complete (deleted=%d, failed=%d)",
+        deleted,
+        failed,
+    )
 
 
 class TestModelCustomizationFromTrainingJob:
