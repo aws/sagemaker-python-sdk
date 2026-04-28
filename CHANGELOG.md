@@ -1,4 +1,33 @@
 # Changelog
+## v3.9.0 (2026-04-23)
+
+### New Features
+- **Train**: Add `wait_timeout` parameter to `train()` for SFT, DPO, RLAIF, RLVR, and BaseTrainer
+- **Evaluate**: Add MLflow experiment link to eval output
+- **JumpStart**: Allow `SAGEMAKER_HUB_NAME` environment variable to override the `HUB_NAME` constant
+
+### Bug Fixes
+- **HyperparameterTuner**: Pass through full `OutputDataConfig` from `ModelTrainer` so `kms_key_id`, `compression_type`, and other fields are preserved
+- **HyperparameterTuner / ModelTrainer**: Propagate environment variables that were previously dropped
+- **sagemaker-core**: Improve error messages for waiter timeouts
+- **ModelBuilder**: Stop overwriting user-provided `HF_MODEL_ID` for DJL Serving
+- **ModelBuilder**: Keep `/opt/ml/model` writable when using `source_code` with DJL LMI
+- **Evaluate**: Skip `None` hyperparameters in `to_dict` instead of converting them to the string `"None"`
+- **Nova**: Add `us-west-2` to Nova supported regions
+- **DJL LMI**: Update ISO account mappings
+
+## v3.8.0 (2026-04-16)
+
+### New Features
+- **Feature Group Manager**: Feature Group Manager support
+- **Image Upgrades**: Image upgrades
+
+### Bug Fixes
+- **ModelBuilder**: Add MLFlowConfig to Base Model
+- **Docker**: Support for docker compose > v2
+- **HuggingFace**: Improve SDK v3 Hugging Face support
+- **Dependencies**: Remove Pytorch hard dependency
+
 ## v3.7.1 (2026-03-31)
 
 ### Features

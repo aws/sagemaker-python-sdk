@@ -30,6 +30,8 @@ from sagemaker.core.tools.constants import (
     PYTHON_TYPES_TO_BASIC_JSON_TYPES,
     CONFIGURABLE_ATTRIBUTE_SUBSTRINGS,
     RESOURCE_WITH_LOGS,
+    DEFAULT_TIMEOUT_MESSAGE,
+    RESOURCE_TIMEOUT_MESSAGES,
 )
 from sagemaker.core.tools.method import Method, MethodType
 from sagemaker.core.utils.utils import (
@@ -1742,6 +1744,7 @@ class ResourcesCodeGen:
             logs_arg_doc=logs_arg_doc,
             init_wait_logs=init_wait_logs,
             print_wait_logs=print_wait_logs,
+            timeout_message=RESOURCE_TIMEOUT_MESSAGES.get(resource_name, DEFAULT_TIMEOUT_MESSAGE),
         )
         return formatted_method
 

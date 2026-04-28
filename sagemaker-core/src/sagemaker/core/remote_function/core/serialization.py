@@ -16,15 +16,20 @@ from __future__ import absolute_import
 import dataclasses
 import json
 
+import base64
 import io
 
 import sys
+import hmac
 import hashlib
 import pickle
 
-from typing import Any, Callable, Union
+from typing import Any, Callable, Optional, Union
 
 import cloudpickle
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import hashes, serialization as crypto_serialization
 from tblib import pickling_support
 
 from sagemaker.core.remote_function.errors import (
@@ -52,10 +57,14 @@ class _MetaData:
     version: str = "2023-04-24"
     python_version: str = _get_python_version()
     serialization_module: str = "cloudpickle"
+    asymmetric_signature: Optional[str] = None
 
     def to_json(self):
         """Converts metadata to json string."""
-        return json.dumps(dataclasses.asdict(self)).encode()
+        d = dataclasses.asdict(self)
+        if d.get("asymmetric_signature") is None:
+            d.pop("asymmetric_signature", None)
+        return json.dumps(d).encode()
 
     @staticmethod
     def from_json(s):
@@ -70,6 +79,7 @@ class _MetaData:
         metadata.version = obj.get("version")
         metadata.python_version = obj.get("python_version")
         metadata.serialization_module = obj.get("serialization_module")
+        metadata.asymmetric_signature = obj.get("asymmetric_signature", None)
 
         if not sha256_hash:
             raise DeserializationError(
@@ -155,38 +165,48 @@ class CloudpickleSerializer:
 
 # TODO: use dask serializer in case dask distributed is installed in users' environment.
 def serialize_func_to_s3(
-    func: Callable, sagemaker_session: Session, s3_uri: str, s3_kms_key: str = None
+    func: Callable,
+    sagemaker_session: Session,
+    s3_uri: str,
+    private_key: ec.EllipticCurvePrivateKey,
+    s3_kms_key: str = None,
 ):
-    """Serializes function and uploads it to S3.
+    """Serializes function and uploads it to S3 with ECDSA signing.
+
+    This function is always called from the client side (client-to-job path).
 
     Args:
         sagemaker_session (sagemaker.core.helper.session.Session):
             The underlying Boto3 session which AWS service calls are delegated to.
         s3_uri (str): S3 root uri to which resulting serialized artifacts will be uploaded.
+        private_key (ec.EllipticCurvePrivateKey): ECDSA private key for signing the payload.
         s3_kms_key (str): KMS key used to encrypt artifacts uploaded to S3.
         func: function to be serialized and persisted
     Raises:
         SerializationError: when fail to serialize function to bytes.
     """
 
-    _upload_payload_and_metadata_to_s3(
+    _upload_payload_and_metadata_to_s3_signed(
         bytes_to_upload=CloudpickleSerializer.serialize(func),
+        private_key=private_key,
         s3_uri=s3_uri,
         sagemaker_session=sagemaker_session,
         s3_kms_key=s3_kms_key,
     )
 
 
-def deserialize_func_from_s3(sagemaker_session: Session, s3_uri: str) -> Callable:
-    """Downloads from S3 and then deserializes data objects.
+def deserialize_func_from_s3(
+    sagemaker_session: Session, s3_uri: str, public_key_pem: str
+) -> Callable:
+    """Downloads from S3 and then deserializes function with asymmetric signature verification.
 
-    This method downloads the serialized training job outputs to a temporary directory and
-    then deserializes them using dask.
+    This function is always called from the job side (verifying client-uploaded function).
 
     Args:
         sagemaker_session (sagemaker.core.helper.session.Session):
             The underlying sagemaker session which AWS service calls are delegated to.
         s3_uri (str): S3 root uri to which resulting serialized artifacts will be uploaded.
+        public_key_pem (str): PEM-encoded public key for asymmetric signature verification.
     Returns :
         The deserialized function.
     Raises:
@@ -198,34 +218,48 @@ def deserialize_func_from_s3(sagemaker_session: Session, s3_uri: str) -> Callabl
 
     bytes_to_deserialize = _read_bytes_from_s3(f"{s3_uri}/payload.pkl", sagemaker_session)
 
-    _perform_integrity_check(
-        expected_hash_value=metadata.sha256_hash, buffer=bytes_to_deserialize
-    )
+    _verify_asymmetric_signature(metadata, bytes_to_deserialize, public_key_pem)
 
     return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
 
 
 def serialize_obj_to_s3(
-    obj: Any, sagemaker_session: Session, s3_uri: str, s3_kms_key: str = None
+    obj: Any, sagemaker_session: Session, s3_uri: str, signing_key=None, s3_kms_key: str = None
 ):
     """Serializes data object and uploads it to S3.
+
+    Called from both client (args) and job (results) sides. When signing_key is
+    an EllipticCurvePrivateKey (client signing args), uses ECDSA signing. When
+    signing_key is None (job hashing results), uses plain SHA-256 hashing.
 
     Args:
         sagemaker_session (sagemaker.core.helper.session.Session):
             The underlying Boto3 session which AWS service calls are delegated to.
         s3_uri (str): S3 root uri to which resulting serialized artifacts will be uploaded.
         s3_kms_key (str): KMS key used to encrypt artifacts uploaded to S3.
+        signing_key: ECDSA private key (ec.EllipticCurvePrivateKey) for client-side signing,
+            or None for job-side plain SHA-256 hashing.
         obj: object to be serialized and persisted
     Raises:
         SerializationError: when fail to serialize object to bytes.
     """
+    serialized_bytes = CloudpickleSerializer.serialize(obj)
 
-    _upload_payload_and_metadata_to_s3(
-        bytes_to_upload=CloudpickleSerializer.serialize(obj),
-        s3_uri=s3_uri,
-        sagemaker_session=sagemaker_session,
-        s3_kms_key=s3_kms_key,
-    )
+    if signing_key is not None:
+        _upload_payload_and_metadata_to_s3_signed(
+            bytes_to_upload=serialized_bytes,
+            private_key=signing_key,
+            s3_uri=s3_uri,
+            sagemaker_session=sagemaker_session,
+            s3_kms_key=s3_kms_key,
+        )
+    else:
+        _upload_payload_and_metadata_to_s3_hashed(
+            bytes_to_upload=serialized_bytes,
+            s3_uri=s3_uri,
+            sagemaker_session=sagemaker_session,
+            s3_kms_key=s3_kms_key,
+        )
 
 
 def json_serialize_obj_to_s3(
@@ -268,13 +302,23 @@ def json_serialize_obj_to_s3(
     )
 
 
-def deserialize_obj_from_s3(sagemaker_session: Session, s3_uri: str) -> Any:
+def deserialize_obj_from_s3(
+    sagemaker_session: Session, s3_uri: str, verification_key=None
+) -> Any:
     """Downloads from S3 and then deserializes data objects.
+
+    Called from both job (verifying client-uploaded args) and client (verifying
+    job-uploaded results) sides. When verification_key is a public key PEM string,
+    uses asymmetric signature verification. When verification_key is None, uses
+    plain SHA-256 hash verification.
 
     Args:
         sagemaker_session (sagemaker.core.helper.session.Session):
             The underlying sagemaker session which AWS service calls are delegated to.
         s3_uri (str): S3 root uri to which resulting serialized artifacts will be uploaded.
+        verification_key: PEM-encoded public key string for asymmetric verification
+            (job verifying client-uploaded args), or None for plain SHA-256 verification
+            (client verifying job-uploaded results).
     Returns :
         Deserialized python objects.
     Raises:
@@ -287,9 +331,10 @@ def deserialize_obj_from_s3(sagemaker_session: Session, s3_uri: str) -> Any:
 
     bytes_to_deserialize = _read_bytes_from_s3(f"{s3_uri}/payload.pkl", sagemaker_session)
 
-    _perform_integrity_check(
-        expected_hash_value=metadata.sha256_hash, buffer=bytes_to_deserialize
-    )
+    if verification_key is not None:
+        _verify_asymmetric_signature(metadata, bytes_to_deserialize, verification_key)
+    else:
+        _verify_sha256_hash(metadata.sha256_hash, bytes_to_deserialize)
 
     return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
 
@@ -297,7 +342,10 @@ def deserialize_obj_from_s3(sagemaker_session: Session, s3_uri: str) -> Any:
 def serialize_exception_to_s3(
     exc: Exception, sagemaker_session: Session, s3_uri: str, s3_kms_key: str = None
 ):
-    """Serializes exception with traceback and uploads it to S3.
+    """Serializes exception with traceback and uploads it to S3 with plain SHA-256 hashing.
+
+    This function is always called from the job side (job-to-client path), so no
+    secret key is needed — only a plain SHA-256 hash for integrity checking.
 
     Args:
         sagemaker_session (sagemaker.core.helper.session.Session):
@@ -310,7 +358,7 @@ def serialize_exception_to_s3(
     """
     pickling_support.install()
 
-    _upload_payload_and_metadata_to_s3(
+    _upload_payload_and_metadata_to_s3_hashed(
         bytes_to_upload=CloudpickleSerializer.serialize(exc),
         s3_uri=s3_uri,
         sagemaker_session=sagemaker_session,
@@ -320,11 +368,75 @@ def serialize_exception_to_s3(
 
 def _upload_payload_and_metadata_to_s3(
     bytes_to_upload: Union[bytes, io.BytesIO],
+    hmac_key: str,
     s3_uri: str,
     sagemaker_session: Session,
     s3_kms_key,
 ):
     """Uploads serialized payload and metadata to s3.
+
+    Args:
+        bytes_to_upload (bytes): Serialized bytes to upload.
+        hmac_key (str): Key used to calculate hmac-sha256 hash of the serialized obj.
+        s3_uri (str): S3 root uri to which resulting serialized artifacts will be uploaded.
+        sagemaker_session (sagemaker.core.helper.session.Session):
+            The underlying Boto3 session which AWS service calls are delegated to.
+        s3_kms_key (str): KMS key used to encrypt artifacts uploaded to S3.
+    """
+    _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
+
+    sha256_hash = _compute_hash(bytes_to_upload, secret_key=hmac_key)
+
+    _upload_bytes_to_s3(
+        _MetaData(sha256_hash).to_json(),
+        f"{s3_uri}/metadata.json",
+        s3_kms_key,
+        sagemaker_session,
+    )
+
+def _upload_payload_and_metadata_to_s3_signed(
+    bytes_to_upload: Union[bytes, io.BytesIO],
+    private_key: ec.EllipticCurvePrivateKey,
+    s3_uri: str,
+    sagemaker_session: Session,
+    s3_kms_key,
+):
+    """Uploads serialized payload and metadata to S3 with ECDSA asymmetric signing.
+
+    Used for client-to-job payloads (function, arguments) where the private key
+    signs the payload and only the public key is exposed to the job environment.
+
+    Args:
+        bytes_to_upload (bytes): Serialized bytes to upload.
+        private_key (ec.EllipticCurvePrivateKey): ECDSA private key for signing.
+        s3_uri (str): S3 root uri to which resulting serialized artifacts will be uploaded.
+        sagemaker_session (sagemaker.core.helper.session.Session):
+            The underlying Boto3 session which AWS service calls are delegated to.
+        s3_kms_key (str): KMS key used to encrypt artifacts uploaded to S3.
+    """
+    _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
+
+    signature = _sign_payload(bytes_to_upload, private_key)
+    sha256_hash = _compute_sha256(bytes_to_upload)
+
+    _upload_bytes_to_s3(
+        _MetaData(sha256_hash=sha256_hash, asymmetric_signature=signature).to_json(),
+        f"{s3_uri}/metadata.json",
+        s3_kms_key,
+        sagemaker_session,
+    )
+
+
+def _upload_payload_and_metadata_to_s3_hashed(
+    bytes_to_upload: Union[bytes, io.BytesIO],
+    s3_uri: str,
+    sagemaker_session: Session,
+    s3_kms_key,
+):
+    """Uploads serialized payload and metadata to S3 with plain SHA-256 hashing.
+
+    Used for job-to-client payloads (results, exceptions) where no secret key
+    is needed — only a plain SHA-256 hash for integrity checking.
 
     Args:
         bytes_to_upload (bytes): Serialized bytes to upload.
@@ -335,18 +447,22 @@ def _upload_payload_and_metadata_to_s3(
     """
     _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
 
-    sha256_hash = _compute_hash(bytes_to_upload)
+    sha256_hash = _compute_sha256(bytes_to_upload)
 
     _upload_bytes_to_s3(
-        _MetaData(sha256_hash).to_json(),
+        _MetaData(sha256_hash=sha256_hash).to_json(),
         f"{s3_uri}/metadata.json",
         s3_kms_key,
         sagemaker_session,
     )
 
 
+
 def deserialize_exception_from_s3(sagemaker_session: Session, s3_uri: str) -> Any:
-    """Downloads from S3 and then deserializes exception.
+    """Downloads from S3 and then deserializes exception with plain SHA-256 verification.
+
+    This function is always called from the client side (verifying job-uploaded exception),
+    so no key is needed — only plain SHA-256 hash verification.
 
     Args:
         sagemaker_session (sagemaker.core.helper.session.Session):
@@ -364,9 +480,7 @@ def deserialize_exception_from_s3(sagemaker_session: Session, s3_uri: str) -> An
 
     bytes_to_deserialize = _read_bytes_from_s3(f"{s3_uri}/payload.pkl", sagemaker_session)
 
-    _perform_integrity_check(
-        expected_hash_value=metadata.sha256_hash, buffer=bytes_to_deserialize
-    )
+    _verify_sha256_hash(metadata.sha256_hash, bytes_to_deserialize)
 
     return CloudpickleSerializer.deserialize(f"{s3_uri}/payload.pkl", bytes_to_deserialize)
 
@@ -391,19 +505,77 @@ def _read_bytes_from_s3(s3_uri, sagemaker_session):
         ) from e
 
 
-def _compute_hash(buffer: bytes) -> str:
-    """Compute the sha256 hash"""
+def _sign_payload(buffer: bytes, private_key: ec.EllipticCurvePrivateKey) -> str:
+    """Compute an ECDSA P-256 signature over the buffer and return it base64-encoded."""
+    signature = private_key.sign(buffer, ec.ECDSA(hashes.SHA256()))
+    return base64.b64encode(signature).decode("utf-8")
+
+
+def _compute_sha256(buffer: bytes) -> str:
+    """Compute a plain SHA-256 hash of the buffer (no secret key)."""
     return hashlib.sha256(buffer).hexdigest()
 
 
-def _perform_integrity_check(expected_hash_value: str, buffer: bytes):
+def _verify_asymmetric_signature(metadata: _MetaData, buffer: bytes, public_key_pem: str):
+    """Verify the ECDSA asymmetric signature from metadata against the buffer.
+
+    Args:
+        metadata (_MetaData): Metadata containing the asymmetric_signature field.
+        buffer (bytes): The serialized payload bytes to verify.
+        public_key_pem (str): PEM-encoded public key string.
+
+    Raises:
+        DeserializationError: If the signature is absent, invalid, or verification fails.
+    """
+    if metadata.asymmetric_signature is None:
+        raise DeserializationError(
+            "Integrity check for the serialized function or data failed. "
+            "The payload metadata does not contain an asymmetric signature. "
+            "Please upgrade your SageMaker Python SDK version."
+        )
+
+    try:
+        signature_bytes = base64.b64decode(metadata.asymmetric_signature)
+        public_key = crypto_serialization.load_pem_public_key(public_key_pem.encode())
+        public_key.verify(signature_bytes, buffer, ec.ECDSA(hashes.SHA256()))
+    except InvalidSignature:
+        raise DeserializationError(
+            "Integrity check for the serialized function or data failed. "
+            "Please restrict access to your S3 bucket"
+        )
+
+
+def _verify_sha256_hash(expected_hash: str, buffer: bytes):
+    """Verify a plain SHA-256 hash of the buffer.
+
+    Args:
+        expected_hash (str): The expected SHA-256 hex digest.
+        buffer (bytes): The serialized payload bytes to verify.
+
+    Raises:
+        DeserializationError: If the computed hash does not match the expected hash.
+    """
+    actual_hash = hashlib.sha256(buffer).hexdigest()
+    if actual_hash != expected_hash:
+        raise DeserializationError(
+            "Integrity check for the serialized function or data failed. "
+            "Please restrict access to your S3 bucket"
+        )
+
+
+def _compute_hash(buffer: bytes, secret_key: str) -> str:
+    """Compute the hmac-sha256 hash"""
+    return hmac.new(secret_key.encode(), msg=buffer, digestmod=hashlib.sha256).hexdigest()
+
+
+def _perform_integrity_check(expected_hash_value: str, secret_key: str, buffer: bytes):
     """Performs integrity checks for serialized code/arguments uploaded to s3.
 
     Verifies whether the hash read from s3 matches the hash calculated
     during remote function execution.
     """
-    actual_hash_value = _compute_hash(buffer=buffer)
-    if expected_hash_value != actual_hash_value:
+    actual_hash_value = _compute_hash(buffer=buffer, secret_key=secret_key)
+    if not hmac.compare_digest(expected_hash_value, actual_hash_value):
         raise DeserializationError(
             "Integrity check for the serialized function or data failed. "
             "Please restrict access to your S3 bucket"

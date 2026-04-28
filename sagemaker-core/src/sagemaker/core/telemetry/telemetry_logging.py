@@ -62,6 +62,8 @@ FEATURE_TO_CODE = {
     str(Feature.MLOPS): 16,
     str(Feature.FEATURE_STORE): 17,
     str(Feature.PROCESSING): 18,
+    str(Feature.MODEL_CUSTOMIZATION_NOVA): 19,
+    str(Feature.MODEL_CUSTOMIZATION_OSS): 20,
 }
 
 STATUS_TO_CODE = {
@@ -114,6 +116,25 @@ def _telemetry_emitter(feature: str, func_name: str):
 
                 # Construct the feature list to track feature combinations
                 feature_list: List[int] = [FEATURE_TO_CODE[str(feature)]]
+
+                # For MODEL_CUSTOMIZATION, append NOVA or OSS sub-feature
+                # based on the instance's _is_nova_model_for_telemetry() method
+                if feature == Feature.MODEL_CUSTOMIZATION and len(args) > 0:
+                    instance = args[0]
+                    try:
+                        if hasattr(instance, "_is_nova_model_for_telemetry"):
+                            if instance._is_nova_model_for_telemetry():
+                                feature_list.append(
+                                    FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION_NOVA)]
+                                )
+                            else:
+                                feature_list.append(
+                                    FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION_OSS)]
+                                )
+                    except Exception:  # pylint: disable=W0703
+                        logger.debug(
+                            "Unable to determine NOVA/OSS model type for telemetry."
+                        )
 
                 if (
                     hasattr(sagemaker_session, "sagemaker_config")

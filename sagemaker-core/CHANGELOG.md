@@ -1,4 +1,23 @@
 # Changelog
+## v2.9.0 (2026-04-23)
+
+### Bug Fixes
+
+- **Waiters**: Improve error messages for waiter timeouts
+- **DJL LMI**: Update ISO account mappings in image URI config
+
+## v2.8.0 (2026-04-16)
+
+### New Features
+
+- **Image Upgrades**: Updated image URI configurations
+
+### Bug Fixes
+
+- **ModelBuilder**: Add MLFlowConfig to Base Model
+- **Local Mode**: Support for docker compose > v2
+- **Dependencies**: Remove Pytorch hard dependency
+
 ## v2.7.1 (2026-03-31)
 
 ### Features

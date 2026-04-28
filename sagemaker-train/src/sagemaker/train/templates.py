@@ -28,7 +28,7 @@ INSTALL_AUTO_REQUIREMENTS = """
 if [ -f requirements.txt ]; then
     echo "Installing requirements"
     cat requirements.txt
-    $SM_PIP_CMD install -r requirements.txt
+    $SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/scripts/install_requirements.py requirements.txt
 else
     echo "No requirements.txt file found. Skipping installation."
 fi
@@ -36,7 +36,7 @@ fi
 
 INSTALL_REQUIREMENTS = """
 echo "Installing requirements"
-$SM_PIP_CMD install -r {requirements_file}
+$SM_PYTHON_CMD /opt/ml/input/data/sm_drivers/scripts/install_requirements.py {requirements_file}
 """
 
 EXEUCTE_DISTRIBUTED_DRIVER = """

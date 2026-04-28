@@ -95,6 +95,16 @@ class BedrockModelBuilder:
             self._sagemaker_client = self.boto_session.client("sagemaker")
         return self._sagemaker_client
 
+    def _is_nova_model_for_telemetry(self) -> bool:
+        """Check if the model is a Nova model for telemetry tracking."""
+        try:
+            if not self.model_package:
+                return False
+            container = self.model_package.inference_specification.containers[0]
+            return _is_nova_model(container)
+        except Exception:
+            return False
+
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="BedrockModelBuilder.deploy")
     def deploy(
         self,

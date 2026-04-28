@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from sagemaker.core.helper.session_helper import Session
 
 from sagemaker.train.base_trainer import BaseTrainer
+from sagemaker.train.common_utils.finetune_utils import _resolve_mlflow_resource_arn
 # Module-level logger
 _logger = logging.getLogger(__name__)
 
@@ -163,8 +164,6 @@ class BaseEvaluator(BaseModel):
     @validator('mlflow_resource_arn', pre=True, always=True)
     def _resolve_mlflow_arn(cls, v, values):
         """Resolve MLflow resource ARN using default experience logic if not provided."""
-        from ..common_utils.finetune_utils import _resolve_mlflow_resource_arn
-        
         # Get sagemaker_session from values
         sagemaker_session = values.get('sagemaker_session')
         if sagemaker_session is None:
@@ -413,6 +412,12 @@ class BaseEvaluator(BaseModel):
         """Get the resolved source model package ARN (None for JumpStart models)."""
         info = self._get_resolved_model_info()
         return info.source_model_package_arn if info else None
+
+    def _is_nova_model_for_telemetry(self) -> bool:
+        """Check if the model is a Nova model for telemetry tracking."""
+        from ..common_utils.recipe_utils import _is_nova_model
+        base_model_name = self._base_model_name
+        return _is_nova_model(base_model_name) if base_model_name else False
 
     @property
     def _is_jumpstart_model(self) -> bool:
@@ -703,6 +708,10 @@ class BaseEvaluator(BaseModel):
         Returns:
             dict: Base template context dictionary
         """
+        # Resolve MLflow ARN if not already resolved (e.g. session was None at construction time)
+        if not self.mlflow_resource_arn and self.sagemaker_session:
+            self.mlflow_resource_arn = _resolve_mlflow_resource_arn(self.sagemaker_session)
+
         # Generate default mlflow_experiment_name if not provided
         # This is required by AWS when ModelPackageGroupArn is not provided in training jobs
         mlflow_experiment_name = self.mlflow_experiment_name

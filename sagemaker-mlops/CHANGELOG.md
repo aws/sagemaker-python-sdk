@@ -1,4 +1,14 @@
 # Changelog
+## v1.9.0 (2026-04-23)
+
+- Update module dependencies
+
+## v1.8.0 (2026-04-16)
+
+### New Features
+
+- **Feature Group Manager**: Feature Group Manager support
+
 ## v1.7.1 (2026-03-31)
 
 ### Features

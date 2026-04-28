@@ -326,6 +326,10 @@ DETERMINISTIC_TEMPLATE = """{
 LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
     "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
     "Parameters": [],
     "Steps": [
         {
@@ -457,6 +461,10 @@ LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
 DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
     "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
     "Parameters": [],
     "Steps": [
         {
@@ -843,6 +851,10 @@ CUSTOM_SCORER_TEMPLATE = """{
 CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
     "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
     "Parameters": [],
     "Steps": [
         {

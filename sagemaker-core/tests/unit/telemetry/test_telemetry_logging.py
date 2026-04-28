@@ -542,3 +542,108 @@ class TestTelemetryLogging(unittest.TestCase):
         args = mock_send_telemetry_request.call_args.args
         extra_str = str(args[5])
         self.assertNotIn("x-resourceArn", extra_str)
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_appends_nova_sub_feature(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that MODEL_CUSTOMIZATION_NOVA (19) is appended when instance reports Nova model."""
+        mock_resolve_config.return_value = False
+
+        class NovaModelMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            def _is_nova_model_for_telemetry(self):
+                return True
+
+            @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "NovaModelMock.train")
+            def train(self):
+                pass
+
+        NovaModelMock().train()
+
+        args = mock_send_telemetry_request.call_args.args
+        feature_list = args[1]
+        self.assertIn(15, feature_list)  # MODEL_CUSTOMIZATION
+        self.assertIn(19, feature_list)  # MODEL_CUSTOMIZATION_NOVA
+        self.assertNotIn(20, feature_list)  # MODEL_CUSTOMIZATION_OSS should NOT be present
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_appends_oss_sub_feature(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that MODEL_CUSTOMIZATION_OSS (20) is appended when instance reports non-Nova model."""
+        mock_resolve_config.return_value = False
+
+        class OssModelMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            def _is_nova_model_for_telemetry(self):
+                return False
+
+            @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "OssModelMock.train")
+            def train(self):
+                pass
+
+        OssModelMock().train()
+
+        args = mock_send_telemetry_request.call_args.args
+        feature_list = args[1]
+        self.assertIn(15, feature_list)  # MODEL_CUSTOMIZATION
+        self.assertIn(20, feature_list)  # MODEL_CUSTOMIZATION_OSS
+        self.assertNotIn(19, feature_list)  # MODEL_CUSTOMIZATION_NOVA should NOT be present
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_no_sub_feature_without_detection_method(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that no NOVA/OSS sub-feature is appended when instance lacks detection method."""
+        mock_resolve_config.return_value = False
+
+        class NoDetectionMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "NoDetectionMock.do_work")
+            def do_work(self):
+                pass
+
+        NoDetectionMock().do_work()
+
+        args = mock_send_telemetry_request.call_args.args
+        feature_list = args[1]
+        self.assertIn(15, feature_list)  # MODEL_CUSTOMIZATION
+        self.assertNotIn(19, feature_list)  # No NOVA
+        self.assertNotIn(20, feature_list)  # No OSS
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_emitter_handles_detection_method_exception(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that telemetry still works when _is_nova_model_for_telemetry raises an exception."""
+        mock_resolve_config.return_value = False
+
+        class BrokenDetectionMock:
+            def __init__(self):
+                self.sagemaker_session = MOCK_SESSION
+
+            def _is_nova_model_for_telemetry(self):
+                raise RuntimeError("detection failed")
+
+            @_telemetry_emitter(Feature.MODEL_CUSTOMIZATION, "BrokenDetectionMock.train")
+            def train(self):
+                pass
+
+        BrokenDetectionMock().train()
+
+        args = mock_send_telemetry_request.call_args.args
+        feature_list = args[1]
+        self.assertIn(15, feature_list)  # MODEL_CUSTOMIZATION still present
+        self.assertNotIn(19, feature_list)  # No NOVA (detection failed gracefully)
+        self.assertNotIn(20, feature_list)  # No OSS

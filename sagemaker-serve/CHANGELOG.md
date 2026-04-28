@@ -1,4 +1,17 @@
 # Changelog
+## v1.9.0 (2026-04-23)
+
+### Bug Fixes
+
+- **ModelBuilder**: Stop overwriting user-provided `HF_MODEL_ID` for DJL Serving
+- **ModelBuilder**: Keep `/opt/ml/model` writable when using `source_code` with DJL LMI
+
+## v1.8.0 (2026-04-16)
+
+### Bug Fixes
+
+- **HuggingFace**: Improve SDK v3 Hugging Face support
+
 ## v1.7.1 (2026-03-31)
 
 ### Features
