@@ -18,6 +18,7 @@ import functools
 from pydantic import validate_call
 from typing import Dict, List, Literal, Optional, Union, Any
 from boto3.session import Session as Boto3Session
+Session = Boto3Session
 from rich.console import Group
 from rich.live import Live
 from rich.panel import Panel
