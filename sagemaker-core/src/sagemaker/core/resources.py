@@ -30477,18 +30477,18 @@ class TrainingJob(Base):
         status = Status("Current status:")
 
         instance_count = 1  # Default
-                if not isinstance(self.resource_config, Unassigned):
-                    if (
-                        hasattr(self.resource_config, "instance_groups")
-                        and self.resource_config.instance_groups
-                        and not isinstance(self.resource_config.instance_groups, Unassigned)
-                    ):
-                        instance_count = sum(
-                            instance_group.instance_count
-                            for instance_group in self.resource_config.instance_groups
-                        )
-                    elif hasattr(self.resource_config, "instance_count"):
-                        instance_count = self.resource_config.instance_count
+        if not isinstance(self.resource_config, Unassigned):
+            if (
+                hasattr(self.resource_config, "instance_groups")
+                and self.resource_config.instance_groups
+                and not isinstance(self.resource_config.instance_groups, Unassigned)
+            ):
+                instance_count = sum(
+                    instance_group.instance_count
+                    for instance_group in self.resource_config.instance_groups
+                )
+            elif hasattr(self.resource_config, "instance_count"):
+                instance_count = self.resource_config.instance_count
         if logs:
             multi_stream_logger = MultiLogStreamHandler(
                 log_group_name=f"/aws/sagemaker/TrainingJobs",
