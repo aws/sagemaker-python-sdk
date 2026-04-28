@@ -651,6 +651,89 @@ class TestDownloadDataWithDirectories:
         mock_s3_client.download_file.assert_called_once()
 
 
+class TestDownloadDataPathTraversal:
+    """Test download_data blocks path traversal attacks via crafted S3 keys."""
+
+    def test_path_traversal_in_file_key(self, mock_boto_session, mock_sagemaker_client, tmp_path):
+        """Test that S3 keys with '..' traversal sequences are blocked."""
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "data/../../../../etc/passwd", "Size": 100},
+            ]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session.s3_client = mock_s3_client
+
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            session.download_data(
+                path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
+            )
+
+        mock_s3_client.download_file.assert_not_called()
+
+    def test_path_traversal_in_directory_key(
+        self, mock_boto_session, mock_sagemaker_client, tmp_path
+    ):
+        """Test that directory keys resolving outside target are blocked."""
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "data/../../../etc/cron.d/", "Size": 0},
+            ]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session.s3_client = mock_s3_client
+
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            session.download_data(
+                path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
+            )
+
+    def test_path_traversal_overwrite_aws_credentials(
+        self, mock_boto_session, mock_sagemaker_client, tmp_path
+    ):
+        """Test the exact attack scenario from the vulnerability report."""
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "data/../../../../Users/alice/.aws/credentials", "Size": 200},
+            ]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session.s3_client = mock_s3_client
+
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            session.download_data(
+                path=str(tmp_path), bucket="shared-bucket", key_prefix="data/"
+            )
+
+        mock_s3_client.download_file.assert_not_called()
+
+    def test_safe_keys_are_allowed(self, mock_boto_session, mock_sagemaker_client, tmp_path):
+        """Test that normal S3 keys within the target directory are allowed."""
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "data/train.csv", "Size": 100},
+                {"Key": "data/models/model.pkl", "Size": 500},
+            ]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session.s3_client = mock_s3_client
+
+        result = session.download_data(
+            path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
+        )
+
+        assert len(result) == 2
+        assert mock_s3_client.download_file.call_count == 2
+
+
 class TestUploadDataWithExtraArgs:
     """Test upload_data with extra arguments."""
 

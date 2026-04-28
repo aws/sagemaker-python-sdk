@@ -543,13 +543,37 @@ class Session(object):  # pylint: disable=too-many-public-methods
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
         downloaded_paths = []
+        path_real = os.path.realpath(path)
         for dir_path in directories:
+            # Validate directory paths stay within the target directory
+            dir_path_real = os.path.realpath(dir_path)
+            if (
+                not dir_path_real.startswith(path_real + os.sep)
+                and dir_path_real != path_real
+            ):
+                raise ValueError(
+                    f"Path traversal detected: S3 key resolves to "
+                    f"'{dir_path_real}' which is outside the target directory '{path_real}'"
+                )
             os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
+
+            # Validate that the resolved destination stays within the target directory
+            destination_path_real = os.path.realpath(destination_path)
+            if (
+                not destination_path_real.startswith(path_real + os.sep)
+                and destination_path_real != path_real
+            ):
+                raise ValueError(
+                    f"Path traversal detected: S3 key '{key}' resolves to "
+                    f"'{destination_path_real}' which is outside the target "
+                    f"directory '{path_real}'"
+                )
+
             if not os.path.exists(os.path.dirname(destination_path)):
                 os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             s3.download_file(

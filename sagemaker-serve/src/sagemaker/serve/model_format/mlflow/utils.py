@@ -244,6 +244,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
     s3 = session.boto_session.client("s3")
 
     os.makedirs(dst_path, exist_ok=True)
+    dst_path_real = os.path.realpath(dst_path)
 
     paginator = s3.get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_key):
@@ -251,6 +252,18 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
             key = obj["Key"]
             rel_path = os.path.relpath(key, s3_key)
             local_file_path = os.path.join(dst_path, rel_path)
+
+            # Validate that the resolved path stays within the destination directory
+            local_file_path_real = os.path.realpath(local_file_path)
+            if (
+                not local_file_path_real.startswith(dst_path_real + os.sep)
+                and local_file_path_real != dst_path_real
+            ):
+                raise ValueError(
+                    f"Path traversal detected: S3 key '{key}' resolves to "
+                    f"'{local_file_path_real}' which is outside the target "
+                    f"directory '{dst_path_real}'"
+                )
 
             if not key.endswith("/"):
                 local_file_dir = os.path.dirname(local_file_path)

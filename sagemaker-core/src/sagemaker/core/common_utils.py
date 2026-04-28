@@ -457,6 +457,7 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
         target (str): destination path where the downloaded items will be placed
         s3 (boto3.resources.base.ServiceResource): S3 resource
     """
+    target_real = os.path.realpath(target)
     bucket = s3.Bucket(bucket_name)
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.
@@ -465,6 +466,14 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
         obj = s3.Object(obj_sum.bucket_name, obj_sum.key)
         s3_relative_path = obj_sum.key[len(prefix) :].lstrip("/")
         file_path = os.path.join(target, s3_relative_path)
+
+        # Validate that the resolved file path stays within the target directory
+        file_path_real = os.path.realpath(file_path)
+        if not file_path_real.startswith(target_real + os.sep) and file_path_real != target_real:
+            raise ValueError(
+                f"Path traversal detected: S3 key '{obj_sum.key}' resolves to "
+                f"'{file_path_real}' which is outside the target directory '{target_real}'"
+            )
 
         try:
             os.makedirs(os.path.dirname(file_path))
