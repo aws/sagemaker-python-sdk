@@ -16,6 +16,7 @@ import logging
 import os
 import re
 import subprocess
+import traceback
 
 from boto3.session import Session
 from botocore.config import Config
@@ -353,7 +354,10 @@ class SageMakerClient(metaclass=SingletonMeta):
             session = Session(region_name=region_name)
 
         if region_name is None:
-            logger.warning("No region provided. Using default region.")
+            logger.warning(
+                "No region provided. Using default region.\nStack trace:\n%s",
+                "".join(traceback.format_stack()),
+            )
             region_name = session.region_name
 
         if config is None:

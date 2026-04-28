@@ -4381,6 +4381,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         # Check if endpoint exists
         is_existing_endpoint = self._does_endpoint_exist(endpoint_name)
+        logger.info(
+            "[_deploy_model_customization] endpoint_name=%s is_existing_endpoint=%s",
+            endpoint_name,
+            is_existing_endpoint,
+        )
 
         if not is_existing_endpoint:
             EndpointConfig.create(
@@ -4394,13 +4399,78 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ],
                 execution_role_arn=self.role_arn,
             )
+            logger.info(
+                "[_deploy_model_customization] EndpointConfig created: %s", endpoint_name
+            )
             logger.info("Endpoint core call starting")
+            # Capture client / region state right at endpoint creation to help
+            # diagnose "Could not find endpoint" that sometimes surfaces in
+            # later refresh() calls (singleton region / env var drift).
+            try:
+                import os as _os
+
+                from sagemaker.core.utils.utils import SageMakerClient as _SMClient
+
+                _sm_region_env = _os.environ.get("SAGEMAKER_REGION")
+                _probe_client = _SMClient().sagemaker_client
+                logger.info(
+                    "[_deploy_model_customization] Client state before "
+                    "Endpoint.create: SAGEMAKER_REGION=%s "
+                    "sagemaker_client.meta.region_name=%s",
+                    _sm_region_env,
+                    getattr(getattr(_probe_client, "meta", None), "region_name", None),
+                )
+            except Exception as _probe_exc:
+                logger.info(
+                    "[_deploy_model_customization] Could not probe client region "
+                    "state before Endpoint.create: %s",
+                    _probe_exc,
+                )
             endpoint = Endpoint.create(
                 endpoint_name=endpoint_name, endpoint_config_name=endpoint_name
             )
-            endpoint.wait_for_status("InService")
+            logger.info(
+                "[_deploy_model_customization] Endpoint.create returned: "
+                "endpoint_name=%s endpoint_arn=%s endpoint_status=%s",
+                getattr(endpoint, "endpoint_name", None),
+                getattr(endpoint, "endpoint_arn", None),
+                getattr(endpoint, "endpoint_status", None),
+            )
+            try:
+                endpoint.wait_for_status("InService")
+            except Exception as wait_exc:
+                logger.error(
+                    "[_deploy_model_customization] Initial wait_for_status(InService) "
+                    "failed for endpoint_name=%s: %s",
+                    endpoint_name,
+                    wait_exc,
+                )
+                # Try to re-describe to see if the endpoint truly disappeared or
+                # if this is a transient/consistency issue.
+                try:
+                    recheck = Endpoint.get(endpoint_name=endpoint_name)
+                    logger.error(
+                        "[_deploy_model_customization] Re-describe after wait failure "
+                        "succeeded: status=%s arn=%s",
+                        getattr(recheck, "endpoint_status", None),
+                        getattr(recheck, "endpoint_arn", None),
+                    )
+                except Exception as recheck_exc:
+                    logger.error(
+                        "[_deploy_model_customization] Re-describe after wait failure "
+                        "also failed for %s: %s",
+                        endpoint_name,
+                        recheck_exc,
+                    )
+                raise
         else:
             endpoint = Endpoint.get(endpoint_name=endpoint_name)
+            logger.info(
+                "[_deploy_model_customization] Reusing existing endpoint: "
+                "endpoint_name=%s endpoint_status=%s",
+                getattr(endpoint, "endpoint_name", None),
+                getattr(endpoint, "endpoint_status", None),
+            )
 
         peft_type = self._fetch_peft()
         base_model_recipe_name = model_package.inference_specification.containers[
@@ -4454,9 +4524,86 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 # Wait for base IC to be InService before creating adapter
                 base_ic = InferenceComponent.get(inference_component_name=base_ic_name)
                 base_ic.wait_for_status("InService")
+                logger.info(
+                    "[_deploy_model_customization] base IC InService: name=%s arn=%s",
+                    getattr(base_ic, "inference_component_name", None),
+                    getattr(base_ic, "inference_component_arn", None),
+                )
+
+                # Probe endpoint before waiting — we've seen cases where the
+                # endpoint is reported as missing here. Capture state for diagnosis.
+                try:
+                    import os as _os
+
+                    from sagemaker.core.utils.utils import SageMakerClient as _SMClient
+
+                    _sm_region_env = _os.environ.get("SAGEMAKER_REGION")
+                    _probe_client = _SMClient().sagemaker_client
+                    logger.info(
+                        "[_deploy_model_customization] Client state before second "
+                        "wait_for_status: SAGEMAKER_REGION=%s "
+                        "sagemaker_client.meta.region_name=%s",
+                        _sm_region_env,
+                        getattr(getattr(_probe_client, "meta", None), "region_name", None),
+                    )
+                except Exception as _probe_exc:
+                    logger.info(
+                        "[_deploy_model_customization] Could not probe client region "
+                        "state before second wait_for_status: %s",
+                        _probe_exc,
+                    )
+                try:
+                    probe = Endpoint.get(endpoint_name=endpoint_name)
+                    logger.info(
+                        "[_deploy_model_customization] Pre-wait endpoint probe: "
+                        "endpoint_name=%s endpoint_status=%s endpoint_arn=%s "
+                        "failure_reason=%s",
+                        getattr(probe, "endpoint_name", None),
+                        getattr(probe, "endpoint_status", None),
+                        getattr(probe, "endpoint_arn", None),
+                        getattr(probe, "failure_reason", None),
+                    )
+                except Exception as probe_exc:
+                    logger.error(
+                        "[_deploy_model_customization] Pre-wait endpoint probe FAILED "
+                        "for %s before second wait_for_status: %s",
+                        endpoint_name,
+                        probe_exc,
+                    )
 
                 # Wait for endpoint to stabilize after base IC creation
-                endpoint.wait_for_status("InService")
+                try:
+                    endpoint.wait_for_status("InService")
+                except Exception as wait_exc:
+                    logger.error(
+                        "[_deploy_model_customization] wait_for_status(InService) after "
+                        "base IC creation failed for endpoint_name=%s "
+                        "(endpoint.endpoint_name=%s, endpoint.endpoint_arn=%s): %s",
+                        endpoint_name,
+                        getattr(endpoint, "endpoint_name", None),
+                        getattr(endpoint, "endpoint_arn", None),
+                        wait_exc,
+                    )
+                    # Try to list endpoints to see whether this is a region mismatch
+                    # vs. an actual deletion.
+                    try:
+                        visible = [
+                            ep.endpoint_name
+                            for ep in Endpoint.get_all()
+                            if getattr(ep, "endpoint_name", "").startswith("e2e-")
+                        ]
+                        logger.error(
+                            "[_deploy_model_customization] Visible e2e-* endpoints at "
+                            "failure time: %s",
+                            visible,
+                        )
+                    except Exception as list_exc:
+                        logger.error(
+                            "[_deploy_model_customization] Endpoint.get_all() also "
+                            "failed: %s",
+                            list_exc,
+                        )
+                    raise
 
             # Deploy adapter IC
             adapter_ic_name = inference_component_name or f"{endpoint_name}-adapter"

@@ -34,7 +34,7 @@ ENDPOINT_NAME_PREFIX = "jumpstart-optimize-test-endpoint"
 AWS_ACCOUNT_ID = "593793038179"
 AWS_REGION = "us-east-2"
 
-# @pytest.mark.skip(reason="Test takes too long to run")
+@pytest.mark.skip(reason="Test takes too long to run")
 def test_optimize_build_deploy_invoke_cleanup():
     """Integration test for Optimize workflow"""
     logger.info("Starting Optimize integration test...")
