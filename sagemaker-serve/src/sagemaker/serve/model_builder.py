@@ -4573,6 +4573,27 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
                 # Wait for endpoint to stabilize after base IC creation
                 try:
+                    # Re-fetch the endpoint object to ensure fresh state —
+                    # the original object from Endpoint.create may hold a stale
+                    # internal client or cached attributes that cause
+                    # DescribeEndpoint to fail with "Could not find endpoint".
+                    endpoint = Endpoint.get(endpoint_name=endpoint_name)
+                    logger.info(
+                        "[_deploy_model_customization] Endpoint.get before second "
+                        "wait_for_status returned: endpoint_name=%s endpoint_arn=%s "
+                        "endpoint_status=%s endpoint_config_name=%s "
+                        "creation_time=%s last_modified_time=%s failure_reason=%s "
+                        "production_variants=%s pending_deployment_summary=%s",
+                        getattr(endpoint, "endpoint_name", None),
+                        getattr(endpoint, "endpoint_arn", None),
+                        getattr(endpoint, "endpoint_status", None),
+                        getattr(endpoint, "endpoint_config_name", None),
+                        getattr(endpoint, "creation_time", None),
+                        getattr(endpoint, "last_modified_time", None),
+                        getattr(endpoint, "failure_reason", None),
+                        getattr(endpoint, "production_variants", None),
+                        getattr(endpoint, "pending_deployment_summary", None),
+                    )
                     endpoint.wait_for_status("InService")
                 except Exception as wait_exc:
                     logger.error(
