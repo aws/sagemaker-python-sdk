@@ -4577,7 +4577,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     # the original object from Endpoint.create may hold a stale
                     # internal client or cached attributes that cause
                     # DescribeEndpoint to fail with "Could not find endpoint".
-                    endpoint = Endpoint.get(endpoint_name=endpoint_name)
+                    logger.info("Attempting to fetch endpoint: %s", endpoint_name)
+                    endpoint = Endpoint.get(endpoint_name=endpoint_name, region="us-west-2")
                     logger.info(
                         "[_deploy_model_customization] Endpoint.get before second "
                         "wait_for_status returned: endpoint_name=%s endpoint_arn=%s "
@@ -4604,6 +4605,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         getattr(endpoint, "endpoint_name", None),
                         getattr(endpoint, "endpoint_arn", None),
                         wait_exc,
+                        exc_info=True,
                     )
                     # Try to list endpoints to see whether this is a region mismatch
                     # vs. an actual deletion.

@@ -71,75 +71,75 @@ def cleanup_e2e_endpoints():
         original_sm_region,
     )
 
-    from sagemaker.core.resources import Endpoint
+    # from sagemaker.core.resources import Endpoint
 
-    # Cleanup before tests
-    pre_deleted = 0
-    pre_failed = 0
-    try:
-        for endpoint in Endpoint.get_all():
-            try:
-                if endpoint.endpoint_name.startswith('e2e-'):
-                    logger.info(
-                        "[cleanup_e2e_endpoints] setup: deleting stale endpoint %s "
-                        "(status=%s)",
-                        endpoint.endpoint_name,
-                        getattr(endpoint, "endpoint_status", "unknown"),
-                    )
-                    endpoint.delete()
-                    pre_deleted += 1
-            except (ClientError, Exception) as exc:
-                pre_failed += 1
-                logger.warning(
-                    "[cleanup_e2e_endpoints] setup: failed to delete %s: %s",
-                    getattr(endpoint, "endpoint_name", "<unknown>"),
-                    exc,
-                )
-    except (ClientError, Exception) as exc:
-        logger.warning(
-            "[cleanup_e2e_endpoints] setup: Endpoint.get_all() failed: %s", exc
-        )
-    logger.info(
-        "[cleanup_e2e_endpoints] setup: sweep complete (deleted=%d, failed=%d)",
-        pre_deleted,
-        pre_failed,
-    )
+    # # Cleanup before tests
+    # pre_deleted = 0
+    # pre_failed = 0
+    # try:
+    #     for endpoint in Endpoint.get_all():
+    #         try:
+    #             if endpoint.endpoint_name.startswith('e2e-'):
+    #                 logger.info(
+    #                     "[cleanup_e2e_endpoints] setup: deleting stale endpoint %s "
+    #                     "(status=%s)",
+    #                     endpoint.endpoint_name,
+    #                     getattr(endpoint, "endpoint_status", "unknown"),
+    #                 )
+    #                 endpoint.delete()
+    #                 pre_deleted += 1
+    #         except (ClientError, Exception) as exc:
+    #             pre_failed += 1
+    #             logger.warning(
+    #                 "[cleanup_e2e_endpoints] setup: failed to delete %s: %s",
+    #                 getattr(endpoint, "endpoint_name", "<unknown>"),
+    #                 exc,
+    #             )
+    # except (ClientError, Exception) as exc:
+    #     logger.warning(
+    #         "[cleanup_e2e_endpoints] setup: Endpoint.get_all() failed: %s", exc
+    #     )
+    # logger.info(
+    #     "[cleanup_e2e_endpoints] setup: sweep complete (deleted=%d, failed=%d)",
+    #     pre_deleted,
+    #     pre_failed,
+    # )
 
     yield
 
-    logger.info("[cleanup_e2e_endpoints] teardown: starting session-scoped sweep")
+    # logger.info("[cleanup_e2e_endpoints] teardown: starting session-scoped sweep")
 
-    # Cleanup after tests
-    post_deleted = 0
-    post_failed = 0
-    try:
-        for endpoint in Endpoint.get_all():
-            try:
-                if endpoint.endpoint_name.startswith('e2e-'):
-                    logger.info(
-                        "[cleanup_e2e_endpoints] teardown: deleting endpoint %s "
-                        "(status=%s)",
-                        endpoint.endpoint_name,
-                        getattr(endpoint, "endpoint_status", "unknown"),
-                    )
-                    endpoint.delete()
-                    post_deleted += 1
-            except (ClientError, Exception) as exc:
-                post_failed += 1
-                logger.warning(
-                    "[cleanup_e2e_endpoints] teardown: failed to delete %s: %s",
-                    getattr(endpoint, "endpoint_name", "<unknown>"),
-                    exc,
-                )
-    except (ClientError, Exception) as exc:
-        logger.warning(
-            "[cleanup_e2e_endpoints] teardown: Endpoint.get_all() failed: %s", exc
-        )
-    logger.info(
-        "[cleanup_e2e_endpoints] teardown: sweep complete (deleted=%d, failed=%d)",
-        post_deleted,
-        post_failed,
-    )
+    # # Cleanup after tests
+    # post_deleted = 0
+    # post_failed = 0
+    # try:
+    #     for endpoint in Endpoint.get_all():
+    #         try:
+    #             if endpoint.endpoint_name.startswith('e2e-'):
+    #                 logger.info(
+    #                     "[cleanup_e2e_endpoints] teardown: deleting endpoint %s "
+    #                     "(status=%s)",
+    #                     endpoint.endpoint_name,
+    #                     getattr(endpoint, "endpoint_status", "unknown"),
+    #                 )
+    #                 endpoint.delete()
+    #                 post_deleted += 1
+    #         except (ClientError, Exception) as exc:
+    #             post_failed += 1
+    #             logger.warning(
+    #                 "[cleanup_e2e_endpoints] teardown: failed to delete %s: %s",
+    #                 getattr(endpoint, "endpoint_name", "<unknown>"),
+    #                 exc,
+    #             )
+    # except (ClientError, Exception) as exc:
+    #     logger.warning(
+    #         "[cleanup_e2e_endpoints] teardown: Endpoint.get_all() failed: %s", exc
+    #     )
+    # logger.info(
+    #     "[cleanup_e2e_endpoints] teardown: sweep complete (deleted=%d, failed=%d)",
+    #     post_deleted,
+    #     post_failed,
+    # )
 
     # Restore original SAGEMAKER_REGION
     if original_sm_region:
@@ -152,38 +152,38 @@ def cleanup_e2e_endpoints():
     )
 
 
-@pytest.fixture(scope="module")
-def cleanup_endpoints():
-    """Track endpoints to cleanup after tests."""
-    endpoints_to_cleanup = []
-    logger.info("[cleanup_endpoints] setup: tracker initialized")
-    yield endpoints_to_cleanup
+# @pytest.fixture(scope="module")
+# def cleanup_endpoints():
+#     """Track endpoints to cleanup after tests."""
+#     endpoints_to_cleanup = []
+#     logger.info("[cleanup_endpoints] setup: tracker initialized")
+#     yield endpoints_to_cleanup
 
-    logger.info(
-        "[cleanup_endpoints] teardown: processing %d tracked endpoint(s)",
-        len(endpoints_to_cleanup),
-    )
-    deleted = 0
-    failed = 0
-    for ep_name in endpoints_to_cleanup:
-        try:
-            from sagemaker.core.resources import Endpoint
-            logger.info("[cleanup_endpoints] teardown: deleting %s", ep_name)
-            endpoint = Endpoint.get(endpoint_name=ep_name)
-            endpoint.delete()
-            deleted += 1
-        except Exception as exc:
-            failed += 1
-            logger.warning(
-                "[cleanup_endpoints] teardown: failed to delete %s: %s",
-                ep_name,
-                exc,
-            )
-    logger.info(
-        "[cleanup_endpoints] teardown: complete (deleted=%d, failed=%d)",
-        deleted,
-        failed,
-    )
+#     logger.info(
+#         "[cleanup_endpoints] teardown: processing %d tracked endpoint(s)",
+#         len(endpoints_to_cleanup),
+#     )
+#     deleted = 0
+#     failed = 0
+#     for ep_name in endpoints_to_cleanup:
+#         try:
+#             from sagemaker.core.resources import Endpoint
+#             logger.info("[cleanup_endpoints] teardown: deleting %s", ep_name)
+#             endpoint = Endpoint.get(endpoint_name=ep_name)
+#             endpoint.delete()
+#             deleted += 1
+#         except Exception as exc:
+#             failed += 1
+#             logger.warning(
+#                 "[cleanup_endpoints] teardown: failed to delete %s: %s",
+#                 ep_name,
+#                 exc,
+#             )
+#     logger.info(
+#         "[cleanup_endpoints] teardown: complete (deleted=%d, failed=%d)",
+#         deleted,
+#         failed,
+#     )
 
 
 class TestModelCustomizationFromTrainingJob:
