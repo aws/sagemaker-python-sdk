@@ -209,7 +209,7 @@ class ShapesCodeGen:
         imports += "from pydantic import BaseModel, ConfigDict\n"
         imports += "from typing import List, Dict, Optional, Any, Union\n"
         imports += "from sagemaker.core.utils.utils import Unassigned\n"
-        imports += "from sagemaker.core.helper.pipeline_variable import StrPipeVar\n"
+        imports += "from sagemaker.core.helper.pipeline_variable import StrPipeVar, IntPipeVar\n"
         imports += "\n"
         imports += "# Suppress Pydantic warnings about field names shadowing parent attributes\n"
         imports += "warnings.filterwarnings('ignore', message='.*shadows an attribute.*')\n"

@@ -183,7 +183,7 @@ class ResourcesCodeGen:
             "import functools",
             "from pydantic import validate_call",
             "from typing import Dict, List, Literal, Optional, Union, Any\n"
-            "from boto3.session import Session",
+            "from boto3.session import Session as Boto3Session",
             "from rich.console import Group",
             "from rich.live import Live",
             "from rich.panel import Panel",
@@ -942,7 +942,7 @@ class ResourcesCodeGen:
                 add_indent("cls,\n", 4)
                 + create_args
                 + "\n"
-                + add_indent("session: Optional[Session] = None,\n", 4)
+                + add_indent("session: Optional[Boto3Session] = None,\n", 4)
                 + add_indent("region: Optional[str] = None,", 4)
             )
             formatted_method = GENERIC_METHOD_TEMPLATE.format(
@@ -2030,7 +2030,7 @@ class ResourcesCodeGen:
             Dict with attributes that can be configurable
 
         """
-        PYTHON_TYPES = ["StrPipeVar", "datetime.datetime", "bool", "int", "float"]
+        PYTHON_TYPES = ["StrPipeVar", "IntPipeVar", "datetime.datetime", "bool", "int", "float"]
         default_attributes = {}
         for key, value in class_attributes.items():
             if value in PYTHON_TYPES or value.startswith("List"):

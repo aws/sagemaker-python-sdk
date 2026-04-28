@@ -19,6 +19,7 @@ from typing import Optional, Any
 from sagemaker.core.tools.constants import (
     BASIC_JSON_TYPES_TO_PYTHON_TYPES,
     REQUIRED_TO_OPTIONAL_OVERRIDES,
+    PIPE_VAR_OVERRIDES,
     SHAPE_DAG_FILE_PATH,
 )
 from sagemaker.core.utils.utils import (
@@ -241,7 +242,9 @@ class ShapesExtractor:
                     member_type = self._evaluate_map_type(member_shape)
                 else:
                     # Shape is a simple type like string
-                    member_type = BASIC_JSON_TYPES_TO_PYTHON_TYPES[member_shape_type]
+                    member_type = PIPE_VAR_OVERRIDES.get(shape, {}).get(
+                        member_name, BASIC_JSON_TYPES_TO_PYTHON_TYPES[member_shape_type]
+                    )
             else:
                 raise Exception("The Shape definition mush exist. The Json Data might be corrupt")
             member_name_snake_case = convert_to_snake_case(member_name)

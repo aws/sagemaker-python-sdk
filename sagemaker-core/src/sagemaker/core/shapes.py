@@ -16,7 +16,7 @@ import warnings
 from pydantic import BaseModel, ConfigDict
 from typing import List, Dict, Optional, Any, Union
 from sagemaker.core.utils.utils import Unassigned
-from sagemaker.core.helper.pipeline_variable import StrPipeVar
+from sagemaker.core.helper.pipeline_variable import StrPipeVar, IntPipeVar
 
 # Suppress Pydantic warnings about field names shadowing parent attributes
 warnings.filterwarnings("ignore", message=".*shadows an attribute.*")
@@ -1639,10 +1639,10 @@ class ResourceConfig(Base):
     """
 
     instance_type: Optional[StrPipeVar] = Unassigned()
-    instance_count: Optional[int] = Unassigned()
-    volume_size_in_gb: Optional[int] = Unassigned()
+    instance_count: Optional[IntPipeVar] = Unassigned()
+    volume_size_in_gb: Optional[IntPipeVar] = Unassigned()
     volume_kms_key_id: Optional[StrPipeVar] = Unassigned()
-    keep_alive_period_in_seconds: Optional[int] = Unassigned()
+    keep_alive_period_in_seconds: Optional[IntPipeVar] = Unassigned()
     instance_groups: Optional[List[InstanceGroup]] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
     instance_placement_config: Optional[InstancePlacementConfig] = Unassigned()
@@ -8458,7 +8458,7 @@ class ModelPackageSecurityConfig(Base):
     kms_key_id: The KMS Key ID (KMSKeyId) used for encryption of model package information.
     """
 
-    kms_key_id: StrPipeVar
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
 class ModelPackageModelCard(Base):
