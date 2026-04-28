@@ -24,6 +24,7 @@ import re
 from pathlib import Path
 from urllib.parse import urlparse
 
+
 def _sanitize_git_url(repo_url):
     """Sanitize Git repository URL to prevent URL injection attacks.
 
@@ -83,6 +84,7 @@ def _sanitize_git_url(repo_url):
         )
 
     return repo_url
+
 
 def git_clone_repo(git_config, entry_point, source_dir=None, dependencies=None):
     """Git clone repo containing the training code and serving code.

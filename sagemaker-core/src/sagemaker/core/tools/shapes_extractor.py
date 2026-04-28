@@ -222,8 +222,7 @@ class ShapesExtractor:
         required_args = list(required_override) or shape_dict.get("required", [])
         # Remove members that are known to be optional despite the service model
         required_args = [
-            r for r in required_args
-            if r not in REQUIRED_TO_OPTIONAL_OVERRIDES.get(shape, [])
+            r for r in required_args if r not in REQUIRED_TO_OPTIONAL_OVERRIDES.get(shape, [])
         ]
         init_data_body = {}
         # bring the required members in front

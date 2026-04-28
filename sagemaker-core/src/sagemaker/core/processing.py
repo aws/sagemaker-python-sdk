@@ -489,7 +489,10 @@ class Processor(object):
                 # If the output's s3_uri is not an s3_uri, create one.
                 parse_result = urlparse(output.s3_output.s3_uri)
                 if parse_result.scheme != "s3":
-                    if getattr(self.sagemaker_session, "local_mode", False) and parse_result.scheme == "file":
+                    if (
+                        getattr(self.sagemaker_session, "local_mode", False)
+                        and parse_result.scheme == "file"
+                    ):
                         normalized_outputs.append(output)
                         continue
                     if _pipeline_config:

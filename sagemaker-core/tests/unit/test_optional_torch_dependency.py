@@ -59,7 +59,8 @@ def test_serializer_module_imports_without_torch():
     Runs in a subprocess to avoid polluting the current process's class
     hierarchy via importlib.reload (which breaks six.with_metaclass).
     """
-    code = textwrap.dedent("""\
+    code = textwrap.dedent(
+        """\
         import sys
         # Block torch before any sagemaker imports
         sys.modules["torch"] = None
@@ -76,15 +77,16 @@ def test_serializer_module_imports_without_torch():
         assert JSONSerializer() is not None
         assert IdentitySerializer() is not None
         print("OK")
-    """)
+    """
+    )
     result = subprocess.run(
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0, (
-        f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
 
 def test_deserializer_module_imports_without_torch():
@@ -92,7 +94,8 @@ def test_deserializer_module_imports_without_torch():
 
     Runs in a subprocess for the same reason as the serializer test above.
     """
-    code = textwrap.dedent("""\
+    code = textwrap.dedent(
+        """\
         import sys
         sys.modules["torch"] = None
 
@@ -110,15 +113,16 @@ def test_deserializer_module_imports_without_torch():
         assert NumpyDeserializer() is not None
         assert JSONDeserializer() is not None
         print("OK")
-    """)
+    """
+    )
     result = subprocess.run(
         [sys.executable, "-c", code],
         capture_output=True,
         text=True,
     )
-    assert result.returncode == 0, (
-        f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
-    )
+    assert (
+        result.returncode == 0
+    ), f"Subprocess failed:\nstdout: {result.stdout}\nstderr: {result.stderr}"
 
 
 def test_torch_tensor_serializer_raises_import_error_without_torch():

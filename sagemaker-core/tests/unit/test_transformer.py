@@ -541,7 +541,9 @@ class TestTransformer:
         assert "resource_config" in config
         assert config["resource_config"]["instance_count"] == 2
         assert config["resource_config"]["instance_type"] == "ml.g4dn.xlarge"
-        assert config["resource_config"]["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
+        assert (
+            config["resource_config"]["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
+        )
 
     def test_delete_model(self, mock_session):
         """Test delete_model method"""

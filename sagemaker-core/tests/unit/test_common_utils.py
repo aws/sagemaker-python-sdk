@@ -2226,7 +2226,6 @@ class TestNestedSetDict:
         assert d["a"]["b"]["c"] == "value"
 
 
-
 class TestValidateSourceDirectory:
     """Test _validate_source_directory function."""
 

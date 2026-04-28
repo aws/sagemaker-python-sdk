@@ -68,7 +68,8 @@ def _rmtree(path, image=None, is_studio=False):
             logger.warning(
                 "Failed to clean up root-owned files in %s. "
                 "You may need to remove them manually with: sudo rm -rf %s",
-                path, path,
+                path,
+                path,
             )
             raise
         try:
@@ -82,7 +83,8 @@ def _rmtree(path, image=None, is_studio=False):
             logger.warning(
                 "Failed to clean up root-owned files in %s. "
                 "You may need to remove them manually with: sudo rm -rf %s",
-                path, path,
+                path,
+                path,
             )
             raise
 

@@ -842,7 +842,9 @@ class _JobSettings:
 class _Job:
     """Helper class that interacts with the SageMaker training service."""
 
-    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, verification_key: str):
+    def __init__(
+        self, job_name: str, s3_uri: str, sagemaker_session: Session, verification_key: str
+    ):
         """Initialize a _Job object.
 
         Args:
@@ -870,7 +872,9 @@ class _Job:
         """
         job_name = describe_training_job_response["TrainingJobName"]
         s3_uri = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
-        verification_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
+        verification_key = describe_training_job_response["Environment"][
+            "REMOTE_FUNCTION_SECRET_KEY"
+        ]
 
         job = _Job(job_name, s3_uri, sagemaker_session, verification_key)
         job._last_describe_response = describe_training_job_response

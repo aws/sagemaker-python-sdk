@@ -121,7 +121,7 @@ class LocalFileDataSource(DataSource):
         super(LocalFileDataSource, self).__init__()
 
         self.root_path = os.path.abspath(root_path)
-        
+
         # Validate that the path is not in restricted locations
         for restricted_path in _SENSITIVE_SYSTEM_PATHS:
             if self.root_path != "/" and self.root_path.startswith(restricted_path):
@@ -129,7 +129,7 @@ class LocalFileDataSource(DataSource):
                     f"Local Mode does not support mounting from restricted system paths. "
                     f"Got: {root_path}"
                 )
-        
+
         if not os.path.exists(self.root_path):
             raise RuntimeError("Invalid data source: %s does not exist." % self.root_path)
 
