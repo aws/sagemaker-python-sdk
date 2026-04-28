@@ -30475,7 +30475,7 @@ class TrainingJob(Base):
         )
         progress.add_task("Waiting for TrainingJob...")
         status = Status("Current status:")
-            
+
         instance_count = 1  # Default
                 if not isinstance(self.resource_config, Unassigned):
                     if (
