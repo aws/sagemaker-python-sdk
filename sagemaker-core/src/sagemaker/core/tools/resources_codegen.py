@@ -183,7 +183,7 @@ class ResourcesCodeGen:
             "import functools",
             "from pydantic import validate_call",
             "from typing import Dict, List, Literal, Optional, Union, Any\n"
-            "from boto3.session import Session",
+            "from boto3.session import Session as Boto3Session",
             "from rich.console import Group",
             "from rich.live import Live",
             "from rich.panel import Panel",
@@ -942,7 +942,7 @@ class ResourcesCodeGen:
                 add_indent("cls,\n", 4)
                 + create_args
                 + "\n"
-                + add_indent("session: Optional[Session] = None,\n", 4)
+                + add_indent("session: Optional[Boto3Session] = None,\n", 4)
                 + add_indent("region: Optional[str] = None,", 4)
             )
             formatted_method = GENERIC_METHOD_TEMPLATE.format(
@@ -1349,7 +1349,7 @@ class ResourcesCodeGen:
             operation_metadata, False, resource_attributes
         )
         exclude_resource_attrs = resource_attributes
-        method_args += add_indent("session: Optional[Session] = None,\n", 4)
+        method_args += add_indent("session: Optional[Boto3Session] = None,\n", 4)
         method_args += add_indent("region: Optional[str] = None,", 4)
 
         serialize_operation_input = SERIALIZE_INPUT_TEMPLATE.format(
@@ -1450,7 +1450,7 @@ class ResourcesCodeGen:
                 operation_metadata, False, resource_attributes
             )
             exclude_resource_attrs = resource_attributes
-        method_args += add_indent("session: Optional[Session] = None,\n", 4)
+        method_args += add_indent("session: Optional[Boto3Session] = None,\n", 4)
         method_args += add_indent("region: Optional[str] = None,", 4)
 
         initialize_client = INITIALIZE_CLIENT_TEMPLATE.format(service_name=method.service_name)
@@ -1575,7 +1575,7 @@ class ResourcesCodeGen:
                 operation_metadata, False, resource_attributes, exclude_list
             )
             exclude_resource_attrs = resource_attributes
-        method_args += add_indent("session: Optional[Session] = None,\n", 4)
+        method_args += add_indent("session: Optional[Boto3Session] = None,\n", 4)
         method_args += add_indent("region: Optional[str] = None,", 4)
 
         if method.return_type == method.resource_name:
@@ -1666,19 +1666,21 @@ class ResourcesCodeGen:
         """
 
         if resource_name == "TrainingJob":
-            return """1  # Default
-        if not isinstance(self.resource_config, Unassigned):
-            if (
-                hasattr(self.resource_config, "instance_groups")
-                and self.resource_config.instance_groups
-                and not isinstance(self.resource_config.instance_groups, Unassigned)
-            ):
-                instance_count = sum(
-                    instance_group.instance_count
-                    for instance_group in self.resource_config.instance_groups
-                )
-            elif hasattr(self.resource_config, "instance_count"):
-                instance_count = self.resource_config.instance_count"""
+            return (
+                "1  # Default\n"
+                "if not isinstance(self.resource_config, Unassigned):\n"
+                "    if (\n"
+                '        hasattr(self.resource_config, "instance_groups")\n'
+                "        and self.resource_config.instance_groups\n"
+                "        and not isinstance(self.resource_config.instance_groups, Unassigned)\n"
+                "    ):\n"
+                "        instance_count = sum(\n"
+                "            instance_group.instance_count\n"
+                "            for instance_group in self.resource_config.instance_groups\n"
+                "        )\n"
+                '    elif hasattr(self.resource_config, "instance_count"):\n'
+                "        instance_count = self.resource_config.instance_count"
+            )
         elif resource_name == "TransformJob":
             return "self.transform_resources.instance_count"
         elif resource_name == "ProcessingJob":

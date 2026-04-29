@@ -356,7 +356,9 @@ class TestFilterInputOutputShapes:
         mock_shapes_extractor.return_value = mock_extractor_instance
 
         mock_resources_instance = Mock()
-        mock_resources_instance.get_resource_plan.return_value = Mock()
+        mock_resource_plan = Mock()
+        mock_resource_plan.iterrows.return_value = iter([])
+        mock_resources_instance.get_resource_plan.return_value = mock_resource_plan
         mock_resources_instance.get_resource_methods.return_value = {}
         mock_resources_extractor.return_value = mock_resources_instance
 
@@ -380,7 +382,9 @@ class TestFilterInputOutputShapes:
         mock_shapes_extractor.return_value = mock_extractor_instance
 
         mock_resources_instance = Mock()
-        mock_resources_instance.get_resource_plan.return_value = Mock()
+        mock_resource_plan = Mock()
+        mock_resource_plan.iterrows.return_value = iter([])
+        mock_resources_instance.get_resource_plan.return_value = mock_resource_plan
         mock_resources_instance.get_resource_methods.return_value = {}
         mock_resources_extractor.return_value = mock_resources_instance
 
