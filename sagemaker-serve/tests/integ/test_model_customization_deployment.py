@@ -86,7 +86,7 @@ def cleanup_e2e_endpoints():
                         endpoint.endpoint_name,
                         getattr(endpoint, "endpoint_status", "unknown"),
                     )
-                    endpoint.delete()
+                    # endpoint.delete()
                     pre_deleted += 1
             except (ClientError, Exception) as exc:
                 pre_failed += 1
