@@ -254,11 +254,12 @@ class ShapesCodeGen:
         self,
         output_folder=GENERATED_CLASSES_LOCATION,
         file_name=SHAPES_CODEGEN_FILE_NAME,
-    ) -> None:
+    ) -> str:
         """
         Generates the shape classes and writes them to the specified output folder.
 
         :param output_folder: The path to the output folder.
+        :return: The path to the generated output file.
         """
         # Check if the output folder exists, if not, create it
         os.makedirs(output_folder, exist_ok=True)
@@ -294,3 +295,5 @@ class ShapesCodeGen:
                         # Generate and write data class for shape
                         shape_class = self.generate_data_class_for_shape(shape)
                         file.write(shape_class)
+
+        return output_file
