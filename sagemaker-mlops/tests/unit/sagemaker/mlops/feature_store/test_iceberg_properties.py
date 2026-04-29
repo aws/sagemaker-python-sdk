@@ -689,7 +689,7 @@ class TestUpdateWithIcebergProperties:
         mock_get_client.return_value = mock_client
 
         fg = FeatureGroupManager(feature_group_name="test-fg")
-        fg.update(description="new description")
+        fg.update(feature_additions=[])
 
         mock_update_iceberg.assert_not_called()
 
@@ -727,7 +727,7 @@ class TestUpdateWithIcebergProperties:
             table_format="Iceberg",
         )
         iceberg_props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
-        fg.update(description="new description", iceberg_properties=iceberg_props, session=None, region=None)
+        fg.update(feature_additions=[], iceberg_properties=iceberg_props, session=None, region=None)
 
         mock_update_iceberg.assert_called_once_with(
             iceberg_properties=iceberg_props,
@@ -779,14 +779,14 @@ class TestUpdateWithIcebergProperties:
             table_format="Iceberg",
         )
         fg.update(
-            description="new desc",
+            feature_additions=[],
             iceberg_properties=IcebergProperties(properties={"write.target-file-size-bytes": "val"}),
         )
 
         # Verify the SageMaker API call does NOT contain iceberg_properties
         call_args = mock_client.update_feature_group.call_args
         assert "IcebergProperties" not in call_args[1]
-        assert "Description" in call_args[1]
+        assert "FeatureGroupName" in call_args[1]
 
     @patch.object(FeatureGroupManager, "_update_iceberg_properties")
     @patch.object(FeatureGroupManager, "refresh")
@@ -812,7 +812,7 @@ class TestUpdateWithIcebergProperties:
         iceberg_props = IcebergProperties(properties={"write.target-file-size-bytes": "536870912"})
 
         with pytest.raises(RuntimeError, match="Iceberg catalog error"):
-            fg.update(description="new desc", iceberg_properties=iceberg_props, session=None, region=None)
+            fg.update(feature_additions=[], iceberg_properties=iceberg_props, session=None, region=None)
 
         # Parent update was called successfully before iceberg update failed
         mock_client.update_feature_group.assert_called_once()

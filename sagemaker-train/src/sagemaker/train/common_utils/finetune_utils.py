@@ -385,8 +385,7 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
 def _create_input_channels(dataset: str, content_type: Optional[str] = None, 
                          input_compression_type: Optional[str] = None,
                          record_wrapper_type: Optional[str] = None,
-                         input_mode: Optional[str] = None,
-                         enable_ffm: Optional[bool] = None):
+                         input_mode: Optional[str] = None):
     """Create input channels from dataset (S3 URI or dataset ARN).
     
     Args:
@@ -421,9 +420,8 @@ def _create_input_channels(dataset: str, content_type: Optional[str] = None,
         content_type=content_type,
         compression_type=input_compression_type,
         record_wrapper_type=record_wrapper_type,
-        input_mode=input_mode,
-        enable_ffm=enable_ffm,
-    )
+        input_mode=input_mode
+        )
     channels.append(channel)
     
     return channels
