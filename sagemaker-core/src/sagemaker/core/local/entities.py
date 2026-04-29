@@ -28,7 +28,12 @@ from sagemaker.core.local.utils import (
     move_to_destination,
     get_docker_host,
 )
-from sagemaker.core.common_utils import DeferredError, get_config_value, format_tags
+from sagemaker.core.common_utils import (
+    DeferredError,
+    get_config_value,
+    format_tags,
+    validate_path_within_directory,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -517,17 +522,9 @@ class _LocalTransformJob(object):
             filename = os.path.basename(fn)
             destination_path = os.path.join(working_dir, relative_path, filename + ".out")
 
-            # Validate that the destination stays within the working directory
-            destination_path_real = os.path.realpath(destination_path)
-            if (
-                not destination_path_real.startswith(working_dir_real + os.sep)
-                and destination_path_real != working_dir_real
-            ):
-                raise ValueError(
-                    f"Path traversal detected: file '{fn}' resolves to "
-                    f"'{destination_path_real}' which is outside the working "
-                    f"directory '{working_dir_real}'"
-                )
+            validate_path_within_directory(
+                destination_path, working_dir, source_description=fn
+            )
 
             copy_directory_structure(working_dir, relative_path)
 

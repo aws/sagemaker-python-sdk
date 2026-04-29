@@ -22,6 +22,7 @@ import os
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core import image_uris
+from sagemaker.core.common_utils import validate_path_within_directory
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.detector.image_detector import _cast_to_compatible_version
 from sagemaker.serve.model_format.mlflow.constants import (
@@ -253,17 +254,9 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
             rel_path = os.path.relpath(key, s3_key)
             local_file_path = os.path.join(dst_path, rel_path)
 
-            # Validate that the resolved path stays within the destination directory
-            local_file_path_real = os.path.realpath(local_file_path)
-            if (
-                not local_file_path_real.startswith(dst_path_real + os.sep)
-                and local_file_path_real != dst_path_real
-            ):
-                raise ValueError(
-                    f"Path traversal detected: S3 key '{key}' resolves to "
-                    f"'{local_file_path_real}' which is outside the target "
-                    f"directory '{dst_path_real}'"
-                )
+            validate_path_within_directory(
+                local_file_path, dst_path, source_description=key
+            )
 
             if not key.endswith("/"):
                 local_file_dir = os.path.dirname(local_file_path)

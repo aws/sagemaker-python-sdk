@@ -51,6 +51,7 @@ from sagemaker.core.common_utils import (
     TagsDict,
     instance_supports_kms,
     create_paginator_config,
+    validate_path_within_directory,
 )
 
 from sagemaker.core.config.config_utils import _log_sagemaker_config_merge
@@ -545,16 +546,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         downloaded_paths = []
         path_real = os.path.realpath(path)
         for dir_path in directories:
-            # Validate directory paths stay within the target directory
-            dir_path_real = os.path.realpath(dir_path)
-            if (
-                not dir_path_real.startswith(path_real + os.sep)
-                and dir_path_real != path_real
-            ):
-                raise ValueError(
-                    f"Path traversal detected: S3 key resolves to "
-                    f"'{dir_path_real}' which is outside the target directory '{path_real}'"
-                )
+            validate_path_within_directory(dir_path, path)
             os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
@@ -562,17 +554,9 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
 
-            # Validate that the resolved destination stays within the target directory
-            destination_path_real = os.path.realpath(destination_path)
-            if (
-                not destination_path_real.startswith(path_real + os.sep)
-                and destination_path_real != path_real
-            ):
-                raise ValueError(
-                    f"Path traversal detected: S3 key '{key}' resolves to "
-                    f"'{destination_path_real}' which is outside the target "
-                    f"directory '{path_real}'"
-                )
+            validate_path_within_directory(
+                destination_path, path, source_description=key
+            )
 
             if not os.path.exists(os.path.dirname(destination_path)):
                 os.makedirs(os.path.dirname(destination_path), exist_ok=True)

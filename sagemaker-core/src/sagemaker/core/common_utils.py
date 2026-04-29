@@ -467,13 +467,7 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
         s3_relative_path = obj_sum.key[len(prefix) :].lstrip("/")
         file_path = os.path.join(target, s3_relative_path)
 
-        # Validate that the resolved file path stays within the target directory
-        file_path_real = os.path.realpath(file_path)
-        if not file_path_real.startswith(target_real + os.sep) and file_path_real != target_real:
-            raise ValueError(
-                f"Path traversal detected: S3 key '{obj_sum.key}' resolves to "
-                f"'{file_path_real}' which is outside the target directory '{target_real}'"
-            )
+        validate_path_within_directory(file_path, target, source_description=obj_sum.key)
 
         try:
             os.makedirs(os.path.dirname(file_path))
@@ -1681,6 +1675,31 @@ def _get_resolved_path(path):
     and handles platform-specific differences
     """
     return normpath(realpath(abspath(path)))
+
+
+def validate_path_within_directory(file_path, target_directory, source_description=""):
+    """Validate that file_path resolves to a location within target_directory.
+
+    Prevents path traversal attacks (CWE-22) by resolving both paths to their
+    canonical forms and checking containment.
+
+    Args:
+        file_path (str): The file path to validate.
+        target_directory (str): The directory that file_path must stay within.
+        source_description (str): Optional description of the source (e.g. S3 key)
+            included in the error message for debugging.
+
+    Raises:
+        ValueError: If file_path resolves to a location outside target_directory.
+    """
+    target_real = os.path.realpath(target_directory)
+    file_real = os.path.realpath(file_path)
+    if not file_real.startswith(target_real + os.sep) and file_real != target_real:
+        source_info = f"'{source_description}' resolves to " if source_description else ""
+        raise ValueError(
+            f"Path traversal detected: {source_info}"
+            f"'{file_real}' which is outside the target directory '{target_real}'"
+        )
 
 
 def _is_bad_path(path, base):
