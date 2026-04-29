@@ -13,10 +13,10 @@
 import datetime
 import warnings
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict
 from typing import List, Dict, Optional, Any, Union
 from sagemaker.core.utils.utils import Unassigned
-from sagemaker.core.helper.pipeline_variable import StrPipeVar, IntPipeVar, BoolPipeVar
+from sagemaker.core.helper.pipeline_variable import StrPipeVar, IntPipeVar
 
 # Suppress Pydantic warnings about field names shadowing parent attributes
 warnings.filterwarnings("ignore", message=".*shadows an attribute.*")
@@ -370,18 +370,17 @@ class ResourceNotFound(Base):
 class MetricQuery(Base):
     """
     MetricQuery
+      Specifies a query to retrieve training metrics from SageMaker.
 
     Attributes
     ----------------------
-    metric_name
-    resource_arn
-    metric_stat
-    period
-    x_axis_type
-    start
-    end
-    start_iteration_number
-    end_iteration_number
+    metric_name: The name of the metric to retrieve.
+    resource_arn: The ARN of the SageMaker resource to retrieve metrics for.
+    metric_stat: The metrics stat type of metrics to retrieve.
+    period: The time period of metrics to retrieve.
+    x_axis_type: The x-axis type of metrics to retrieve.
+    start: The start time of metrics to retrieve.
+    end: The end time of metrics to retrieve.
     """
 
     metric_name: StrPipeVar
@@ -389,30 +388,27 @@ class MetricQuery(Base):
     metric_stat: StrPipeVar
     period: StrPipeVar
     x_axis_type: StrPipeVar
-    start: Optional[datetime.datetime] = Unassigned()
-    end: Optional[datetime.datetime] = Unassigned()
-    start_iteration_number: Optional[int] = Unassigned()
-    end_iteration_number: Optional[int] = Unassigned()
+    start: Optional[int] = Unassigned()
+    end: Optional[int] = Unassigned()
 
 
 class MetricQueryResult(Base):
     """
     MetricQueryResult
+      The result of a query to retrieve training metrics from SageMaker.
 
     Attributes
     ----------------------
-    status
-    message
-    iteration_numbers
-    timestamps
-    metric_values
+    status: The status of the metric query.
+    message: A message describing the status of the metric query.
+    x_axis_values: The values for the x-axis of the metrics.
+    metric_values: The metric values retrieved by the query.
     """
 
     status: StrPipeVar
+    x_axis_values: List[int]
     metric_values: List[float]
     message: Optional[StrPipeVar] = Unassigned()
-    iteration_numbers: Optional[List[int]] = Unassigned()
-    timestamps: Optional[List[datetime.datetime]] = Unassigned()
 
 
 class BatchGetMetricsResponse(Base):
@@ -421,7 +417,7 @@ class BatchGetMetricsResponse(Base):
 
     Attributes
     ----------------------
-    metric_query_results
+    metric_query_results: The results of a query to retrieve training metrics from SageMaker.
     """
 
     metric_query_results: Optional[List[MetricQueryResult]] = Unassigned()
@@ -430,61 +426,559 @@ class BatchGetMetricsResponse(Base):
 class BatchPutMetricsError(Base):
     """
     BatchPutMetricsError
+      An error that occured when putting the metric data.
 
     Attributes
     ----------------------
-    code
-    message
-    metric_index
+    code: The error code of an error that occured when attempting to put metrics.    METRIC_LIMIT_EXCEEDED: The maximum amount of metrics per resource is exceeded.    INTERNAL_ERROR: An internal error occured.    VALIDATION_ERROR: The metric data failed validation.    CONFLICT_ERROR: Multiple requests attempted to modify the same data simultaneously.
+    metric_index: An index that corresponds to the metric in the request.
     """
 
-    code: StrPipeVar
-    message: StrPipeVar
-    metric_index: int
+    code: Optional[StrPipeVar] = Unassigned()
+    metric_index: Optional[int] = Unassigned()
 
 
 class RawMetricData(Base):
     """
     RawMetricData
+      The raw metric data to associate with the resource.
 
     Attributes
     ----------------------
-    metric_name
-    timestamp
-    iteration_number
-    value
+    metric_name: The name of the metric.
+    timestamp: The time that the metric was recorded.
+    step: The metric step (epoch).
+    value: The metric value.
     """
 
     metric_name: StrPipeVar
     timestamp: datetime.datetime
     value: float
-    iteration_number: Optional[int] = Unassigned()
+    step: Optional[int] = Unassigned()
+
+
+class AIBenchmarkInferenceComponent(Base):
+    """
+    AIBenchmarkInferenceComponent
+      An inference component to benchmark.
+
+    Attributes
+    ----------------------
+    identifier: The name or Amazon Resource Name (ARN) of the inference component.
+    """
+
+    identifier: StrPipeVar
+
+
+class AIBenchmarkEndpoint(Base):
+    """
+    AIBenchmarkEndpoint
+      The SageMaker endpoint configuration for benchmarking.
+
+    Attributes
+    ----------------------
+    identifier: The name or Amazon Resource Name (ARN) of the SageMaker endpoint to benchmark.
+    target_container_hostname: The hostname of the specific container to target within a multi-container endpoint.
+    inference_components: The list of inference components to benchmark on the endpoint.
+    """
+
+    identifier: StrPipeVar
+    target_container_hostname: Optional[StrPipeVar] = Unassigned()
+    inference_components: Optional[List[AIBenchmarkInferenceComponent]] = Unassigned()
+
+
+class AIBenchmarkJobSummary(Base):
+    """
+    AIBenchmarkJobSummary
+      Summary information about an AI benchmark job.
+
+    Attributes
+    ----------------------
+    ai_benchmark_job_name: The name of the benchmark job.
+    ai_benchmark_job_arn: The Amazon Resource Name (ARN) of the benchmark job.
+    ai_benchmark_job_status: The status of the benchmark job.
+    creation_time: A timestamp that indicates when the benchmark job was created.
+    end_time: A timestamp that indicates when the benchmark job completed.
+    ai_workload_config_name: The name of the AI workload configuration used by the benchmark job.
+    """
+
+    ai_benchmark_job_name: StrPipeVar
+    ai_benchmark_job_arn: StrPipeVar
+    ai_benchmark_job_status: StrPipeVar
+    creation_time: datetime.datetime
+    end_time: Optional[datetime.datetime] = Unassigned()
+    ai_workload_config_name: Optional[StrPipeVar] = Unassigned()
+
+
+class VpcConfig(Base):
+    """
+    VpcConfig
+      Specifies an Amazon Virtual Private Cloud (VPC) that your SageMaker jobs, hosted models, and compute resources have access to. You can control access to and from your resources by configuring a VPC. For more information, see Give SageMaker Access to Resources in your Amazon VPC.
+
+    Attributes
+    ----------------------
+    security_group_ids: The VPC security group IDs, in the form sg-xxxxxxxx. Specify the security groups for the VPC that is specified in the Subnets field.
+    subnets: The ID of the subnets in the VPC to which you want to connect your training job or model. For information about the availability of specific instance types, see Supported Instance Types and Availability Zones.
+    """
+
+    security_group_ids: List[StrPipeVar]
+    subnets: List[StrPipeVar]
+
+
+class AIBenchmarkNetworkConfig(Base):
+    """
+    AIBenchmarkNetworkConfig
+      The network configuration for an AI benchmark job.
+
+    Attributes
+    ----------------------
+    vpc_config: The VPC configuration, including security group IDs and subnet IDs.
+    """
+
+    vpc_config: Optional[VpcConfig] = Unassigned()
+
+
+class AIBenchmarkOutputConfig(Base):
+    """
+    AIBenchmarkOutputConfig
+      The output configuration for an AI benchmark job.
+
+    Attributes
+    ----------------------
+    s3_output_location: The Amazon S3 URI where benchmark results are stored.
+    """
+
+    s3_output_location: StrPipeVar
+
+
+class AICloudWatchLogs(Base):
+    """
+    AICloudWatchLogs
+      CloudWatch log information for an AI benchmark or recommendation job.
+
+    Attributes
+    ----------------------
+    log_group_arn: The Amazon Resource Name (ARN) of the CloudWatch log group.
+    log_stream_name: The name of the CloudWatch log stream.
+    """
+
+    log_group_arn: Optional[StrPipeVar] = Unassigned()
+    log_stream_name: Optional[StrPipeVar] = Unassigned()
+
+
+class AIBenchmarkOutputResult(Base):
+    """
+    AIBenchmarkOutputResult
+      The output result of an AI benchmark job, including the Amazon S3 location and CloudWatch log information.
+
+    Attributes
+    ----------------------
+    s3_output_location: The Amazon S3 URI where benchmark results are stored.
+    cloud_watch_logs: The CloudWatch log information for the benchmark job.
+    """
+
+    s3_output_location: StrPipeVar
+    cloud_watch_logs: Optional[List[AICloudWatchLogs]] = Unassigned()
+
+
+class AIBenchmarkTarget(Base):
+    """
+    AIBenchmarkTarget
+      The target for an AI benchmark job. This is a union type — specify one of the members.
+
+    Attributes
+    ----------------------
+    endpoint: The SageMaker endpoint to benchmark.
+    """
+
+    endpoint: Optional[AIBenchmarkEndpoint] = Unassigned()
+
+
+class AICapacityReservationConfig(Base):
+    """
+    AICapacityReservationConfig
+      The capacity reservation configuration for an AI recommendation job.
+
+    Attributes
+    ----------------------
+    capacity_reservation_preference: The capacity reservation preference. The only valid value is capacity-reservations-only.
+    ml_reservation_arns: The list of ML reservation ARNs to use.
+    """
+
+    capacity_reservation_preference: Optional[StrPipeVar] = Unassigned()
+    ml_reservation_arns: Optional[List[StrPipeVar]] = Unassigned()
+
+
+class AIWorkloadS3DataSource(Base):
+    """
+    AIWorkloadS3DataSource
+      The Amazon S3 data source for an AI workload.
+
+    Attributes
+    ----------------------
+    s3_uri: The Amazon S3 URI of the data.
+    """
+
+    s3_uri: StrPipeVar
+
+
+class AIWorkloadDataSource(Base):
+    """
+    AIWorkloadDataSource
+      The data source for an AI workload input data channel.
+
+    Attributes
+    ----------------------
+    s3_data_source: The Amazon S3 data source configuration.
+    """
+
+    s3_data_source: Optional[AIWorkloadS3DataSource] = Unassigned()
+
+
+class AIWorkloadInputDataConfig(Base):
+    """
+    AIWorkloadInputDataConfig
+      A channel of input data for an AI workload configuration. Each channel has a name and a data source.
+
+    Attributes
+    ----------------------
+    channel_name: The logical name for the data channel.
+    data_source: The data source for this channel.
+    """
+
+    channel_name: StrPipeVar
+    data_source: AIWorkloadDataSource
+
+
+class AIDatasetConfig(Base):
+    """
+    AIDatasetConfig
+      The dataset configuration for an AI workload. This is a union type — specify one of the members.
+
+    Attributes
+    ----------------------
+    input_data_config: An array of input data channel configurations for the workload.
+    """
+
+    input_data_config: Optional[List[AIWorkloadInputDataConfig]] = Unassigned()
+
+
+class AIModelSourceS3(Base):
+    """
+    AIModelSourceS3
+      The Amazon S3 model source configuration.
+
+    Attributes
+    ----------------------
+    s3_uri: The Amazon S3 URI of the model artifacts.
+    """
+
+    s3_uri: Optional[StrPipeVar] = Unassigned()
+
+
+class AIModelSource(Base):
+    """
+    AIModelSource
+      The source of the model for an AI recommendation job. This is a union type.
+
+    Attributes
+    ----------------------
+    s3: The Amazon S3 location of the model artifacts.
+    """
+
+    s3: Optional[AIModelSourceS3] = Unassigned()
+
+
+class AIRecommendationOptimizationDetail(Base):
+    """
+    AIRecommendationOptimizationDetail
+      Details about an optimization technique applied in a recommendation.
+
+    Attributes
+    ----------------------
+    optimization_type: The type of optimization. Valid values are SpeculativeDecoding and KernelTuning.
+    optimization_config: A map of configuration parameters for the optimization technique.
+    """
+
+    optimization_type: StrPipeVar
+    optimization_config: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
+
+
+class AIRecommendationInstanceDetail(Base):
+    """
+    AIRecommendationInstanceDetail
+      Instance details for a recommendation.
+
+    Attributes
+    ----------------------
+    instance_type: The recommended instance type.
+    instance_count: The recommended number of instances.
+    copy_count_per_instance: The number of model copies per instance.
+    """
+
+    instance_type: Optional[StrPipeVar] = Unassigned()
+    instance_count: Optional[int] = Unassigned()
+    copy_count_per_instance: Optional[int] = Unassigned()
+
+
+class AIRecommendationModelDetails(Base):
+    """
+    AIRecommendationModelDetails
+      Details about the model package in a recommendation.
+
+    Attributes
+    ----------------------
+    model_package_arn: The Amazon Resource Name (ARN) of the model package.
+    inference_specification_name: The name of the inference specification within the model package.
+    instance_details: The instance details for this recommendation, including instance type, count, and model copies per instance.
+    """
+
+    model_package_arn: Optional[StrPipeVar] = Unassigned()
+    inference_specification_name: Optional[StrPipeVar] = Unassigned()
+    instance_details: Optional[List[AIRecommendationInstanceDetail]] = Unassigned()
+
+
+class AIRecommendationDeploymentS3Channel(Base):
+    """
+    AIRecommendationDeploymentS3Channel
+      An Amazon S3 data channel for a recommended deployment configuration, containing model artifacts or optimized model outputs.
+
+    Attributes
+    ----------------------
+    channel_name: A custom name for this Amazon S3 data channel.
+    uri: The Amazon S3 URI of the data for this channel.
+    """
+
+    channel_name: Optional[StrPipeVar] = Unassigned()
+    uri: Optional[StrPipeVar] = Unassigned()
+
+
+class AIRecommendationDeploymentConfiguration(Base):
+    """
+    AIRecommendationDeploymentConfiguration
+      The deployment configuration for a recommendation.
+
+    Attributes
+    ----------------------
+    s3: The Amazon S3 data channels for the deployment.
+    image_uri: The URI of the container image for the deployment.
+    instance_type: The recommended instance type for the deployment.
+    instance_count: The recommended number of instances for the deployment.
+    copy_count_per_instance: The number of model copies per instance.
+    environment_variables: The environment variables for the deployment.
+    """
+
+    s3: Optional[List[AIRecommendationDeploymentS3Channel]] = Unassigned()
+    image_uri: Optional[StrPipeVar] = Unassigned()
+    instance_type: Optional[StrPipeVar] = Unassigned()
+    instance_count: Optional[int] = Unassigned()
+    copy_count_per_instance: Optional[int] = Unassigned()
+    environment_variables: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
+
+
+class AIRecommendationPerformanceMetric(Base):
+    """
+    AIRecommendationPerformanceMetric
+      An expected performance metric for a recommendation.
+
+    Attributes
+    ----------------------
+    metric: The name of the performance metric.
+    stat: The statistical measure for the metric.
+    value: The value of the metric.
+    unit: The unit of the metric value.
+    """
+
+    metric: StrPipeVar
+    value: StrPipeVar
+    stat: Optional[StrPipeVar] = Unassigned()
+    unit: Optional[StrPipeVar] = Unassigned()
+
+
+class AIRecommendation(Base):
+    """
+    AIRecommendation
+      An optimization recommendation generated by an AI recommendation job.
+
+    Attributes
+    ----------------------
+    recommendation_description: A description of the recommendation.
+    optimization_details: The optimization techniques applied in this recommendation.
+    model_details: Details about the model package associated with this recommendation.
+    deployment_configuration: The deployment configuration for this recommendation, including the container image, instance type, instance count, and environment variables.
+    ai_benchmark_job_arn: The Amazon Resource Name (ARN) of the benchmark job associated with this recommendation.
+    expected_performance: The expected performance metrics for this recommendation.
+    """
+
+    recommendation_description: Optional[StrPipeVar] = Unassigned()
+    optimization_details: Optional[List[AIRecommendationOptimizationDetail]] = Unassigned()
+    model_details: Optional[AIRecommendationModelDetails] = Unassigned()
+    deployment_configuration: Optional[AIRecommendationDeploymentConfiguration] = Unassigned()
+    ai_benchmark_job_arn: Optional[StrPipeVar] = Unassigned()
+    expected_performance: Optional[List[AIRecommendationPerformanceMetric]] = Unassigned()
+
+
+class AIRecommendationComputeSpec(Base):
+    """
+    AIRecommendationComputeSpec
+      The compute resource specification for an AI recommendation job.
+
+    Attributes
+    ----------------------
+    instance_types: The list of instance types to consider for recommendations. You can specify up to 3 instance types.
+    capacity_reservation_config: The capacity reservation configuration.
+    """
+
+    instance_types: Optional[List[StrPipeVar]] = Unassigned()
+    capacity_reservation_config: Optional[AICapacityReservationConfig] = Unassigned()
+
+
+class AIRecommendationConstraint(Base):
+    """
+    AIRecommendationConstraint
+      A performance constraint for an AI recommendation job.
+
+    Attributes
+    ----------------------
+    metric: The performance metric. Valid values are ttft-ms (time to first token in milliseconds), throughput, and cost.
+    """
+
+    metric: StrPipeVar
+
+
+class AIRecommendationInferenceSpecification(Base):
+    """
+    AIRecommendationInferenceSpecification
+      The inference framework for an AI recommendation job.
+
+    Attributes
+    ----------------------
+    framework: The inference framework. Valid values are LMI and VLLM.
+    """
+
+    framework: Optional[StrPipeVar] = Unassigned()
+
+
+class AIRecommendationJobSummary(Base):
+    """
+    AIRecommendationJobSummary
+      Summary information about an AI recommendation job.
+
+    Attributes
+    ----------------------
+    ai_recommendation_job_name: The name of the recommendation job.
+    ai_recommendation_job_arn: The Amazon Resource Name (ARN) of the recommendation job.
+    ai_recommendation_job_status: The status of the recommendation job.
+    creation_time: A timestamp that indicates when the recommendation job was created.
+    end_time: A timestamp that indicates when the recommendation job completed.
+    """
+
+    ai_recommendation_job_name: StrPipeVar
+    ai_recommendation_job_arn: StrPipeVar
+    ai_recommendation_job_status: StrPipeVar
+    creation_time: datetime.datetime
+    end_time: Optional[datetime.datetime] = Unassigned()
+
+
+class AIRecommendationOutputConfig(Base):
+    """
+    AIRecommendationOutputConfig
+      The output configuration for an AI recommendation job.
+
+    Attributes
+    ----------------------
+    s3_output_location: The Amazon S3 URI where recommendation results are stored.
+    model_package_group_identifier: The name or Amazon Resource Name (ARN) of the model package group where the optimized model is registered as a new model package version.
+    """
+
+    s3_output_location: Optional[StrPipeVar] = Unassigned()
+    model_package_group_identifier: Optional[StrPipeVar] = Unassigned()
+
+
+class AIRecommendationOutputResult(Base):
+    """
+    AIRecommendationOutputResult
+      The output configuration for an AI recommendation job, including the S3 location for results and the model package group for deployment.
+
+    Attributes
+    ----------------------
+    s3_output_location: The Amazon S3 URI where the recommendation job writes its output results.
+    model_package_group_identifier: The name or Amazon Resource Name (ARN) of the model package group where deployment-ready model packages are registered.
+    """
+
+    s3_output_location: StrPipeVar
+    model_package_group_identifier: Optional[StrPipeVar] = Unassigned()
+
+
+class AIRecommendationPerformanceTarget(Base):
+    """
+    AIRecommendationPerformanceTarget
+      The performance targets for an AI recommendation job.
+
+    Attributes
+    ----------------------
+    constraints: An array of performance constraints that define the optimization objectives.
+    """
+
+    constraints: List[AIRecommendationConstraint]
+
+
+class AIWorkloadConfigSummary(Base):
+    """
+    AIWorkloadConfigSummary
+      Summary information about an AI workload configuration.
+
+    Attributes
+    ----------------------
+    ai_workload_config_name: The name of the AI workload configuration.
+    ai_workload_config_arn: The Amazon Resource Name (ARN) of the AI workload configuration.
+    creation_time: A timestamp that indicates when the configuration was created.
+    """
+
+    ai_workload_config_name: StrPipeVar
+    ai_workload_config_arn: StrPipeVar
+    creation_time: datetime.datetime
+
+
+class WorkloadSpec(Base):
+    """
+    WorkloadSpec
+      The workload specification for benchmark tool configuration. Provide an inline YAML or JSON string.
+
+    Attributes
+    ----------------------
+    inline: An inline YAML or JSON string that defines benchmark parameters.
+    """
+
+    inline: Optional[StrPipeVar] = Unassigned()
+
+
+class AIWorkloadConfigs(Base):
+    """
+    AIWorkloadConfigs
+      The benchmark tool configuration for an AI workload.
+
+    Attributes
+    ----------------------
+    workload_spec: The workload specification that defines benchmark parameters.
+    """
+
+    workload_spec: WorkloadSpec
 
 
 class AcceleratorPartitionConfig(Base):
     """
     AcceleratorPartitionConfig
+      Configuration for allocating accelerator partitions.
 
     Attributes
     ----------------------
-    type
-    count
+    type: The Multi-Instance GPU (MIG) profile type that defines the partition configuration. The profile specifies the compute and memory allocation for each partition instance. The available profile types depend on the instance type specified in the compute quota configuration.
+    count: The number of accelerator partitions to allocate with the specified partition type. If you don't specify a value for vCPU and MemoryInGiB, SageMaker AI automatically allocates ratio-based values for those parameters based on the accelerator partition count you provide.
     """
 
     type: StrPipeVar
     count: int
-
-
-class AccessDeniedException(Base):
-    """
-    AccessDeniedException
-
-    Attributes
-    ----------------------
-    message
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
 
 
 class ActionSource(Base):
@@ -529,70 +1023,6 @@ class ActionSummary(Base):
     last_modified_time: Optional[datetime.datetime] = Unassigned()
 
 
-class ActivationStateV1(Base):
-    """
-    ActivationStateV1
-
-    Attributes
-    ----------------------
-    enabled
-    """
-
-    enabled: Optional[bool] = Unassigned()
-
-
-class IamIdentity(Base):
-    """
-    IamIdentity
-      The IAM Identity details associated with the user. These details are associated with model package groups, model packages and project entities only.
-
-    Attributes
-    ----------------------
-    arn: The Amazon Resource Name (ARN) of the IAM identity.
-    principal_id: The ID of the principal that assumes the IAM identity.
-    source_identity: The person or application which assumes the IAM identity.
-    """
-
-    arn: Optional[StrPipeVar] = Unassigned()
-    principal_id: Optional[StrPipeVar] = Unassigned()
-    source_identity: Optional[StrPipeVar] = Unassigned()
-
-
-class UserContext(Base):
-    """
-    UserContext
-      Information about the user who created or modified a SageMaker resource.
-
-    Attributes
-    ----------------------
-    user_profile_arn: The Amazon Resource Name (ARN) of the user's profile.
-    user_profile_name: The name of the user's profile.
-    domain_id: The domain associated with the user.
-    iam_identity: The IAM Identity details associated with the user. These details are associated with model package groups, model packages, and project entities only.
-    """
-
-    user_profile_arn: Optional[StrPipeVar] = Unassigned()
-    user_profile_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    domain_id: Optional[StrPipeVar] = Unassigned()
-    iam_identity: Optional[IamIdentity] = Unassigned()
-
-
-class CustomerDetails(Base):
-    """
-    CustomerDetails
-
-    Attributes
-    ----------------------
-    account_id
-    user_context
-    organization_id
-    """
-
-    account_id: StrPipeVar
-    user_context: Optional[UserContext] = Unassigned()
-    organization_id: Optional[StrPipeVar] = Unassigned()
-
-
 class AddClusterNodeSpecification(Base):
     """
     AddClusterNodeSpecification
@@ -602,35 +1032,14 @@ class AddClusterNodeSpecification(Base):
     ----------------------
     instance_group_name: The name of the instance group to which you want to add nodes.
     increment_target_count_by: The number of nodes to add to the specified instance group. The total number of nodes across all instance groups in a single request cannot exceed 50.
+    availability_zones: The availability zones in which to add nodes. Use this to target node placement in specific availability zones within a flexible instance group.
+    instance_types: The instance types to use when adding nodes. Use this to target specific instance types within a flexible instance group.
     """
 
     instance_group_name: StrPipeVar
     increment_target_count_by: int
-
-
-class OnlineStoreSecurityConfig(Base):
-    """
-    OnlineStoreSecurityConfig
-      The security configuration for OnlineStore.
-
-    Attributes
-    ----------------------
-    kms_key_id: The Amazon Web Services Key Management Service (KMS) key ARN that SageMaker Feature Store uses to encrypt the Amazon S3 objects at rest using Amazon S3 server-side encryption. The caller (either user or IAM role) of CreateFeatureGroup must have below permissions to the OnlineStore KmsKeyId:    "kms:Encrypt"     "kms:Decrypt"     "kms:DescribeKey"     "kms:CreateGrant"     "kms:RetireGrant"     "kms:ReEncryptFrom"     "kms:ReEncryptTo"     "kms:GenerateDataKey"     "kms:ListAliases"     "kms:ListGrants"     "kms:RevokeGrant"    The caller (either user or IAM role) to all DataPlane operations (PutRecord, GetRecord, DeleteRecord) must have the following permissions to the KmsKeyId:    "kms:Decrypt"
-    """
-
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-
-
-class OnlineStoreReplicaConfig(Base):
-    """
-    OnlineStoreReplicaConfig
-
-    Attributes
-    ----------------------
-    security_config
-    """
-
-    security_config: Optional[OnlineStoreSecurityConfig] = Unassigned()
+    availability_zones: Optional[List[StrPipeVar]] = Unassigned()
+    instance_types: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class Tag(Base):
@@ -646,24 +1055,6 @@ class Tag(Base):
 
     key: StrPipeVar
     value: StrPipeVar
-
-
-class AddOnlineStoreReplicaAction(Base):
-    """
-    AddOnlineStoreReplicaAction
-
-    Attributes
-    ----------------------
-    region_name
-    online_store_config
-    description
-    tags
-    """
-
-    region_name: StrPipeVar
-    online_store_config: Optional[OnlineStoreReplicaConfig] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
 
 
 class AdditionalEnis(Base):
@@ -758,6 +1149,21 @@ class ModelInput(Base):
     data_input_config: StrPipeVar
 
 
+class AdditionalModelDataSource(Base):
+    """
+    AdditionalModelDataSource
+      Data sources that are available to your model in addition to the one that you specify for ModelDataSource when you use the CreateModel action.
+
+    Attributes
+    ----------------------
+    channel_name: A custom name for this AdditionalModelDataSource object.
+    s3_data_source
+    """
+
+    channel_name: StrPipeVar
+    s3_data_source: S3ModelDataSource
+
+
 class AdditionalS3DataSource(Base):
     """
     AdditionalS3DataSource
@@ -768,28 +1174,25 @@ class AdditionalS3DataSource(Base):
     s3_data_type: The data type of the additional data source that you specify for use in inference or training.
     s3_uri: The uniform resource identifier (URI) used to identify an additional data source used in inference or training.
     compression_type: The type of compression used for an additional data source used in inference or training. Specify None if your additional data source is not compressed.
-    manifest_s3_uri
     e_tag: The ETag associated with S3 URI.
-    manifest_etag
     """
 
     s3_data_type: StrPipeVar
     s3_uri: StrPipeVar
     compression_type: Optional[StrPipeVar] = Unassigned()
-    manifest_s3_uri: Optional[StrPipeVar] = Unassigned()
     e_tag: Optional[StrPipeVar] = Unassigned()
-    manifest_etag: Optional[StrPipeVar] = Unassigned()
 
 
 class BaseModel(Base):
     """
     BaseModel
+      Identifies the foundation model that was used as the starting point for model customization.
 
     Attributes
     ----------------------
-    hub_content_name
-    hub_content_version
-    recipe_name
+    hub_content_name:  The hub content name of the base model.
+    hub_content_version:  The hub content version of the base model.
+    recipe_name:  The recipe name of the base model.
     """
 
     hub_content_name: Optional[Union[StrPipeVar, object]] = Unassigned()
@@ -815,15 +1218,15 @@ class ModelPackageContainerDefinition(Base):
     framework: The machine learning framework of the model package container image.
     framework_version: The framework version of the Model Package Container Image.
     nearest_model_name: The name of a pre-trained machine learning benchmarked by Amazon SageMaker Inference Recommender model that matches your model. You can find a list of benchmarked models by calling ListModelMetadata.
-    sample_payload_url
+    additional_model_data_sources: Data sources that are available to your model in addition to the one that you specify for ModelDataSource when you use the CreateModelPackage action.
     additional_s3_data_source: The additional data source that is used during inference in the Docker container for your model package.
     model_data_e_tag: The ETag associated with Model Data URL.
-    is_checkpoint
-    base_model
+    is_checkpoint:  Specifies whether the model data is a training checkpoint.
+    base_model:  Identifies the foundation model that was used as the starting point for model customization.
     """
 
     container_hostname: Optional[StrPipeVar] = Unassigned()
-    image: Optional[StrPipeVar] = Unassigned() # Revert back to autogen version
+    image: Optional[StrPipeVar] = Unassigned()
     image_digest: Optional[StrPipeVar] = Unassigned()
     model_data_url: Optional[StrPipeVar] = Unassigned()
     model_data_source: Optional[ModelDataSource] = Unassigned()
@@ -833,7 +1236,7 @@ class ModelPackageContainerDefinition(Base):
     framework: Optional[StrPipeVar] = Unassigned()
     framework_version: Optional[StrPipeVar] = Unassigned()
     nearest_model_name: Optional[StrPipeVar] = Unassigned()
-    sample_payload_url: Optional[StrPipeVar] = Unassigned()
+    additional_model_data_sources: Optional[List[AdditionalModelDataSource]] = Unassigned()
     additional_s3_data_source: Optional[AdditionalS3DataSource] = Unassigned()
     model_data_e_tag: Optional[StrPipeVar] = Unassigned()
     is_checkpoint: Optional[bool] = Unassigned()
@@ -865,21 +1268,6 @@ class AdditionalInferenceSpecificationDefinition(Base):
     supported_response_mime_types: Optional[List[StrPipeVar]] = Unassigned()
 
 
-class AdditionalModelDataSource(Base):
-    """
-    AdditionalModelDataSource
-      Data sources that are available to your model in addition to the one that you specify for ModelDataSource when you use the CreateModel action.
-
-    Attributes
-    ----------------------
-    channel_name: A custom name for this AdditionalModelDataSource object.
-    s3_data_source
-    """
-
-    channel_name: StrPipeVar
-    s3_data_source: S3ModelDataSource
-
-
 class AgentVersion(Base):
     """
     AgentVersion
@@ -893,22 +1281,6 @@ class AgentVersion(Base):
 
     version: StrPipeVar
     agent_count: int
-
-
-class AgentsCredentialProvider(Base):
-    """
-    AgentsCredentialProvider
-
-    Attributes
-    ----------------------
-    algorithm_container_credential_provider
-    algorithm_container_secondary_credential_provider
-    training_image_credential_provider
-    """
-
-    training_image_credential_provider: StrPipeVar
-    algorithm_container_credential_provider: Optional[StrPipeVar] = Unassigned()
-    algorithm_container_secondary_credential_provider: Optional[StrPipeVar] = Unassigned()
 
 
 class Alarm(Base):
@@ -1120,10 +1492,11 @@ class FileSystemDataSource(Base):
 class DatasetSource(Base):
     """
     DatasetSource
+       Specifies a dataset source for a channel.
 
     Attributes
     ----------------------
-    dataset_arn
+    dataset_arn:  The Amazon Resource Name (ARN) of the dataset resource.
     """
 
     dataset_arn: StrPipeVar
@@ -1138,7 +1511,7 @@ class DataSource(Base):
     ----------------------
     s3_data_source: The S3 location of the data source that is associated with a channel.
     file_system_data_source: The file system that is associated with a channel.
-    dataset_source
+    dataset_source:  The dataset resource that's associated with a channel.
     """
 
     s3_data_source: Optional[S3DataSource] = Unassigned()
@@ -1173,7 +1546,6 @@ class Channel(Base):
     record_wrapper_type:  Specify RecordIO as the value when input data is in raw format but the training algorithm requires the RecordIO format. In this case, SageMaker wraps each individual S3 object in a RecordIO record. If the input data is already in RecordIO format, you don't need to set this attribute. For more information, see Create a Dataset Using RecordIO.  In File mode, leave this field unset or set it to None.
     input_mode: (Optional) The input mode to use for the data channel in a training job. If you don't set a value for InputMode, SageMaker uses the value set for TrainingInputMode. Use this parameter to override the TrainingInputMode setting in a AlgorithmSpecification request when you have a channel that needs a different input mode from the training job's general setting. To download the data from Amazon Simple Storage Service (Amazon S3) to the provisioned ML storage volume, and mount the directory to a Docker volume, use File input mode. To stream data directly from Amazon S3 to the container, choose Pipe input mode. To use a model for incremental training, choose File input model.
     shuffle_config: A configuration for a shuffle option for input data in a channel. If you use S3Prefix for S3DataType, this shuffles the results of the S3 key prefix matches. If you use ManifestFile, the order of the S3 object references in the ManifestFile is shuffled. If you use AugmentedManifestFile, the order of the JSON lines in the AugmentedManifestFile is shuffled. The shuffling order is determined using the Seed value. For Pipe input mode, shuffling is done at the start of every epoch. With large datasets this ensures that the order of the training data is different for each epoch, it helps reduce bias and possible overfitting. In a multi-node training job when ShuffleConfig is combined with S3DataDistributionType of ShardedByS3Key, the data is shuffled across nodes so that the content sent to a particular node on the first epoch might be sent to a different node on the second epoch.
-    enable_ffm
     """
 
     channel_name: StrPipeVar
@@ -1183,29 +1555,6 @@ class Channel(Base):
     record_wrapper_type: Optional[StrPipeVar] = Unassigned()
     input_mode: Optional[StrPipeVar] = Unassigned()
     shuffle_config: Optional[ShuffleConfig] = Unassigned()
-    enable_ffm: Optional[bool] = Unassigned()
-
-
-class OutputChannel(Base):
-    """
-    OutputChannel
-
-    Attributes
-    ----------------------
-    channel_name
-    local_path
-    s3_output_path
-    continuous_upload
-    kms_key_id
-    kms_encryption_context
-    """
-
-    channel_name: StrPipeVar
-    s3_output_path: StrPipeVar
-    local_path: Optional[StrPipeVar] = Unassigned()
-    continuous_upload: Optional[bool] = Unassigned()
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-    kms_encryption_context: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
 
 
 class OutputDataConfig(Base):
@@ -1218,17 +1567,11 @@ class OutputDataConfig(Base):
     kms_key_id: The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that SageMaker uses to encrypt the model artifacts at rest using Amazon S3 server-side encryption. The KmsKeyId can be any of the following formats:    // KMS Key ID  "1234abcd-12ab-34cd-56ef-1234567890ab"    // Amazon Resource Name (ARN) of a KMS Key  "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"    // KMS Key Alias  "alias/ExampleAlias"    // Amazon Resource Name (ARN) of a KMS Key Alias  "arn:aws:kms:us-west-2:111122223333:alias/ExampleAlias"    If you use a KMS key ID or an alias of your KMS key, the SageMaker execution role must include permissions to call kms:Encrypt. If you don't provide a KMS key ID, SageMaker uses the default KMS key for Amazon S3 for your role's account. For more information, see KMS-Managed Encryption Keys in the Amazon Simple Storage Service Developer Guide. If the output data is stored in Amazon S3 Express One Zone, it is encrypted with server-side encryption with Amazon S3 managed keys (SSE-S3). KMS key is not supported for Amazon S3 Express One Zone The KMS key policy must grant permission to the IAM role that you specify in your CreateTrainingJob, CreateTransformJob, or CreateHyperParameterTuningJob requests. For more information, see Using Key Policies in Amazon Web Services KMS in the Amazon Web Services Key Management Service Developer Guide.
     s3_output_path: Identifies the S3 path where you want SageMaker to store the model artifacts. For example, s3://bucket-name/key-name-prefix.
     compression_type: The model output compression type. Select None to output an uncompressed model, recommended for large model outputs. Defaults to gzip.
-    remove_job_name_from_s3_output_path
-    disable_model_upload
-    channels
     """
 
     s3_output_path: StrPipeVar
     kms_key_id: Optional[StrPipeVar] = Unassigned()
     compression_type: Optional[StrPipeVar] = Unassigned()
-    remove_job_name_from_s3_output_path: Optional[bool] = Unassigned()
-    disable_model_upload: Optional[bool] = Unassigned()
-    channels: Optional[List[OutputChannel]] = Unassigned()
 
 
 class InstanceGroup(Base):
@@ -1246,32 +1589,6 @@ class InstanceGroup(Base):
     instance_type: StrPipeVar
     instance_count: int
     instance_group_name: StrPipeVar
-
-
-class CapacitySchedule(Base):
-    """
-    CapacitySchedule
-
-    Attributes
-    ----------------------
-    capacity_schedule_arn
-    """
-
-    capacity_schedule_arn: StrPipeVar
-
-
-class CapacitySchedulesConfig(Base):
-    """
-    CapacitySchedulesConfig
-
-    Attributes
-    ----------------------
-    capacity_fallback_strategy
-    capacity_schedules
-    """
-
-    capacity_schedules: List[CapacitySchedule]
-    capacity_fallback_strategy: Optional[StrPipeVar] = Unassigned()
 
 
 class PlacementSpecification(Base):
@@ -1313,12 +1630,10 @@ class ResourceConfig(Base):
     ----------------------
     instance_type: The ML compute instance type.
     instance_count: The number of ML compute instances to use. For distributed training, provide a value greater than 1.
-    volume_size_in_gb: The size of the ML storage volume that you want to provision.  ML storage volumes store model artifacts and incremental states. Training algorithms might also use the ML storage volume for scratch space. If you want to store the training data in the ML storage volume, choose File as the TrainingInputMode in the algorithm specification.  When using an ML instance with NVMe SSD volumes, SageMaker doesn't provision Amazon EBS General Purpose SSD (gp2) storage. Available storage is fixed to the NVMe-type instance's storage capacity. SageMaker configures storage paths for training datasets, checkpoints, model artifacts, and outputs to use the entire capacity of the instance storage. For example, ML instance families with the NVMe-type instance storage include ml.p4d, ml.g4dn, and ml.g5.  When using an ML instance with the EBS-only storage option and without instance storage, you must define the size of EBS volume through VolumeSizeInGB in the ResourceConfig API. For example, ML instance families that use EBS volumes include ml.c5 and ml.p2.  To look up instance types and their instance storage types and volumes, see Amazon EC2 Instance Types. To find the default local paths defined by the SageMaker training platform, see Amazon SageMaker Training Storage Folders for Training Datasets, Checkpoints, Model Artifacts, and Outputs.
+    volume_size_in_gb: The size of the ML storage volume that you want to provision.  SageMaker automatically selects the volume size for serverless training jobs. You cannot customize this setting. ML storage volumes store model artifacts and incremental states. Training algorithms might also use the ML storage volume for scratch space. If you want to store the training data in the ML storage volume, choose File as the TrainingInputMode in the algorithm specification.  When using an ML instance with NVMe SSD volumes, SageMaker doesn't provision Amazon EBS General Purpose SSD (gp2) storage. Available storage is fixed to the NVMe-type instance's storage capacity. SageMaker configures storage paths for training datasets, checkpoints, model artifacts, and outputs to use the entire capacity of the instance storage. For example, ML instance families with the NVMe-type instance storage include ml.p4d, ml.g4dn, and ml.g5.  When using an ML instance with the EBS-only storage option and without instance storage, you must define the size of EBS volume through VolumeSizeInGB in the ResourceConfig API. For example, ML instance families that use EBS volumes include ml.c5 and ml.p2.  To look up instance types and their instance storage types and volumes, see Amazon EC2 Instance Types. To find the default local paths defined by the SageMaker training platform, see Amazon SageMaker Training Storage Folders for Training Datasets, Checkpoints, Model Artifacts, and Outputs.
     volume_kms_key_id: The Amazon Web Services KMS key that SageMaker uses to encrypt data on the storage volume attached to the ML compute instance(s) that run the training job.  Certain Nitro-based instances include local storage, dependent on the instance type. Local storage volumes are encrypted using a hardware module on the instance. You can't request a VolumeKmsKeyId when using an instance type with local storage. For a list of instance types that support local instance storage, see Instance Store Volumes. For more information about local instance storage encryption, see SSD Instance Store Volumes.  The VolumeKmsKeyId can be in any of the following formats:   // KMS Key ID  "1234abcd-12ab-34cd-56ef-1234567890ab"    // Amazon Resource Name (ARN) of a KMS Key  "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
     keep_alive_period_in_seconds: The duration of time in seconds to retain configured resources in a warm pool for subsequent training jobs.
-    capacity_reservation_ids
     instance_groups: The configuration of a heterogeneous cluster in JSON format.
-    capacity_schedules_config
     training_plan_arn: The Amazon Resource Name (ARN); of the training plan to use for this resource configuration.
     instance_placement_config: Configuration for how training job instances are placed and allocated within UltraServers. Only applicable for UltraServer capacity.
     """
@@ -1328,9 +1643,7 @@ class ResourceConfig(Base):
     volume_size_in_gb: Optional[IntPipeVar] = Unassigned()
     volume_kms_key_id: Optional[StrPipeVar] = Unassigned()
     keep_alive_period_in_seconds: Optional[IntPipeVar] = Unassigned()
-    capacity_reservation_ids: Optional[List[StrPipeVar]] = Unassigned()
     instance_groups: Optional[List[InstanceGroup]] = Unassigned()
-    capacity_schedules_config: Optional[CapacitySchedulesConfig] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
     instance_placement_config: Optional[InstancePlacementConfig] = Unassigned()
 
@@ -1433,16 +1746,12 @@ class TransformOutput(Base):
     accept: The MIME type used to specify the output data. Amazon SageMaker uses the MIME type with each http call to transfer data from the transform job.
     assemble_with: Defines how to assemble the results of the transform job as a single S3 object. Choose a format that is most convenient to you. To concatenate the results in binary format, specify None. To add a newline character at the end of every transformed record, specify Line.
     kms_key_id: The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt the model artifacts at rest using Amazon S3 server-side encryption. The KmsKeyId can be any of the following formats:    Key ID: 1234abcd-12ab-34cd-56ef-1234567890ab    Key ARN: arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab    Alias name: alias/ExampleAlias    Alias name ARN: arn:aws:kms:us-west-2:111122223333:alias/ExampleAlias    If you don't provide a KMS key ID, Amazon SageMaker uses the default KMS key for Amazon S3 for your role's account. For more information, see KMS-Managed Encryption Keys in the Amazon Simple Storage Service Developer Guide.  The KMS key policy must grant permission to the IAM role that you specify in your CreateModel request. For more information, see Using Key Policies in Amazon Web Services KMS in the Amazon Web Services Key Management Service Developer Guide.
-    output_prefix
-    output_suffix
     """
 
     s3_output_path: StrPipeVar
     accept: Optional[StrPipeVar] = Unassigned()
     assemble_with: Optional[StrPipeVar] = Unassigned()
     kms_key_id: Optional[StrPipeVar] = Unassigned()
-    output_prefix: Optional[StrPipeVar] = Unassigned()
-    output_suffix: Optional[StrPipeVar] = Unassigned()
 
 
 class TransformResources(Base):
@@ -1556,8 +1865,6 @@ class ResourceSpec(Base):
 
     Attributes
     ----------------------
-    environment_arn
-    environment_version_arn
     sage_maker_image_arn: The ARN of the SageMaker AI image that the image version belongs to.
     sage_maker_image_version_arn: The ARN of the image version created on the instance. To clear the value set for SageMakerImageVersionArn, pass None as the value.
     sage_maker_image_version_alias: The SageMakerImageVersionAlias of the image to launch with. This value is in SemVer 2.0.0 versioning format.
@@ -1565,105 +1872,11 @@ class ResourceSpec(Base):
     lifecycle_config_arn:  The Amazon Resource Name (ARN) of the Lifecycle Configuration attached to the Resource.
     """
 
-    environment_arn: Optional[StrPipeVar] = Unassigned()
-    environment_version_arn: Optional[StrPipeVar] = Unassigned()
     sage_maker_image_arn: Optional[StrPipeVar] = Unassigned()
     sage_maker_image_version_arn: Optional[StrPipeVar] = Unassigned()
     sage_maker_image_version_alias: Optional[StrPipeVar] = Unassigned()
     instance_type: Optional[StrPipeVar] = Unassigned()
     lifecycle_config_arn: Optional[StrPipeVar] = Unassigned()
-
-
-class Service(Base):
-    """
-    Service
-
-    Attributes
-    ----------------------
-    environment
-    image_uri
-    volumes
-    entrypoint
-    command
-    """
-
-    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    image_uri: Optional[StrPipeVar] = Unassigned()
-    volumes: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    entrypoint: Optional[List[StrPipeVar]] = Unassigned()
-    command: Optional[List[StrPipeVar]] = Unassigned()
-
-
-class LocalAppLaunchConfiguration(Base):
-    """
-    LocalAppLaunchConfiguration
-
-    Attributes
-    ----------------------
-    parent_app_arn
-    services
-    """
-
-    parent_app_arn: Optional[StrPipeVar] = Unassigned()
-    services: Optional[List[Service]] = Unassigned()
-
-
-class AppLaunchConfiguration(Base):
-    """
-    AppLaunchConfiguration
-
-    Attributes
-    ----------------------
-    local_app_launch_configuration
-    """
-
-    local_app_launch_configuration: Optional[LocalAppLaunchConfiguration] = Unassigned()
-
-
-class App(Base):
-    """
-    App
-
-    Attributes
-    ----------------------
-    app_arn
-    app_type
-    app_name
-    domain_id
-    user_profile_name
-    space_name
-    status
-    effective_trusted_identity_propagation_status
-    recovery_mode
-    last_health_check_timestamp
-    last_user_activity_timestamp
-    creation_time
-    restart_time
-    failure_reason
-    resource_spec
-    built_in_lifecycle_config_arn
-    app_launch_configuration
-    tags
-    """
-
-    app_arn: Optional[StrPipeVar] = Unassigned()
-    app_type: Optional[StrPipeVar] = Unassigned()
-    app_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    domain_id: Optional[StrPipeVar] = Unassigned()
-    user_profile_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    space_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    status: Optional[StrPipeVar] = Unassigned()
-    effective_trusted_identity_propagation_status: Optional[StrPipeVar] = Unassigned()
-    recovery_mode: Optional[bool] = Unassigned()
-    last_health_check_timestamp: Optional[datetime.datetime] = Unassigned()
-    last_user_activity_timestamp: Optional[datetime.datetime] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    restart_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    resource_spec: Optional[ResourceSpec] = Unassigned()
-    built_in_lifecycle_config_arn: Optional[StrPipeVar] = Unassigned()
-    app_launch_configuration: Optional[AppLaunchConfiguration] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
 
 
 class AppDetails(Base):
@@ -1757,20 +1970,6 @@ class ContainerConfig(Base):
     container_environment_variables: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
 
 
-class SaviturAppImageConfig(Base):
-    """
-    SaviturAppImageConfig
-
-    Attributes
-    ----------------------
-    file_system_config
-    container_config
-    """
-
-    file_system_config: Optional[FileSystemConfig] = Unassigned()
-    container_config: Optional[ContainerConfig] = Unassigned()
-
-
 class JupyterLabAppImageConfig(Base):
     """
     JupyterLabAppImageConfig
@@ -1813,7 +2012,6 @@ class AppImageConfigDetails(Base):
     creation_time: When the AppImageConfig was created.
     last_modified_time: When the AppImageConfig was last modified.
     kernel_gateway_image_config: The configuration for the file system and kernels in the SageMaker AI image.
-    savitur_app_image_config
     jupyter_lab_app_image_config: The configuration for the file system and the runtime, such as the environment variables and entry point.
     code_editor_app_image_config: The configuration for the file system and the runtime, such as the environment variables and entry point.
     """
@@ -1823,7 +2021,6 @@ class AppImageConfigDetails(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     kernel_gateway_image_config: Optional[KernelGatewayImageConfig] = Unassigned()
-    savitur_app_image_config: Optional[SaviturAppImageConfig] = Unassigned()
     jupyter_lab_app_image_config: Optional[JupyterLabAppImageConfig] = Unassigned()
     code_editor_app_image_config: Optional[CodeEditorAppImageConfig] = Unassigned()
 
@@ -1933,15 +2130,52 @@ class ArtifactSummary(Base):
 class AssociationInfo(Base):
     """
     AssociationInfo
+       The data type used to describe the relationship between different sources.
 
     Attributes
     ----------------------
-    source_arn
-    destination_arn
+    source_arn:  The Amazon Resource Name (ARN) of the AssociationInfo source.
+    destination_arn:  The Amazon Resource Name (ARN) of the AssociationInfo destination.
     """
 
     source_arn: StrPipeVar
     destination_arn: StrPipeVar
+
+
+class IamIdentity(Base):
+    """
+    IamIdentity
+      The IAM Identity details associated with the user. These details are associated with model package groups, model packages and project entities only.
+
+    Attributes
+    ----------------------
+    arn: The Amazon Resource Name (ARN) of the IAM identity.
+    principal_id: The ID of the principal that assumes the IAM identity.
+    source_identity: The person or application which assumes the IAM identity.
+    """
+
+    arn: Optional[StrPipeVar] = Unassigned()
+    principal_id: Optional[StrPipeVar] = Unassigned()
+    source_identity: Optional[StrPipeVar] = Unassigned()
+
+
+class UserContext(Base):
+    """
+    UserContext
+      Information about the user who created or modified a SageMaker resource.
+
+    Attributes
+    ----------------------
+    user_profile_arn: The Amazon Resource Name (ARN) of the user's profile.
+    user_profile_name: The name of the user's profile.
+    domain_id: The domain associated with the user.
+    iam_identity: The IAM Identity details associated with the user. These details are associated with model package groups, model packages, and project entities only.
+    """
+
+    user_profile_arn: Optional[StrPipeVar] = Unassigned()
+    user_profile_name: Optional[Union[StrPipeVar, object]] = Unassigned()
+    domain_id: Optional[StrPipeVar] = Unassigned()
+    iam_identity: Optional[IamIdentity] = Unassigned()
 
 
 class AssociationSummary(Base):
@@ -1981,11 +2215,9 @@ class AsyncInferenceClientConfig(Base):
     Attributes
     ----------------------
     max_concurrent_invocations_per_instance: The maximum number of concurrent requests sent by the SageMaker client to the model container. If no value is provided, SageMaker chooses an optimal value.
-    invocation_timeout_in_seconds
     """
 
     max_concurrent_invocations_per_instance: Optional[int] = Unassigned()
-    invocation_timeout_in_seconds: Optional[int] = Unassigned()
 
 
 class AsyncInferenceNotificationConfig(Base):
@@ -2051,7 +2283,6 @@ class AthenaDatasetDefinition(Base):
     query_string
     work_group
     output_s3_uri: The location in Amazon S3 where Athena query results are stored.
-    output_dataset_s3_uri
     kms_key_id: The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt data generated from an Athena query execution.
     output_format
     output_compression
@@ -2063,7 +2294,6 @@ class AthenaDatasetDefinition(Base):
     output_s3_uri: StrPipeVar
     output_format: StrPipeVar
     work_group: Optional[StrPipeVar] = Unassigned()
-    output_dataset_s3_uri: Optional[StrPipeVar] = Unassigned()
     kms_key_id: Optional[StrPipeVar] = Unassigned()
     output_compression: Optional[StrPipeVar] = Unassigned()
 
@@ -2218,7 +2448,6 @@ class AutoMLCandidate(Base):
     last_modified_time: The last modified time.
     failure_reason: The failure reason.
     candidate_properties: The properties of an AutoML candidate job.
-    local_mode_enabled
     inference_container_definitions: The mapping of all supported processing unit (CPU, GPU, etc...) to inference container definitions for the candidate. This field is populated for the AutoML jobs V2 (for example, for jobs created by calling CreateAutoMLJobV2) related to image or text classification problem types only.
     """
 
@@ -2233,52 +2462,9 @@ class AutoMLCandidate(Base):
     end_time: Optional[datetime.datetime] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
     candidate_properties: Optional[CandidateProperties] = Unassigned()
-    local_mode_enabled: Optional[bool] = Unassigned()
     inference_container_definitions: Optional[Dict[StrPipeVar, List[AutoMLContainerDefinition]]] = (
         Unassigned()
     )
-
-
-class Transformer(Base):
-    """
-    Transformer
-
-    Attributes
-    ----------------------
-    name
-    """
-
-    name: StrPipeVar
-
-
-class ColumnConfig(Base):
-    """
-    ColumnConfig
-
-    Attributes
-    ----------------------
-    column_type
-    column_names
-    transformers
-    """
-
-    transformers: List[Transformer]
-    column_type: Optional[StrPipeVar] = Unassigned()
-    column_names: Optional[List[StrPipeVar]] = Unassigned()
-
-
-class CandidateSpecification(Base):
-    """
-    CandidateSpecification
-
-    Attributes
-    ----------------------
-    algorithm
-    columns_config
-    """
-
-    columns_config: List[ColumnConfig]
-    algorithm: Optional[StrPipeVar] = Unassigned()
 
 
 class AutoMLCandidateGenerationConfig(Base):
@@ -2288,19 +2474,11 @@ class AutoMLCandidateGenerationConfig(Base):
 
     Attributes
     ----------------------
-    generate_candidates_mode
-    algorithms
-    transformers
     feature_specification_s3_uri: A URL to the Amazon S3 data source containing selected features from the input data source to run an Autopilot job. You can input FeatureAttributeNames (optional) in JSON format as shown below:   { "FeatureAttributeNames":["col1", "col2", ...] }. You can also specify the data type of the feature (optional) in the format shown below:  { "FeatureDataTypes":{"col1":"numeric", "col2":"categorical" ... } }   These column keys may not include the target column.  In ensembling mode, Autopilot only supports the following data types: numeric, categorical, text, and datetime. In HPO mode, Autopilot can support numeric, categorical, text, datetime, and sequence. If only FeatureDataTypes is provided, the column keys (col1, col2,..) should be a subset of the column names in the input data.  If both FeatureDataTypes and FeatureAttributeNames are provided, then the column keys should be a subset of the column names provided in FeatureAttributeNames.  The key name FeatureAttributeNames is fixed. The values listed in ["col1", "col2", ...] are case sensitive and should be a list of strings containing unique values that are a subset of the column names in the input data. The list of columns provided must not include the target column.
-    candidates_specification
     algorithms_config: Stores the configuration information for the selection of algorithms trained on tabular data. The list of available algorithms to choose from depends on the training mode set in  TabularJobConfig.Mode .    AlgorithmsConfig should not be set if the training mode is set on AUTO.   When AlgorithmsConfig is provided, one AutoMLAlgorithms attribute must be set and one only. If the list of algorithms provided as values for AutoMLAlgorithms is empty, CandidateGenerationConfig uses the full set of algorithms for the given training mode.   When AlgorithmsConfig is not provided, CandidateGenerationConfig uses the full set of algorithms for the given training mode.   For the list of all algorithms per problem type and training mode, see  AutoMLAlgorithmConfig. For more information on each algorithm, see the Algorithm support section in Autopilot developer guide.
     """
 
-    generate_candidates_mode: Optional[StrPipeVar] = Unassigned()
-    algorithms: Optional[List[StrPipeVar]] = Unassigned()
-    transformers: Optional[List[StrPipeVar]] = Unassigned()
     feature_specification_s3_uri: Optional[StrPipeVar] = Unassigned()
-    candidates_specification: Optional[List[CandidateSpecification]] = Unassigned()
     algorithms_config: Optional[List[AutoMLAlgorithmConfig]] = Unassigned()
 
 
@@ -2319,24 +2497,6 @@ class AutoMLS3DataSource(Base):
     s3_uri: StrPipeVar
 
 
-class AutoMLFileSystemDataSource(Base):
-    """
-    AutoMLFileSystemDataSource
-
-    Attributes
-    ----------------------
-    file_system_id
-    file_system_access_mode
-    file_system_type
-    directory_path
-    """
-
-    file_system_id: StrPipeVar
-    file_system_access_mode: StrPipeVar
-    file_system_type: StrPipeVar
-    directory_path: StrPipeVar
-
-
 class AutoMLDataSource(Base):
     """
     AutoMLDataSource
@@ -2345,51 +2505,9 @@ class AutoMLDataSource(Base):
     Attributes
     ----------------------
     s3_data_source: The Amazon S3 location of the input data.
-    file_system_data_source
     """
 
     s3_data_source: AutoMLS3DataSource
-    file_system_data_source: Optional[AutoMLFileSystemDataSource] = Unassigned()
-
-
-class AutoMLSnowflakeDatasetDefinition(Base):
-    """
-    AutoMLSnowflakeDatasetDefinition
-
-    Attributes
-    ----------------------
-    warehouse
-    database
-    schema
-    table_name
-    snowflake_role
-    secret_arn
-    output_s3_uri
-    storage_integration
-    kms_key_id
-    """
-
-    warehouse: StrPipeVar
-    database: StrPipeVar
-    schema: StrPipeVar
-    table_name: StrPipeVar
-    secret_arn: StrPipeVar
-    output_s3_uri: StrPipeVar
-    storage_integration: StrPipeVar
-    snowflake_role: Optional[StrPipeVar] = Unassigned()
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-
-
-class AutoMLDatasetDefinition(Base):
-    """
-    AutoMLDatasetDefinition
-
-    Attributes
-    ----------------------
-    auto_ml_snowflake_dataset_definition
-    """
-
-    auto_ml_snowflake_dataset_definition: Optional[AutoMLSnowflakeDatasetDefinition] = Unassigned()
 
 
 class AutoMLChannel(Base):
@@ -2402,8 +2520,6 @@ class AutoMLChannel(Base):
     data_source: The data source for an AutoML channel.
     compression_type: You can use Gzip or None. The default value is None.
     target_attribute_name: The name of the target variable in supervised learning, usually represented by 'y'.
-    feature_attribute_s3_uri
-    auto_ml_dataset_definition
     content_type: The content type of the data from the input source. You can use text/csv;header=present or x-application/vnd.amazon+parquet. The default value is text/csv;header=present.
     channel_type: The channel type (optional) is an enum string. The default value is training. Channels for training and validation must share the same ContentType and TargetAttributeName. For information on specifying training and validation channel types, see How to specify training and validation datasets.
     sample_weight_attribute_name: If specified, this column name indicates which column of the dataset should be treated as sample weights for use by the objective metric during the training, evaluation, and the selection of the best model. This column is not considered as a predictive feature. For more information on Autopilot metrics, see Metrics and validation. Sample weights should be numeric, non-negative, with larger values indicating which rows are more important than others. Data points that have invalid or no weight value are excluded. Support for sample weights is available in Ensembling mode only.
@@ -2412,8 +2528,6 @@ class AutoMLChannel(Base):
     target_attribute_name: StrPipeVar
     data_source: Optional[AutoMLDataSource] = Unassigned()
     compression_type: Optional[StrPipeVar] = Unassigned()
-    feature_attribute_s3_uri: Optional[StrPipeVar] = Unassigned()
-    auto_ml_dataset_definition: Optional[AutoMLDatasetDefinition] = Unassigned()
     content_type: Optional[StrPipeVar] = Unassigned()
     channel_type: Optional[StrPipeVar] = Unassigned()
     sample_weight_attribute_name: Optional[StrPipeVar] = Unassigned()
@@ -2458,62 +2572,6 @@ class AutoMLDataSplitConfig(Base):
     validation_fraction: Optional[float] = Unassigned()
 
 
-class AutoMLEndpointConfigDefinition(Base):
-    """
-    AutoMLEndpointConfigDefinition
-
-    Attributes
-    ----------------------
-    endpoint_config_name
-    initial_instance_count
-    instance_type
-    """
-
-    endpoint_config_name: Union[StrPipeVar, object]
-    initial_instance_count: int
-    instance_type: StrPipeVar
-
-
-class AutoMLEndpointDeletionCondition(Base):
-    """
-    AutoMLEndpointDeletionCondition
-
-    Attributes
-    ----------------------
-    max_runtime_in_seconds
-    """
-
-    max_runtime_in_seconds: int
-
-
-class AutoMLEndpointDefinition(Base):
-    """
-    AutoMLEndpointDefinition
-
-    Attributes
-    ----------------------
-    endpoint_name
-    endpoint_config_name
-    deletion_condition
-    """
-
-    endpoint_name: Union[StrPipeVar, object]
-    endpoint_config_name: Union[StrPipeVar, object]
-    deletion_condition: Optional[AutoMLEndpointDeletionCondition] = Unassigned()
-
-
-class AutoMLExternalFeatureTransformers(Base):
-    """
-    AutoMLExternalFeatureTransformers
-
-    Attributes
-    ----------------------
-    pre_feature_transformers
-    """
-
-    pre_feature_transformers: Optional[List[AutoMLContainerDefinition]] = Unassigned()
-
-
 class AutoMLJobArtifacts(Base):
     """
     AutoMLJobArtifacts
@@ -2540,14 +2598,12 @@ class AutoMLJobChannel(Base):
     content_type: The content type of the data from the input source. The following are the allowed content types for different problems:   For tabular problem types: text/csv;header=present or x-application/vnd.amazon+parquet. The default value is text/csv;header=present.   For image classification: image/png, image/jpeg, or image/*. The default value is image/*.   For text classification: text/csv;header=present or x-application/vnd.amazon+parquet. The default value is text/csv;header=present.   For time-series forecasting: text/csv;header=present or x-application/vnd.amazon+parquet. The default value is text/csv;header=present.   For text generation (LLMs fine-tuning): text/csv;header=present or x-application/vnd.amazon+parquet. The default value is text/csv;header=present.
     compression_type: The allowed compression types depend on the input format and problem type. We allow the compression type Gzip for S3Prefix inputs on tabular data only. For all other inputs, the compression type should be None. If no compression type is provided, we default to None.
     data_source: The data source for an AutoML channel (Required).
-    dataset_definition
     """
 
     channel_type: Optional[StrPipeVar] = Unassigned()
     content_type: Optional[StrPipeVar] = Unassigned()
     compression_type: Optional[StrPipeVar] = Unassigned()
     data_source: Optional[AutoMLDataSource] = Unassigned()
-    dataset_definition: Optional[AutoMLDatasetDefinition] = Unassigned()
 
 
 class AutoMLJobCompletionCriteria(Base):
@@ -2565,21 +2621,6 @@ class AutoMLJobCompletionCriteria(Base):
     max_candidates: Optional[int] = Unassigned()
     max_runtime_per_training_job_in_seconds: Optional[int] = Unassigned()
     max_auto_ml_job_runtime_in_seconds: Optional[int] = Unassigned()
-
-
-class VpcConfig(Base):
-    """
-    VpcConfig
-      Specifies an Amazon Virtual Private Cloud (VPC) that your SageMaker jobs, hosted models, and compute resources have access to. You can control access to and from your resources by configuring a VPC. For more information, see Give SageMaker Access to Resources in your Amazon VPC.
-
-    Attributes
-    ----------------------
-    security_group_ids: The VPC security group IDs, in the form sg-xxxxxxxx. Specify the security groups for the VPC that is specified in the Subnets field.
-    subnets: The ID of the subnets in the VPC to which you want to connect your training job or model. For information about the availability of specific instance types, see Supported Instance Types and Availability Zones.
-    """
-
-    security_group_ids: List[StrPipeVar]
-    subnets: List[StrPipeVar]
 
 
 class AutoMLSecurityConfig(Base):
@@ -2610,20 +2651,14 @@ class AutoMLJobConfig(Base):
     security_config: The security configuration for traffic encryption or Amazon VPC settings.
     candidate_generation_config: The configuration for generating a candidate for an AutoML job (optional).
     data_split_config: The configuration for splitting the input training dataset. Type: AutoMLDataSplitConfig
-    engine
     mode: The method that Autopilot uses to train the data. You can either specify the mode manually or let Autopilot choose for you based on the dataset size by selecting AUTO. In AUTO mode, Autopilot chooses ENSEMBLING for datasets smaller than 100 MB, and HYPERPARAMETER_TUNING for larger ones. The ENSEMBLING mode uses a multi-stack ensemble model to predict classification and regression tasks directly from your dataset. This machine learning mode combines several base models to produce an optimal predictive model. It then uses a stacking ensemble method to combine predictions from contributing members. A multi-stack ensemble model can provide better performance over a single model by combining the predictive capabilities of multiple models. See Autopilot algorithm support for a list of algorithms supported by ENSEMBLING mode. The HYPERPARAMETER_TUNING (HPO) mode uses the best hyperparameters to train the best version of a model. HPO automatically selects an algorithm for the type of problem you want to solve. Then HPO finds the best hyperparameters according to your objective metric. See Autopilot algorithm support for a list of algorithms supported by HYPERPARAMETER_TUNING mode.
-    local_mode_enabled
-    external_feature_transformers
     """
 
     completion_criteria: Optional[AutoMLJobCompletionCriteria] = Unassigned()
     security_config: Optional[AutoMLSecurityConfig] = Unassigned()
     candidate_generation_config: Optional[AutoMLCandidateGenerationConfig] = Unassigned()
     data_split_config: Optional[AutoMLDataSplitConfig] = Unassigned()
-    engine: Optional[StrPipeVar] = Unassigned()
     mode: Optional[StrPipeVar] = Unassigned()
-    local_mode_enabled: Optional[bool] = Unassigned()
-    external_feature_transformers: Optional[AutoMLExternalFeatureTransformers] = Unassigned()
 
 
 class AutoMLJobObjective(Base):
@@ -2717,11 +2752,9 @@ class ImageClassificationJobConfig(Base):
     Attributes
     ----------------------
     completion_criteria: How long a job is allowed to run, or how many candidates a job is allowed to generate.
-    multi_label_enabled
     """
 
     completion_criteria: Optional[AutoMLJobCompletionCriteria] = Unassigned()
-    multi_label_enabled: Optional[bool] = Unassigned()
 
 
 class TextClassificationJobConfig(Base):
@@ -2796,15 +2829,9 @@ class CandidateGenerationConfig(Base):
     Attributes
     ----------------------
     algorithms_config: Your Autopilot job trains a default set of algorithms on your dataset. For tabular and time-series data, you can customize the algorithm list by selecting a subset of algorithms for your problem type.  AlgorithmsConfig stores the customized selection of algorithms to train on your data.    For the tabular problem type TabularJobConfig, the list of available algorithms to choose from depends on the training mode set in  AutoMLJobConfig.Mode .    AlgorithmsConfig should not be set when the training mode AutoMLJobConfig.Mode is set to AUTO.   When AlgorithmsConfig is provided, one AutoMLAlgorithms attribute must be set and one only. If the list of algorithms provided as values for AutoMLAlgorithms is empty, CandidateGenerationConfig uses the full set of algorithms for the given training mode.   When AlgorithmsConfig is not provided, CandidateGenerationConfig uses the full set of algorithms for the given training mode.   For the list of all algorithms per training mode, see  AlgorithmConfig. For more information on each algorithm, see the Algorithm support section in the Autopilot developer guide.    For the time-series forecasting problem type TimeSeriesForecastingJobConfig, choose your algorithms from the list provided in  AlgorithmConfig. For more information on each algorithm, see the Algorithms support for time-series forecasting section in the Autopilot developer guide.   When AlgorithmsConfig is provided, one AutoMLAlgorithms attribute must be set and one only. If the list of algorithms provided as values for AutoMLAlgorithms is empty, CandidateGenerationConfig uses the full set of algorithms for time-series forecasting.   When AlgorithmsConfig is not provided, CandidateGenerationConfig uses the full set of algorithms for time-series forecasting.
-    generate_candidates_mode
-    transformers
-    candidates_specification
     """
 
     algorithms_config: Optional[List[AutoMLAlgorithmConfig]] = Unassigned()
-    generate_candidates_mode: Optional[StrPipeVar] = Unassigned()
-    transformers: Optional[List[StrPipeVar]] = Unassigned()
-    candidates_specification: Optional[List[CandidateSpecification]] = Unassigned()
 
 
 class TimeSeriesForecastingJobConfig(Base):
@@ -2911,11 +2938,9 @@ class TabularResolvedAttributes(Base):
     Attributes
     ----------------------
     problem_type: The type of supervised learning problem available for the model candidates of the AutoML job V2 (Binary Classification, Multiclass Classification, Regression). For more information, see  SageMaker Autopilot problem types.
-    local_mode_enabled
     """
 
     problem_type: Optional[StrPipeVar] = Unassigned()
-    local_mode_enabled: Optional[bool] = Unassigned()
 
 
 class TextGenerationResolvedAttributes(Base):
@@ -2963,74 +2988,6 @@ class AutoMLResolvedAttributes(Base):
     auto_ml_problem_type_resolved_attributes: Optional[AutoMLProblemTypeResolvedAttributes] = (
         Unassigned()
     )
-
-
-class AutoMLTask(Base):
-    """
-    AutoMLTask
-
-    Attributes
-    ----------------------
-    auto_ml_job_arn
-    auto_ml_task_arn
-    candidate_name
-    auto_ml_task_type
-    auto_ml_task_status
-    creation_time
-    end_time
-    last_modified_time
-    """
-
-    auto_ml_job_arn: StrPipeVar
-    auto_ml_task_arn: StrPipeVar
-    candidate_name: StrPipeVar
-    auto_ml_task_type: StrPipeVar
-    auto_ml_task_status: StrPipeVar
-    creation_time: datetime.datetime
-    last_modified_time: datetime.datetime
-    end_time: Optional[datetime.datetime] = Unassigned()
-
-
-class ExplainabilityTaskContext(Base):
-    """
-    ExplainabilityTaskContext
-
-    Attributes
-    ----------------------
-    candidate_name
-    include_pdp
-    overwrite_artifacts
-    """
-
-    candidate_name: StrPipeVar
-    include_pdp: Optional[bool] = Unassigned()
-    overwrite_artifacts: Optional[bool] = Unassigned()
-
-
-class ModelInsightsTaskContext(Base):
-    """
-    ModelInsightsTaskContext
-
-    Attributes
-    ----------------------
-    candidate_name
-    """
-
-    candidate_name: StrPipeVar
-
-
-class AutoMLTaskContext(Base):
-    """
-    AutoMLTaskContext
-
-    Attributes
-    ----------------------
-    explainability_task_context
-    model_insights_task_context
-    """
-
-    explainability_task_context: Optional[ExplainabilityTaskContext] = Unassigned()
-    model_insights_task_context: Optional[ModelInsightsTaskContext] = Unassigned()
 
 
 class AutoParameter(Base):
@@ -3099,12 +3056,16 @@ class BatchAddClusterNodesError(Base):
     instance_group_name: The name of the instance group for which the error occurred.
     error_code: The error code associated with the failure. Possible values include InstanceGroupNotFound and InvalidInstanceGroupState.
     failed_count: The number of nodes that failed to be added to the specified instance group.
+    availability_zones: The availability zones associated with the failed node addition request.
+    instance_types: The instance types associated with the failed node addition request.
     message: A descriptive message providing additional details about the error.
     """
 
     instance_group_name: StrPipeVar
     error_code: StrPipeVar
     failed_count: int
+    availability_zones: Optional[List[StrPipeVar]] = Unassigned()
+    instance_types: Optional[List[StrPipeVar]] = Unassigned()
     message: Optional[StrPipeVar] = Unassigned()
 
 
@@ -3118,11 +3079,15 @@ class NodeAdditionResult(Base):
     node_logical_id: A unique identifier assigned to the node that can be used to track its provisioning status through the DescribeClusterNode operation.
     instance_group_name: The name of the instance group to which the node was added.
     status: The current status of the node. Possible values include Pending, Running, Failed, ShuttingDown, SystemUpdating, DeepHealthCheckInProgress, and NotFound.
+    availability_zones: The availability zones associated with the successfully added node.
+    instance_types: The instance types associated with the successfully added node.
     """
 
     node_logical_id: StrPipeVar
     instance_group_name: StrPipeVar
     status: StrPipeVar
+    availability_zones: Optional[List[StrPipeVar]] = Unassigned()
+    instance_types: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class BatchDataCaptureConfig(Base):
@@ -3245,7 +3210,7 @@ class BatchDescribeModelPackageSummary(Base):
     inference_specification
     model_package_status: The status of the mortgage package.
     model_approval_status: The approval status of the model.
-    model_package_registration_type
+    model_package_registration_type:  The package registration type of the model package summary.
     """
 
     model_package_group_name: Union[StrPipeVar, object]
@@ -3280,12 +3245,13 @@ class BatchDescribeModelPackageOutput(Base):
 class BatchRebootClusterNodeLogicalIdsError(Base):
     """
     BatchRebootClusterNodeLogicalIdsError
+      Represents an error encountered when rebooting a node (identified by its logical node ID) from a SageMaker HyperPod cluster.
 
     Attributes
     ----------------------
-    node_logical_id
-    error_code
-    message
+    node_logical_id: The logical node ID of the node that encountered an error during the reboot operation.
+    error_code: The error code associated with the error encountered when rebooting a node by logical node ID. Possible values:    InstanceIdNotFound: The node does not exist in the specified cluster.    InvalidInstanceStatus: The node is in a state that does not allow rebooting. Wait for the node to finish any ongoing changes before retrying.    InstanceIdInUse: Another operation is already in progress for this node. Wait for the operation to complete before retrying.    InternalServerError: An internal error occurred while processing this node.
+    message: A human-readable message describing the error encountered when rebooting a node by logical node ID.
     """
 
     node_logical_id: StrPipeVar
@@ -3296,12 +3262,13 @@ class BatchRebootClusterNodeLogicalIdsError(Base):
 class BatchRebootClusterNodesError(Base):
     """
     BatchRebootClusterNodesError
+      Represents an error encountered when rebooting a node from a SageMaker HyperPod cluster.
 
     Attributes
     ----------------------
-    node_id
-    error_code
-    message
+    node_id: The EC2 instance ID of the node that encountered an error during the reboot operation.
+    error_code: The error code associated with the error encountered when rebooting a node. Possible values:    InstanceIdNotFound: The instance does not exist in the specified cluster.    InvalidInstanceStatus: The instance is in a state that does not allow rebooting. Wait for the instance to finish any ongoing changes before retrying.    InstanceIdInUse: Another operation is already in progress for this node. Wait for the operation to complete before retrying.    InternalServerError: An internal error occurred while processing this node.
+    message: A human-readable message describing the error encountered when rebooting a node.
     """
 
     node_id: StrPipeVar
@@ -3309,61 +3276,16 @@ class BatchRebootClusterNodesError(Base):
     message: StrPipeVar
 
 
-class BatchRepairClusterNodesError(Base):
-    """
-    BatchRepairClusterNodesError
-
-    Attributes
-    ----------------------
-    repair_action
-    node_id
-    message
-    code
-    """
-
-    repair_action: StrPipeVar
-    node_id: StrPipeVar
-    message: StrPipeVar
-    code: StrPipeVar
-
-
-class RepairNodeItem(Base):
-    """
-    RepairNodeItem
-
-    Attributes
-    ----------------------
-    node_ids
-    repair_action
-    """
-
-    node_ids: List[StrPipeVar]
-    repair_action: StrPipeVar
-
-
-class BatchRepairClusterNodesSuccess(Base):
-    """
-    BatchRepairClusterNodesSuccess
-
-    Attributes
-    ----------------------
-    repair_action
-    node_id
-    """
-
-    repair_action: StrPipeVar
-    node_id: StrPipeVar
-
-
 class BatchReplaceClusterNodeLogicalIdsError(Base):
     """
     BatchReplaceClusterNodeLogicalIdsError
+      Represents an error encountered when replacing a node (identified by its logical node ID) in a SageMaker HyperPod cluster.
 
     Attributes
     ----------------------
-    node_logical_id
-    error_code
-    message
+    node_logical_id: The logical node ID of the node that encountered an error during the replacement operation.
+    error_code: The error code associated with the error encountered when replacing a node by logical node ID. Possible values:    InstanceIdNotFound: The node does not exist in the specified cluster.    InvalidInstanceStatus: The node is in a state that does not allow replacement. Wait for the node to finish any ongoing changes before retrying.    InstanceIdInUse: Another operation is already in progress for this node. Wait for the operation to complete before retrying.    InternalServerError: An internal error occurred while processing this node.
+    message: A human-readable message describing the error encountered when replacing a node by logical node ID.
     """
 
     node_logical_id: StrPipeVar
@@ -3374,12 +3296,13 @@ class BatchReplaceClusterNodeLogicalIdsError(Base):
 class BatchReplaceClusterNodesError(Base):
     """
     BatchReplaceClusterNodesError
+      Represents an error encountered when replacing a node in a SageMaker HyperPod cluster.
 
     Attributes
     ----------------------
-    node_id
-    error_code
-    message
+    node_id: The EC2 instance ID of the node that encountered an error during the replacement operation.
+    error_code: The error code associated with the error encountered when replacing a node. Possible values:    InstanceIdNotFound: The instance does not exist in the specified cluster.    InvalidInstanceStatus: The instance is in a state that does not allow replacement. Wait for the instance to finish any ongoing changes before retrying.    InstanceIdInUse: Another operation is already in progress for this node. Wait for the operation to complete before retrying.    InternalServerError: An internal error occurred while processing this node.
+    message: A human-readable message describing the error encountered when replacing a node.
     """
 
     node_id: StrPipeVar
@@ -3395,11 +3318,9 @@ class MonitoringCsvDatasetFormat(Base):
     Attributes
     ----------------------
     header: Indicates if the CSV data has a header.
-    compressed
     """
 
     header: Optional[bool] = Unassigned()
-    compressed: Optional[bool] = Unassigned()
 
 
 class MonitoringJsonDatasetFormat(Base):
@@ -3410,11 +3331,9 @@ class MonitoringJsonDatasetFormat(Base):
     Attributes
     ----------------------
     line: Indicates if the file should be read as a JSON object per line.
-    compressed
     """
 
     line: Optional[bool] = Unassigned()
-    compressed: Optional[bool] = Unassigned()
 
 
 class MonitoringParquetDatasetFormat(Base):
@@ -3482,10 +3401,11 @@ class BatchTransformInput(Base):
 class BedrockCustomModelDeploymentMetadata(Base):
     """
     BedrockCustomModelDeploymentMetadata
+       The metadata of the Amazon Bedrock custom model deployment.
 
     Attributes
     ----------------------
-    arn
+    arn:  The Amazon Resource Name (ARN) for the Amazon Bedrock custom model deployment.
     """
 
     arn: Optional[StrPipeVar] = Unassigned()
@@ -3494,10 +3414,11 @@ class BedrockCustomModelDeploymentMetadata(Base):
 class BedrockCustomModelMetadata(Base):
     """
     BedrockCustomModelMetadata
+       The metadata of the Amazon Bedrock custom model.
 
     Attributes
     ----------------------
-    arn
+    arn:  The Amazon Resource Name (ARN) of the Amazon Bedrock custom model.
     """
 
     arn: Optional[StrPipeVar] = Unassigned()
@@ -3506,10 +3427,11 @@ class BedrockCustomModelMetadata(Base):
 class BedrockModelImportMetadata(Base):
     """
     BedrockModelImportMetadata
+       The metadata of the Amazon Bedrock model import.
 
     Attributes
     ----------------------
-    arn
+    arn:  The Amazon Resource Name (ARN) of the Amazon Bedrock model import.
     """
 
     arn: Optional[StrPipeVar] = Unassigned()
@@ -3518,25 +3440,14 @@ class BedrockModelImportMetadata(Base):
 class BedrockProvisionedModelThroughputMetadata(Base):
     """
     BedrockProvisionedModelThroughputMetadata
+       The metadata of the Amazon Bedrock provisioned model throughput.
 
     Attributes
     ----------------------
-    arn
+    arn:  The Amazon Resource Name (ARN) of the Amazon Bedrock provisioned model throughput.
     """
 
     arn: Optional[StrPipeVar] = Unassigned()
-
-
-class BenchmarkResultsOutputConfig(Base):
-    """
-    BenchmarkResultsOutputConfig
-
-    Attributes
-    ----------------------
-    s3_output_uri
-    """
-
-    s3_output_uri: Optional[StrPipeVar] = Unassigned()
 
 
 class BestObjectiveNotImproving(Base):
@@ -3635,20 +3546,6 @@ class BlueGreenUpdatePolicy(Base):
     traffic_routing_configuration: TrafficRoutingConfig
     termination_wait_in_seconds: Optional[int] = Unassigned()
     maximum_execution_timeout_in_seconds: Optional[int] = Unassigned()
-
-
-class BurstLimit(Base):
-    """
-    BurstLimit
-
-    Attributes
-    ----------------------
-    allow_unlimited_burst
-    burst_multiplier
-    """
-
-    allow_unlimited_burst: Optional[bool] = Unassigned()
-    burst_multiplier: Optional[int] = Unassigned()
 
 
 class CacheHitResult(Base):
@@ -3779,11 +3676,9 @@ class KendraSettings(Base):
     Attributes
     ----------------------
     status: Describes whether the document querying feature is enabled or disabled in the Canvas application.
-    index_id_list
     """
 
     status: Optional[StrPipeVar] = Unassigned()
-    index_id_list: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class GenerativeAiSettings(Base):
@@ -3814,20 +3709,6 @@ class EmrServerlessSettings(Base):
     status: Optional[StrPipeVar] = Unassigned()
 
 
-class DataScienceAssistantSettings(Base):
-    """
-    DataScienceAssistantSettings
-
-    Attributes
-    ----------------------
-    status
-    cross_region_q_service_status
-    """
-
-    status: Optional[StrPipeVar] = Unassigned()
-    cross_region_q_service_status: Optional[StrPipeVar] = Unassigned()
-
-
 class CanvasAppSettings(Base):
     """
     CanvasAppSettings
@@ -3843,7 +3724,6 @@ class CanvasAppSettings(Base):
     kendra_settings: The settings for document querying.
     generative_ai_settings: The generative AI settings for the SageMaker Canvas application.
     emr_serverless_settings: The settings for running Amazon EMR Serverless data processing jobs in SageMaker Canvas.
-    data_science_assistant_settings
     """
 
     time_series_forecasting_settings: Optional[TimeSeriesForecastingSettings] = Unassigned()
@@ -3854,29 +3734,6 @@ class CanvasAppSettings(Base):
     kendra_settings: Optional[KendraSettings] = Unassigned()
     generative_ai_settings: Optional[GenerativeAiSettings] = Unassigned()
     emr_serverless_settings: Optional[EmrServerlessSettings] = Unassigned()
-    data_science_assistant_settings: Optional[DataScienceAssistantSettings] = Unassigned()
-
-
-class CapacityBlockOffering(Base):
-    """
-    CapacityBlockOffering
-
-    Attributes
-    ----------------------
-    capacity_block_duration_in_hours
-    start_time
-    end_time
-    upfront_fee
-    currency_code
-    availability_zone
-    """
-
-    capacity_block_duration_in_hours: int
-    upfront_fee: StrPipeVar
-    currency_code: StrPipeVar
-    start_time: Optional[datetime.datetime] = Unassigned()
-    end_time: Optional[datetime.datetime] = Unassigned()
-    availability_zone: Optional[StrPipeVar] = Unassigned()
 
 
 class CapacityReservation(Base):
@@ -3894,136 +3751,6 @@ class CapacityReservation(Base):
     type: Optional[StrPipeVar] = Unassigned()
 
 
-class CapacityResources(Base):
-    """
-    CapacityResources
-
-    Attributes
-    ----------------------
-    capacity_block_offerings
-    capacity_resource_arn
-    """
-
-    capacity_block_offerings: Optional[List[CapacityBlockOffering]] = Unassigned()
-    capacity_resource_arn: Optional[StrPipeVar] = Unassigned()
-
-
-class CapacityScheduleStatusTransition(Base):
-    """
-    CapacityScheduleStatusTransition
-
-    Attributes
-    ----------------------
-    status
-    start_time
-    end_time
-    status_message
-    """
-
-    status: StrPipeVar
-    start_time: datetime.datetime
-    status_message: StrPipeVar
-    end_time: Optional[datetime.datetime] = Unassigned()
-
-
-class CapacityScheduleDetail(Base):
-    """
-    CapacityScheduleDetail
-
-    Attributes
-    ----------------------
-    capacity_schedule_arn
-    owner_account_id
-    capacity_schedule_type
-    instance_type
-    total_instance_count
-    available_instance_count
-    availability_zone_distribution
-    placement
-    availability_zone
-    status
-    requested_start_time
-    requested_end_time
-    start_time
-    end_time
-    duration_in_hours
-    capacity_block_offerings
-    capacity_resources
-    target_resources
-    capacity_schedule_status_transitions
-    """
-
-    capacity_schedule_arn: StrPipeVar
-    capacity_schedule_type: StrPipeVar
-    instance_type: StrPipeVar
-    total_instance_count: int
-    placement: StrPipeVar
-    status: StrPipeVar
-    requested_start_time: datetime.datetime
-    owner_account_id: Optional[StrPipeVar] = Unassigned()
-    available_instance_count: Optional[int] = Unassigned()
-    availability_zone_distribution: Optional[StrPipeVar] = Unassigned()
-    availability_zone: Optional[StrPipeVar] = Unassigned()
-    requested_end_time: Optional[datetime.datetime] = Unassigned()
-    start_time: Optional[datetime.datetime] = Unassigned()
-    end_time: Optional[datetime.datetime] = Unassigned()
-    duration_in_hours: Optional[int] = Unassigned()
-    capacity_block_offerings: Optional[List[CapacityBlockOffering]] = Unassigned()
-    capacity_resources: Optional[CapacityResources] = Unassigned()
-    target_resources: Optional[List[StrPipeVar]] = Unassigned()
-    capacity_schedule_status_transitions: Optional[List[CapacityScheduleStatusTransition]] = (
-        Unassigned()
-    )
-
-
-class CapacityScheduleFilter(Base):
-    """
-    CapacityScheduleFilter
-
-    Attributes
-    ----------------------
-    name
-    value
-    """
-
-    name: StrPipeVar
-    value: StrPipeVar
-
-
-class CapacityScheduleOffering(Base):
-    """
-    CapacityScheduleOffering
-
-    Attributes
-    ----------------------
-    capacity_schedule_offering_id
-    capacity_schedule_type
-    eligible_resources
-    instance_type
-    instance_count
-    placement
-    requested_start_time
-    requested_end_time
-    availability_zones
-    availability_zone_distribution
-    duration_in_hours
-    capacity_block_offerings
-    """
-
-    capacity_schedule_offering_id: StrPipeVar
-    capacity_schedule_type: StrPipeVar
-    instance_type: StrPipeVar
-    instance_count: int
-    requested_start_time: datetime.datetime
-    eligible_resources: Optional[List[StrPipeVar]] = Unassigned()
-    placement: Optional[StrPipeVar] = Unassigned()
-    requested_end_time: Optional[datetime.datetime] = Unassigned()
-    availability_zones: Optional[List[StrPipeVar]] = Unassigned()
-    availability_zone_distribution: Optional[StrPipeVar] = Unassigned()
-    duration_in_hours: Optional[int] = Unassigned()
-    capacity_block_offerings: Optional[List[CapacityBlockOffering]] = Unassigned()
-
-
 class CapacitySizeConfig(Base):
     """
     CapacitySizeConfig
@@ -4037,18 +3764,6 @@ class CapacitySizeConfig(Base):
 
     type: StrPipeVar
     value: int
-
-
-class CaptureContainerConfig(Base):
-    """
-    CaptureContainerConfig
-
-    Attributes
-    ----------------------
-    container_hostname
-    """
-
-    container_hostname: StrPipeVar
 
 
 class CaptureContentTypeHeader(Base):
@@ -4074,13 +3789,9 @@ class CaptureOption(Base):
     Attributes
     ----------------------
     capture_mode: Specify the boundary of data to capture.
-    capture_boundary
-    capture_containers
     """
 
     capture_mode: StrPipeVar
-    capture_boundary: Optional[StrPipeVar] = Unassigned()
-    capture_containers: Optional[List[CaptureContainerConfig]] = Unassigned()
 
 
 class CategoricalParameter(Base):
@@ -4319,7 +4030,6 @@ class ClarifyInferenceConfig(Base):
     ----------------------
     features_attribute: Provides the JMESPath expression to extract the features from a model container input in JSON Lines format. For example, if FeaturesAttribute is the JMESPath expression 'myfeatures', it extracts a list of features [1,2,3] from request data '{"myfeatures":[1,2,3]}'.
     content_template: A template string used to format a JSON record into an acceptable model container input. For example, a ContentTemplate string '{"myfeatures":$features}' will format a list of features [1,2,3] into the record string '{"myfeatures":[1,2,3]}'. Required only when the model container input is in JSON Lines format.
-    record_template
     max_record_count: The maximum number of records in a request that the model container can process when querying the model container for the predictions of a synthetic dataset. A record is a unit of input data that inference can be made on, for example, a single line in CSV data. If MaxRecordCount is 1, the model container expects one record per request. A value of 2 or greater means that the model expects batch requests, which can reduce overhead and speed up the inferencing process. If this parameter is not provided, the explainer will tune the record count per request according to the model container's capacity at runtime.
     max_payload_in_mb: The maximum payload size (MB) allowed of a request from the explainer to the model container. Defaults to 6 MB.
     probability_index: A zero-based index used to extract a probability value (score) or list from model container output in CSV format. If this value is not provided, the entire model container output will be treated as a probability value (score) or list.  Example for a single class model: If the model container output consists of a string-formatted prediction label followed by its probability: '1,0.6', set ProbabilityIndex to 1 to select the probability value 0.6.  Example for a multiclass model: If the model container output consists of a string-formatted prediction label followed by its probability: '"[\'cat\',\'dog\',\'fish\']","[0.1,0.6,0.3]"', set ProbabilityIndex to 1 to select the probability values [0.1,0.6,0.3].
@@ -4333,7 +4043,6 @@ class ClarifyInferenceConfig(Base):
 
     features_attribute: Optional[StrPipeVar] = Unassigned()
     content_template: Optional[StrPipeVar] = Unassigned()
-    record_template: Optional[StrPipeVar] = Unassigned()
     max_record_count: Optional[int] = Unassigned()
     max_payload_in_mb: Optional[int] = Unassigned()
     probability_index: Optional[int] = Unassigned()
@@ -4452,6 +4161,7 @@ class ClusterAutoScalingConfigOutput(Base):
 class ClusterSpotOptions(Base):
     """
     ClusterSpotOptions
+      Configuration options specific to Spot instances.
 
     Attributes
     ----------------------
@@ -4461,6 +4171,7 @@ class ClusterSpotOptions(Base):
 class ClusterOnDemandOptions(Base):
     """
     ClusterOnDemandOptions
+      Configuration options specific to On-Demand instances.
 
     Attributes
     ----------------------
@@ -4470,11 +4181,12 @@ class ClusterOnDemandOptions(Base):
 class ClusterCapacityRequirements(Base):
     """
     ClusterCapacityRequirements
+      Defines the instance capacity requirements for an instance group, including configurations for both Spot and On-Demand capacity types.
 
     Attributes
     ----------------------
-    spot
-    on_demand
+    spot: Configuration options specific to Spot instances.
+    on_demand: Configuration options specific to On-Demand instances.
     """
 
     spot: Optional[ClusterSpotOptions] = Unassigned()
@@ -4515,20 +4227,6 @@ class ClusterMetadata(Base):
     slr_access_entry: Optional[StrPipeVar] = Unassigned()
 
 
-class InstanceGroupDeepHealthCheck(Base):
-    """
-    InstanceGroupDeepHealthCheck
-
-    Attributes
-    ----------------------
-    operation_status
-    requested_checks
-    """
-
-    operation_status: Optional[StrPipeVar] = Unassigned()
-    requested_checks: Optional[List[StrPipeVar]] = Unassigned()
-
-
 class InstanceGroupMetadata(Base):
     """
     InstanceGroupMetadata
@@ -4542,7 +4240,6 @@ class InstanceGroupMetadata(Base):
     subnet_id: The ID of the subnet where the instance group is located.
     security_group_ids: A list of security group IDs associated with the instance group.
     ami_override: If you use a custom Amazon Machine Image (AMI) for the instance group, this field shows the ID of the custom AMI.
-    instance_group_deep_health_check
     """
 
     failure_message: Optional[StrPipeVar] = Unassigned()
@@ -4551,7 +4248,6 @@ class InstanceGroupMetadata(Base):
     subnet_id: Optional[StrPipeVar] = Unassigned()
     security_group_ids: Optional[List[StrPipeVar]] = Unassigned()
     ami_override: Optional[StrPipeVar] = Unassigned()
-    instance_group_deep_health_check: Optional[InstanceGroupDeepHealthCheck] = Unassigned()
 
 
 class InstanceGroupScalingMetadata(Base):
@@ -4563,7 +4259,7 @@ class InstanceGroupScalingMetadata(Base):
     ----------------------
     instance_count: The current number of instances in the group.
     target_count: The desired number of instances for the group after scaling.
-    min_count
+    min_count: Minimum instance count of the instance group.
     failure_message: An error message describing why the scaling operation failed, if applicable.
     """
 
@@ -4571,42 +4267,6 @@ class InstanceGroupScalingMetadata(Base):
     target_count: Optional[int] = Unassigned()
     min_count: Optional[int] = Unassigned()
     failure_message: Optional[StrPipeVar] = Unassigned()
-
-
-class HealthInfo(Base):
-    """
-    HealthInfo
-
-    Attributes
-    ----------------------
-    health_status
-    health_status_reason
-    repair_action
-    recommendation
-    """
-
-    health_status: Optional[StrPipeVar] = Unassigned()
-    health_status_reason: Optional[StrPipeVar] = Unassigned()
-    repair_action: Optional[StrPipeVar] = Unassigned()
-    recommendation: Optional[StrPipeVar] = Unassigned()
-
-
-class InstanceDeepHealthCheck(Base):
-    """
-    InstanceDeepHealthCheck
-
-    Attributes
-    ----------------------
-    operation_status
-    requested_checks
-    completed_checks
-    message
-    """
-
-    operation_status: Optional[StrPipeVar] = Unassigned()
-    requested_checks: Optional[List[StrPipeVar]] = Unassigned()
-    completed_checks: Optional[List[StrPipeVar]] = Unassigned()
-    message: Optional[StrPipeVar] = Unassigned()
 
 
 class InstanceMetadata(Base):
@@ -4622,8 +4282,6 @@ class InstanceMetadata(Base):
     failure_message: An error message describing why the instance creation or update failed, if applicable.
     lcs_execution_state: The execution state of the Lifecycle Script (LCS) for the instance.
     node_logical_id: The unique logical identifier of the node within the cluster. The ID used here is the same object as in the BatchAddClusterNodes API.
-    node_health_info
-    instance_deep_health_check
     """
 
     customer_eni: Optional[StrPipeVar] = Unassigned()
@@ -4632,38 +4290,6 @@ class InstanceMetadata(Base):
     failure_message: Optional[StrPipeVar] = Unassigned()
     lcs_execution_state: Optional[StrPipeVar] = Unassigned()
     node_logical_id: Optional[StrPipeVar] = Unassigned()
-    node_health_info: Optional[HealthInfo] = Unassigned()
-    instance_deep_health_check: Optional[InstanceDeepHealthCheck] = Unassigned()
-
-
-class InstanceMonitorMetadata(Base):
-    """
-    InstanceMonitorMetadata
-
-    Attributes
-    ----------------------
-    instance_ready_count
-    target_count
-    failure_message
-    """
-
-    instance_ready_count: Optional[int] = Unassigned()
-    target_count: Optional[int] = Unassigned()
-    failure_message: Optional[StrPipeVar] = Unassigned()
-
-
-class InstanceHealthMetadata(Base):
-    """
-    InstanceHealthMetadata
-
-    Attributes
-    ----------------------
-    orchestrator_health_state
-    failure_message
-    """
-
-    orchestrator_health_state: Optional[StrPipeVar] = Unassigned()
-    failure_message: Optional[StrPipeVar] = Unassigned()
 
 
 class EventMetadata(Base):
@@ -4677,16 +4303,12 @@ class EventMetadata(Base):
     instance_group: Metadata specific to instance group-level events.
     instance_group_scaling: Metadata related to instance group scaling events.
     instance: Metadata specific to instance-level events.
-    instance_monitor
-    instance_health
     """
 
     cluster: Optional[ClusterMetadata] = Unassigned()
     instance_group: Optional[InstanceGroupMetadata] = Unassigned()
     instance_group_scaling: Optional[InstanceGroupScalingMetadata] = Unassigned()
     instance: Optional[InstanceMetadata] = Unassigned()
-    instance_monitor: Optional[InstanceMonitorMetadata] = Unassigned()
-    instance_health: Optional[InstanceHealthMetadata] = Unassigned()
 
 
 class EventDetails(Base):
@@ -4758,6 +4380,70 @@ class ClusterEventSummary(Base):
     description: Optional[StrPipeVar] = Unassigned()
 
 
+class ClusterFsxLustreConfig(Base):
+    """
+    ClusterFsxLustreConfig
+      Defines the configuration for attaching an Amazon FSx for Lustre file system to instances in a SageMaker HyperPod cluster instance group.
+
+    Attributes
+    ----------------------
+    dns_name: The DNS name of the Amazon FSx for Lustre file system.
+    mount_name: The mount name of the Amazon FSx for Lustre file system.
+    mount_path: The local path where the Amazon FSx for Lustre file system is mounted on instances.
+    """
+
+    dns_name: StrPipeVar
+    mount_name: StrPipeVar
+    mount_path: Optional[StrPipeVar] = Unassigned()
+
+
+class ClusterFsxOpenZfsConfig(Base):
+    """
+    ClusterFsxOpenZfsConfig
+      Defines the configuration for attaching an Amazon FSx for OpenZFS file system to instances in a SageMaker HyperPod cluster instance group.
+
+    Attributes
+    ----------------------
+    dns_name: The DNS name of the Amazon FSx for OpenZFS file system.
+    mount_path: The local path where the Amazon FSx for OpenZFS file system is mounted on instances.
+    """
+
+    dns_name: StrPipeVar
+    mount_path: Optional[StrPipeVar] = Unassigned()
+
+
+class ClusterInstanceRequirementDetails(Base):
+    """
+    ClusterInstanceRequirementDetails
+      The instance requirement details for a flexible instance group, including the current and desired instance types.
+
+    Attributes
+    ----------------------
+    current_instance_types: The instance types currently in use by the instance group.
+    desired_instance_types: The desired instance types for the instance group, as specified in the most recent update request.
+    """
+
+    current_instance_types: Optional[List[StrPipeVar]] = Unassigned()
+    desired_instance_types: Optional[List[StrPipeVar]] = Unassigned()
+
+
+class ClusterInstanceTypeDetail(Base):
+    """
+    ClusterInstanceTypeDetail
+      Details about a specific instance type within a flexible instance group, including the count and configuration.
+
+    Attributes
+    ----------------------
+    instance_type: The instance type.
+    current_count: The number of instances of this type currently running in the instance group.
+    threads_per_core: The number of threads per CPU core for this instance type.
+    """
+
+    instance_type: Optional[StrPipeVar] = Unassigned()
+    current_count: Optional[int] = Unassigned()
+    threads_per_core: Optional[int] = Unassigned()
+
+
 class ClusterLifeCycleConfig(Base):
     """
     ClusterLifeCycleConfig
@@ -4767,10 +4453,12 @@ class ClusterLifeCycleConfig(Base):
     ----------------------
     source_s3_uri: An Amazon S3 bucket path where your lifecycle scripts are stored.  Make sure that the S3 bucket path starts with s3://sagemaker-. The IAM role for SageMaker HyperPod has the managed  AmazonSageMakerClusterInstanceRolePolicy  attached, which allows access to S3 buckets with the specific prefix sagemaker-.
     on_create: The file name of the entrypoint script of lifecycle scripts under SourceS3Uri. This entrypoint script runs during cluster creation.
+    on_init_complete: The file name of the entrypoint script of lifecycle scripts under SourceS3Uri. This script runs on the node after the AMI-based initialization is complete.
     """
 
-    source_s3_uri: StrPipeVar
-    on_create: StrPipeVar
+    source_s3_uri: Optional[StrPipeVar] = Unassigned()
+    on_create: Optional[StrPipeVar] = Unassigned()
+    on_init_complete: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterInstanceStorageConfig(Base):
@@ -4781,22 +4469,13 @@ class ClusterInstanceStorageConfig(Base):
     Attributes
     ----------------------
     ebs_volume_config: Defines the configuration for attaching additional Amazon Elastic Block Store (EBS) volumes to the instances in the SageMaker HyperPod cluster instance group. The additional EBS volume is attached to each instance within the SageMaker HyperPod cluster instance group and mounted to /opt/sagemaker.
+    fsx_lustre_config: Defines the configuration for attaching an Amazon FSx for Lustre file system to the instances in the SageMaker HyperPod cluster instance group.
+    fsx_open_zfs_config: Defines the configuration for attaching an Amazon FSx for OpenZFS file system to the instances in the SageMaker HyperPod cluster instance group.
     """
 
     ebs_volume_config: Optional[ClusterEbsVolumeConfig] = Unassigned()
-
-
-class ScalingConfig(Base):
-    """
-    ScalingConfig
-      Defines how an instance group should be scaled and provisioned in SageMaker HyperPod.
-
-    Attributes
-    ----------------------
-    best_effort_provisioning: Specifies whether to turn on best-effort provisioning. The default value is false. If set to true, SageMaker HyperPod will attempt to provision as many instances as possible, even if some instances fail to provision due to faulty nodes or configuration issues. This allows for partial provisioning of the requested number of instances when the full target cannot be achieved. Note that for provisioning with on-demand instances, billing begins as soon as healthy instances become available and enter the InService status.
-    """
-
-    best_effort_provisioning: bool
+    fsx_lustre_config: Optional[ClusterFsxLustreConfig] = Unassigned()
+    fsx_open_zfs_config: Optional[ClusterFsxOpenZfsConfig] = Unassigned()
 
 
 class RollingDeploymentPolicy(Base):
@@ -4849,12 +4528,13 @@ class ScheduledUpdateConfig(Base):
 class ClusterKubernetesTaint(Base):
     """
     ClusterKubernetesTaint
+      A Kubernetes taint that can be applied to cluster nodes.
 
     Attributes
     ----------------------
-    key
-    value
-    effect
+    key: The key of the taint.
+    value: The value of the taint.
+    effect: The effect of the taint. Valid values are NoSchedule, PreferNoSchedule, and NoExecute.
     """
 
     key: StrPipeVar
@@ -4865,19 +4545,48 @@ class ClusterKubernetesTaint(Base):
 class ClusterKubernetesConfigDetails(Base):
     """
     ClusterKubernetesConfigDetails
+      Detailed Kubernetes configuration showing both the current and desired state of labels and taints for cluster nodes.
 
     Attributes
     ----------------------
-    current_labels
-    desired_labels
-    current_taints
-    desired_taints
+    current_labels: The current labels applied to cluster nodes of an instance group.
+    desired_labels: The desired labels to be applied to cluster nodes of an instance group.
+    current_taints: The current taints applied to cluster nodes of an instance group.
+    desired_taints: The desired taints to be applied to cluster nodes of an instance group.
     """
 
     current_labels: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     desired_labels: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     current_taints: Optional[List[ClusterKubernetesTaint]] = Unassigned()
     desired_taints: Optional[List[ClusterKubernetesTaint]] = Unassigned()
+
+
+class ClusterSlurmConfigDetails(Base):
+    """
+    ClusterSlurmConfigDetails
+      The Slurm configuration details for an instance group in a SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    node_type: The type of Slurm node for the instance group. Valid values are Controller, Worker, and Login.
+    partition_names: The list of Slurm partition names that the instance group belongs to.
+    """
+
+    node_type: StrPipeVar
+    partition_names: Optional[List[StrPipeVar]] = Unassigned()
+
+
+class ClusterNetworkInterfaceDetails(Base):
+    """
+    ClusterNetworkInterfaceDetails
+      The network interface configuration details for a Amazon SageMaker HyperPod cluster instance group.
+
+    Attributes
+    ----------------------
+    interface_type: The type of network interface for the instance group. Valid values are efa and efa-only.
+    """
+
+    interface_type: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterInstanceGroupDetails(Base):
@@ -4889,33 +4598,31 @@ class ClusterInstanceGroupDetails(Base):
     ----------------------
     current_count: The number of instances that are currently in the instance group of a SageMaker HyperPod cluster.
     target_count: The number of instances you specified to add to the instance group of a SageMaker HyperPod cluster.
-    min_count
+    min_count: The minimum number of instances that must be available in the instance group of a SageMaker HyperPod cluster before it transitions to InService status.
     instance_group_name: The name of the instance group of a SageMaker HyperPod cluster.
     instance_type: The instance type of the instance group of a SageMaker HyperPod cluster.
+    instance_requirements: The instance requirements for the instance group, including the current and desired instance types. This field is present for flexible instance groups that support multiple instance types.
+    instance_type_details: Details about the instance types in the instance group, including the count and configuration of each instance type. This field is present for flexible instance groups that support multiple instance types.
     life_cycle_config: Details of LifeCycle configuration for the instance group.
     execution_role: The execution role for the instance group to assume.
     threads_per_core: The number you specified to TreadsPerCore in CreateCluster for enabling or disabling multithreading. For instance types that support multithreading, you can specify 1 for disabling multithreading and 2 for enabling multithreading. For more information, see the reference table of CPU cores and threads per CPU core per instance type in the Amazon Elastic Compute Cloud User Guide.
     instance_storage_configs: The additional storage configurations for the instances in the SageMaker HyperPod cluster instance group.
-    enable_burn_in_test
-    on_start_deep_health_check
     on_start_deep_health_checks: A flag indicating whether deep health checks should be performed when the cluster instance group is created or updated.
     status: The current status of the cluster instance group.    InService: The instance group is active and healthy.    Creating: The instance group is being provisioned.    Updating: The instance group is being updated.    Failed: The instance group has failed to provision or is no longer healthy.    Degraded: The instance group is degraded, meaning that some instances have failed to provision or are no longer healthy.    Deleting: The instance group is being deleted.
-    failure_messages: If the instance group is in a Failed or Degraded state, this field contains a list of failure messages that explain why the instances failed to provision or are no longer healthy. Each message includes a description of the issue.
-    scaling_config: The actual scaling configuration applied to an existing instance group, reflecting the current provisioning state and scaling characteristics.
     training_plan_arn: The Amazon Resource Name (ARN); of the training plan associated with this cluster instance group. For more information about how to reserve GPU capacity for your SageMaker HyperPod clusters using Amazon SageMaker Training Plan, see  CreateTrainingPlan .
     training_plan_status: The current status of the training plan associated with this cluster instance group.
     override_vpc_config: The customized Amazon VPC configuration at the instance group level that overrides the default Amazon VPC configuration of the SageMaker HyperPod cluster.
-    custom_metadata
     scheduled_update_config: The configuration object of the schedule that SageMaker follows when updating the AMI.
     current_image_id: The ID of the Amazon Machine Image (AMI) currently in use by the instance group.
     desired_image_id: The ID of the Amazon Machine Image (AMI) desired for the instance group.
-    active_operations
-    kubernetes_config
-    capacity_type
-    capacity_requirements
-    target_state_count: The number of nodes running a specific image ID since the last software update request.
-    software_update_status: Status of the last software udpate request.
+    active_operations: A map indicating active operations currently in progress for the instance group of a SageMaker HyperPod cluster. When there is a scaling operation in progress, this map contains a key Scaling with value 1.
+    kubernetes_config: The Kubernetes configuration for the instance group that contains labels and taints to be applied for the nodes in this instance group.
+    capacity_requirements: The instance capacity requirements for the instance group.
+    target_state_count: Represents the number of running nodes using the desired Image ID.    During software update operations: This count shows the number of nodes running on the desired Image ID. If a rollback occurs, the current image ID and desired image ID (both included in the describe cluster response) swap values. The TargetStateCount then shows the number of nodes running on the newly designated desired image ID (which was previously the current image ID).    During simultaneous scaling and software update operations: This count shows the number of instances running on the desired image ID, including any new instances created as part of the scaling request. New nodes are always created using the desired image ID, so TargetStateCount reflects the total count of nodes running on the desired image ID, even during rollback scenarios.
+    software_update_status: Status of the last software udpate request. Status transitions follow these possible sequences:   Pending -&gt; InProgress -&gt; Succeeded   Pending -&gt; InProgress -&gt; RollbackInProgress -&gt; RollbackComplete   Pending -&gt; InProgress -&gt; RollbackInProgress -&gt; Failed
     active_software_update_config
+    slurm_config: The Slurm configuration for the instance group.
+    network_interface: The network interface configuration for the instance group.
     """
 
     current_count: Optional[int] = Unassigned()
@@ -4923,44 +4630,84 @@ class ClusterInstanceGroupDetails(Base):
     min_count: Optional[int] = Unassigned()
     instance_group_name: Optional[StrPipeVar] = Unassigned()
     instance_type: Optional[StrPipeVar] = Unassigned()
+    instance_requirements: Optional[ClusterInstanceRequirementDetails] = Unassigned()
+    instance_type_details: Optional[List[ClusterInstanceTypeDetail]] = Unassigned()
     life_cycle_config: Optional[ClusterLifeCycleConfig] = Unassigned()
     execution_role: Optional[StrPipeVar] = Unassigned()
     threads_per_core: Optional[int] = Unassigned()
     instance_storage_configs: Optional[List[ClusterInstanceStorageConfig]] = Unassigned()
-    enable_burn_in_test: Optional[bool] = Unassigned()
-    on_start_deep_health_check: Optional[List[StrPipeVar]] = Unassigned()
     on_start_deep_health_checks: Optional[List[StrPipeVar]] = Unassigned()
     status: Optional[StrPipeVar] = Unassigned()
-    failure_messages: Optional[List[StrPipeVar]] = Unassigned()
-    scaling_config: Optional[ScalingConfig] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
     training_plan_status: Optional[StrPipeVar] = Unassigned()
     override_vpc_config: Optional[VpcConfig] = Unassigned()
-    custom_metadata: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     scheduled_update_config: Optional[ScheduledUpdateConfig] = Unassigned()
     current_image_id: Optional[StrPipeVar] = Unassigned()
     desired_image_id: Optional[StrPipeVar] = Unassigned()
     active_operations: Optional[Dict[StrPipeVar, int]] = Unassigned()
     kubernetes_config: Optional[ClusterKubernetesConfigDetails] = Unassigned()
-    capacity_type: Optional[StrPipeVar] = Unassigned()
     capacity_requirements: Optional[ClusterCapacityRequirements] = Unassigned()
     target_state_count: Optional[int] = Unassigned()
     software_update_status: Optional[StrPipeVar] = Unassigned()
     active_software_update_config: Optional[DeploymentConfiguration] = Unassigned()
+    slurm_config: Optional[ClusterSlurmConfigDetails] = Unassigned()
+    network_interface: Optional[ClusterNetworkInterfaceDetails] = Unassigned()
+
+
+class ClusterInstanceRequirements(Base):
+    """
+    ClusterInstanceRequirements
+      The instance requirements for a flexible instance group. Use this to specify multiple instance types that the instance group can use. The order of instance types in the list determines the priority for instance provisioning.
+
+    Attributes
+    ----------------------
+    instance_types: The list of instance types that the instance group can use. The order of instance types determines the priority—HyperPod attempts to provision instances using the first instance type in the list and falls back to subsequent types if capacity is unavailable.
+    """
+
+    instance_types: List[StrPipeVar]
 
 
 class ClusterKubernetesConfig(Base):
     """
     ClusterKubernetesConfig
+      Kubernetes configuration that specifies labels and taints to be applied to cluster nodes in an instance group.
 
     Attributes
     ----------------------
-    labels
-    taints
+    labels: Key-value pairs of labels to be applied to cluster nodes.
+    taints: List of taints to be applied to cluster nodes.
     """
 
     labels: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     taints: Optional[List[ClusterKubernetesTaint]] = Unassigned()
+
+
+class ClusterSlurmConfig(Base):
+    """
+    ClusterSlurmConfig
+      The Slurm configuration for an instance group in a SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    node_type: The type of Slurm node for the instance group. Valid values are Controller, Worker, and Login.
+    partition_names: The list of Slurm partition names that the instance group belongs to.
+    """
+
+    node_type: StrPipeVar
+    partition_names: Optional[List[StrPipeVar]] = Unassigned()
+
+
+class ClusterNetworkInterface(Base):
+    """
+    ClusterNetworkInterface
+      The network interface configuration for a Amazon SageMaker HyperPod cluster instance group.
+
+    Attributes
+    ----------------------
+    interface_type: The type of network interface for the instance group. Valid values:    efa – An EFA with ENA interface, which provides both the EFA device for low-latency, high-throughput communication and the ENA device for IP networking.    efa-only – An EFA-only interface, which provides only the EFA device capabilities without the ENA device for traditional IP networking.   For more information, see Elastic Fabric Adapter.
+    """
+
+    interface_type: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterInstanceGroupSpecification(Base):
@@ -4971,47 +4718,43 @@ class ClusterInstanceGroupSpecification(Base):
     Attributes
     ----------------------
     instance_count: Specifies the number of instances to add to the instance group of a SageMaker HyperPod cluster.
-    min_instance_count
+    min_instance_count: Defines the minimum number of instances required for an instance group to become InService. If this threshold isn't met within 3 hours, the instance group rolls back to its previous state - zero instances for new instance groups, or previous settings for existing instance groups. MinInstanceCount only affects the initial transition to InService and does not guarantee maintaining this minimum afterward.
     instance_group_name: Specifies the name of the instance group.
     instance_type: Specifies the instance type of the instance group.
+    instance_requirements: The instance requirements for the instance group, including the instance types to use. Use this to create a flexible instance group that supports multiple instance types. The InstanceType and InstanceRequirements properties are mutually exclusive.
     life_cycle_config: Specifies the LifeCycle configuration for the instance group.
     execution_role: Specifies an IAM execution role to be assumed by the instance group.
     threads_per_core: Specifies the value for Threads per core. For instance types that support multithreading, you can specify 1 for disabling multithreading and 2 for enabling multithreading. For instance types that doesn't support multithreading, specify 1. For more information, see the reference table of CPU cores and threads per CPU core per instance type in the Amazon Elastic Compute Cloud User Guide.
     instance_storage_configs: Specifies the additional storage configurations for the instances in the SageMaker HyperPod cluster instance group.
-    enable_burn_in_test
-    on_start_deep_health_check
     on_start_deep_health_checks: A flag indicating whether deep health checks should be performed when the cluster instance group is created or updated.
-    scaling_config: The scaling and provisioning strategy for a planned instance group, specifying how instances should be allocated and handled during cluster creation.
     training_plan_arn: The Amazon Resource Name (ARN); of the training plan to use for this cluster instance group. For more information about how to reserve GPU capacity for your SageMaker HyperPod clusters using Amazon SageMaker Training Plan, see  CreateTrainingPlan .
     override_vpc_config: To configure multi-AZ deployments, customize the Amazon VPC configuration at the instance group level. You can specify different subnets and security groups across different AZs in the instance group specification to override a SageMaker HyperPod cluster's default Amazon VPC configuration. For more information about deploying a cluster in multiple AZs, see Setting up SageMaker HyperPod clusters across multiple AZs.  When your Amazon VPC and subnets support IPv6, network communications differ based on the cluster orchestration platform:   Slurm-orchestrated clusters automatically configure nodes with dual IPv6 and IPv4 addresses, allowing immediate IPv6 network communications.   In Amazon EKS-orchestrated clusters, nodes receive dual-stack addressing, but pods can only use IPv6 when the Amazon EKS cluster is explicitly IPv6-enabled. For information about deploying an IPv6 Amazon EKS cluster, see Amazon EKS IPv6 Cluster Deployment.   Additional resources for IPv6 configuration:   For information about adding IPv6 support to your VPC, see to IPv6 Support for VPC.   For information about creating a new IPv6-compatible VPC, see Amazon VPC Creation Guide.   To configure SageMaker HyperPod with a custom Amazon VPC, see Custom Amazon VPC Setup for SageMaker HyperPod.
-    custom_metadata
     scheduled_update_config: The configuration object of the schedule that SageMaker uses to update the AMI.
     image_id: When configuring your HyperPod cluster, you can specify an image ID using one of the following options:    HyperPodPublicAmiId: Use a HyperPod public AMI    CustomAmiId: Use your custom AMI    default: Use the default latest system image   If you choose to use a custom AMI (CustomAmiId), ensure it meets the following requirements:   Encryption: The custom AMI must be unencrypted.   Ownership: The custom AMI must be owned by the same Amazon Web Services account that is creating the HyperPod cluster.   Volume support: Only the primary AMI snapshot volume is supported; additional AMI volumes are not supported.   When updating the instance group's AMI through the UpdateClusterSoftware operation, if an instance group uses a custom AMI, you must provide an ImageId or use the default as input. Note that if you don't specify an instance group in your UpdateClusterSoftware request, then all of the instance groups are patched with the specified image.
-    kubernetes_config
-    capacity_type
-    capacity_requirements
+    kubernetes_config: Specifies the Kubernetes configuration for the instance group. You describe what you want the labels and taints to look like, and the cluster works to reconcile the actual state with the declared state for nodes in this instance group.
+    slurm_config: Specifies the Slurm configuration for the instance group.
+    capacity_requirements: Specifies the capacity requirements for the instance group.
+    network_interface: The network interface configuration for the instance group.
     """
 
     instance_count: int
     instance_group_name: StrPipeVar
-    instance_type: StrPipeVar
-    life_cycle_config: ClusterLifeCycleConfig
     execution_role: StrPipeVar
     min_instance_count: Optional[int] = Unassigned()
+    instance_type: Optional[StrPipeVar] = Unassigned()
+    instance_requirements: Optional[ClusterInstanceRequirements] = Unassigned()
+    life_cycle_config: Optional[ClusterLifeCycleConfig] = Unassigned()
     threads_per_core: Optional[int] = Unassigned()
     instance_storage_configs: Optional[List[ClusterInstanceStorageConfig]] = Unassigned()
-    enable_burn_in_test: Optional[bool] = Unassigned()
-    on_start_deep_health_check: Optional[List[StrPipeVar]] = Unassigned()
     on_start_deep_health_checks: Optional[List[StrPipeVar]] = Unassigned()
-    scaling_config: Optional[ScalingConfig] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
     override_vpc_config: Optional[VpcConfig] = Unassigned()
-    custom_metadata: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     scheduled_update_config: Optional[ScheduledUpdateConfig] = Unassigned()
     image_id: Optional[StrPipeVar] = Unassigned()
     kubernetes_config: Optional[ClusterKubernetesConfig] = Unassigned()
-    capacity_type: Optional[StrPipeVar] = Unassigned()
+    slurm_config: Optional[ClusterSlurmConfig] = Unassigned()
     capacity_requirements: Optional[ClusterCapacityRequirements] = Unassigned()
+    network_interface: Optional[ClusterNetworkInterface] = Unassigned()
 
 
 class ClusterInstancePlacement(Base):
@@ -5047,13 +4790,14 @@ class ClusterInstanceStatusDetails(Base):
 class ClusterKubernetesConfigNodeDetails(Base):
     """
     ClusterKubernetesConfigNodeDetails
+      Node-specific Kubernetes configuration showing both current and desired state of labels and taints for an individual cluster node.
 
     Attributes
     ----------------------
-    current_labels
-    desired_labels
-    current_taints
-    desired_taints
+    current_labels: The current labels applied to the cluster node.
+    desired_labels: The desired labels to be applied to the cluster node.
+    current_taints: The current taints applied to the cluster node.
+    desired_taints: The desired taints to be applied to the cluster node.
     """
 
     current_labels: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
@@ -5070,9 +4814,11 @@ class UltraServerInfo(Base):
     Attributes
     ----------------------
     id: The unique identifier of the UltraServer.
+    type: The type of the UltraServer.
     """
 
     id: Optional[StrPipeVar] = Unassigned()
+    type: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterNodeDetails(Base):
@@ -5097,12 +4843,12 @@ class ClusterNodeDetails(Base):
     private_primary_ipv6: The private primary IPv6 address of the SageMaker HyperPod cluster node when configured with an Amazon VPC that supports IPv6 and includes subnets with IPv6 addressing enabled in either the cluster Amazon VPC configuration or the instance group Amazon VPC configuration.
     private_dns_hostname: The private DNS hostname of the SageMaker HyperPod cluster node.
     placement: The placement details of the SageMaker HyperPod cluster node.
-    health_info
     current_image_id: The ID of the Amazon Machine Image (AMI) currently in use by the node.
     desired_image_id: The ID of the Amazon Machine Image (AMI) desired for the node.
     ultra_server_info: Contains information about the UltraServer.
-    kubernetes_config
-    capacity_type
+    kubernetes_config: The Kubernetes configuration applied to this node, showing both the current and desired state of labels and taints. The cluster works to reconcile the actual state with the declared state.
+    capacity_type: The capacity type of the node. Valid values are OnDemand and Spot. When set to OnDemand, the node is launched as an On-Demand instance. When set to Spot, the node is launched as a Spot instance.
+    network_interface: The network interface configuration for the cluster node.
     """
 
     instance_group_name: Optional[StrPipeVar] = Unassigned()
@@ -5120,26 +4866,12 @@ class ClusterNodeDetails(Base):
     private_primary_ipv6: Optional[StrPipeVar] = Unassigned()
     private_dns_hostname: Optional[StrPipeVar] = Unassigned()
     placement: Optional[ClusterInstancePlacement] = Unassigned()
-    health_info: Optional[HealthInfo] = Unassigned()
     current_image_id: Optional[StrPipeVar] = Unassigned()
     desired_image_id: Optional[StrPipeVar] = Unassigned()
     ultra_server_info: Optional[UltraServerInfo] = Unassigned()
     kubernetes_config: Optional[ClusterKubernetesConfigNodeDetails] = Unassigned()
     capacity_type: Optional[StrPipeVar] = Unassigned()
-
-
-class ClusterNodeSummaryHealthInfo(Base):
-    """
-    ClusterNodeSummaryHealthInfo
-
-    Attributes
-    ----------------------
-    health_status
-    health_status_reason
-    """
-
-    health_status: Optional[StrPipeVar] = Unassigned()
-    health_status_reason: Optional[StrPipeVar] = Unassigned()
+    network_interface: Optional[ClusterNetworkInterfaceDetails] = Unassigned()
 
 
 class ClusterNodeSummary(Base):
@@ -5156,9 +4888,8 @@ class ClusterNodeSummary(Base):
     launch_time: The time when the instance is launched.
     last_software_update_time: The time when SageMaker last updated the software of the instances in the cluster.
     instance_status: The status of the instance.
-    health_info
     ultra_server_info: Contains information about the UltraServer.
-    private_dns_hostname
+    private_dns_hostname: The private DNS hostname of the SageMaker HyperPod cluster node.
     """
 
     instance_group_name: StrPipeVar
@@ -5168,7 +4899,6 @@ class ClusterNodeSummary(Base):
     instance_status: ClusterInstanceStatusDetails
     node_logical_id: Optional[StrPipeVar] = Unassigned()
     last_software_update_time: Optional[datetime.datetime] = Unassigned()
-    health_info: Optional[ClusterNodeSummaryHealthInfo] = Unassigned()
     ultra_server_info: Optional[UltraServerInfo] = Unassigned()
     private_dns_hostname: Optional[StrPipeVar] = Unassigned()
 
@@ -5186,6 +4916,19 @@ class ClusterOrchestratorEksConfig(Base):
     cluster_arn: StrPipeVar
 
 
+class ClusterOrchestratorSlurmConfig(Base):
+    """
+    ClusterOrchestratorSlurmConfig
+      The configuration settings for the Slurm orchestrator used with the SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    slurm_config_strategy: The strategy for managing partitions for the Slurm configuration. Valid values are Managed, Overwrite, and Merge.
+    """
+
+    slurm_config_strategy: Optional[StrPipeVar] = Unassigned()
+
+
 class ClusterOrchestrator(Base):
     """
     ClusterOrchestrator
@@ -5194,21 +4937,11 @@ class ClusterOrchestrator(Base):
     Attributes
     ----------------------
     eks: The Amazon EKS cluster used as the orchestrator for the SageMaker HyperPod cluster.
+    slurm: The Slurm orchestrator configuration for the SageMaker HyperPod cluster.
     """
 
-    eks: ClusterOrchestratorEksConfig
-
-
-class ClusterResilienceConfig(Base):
-    """
-    ClusterResilienceConfig
-
-    Attributes
-    ----------------------
-    enable_node_auto_recovery
-    """
-
-    enable_node_auto_recovery: Optional[bool] = Unassigned()
+    eks: Optional[ClusterOrchestratorEksConfig] = Unassigned()
+    slurm: Optional[ClusterOrchestratorSlurmConfig] = Unassigned()
 
 
 class FSxLustreConfig(Base):
@@ -5224,20 +4957,6 @@ class FSxLustreConfig(Base):
 
     size_in_gi_b: int
     per_unit_storage_throughput: int
-
-
-class TrustedEnvironmentDetails(Base):
-    """
-    TrustedEnvironmentDetails
-
-    Attributes
-    ----------------------
-    f_sx_lustre_config
-    s3_output_path
-    """
-
-    f_sx_lustre_config: Optional[FSxLustreConfig] = Unassigned()
-    s3_output_path: Optional[StrPipeVar] = Unassigned()
 
 
 class EnvironmentConfigDetails(Base):
@@ -5269,18 +4988,12 @@ class ClusterRestrictedInstanceGroupDetails(Base):
     execution_role: The execution role for the restricted instance group to assume.
     threads_per_core: The number you specified to TreadsPerCore in CreateCluster for enabling or disabling multithreading. For instance types that support multithreading, you can specify 1 for disabling multithreading and 2 for enabling multithreading. For more information, see the reference table of CPU cores and threads per CPU core per instance type in the Amazon Elastic Compute Cloud User Guide.
     instance_storage_configs: The additional storage configurations for the instances in the SageMaker HyperPod cluster restricted instance group.
-    enable_burn_in_test
-    on_start_deep_health_check
     on_start_deep_health_checks: A flag indicating whether deep health checks should be performed when the cluster's restricted instance group is created or updated.
     status: The current status of the cluster's restricted instance group.    InService: The restricted instance group is active and healthy.    Creating: The restricted instance group is being provisioned.    Updating: The restricted instance group is being updated.    Failed: The restricted instance group has failed to provision or is no longer healthy.    Degraded: The restricted instance group is degraded, meaning that some instances have failed to provision or are no longer healthy.    Deleting: The restricted instance group is being deleted.
-    failure_messages
-    scaling_config
     training_plan_arn: The Amazon Resource Name (ARN) of the training plan to filter clusters by. For more information about reserving GPU capacity for your SageMaker HyperPod clusters using Amazon SageMaker Training Plan, see  CreateTrainingPlan .
     training_plan_status: The current status of the training plan associated with this cluster restricted instance group.
     override_vpc_config
-    custom_metadata
     scheduled_update_config
-    trusted_environment
     environment_config: The configuration for the restricted instance groups (RIG) environment.
     """
 
@@ -5291,43 +5004,13 @@ class ClusterRestrictedInstanceGroupDetails(Base):
     execution_role: Optional[StrPipeVar] = Unassigned()
     threads_per_core: Optional[int] = Unassigned()
     instance_storage_configs: Optional[List[ClusterInstanceStorageConfig]] = Unassigned()
-    enable_burn_in_test: Optional[bool] = Unassigned()
-    on_start_deep_health_check: Optional[List[StrPipeVar]] = Unassigned()
     on_start_deep_health_checks: Optional[List[StrPipeVar]] = Unassigned()
     status: Optional[StrPipeVar] = Unassigned()
-    failure_messages: Optional[List[StrPipeVar]] = Unassigned()
-    scaling_config: Optional[ScalingConfig] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
     training_plan_status: Optional[StrPipeVar] = Unassigned()
     override_vpc_config: Optional[VpcConfig] = Unassigned()
-    custom_metadata: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     scheduled_update_config: Optional[ScheduledUpdateConfig] = Unassigned()
-    trusted_environment: Optional[TrustedEnvironmentDetails] = Unassigned()
     environment_config: Optional[EnvironmentConfigDetails] = Unassigned()
-
-
-class TrustedEnvironmentConfig(Base):
-    """
-    TrustedEnvironmentConfig
-
-    Attributes
-    ----------------------
-    f_sx_lustre_config
-    """
-
-    f_sx_lustre_config: Optional[FSxLustreConfig] = Unassigned()
-
-
-class TrustedEnvironment(Base):
-    """
-    TrustedEnvironment
-
-    Attributes
-    ----------------------
-    config
-    """
-
-    config: Optional[TrustedEnvironmentConfig] = Unassigned()
 
 
 class EnvironmentConfig(Base):
@@ -5356,15 +5039,10 @@ class ClusterRestrictedInstanceGroupSpecification(Base):
     execution_role: Specifies an IAM execution role to be assumed by the restricted instance group.
     threads_per_core: The number you specified to TreadsPerCore in CreateCluster for enabling or disabling multithreading. For instance types that support multithreading, you can specify 1 for disabling multithreading and 2 for enabling multithreading. For more information, see the reference table of CPU cores and threads per CPU core per instance type in the Amazon Elastic Compute Cloud User Guide.
     instance_storage_configs: Specifies the additional storage configurations for the instances in the SageMaker HyperPod cluster restricted instance group.
-    enable_burn_in_test
-    on_start_deep_health_check
     on_start_deep_health_checks: A flag indicating whether deep health checks should be performed when the cluster restricted instance group is created or updated.
-    scaling_config
     training_plan_arn: The Amazon Resource Name (ARN) of the training plan to filter clusters by. For more information about reserving GPU capacity for your SageMaker HyperPod clusters using Amazon SageMaker Training Plan, see  CreateTrainingPlan .
     override_vpc_config
-    custom_metadata
     scheduled_update_config
-    trusted_environment
     environment_config: The configuration for the restricted instance groups (RIG) environment.
     """
 
@@ -5375,15 +5053,10 @@ class ClusterRestrictedInstanceGroupSpecification(Base):
     environment_config: EnvironmentConfig
     threads_per_core: Optional[int] = Unassigned()
     instance_storage_configs: Optional[List[ClusterInstanceStorageConfig]] = Unassigned()
-    enable_burn_in_test: Optional[bool] = Unassigned()
-    on_start_deep_health_check: Optional[List[StrPipeVar]] = Unassigned()
     on_start_deep_health_checks: Optional[List[StrPipeVar]] = Unassigned()
-    scaling_config: Optional[ScalingConfig] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
     override_vpc_config: Optional[VpcConfig] = Unassigned()
-    custom_metadata: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     scheduled_update_config: Optional[ScheduledUpdateConfig] = Unassigned()
-    trusted_environment: Optional[TrustedEnvironment] = Unassigned()
 
 
 class ClusterSchedulerConfigSummary(Base):
@@ -5563,13 +5236,11 @@ class CognitoMemberDefinition(Base):
     user_pool: An identifier for a user pool. The user pool must be in the same region as the service that you are calling.
     user_group: An identifier for a user group.
     client_id: An identifier for an application client. You must create the app client ID using Amazon Cognito.
-    member_definition_id
     """
 
     user_pool: StrPipeVar
     user_group: StrPipeVar
     client_id: StrPipeVar
-    member_definition_id: Optional[StrPipeVar] = Unassigned()
 
 
 class VectorConfig(Base):
@@ -5613,34 +5284,6 @@ class CollectionConfiguration(Base):
     collection_parameters: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
 
 
-class CommentEntity(Base):
-    """
-    CommentEntity
-
-    Attributes
-    ----------------------
-    publisher
-    comment
-    creation_time
-    """
-
-    publisher: Optional[StrPipeVar] = Unassigned()
-    comment: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-
-
-class CompilationJobStepMetadata(Base):
-    """
-    CompilationJobStepMetadata
-
-    Attributes
-    ----------------------
-    arn
-    """
-
-    arn: Optional[StrPipeVar] = Unassigned()
-
-
 class CompilationJobSummary(Base):
     """
     CompilationJobSummary
@@ -5674,38 +5317,6 @@ class CompilationJobSummary(Base):
     last_modified_time: Optional[datetime.datetime] = Unassigned()
 
 
-class ComponentJobSummary(Base):
-    """
-    ComponentJobSummary
-
-    Attributes
-    ----------------------
-    auto_ml_job_name
-    auto_ml_job_arn
-    last_modified_time
-    status
-    creation_time
-    component_job_type
-    component_job_name
-    component_job_arn
-    end_time
-    failure_reason
-    description
-    """
-
-    auto_ml_job_name: Optional[StrPipeVar] = Unassigned()
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    status: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    component_job_type: Optional[StrPipeVar] = Unassigned()
-    component_job_name: Optional[StrPipeVar] = Unassigned()
-    component_job_arn: Optional[StrPipeVar] = Unassigned()
-    end_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-
-
 class ComputeQuotaResourceConfig(Base):
     """
     ComputeQuotaResourceConfig
@@ -5718,7 +5329,7 @@ class ComputeQuotaResourceConfig(Base):
     accelerators: The number of accelerators to allocate. If you don't specify a value for vCPU and MemoryInGiB, SageMaker AI automatically allocates ratio-based values for those parameters based on the number of accelerators you provide. For example, if you allocate 16 out of 32 total accelerators, SageMaker AI uses the ratio of 0.5 and allocates values to vCPU and MemoryInGiB.
     v_cpu: The number of vCPU to allocate. If you specify a value only for vCPU, SageMaker AI automatically allocates ratio-based values for MemoryInGiB based on this vCPU parameter. For example, if you allocate 20 out of 40 total vCPU, SageMaker AI uses the ratio of 0.5 and allocates values to MemoryInGiB. Accelerators are set to 0.
     memory_in_gi_b: The amount of memory in GiB to allocate. If you specify a value only for this parameter, SageMaker AI automatically allocates a ratio-based value for vCPU based on this memory that you provide. For example, if you allocate 200 out of 400 total memory in GiB, SageMaker AI uses the ratio of 0.5 and allocates values to vCPU. Accelerators are set to 0.
-    accelerator_partition
+    accelerator_partition: The accelerator partition configuration for fractional GPU allocation.
     """
 
     instance_type: StrPipeVar
@@ -5738,10 +5349,12 @@ class ResourceSharingConfig(Base):
     ----------------------
     strategy: The strategy of how idle compute is shared within the cluster. The following are the options of strategies.    DontLend: entities do not lend idle compute.    Lend: entities can lend idle compute to entities that can borrow.    LendandBorrow: entities can lend idle compute and borrow idle compute from other entities.   Default is LendandBorrow.
     borrow_limit: The limit on how much idle compute can be borrowed.The values can be 1 - 500 percent of idle compute that the team is allowed to borrow. Default is 50.
+    absolute_borrow_limits: The absolute limits on compute resources that can be borrowed from idle compute. When specified, these limits define the maximum amount of specific resource types (such as accelerators, vCPU, or memory) that an entity can borrow, regardless of the percentage-based BorrowLimit.
     """
 
     strategy: StrPipeVar
     borrow_limit: Optional[int] = Unassigned()
+    absolute_borrow_limits: Optional[List[ComputeQuotaResourceConfig]] = Unassigned()
 
 
 class ComputeQuotaConfig(Base):
@@ -5809,20 +5422,6 @@ class ComputeQuotaSummary(Base):
     last_modified_time: Optional[datetime.datetime] = Unassigned()
 
 
-class Concurrency(Base):
-    """
-    Concurrency
-
-    Attributes
-    ----------------------
-    number_of_concurrent_users
-    duration_in_seconds
-    """
-
-    number_of_concurrent_users: Optional[int] = Unassigned()
-    duration_in_seconds: Optional[int] = Unassigned()
-
-
 class ConditionStepMetadata(Base):
     """
     ConditionStepMetadata
@@ -5885,11 +5484,9 @@ class MultiModelConfig(Base):
     Attributes
     ----------------------
     model_cache_setting: Whether to cache models for a multi-model endpoint. By default, multi-model endpoints cache models so that a model does not have to be loaded into memory each time it is invoked. Some use cases do not benefit from model caching. For example, if an endpoint hosts a large number of models that are each invoked infrequently, the endpoint might perform better if you disable model caching. To disable model caching, set the value of this parameter to Disabled.
-    model_load_concurrency_factor
     """
 
     model_cache_setting: Optional[StrPipeVar] = Unassigned()
-    model_load_concurrency_factor: Optional[int] = Unassigned()
 
 
 class ContainerDefinition(Base):
@@ -5965,24 +5562,6 @@ class ContextSummary(Base):
     last_modified_time: Optional[datetime.datetime] = Unassigned()
 
 
-class ContinuousParameter(Base):
-    """
-    ContinuousParameter
-
-    Attributes
-    ----------------------
-    name
-    min_value
-    max_value
-    scaling_type
-    """
-
-    name: Optional[StrPipeVar] = Unassigned()
-    min_value: Optional[float] = Unassigned()
-    max_value: Optional[float] = Unassigned()
-    scaling_type: Optional[StrPipeVar] = Unassigned()
-
-
 class ContinuousParameterRange(Base):
     """
     ContinuousParameterRange
@@ -6041,14 +5620,12 @@ class MetadataProperties(Base):
     repository: The repository.
     generated_by: The entity this entity was generated by.
     project_id: The project ID.
-    branch_name
     """
 
     commit_id: Optional[StrPipeVar] = Unassigned()
     repository: Optional[StrPipeVar] = Unassigned()
     generated_by: Optional[StrPipeVar] = Unassigned()
     project_id: Optional[StrPipeVar] = Unassigned()
-    branch_name: Optional[StrPipeVar] = Unassigned()
 
 
 class IntegerParameterRangeSpecification(Base):
@@ -6103,7 +5680,6 @@ class HyperParameterSpecification(Base):
     is_tunable: Indicates whether this hyperparameter is tunable in a hyperparameter tuning job.
     is_required: Indicates whether this hyperparameter is required.
     default_value: The default value for this hyperparameter. If a default value is specified, a hyperparameter cannot be required.
-    default_scaling_type
     """
 
     name: StrPipeVar
@@ -6113,7 +5689,6 @@ class HyperParameterSpecification(Base):
     is_tunable: Optional[bool] = Unassigned()
     is_required: Optional[bool] = Unassigned()
     default_value: Optional[StrPipeVar] = Unassigned()
-    default_scaling_type: Optional[StrPipeVar] = Unassigned()
 
 
 class HyperParameterTuningJobObjective(Base):
@@ -6162,34 +5737,6 @@ class TrainingSpecification(Base):
     additional_s3_data_source: Optional[AdditionalS3DataSource] = Unassigned()
 
 
-class ImageUrlOverrides(Base):
-    """
-    ImageUrlOverrides
-
-    Attributes
-    ----------------------
-    data_builder_image_url
-    data_processing_image_url
-    pipeline_recommender_image_url
-    agt_image_url
-    multimodal_pretraining_image_url
-    robotorch_image_url
-    time_series_pre_training_image_url
-    time_series_training_image_url
-    thundera_image_url
-    """
-
-    data_builder_image_url: Optional[StrPipeVar] = Unassigned()
-    data_processing_image_url: Optional[StrPipeVar] = Unassigned()
-    pipeline_recommender_image_url: Optional[StrPipeVar] = Unassigned()
-    agt_image_url: Optional[StrPipeVar] = Unassigned()
-    multimodal_pretraining_image_url: Optional[StrPipeVar] = Unassigned()
-    robotorch_image_url: Optional[StrPipeVar] = Unassigned()
-    time_series_pre_training_image_url: Optional[StrPipeVar] = Unassigned()
-    time_series_training_image_url: Optional[StrPipeVar] = Unassigned()
-    thundera_image_url: Optional[StrPipeVar] = Unassigned()
-
-
 class ModelDeployConfig(Base):
     """
     ModelDeployConfig
@@ -6197,18 +5744,12 @@ class ModelDeployConfig(Base):
 
     Attributes
     ----------------------
-    model_deploy_mode
     auto_generate_endpoint_name: Set to True to automatically generate an endpoint name for a one-click Autopilot model deployment; set to False otherwise. The default value is False.  If you set AutoGenerateEndpointName to True, do not specify the EndpointName; otherwise a 400 error is thrown.
     endpoint_name: Specifies the endpoint name to use for a one-click Autopilot model deployment if the endpoint name is not generated automatically.  Specify the EndpointName if and only if you set AutoGenerateEndpointName to False; otherwise a 400 error is thrown.
-    endpoint_config_definitions
-    endpoint_definitions
     """
 
-    model_deploy_mode: Optional[StrPipeVar] = Unassigned()
     auto_generate_endpoint_name: Optional[bool] = Unassigned()
     endpoint_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    endpoint_config_definitions: Optional[List[AutoMLEndpointConfigDefinition]] = Unassigned()
-    endpoint_definitions: Optional[List[AutoMLEndpointDefinition]] = Unassigned()
 
 
 class PriorityClass(Base):
@@ -6235,10 +5776,12 @@ class SchedulerConfig(Base):
     ----------------------
     priority_classes: List of the priority classes, PriorityClass, of the cluster policy. When specified, these class configurations define how tasks are queued.
     fair_share: When enabled, entities borrow idle compute based on their assigned FairShareWeight. When disabled, entities borrow idle compute based on a first-come first-serve basis. Default is Enabled.
+    idle_resource_sharing: Configuration for sharing idle compute resources across entities in the cluster. When enabled, unallocated resources are automatically calculated and made available for entities to borrow.
     """
 
     priority_classes: Optional[List[PriorityClass]] = Unassigned()
     fair_share: Optional[StrPipeVar] = Unassigned()
+    idle_resource_sharing: Optional[StrPipeVar] = Unassigned()
 
 
 class InputConfig(Base):
@@ -6298,18 +5841,6 @@ class OutputConfig(Base):
     kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
-class NeoResourceConfig(Base):
-    """
-    NeoResourceConfig
-
-    Attributes
-    ----------------------
-    volume_kms_key_id
-    """
-
-    volume_kms_key_id: StrPipeVar
-
-
 class NeoVpcConfig(Base):
     """
     NeoVpcConfig
@@ -6325,172 +5856,70 @@ class NeoVpcConfig(Base):
     subnets: List[StrPipeVar]
 
 
-class CustomMonitoringAppSpecification(Base):
+class MonitoringConstraintsResource(Base):
     """
-    CustomMonitoringAppSpecification
+    MonitoringConstraintsResource
+      The constraints resource for a monitoring job.
 
     Attributes
     ----------------------
-    image_uri
-    container_entrypoint
-    container_arguments
-    environment
-    record_preprocessor_source_uri
-    post_analytics_processor_source_uri
+    s3_uri: The Amazon S3 URI for the constraints resource.
+    """
+
+    s3_uri: Optional[StrPipeVar] = Unassigned()
+
+
+class MonitoringStatisticsResource(Base):
+    """
+    MonitoringStatisticsResource
+      The statistics resource for a monitoring job.
+
+    Attributes
+    ----------------------
+    s3_uri: The Amazon S3 URI for the statistics resource.
+    """
+
+    s3_uri: Optional[StrPipeVar] = Unassigned()
+
+
+class DataQualityBaselineConfig(Base):
+    """
+    DataQualityBaselineConfig
+      Configuration for monitoring constraints and monitoring statistics. These baseline resources are compared against the results of the current job from the series of jobs scheduled to collect data periodically.
+
+    Attributes
+    ----------------------
+    baselining_job_name: The name of the job that performs baselining for the data quality monitoring job.
+    constraints_resource
+    statistics_resource
+    """
+
+    baselining_job_name: Optional[StrPipeVar] = Unassigned()
+    constraints_resource: Optional[MonitoringConstraintsResource] = Unassigned()
+    statistics_resource: Optional[MonitoringStatisticsResource] = Unassigned()
+
+
+class DataQualityAppSpecification(Base):
+    """
+    DataQualityAppSpecification
+      Information about the container that a data quality monitoring job runs.
+
+    Attributes
+    ----------------------
+    image_uri: The container image that the data quality monitoring job runs.
+    container_entrypoint: The entrypoint for a container used to run a monitoring job.
+    container_arguments: The arguments to send to the container that the monitoring job runs.
+    record_preprocessor_source_uri: An Amazon S3 URI to a script that is called per row prior to running analysis. It can base64 decode the payload and convert it into a flattened JSON so that the built-in container can use the converted data. Applicable only for the built-in (first party) containers.
+    post_analytics_processor_source_uri: An Amazon S3 URI to a script that is called after analysis has been performed. Applicable only for the built-in (first party) containers.
+    environment: Sets the environment variables in the container that the monitoring job runs.
     """
 
     image_uri: StrPipeVar
     container_entrypoint: Optional[List[StrPipeVar]] = Unassigned()
     container_arguments: Optional[List[StrPipeVar]] = Unassigned()
-    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     record_preprocessor_source_uri: Optional[StrPipeVar] = Unassigned()
     post_analytics_processor_source_uri: Optional[StrPipeVar] = Unassigned()
-
-
-class ProcessingS3Input(Base):
-    """
-    ProcessingS3Input
-      Configuration for downloading input data from Amazon S3 into the processing container.
-
-    Attributes
-    ----------------------
-    s3_uri: The URI of the Amazon S3 prefix Amazon SageMaker downloads data required to run a processing job.
-    local_path: The local path in your container where you want Amazon SageMaker to write input data to. LocalPath is an absolute path to the input data and must begin with /opt/ml/processing/. LocalPath is a required parameter when AppManaged is False (default).
-    s3_data_type: Whether you use an S3Prefix or a ManifestFile for the data type. If you choose S3Prefix, S3Uri identifies a key name prefix. Amazon SageMaker uses all objects with the specified key name prefix for the processing job. If you choose ManifestFile, S3Uri identifies an object that is a manifest file containing a list of object keys that you want Amazon SageMaker to use for the processing job.
-    s3_input_mode: Whether to use File or Pipe input mode. In File mode, Amazon SageMaker copies the data from the input source onto the local ML storage volume before starting your processing container. This is the most commonly used input mode. In Pipe mode, Amazon SageMaker streams input data from the source directly to your processing container into named pipes without using the ML storage volume.
-    s3_data_distribution_type: Whether to distribute the data from Amazon S3 to all processing instances with FullyReplicated, or whether the data from Amazon S3 is sharded by Amazon S3 key, downloading one shard of data to each processing instance.
-    s3_compression_type: Whether to GZIP-decompress the data in Amazon S3 as it is streamed into the processing container. Gzip can only be used when Pipe mode is specified as the S3InputMode. In Pipe mode, Amazon SageMaker streams input data from the source directly to your container without using the EBS volume.
-    """
-
-    s3_uri: StrPipeVar
-    s3_data_type: StrPipeVar
-    local_path: Optional[StrPipeVar] = Unassigned()
-    s3_input_mode: Optional[StrPipeVar] = Unassigned()
-    s3_data_distribution_type: Optional[StrPipeVar] = Unassigned()
-    s3_compression_type: Optional[StrPipeVar] = Unassigned()
-
-
-class RedshiftDatasetDefinition(Base):
-    """
-    RedshiftDatasetDefinition
-      Configuration for Redshift Dataset Definition input.
-
-    Attributes
-    ----------------------
-    cluster_id
-    database
-    db_user
-    query_string
-    cluster_role_arn: The IAM role attached to your Redshift cluster that Amazon SageMaker uses to generate datasets.
-    output_s3_uri: The location in Amazon S3 where the Redshift query results are stored.
-    output_dataset_s3_uri
-    kms_key_id: The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt data from a Redshift execution.
-    output_format
-    output_compression
-    """
-
-    cluster_id: StrPipeVar
-    database: StrPipeVar
-    db_user: StrPipeVar
-    query_string: StrPipeVar
-    cluster_role_arn: StrPipeVar
-    output_s3_uri: StrPipeVar
-    output_format: StrPipeVar
-    output_dataset_s3_uri: Optional[StrPipeVar] = Unassigned()
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-    output_compression: Optional[StrPipeVar] = Unassigned()
-
-
-class SnowflakeQueryVariable(Base):
-    """
-    SnowflakeQueryVariable
-
-    Attributes
-    ----------------------
-    value
-    """
-
-    value: StrPipeVar
-
-
-class SnowflakeDatasetDefinition(Base):
-    """
-    SnowflakeDatasetDefinition
-
-    Attributes
-    ----------------------
-    warehouse
-    database
-    schema
-    snowflake_role
-    secret_arn
-    query_string
-    query_variables
-    output_s3_uri
-    output_dataset_s3_uri
-    storage_integration
-    output_format_type
-    output_compression
-    output_format_name
-    kms_key_id
-    """
-
-    warehouse: StrPipeVar
-    secret_arn: StrPipeVar
-    query_string: StrPipeVar
-    output_s3_uri: StrPipeVar
-    storage_integration: StrPipeVar
-    database: Optional[StrPipeVar] = Unassigned()
-    schema: Optional[StrPipeVar] = Unassigned()
-    snowflake_role: Optional[StrPipeVar] = Unassigned()
-    query_variables: Optional[List[SnowflakeQueryVariable]] = Unassigned()
-    output_dataset_s3_uri: Optional[StrPipeVar] = Unassigned()
-    output_format_type: Optional[StrPipeVar] = Unassigned()
-    output_compression: Optional[StrPipeVar] = Unassigned()
-    output_format_name: Optional[StrPipeVar] = Unassigned()
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-
-
-class DatasetDefinition(Base):
-    """
-    DatasetDefinition
-      Configuration for Dataset Definition inputs. The Dataset Definition input must specify exactly one of either AthenaDatasetDefinition or RedshiftDatasetDefinition types.
-
-    Attributes
-    ----------------------
-    athena_dataset_definition
-    redshift_dataset_definition
-    local_path: The local path where you want Amazon SageMaker to download the Dataset Definition inputs to run a processing job. LocalPath is an absolute path to the input data. This is a required parameter when AppManaged is False (default).
-    data_distribution_type: Whether the generated dataset is FullyReplicated or ShardedByS3Key (default).
-    input_mode: Whether to use File or Pipe input mode. In File (default) mode, Amazon SageMaker copies the data from the input source onto the local Amazon Elastic Block Store (Amazon EBS) volumes before starting your training algorithm. This is the most commonly used input mode. In Pipe mode, Amazon SageMaker streams input data from the source directly to your algorithm without using the EBS volume.
-    snowflake_dataset_definition
-    """
-
-    athena_dataset_definition: Optional[AthenaDatasetDefinition] = Unassigned()
-    redshift_dataset_definition: Optional[RedshiftDatasetDefinition] = Unassigned()
-    local_path: Optional[StrPipeVar] = Unassigned()
-    data_distribution_type: Optional[StrPipeVar] = Unassigned()
-    input_mode: Optional[StrPipeVar] = Unassigned()
-    snowflake_dataset_definition: Optional[SnowflakeDatasetDefinition] = Unassigned()
-
-
-class ProcessingInput(Base):
-    """
-    ProcessingInput
-      The inputs for a processing job. The processing input must specify exactly one of either S3Input or DatasetDefinition types.
-
-    Attributes
-    ----------------------
-    input_name: The name for the processing job input.
-    app_managed: When True, input operations such as data download are managed natively by the processing job application. When False (default), input operations are managed by Amazon SageMaker.
-    s3_input: Configuration for downloading input data from Amazon S3 into the processing container.
-    dataset_definition: Configuration for a Dataset Definition input.
-    """
-
-    input_name: StrPipeVar
-    app_managed: Optional[bool] = Unassigned()
-    s3_input: Optional[ProcessingS3Input] = Unassigned()
-    dataset_definition: Optional[DatasetDefinition] = Unassigned()
+    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
 
 
 class EndpointInput(Base):
@@ -6510,7 +5939,6 @@ class EndpointInput(Base):
     probability_threshold_attribute: The threshold for the class probability to be evaluated as a positive result.
     start_time_offset: If specified, monitoring jobs substract this time from the start time. For information about using offsets for scheduling monitoring jobs, see Schedule Model Quality Monitoring Jobs.
     end_time_offset: If specified, monitoring jobs substract this time from the end time. For information about using offsets for scheduling monitoring jobs, see Schedule Model Quality Monitoring Jobs.
-    variant_name
     exclude_features_attribute: The attributes of the input data to exclude from the analysis.
     """
 
@@ -6524,39 +5952,22 @@ class EndpointInput(Base):
     probability_threshold_attribute: Optional[float] = Unassigned()
     start_time_offset: Optional[StrPipeVar] = Unassigned()
     end_time_offset: Optional[StrPipeVar] = Unassigned()
-    variant_name: Optional[StrPipeVar] = Unassigned()
     exclude_features_attribute: Optional[StrPipeVar] = Unassigned()
 
 
-class MonitoringGroundTruthS3Input(Base):
+class DataQualityJobInput(Base):
     """
-    MonitoringGroundTruthS3Input
-      The ground truth labels for the dataset used for the monitoring job.
+    DataQualityJobInput
+      The input for the data quality monitoring job. Currently endpoints are supported for input.
 
     Attributes
     ----------------------
-    s3_uri: The address of the Amazon S3 location of the ground truth labels.
-    """
-
-    s3_uri: Optional[StrPipeVar] = Unassigned()
-
-
-class CustomMonitoringJobInput(Base):
-    """
-    CustomMonitoringJobInput
-
-    Attributes
-    ----------------------
-    processing_inputs
     endpoint_input
-    batch_transform_input
-    ground_truth_s3_input
+    batch_transform_input: Input object for the batch transform job.
     """
 
-    processing_inputs: Optional[List[ProcessingInput]] = Unassigned()
     endpoint_input: Optional[EndpointInput] = Unassigned()
     batch_transform_input: Optional[BatchTransformInput] = Unassigned()
-    ground_truth_s3_input: Optional[MonitoringGroundTruthS3Input] = Unassigned()
 
 
 class MonitoringS3Output(Base):
@@ -6666,87 +6077,6 @@ class MonitoringStoppingCondition(Base):
     max_runtime_in_seconds: int
 
 
-class MonitoringConstraintsResource(Base):
-    """
-    MonitoringConstraintsResource
-      The constraints resource for a monitoring job.
-
-    Attributes
-    ----------------------
-    s3_uri: The Amazon S3 URI for the constraints resource.
-    """
-
-    s3_uri: Optional[StrPipeVar] = Unassigned()
-
-
-class MonitoringStatisticsResource(Base):
-    """
-    MonitoringStatisticsResource
-      The statistics resource for a monitoring job.
-
-    Attributes
-    ----------------------
-    s3_uri: The Amazon S3 URI for the statistics resource.
-    """
-
-    s3_uri: Optional[StrPipeVar] = Unassigned()
-
-
-class DataQualityBaselineConfig(Base):
-    """
-    DataQualityBaselineConfig
-      Configuration for monitoring constraints and monitoring statistics. These baseline resources are compared against the results of the current job from the series of jobs scheduled to collect data periodically.
-
-    Attributes
-    ----------------------
-    baselining_job_name: The name of the job that performs baselining for the data quality monitoring job.
-    constraints_resource
-    statistics_resource
-    """
-
-    baselining_job_name: Optional[StrPipeVar] = Unassigned()
-    constraints_resource: Optional[MonitoringConstraintsResource] = Unassigned()
-    statistics_resource: Optional[MonitoringStatisticsResource] = Unassigned()
-
-
-class DataQualityAppSpecification(Base):
-    """
-    DataQualityAppSpecification
-      Information about the container that a data quality monitoring job runs.
-
-    Attributes
-    ----------------------
-    image_uri: The container image that the data quality monitoring job runs.
-    container_entrypoint: The entrypoint for a container used to run a monitoring job.
-    container_arguments: The arguments to send to the container that the monitoring job runs.
-    record_preprocessor_source_uri: An Amazon S3 URI to a script that is called per row prior to running analysis. It can base64 decode the payload and convert it into a flattened JSON so that the built-in container can use the converted data. Applicable only for the built-in (first party) containers.
-    post_analytics_processor_source_uri: An Amazon S3 URI to a script that is called after analysis has been performed. Applicable only for the built-in (first party) containers.
-    environment: Sets the environment variables in the container that the monitoring job runs.
-    """
-
-    image_uri: StrPipeVar
-    container_entrypoint: Optional[List[StrPipeVar]] = Unassigned()
-    container_arguments: Optional[List[StrPipeVar]] = Unassigned()
-    record_preprocessor_source_uri: Optional[StrPipeVar] = Unassigned()
-    post_analytics_processor_source_uri: Optional[StrPipeVar] = Unassigned()
-    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-
-
-class DataQualityJobInput(Base):
-    """
-    DataQualityJobInput
-      The input for the data quality monitoring job. Currently endpoints are supported for input.
-
-    Attributes
-    ----------------------
-    endpoint_input
-    batch_transform_input: Input object for the batch transform job.
-    """
-
-    endpoint_input: Optional[EndpointInput] = Unassigned()
-    batch_transform_input: Optional[BatchTransformInput] = Unassigned()
-
-
 class EdgeOutputConfig(Base):
     """
     EdgeOutputConfig
@@ -6764,20 +6094,6 @@ class EdgeOutputConfig(Base):
     kms_key_id: Optional[StrPipeVar] = Unassigned()
     preset_deployment_type: Optional[StrPipeVar] = Unassigned()
     preset_deployment_config: Optional[StrPipeVar] = Unassigned()
-
-
-class EnvironmentSettings(Base):
-    """
-    EnvironmentSettings
-
-    Attributes
-    ----------------------
-    default_s3_artifact_path
-    default_s3_kms_key_id
-    """
-
-    default_s3_artifact_path: Optional[StrPipeVar] = Unassigned()
-    default_s3_kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
 class SharingSettings(Base):
@@ -6872,40 +6188,6 @@ class RSessionAppSettings(Base):
 
     default_resource_spec: Optional[ResourceSpec] = Unassigned()
     custom_images: Optional[List[CustomImage]] = Unassigned()
-
-
-class VSCodeAppSettings(Base):
-    """
-    VSCodeAppSettings
-
-    Attributes
-    ----------------------
-    default_resource_spec
-    custom_images
-    lifecycle_config_arns
-    """
-
-    default_resource_spec: Optional[ResourceSpec] = Unassigned()
-    custom_images: Optional[List[CustomImage]] = Unassigned()
-    lifecycle_config_arns: Optional[List[StrPipeVar]] = Unassigned()
-
-
-class SaviturAppSettings(Base):
-    """
-    SaviturAppSettings
-
-    Attributes
-    ----------------------
-    default_resource_spec
-    custom_images
-    lifecycle_config_arns
-    code_repositories
-    """
-
-    default_resource_spec: Optional[ResourceSpec] = Unassigned()
-    custom_images: Optional[List[CustomImage]] = Unassigned()
-    lifecycle_config_arns: Optional[List[StrPipeVar]] = Unassigned()
-    code_repositories: Optional[List[CodeRepository]] = Unassigned()
 
 
 class EmrSettings(Base):
@@ -7095,7 +6377,6 @@ class UserSettings(Base):
     Attributes
     ----------------------
     execution_role: The execution role for the user. SageMaker applies this setting only to private spaces that the user creates in the domain. SageMaker doesn't apply this setting to shared spaces.
-    environment_settings: The environment settings.
     security_groups: The security groups for the Amazon Virtual Private Cloud (VPC) that the domain uses for communication. Optional when the CreateDomain.AppNetworkAccessType parameter is set to PublicInternetOnly. Required when the CreateDomain.AppNetworkAccessType parameter is set to VpcOnly, unless specified as part of the DefaultUserSettings for the domain. Amazon SageMaker AI adds a security group to allow NFS traffic from Amazon SageMaker AI Studio. Therefore, the number of security groups that you can specify is one less than the maximum number shown. SageMaker applies these settings only to private spaces that the user creates in the domain. SageMaker doesn't apply these settings to shared spaces.
     sharing_settings: Specifies options for sharing Amazon SageMaker AI Studio notebooks.
     jupyter_server_app_settings: The Jupyter server's app settings.
@@ -7104,8 +6385,6 @@ class UserSettings(Base):
     r_studio_server_pro_app_settings: A collection of settings that configure user interaction with the RStudioServerPro app.
     r_session_app_settings: A collection of settings that configure the RSessionGateway app.
     canvas_app_settings: The Canvas app settings. SageMaker applies these settings only to private spaces that SageMaker creates for the Canvas app.
-    vs_code_app_settings
-    savitur_app_settings
     code_editor_app_settings: The Code Editor application settings. SageMaker applies these settings only to private spaces that the user creates in the domain. SageMaker doesn't apply these settings to shared spaces.
     jupyter_lab_app_settings: The settings for the JupyterLab application. SageMaker applies these settings only to private spaces that the user creates in the domain. SageMaker doesn't apply these settings to shared spaces.
     space_storage_settings: The storage settings for a space. SageMaker applies these settings only to private spaces that the user creates in the domain. SageMaker doesn't apply these settings to shared spaces.
@@ -7113,13 +6392,11 @@ class UserSettings(Base):
     studio_web_portal: Whether the user can access Studio. If this value is set to DISABLED, the user cannot access Studio, even if that is the default experience for the domain.
     custom_posix_user_config: Details about the POSIX identity that is used for file system operations. SageMaker applies these settings only to private spaces that the user creates in the domain. SageMaker doesn't apply these settings to shared spaces.
     custom_file_system_configs: The settings for assigning a custom file system to a user profile. Permitted users can access this file system in Amazon SageMaker AI Studio. SageMaker applies these settings only to private spaces that the user creates in the domain. SageMaker doesn't apply these settings to shared spaces.
-    emr_settings
     studio_web_portal_settings: Studio settings. If these settings are applied on a user level, they take priority over the settings applied on a domain level.
     auto_mount_home_efs: Indicates whether auto-mounting of an EFS volume is supported for the user profile. The DefaultAsDomain value is only supported for user profiles. Do not use the DefaultAsDomain value when setting this parameter for a domain. SageMaker applies this setting only to private spaces that the user creates in the domain. SageMaker doesn't apply this setting to shared spaces.
     """
 
     execution_role: Optional[StrPipeVar] = Unassigned()
-    environment_settings: Optional[EnvironmentSettings] = Unassigned()
     security_groups: Optional[List[StrPipeVar]] = Unassigned()
     sharing_settings: Optional[SharingSettings] = Unassigned()
     jupyter_server_app_settings: Optional[JupyterServerAppSettings] = Unassigned()
@@ -7128,8 +6405,6 @@ class UserSettings(Base):
     r_studio_server_pro_app_settings: Optional[RStudioServerProAppSettings] = Unassigned()
     r_session_app_settings: Optional[RSessionAppSettings] = Unassigned()
     canvas_app_settings: Optional[CanvasAppSettings] = Unassigned()
-    vs_code_app_settings: Optional[VSCodeAppSettings] = Unassigned()
-    savitur_app_settings: Optional[SaviturAppSettings] = Unassigned()
     code_editor_app_settings: Optional[CodeEditorAppSettings] = Unassigned()
     jupyter_lab_app_settings: Optional[JupyterLabAppSettings] = Unassigned()
     space_storage_settings: Optional[DefaultSpaceStorageSettings] = Unassigned()
@@ -7137,7 +6412,6 @@ class UserSettings(Base):
     studio_web_portal: Optional[StrPipeVar] = Unassigned()
     custom_posix_user_config: Optional[CustomPosixUserConfig] = Unassigned()
     custom_file_system_configs: Optional[List[CustomFileSystemConfig]] = Unassigned()
-    emr_settings: Optional[EmrSettings] = Unassigned()
     studio_web_portal_settings: Optional[StudioWebPortalSettings] = Unassigned()
     auto_mount_home_efs: Optional[StrPipeVar] = Unassigned()
 
@@ -7226,7 +6500,6 @@ class DomainSettings(Base):
     Attributes
     ----------------------
     security_group_ids: The security groups for the Amazon Virtual Private Cloud that the Domain uses for communication between Domain-level apps and user apps.
-    logout_redirection_url
     r_studio_server_pro_domain_settings: A collection of settings that configure the RStudioServerPro Domain-level app.
     execution_role_identity_config: The configuration for attaching a SageMaker AI user profile name to the execution role as a sts:SourceIdentity key.
     trusted_identity_propagation_settings: The Trusted Identity Propagation (TIP) settings for the SageMaker domain. These settings determine how user identities from IAM Identity Center are propagated through the domain to TIP enabled Amazon Web Services services.
@@ -7237,7 +6510,6 @@ class DomainSettings(Base):
     """
 
     security_group_ids: Optional[List[StrPipeVar]] = Unassigned()
-    logout_redirection_url: Optional[StrPipeVar] = Unassigned()
     r_studio_server_pro_domain_settings: Optional[RStudioServerProDomainSettings] = Unassigned()
     execution_role_identity_config: Optional[StrPipeVar] = Unassigned()
     trusted_identity_propagation_settings: Optional[TrustedIdentityPropagationSettings] = (
@@ -7372,6 +6644,23 @@ class ProductionVariantServerlessConfig(Base):
     provisioned_concurrency: Optional[int] = Unassigned()
 
 
+class ProductionVariantManagedInstanceScalingScaleInPolicy(Base):
+    """
+    ProductionVariantManagedInstanceScalingScaleInPolicy
+      Configures the scale-in behavior for managed instance scaling.
+
+    Attributes
+    ----------------------
+    strategy: The strategy for scaling in instances.  IDLE_RELEASE  Releases instances that have no hosted inference component copies.  CONSOLIDATION  Consolidates inference component copies onto fewer instances to release more instances. Consolidation honors the scheduling configuration of each inference component. For example, if an inference component specifies Availability Zone balance, consolidation only proceeds when the resulting distribution does not increase the imbalance.
+    maximum_step_size: The maximum number of instances that the endpoint can terminate at a time during a consolidation scale-in operation. Default value: 1.
+    cooldown_in_minutes: The cooldown period, in minutes, after the last endpoint operation before the endpoint evaluates consolidation scale-in opportunities. Default value: 20.
+    """
+
+    strategy: StrPipeVar
+    maximum_step_size: Optional[int] = Unassigned()
+    cooldown_in_minutes: Optional[int] = Unassigned()
+
+
 class ProductionVariantManagedInstanceScaling(Base):
     """
     ProductionVariantManagedInstanceScaling
@@ -7382,11 +6671,13 @@ class ProductionVariantManagedInstanceScaling(Base):
     status: Indicates whether managed instance scaling is enabled.
     min_instance_count: The minimum number of instances that the endpoint must retain when it scales down to accommodate a decrease in traffic.
     max_instance_count: The maximum number of instances that the endpoint can provision when it scales up to accommodate an increase in traffic.
+    scale_in_policy: Configures the scale-in behavior for managed instance scaling.
     """
 
     status: Optional[StrPipeVar] = Unassigned()
     min_instance_count: Optional[int] = Unassigned()
     max_instance_count: Optional[int] = Unassigned()
+    scale_in_policy: Optional[ProductionVariantManagedInstanceScalingScaleInPolicy] = Unassigned()
 
 
 class ProductionVariantRoutingConfig(Base):
@@ -7402,32 +6693,6 @@ class ProductionVariantRoutingConfig(Base):
     routing_strategy: StrPipeVar
 
 
-class ProductionVariantCapacitySchedulesConfig(Base):
-    """
-    ProductionVariantCapacitySchedulesConfig
-
-    Attributes
-    ----------------------
-    capacity_fallback_strategy
-    capacity_schedules
-    """
-
-    capacity_schedules: List[CapacitySchedule]
-    capacity_fallback_strategy: Optional[StrPipeVar] = Unassigned()
-
-
-class ProductionVariantHyperPodConfig(Base):
-    """
-    ProductionVariantHyperPodConfig
-
-    Attributes
-    ----------------------
-    ingress_address
-    """
-
-    ingress_address: StrPipeVar
-
-
 class ProductionVariantCapacityReservationConfig(Base):
     """
     ProductionVariantCapacityReservationConfig
@@ -7435,12 +6700,10 @@ class ProductionVariantCapacityReservationConfig(Base):
 
     Attributes
     ----------------------
-    ec2_capacity_reservations
     capacity_reservation_preference: Options that you can choose for the capacity reservation. SageMaker AI supports the following options:  capacity-reservations-only  SageMaker AI launches instances only into an ML capacity reservation. If no capacity is available, the instances fail to launch.
     ml_reservation_arn: The Amazon Resource Name (ARN) that uniquely identifies the ML capacity reservation that SageMaker AI applies when it deploys the endpoint.
     """
 
-    ec2_capacity_reservations: Optional[List[StrPipeVar]] = Unassigned()
     capacity_reservation_preference: Optional[StrPipeVar] = Unassigned()
     ml_reservation_arn: Optional[StrPipeVar] = Unassigned()
 
@@ -7466,9 +6729,7 @@ class ProductionVariant(Base):
     enable_ssm_access:  You can use this parameter to turn on native Amazon Web Services Systems Manager (SSM) access for a production variant behind an endpoint. By default, SSM access is disabled for all production variants behind an endpoint. You can turn on or turn off SSM access for a production variant behind an existing endpoint by creating a new endpoint configuration and calling UpdateEndpoint.
     managed_instance_scaling: Settings that control the range in the number of instances that the endpoint provisions as it scales up or down to accommodate traffic.
     routing_config: Settings that control how the endpoint routes incoming traffic to the instances that the endpoint hosts.
-    capacity_schedules_config
-    inference_ami_version: Specifies an option from a collection of preconfigured Amazon Machine Image (AMI) images. Each image is configured by Amazon Web Services with a set of software and driver versions. Amazon Web Services optimizes these configurations for different machine learning workloads. By selecting an AMI version, you can ensure that your inference environment is compatible with specific software requirements, such as CUDA driver versions, Linux kernel versions, or Amazon Web Services Neuron driver versions. The AMI version names, and their configurations, are the following:  al2-ami-sagemaker-inference-gpu-2    Accelerator: GPU   NVIDIA driver version: 535   CUDA version: 12.2    al2-ami-sagemaker-inference-gpu-2-1    Accelerator: GPU   NVIDIA driver version: 535   CUDA version: 12.2   NVIDIA Container Toolkit with disabled CUDA-compat mounting    al2-ami-sagemaker-inference-gpu-3-1    Accelerator: GPU   NVIDIA driver version: 550   CUDA version: 12.4   NVIDIA Container Toolkit with disabled CUDA-compat mounting    al2-ami-sagemaker-inference-neuron-2    Accelerator: Inferentia2 and Trainium   Neuron driver version: 2.19
-    hyper_pod_config
+    inference_ami_version: Specifies an option from a collection of preconfigured Amazon Machine Image (AMI) images. Each image is configured by Amazon Web Services with a set of software and driver versions. Amazon Web Services optimizes these configurations for different machine learning workloads. By selecting an AMI version, you can ensure that your inference environment is compatible with specific software requirements, such as CUDA driver versions, Linux kernel versions, or Amazon Web Services Neuron driver versions. The AMI version names, and their configurations, are the following:  al2-ami-sagemaker-inference-gpu-2    Accelerator: GPU   NVIDIA driver version: 535   CUDA version: 12.2    al2-ami-sagemaker-inference-gpu-2-1    Accelerator: GPU   NVIDIA driver version: 535   CUDA version: 12.2   NVIDIA Container Toolkit with disabled CUDA-compat mounting    al2-ami-sagemaker-inference-gpu-3-1    Accelerator: GPU   NVIDIA driver version: 550   CUDA version: 12.4   NVIDIA Container Toolkit with disabled CUDA-compat mounting    al2023-ami-sagemaker-inference-gpu-4-1    Accelerator: GPU   NVIDIA driver version: 580   CUDA version: 13.0   NVIDIA Container Toolkit with disabled CUDA-compat mounting    al2-ami-sagemaker-inference-neuron-2    Accelerator: Inferentia2 and Trainium   Neuron driver version: 2.19
     capacity_reservation_config: Settings for the capacity reservation for the compute instances that SageMaker AI reserves for an endpoint.
     """
 
@@ -7486,9 +6747,7 @@ class ProductionVariant(Base):
     enable_ssm_access: Optional[bool] = Unassigned()
     managed_instance_scaling: Optional[ProductionVariantManagedInstanceScaling] = Unassigned()
     routing_config: Optional[ProductionVariantRoutingConfig] = Unassigned()
-    capacity_schedules_config: Optional[ProductionVariantCapacitySchedulesConfig] = Unassigned()
     inference_ami_version: Optional[StrPipeVar] = Unassigned()
-    hyper_pod_config: Optional[ProductionVariantHyperPodConfig] = Unassigned()
     capacity_reservation_config: Optional[ProductionVariantCapacityReservationConfig] = Unassigned()
 
 
@@ -7531,27 +6790,16 @@ class ExplainerConfig(Base):
 class MetricsConfig(Base):
     """
     MetricsConfig
+      The configuration for Utilization metrics.
 
     Attributes
     ----------------------
-    enable_enhanced_metrics: Specifies whether to enable enhanced metrics for the endpoint. Enhanced metrics provide utilization data at instance and container granularity. Container granularity is supported for Inference Components. The default is False.
-    metric_publish_frequency_in_seconds: The frequency, in seconds, at which Utilization Metrics are published to Amazon CloudWatch. The default is 60 seconds.
+    enable_enhanced_metrics: Specifies whether to enable enhanced metrics for the endpoint. Enhanced metrics provide utilization and invocation data at instance and container granularity. Container granularity is supported for Inference Components. The default is False.
+    metric_publish_frequency_in_seconds: The interval, in seconds, at which metrics are published to Amazon CloudWatch. Defaults to 60. Valid values: 10, 30, 60, 120, 180, 240, 300. When EnableEnhancedMetrics is set to False, this interval applies to utilization metrics only; invocation metrics continue to be published at the default 60-second interval. When EnableEnhancedMetrics is set to True, this interval applies to both utilization and invocation metrics.
     """
 
     enable_enhanced_metrics: Optional[bool] = Unassigned()
     metric_publish_frequency_in_seconds: Optional[int] = Unassigned()
-
-
-class EndpointDeletionCondition(Base):
-    """
-    EndpointDeletionCondition
-
-    Attributes
-    ----------------------
-    max_runtime_in_seconds
-    """
-
-    max_runtime_in_seconds: int
 
 
 class RollingUpdatePolicy(Base):
@@ -7564,14 +6812,12 @@ class RollingUpdatePolicy(Base):
     maximum_batch_size: Batch size for each rolling step to provision capacity and turn on traffic on the new endpoint fleet, and terminate capacity on the old endpoint fleet. Value must be between 5% to 50% of the variant's total instance count.
     wait_interval_in_seconds: The length of the baking period, during which SageMaker monitors alarms for each batch on the new fleet.
     maximum_execution_timeout_in_seconds: The time limit for the total deployment. Exceeding this limit causes a timeout.
-    wait_for_instance_termination
     rollback_maximum_batch_size: Batch size for rollback to the old endpoint fleet. Each rolling step to provision capacity and turn on traffic on the old endpoint fleet, and terminate capacity on the new endpoint fleet. If this field is absent, the default value will be set to 100% of total capacity which means to bring up the whole capacity of the old fleet at once during rollback.
     """
 
     maximum_batch_size: CapacitySize
     wait_interval_in_seconds: int
     maximum_execution_timeout_in_seconds: Optional[int] = Unassigned()
-    wait_for_instance_termination: Optional[bool] = Unassigned()
     rollback_maximum_batch_size: Optional[CapacitySize] = Unassigned()
 
 
@@ -7592,214 +6838,6 @@ class DeploymentConfig(Base):
     auto_rollback_configuration: Optional[AutoRollbackConfig] = Unassigned()
 
 
-class EvaluationJobModel(Base):
-    """
-    EvaluationJobModel
-
-    Attributes
-    ----------------------
-    model_identifier
-    model_type
-    endpoint_arn
-    """
-
-    model_identifier: StrPipeVar
-    model_type: StrPipeVar
-    endpoint_arn: Optional[StrPipeVar] = Unassigned()
-
-
-class EvaluationJobModelConfig(Base):
-    """
-    EvaluationJobModelConfig
-
-    Attributes
-    ----------------------
-    models
-    """
-
-    models: List[EvaluationJobModel]
-
-
-class EvaluationJobOutputDataConfig(Base):
-    """
-    EvaluationJobOutputDataConfig
-
-    Attributes
-    ----------------------
-    s3_uri
-    kms_key_id
-    """
-
-    s3_uri: StrPipeVar
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-
-
-class EvaluationJobCustomDataset(Base):
-    """
-    EvaluationJobCustomDataset
-
-    Attributes
-    ----------------------
-    dataset_name
-    s3_uri
-    """
-
-    dataset_name: Optional[StrPipeVar] = Unassigned()
-    s3_uri: Optional[StrPipeVar] = Unassigned()
-
-
-class EvaluationJobInputDataConfig(Base):
-    """
-    EvaluationJobInputDataConfig
-
-    Attributes
-    ----------------------
-    custom_datasets
-    """
-
-    custom_datasets: Optional[List[EvaluationJobCustomDataset]] = Unassigned()
-
-
-class EvaluationJobHumanTaskConfig(Base):
-    """
-    EvaluationJobHumanTaskConfig
-
-    Attributes
-    ----------------------
-    flow_definition_arn
-    task_instructions
-    """
-
-    flow_definition_arn: StrPipeVar
-    task_instructions: StrPipeVar
-
-
-class EvaluationJobHumanWorkflowConfig(Base):
-    """
-    EvaluationJobHumanWorkflowConfig
-
-    Attributes
-    ----------------------
-    flow_definition_arn
-    task_instructions
-    """
-
-    flow_definition_arn: StrPipeVar
-    task_instructions: StrPipeVar
-
-
-class EvaluationJobHumanEvaluationMetric(Base):
-    """
-    EvaluationJobHumanEvaluationMetric
-
-    Attributes
-    ----------------------
-    metric_name
-    rating_method
-    metric_type
-    description
-    """
-
-    metric_name: StrPipeVar
-    rating_method: Optional[StrPipeVar] = Unassigned()
-    metric_type: Optional[StrPipeVar] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-
-
-class EvaluationJobHumanEvaluationConfig(Base):
-    """
-    EvaluationJobHumanEvaluationConfig
-
-    Attributes
-    ----------------------
-    human_task_config
-    human_workflow_config
-    human_evaluation_metrics
-    """
-
-    human_evaluation_metrics: List[EvaluationJobHumanEvaluationMetric]
-    human_task_config: Optional[EvaluationJobHumanTaskConfig] = Unassigned()
-    human_workflow_config: Optional[EvaluationJobHumanWorkflowConfig] = Unassigned()
-
-
-class EvaluationJobEvaluationConfig(Base):
-    """
-    EvaluationJobEvaluationConfig
-
-    Attributes
-    ----------------------
-    human_evaluation_config
-    """
-
-    human_evaluation_config: EvaluationJobHumanEvaluationConfig
-
-
-class EvaluationJobCredentialProxyConfig(Base):
-    """
-    EvaluationJobCredentialProxyConfig
-
-    Attributes
-    ----------------------
-    upstream_platform_customer_credential_token
-    credential_provider_function
-    """
-
-    upstream_platform_customer_credential_token: StrPipeVar
-    credential_provider_function: StrPipeVar
-
-
-class EvaluationJobUpstreamPlatformCustomerOutputDataConfig(Base):
-    """
-    EvaluationJobUpstreamPlatformCustomerOutputDataConfig
-
-    Attributes
-    ----------------------
-    kms_key_id
-    s3_kms_encryption_context
-    kms_encryption_context
-    s3_uri
-    """
-
-    s3_uri: StrPipeVar
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-    s3_kms_encryption_context: Optional[StrPipeVar] = Unassigned()
-    kms_encryption_context: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-
-
-class EvaluationJobUpstreamPlatformConfig(Base):
-    """
-    EvaluationJobUpstreamPlatformConfig
-
-    Attributes
-    ----------------------
-    credential_proxy_config
-    upstream_platform_customer_output_data_config
-    upstream_platform_customer_account_id
-    upstream_platform_customer_evaluation_job_arn
-    upstream_platform_customer_execution_role
-    """
-
-    credential_proxy_config: EvaluationJobCredentialProxyConfig
-    upstream_platform_customer_output_data_config: (
-        EvaluationJobUpstreamPlatformCustomerOutputDataConfig
-    )
-    upstream_platform_customer_account_id: StrPipeVar
-    upstream_platform_customer_execution_role: StrPipeVar
-    upstream_platform_customer_evaluation_job_arn: Optional[StrPipeVar] = Unassigned()
-
-
-class InputExperimentSource(Base):
-    """
-    InputExperimentSource
-
-    Attributes
-    ----------------------
-    source_arn
-    """
-
-    source_arn: StrPipeVar
-
-
 class FeatureDefinition(Base):
     """
     FeatureDefinition
@@ -7817,6 +6855,19 @@ class FeatureDefinition(Base):
     feature_type: StrPipeVar
     collection_type: Optional[StrPipeVar] = Unassigned()
     collection_config: Optional[CollectionConfig] = Unassigned()
+
+
+class OnlineStoreSecurityConfig(Base):
+    """
+    OnlineStoreSecurityConfig
+      The security configuration for OnlineStore.
+
+    Attributes
+    ----------------------
+    kms_key_id: The Amazon Web Services Key Management Service (KMS) key ARN that SageMaker Feature Store uses to encrypt the Amazon S3 objects at rest using Amazon S3 server-side encryption. The caller (either user or IAM role) of CreateFeatureGroup must have below permissions to the OnlineStore KmsKeyId:    "kms:Encrypt"     "kms:Decrypt"     "kms:DescribeKey"     "kms:CreateGrant"     "kms:RetireGrant"     "kms:ReEncryptFrom"     "kms:ReEncryptTo"     "kms:GenerateDataKey"     "kms:ListAliases"     "kms:ListGrants"     "kms:RevokeGrant"    The caller (either user or IAM role) to all DataPlane operations (PutRecord, GetRecord, DeleteRecord) must have the following permissions to the KmsKeyId:    "kms:Decrypt"
+    """
+
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
 class OnlineStoreConfig(Base):
@@ -7880,8 +6931,8 @@ class OfflineStoreConfig(Base):
     Attributes
     ----------------------
     s3_storage_config: The Amazon Simple Storage (Amazon S3) location of OfflineStore.
-    disable_glue_table_creation: Set to True to disable the automatic creation of an Amazon Web Services Glue table when configuring an OfflineStore. If set to False, Feature Store will name the OfflineStore Glue table following Athena's naming recommendations. The default value is False.
-    data_catalog_config: The meta data of the Glue table that is autogenerated when an OfflineStore is created.
+    disable_glue_table_creation: Set to True to disable the automatic creation of an Amazon Web Services Glue table when configuring an OfflineStore. If set to True and DataCatalogConfig is provided, Feature Store associates the provided catalog configuration with the feature group without creating a table. In this case, you are responsible for creating and managing the Glue table. If set to True without DataCatalogConfig, no Glue table is created or associated with the feature group. The Iceberg table format is only supported when this is set to False. If set to False and DataCatalogConfig is provided, Feature Store creates the table using the specified names. If set to False without DataCatalogConfig, Feature Store auto-generates the table name following Athena's naming recommendations. This applies to both Glue and Apache Iceberg table formats. The default value is False.
+    data_catalog_config: The meta data of the Glue table for the OfflineStore. If not provided, Feature Store auto-generates the table name, database, and catalog when the OfflineStore is created. You can optionally provide this configuration to specify custom values. This applies to both Glue and Apache Iceberg table formats.
     table_format: Format for the offline store table. Supported formats are Glue (Default) and Apache Iceberg.
     """
 
@@ -7889,38 +6940,6 @@ class OfflineStoreConfig(Base):
     disable_glue_table_creation: Optional[bool] = Unassigned()
     data_catalog_config: Optional[DataCatalogConfig] = Unassigned()
     table_format: Optional[StrPipeVar] = Unassigned()
-
-
-class OnlineStoreReplicaMetadata(Base):
-    """
-    OnlineStoreReplicaMetadata
-
-    Attributes
-    ----------------------
-    source_region_name
-    source_table_name
-    source_feature_group_arn
-    """
-
-    source_region_name: StrPipeVar
-    source_table_name: StrPipeVar
-    source_feature_group_arn: StrPipeVar
-
-
-class OnlineStoreMetadata(Base):
-    """
-    OnlineStoreMetadata
-
-    Attributes
-    ----------------------
-    storage_account_id
-    is_online_store_replica
-    online_store_replica_metadata
-    """
-
-    storage_account_id: Optional[StrPipeVar] = Unassigned()
-    is_online_store_replica: Optional[bool] = Unassigned()
-    online_store_replica_metadata: Optional[OnlineStoreReplicaMetadata] = Unassigned()
 
 
 class ThroughputConfig(Base):
@@ -7973,12 +6992,10 @@ class HumanLoopActivationConfig(Base):
 
     Attributes
     ----------------------
-    human_loop_request_source
     human_loop_activation_conditions_config: Container structure for defining under what conditions SageMaker creates a human loop.
     """
 
     human_loop_activation_conditions_config: HumanLoopActivationConditionsConfig
-    human_loop_request_source: Optional[HumanLoopRequestSource] = Unassigned()
 
 
 class USD(Base):
@@ -8055,82 +7072,6 @@ class FlowDefinitionOutputConfig(Base):
     kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
-class GroundTruthJobDataAttributes(Base):
-    """
-    GroundTruthJobDataAttributes
-
-    Attributes
-    ----------------------
-    content_classifiers
-    """
-
-    content_classifiers: Optional[List[StrPipeVar]] = Unassigned()
-
-
-class GroundTruthJobS3DataSource(Base):
-    """
-    GroundTruthJobS3DataSource
-
-    Attributes
-    ----------------------
-    s3_uri
-    """
-
-    s3_uri: Optional[StrPipeVar] = Unassigned()
-
-
-class GroundTruthJobDataSource(Base):
-    """
-    GroundTruthJobDataSource
-
-    Attributes
-    ----------------------
-    s3_data_source
-    """
-
-    s3_data_source: Optional[GroundTruthJobS3DataSource] = Unassigned()
-
-
-class GroundTruthJobInputConfig(Base):
-    """
-    GroundTruthJobInputConfig
-
-    Attributes
-    ----------------------
-    data_attributes
-    data_source
-    """
-
-    data_attributes: Optional[GroundTruthJobDataAttributes] = Unassigned()
-    data_source: Optional[GroundTruthJobDataSource] = Unassigned()
-
-
-class GroundTruthJobOutputConfig(Base):
-    """
-    GroundTruthJobOutputConfig
-
-    Attributes
-    ----------------------
-    s3_output_path
-    """
-
-    s3_output_path: Optional[StrPipeVar] = Unassigned()
-
-
-class GroundTruthProjectPointOfContact(Base):
-    """
-    GroundTruthProjectPointOfContact
-
-    Attributes
-    ----------------------
-    name
-    email
-    """
-
-    name: StrPipeVar
-    email: StrPipeVar
-
-
 class PresignedUrlAccessConfig(Base):
     """
     PresignedUrlAccessConfig
@@ -8179,16 +7120,10 @@ class HyperbandStrategyConfig(Base):
 
     Attributes
     ----------------------
-    number_of_brackets
-    reduction_factor
-    variant
     min_resource: The minimum number of resources (such as epochs) that can be used by a training job launched by a hyperparameter tuning job. If the value for MinResource has not been reached, the training job is not stopped by Hyperband.
     max_resource: The maximum number of resources (such as epochs) that can be used by a training job launched by a hyperparameter tuning job. Once a job reaches the MaxResource value, it is stopped. If a value for MaxResource is not provided, and Hyperband is selected as the hyperparameter tuning strategy, HyperbandTraining attempts to infer MaxResource from the following keys (if present) in StaticsHyperParameters:    epochs     numepochs     n-epochs     n_epochs     num_epochs    If HyperbandStrategyConfig is unable to infer a value for MaxResource, it generates a validation error. The maximum value is 20,000 epochs. All metrics that correspond to an objective metric are used to derive early stopping decisions. For distributed training jobs, ensure that duplicate metrics are not printed in the logs across the individual nodes in a training job. If multiple nodes are publishing duplicate or incorrect metrics, training jobs may make an incorrect stopping decision and stop the job prematurely.
     """
 
-    number_of_brackets: Optional[int] = Unassigned()
-    reduction_factor: Optional[int] = Unassigned()
-    variant: Optional[StrPipeVar] = Unassigned()
     min_resource: Optional[int] = Unassigned()
     max_resource: Optional[int] = Unassigned()
 
@@ -8215,18 +7150,12 @@ class ResourceLimits(Base):
     ----------------------
     max_number_of_training_jobs: The maximum number of training jobs that a hyperparameter tuning job can launch.
     max_parallel_training_jobs: The maximum number of concurrent training jobs that a hyperparameter tuning job can launch.
-    max_wall_clock_time_in_minutes
-    max_total_compute_time_in_minutes
     max_runtime_in_seconds: The maximum time in seconds that a hyperparameter tuning job can run.
-    max_billable_time_in_seconds
     """
 
     max_parallel_training_jobs: int
     max_number_of_training_jobs: Optional[int] = Unassigned()
-    max_wall_clock_time_in_minutes: Optional[int] = Unassigned()
-    max_total_compute_time_in_minutes: Optional[int] = Unassigned()
     max_runtime_in_seconds: Optional[int] = Unassigned()
-    max_billable_time_in_seconds: Optional[int] = Unassigned()
 
 
 class IntegerParameterRange(Base):
@@ -8267,20 +7196,6 @@ class ParameterRanges(Base):
     auto_parameters: Optional[List[AutoParameter]] = Unassigned()
 
 
-class HyperParameterTrainingJobInstancePool(Base):
-    """
-    HyperParameterTrainingJobInstancePool
-
-    Attributes
-    ----------------------
-    instance_type
-    pool_size
-    """
-
-    instance_type: StrPipeVar
-    pool_size: int
-
-
 class TuningJobCompletionCriteria(Base):
     """
     TuningJobCompletionCriteria
@@ -8298,18 +7213,6 @@ class TuningJobCompletionCriteria(Base):
     convergence_detected: Optional[ConvergenceDetected] = Unassigned()
 
 
-class HyperParameterTuningJobCompletionConfig(Base):
-    """
-    HyperParameterTuningJobCompletionConfig
-
-    Attributes
-    ----------------------
-    in_progress_training_jobs_handling
-    """
-
-    in_progress_training_jobs_handling: Optional[StrPipeVar] = Unassigned()
-
-
 class HyperParameterTuningJobConfig(Base):
     """
     HyperParameterTuningJobConfig
@@ -8323,9 +7226,7 @@ class HyperParameterTuningJobConfig(Base):
     resource_limits: The ResourceLimits object that specifies the maximum number of training and parallel training jobs that can be used for this hyperparameter tuning job.
     parameter_ranges: The ParameterRanges object that specifies the ranges of hyperparameters that this tuning job searches over to find the optimal configuration for the highest model performance against your chosen objective metric.
     training_job_early_stopping_type: Specifies whether to use early stopping for training jobs launched by the hyperparameter tuning job. Because the Hyperband strategy has its own advanced internal early stopping mechanism, TrainingJobEarlyStoppingType must be OFF to use Hyperband. This parameter can take on one of the following values (the default value is OFF):  OFF  Training jobs launched by the hyperparameter tuning job do not use early stopping.  AUTO  SageMaker stops training jobs launched by the hyperparameter tuning job when they are unlikely to perform better than previously completed training jobs. For more information, see Stop Training Jobs Early.
-    training_job_instance_pools
     tuning_job_completion_criteria: The tuning job's completion criteria.
-    completion_config
     random_seed: A value used to initialize a pseudo-random number generator. Setting a random seed and using the same seed later for the same tuning job will allow hyperparameter optimization to find more a consistent hyperparameter configuration between the two runs.
     """
 
@@ -8335,11 +7236,7 @@ class HyperParameterTuningJobConfig(Base):
     hyper_parameter_tuning_job_objective: Optional[HyperParameterTuningJobObjective] = Unassigned()
     parameter_ranges: Optional[ParameterRanges] = Unassigned()
     training_job_early_stopping_type: Optional[StrPipeVar] = Unassigned()
-    training_job_instance_pools: Optional[List[HyperParameterTrainingJobInstancePool]] = (
-        Unassigned()
-    )
     tuning_job_completion_criteria: Optional[TuningJobCompletionCriteria] = Unassigned()
-    completion_config: Optional[HyperParameterTuningJobCompletionConfig] = Unassigned()
     random_seed: Optional[int] = Unassigned()
 
 
@@ -8360,22 +7257,6 @@ class HyperParameterAlgorithmSpecification(Base):
     training_image: Optional[StrPipeVar] = Unassigned()
     algorithm_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     metric_definitions: Optional[List[MetricDefinition]] = Unassigned()
-
-
-class HyperParameterTuningInstanceGroup(Base):
-    """
-    HyperParameterTuningInstanceGroup
-
-    Attributes
-    ----------------------
-    instance_type
-    instance_count
-    instance_group_name
-    """
-
-    instance_type: StrPipeVar
-    instance_count: int
-    instance_group_name: StrPipeVar
 
 
 class HyperParameterTuningInstanceConfig(Base):
@@ -8406,7 +7287,6 @@ class HyperParameterTuningResourceConfig(Base):
     instance_count: The number of compute instances of type InstanceType to use. For distributed training, select a value greater than 1.
     volume_size_in_gb: The volume size in GB for the storage volume to be used in processing hyperparameter optimization jobs (optional). These volumes store model artifacts, incremental states and optionally, scratch space for training algorithms. Do not provide a value for this parameter if a value for InstanceConfigs is also specified. Some instance types have a fixed total local storage size. If you select one of these instances for training, VolumeSizeInGB cannot be greater than this total size. For a list of instance types with local instance storage and their sizes, see instance store volumes.  SageMaker supports only the General Purpose SSD (gp2) storage volume type.
     volume_kms_key_id: A key used by Amazon Web Services Key Management Service to encrypt data on the storage volume attached to the compute instances used to run the training job. You can use either of the following formats to specify a key. KMS Key ID:  "1234abcd-12ab-34cd-56ef-1234567890ab"  Amazon Resource Name (ARN) of a KMS key:  "arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"  Some instances use local storage, which use a hardware module to encrypt storage volumes. If you choose one of these instance types, you cannot request a VolumeKmsKeyId. For a list of instance types that use local storage, see instance store volumes. For more information about Amazon Web Services Key Management Service, see KMS encryption for more information.
-    instance_groups
     allocation_strategy: The strategy that determines the order of preference for resources specified in InstanceConfigs used in hyperparameter optimization.
     instance_configs: A list containing the configuration(s) for one or more resources for processing hyperparameter jobs. These resources include compute instances and storage volumes to use in model training jobs launched by hyperparameter tuning jobs. The AllocationStrategy controls the order in which multiple configurations provided in InstanceConfigs are used.  If you only want to use a single instance configuration inside the HyperParameterTuningResourceConfig API, do not provide a value for InstanceConfigs. Instead, use InstanceType, VolumeSizeInGB and InstanceCount. If you use InstanceConfigs, do not provide values for InstanceType, VolumeSizeInGB or InstanceCount.
     """
@@ -8415,7 +7295,6 @@ class HyperParameterTuningResourceConfig(Base):
     instance_count: Optional[int] = Unassigned()
     volume_size_in_gb: Optional[int] = Unassigned()
     volume_kms_key_id: Optional[StrPipeVar] = Unassigned()
-    instance_groups: Optional[List[HyperParameterTuningInstanceGroup]] = Unassigned()
     allocation_strategy: Optional[StrPipeVar] = Unassigned()
     instance_configs: Optional[List[HyperParameterTuningInstanceConfig]] = Unassigned()
 
@@ -8444,7 +7323,6 @@ class HyperParameterTrainingJobDefinition(Base):
     tuning_objective
     hyper_parameter_ranges
     static_hyper_parameters: Specifies the values of hyperparameters that do not change for the tuning job.
-    initial_hyper_parameter_configurations
     algorithm_specification: The HyperParameterAlgorithmSpecification object that specifies the resource algorithm to use for the training jobs that the tuning job launches.
     role_arn: The Amazon Resource Name (ARN) of the IAM role associated with the training jobs that the tuning job launches.
     input_data_config: An array of Channel objects that specify the input for the training jobs that the tuning job launches.
@@ -8469,9 +7347,6 @@ class HyperParameterTrainingJobDefinition(Base):
     tuning_objective: Optional[HyperParameterTuningJobObjective] = Unassigned()
     hyper_parameter_ranges: Optional[ParameterRanges] = Unassigned()
     static_hyper_parameters: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    initial_hyper_parameter_configurations: Optional[List[Dict[StrPipeVar, StrPipeVar]]] = (
-        Unassigned()
-    )
     input_data_config: Optional[List[Channel]] = Unassigned()
     vpc_config: Optional[VpcConfig] = Unassigned()
     resource_config: Optional[ResourceConfig] = Unassigned()
@@ -8512,24 +7387,6 @@ class HyperParameterTuningJobWarmStartConfig(Base):
 
     parent_hyper_parameter_tuning_jobs: List[ParentHyperParameterTuningJob]
     warm_start_type: StrPipeVar
-
-
-class IdentityCenterUserToken(Base):
-    """
-    IdentityCenterUserToken
-
-    Attributes
-    ----------------------
-    encrypted_refresh_token
-    client_id
-    idc_user_id
-    skip_revoke_token_after_complete
-    """
-
-    encrypted_refresh_token: StrPipeVar
-    client_id: StrPipeVar
-    idc_user_id: StrPipeVar
-    skip_revoke_token_after_complete: Optional[bool] = Unassigned()
 
 
 class InferenceComponentContainerSpecification(Base):
@@ -8577,9 +7434,9 @@ class InferenceComponentComputeResourceRequirements(Base):
     max_memory_required_in_mb: The maximum MB of memory to allocate to run a model that you assign to an inference component.
     """
 
-    min_memory_required_in_mb: Optional[int] = Unassigned()
     number_of_cpu_cores_required: Optional[float] = Unassigned()
     number_of_accelerator_devices_required: Optional[float] = Unassigned()
+    min_memory_required_in_mb: Optional[int] = Unassigned()
     max_memory_required_in_mb: Optional[int] = Unassigned()
 
 
@@ -8596,6 +7453,36 @@ class InferenceComponentDataCacheConfig(Base):
     enable_caching: bool
 
 
+class InferenceComponentAvailabilityZoneBalance(Base):
+    """
+    InferenceComponentAvailabilityZoneBalance
+      Configuration for balancing inference component copies across Availability Zones.
+
+    Attributes
+    ----------------------
+    enforcement_mode: Determines how strictly the Availability Zone balance constraint is enforced.  PERMISSIVE  The endpoint attempts to balance copies across Availability Zones but proceeds with scheduling even if balance can't be achieved due to available capacity or instance distribution across Availability Zones.
+    max_imbalance: The maximum allowed difference in the number of inference component copies between any two Availability Zones. This parameter applies only when the endpoint has instances across two or more Availability Zones. A copy placement is allowed if it reduces imbalance or the resulting imbalance is within this value. Default value: 0.
+    """
+
+    enforcement_mode: StrPipeVar
+    max_imbalance: Optional[int] = Unassigned()
+
+
+class InferenceComponentSchedulingConfig(Base):
+    """
+    InferenceComponentSchedulingConfig
+      The scheduling configuration that determines how inference component copies are placed across available instances when copies are added or removed.
+
+    Attributes
+    ----------------------
+    placement_strategy: The strategy for placing inference component copies across available instances. If you also set AvailabilityZoneBalance, this strategy applies to placement within each Availability Zone.  SPREAD  Distributes copies evenly across available instances for better resilience.  BINPACK  Packs copies onto fewer instances to optimize resource utilization.
+    availability_zone_balance: Configuration for balancing inference component copies across Availability Zones.
+    """
+
+    placement_strategy: StrPipeVar
+    availability_zone_balance: Optional[InferenceComponentAvailabilityZoneBalance] = Unassigned()
+
+
 class InferenceComponentSpecification(Base):
     """
     InferenceComponentSpecification
@@ -8609,6 +7496,7 @@ class InferenceComponentSpecification(Base):
     compute_resource_requirements: The compute resources allocated to run the model, plus any adapter models, that you assign to the inference component. Omit this parameter if your request is meant to create an adapter inference component. An adapter inference component is loaded by a base inference component, and it uses the compute resources of the base inference component.
     base_inference_component_name: The name of an existing inference component that is to contain the inference component that you're creating with your request. Specify this parameter only if your request is meant to create an adapter inference component. An adapter inference component contains the path to an adapter model. The purpose of the adapter model is to tailor the inference output of a base foundation model, which is hosted by the base inference component. The adapter inference component uses the compute resources that you assigned to the base inference component. When you create an adapter inference component, use the Container parameter to specify the location of the adapter artifacts. In the parameter value, use the ArtifactUrl parameter of the InferenceComponentContainerSpecification data type. Before you can create an adapter inference component, you must have an existing inference component that contains the foundation model that you want to adapt.
     data_cache_config: Settings that affect how the inference component caches data.
+    scheduling_config: The scheduling configuration that determines how inference component copies are placed across available instances when copies are added or removed.
     """
 
     model_name: Optional[Union[StrPipeVar, object]] = Unassigned()
@@ -8619,6 +7507,7 @@ class InferenceComponentSpecification(Base):
     )
     base_inference_component_name: Optional[StrPipeVar] = Unassigned()
     data_cache_config: Optional[InferenceComponentDataCacheConfig] = Unassigned()
+    scheduling_config: Optional[InferenceComponentSchedulingConfig] = Unassigned()
 
 
 class InferenceComponentRuntimeConfig(Base):
@@ -8777,32 +7666,6 @@ class Stairs(Base):
     users_per_step: Optional[int] = Unassigned()
 
 
-class InferenceInvocationTypes(Base):
-    """
-    InferenceInvocationTypes
-
-    Attributes
-    ----------------------
-    invocation_type
-    """
-
-    invocation_type: Optional[StrPipeVar] = Unassigned()
-
-
-class PayloadSampling(Base):
-    """
-    PayloadSampling
-
-    Attributes
-    ----------------------
-    sampling_type
-    sampling_seed
-    """
-
-    sampling_type: Optional[StrPipeVar] = Unassigned()
-    sampling_seed: Optional[int] = Unassigned()
-
-
 class TrafficPattern(Base):
     """
     TrafficPattern
@@ -8813,17 +7676,11 @@ class TrafficPattern(Base):
     traffic_type: Defines the traffic patterns. Choose either PHASES or STAIRS.
     phases: Defines the phases traffic specification.
     stairs: Defines the stairs traffic pattern.
-    concurrencies
-    inference_invocation_types
-    payload_sampling
     """
 
     traffic_type: Optional[StrPipeVar] = Unassigned()
     phases: Optional[List[Phase]] = Unassigned()
     stairs: Optional[Stairs] = Unassigned()
-    concurrencies: Optional[List[Concurrency]] = Unassigned()
-    inference_invocation_types: Optional[InferenceInvocationTypes] = Unassigned()
-    payload_sampling: Optional[PayloadSampling] = Unassigned()
 
 
 class RecommendationJobResourceLimit(Base):
@@ -8841,24 +7698,6 @@ class RecommendationJobResourceLimit(Base):
     max_parallel_of_tests: Optional[int] = Unassigned()
 
 
-class IntegerParameter(Base):
-    """
-    IntegerParameter
-
-    Attributes
-    ----------------------
-    name
-    min_value
-    max_value
-    scaling_type
-    """
-
-    name: Optional[StrPipeVar] = Unassigned()
-    min_value: Optional[int] = Unassigned()
-    max_value: Optional[int] = Unassigned()
-    scaling_type: Optional[StrPipeVar] = Unassigned()
-
-
 class EnvironmentParameterRanges(Base):
     """
     EnvironmentParameterRanges
@@ -8867,13 +7706,9 @@ class EnvironmentParameterRanges(Base):
     Attributes
     ----------------------
     categorical_parameter_ranges: Specified a list of parameters for each category.
-    integer_parameter_ranges
-    continuous_parameter_ranges
     """
 
     categorical_parameter_ranges: Optional[List[CategoricalParameter]] = Unassigned()
-    integer_parameter_ranges: Optional[List[IntegerParameter]] = Unassigned()
-    continuous_parameter_ranges: Optional[List[ContinuousParameter]] = Unassigned()
 
 
 class EndpointInputConfiguration(Base):
@@ -8969,20 +7804,6 @@ class RecommendationJobVpcConfig(Base):
     subnets: List[StrPipeVar]
 
 
-class TokenizerConfig(Base):
-    """
-    TokenizerConfig
-
-    Attributes
-    ----------------------
-    model_id
-    accept_eula
-    """
-
-    model_id: Optional[StrPipeVar] = Unassigned()
-    accept_eula: Optional[bool] = Unassigned()
-
-
 class RecommendationJobInputConfig(Base):
     """
     RecommendationJobInputConfig
@@ -9000,7 +7821,6 @@ class RecommendationJobInputConfig(Base):
     container_config: Specifies mandatory fields for running an Inference Recommender job. The fields specified in ContainerConfig override the corresponding fields in the model package.
     endpoints: Existing customer endpoints on which to run an Inference Recommender job.
     vpc_config: Inference Recommender provisions SageMaker endpoints with access to VPC in the inference recommendation job.
-    tokenizer_config
     """
 
     model_package_version_arn: Optional[StrPipeVar] = Unassigned()
@@ -9013,7 +7833,6 @@ class RecommendationJobInputConfig(Base):
     container_config: Optional[RecommendationJobContainerConfig] = Unassigned()
     endpoints: Optional[List[EndpointInfo]] = Unassigned()
     vpc_config: Optional[RecommendationJobVpcConfig] = Unassigned()
-    tokenizer_config: Optional[TokenizerConfig] = Unassigned()
 
 
 class ModelLatencyThreshold(Base):
@@ -9048,102 +7867,6 @@ class RecommendationJobStoppingConditions(Base):
     flat_invocations: Optional[StrPipeVar] = Unassigned()
 
 
-class RecommendationJobTuningJob(Base):
-    """
-    RecommendationJobTuningJob
-
-    Attributes
-    ----------------------
-    job_name
-    """
-
-    job_name: Optional[StrPipeVar] = Unassigned()
-
-
-class RecommendationJobTuningWarmStartConfig(Base):
-    """
-    RecommendationJobTuningWarmStartConfig
-
-    Attributes
-    ----------------------
-    jobs
-    """
-
-    jobs: Optional[List[RecommendationJobTuningJob]] = Unassigned()
-
-
-class RecommendationJobTuningConvergenceDetected(Base):
-    """
-    RecommendationJobTuningConvergenceDetected
-
-    Attributes
-    ----------------------
-    complete_on_convergence
-    """
-
-    complete_on_convergence: Optional[StrPipeVar] = Unassigned()
-
-
-class RecommendationJobTuningBestObjectiveNotImproving(Base):
-    """
-    RecommendationJobTuningBestObjectiveNotImproving
-
-    Attributes
-    ----------------------
-    max_number_of_tests_not_improving
-    """
-
-    max_number_of_tests_not_improving: Optional[int] = Unassigned()
-
-
-class RecommendationJobTuningCompletionCriteria(Base):
-    """
-    RecommendationJobTuningCompletionCriteria
-
-    Attributes
-    ----------------------
-    convergence_detected
-    best_objective_not_improving
-    """
-
-    convergence_detected: Optional[RecommendationJobTuningConvergenceDetected] = Unassigned()
-    best_objective_not_improving: Optional[RecommendationJobTuningBestObjectiveNotImproving] = (
-        Unassigned()
-    )
-
-
-class RecommendationJobTuningObjectiveMetric(Base):
-    """
-    RecommendationJobTuningObjectiveMetric
-
-    Attributes
-    ----------------------
-    name
-    """
-
-    name: Optional[StrPipeVar] = Unassigned()
-
-
-class RecommendationJobEndpointConfigurationTuning(Base):
-    """
-    RecommendationJobEndpointConfigurationTuning
-
-    Attributes
-    ----------------------
-    warm_start_config
-    random_seed
-    strategy
-    completion_criteria
-    objective_metric
-    """
-
-    warm_start_config: Optional[RecommendationJobTuningWarmStartConfig] = Unassigned()
-    random_seed: Optional[int] = Unassigned()
-    strategy: Optional[StrPipeVar] = Unassigned()
-    completion_criteria: Optional[RecommendationJobTuningCompletionCriteria] = Unassigned()
-    objective_metric: Optional[RecommendationJobTuningObjectiveMetric] = Unassigned()
-
-
 class RecommendationJobCompiledOutputConfig(Base):
     """
     RecommendationJobCompiledOutputConfig
@@ -9166,12 +7889,10 @@ class RecommendationJobOutputConfig(Base):
     ----------------------
     kms_key_id: The Amazon Resource Name (ARN) of a Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt your output artifacts with Amazon S3 server-side encryption. The SageMaker execution role must have kms:GenerateDataKey permission. The KmsKeyId can be any of the following formats:   // KMS Key ID  "1234abcd-12ab-34cd-56ef-1234567890ab"    // Amazon Resource Name (ARN) of a KMS Key  "arn:aws:kms:&lt;region&gt;:&lt;account&gt;:key/&lt;key-id-12ab-34cd-56ef-1234567890ab&gt;"    // KMS Key Alias  "alias/ExampleAlias"    // Amazon Resource Name (ARN) of a KMS Key Alias  "arn:aws:kms:&lt;region&gt;:&lt;account&gt;:alias/&lt;ExampleAlias&gt;"    For more information about key identifiers, see Key identifiers (KeyID) in the Amazon Web Services Key Management Service (Amazon Web Services KMS) documentation.
     compiled_output_config: Provides information about the output configuration for the compiled model.
-    benchmark_results_output_config
     """
 
     kms_key_id: Optional[StrPipeVar] = Unassigned()
     compiled_output_config: Optional[RecommendationJobCompiledOutputConfig] = Unassigned()
-    benchmark_results_output_config: Optional[BenchmarkResultsOutputConfig] = Unassigned()
 
 
 class LabelingJobS3DataSource(Base):
@@ -9387,6 +8108,19 @@ class ModelBiasAppSpecification(Base):
     image_uri: StrPipeVar
     config_uri: StrPipeVar
     environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
+
+
+class MonitoringGroundTruthS3Input(Base):
+    """
+    MonitoringGroundTruthS3Input
+      The ground truth labels for the dataset used for the monitoring job.
+
+    Attributes
+    ----------------------
+    s3_uri: The address of the Amazon S3 location of the ground truth labels.
+    """
+
+    s3_uri: Optional[StrPipeVar] = Unassigned()
 
 
 class ModelBiasJobInput(Base):
@@ -9616,52 +8350,6 @@ class ModelMetrics(Base):
     explainability: Optional[Explainability] = Unassigned()
 
 
-class TestInput(Base):
-    """
-    TestInput
-
-    Attributes
-    ----------------------
-    data_source
-    content_type
-    compression_type
-    split_type
-    """
-
-    data_source: Optional[DataSource] = Unassigned()
-    content_type: Optional[StrPipeVar] = Unassigned()
-    compression_type: Optional[StrPipeVar] = Unassigned()
-    split_type: Optional[StrPipeVar] = Unassigned()
-
-
-class HealthCheckConfig(Base):
-    """
-    HealthCheckConfig
-
-    Attributes
-    ----------------------
-    num_payload
-    num_failures_allowed
-    """
-
-    num_payload: Optional[int] = Unassigned()
-    num_failures_allowed: Optional[int] = Unassigned()
-
-
-class DeploymentSpecification(Base):
-    """
-    DeploymentSpecification
-
-    Attributes
-    ----------------------
-    test_input
-    health_check_config
-    """
-
-    test_input: Optional[TestInput] = Unassigned()
-    health_check_config: Optional[HealthCheckConfig] = Unassigned()
-
-
 class FileSource(Base):
     """
     FileSource
@@ -9770,7 +8458,7 @@ class ModelPackageSecurityConfig(Base):
     kms_key_id: The KMS Key ID (KMSKeyId) used for encryption of model package information.
     """
 
-    kms_key_id: Optional[str] = Unassigned()
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
 class ModelPackageModelCard(Base):
@@ -9903,12 +8591,10 @@ class MonitoringInput(Base):
 
     Attributes
     ----------------------
-    processing_inputs
     endpoint_input: The endpoint for a monitoring job.
     batch_transform_input: Input object for the batch transform job.
     """
 
-    processing_inputs: Optional[List[ProcessingInput]] = Unassigned()
     endpoint_input: Optional[EndpointInput] = Unassigned()
     batch_transform_input: Optional[BatchTransformInput] = Unassigned()
 
@@ -10056,10 +8742,11 @@ class OptimizationJobModelSourceS3(Base):
 class OptimizationSageMakerModel(Base):
     """
     OptimizationSageMakerModel
+      A SageMaker model to use as the source or destination for an optimization job.
 
     Attributes
     ----------------------
-    model_name
+    model_name: The name of a SageMaker model.
     """
 
     model_name: Optional[Union[StrPipeVar, object]] = Unassigned()
@@ -10073,7 +8760,7 @@ class OptimizationJobModelSource(Base):
     Attributes
     ----------------------
     s3: The Amazon S3 location of a source model to optimize with an optimization job.
-    sage_maker_model
+    sage_maker_model: The name of an existing SageMaker model to optimize with an optimization job.
     """
 
     s3: Optional[OptimizationJobModelSourceS3] = Unassigned()
@@ -10110,32 +8797,6 @@ class ModelCompilationConfig(Base):
     override_environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
 
 
-class OptimizationJobDraftModel(Base):
-    """
-    OptimizationJobDraftModel
-
-    Attributes
-    ----------------------
-    s3_uri
-    model_access_config
-    """
-
-    s3_uri: Optional[StrPipeVar] = Unassigned()
-    model_access_config: Optional[OptimizationModelAccessConfig] = Unassigned()
-
-
-class SpeculativeDecodingConfig(Base):
-    """
-    SpeculativeDecodingConfig
-
-    Attributes
-    ----------------------
-    draft_model
-    """
-
-    draft_model: Optional[OptimizationJobDraftModel] = Unassigned()
-
-
 class ModelShardingConfig(Base):
     """
     ModelShardingConfig
@@ -10154,11 +8815,12 @@ class ModelShardingConfig(Base):
 class ModelSpeculativeDecodingTrainingDataSource(Base):
     """
     ModelSpeculativeDecodingTrainingDataSource
+      Contains information about the training data source for speculative decoding.
 
     Attributes
     ----------------------
-    s3_uri
-    s3_data_type
+    s3_uri: The Amazon S3 URI that points to the training data for speculative decoding.
+    s3_data_type: The type of data stored in the Amazon S3 location. Valid values are S3Prefix or ManifestFile.
     """
 
     s3_uri: StrPipeVar
@@ -10168,11 +8830,12 @@ class ModelSpeculativeDecodingTrainingDataSource(Base):
 class ModelSpeculativeDecodingConfig(Base):
     """
     ModelSpeculativeDecodingConfig
+      Settings for the model speculative decoding technique that's applied by a model optimization job.
 
     Attributes
     ----------------------
-    technique
-    training_data_source
+    technique: The speculative decoding technique to apply during model optimization.
+    training_data_source: The location of the training data to use for speculative decoding. The data must be formatted as ShareGPT, OpenAI Completions or OpenAI Chat Completions. The input can also be unencrypted captured data from a SageMaker endpoint as long as the endpoint uses one of the above formats.
     """
 
     technique: StrPipeVar
@@ -10188,14 +8851,12 @@ class OptimizationConfig(Base):
     ----------------------
     model_quantization_config: Settings for the model quantization technique that's applied by a model optimization job.
     model_compilation_config: Settings for the model compilation technique that's applied by a model optimization job.
-    speculative_decoding_config
     model_sharding_config: Settings for the model sharding technique that's applied by a model optimization job.
-    model_speculative_decoding_config
+    model_speculative_decoding_config: Settings for the model speculative decoding technique that's applied by a model optimization job.
     """
 
     model_quantization_config: Optional[ModelQuantizationConfig] = Unassigned()
     model_compilation_config: Optional[ModelCompilationConfig] = Unassigned()
-    speculative_decoding_config: Optional[SpeculativeDecodingConfig] = Unassigned()
     model_sharding_config: Optional[ModelShardingConfig] = Unassigned()
     model_speculative_decoding_config: Optional[ModelSpeculativeDecodingConfig] = Unassigned()
 
@@ -10209,7 +8870,7 @@ class OptimizationJobOutputConfig(Base):
     ----------------------
     kms_key_id: The Amazon Resource Name (ARN) of a key in Amazon Web Services KMS. SageMaker uses they key to encrypt the artifacts of the optimized model when SageMaker uploads the model to Amazon S3.
     s3_output_location: The Amazon S3 URI for where to store the optimized model that you create with an optimization job.
-    sage_maker_model
+    sage_maker_model: The name of a SageMaker model to use as the output destination for an optimization job.
     """
 
     s3_output_location: StrPipeVar
@@ -10279,18 +8940,6 @@ class PartnerAppConfig(Base):
     role_group_assignments: Optional[List[RoleGroupAssignment]] = Unassigned()
 
 
-class PersistentVolumeConfiguration(Base):
-    """
-    PersistentVolumeConfiguration
-
-    Attributes
-    ----------------------
-    size_in_gb
-    """
-
-    size_in_gb: Optional[int] = Unassigned()
-
-
 class PipelineDefinitionS3Location(Base):
     """
     PipelineDefinitionS3Location
@@ -10321,45 +8970,95 @@ class ParallelismConfiguration(Base):
     max_parallel_execution_steps: int
 
 
-class ProcessingS3InputInternal(Base):
+class ProcessingS3Input(Base):
     """
-    ProcessingS3InputInternal
+    ProcessingS3Input
+      Configuration for downloading input data from Amazon S3 into the processing container.
 
     Attributes
     ----------------------
-    s3_uri
-    local_path
-    s3_data_type
-    s3_input_mode
-    s3_download_mode
-    s3_data_distribution_type
-    s3_compression_type
+    s3_uri: The URI of the Amazon S3 prefix Amazon SageMaker downloads data required to run a processing job.
+    local_path: The local path in your container where you want Amazon SageMaker to write input data to. LocalPath is an absolute path to the input data and must begin with /opt/ml/processing/. LocalPath is a required parameter when AppManaged is False (default).
+    s3_data_type: Whether you use an S3Prefix or a ManifestFile for the data type. If you choose S3Prefix, S3Uri identifies a key name prefix. Amazon SageMaker uses all objects with the specified key name prefix for the processing job. If you choose ManifestFile, S3Uri identifies an object that is a manifest file containing a list of object keys that you want Amazon SageMaker to use for the processing job.
+    s3_input_mode: Whether to use File or Pipe input mode. In File mode, Amazon SageMaker copies the data from the input source onto the local ML storage volume before starting your processing container. This is the most commonly used input mode. In Pipe mode, Amazon SageMaker streams input data from the source directly to your processing container into named pipes without using the ML storage volume.
+    s3_data_distribution_type: Whether to distribute the data from Amazon S3 to all processing instances with FullyReplicated, or whether the data from Amazon S3 is sharded by Amazon S3 key, downloading one shard of data to each processing instance.
+    s3_compression_type: Whether to GZIP-decompress the data in Amazon S3 as it is streamed into the processing container. Gzip can only be used when Pipe mode is specified as the S3InputMode. In Pipe mode, Amazon SageMaker streams input data from the source directly to your container without using the EBS volume.
     """
 
     s3_uri: StrPipeVar
     s3_data_type: StrPipeVar
     local_path: Optional[StrPipeVar] = Unassigned()
     s3_input_mode: Optional[StrPipeVar] = Unassigned()
-    s3_download_mode: Optional[StrPipeVar] = Unassigned()
     s3_data_distribution_type: Optional[StrPipeVar] = Unassigned()
     s3_compression_type: Optional[StrPipeVar] = Unassigned()
 
 
-class ProcessingInputInternal(Base):
+class RedshiftDatasetDefinition(Base):
     """
-    ProcessingInputInternal
+    RedshiftDatasetDefinition
+      Configuration for Redshift Dataset Definition input.
 
     Attributes
     ----------------------
-    input_name
-    app_managed
-    s3_input
-    dataset_definition
+    cluster_id
+    database
+    db_user
+    query_string
+    cluster_role_arn: The IAM role attached to your Redshift cluster that Amazon SageMaker uses to generate datasets.
+    output_s3_uri: The location in Amazon S3 where the Redshift query results are stored.
+    kms_key_id: The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt data from a Redshift execution.
+    output_format
+    output_compression
     """
 
-    input_name: Optional[StrPipeVar] = Unassigned()
+    cluster_id: StrPipeVar
+    database: StrPipeVar
+    db_user: StrPipeVar
+    query_string: StrPipeVar
+    cluster_role_arn: StrPipeVar
+    output_s3_uri: StrPipeVar
+    output_format: StrPipeVar
+    kms_key_id: Optional[StrPipeVar] = Unassigned()
+    output_compression: Optional[StrPipeVar] = Unassigned()
+
+
+class DatasetDefinition(Base):
+    """
+    DatasetDefinition
+      Configuration for Dataset Definition inputs. The Dataset Definition input must specify exactly one of either AthenaDatasetDefinition or RedshiftDatasetDefinition types.
+
+    Attributes
+    ----------------------
+    athena_dataset_definition
+    redshift_dataset_definition
+    local_path: The local path where you want Amazon SageMaker to download the Dataset Definition inputs to run a processing job. LocalPath is an absolute path to the input data. This is a required parameter when AppManaged is False (default).
+    data_distribution_type: Whether the generated dataset is FullyReplicated or ShardedByS3Key (default).
+    input_mode: Whether to use File or Pipe input mode. In File (default) mode, Amazon SageMaker copies the data from the input source onto the local Amazon Elastic Block Store (Amazon EBS) volumes before starting your training algorithm. This is the most commonly used input mode. In Pipe mode, Amazon SageMaker streams input data from the source directly to your algorithm without using the EBS volume.
+    """
+
+    athena_dataset_definition: Optional[AthenaDatasetDefinition] = Unassigned()
+    redshift_dataset_definition: Optional[RedshiftDatasetDefinition] = Unassigned()
+    local_path: Optional[StrPipeVar] = Unassigned()
+    data_distribution_type: Optional[StrPipeVar] = Unassigned()
+    input_mode: Optional[StrPipeVar] = Unassigned()
+
+
+class ProcessingInput(Base):
+    """
+    ProcessingInput
+      The inputs for a processing job. The processing input must specify exactly one of either S3Input or DatasetDefinition types.
+
+    Attributes
+    ----------------------
+    input_name: The name for the processing job input.
+    app_managed: When True, input operations such as data download are managed natively by the processing job application. When False (default), input operations are managed by Amazon SageMaker.
+    s3_input: Configuration for downloading input data from Amazon S3 into the processing container.
+    dataset_definition: Configuration for a Dataset Definition input.
+    """
+
+    input_name: StrPipeVar
     app_managed: Optional[bool] = Unassigned()
-    s3_input: Optional[ProcessingS3InputInternal] = Unassigned()
+    s3_input: Optional[ProcessingS3Input] = Unassigned()
     dataset_definition: Optional[DatasetDefinition] = Unassigned()
 
 
@@ -10472,52 +9171,6 @@ class ProcessingStoppingCondition(Base):
     max_runtime_in_seconds: int
 
 
-class ProcessingUpstreamS3Output(Base):
-    """
-    ProcessingUpstreamS3Output
-
-    Attributes
-    ----------------------
-    s3_uri
-    local_path
-    s3_upload_mode
-    role_arn
-    """
-
-    s3_uri: StrPipeVar
-    local_path: StrPipeVar
-    s3_upload_mode: StrPipeVar
-    role_arn: Optional[StrPipeVar] = Unassigned()
-
-
-class UpstreamProcessingOutput(Base):
-    """
-    UpstreamProcessingOutput
-
-    Attributes
-    ----------------------
-    output_name
-    upstream_s3_output
-    """
-
-    output_name: StrPipeVar
-    upstream_s3_output: ProcessingUpstreamS3Output
-
-
-class UpstreamProcessingOutputConfig(Base):
-    """
-    UpstreamProcessingOutputConfig
-
-    Attributes
-    ----------------------
-    outputs
-    kms_key_id
-    """
-
-    outputs: List[UpstreamProcessingOutput]
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-
-
 class ExperimentConfig(Base):
     """
     ExperimentConfig
@@ -10582,66 +9235,6 @@ class CreateTemplateProvider(Base):
     """
 
     cfn_template_provider: Optional[CfnCreateTemplateProvider] = Unassigned()
-
-
-class QuotaResourceConfig(Base):
-    """
-    QuotaResourceConfig
-
-    Attributes
-    ----------------------
-    instance_type
-    count
-    """
-
-    instance_type: Optional[StrPipeVar] = Unassigned()
-    count: Optional[int] = Unassigned()
-
-
-class OverQuota(Base):
-    """
-    OverQuota
-
-    Attributes
-    ----------------------
-    allow_over_quota
-    use_dedicated_capacity
-    fair_share_weight
-    burst_limit
-    """
-
-    allow_over_quota: Optional[bool] = Unassigned()
-    use_dedicated_capacity: Optional[bool] = Unassigned()
-    fair_share_weight: Optional[int] = Unassigned()
-    burst_limit: Optional[BurstLimit] = Unassigned()
-
-
-class QuotaAllocationTarget(Base):
-    """
-    QuotaAllocationTarget
-
-    Attributes
-    ----------------------
-    id
-    type
-    roles
-    """
-
-    id: Optional[StrPipeVar] = Unassigned()
-    type: Optional[StrPipeVar] = Unassigned()
-    roles: Optional[List[StrPipeVar]] = Unassigned()
-
-
-class PreemptionConfig(Base):
-    """
-    PreemptionConfig
-
-    Attributes
-    ----------------------
-    allow_same_team_preemption
-    """
-
-    allow_same_team_preemption: bool
 
 
 class SpaceIdleSettings(Base):
@@ -10793,8 +9386,6 @@ class SpaceSettings(Base):
     ----------------------
     jupyter_server_app_settings
     kernel_gateway_app_settings
-    vs_code_app_settings
-    savitur_app_settings
     code_editor_app_settings: The Code Editor application settings.
     jupyter_lab_app_settings: The settings for the JupyterLab application.
     app_type: The type of app created within the space. If using the  UpdateSpace API, you can't change the app type of your space by specifying a different value for this field.
@@ -10806,8 +9397,6 @@ class SpaceSettings(Base):
 
     jupyter_server_app_settings: Optional[JupyterServerAppSettings] = Unassigned()
     kernel_gateway_app_settings: Optional[KernelGatewayAppSettings] = Unassigned()
-    vs_code_app_settings: Optional[VSCodeAppSettings] = Unassigned()
-    savitur_app_settings: Optional[SaviturAppSettings] = Unassigned()
     code_editor_app_settings: Optional[SpaceCodeEditorAppSettings] = Unassigned()
     jupyter_lab_app_settings: Optional[SpaceJupyterLabAppSettings] = Unassigned()
     app_type: Optional[StrPipeVar] = Unassigned()
@@ -10841,195 +9430,6 @@ class SpaceSharingSettings(Base):
     """
 
     sharing_type: StrPipeVar
-
-
-class ResourceTags(Base):
-    """
-    ResourceTags
-
-    Attributes
-    ----------------------
-    network_interface_tags
-    """
-
-    network_interface_tags: Optional[List[Tag]] = Unassigned()
-
-
-class ProcessingOutputTraining(Base):
-    """
-    ProcessingOutputTraining
-
-    Attributes
-    ----------------------
-    output_name
-    s3_output
-    feature_store_output
-    app_managed
-    """
-
-    output_name: StrPipeVar
-    s3_output: Optional[ProcessingS3Output] = Unassigned()
-    feature_store_output: Optional[ProcessingFeatureStoreOutput] = Unassigned()
-    app_managed: Optional[bool] = Unassigned()
-
-
-class ProcessingOutputConfigTraining(Base):
-    """
-    ProcessingOutputConfigTraining
-
-    Attributes
-    ----------------------
-    outputs
-    kms_key_id
-    """
-
-    outputs: List[ProcessingOutputTraining]
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-
-
-class ProcessingResult(Base):
-    """
-    ProcessingResult
-
-    Attributes
-    ----------------------
-    exit_message
-    internal_failure_reason
-    fault_entity
-    payer
-    """
-
-    exit_message: Optional[StrPipeVar] = Unassigned()
-    internal_failure_reason: Optional[StrPipeVar] = Unassigned()
-    fault_entity: Optional[StrPipeVar] = Unassigned()
-    payer: Optional[StrPipeVar] = Unassigned()
-
-
-class ProcessingUpstreamSvcConfig(Base):
-    """
-    ProcessingUpstreamSvcConfig
-      Populated only for a Processing Job running in Training platform. Has fields to represent the Upstream Service Resource ARNs for a Processing Job. (Upstream to a Processing Job). These fields are used to determine the sourceArn and sourceAccount headers to be used for assume-role service calls to prevent confused deputy attacks
-
-    Attributes
-    ----------------------
-    auto_ml_job_arn
-    monitoring_schedule_arn
-    training_job_arn
-    """
-
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    monitoring_schedule_arn: Optional[StrPipeVar] = Unassigned()
-    training_job_arn: Optional[StrPipeVar] = Unassigned()
-
-
-class ProcessingJobConfig(Base):
-    """
-    ProcessingJobConfig
-
-    Attributes
-    ----------------------
-    processing_inputs
-    processing_output_config
-    upstream_processing_output_config
-    processing_result
-    processing_upstream_svc_config
-    """
-
-    processing_inputs: Optional[List[ProcessingInputInternal]] = Unassigned()
-    processing_output_config: Optional[ProcessingOutputConfigTraining] = Unassigned()
-    upstream_processing_output_config: Optional[UpstreamProcessingOutputConfig] = Unassigned()
-    processing_result: Optional[ProcessingResult] = Unassigned()
-    processing_upstream_svc_config: Optional[ProcessingUpstreamSvcConfig] = Unassigned()
-
-
-class CredentialProxyConfig(Base):
-    """
-    CredentialProxyConfig
-
-    Attributes
-    ----------------------
-    platform_credential_token
-    customer_credential_token
-    credential_provider_function
-    platform_credential_provider_function
-    customer_credential_provider_encryption_key
-    platform_credential_provider_encryption_key
-    customer_credential_provider_kms_key_id
-    platform_credential_provider_kms_key_id
-    """
-
-    customer_credential_token: StrPipeVar
-    credential_provider_function: StrPipeVar
-    platform_credential_token: Optional[StrPipeVar] = Unassigned()
-    platform_credential_provider_function: Optional[StrPipeVar] = Unassigned()
-    customer_credential_provider_encryption_key: Optional[StrPipeVar] = Unassigned()
-    platform_credential_provider_encryption_key: Optional[StrPipeVar] = Unassigned()
-    customer_credential_provider_kms_key_id: Optional[StrPipeVar] = Unassigned()
-    platform_credential_provider_kms_key_id: Optional[StrPipeVar] = Unassigned()
-
-
-class LogRoutingConfig(Base):
-    """
-    LogRoutingConfig
-
-    Attributes
-    ----------------------
-    log_group
-    log_stream_prefix
-    metrics_namespace
-    metrics_host_dimension_value
-    """
-
-    log_group: Optional[StrPipeVar] = Unassigned()
-    log_stream_prefix: Optional[StrPipeVar] = Unassigned()
-    metrics_namespace: Optional[StrPipeVar] = Unassigned()
-    metrics_host_dimension_value: Optional[StrPipeVar] = Unassigned()
-
-
-class UpstreamPlatformOutputDataConfig(Base):
-    """
-    UpstreamPlatformOutputDataConfig
-
-    Attributes
-    ----------------------
-    kms_key_id
-    kms_encryption_context
-    channels
-    """
-
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-    kms_encryption_context: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    channels: Optional[List[OutputChannel]] = Unassigned()
-
-
-class UpstreamPlatformConfig(Base):
-    """
-    UpstreamPlatformConfig
-
-    Attributes
-    ----------------------
-    credential_proxy_config
-    log_routing_config
-    vpc_config
-    agents_credential_provider
-    output_data_config
-    checkpoint_config
-    upstream_customer_account_id
-    upstream_customer_arn
-    enable_s3_context_keys_on_input_data
-    execution_role
-    """
-
-    credential_proxy_config: Optional[CredentialProxyConfig] = Unassigned()
-    log_routing_config: Optional[LogRoutingConfig] = Unassigned()
-    vpc_config: Optional[VpcConfig] = Unassigned()
-    agents_credential_provider: Optional[AgentsCredentialProvider] = Unassigned()
-    output_data_config: Optional[UpstreamPlatformOutputDataConfig] = Unassigned()
-    checkpoint_config: Optional[CheckpointConfig] = Unassigned()
-    upstream_customer_account_id: Optional[StrPipeVar] = Unassigned()
-    upstream_customer_arn: Optional[StrPipeVar] = Unassigned()
-    enable_s3_context_keys_on_input_data: Optional[bool] = Unassigned()
-    execution_role: Optional[StrPipeVar] = Unassigned()
 
 
 class DebugHookConfig(Base):
@@ -11177,19 +9577,19 @@ class SessionChainingConfig(Base):
 class ServerlessJobConfig(Base):
     """
     ServerlessJobConfig
+       The configuration for the serverless training job.
 
     Attributes
     ----------------------
-    base_model_arn
-    accept_eula
-    job_type
-    customization_technique
-    peft
-    evaluation_type
-    evaluator_arn
-    job_spec
+    base_model_arn:  The base model Amazon Resource Name (ARN) in SageMaker Public Hub. SageMaker always selects the latest version of the provided model.
+    accept_eula:  Specifies agreement to the model end-user license agreement (EULA). The AcceptEula value must be explicitly defined as True in order to accept the EULA that this model requires. You are responsible for reviewing and complying with any applicable license terms and making sure they are acceptable for your use case before downloading or using a model. For more information, see End-user license agreements section for more details on accepting the EULA.
+    job_type:  The serverless training job type.
+    customization_technique:  The model customization technique.
+    peft:  The parameter-efficient fine-tuning configuration.
+    evaluation_type:  The evaluation job type. Required when serverless job type is Evaluation.
+    evaluator_arn:  The evaluator Amazon Resource Name (ARN) used as reward function or reward prompt.
     """
-    
+
     base_model_arn: StrPipeVar
     job_type: StrPipeVar
     accept_eula: Optional[bool] = Unassigned()
@@ -11197,23 +9597,21 @@ class ServerlessJobConfig(Base):
     peft: Optional[StrPipeVar] = Unassigned()
     evaluation_type: Optional[StrPipeVar] = Unassigned()
     evaluator_arn: Optional[StrPipeVar] = Unassigned()
-    job_spec: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
 
 
 class MlflowConfig(Base):
     """
     MlflowConfig
+       The MLflow configuration using SageMaker managed MLflow.
 
     Attributes
     ----------------------
-    mlflow_tracking_server_arn
-    mlflow_resource_arn
-    mlflow_experiment_name
-    mlflow_run_name
+    mlflow_resource_arn:  The Amazon Resource Name (ARN) of the MLflow resource.
+    mlflow_experiment_name:  The MLflow experiment name used for this job.
+    mlflow_run_name:  The MLflow run name used for this job.
     """
 
     mlflow_resource_arn: StrPipeVar
-    mlflow_tracking_server_arn: Optional[StrPipeVar] = Unassigned()
     mlflow_experiment_name: Optional[StrPipeVar] = Unassigned()
     mlflow_run_name: Optional[StrPipeVar] = Unassigned()
 
@@ -11221,11 +9619,12 @@ class MlflowConfig(Base):
 class ModelPackageConfig(Base):
     """
     ModelPackageConfig
+       The configuration for the Model package.
 
     Attributes
     ----------------------
-    model_package_group_arn
-    source_model_package_arn
+    model_package_group_arn:  The Amazon Resource Name (ARN) of the model package group of output model package.
+    source_model_package_arn:  The Amazon Resource Name (ARN) of the source model package used for continued fine-tuning and custom model evaluation.
     """
 
     model_package_group_arn: StrPipeVar
@@ -11262,18 +9661,6 @@ class DataProcessing(Base):
     input_filter: Optional[StrPipeVar] = Unassigned()
     output_filter: Optional[StrPipeVar] = Unassigned()
     join_source: Optional[StrPipeVar] = Unassigned()
-
-
-class InputTrialComponentSource(Base):
-    """
-    InputTrialComponentSource
-
-    Attributes
-    ----------------------
-    source_arn
-    """
-
-    source_arn: StrPipeVar
 
 
 class TrialComponentStatus(Base):
@@ -11319,18 +9706,6 @@ class TrialComponentArtifact(Base):
 
     value: StrPipeVar
     media_type: Optional[StrPipeVar] = Unassigned()
-
-
-class InputTrialSource(Base):
-    """
-    InputTrialSource
-
-    Attributes
-    ----------------------
-    source_arn
-    """
-
-    source_arn: StrPipeVar
 
 
 class OidcConfig(Base):
@@ -11402,13 +9777,9 @@ class OidcMemberDefinition(Base):
     Attributes
     ----------------------
     groups: A list of comma seperated strings that identifies user groups in your OIDC IdP. Each user group is made up of a group of private workers.
-    group
-    member_definition_id
     """
 
     groups: Optional[List[StrPipeVar]] = Unassigned()
-    group: Optional[StrPipeVar] = Unassigned()
-    member_definition_id: Optional[StrPipeVar] = Unassigned()
 
 
 class MemberDefinition(Base):
@@ -11424,20 +9795,6 @@ class MemberDefinition(Base):
 
     cognito_member_definition: Optional[CognitoMemberDefinition] = Unassigned()
     oidc_member_definition: Optional[OidcMemberDefinition] = Unassigned()
-
-
-class MembershipRule(Base):
-    """
-    MembershipRule
-
-    Attributes
-    ----------------------
-    target_member_definition
-    filter_expression
-    """
-
-    target_member_definition: Optional[StrPipeVar] = Unassigned()
-    filter_expression: Optional[StrPipeVar] = Unassigned()
 
 
 class NotificationConfiguration(Base):
@@ -11494,36 +9851,6 @@ class WorkerAccessConfiguration(Base):
     s3_presign: Optional[S3Presign] = Unassigned()
 
 
-class CustomMonitoringJobDefinition(Base):
-    """
-    CustomMonitoringJobDefinition
-
-    Attributes
-    ----------------------
-    job_definition_arn
-    job_definition_name
-    creation_time
-    custom_monitoring_app_specification
-    custom_monitoring_job_input
-    custom_monitoring_job_output_config
-    job_resources
-    network_config
-    role_arn
-    stopping_condition
-    """
-
-    job_definition_arn: StrPipeVar
-    job_definition_name: StrPipeVar
-    creation_time: datetime.datetime
-    custom_monitoring_app_specification: CustomMonitoringAppSpecification
-    custom_monitoring_job_input: CustomMonitoringJobInput
-    custom_monitoring_job_output_config: MonitoringOutputConfig
-    job_resources: MonitoringResources
-    role_arn: StrPipeVar
-    network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
-
-
 class CustomizedMetricSpecification(Base):
     """
     CustomizedMetricSpecification
@@ -11560,38 +9887,6 @@ class DataCaptureConfigSummary(Base):
     current_sampling_percentage: int
     destination_s3_uri: StrPipeVar
     kms_key_id: StrPipeVar
-
-
-class DataQualityJobDefinition(Base):
-    """
-    DataQualityJobDefinition
-
-    Attributes
-    ----------------------
-    job_definition_arn
-    job_definition_name
-    creation_time
-    data_quality_baseline_config
-    data_quality_app_specification
-    data_quality_job_input
-    data_quality_job_output_config
-    job_resources
-    network_config
-    role_arn
-    stopping_condition
-    """
-
-    job_definition_arn: StrPipeVar
-    job_definition_name: StrPipeVar
-    creation_time: datetime.datetime
-    data_quality_app_specification: DataQualityAppSpecification
-    data_quality_job_input: DataQualityJobInput
-    data_quality_job_output_config: MonitoringOutputConfig
-    job_resources: MonitoringResources
-    role_arn: StrPipeVar
-    data_quality_baseline_config: Optional[DataQualityBaselineConfig] = Unassigned()
-    network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
 
 
 class DebugRuleEvaluationStatus(Base):
@@ -11729,13 +10024,9 @@ class DerivedInformation(Base):
     Attributes
     ----------------------
     derived_data_input_config: The data input configuration that SageMaker Neo automatically derived for the model. When SageMaker Neo derives this information, you don't need to specify the data input configuration when you create a compilation job.
-    derived_framework
-    derived_framework_version
     """
 
     derived_data_input_config: Optional[StrPipeVar] = Unassigned()
-    derived_framework: Optional[StrPipeVar] = Unassigned()
-    derived_framework_version: Optional[StrPipeVar] = Unassigned()
 
 
 class ResolvedAttributes(Base):
@@ -11755,34 +10046,6 @@ class ResolvedAttributes(Base):
     completion_criteria: Optional[AutoMLJobCompletionCriteria] = Unassigned()
 
 
-class ModelDeployEndpointConfig(Base):
-    """
-    ModelDeployEndpointConfig
-
-    Attributes
-    ----------------------
-    endpoint_config_name
-    endpoint_config_arn
-    """
-
-    endpoint_config_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    endpoint_config_arn: Optional[StrPipeVar] = Unassigned()
-
-
-class ModelDeployEndpoint(Base):
-    """
-    ModelDeployEndpoint
-
-    Attributes
-    ----------------------
-    endpoint_name
-    endpoint_arn
-    """
-
-    endpoint_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    endpoint_arn: Optional[StrPipeVar] = Unassigned()
-
-
 class ModelDeployResult(Base):
     """
     ModelDeployResult
@@ -11791,13 +10054,9 @@ class ModelDeployResult(Base):
     Attributes
     ----------------------
     endpoint_name: The name of the endpoint to which the model has been deployed.  If model deployment fails, this field is omitted from the response.
-    endpoint_configs
-    endpoints
     """
 
     endpoint_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    endpoint_configs: Optional[List[ModelDeployEndpointConfig]] = Unassigned()
-    endpoints: Optional[List[ModelDeployEndpoint]] = Unassigned()
 
 
 class ModelArtifacts(Base):
@@ -11941,8 +10200,6 @@ class ProductionVariantSummary(Base):
     desired_serverless_config: The serverless configuration requested for the endpoint update.
     managed_instance_scaling: Settings that control the range in the number of instances that the endpoint provisions as it scales up or down to accommodate traffic.
     routing_config: Settings that control how the endpoint routes incoming traffic to the instances that the endpoint hosts.
-    capacity_schedules_config
-    hyper_pod_config
     capacity_reservation_config: Settings for the capacity reservation for the compute instances that SageMaker AI reserves for an endpoint.
     """
 
@@ -11957,8 +10214,6 @@ class ProductionVariantSummary(Base):
     desired_serverless_config: Optional[ProductionVariantServerlessConfig] = Unassigned()
     managed_instance_scaling: Optional[ProductionVariantManagedInstanceScaling] = Unassigned()
     routing_config: Optional[ProductionVariantRoutingConfig] = Unassigned()
-    capacity_schedules_config: Optional[ProductionVariantCapacitySchedulesConfig] = Unassigned()
-    hyper_pod_config: Optional[ProductionVariantHyperPodConfig] = Unassigned()
     capacity_reservation_config: Optional[ProductionVariantCapacityReservationSummary] = (
         Unassigned()
     )
@@ -11984,8 +10239,6 @@ class PendingProductionVariantSummary(Base):
     desired_serverless_config: The serverless configuration requested for this deployment, as specified in the endpoint configuration for the endpoint.
     managed_instance_scaling: Settings that control the range in the number of instances that the endpoint provisions as it scales up or down to accommodate traffic.
     routing_config: Settings that control how the endpoint routes incoming traffic to the instances that the endpoint hosts.
-    capacity_schedules_config
-    capacity_reservation_config: Settings for the capacity reservation for the compute instances that SageMaker AI reserves for an endpoint.
     """
 
     variant_name: StrPipeVar
@@ -12001,10 +10254,6 @@ class PendingProductionVariantSummary(Base):
     desired_serverless_config: Optional[ProductionVariantServerlessConfig] = Unassigned()
     managed_instance_scaling: Optional[ProductionVariantManagedInstanceScaling] = Unassigned()
     routing_config: Optional[ProductionVariantRoutingConfig] = Unassigned()
-    capacity_schedules_config: Optional[ProductionVariantCapacitySchedulesConfig] = Unassigned()
-    capacity_reservation_config: Optional[ProductionVariantCapacityReservationSummary] = (
-        Unassigned()
-    )
 
 
 class PendingDeploymentSummary(Base):
@@ -12018,14 +10267,12 @@ class PendingDeploymentSummary(Base):
     production_variants: An array of PendingProductionVariantSummary objects, one for each model hosted behind this endpoint for the in-progress deployment.
     start_time: The start time of the deployment.
     shadow_production_variants: An array of PendingProductionVariantSummary objects, one for each model hosted behind this endpoint in shadow mode with production traffic replicated from the model specified on ProductionVariants for the in-progress deployment.
-    graph_config_name
     """
 
     endpoint_config_name: Union[StrPipeVar, object]
     production_variants: Optional[List[PendingProductionVariantSummary]] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
     shadow_production_variants: Optional[List[PendingProductionVariantSummary]] = Unassigned()
-    graph_config_name: Optional[StrPipeVar] = Unassigned()
 
 
 class ExperimentSource(Base):
@@ -12088,34 +10335,6 @@ class LastUpdateStatus(Base):
 
     status: StrPipeVar
     failure_reason: Optional[StrPipeVar] = Unassigned()
-
-
-class OnlineStoreReplicaStatus(Base):
-    """
-    OnlineStoreReplicaStatus
-
-    Attributes
-    ----------------------
-    status
-    failure_reason
-    """
-
-    status: StrPipeVar
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-
-
-class OnlineStoreReplica(Base):
-    """
-    OnlineStoreReplica
-
-    Attributes
-    ----------------------
-    region_name
-    online_store_replica_status
-    """
-
-    region_name: StrPipeVar
-    online_store_replica_status: OnlineStoreReplicaStatus
 
 
 class FeatureParameter(Base):
@@ -12278,11 +10497,9 @@ class HyperParameterTuningJobConsumedResources(Base):
     Attributes
     ----------------------
     runtime_in_seconds: The wall clock runtime in seconds used by your hyperparameter tuning job.
-    billable_time_in_seconds
     """
 
     runtime_in_seconds: Optional[int] = Unassigned()
-    billable_time_in_seconds: Optional[int] = Unassigned()
 
 
 class InferenceComponentContainerSpecificationSummary(Base):
@@ -12328,6 +10545,7 @@ class InferenceComponentSpecificationSummary(Base):
     compute_resource_requirements: The compute resources allocated to run the model, plus any adapter models, that you assign to the inference component.
     base_inference_component_name: The name of the base inference component that contains this inference component.
     data_cache_config: Settings that affect how the inference component caches data.
+    scheduling_config: The scheduling configuration that determines how inference component copies are placed across available instances when copies are added or removed.
     """
 
     model_name: Optional[Union[StrPipeVar, object]] = Unassigned()
@@ -12338,6 +10556,7 @@ class InferenceComponentSpecificationSummary(Base):
     )
     base_inference_component_name: Optional[StrPipeVar] = Unassigned()
     data_cache_config: Optional[InferenceComponentDataCacheConfigSummary] = Unassigned()
+    scheduling_config: Optional[InferenceComponentSchedulingConfig] = Unassigned()
 
 
 class InferenceComponentRuntimeConfigSummary(Base):
@@ -12456,14 +10675,6 @@ class RecommendationMetrics(Base):
     cpu_utilization: The expected CPU utilization at maximum invocations per minute for the instance.  NaN indicates that the value is not available.
     memory_utilization: The expected memory utilization at maximum invocations per minute for the instance.  NaN indicates that the value is not available.
     model_setup_time: The time it takes to launch new compute resources for a serverless endpoint. The time can vary depending on the model size, how long it takes to download the model, and the start-up time of the container.  NaN indicates that the value is not available.
-    input_tokens_per_second_per_request
-    output_tokens_per_second_per_request
-    time_to_first_token
-    cost_per_million_tokens
-    cost_per_million_input_tokens
-    cost_per_million_output_tokens
-    intertoken_latency
-    max_concurrency
     """
 
     cost_per_hour: Optional[float] = Unassigned()
@@ -12473,14 +10684,6 @@ class RecommendationMetrics(Base):
     cpu_utilization: Optional[float] = Unassigned()
     memory_utilization: Optional[float] = Unassigned()
     model_setup_time: Optional[int] = Unassigned()
-    input_tokens_per_second_per_request: Optional[float] = Unassigned()
-    output_tokens_per_second_per_request: Optional[float] = Unassigned()
-    time_to_first_token: Optional[float] = Unassigned()
-    cost_per_million_tokens: Optional[float] = Unassigned()
-    cost_per_million_input_tokens: Optional[float] = Unassigned()
-    cost_per_million_output_tokens: Optional[float] = Unassigned()
-    intertoken_latency: Optional[float] = Unassigned()
-    max_concurrency: Optional[int] = Unassigned()
 
 
 class EndpointOutputConfiguration(Base):
@@ -12531,13 +10734,11 @@ class ModelConfiguration(Base):
     inference_specification_name: The inference specification name in the model package version.
     environment_parameters: Defines the environment parameters that includes key, value types, and values.
     compilation_job_name: The name of the compilation job used to create the recommended model artifacts.
-    image
     """
 
     inference_specification_name: Optional[StrPipeVar] = Unassigned()
     environment_parameters: Optional[List[EnvironmentParameter]] = Unassigned()
     compilation_job_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    image: Optional[StrPipeVar] = Unassigned()
 
 
 class InferenceRecommendation(Base):
@@ -12551,7 +10752,6 @@ class InferenceRecommendation(Base):
     metrics: The metrics used to decide what recommendation to make.
     endpoint_configuration: Defines the endpoint configuration parameters.
     model_configuration: Defines the model configuration.
-    endpoint_arn
     invocation_end_time: A timestamp that shows when the benchmark completed.
     invocation_start_time: A timestamp that shows when the benchmark started.
     """
@@ -12560,7 +10760,6 @@ class InferenceRecommendation(Base):
     model_configuration: ModelConfiguration
     recommendation_id: Optional[StrPipeVar] = Unassigned()
     metrics: Optional[RecommendationMetrics] = Unassigned()
-    endpoint_arn: Optional[StrPipeVar] = Unassigned()
     invocation_end_time: Optional[datetime.datetime] = Unassigned()
     invocation_start_time: Optional[datetime.datetime] = Unassigned()
 
@@ -12574,20 +10773,10 @@ class InferenceMetrics(Base):
     ----------------------
     max_invocations: The expected maximum number of requests per minute for the instance.
     model_latency: The expected model latency at maximum invocations per minute for the instance.
-    input_tokens_per_second_per_request
-    output_tokens_per_second_per_request
-    time_to_first_token
-    intertoken_latency
-    max_concurrency
     """
 
     max_invocations: int
     model_latency: int
-    input_tokens_per_second_per_request: Optional[float] = Unassigned()
-    output_tokens_per_second_per_request: Optional[float] = Unassigned()
-    time_to_first_token: Optional[float] = Unassigned()
-    intertoken_latency: Optional[float] = Unassigned()
-    max_concurrency: Optional[int] = Unassigned()
 
 
 class EndpointPerformance(Base):
@@ -12639,20 +10828,6 @@ class LabelingJobOutput(Base):
 
     output_dataset_s3_uri: StrPipeVar
     final_active_learning_model_arn: Optional[StrPipeVar] = Unassigned()
-
-
-class UpgradeRollbackVersionDetails(Base):
-    """
-    UpgradeRollbackVersionDetails
-
-    Attributes
-    ----------------------
-    snapshot_time
-    previous_version
-    """
-
-    snapshot_time: Optional[datetime.datetime] = Unassigned()
-    previous_version: Optional[StrPipeVar] = Unassigned()
 
 
 class ModelCardExportArtifacts(Base):
@@ -12717,8 +10892,6 @@ class MonitoringExecutionSummary(Base):
     failure_reason: Contains the reason a monitoring job failed, if it failed.
     monitoring_job_definition_name: The name of the monitoring job.
     monitoring_type: The type of the monitoring job.
-    variant_name
-    monitoring_execution_id
     """
 
     monitoring_schedule_name: Union[StrPipeVar, object]
@@ -12731,104 +10904,6 @@ class MonitoringExecutionSummary(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
     monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned()
     monitoring_type: Optional[StrPipeVar] = Unassigned()
-    variant_name: Optional[StrPipeVar] = Unassigned()
-    monitoring_execution_id: Optional[StrPipeVar] = Unassigned()
-
-
-class ModelQualityJobDefinition(Base):
-    """
-    ModelQualityJobDefinition
-
-    Attributes
-    ----------------------
-    job_definition_arn
-    job_definition_name
-    creation_time
-    model_quality_baseline_config
-    model_quality_app_specification
-    model_quality_job_input
-    model_quality_job_output_config
-    job_resources
-    network_config
-    role_arn
-    stopping_condition
-    """
-
-    job_definition_arn: StrPipeVar
-    job_definition_name: StrPipeVar
-    creation_time: datetime.datetime
-    model_quality_app_specification: ModelQualityAppSpecification
-    model_quality_job_input: ModelQualityJobInput
-    model_quality_job_output_config: MonitoringOutputConfig
-    job_resources: MonitoringResources
-    role_arn: StrPipeVar
-    model_quality_baseline_config: Optional[ModelQualityBaselineConfig] = Unassigned()
-    network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
-
-
-class ModelBiasJobDefinition(Base):
-    """
-    ModelBiasJobDefinition
-
-    Attributes
-    ----------------------
-    job_definition_arn
-    job_definition_name
-    creation_time
-    model_bias_baseline_config
-    model_bias_app_specification
-    model_bias_job_input
-    model_bias_job_output_config
-    job_resources
-    network_config
-    role_arn
-    stopping_condition
-    """
-
-    job_definition_arn: StrPipeVar
-    job_definition_name: StrPipeVar
-    creation_time: datetime.datetime
-    model_bias_app_specification: ModelBiasAppSpecification
-    model_bias_job_input: ModelBiasJobInput
-    model_bias_job_output_config: MonitoringOutputConfig
-    job_resources: MonitoringResources
-    role_arn: StrPipeVar
-    model_bias_baseline_config: Optional[ModelBiasBaselineConfig] = Unassigned()
-    network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
-
-
-class ModelExplainabilityJobDefinition(Base):
-    """
-    ModelExplainabilityJobDefinition
-
-    Attributes
-    ----------------------
-    job_definition_arn
-    job_definition_name
-    creation_time
-    model_explainability_baseline_config
-    model_explainability_app_specification
-    model_explainability_job_input
-    model_explainability_job_output_config
-    job_resources
-    network_config
-    role_arn
-    stopping_condition
-    """
-
-    job_definition_arn: StrPipeVar
-    job_definition_name: StrPipeVar
-    creation_time: datetime.datetime
-    model_explainability_app_specification: ModelExplainabilityAppSpecification
-    model_explainability_job_input: ModelExplainabilityJobInput
-    model_explainability_job_output_config: MonitoringOutputConfig
-    job_resources: MonitoringResources
-    role_arn: StrPipeVar
-    model_explainability_baseline_config: Optional[ModelExplainabilityBaselineConfig] = Unassigned()
-    network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
 
 
 class OptimizationOutput(Base):
@@ -12919,11 +10994,12 @@ class SelectiveExecutionConfig(Base):
 class MLflowConfiguration(Base):
     """
     MLflowConfiguration
+       The MLflow configuration.
 
     Attributes
     ----------------------
-    mlflow_resource_arn
-    mlflow_experiment_name
+    mlflow_resource_arn:  The Amazon Resource Name (ARN) of MLflow configuration resource.
+    mlflow_experiment_name:  The name of the MLflow configuration.
     """
 
     mlflow_resource_arn: Optional[StrPipeVar] = Unassigned()
@@ -13000,19 +11076,6 @@ class SubscribedWorkteam(Base):
     listing_id: Optional[StrPipeVar] = Unassigned()
 
 
-class TrainingJobOutput(Base):
-    """
-    TrainingJobOutput
-      Provides information about the location that is configured for storing optional output.
-
-    Attributes
-    ----------------------
-    s3_training_job_output: Provides information about the S3 bucket where training job output (model artifacts) is stored. For example, s3://bucket-name/keyname-prefix/output.tar.gz.
-    """
-
-    s3_training_job_output: StrPipeVar
-
-
 class WarmPoolStatus(Base):
     """
     WarmPoolStatus
@@ -13087,26 +11150,15 @@ class ProfilerRuleEvaluationStatus(Base):
     last_modified_time: Optional[datetime.datetime] = Unassigned()
 
 
-class ImageMetadata(Base):
-    """
-    ImageMetadata
-
-    Attributes
-    ----------------------
-    image_type
-    """
-
-    image_type: Optional[StrPipeVar] = Unassigned()
-
-
 class MlflowDetails(Base):
     """
     MlflowDetails
+       The MLflow details of this job.
 
     Attributes
     ----------------------
-    mlflow_experiment_id
-    mlflow_run_id
+    mlflow_experiment_id:  The MLflow experiment ID used for this job.
+    mlflow_run_id:  The MLflow run ID used for this job.
     """
 
     mlflow_experiment_id: Optional[StrPipeVar] = Unassigned()
@@ -13116,19 +11168,53 @@ class MlflowDetails(Base):
 class TrainingProgressInfo(Base):
     """
     TrainingProgressInfo
+       The serverless training job progress information.
 
     Attributes
     ----------------------
-    total_step_count_per_epoch
-    current_step
-    current_epoch
-    max_epoch
+    total_step_count_per_epoch:  The total step count per epoch.
+    current_step:  The current step number.
+    current_epoch:  The current epoch number.
+    max_epoch:  The maximum number of epochs for this job.
     """
 
     total_step_count_per_epoch: Optional[int] = Unassigned()
     current_step: Optional[int] = Unassigned()
     current_epoch: Optional[int] = Unassigned()
     max_epoch: Optional[int] = Unassigned()
+
+
+class TrainingPlanExtension(Base):
+    """
+    TrainingPlanExtension
+      Details about an extension to a training plan, including the offering ID, dates, status, and cost information.
+
+    Attributes
+    ----------------------
+    training_plan_extension_offering_id: The unique identifier of the extension offering that was used to create this extension.
+    extended_at: The timestamp when the extension was created.
+    start_date: The start date of the extension period.
+    end_date: The end date of the extension period.
+    status: The current status of the extension (e.g., Pending, Active, Scheduled, Failed, Expired).
+    payment_status: The payment processing status of the extension.
+    availability_zone: The Availability Zone of the extension.
+    availability_zone_id: The Availability Zone ID of the extension.
+    duration_hours: The duration of the extension in hours.
+    upfront_fee: The upfront fee for the extension.
+    currency_code: The currency code for the upfront fee (e.g., USD).
+    """
+
+    training_plan_extension_offering_id: StrPipeVar
+    extended_at: Optional[datetime.datetime] = Unassigned()
+    start_date: Optional[datetime.datetime] = Unassigned()
+    end_date: Optional[datetime.datetime] = Unassigned()
+    status: Optional[StrPipeVar] = Unassigned()
+    payment_status: Optional[StrPipeVar] = Unassigned()
+    availability_zone: Optional[StrPipeVar] = Unassigned()
+    availability_zone_id: Optional[StrPipeVar] = Unassigned()
+    duration_hours: Optional[int] = Unassigned()
+    upfront_fee: Optional[StrPipeVar] = Unassigned()
+    currency_code: Optional[StrPipeVar] = Unassigned()
 
 
 class ReservedCapacitySummary(Base):
@@ -13146,7 +11232,6 @@ class ReservedCapacitySummary(Base):
     total_instance_count: The total number of instances in the reserved capacity.
     status: The current status of the reserved capacity.
     availability_zone: The availability zone for the reserved capacity.
-    availability_zone_id
     duration_hours: The number of whole hours in the total duration for this reserved capacity.
     duration_minutes: The additional minutes beyond whole hours in the total duration for this reserved capacity.
     start_time: The start time of the reserved capacity.
@@ -13161,55 +11246,10 @@ class ReservedCapacitySummary(Base):
     ultra_server_type: Optional[StrPipeVar] = Unassigned()
     ultra_server_count: Optional[int] = Unassigned()
     availability_zone: Optional[StrPipeVar] = Unassigned()
-    availability_zone_id: Optional[StrPipeVar] = Unassigned()
     duration_hours: Optional[int] = Unassigned()
     duration_minutes: Optional[int] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
     end_time: Optional[datetime.datetime] = Unassigned()
-
-
-class TrainingPlanStatusTransition(Base):
-    """
-    TrainingPlanStatusTransition
-
-    Attributes
-    ----------------------
-    status
-    start_time
-    end_time
-    status_message
-    """
-
-    status: StrPipeVar
-    start_time: datetime.datetime
-    end_time: Optional[datetime.datetime] = Unassigned()
-    status_message: Optional[StrPipeVar] = Unassigned()
-
-
-class S3JobProgress(Base):
-    """
-    S3JobProgress
-
-    Attributes
-    ----------------------
-    completed_objects
-    failed_objects
-    """
-
-    completed_objects: int
-    failed_objects: int
-
-
-class TransformJobProgress(Base):
-    """
-    TransformJobProgress
-
-    Attributes
-    ----------------------
-    s3_job_progress
-    """
-
-    s3_job_progress: Optional[S3JobProgress] = Unassigned()
 
 
 class TrialComponentSource(Base):
@@ -13371,8 +11411,6 @@ class Workteam(Base):
     create_date: The date and time that the work team was created (timestamp).
     last_updated_date: The date and time that the work team was last updated (timestamp).
     notification_configuration: Configures SNS notifications of available or expiring work items for work teams.
-    membership_rule
-    membership_type
     worker_access_configuration: Describes any access constraints that have been defined for Amazon S3 resources.
     """
 
@@ -13386,8 +11424,6 @@ class Workteam(Base):
     create_date: Optional[datetime.datetime] = Unassigned()
     last_updated_date: Optional[datetime.datetime] = Unassigned()
     notification_configuration: Optional[NotificationConfiguration] = Unassigned()
-    membership_rule: Optional[MembershipRule] = Unassigned()
-    membership_type: Optional[StrPipeVar] = Unassigned()
     worker_access_configuration: Optional[WorkerAccessConfiguration] = Unassigned()
 
 
@@ -13553,68 +11589,6 @@ class DeviceSummary(Base):
     agent_version: Optional[StrPipeVar] = Unassigned()
 
 
-class Domain(Base):
-    """
-    Domain
-
-    Attributes
-    ----------------------
-    domain_arn
-    domain_id
-    domain_name
-    home_efs_file_system_id
-    single_sign_on_managed_application_instance_id
-    single_sign_on_application_arn
-    status
-    creation_time
-    last_modified_time
-    failure_reason
-    security_group_id_for_domain_boundary
-    auth_mode
-    default_user_settings
-    domain_settings
-    app_network_access
-    app_network_access_type
-    home_efs_file_system_kms_key_id
-    subnet_ids
-    url
-    vpc_id
-    kms_key_id
-    app_security_group_management
-    app_storage_type
-    tag_propagation
-    default_space_settings
-    tags
-    """
-
-    domain_arn: Optional[StrPipeVar] = Unassigned()
-    domain_id: Optional[StrPipeVar] = Unassigned()
-    domain_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    home_efs_file_system_id: Optional[StrPipeVar] = Unassigned()
-    single_sign_on_managed_application_instance_id: Optional[StrPipeVar] = Unassigned()
-    single_sign_on_application_arn: Optional[StrPipeVar] = Unassigned()
-    status: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    security_group_id_for_domain_boundary: Optional[StrPipeVar] = Unassigned()
-    auth_mode: Optional[StrPipeVar] = Unassigned()
-    default_user_settings: Optional[UserSettings] = Unassigned()
-    domain_settings: Optional[DomainSettings] = Unassigned()
-    app_network_access: Optional[StrPipeVar] = Unassigned()
-    app_network_access_type: Optional[StrPipeVar] = Unassigned()
-    home_efs_file_system_kms_key_id: Optional[StrPipeVar] = Unassigned()
-    subnet_ids: Optional[List[StrPipeVar]] = Unassigned()
-    url: Optional[StrPipeVar] = Unassigned()
-    vpc_id: Optional[StrPipeVar] = Unassigned()
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
-    app_security_group_management: Optional[StrPipeVar] = Unassigned()
-    app_storage_type: Optional[StrPipeVar] = Unassigned()
-    tag_propagation: Optional[StrPipeVar] = Unassigned()
-    default_space_settings: Optional[DefaultSpaceSettings] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-
-
 class DomainDetails(Base):
     """
     DomainDetails
@@ -13688,20 +11662,6 @@ class DomainSettingsForUpdate(Base):
     amazon_q_settings: Optional[AmazonQSettings] = Unassigned()
     unified_studio_settings: Optional[UnifiedStudioSettings] = Unassigned()
     ip_address_type: Optional[StrPipeVar] = Unassigned()
-
-
-class DryRunOperation(Base):
-    """
-    DryRunOperation
-
-    Attributes
-    ----------------------
-    error_code
-    message
-    """
-
-    error_code: Optional[StrPipeVar] = Unassigned()
-    message: Optional[StrPipeVar] = Unassigned()
 
 
 class PredefinedMetricSpecification(Base):
@@ -13911,12 +11871,6 @@ class MonitoringSchedule(Base):
     monitoring_schedule_config
     endpoint_name: The endpoint that hosts the model being monitored.
     last_monitoring_execution_summary
-    custom_monitoring_job_definition
-    data_quality_job_definition
-    model_quality_job_definition
-    model_bias_job_definition
-    model_explainability_job_definition
-    variant_name
     tags: A list of the tags associated with the monitoring schedlue. For more information, see Tagging Amazon Web Services resources in the Amazon Web Services General Reference Guide.
     """
 
@@ -13930,12 +11884,6 @@ class MonitoringSchedule(Base):
     monitoring_schedule_config: Optional[MonitoringScheduleConfig] = Unassigned()
     endpoint_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     last_monitoring_execution_summary: Optional[MonitoringExecutionSummary] = Unassigned()
-    custom_monitoring_job_definition: Optional[CustomMonitoringJobDefinition] = Unassigned()
-    data_quality_job_definition: Optional[DataQualityJobDefinition] = Unassigned()
-    model_quality_job_definition: Optional[ModelQualityJobDefinition] = Unassigned()
-    model_bias_job_definition: Optional[ModelBiasJobDefinition] = Unassigned()
-    model_explainability_job_definition: Optional[ModelExplainabilityJobDefinition] = Unassigned()
-    variant_name: Optional[StrPipeVar] = Unassigned()
     tags: Optional[List[Tag]] = Unassigned()
 
 
@@ -13949,7 +11897,6 @@ class Endpoint(Base):
     endpoint_name: The name of the endpoint.
     endpoint_arn: The Amazon Resource Name (ARN) of the endpoint.
     endpoint_config_name: The endpoint configuration associated with the endpoint.
-    deletion_condition
     production_variants: A list of the production variants hosted on the endpoint. Each production variant is a model.
     data_capture_config
     endpoint_status: The status of the endpoint.
@@ -13967,7 +11914,6 @@ class Endpoint(Base):
     endpoint_status: StrPipeVar
     creation_time: datetime.datetime
     last_modified_time: datetime.datetime
-    deletion_condition: Optional[EndpointDeletionCondition] = Unassigned()
     production_variants: Optional[List[ProductionVariantSummary]] = Unassigned()
     data_capture_config: Optional[DataCaptureConfigSummary] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
@@ -14038,52 +11984,6 @@ class EndpointSummary(Base):
     creation_time: datetime.datetime
     last_modified_time: datetime.datetime
     endpoint_status: StrPipeVar
-
-
-class EvaluationJobSummary(Base):
-    """
-    EvaluationJobSummary
-
-    Attributes
-    ----------------------
-    evaluation_job_name
-    evaluation_job_arn
-    evaluation_job_status
-    creation_time
-    evaluation_method
-    failure_reason
-    model_identifiers
-    """
-
-    evaluation_job_name: Union[StrPipeVar, object]
-    evaluation_job_arn: StrPipeVar
-    evaluation_job_status: StrPipeVar
-    creation_time: datetime.datetime
-    evaluation_method: StrPipeVar
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    model_identifiers: Optional[List[StrPipeVar]] = Unassigned()
-
-
-class EventEntity(Base):
-    """
-    EventEntity
-
-    Attributes
-    ----------------------
-    event_sender
-    event_id
-    shared_model_id
-    shared_model_version
-    event_type
-    read
-    """
-
-    event_sender: Optional[StrPipeVar] = Unassigned()
-    event_id: Optional[StrPipeVar] = Unassigned()
-    shared_model_id: Optional[StrPipeVar] = Unassigned()
-    shared_model_version: Optional[StrPipeVar] = Unassigned()
-    event_type: Optional[StrPipeVar] = Unassigned()
-    read: Optional[bool] = Unassigned()
 
 
 class Experiment(Base):
@@ -14175,12 +12075,7 @@ class FeatureGroup(Base):
     last_update_status: A value that indicates whether the feature group was updated successfully.
     failure_reason: The reason that the FeatureGroup failed to be replicated in the OfflineStore. This is failure may be due to a failure to create a FeatureGroup in or delete a FeatureGroup from the OfflineStore.
     description: A free form description of a FeatureGroup.
-    online_store_replicas
-    online_store_read_write_type
-    last_modified_by
-    created_by
     tags: Tags used to define a FeatureGroup.
-    all_tags
     """
 
     feature_group_arn: Optional[StrPipeVar] = Unassigned()
@@ -14198,12 +12093,7 @@ class FeatureGroup(Base):
     last_update_status: Optional[LastUpdateStatus] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
-    online_store_replicas: Optional[List[OnlineStoreReplica]] = Unassigned()
-    online_store_read_write_type: Optional[StrPipeVar] = Unassigned()
-    last_modified_by: Optional[UserContext] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
     tags: Optional[List[Tag]] = Unassigned()
-    all_tags: Optional[StrPipeVar] = Unassigned()
 
 
 class FeatureGroupSummary(Base):
@@ -14242,7 +12132,6 @@ class FeatureMetadata(Base):
     last_modified_time: A timestamp indicating when the feature was last modified.
     description: An optional description that you specify to better describe the feature.
     parameters: Optional key-value pairs that you specify to better describe the feature.
-    all_parameters
     """
 
     feature_group_arn: Optional[StrPipeVar] = Unassigned()
@@ -14253,7 +12142,6 @@ class FeatureMetadata(Base):
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
     parameters: Optional[List[FeatureParameter]] = Unassigned()
-    all_parameters: Optional[StrPipeVar] = Unassigned()
 
 
 class Filter(Base):
@@ -14318,34 +12206,6 @@ class GetDeviceFleetReportResponse(Base):
     device_stats: Optional[DeviceStats] = Unassigned()
     agent_versions: Optional[List[AgentVersion]] = Unassigned()
     model_stats: Optional[List[EdgeModelStat]] = Unassigned()
-
-
-class LabelingPortalPolicyStatement(Base):
-    """
-    LabelingPortalPolicyStatement
-
-    Attributes
-    ----------------------
-    labeling_portal_policy_groups
-    labeling_portal_policy_action
-    labeling_portal_policy_resources
-    """
-
-    labeling_portal_policy_groups: List[StrPipeVar]
-    labeling_portal_policy_action: StrPipeVar
-    labeling_portal_policy_resources: List[StrPipeVar]
-
-
-class LabelingPortalPolicy(Base):
-    """
-    LabelingPortalPolicy
-
-    Attributes
-    ----------------------
-    labeling_portal_policy_statements
-    """
-
-    labeling_portal_policy_statements: List[LabelingPortalPolicyStatement]
 
 
 class GetLineageGroupPolicyResponse(Base):
@@ -14444,66 +12304,6 @@ class GitConfigForUpdate(Base):
     secret_arn: Optional[StrPipeVar] = Unassigned()
 
 
-class GroundTruthJobSummary(Base):
-    """
-    GroundTruthJobSummary
-
-    Attributes
-    ----------------------
-    ground_truth_project_arn
-    ground_truth_workflow_arn
-    ground_truth_job_arn
-    ground_truth_job_name
-    ground_truth_job_status
-    created_at
-    """
-
-    ground_truth_project_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_workflow_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_job_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_job_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    ground_truth_job_status: Optional[StrPipeVar] = Unassigned()
-    created_at: Optional[datetime.datetime] = Unassigned()
-
-
-class GroundTruthProjectSummary(Base):
-    """
-    GroundTruthProjectSummary
-
-    Attributes
-    ----------------------
-    ground_truth_project_name
-    ground_truth_project_description
-    ground_truth_project_arn
-    ground_truth_project_status
-    created_at
-    """
-
-    ground_truth_project_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    ground_truth_project_description: Optional[StrPipeVar] = Unassigned()
-    ground_truth_project_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_project_status: Optional[StrPipeVar] = Unassigned()
-    created_at: Optional[datetime.datetime] = Unassigned()
-
-
-class GroundTruthWorkflowSummary(Base):
-    """
-    GroundTruthWorkflowSummary
-
-    Attributes
-    ----------------------
-    ground_truth_project_arn
-    ground_truth_workflow_arn
-    ground_truth_workflow_name
-    created_at
-    """
-
-    ground_truth_project_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_workflow_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_workflow_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    created_at: Optional[datetime.datetime] = Unassigned()
-
-
 class HubContentInfo(Base):
     """
     HubContentInfo
@@ -14577,14 +12377,12 @@ class HumanTaskUiSummary(Base):
     ----------------------
     human_task_ui_name: The name of the human task user interface.
     human_task_ui_arn: The Amazon Resource Name (ARN) of the human task user interface.
-    human_task_ui_status
     creation_time: A timestamp when SageMaker created the human task user interface.
     """
 
     human_task_ui_name: Union[StrPipeVar, object]
     human_task_ui_arn: StrPipeVar
     creation_time: datetime.datetime
-    human_task_ui_status: Optional[StrPipeVar] = Unassigned()
 
 
 class HyperParameterTuningJobSearchEntity(Base):
@@ -14692,36 +12490,6 @@ class Image(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
 
 
-class ImageSearchShape(Base):
-    """
-    ImageSearchShape
-
-    Attributes
-    ----------------------
-    creation_time
-    description
-    display_name
-    failure_reason
-    image_arn
-    image_name
-    image_status
-    last_modified_time
-    role_arn
-    tags
-    """
-
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    display_name: Optional[StrPipeVar] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    image_arn: Optional[StrPipeVar] = Unassigned()
-    image_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    image_status: Optional[StrPipeVar] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    role_arn: Optional[StrPipeVar] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-
-
 class ImageVersion(Base):
     """
     ImageVersion
@@ -14747,59 +12515,14 @@ class ImageVersion(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
 
 
-class ImageVersionSearchShape(Base):
-    """
-    ImageVersionSearchShape
-
-    Attributes
-    ----------------------
-    base_image
-    container_image
-    creation_time
-    failure_reason
-    image_arn
-    image_version_arn
-    image_version_status
-    last_modified_time
-    version
-    vendor_guidance
-    job_type
-    ml_framework
-    programming_lang
-    processor
-    horovod
-    soci_image
-    release_notes
-    override_alias_image_version
-    """
-
-    base_image: Optional[StrPipeVar] = Unassigned()
-    container_image: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    image_arn: Optional[StrPipeVar] = Unassigned()
-    image_version_arn: Optional[StrPipeVar] = Unassigned()
-    image_version_status: Optional[StrPipeVar] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    version: Optional[int] = Unassigned()
-    vendor_guidance: Optional[StrPipeVar] = Unassigned()
-    job_type: Optional[StrPipeVar] = Unassigned()
-    ml_framework: Optional[StrPipeVar] = Unassigned()
-    programming_lang: Optional[StrPipeVar] = Unassigned()
-    processor: Optional[StrPipeVar] = Unassigned()
-    horovod: Optional[bool] = Unassigned()
-    soci_image: Optional[bool] = Unassigned()
-    release_notes: Optional[StrPipeVar] = Unassigned()
-    override_alias_image_version: Optional[bool] = Unassigned()
-
-
 class InferenceComponentMetadata(Base):
     """
     InferenceComponentMetadata
+       The metadata of the inference component.
 
     Attributes
     ----------------------
-    arn
+    arn:  The Amazon Resource Name (ARN) of the inference component.
     """
 
     arn: Optional[StrPipeVar] = Unassigned()
@@ -14849,7 +12572,6 @@ class InferenceExperimentSummary(Base):
     completion_time: The timestamp at which the inference experiment was completed.
     last_modified_time: The timestamp when you last modified the inference experiment.
     role_arn:  The ARN of the IAM role that Amazon SageMaker can assume to access model artifacts and container images, and manage Amazon SageMaker Inference endpoints for model deployment.
-    arn
     """
 
     name: StrPipeVar
@@ -14862,7 +12584,6 @@ class InferenceExperimentSummary(Base):
     description: Optional[StrPipeVar] = Unassigned()
     completion_time: Optional[datetime.datetime] = Unassigned()
     role_arn: Optional[StrPipeVar] = Unassigned()
-    arn: Optional[StrPipeVar] = Unassigned()
 
 
 class InferenceRecommendationsJob(Base):
@@ -14885,7 +12606,6 @@ class InferenceRecommendationsJob(Base):
     model_name: The name of the created model.
     sample_payload_url: The Amazon Simple Storage Service (Amazon S3) path where the sample payload is stored. This path must point to a single gzip compressed tar archive (.tar.gz suffix).
     model_package_version_arn: The Amazon Resource Name (ARN) of a versioned model package.
-    benchmark_results_output_config
     """
 
     job_name: StrPipeVar
@@ -14901,7 +12621,6 @@ class InferenceRecommendationsJob(Base):
     model_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     sample_payload_url: Optional[StrPipeVar] = Unassigned()
     model_package_version_arn: Optional[StrPipeVar] = Unassigned()
-    benchmark_results_output_config: Optional[BenchmarkResultsOutputConfig] = Unassigned()
 
 
 class RecommendationJobInferenceBenchmark(Base):
@@ -14948,34 +12667,21 @@ class InferenceRecommendationsJobStep(Base):
     inference_benchmark: Optional[RecommendationJobInferenceBenchmark] = Unassigned()
 
 
-class InferenceServiceConfig(Base):
-    """
-    InferenceServiceConfig
-
-    Attributes
-    ----------------------
-    request_status
-    execution_role_arn
-    """
-
-    request_status: StrPipeVar
-    execution_role_arn: Optional[StrPipeVar] = Unassigned()
-
-
 class InstanceGroupHealthCheckConfiguration(Base):
     """
     InstanceGroupHealthCheckConfiguration
+      The configuration of deep health checks for an instance group.  Overlapping deep health check configurations will be merged into a single operation.
 
     Attributes
     ----------------------
-    instance_group_name
-    instance_ids
-    deep_health_checks
+    instance_group_name: The name of the instance group.
+    instance_ids: A list of Amazon Elastic Compute Cloud (EC2) instance IDs on which to perform deep health checks.  Leave this field blank to perform deep health checks on the entire instance group.
+    deep_health_checks: A list of deep health checks to be performed.
     """
 
     instance_group_name: StrPipeVar
+    deep_health_checks: List[StrPipeVar]
     instance_ids: Optional[List[StrPipeVar]] = Unassigned()
-    deep_health_checks: Optional[List[StrPipeVar]] = Unassigned()
 
 
 class LabelCountersForWorkteam(Base):
@@ -15092,13 +12798,14 @@ class LineageGroupSummary(Base):
 class LineageMetadata(Base):
     """
     LineageMetadata
+       The metadata that tracks relationships between ML artifacts, actions, and contexts.
 
     Attributes
     ----------------------
-    action_arns
-    artifact_arns
-    context_arns
-    associations
+    action_arns:  The Amazon Resource Name (ARN) of the lineage action.
+    artifact_arns:  The Amazon Resource Name (ARN) of the lineage artifact.
+    context_arns:  The Amazon Resource Name (ARN) of the lineage context.
+    associations:  The lineage associations.
     """
 
     action_arns: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
@@ -15118,28 +12825,27 @@ class MonitoringJobDefinitionSummary(Base):
     monitoring_job_definition_arn: The Amazon Resource Name (ARN) of the monitoring job.
     creation_time: The time that the monitoring job was created.
     endpoint_name: The name of the endpoint that the job monitors.
-    variant_name
     """
 
     monitoring_job_definition_name: StrPipeVar
     monitoring_job_definition_arn: StrPipeVar
     creation_time: datetime.datetime
     endpoint_name: Union[StrPipeVar, object]
-    variant_name: Optional[StrPipeVar] = Unassigned()
 
 
 class MlflowAppSummary(Base):
     """
     MlflowAppSummary
+      The summary of the Mlflow App to list.
 
     Attributes
     ----------------------
-    arn
-    name
-    status
-    creation_time
-    last_modified_time
-    mlflow_version
+    arn: The ARN of a listed MLflow App.
+    name: The name of the MLflow App.
+    status: The status of the MLflow App.
+    creation_time: The creation time of a listed MLflow App.
+    last_modified_time: The last modified time of a listed MLflow App.
+    mlflow_version: The version of a listed MLflow App.
     """
 
     arn: Optional[StrPipeVar] = Unassigned()
@@ -15330,7 +13036,7 @@ class ModelPackageSummary(Base):
     model_package_status: The overall status of the model package.
     model_approval_status: The approval status of the model. This can be one of the following values.    APPROVED - The model is approved    REJECTED - The model is rejected.    PENDING_MANUAL_APPROVAL - The model is waiting for manual approval.
     model_life_cycle
-    model_package_registration_type
+    model_package_registration_type:  The package registration type of the model package summary.
     """
 
     model_package_arn: StrPipeVar
@@ -15447,7 +13153,6 @@ class MonitoringScheduleSummary(Base):
     endpoint_name: The name of the endpoint using the monitoring schedule.
     monitoring_job_definition_name: The name of the monitoring job definition that the schedule is for.
     monitoring_type: The type of the monitoring job definition that the schedule is for.
-    variant_name
     """
 
     monitoring_schedule_name: Union[StrPipeVar, object]
@@ -15458,7 +13163,6 @@ class MonitoringScheduleSummary(Base):
     endpoint_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned()
     monitoring_type: Optional[StrPipeVar] = Unassigned()
-    variant_name: Optional[StrPipeVar] = Unassigned()
 
 
 class NotebookInstanceLifecycleConfigSummary(Base):
@@ -15526,7 +13230,7 @@ class OptimizationJobSummary(Base):
     optimization_end_time: The time when the optimization job finished processing.
     last_modified_time: The time when the optimization job was last updated.
     deployment_instance_type: The type of instance that hosts the optimized model that you create with the optimization job.
-    max_instance_count
+    max_instance_count: The maximum number of instances to use for the optimization job.
     optimization_types: The optimization techniques that are applied by the optimization job.
     """
 
@@ -15683,7 +13387,6 @@ class PipelineExecutionStepMetadata(Base):
     processing_job: The Amazon Resource Name (ARN) of the processing job that was run by this step execution.
     transform_job: The Amazon Resource Name (ARN) of the transform job that was run by this step execution.
     tuning_job: The Amazon Resource Name (ARN) of the tuning job that was run by this step execution.
-    compilation_job
     model: The Amazon Resource Name (ARN) of the model that was created by this step execution.
     register_model: The Amazon Resource Name (ARN) of the model package that the model was registered to by this step execution.
     condition: The outcome of the condition evaluation that was run by this step execution.
@@ -15696,19 +13399,18 @@ class PipelineExecutionStepMetadata(Base):
     auto_ml_job: The Amazon Resource Name (ARN) of the AutoML job that was run by this step.
     endpoint: The endpoint that was invoked during this step execution.
     endpoint_config: The endpoint configuration used to create an endpoint during this step execution.
-    bedrock_custom_model
-    bedrock_custom_model_deployment
-    bedrock_provisioned_model_throughput
-    bedrock_model_import
-    inference_component
-    lineage
+    bedrock_custom_model:  The metadata of the Amazon Bedrock custom model used in the pipeline execution step.
+    bedrock_custom_model_deployment:  The metadata of the Amazon Bedrock custom model deployment used in pipeline execution step.
+    bedrock_provisioned_model_throughput:  The metadata of the Amazon Bedrock provisioned model throughput used in the pipeline execution step.
+    bedrock_model_import:  The metadata of Amazon Bedrock model import used in pipeline execution step.
+    inference_component:  The metadata of the inference component used in pipeline execution step.
+    lineage:  The metadata of the lineage used in pipeline execution step.
     """
 
     training_job: Optional[TrainingJobStepMetadata] = Unassigned()
     processing_job: Optional[ProcessingJobStepMetadata] = Unassigned()
     transform_job: Optional[TransformJobStepMetadata] = Unassigned()
     tuning_job: Optional[TuningJobStepMetaData] = Unassigned()
-    compilation_job: Optional[CompilationJobStepMetadata] = Unassigned()
     model: Optional[ModelStepMetadata] = Unassigned()
     register_model: Optional[RegisterModelStepMetadata] = Unassigned()
     condition: Optional[ConditionStepMetadata] = Unassigned()
@@ -15915,40 +13617,6 @@ class ProjectSummary(Base):
     project_description: Optional[StrPipeVar] = Unassigned()
 
 
-class QuotaAllocationSummary(Base):
-    """
-    QuotaAllocationSummary
-
-    Attributes
-    ----------------------
-    quota_allocation_arn
-    quota_id
-    quota_allocation_name
-    cluster_arn
-    quota_resources
-    creation_time
-    last_modified_time
-    quota_allocation_status
-    quota_allocation_target
-    activation_state
-    preemption_config
-    over_quota
-    """
-
-    quota_allocation_arn: Optional[StrPipeVar] = Unassigned()
-    quota_id: Optional[StrPipeVar] = Unassigned()
-    quota_allocation_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    cluster_arn: Optional[StrPipeVar] = Unassigned()
-    quota_resources: Optional[List[QuotaResourceConfig]] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    quota_allocation_status: Optional[StrPipeVar] = Unassigned()
-    quota_allocation_target: Optional[QuotaAllocationTarget] = Unassigned()
-    activation_state: Optional[ActivationStateV1] = Unassigned()
-    preemption_config: Optional[PreemptionConfig] = Unassigned()
-    over_quota: Optional[OverQuota] = Unassigned()
-
-
 class ResourceCatalog(Base):
     """
     ResourceCatalog
@@ -15966,64 +13634,6 @@ class ResourceCatalog(Base):
     resource_catalog_name: Union[StrPipeVar, object]
     description: StrPipeVar
     creation_time: datetime.datetime
-
-
-class SharedModelVersionListEntity(Base):
-    """
-    SharedModelVersionListEntity
-
-    Attributes
-    ----------------------
-    shared_model_version
-    creator
-    model_type
-    problem_type
-    description
-    model_identifier
-    creation_time
-    last_modified_time
-    """
-
-    shared_model_version: Optional[StrPipeVar] = Unassigned()
-    creator: Optional[StrPipeVar] = Unassigned()
-    model_type: Optional[StrPipeVar] = Unassigned()
-    problem_type: Optional[StrPipeVar] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    model_identifier: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-
-
-class SharedModelListEntity(Base):
-    """
-    SharedModelListEntity
-
-    Attributes
-    ----------------------
-    shared_model_id
-    shared_model_version
-    owner
-    model_name
-    model_type
-    problem_type
-    description
-    shares
-    model_identifier
-    creation_time
-    last_modified_time
-    """
-
-    shared_model_id: Optional[StrPipeVar] = Unassigned()
-    shared_model_version: Optional[StrPipeVar] = Unassigned()
-    owner: Optional[StrPipeVar] = Unassigned()
-    model_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    model_type: Optional[StrPipeVar] = Unassigned()
-    problem_type: Optional[StrPipeVar] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    shares: Optional[int] = Unassigned()
-    model_identifier: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
 
 
 class SpaceSettingsSummary(Base):
@@ -16134,7 +13744,6 @@ class TrainingJobSummary(Base):
     training_job_status: The status of the training job.
     secondary_status: The secondary status of the training job.
     warm_pool_status: The status of the warm pool associated with the training job.
-    keep_alive_period_in_seconds
     training_plan_arn: The Amazon Resource Name (ARN); of the training plan associated with this training job. For more information about how to reserve GPU capacity for your SageMaker HyperPod clusters using Amazon SageMaker Training Plan, see  CreateTrainingPlan .
     """
 
@@ -16146,7 +13755,6 @@ class TrainingJobSummary(Base):
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     secondary_status: Optional[StrPipeVar] = Unassigned()
     warm_pool_status: Optional[WarmPoolStatus] = Unassigned()
-    keep_alive_period_in_seconds: Optional[int] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
 
 
@@ -16185,12 +13793,9 @@ class TrainingPlanSummary(Base):
     total_instance_count: The total number of instances reserved in this training plan.
     available_instance_count: The number of instances currently available for use in this training plan.
     in_use_instance_count: The number of instances currently in use from this training plan.
-    unhealthy_instance_count
-    available_spare_instance_count
     total_ultra_server_count: The total number of UltraServers allocated to this training plan.
-    target_resources: The target resources (e.g., training jobs, HyperPod clusters) that can use this training plan. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.
+    target_resources: The target resources (e.g., training jobs, HyperPod clusters, Endpoints) that can use this training plan. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.   A training plan for SageMaker endpoints can be used exclusively to provide compute resources to SageMaker endpoints for model deployment.
     reserved_capacity_summaries: A list of reserved capacities associated with this training plan, including details such as instance types, counts, and availability zones.
-    training_plan_status_transitions
     """
 
     training_plan_arn: StrPipeVar
@@ -16206,12 +13811,9 @@ class TrainingPlanSummary(Base):
     total_instance_count: Optional[int] = Unassigned()
     available_instance_count: Optional[int] = Unassigned()
     in_use_instance_count: Optional[int] = Unassigned()
-    unhealthy_instance_count: Optional[int] = Unassigned()
-    available_spare_instance_count: Optional[int] = Unassigned()
     total_ultra_server_count: Optional[int] = Unassigned()
     target_resources: Optional[List[StrPipeVar]] = Unassigned()
     reserved_capacity_summaries: Optional[List[ReservedCapacitySummary]] = Unassigned()
-    training_plan_status_transitions: Optional[List[TrainingPlanStatusTransition]] = Unassigned()
 
 
 class TransformJobSummary(Base):
@@ -16468,11 +14070,8 @@ class TransformJob(Base):
     transform_end_time: Indicates when the transform job has been completed, or has stopped or failed. You are billed for the time interval between this time and the value of TransformStartTime.
     labeling_job_arn: The Amazon Resource Name (ARN) of the labeling job that created the transform job.
     auto_ml_job_arn: The Amazon Resource Name (ARN) of the AutoML job that created the transform job.
-    transform_job_progress
     data_processing
     experiment_config
-    last_modified_by
-    created_by
     tags: A list of tags associated with the transform job.
     """
 
@@ -16495,11 +14094,8 @@ class TransformJob(Base):
     transform_end_time: Optional[datetime.datetime] = Unassigned()
     labeling_job_arn: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    transform_job_progress: Optional[TransformJobProgress] = Unassigned()
     data_processing: Optional[DataProcessing] = Unassigned()
     experiment_config: Optional[ExperimentConfig] = Unassigned()
-    last_modified_by: Optional[UserContext] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
     tags: Optional[List[Tag]] = Unassigned()
 
 
@@ -16521,11 +14117,6 @@ class ModelDashboardMonitoringSchedule(Base):
     endpoint_name: The endpoint which is monitored.
     monitoring_alert_summaries: A JSON array where each element is a summary for a monitoring alert.
     last_monitoring_execution_summary
-    custom_monitoring_job_definition
-    data_quality_job_definition
-    model_quality_job_definition
-    model_bias_job_definition
-    model_explainability_job_definition
     batch_transform_input
     """
 
@@ -16540,11 +14131,6 @@ class ModelDashboardMonitoringSchedule(Base):
     endpoint_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     monitoring_alert_summaries: Optional[List[MonitoringAlertSummary]] = Unassigned()
     last_monitoring_execution_summary: Optional[MonitoringExecutionSummary] = Unassigned()
-    custom_monitoring_job_definition: Optional[CustomMonitoringJobDefinition] = Unassigned()
-    data_quality_job_definition: Optional[DataQualityJobDefinition] = Unassigned()
-    model_quality_job_definition: Optional[ModelQualityJobDefinition] = Unassigned()
-    model_bias_job_definition: Optional[ModelBiasJobDefinition] = Unassigned()
-    model_explainability_job_definition: Optional[ModelExplainabilityJobDefinition] = Unassigned()
     batch_transform_input: Optional[BatchTransformInput] = Unassigned()
 
 
@@ -16614,7 +14200,7 @@ class ModelPackage(Base):
     model_package_name: The name of the model package. The name can be as follows:   For a versioned model, the name is automatically generated by SageMaker Model Registry and follows the format 'ModelPackageGroupName/ModelPackageVersion'.   For an unversioned model, you must provide the name.
     model_package_group_name: The model group to which the model belongs.
     model_package_version: The version number of a versioned model.
-    model_package_registration_type
+    model_package_registration_type:  The package registration type of the model package.
     model_package_arn: The Amazon Resource Name (ARN) of the model package.
     model_package_description: The description of the model package.
     creation_time: The time that the model package was created.
@@ -16628,7 +14214,6 @@ class ModelPackage(Base):
     created_by: Information about the user who created or modified an experiment, trial, trial component, lineage group, or project.
     metadata_properties: Metadata properties of the tracking entity, trial, or trial component.
     model_metrics: Metrics for the model.
-    deployment_specification
     last_modified_time: The last time the model package was modified.
     last_modified_by: Information about the user who created or modified an experiment, trial, trial component, lineage group, or project.
     approval_description: A description provided when the model approval is set.
@@ -16663,7 +14248,6 @@ class ModelPackage(Base):
     created_by: Optional[UserContext] = Unassigned()
     metadata_properties: Optional[MetadataProperties] = Unassigned()
     model_metrics: Optional[ModelMetrics] = Unassigned()
-    deployment_specification: Optional[DeploymentSpecification] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_modified_by: Optional[UserContext] = Unassigned()
     approval_description: Optional[StrPipeVar] = Unassigned()
@@ -16811,7 +14395,6 @@ class PipelineExecution(Base):
     pipeline_parameters: Contains a list of pipeline parameters. This list can be empty.
     pipeline_version_id: The ID of the pipeline version that started this execution.
     pipeline_version_display_name: The display name of the pipeline version that started this execution.
-    tags
     """
 
     pipeline_arn: Optional[StrPipeVar] = Unassigned()
@@ -16830,7 +14413,6 @@ class PipelineExecution(Base):
     pipeline_parameters: Optional[List[Parameter]] = Unassigned()
     pipeline_version_id: Optional[int] = Unassigned()
     pipeline_version_display_name: Optional[StrPipeVar] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
 
 
 class PipelineVersion(Base):
@@ -16842,7 +14424,6 @@ class PipelineVersion(Base):
     ----------------------
     pipeline_arn: The Amazon Resource Name (ARN) of the pipeline.
     pipeline_version_id: The ID of the pipeline version.
-    pipeline_version_arn
     pipeline_version_display_name: The display name of the pipeline version.
     pipeline_version_description: The description of the pipeline version.
     creation_time: The creation time of the pipeline version.
@@ -16856,7 +14437,6 @@ class PipelineVersion(Base):
 
     pipeline_arn: Optional[StrPipeVar] = Unassigned()
     pipeline_version_id: Optional[int] = Unassigned()
-    pipeline_version_arn: Optional[StrPipeVar] = Unassigned()
     pipeline_version_display_name: Optional[StrPipeVar] = Unassigned()
     pipeline_version_description: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
@@ -16893,8 +14473,6 @@ class ProcessingJob(Base):
     processing_start_time: The time that the processing job started.
     last_modified_time: The time the processing job was last modified.
     creation_time: The time the processing job was created.
-    last_modified_by
-    created_by
     monitoring_schedule_arn: The ARN of a monitoring schedule for an endpoint associated with this processing job.
     auto_ml_job_arn: The Amazon Resource Name (ARN) of the AutoML job associated with this processing job.
     training_job_arn: The ARN of the training job associated with this processing job.
@@ -16919,8 +14497,6 @@ class ProcessingJob(Base):
     processing_start_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_by: Optional[UserContext] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
     monitoring_schedule_arn: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
     training_job_arn: Optional[StrPipeVar] = Unassigned()
@@ -17085,6 +14661,8 @@ class ReservedCapacityOffering(Base):
     duration_minutes: The additional minutes beyond whole hours in the total duration for this reserved capacity offering.
     start_time: The start time of the reserved capacity offering.
     end_time: The end time of the reserved capacity offering.
+    extension_start_time: The start time of the extension for the reserved capacity offering.
+    extension_end_time: The end time of the extension for the reserved capacity offering.
     """
 
     instance_type: StrPipeVar
@@ -17097,18 +14675,8 @@ class ReservedCapacityOffering(Base):
     duration_minutes: Optional[int] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
     end_time: Optional[datetime.datetime] = Unassigned()
-
-
-class ResourceAlreadyExists(Base):
-    """
-    ResourceAlreadyExists
-
-    Attributes
-    ----------------------
-    message
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
+    extension_start_time: Optional[datetime.datetime] = Unassigned()
+    extension_end_time: Optional[datetime.datetime] = Unassigned()
 
 
 class ResourceConfigForUpdate(Base):
@@ -17182,7 +14750,6 @@ class TrainingJob(Base):
     labeling_job_arn: The Amazon Resource Name (ARN) of the labeling job.
     auto_ml_job_arn: The Amazon Resource Name (ARN) of the job.
     model_artifacts: Information about the Amazon S3 location that is configured for storing model artifacts.
-    training_job_output
     training_job_status: The status of the training job. Training job statuses are:    InProgress - The training is in progress.    Completed - The training job has completed.    Failed - The training job has failed. To see the reason for the failure, see the FailureReason field in the response to a DescribeTrainingJobResponse call.    Stopping - The training job is stopping.    Stopped - The training job has stopped.   For more detailed information, see SecondaryStatus.
     secondary_status:  Provides detailed information about the state of the training job. For detailed information about the secondary status of the training job, see StatusMessage under SecondaryStatusTransition. SageMaker provides primary statuses and secondary statuses that apply to each of them:  InProgress     Starting - Starting the training job.    Downloading - An optional stage for algorithms that support File training input mode. It indicates that data is being downloaded to the ML storage volumes.    Training - Training is in progress.    Uploading - Training is complete and the model artifacts are being uploaded to the S3 location.    Completed     Completed - The training job has completed.    Failed     Failed - The training job has failed. The reason for the failure is returned in the FailureReason field of DescribeTrainingJobResponse.    Stopped     MaxRuntimeExceeded - The job stopped because it exceeded the maximum allowed runtime.    Stopped - The training job has stopped.    Stopping     Stopping - Stopping the training job.      Valid values for SecondaryStatus are subject to change.   We no longer support the following secondary statuses:    LaunchingMLInstances     PreparingTrainingStack     DownloadingTrainingImage
     failure_reason: If the training job failed, the reason it failed.
@@ -17211,15 +14778,11 @@ class TrainingJob(Base):
     debug_rule_configurations: Information about the debug rule configuration.
     tensor_board_output_config
     debug_rule_evaluation_statuses: Information about the evaluation status of the rules for the training job.
-    output_model_package_arn
-    model_package_config
-    upstream_platform_config
+    output_model_package_arn:  The output model package Amazon Resource Name (ARN) that contains model weights or checkpoint.
+    model_package_config:  The model package configuration.
     profiler_config
-    disable_efa
     environment: The environment variables to set in the Docker container.
     retry_strategy: The number of times to retry the job when the job fails due to an InternalServerError.
-    last_modified_by
-    created_by
     tags: An array of key-value pairs. You can use tags to categorize your Amazon Web Services resources in different ways, for example, by purpose, owner, or environment. For more information, see Tagging Amazon Web Services Resources.
     """
 
@@ -17229,7 +14792,6 @@ class TrainingJob(Base):
     labeling_job_arn: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
     model_artifacts: Optional[ModelArtifacts] = Unassigned()
-    training_job_output: Optional[TrainingJobOutput] = Unassigned()
     training_job_status: Optional[StrPipeVar] = Unassigned()
     secondary_status: Optional[StrPipeVar] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
@@ -17260,13 +14822,9 @@ class TrainingJob(Base):
     debug_rule_evaluation_statuses: Optional[List[DebugRuleEvaluationStatus]] = Unassigned()
     output_model_package_arn: Optional[StrPipeVar] = Unassigned()
     model_package_config: Optional[ModelPackageConfig] = Unassigned()
-    upstream_platform_config: Optional[UpstreamPlatformConfig] = Unassigned()
     profiler_config: Optional[ProfilerConfig] = Unassigned()
-    disable_efa: Optional[bool] = Unassigned()
     environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     retry_strategy: Optional[RetryStrategy] = Unassigned()
-    last_modified_by: Optional[UserContext] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
     tags: Optional[List[Tag]] = Unassigned()
 
 
@@ -17398,42 +14956,6 @@ class TrialComponent(Base):
     run_name: Optional[StrPipeVar] = Unassigned()
 
 
-class UserProfile(Base):
-    """
-    UserProfile
-
-    Attributes
-    ----------------------
-    domain_id
-    user_profile_arn
-    user_profile_name
-    home_efs_file_system_uid
-    status
-    last_modified_time
-    creation_time
-    failure_reason
-    single_sign_on_user_identifier
-    single_sign_on_user_value
-    user_policy
-    user_settings
-    tags
-    """
-
-    domain_id: Optional[StrPipeVar] = Unassigned()
-    user_profile_arn: Optional[StrPipeVar] = Unassigned()
-    user_profile_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    home_efs_file_system_uid: Optional[StrPipeVar] = Unassigned()
-    status: Optional[StrPipeVar] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    single_sign_on_user_identifier: Optional[StrPipeVar] = Unassigned()
-    single_sign_on_user_value: Optional[StrPipeVar] = Unassigned()
-    user_policy: Optional[StrPipeVar] = Unassigned()
-    user_settings: Optional[UserSettings] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-
-
 class SearchRecord(Base):
     """
     SearchRecord
@@ -17445,7 +14967,6 @@ class SearchRecord(Base):
     experiment: The properties of an experiment.
     trial: The properties of a trial.
     trial_component: The properties of a trial component.
-    transform_job
     endpoint
     model_package
     model_package_group
@@ -17454,22 +14975,16 @@ class SearchRecord(Base):
     pipeline_version: The version of the pipeline.
     feature_group
     feature_metadata: The feature metadata used to search through the features.
-    image
-    image_version
     project: The properties of a project.
     hyper_parameter_tuning_job: The properties of a hyperparameter tuning job.
     model_card: An Amazon SageMaker Model Card that documents details about a machine learning model.
     model
-    app
-    user_profile
-    domain
     """
 
     training_job: Optional[TrainingJob] = Unassigned()
     experiment: Optional[Experiment] = Unassigned()
     trial: Optional[Trial] = Unassigned()
     trial_component: Optional[TrialComponent] = Unassigned()
-    transform_job: Optional[TransformJob] = Unassigned()
     endpoint: Optional[Endpoint] = Unassigned()
     model_package: Optional[ModelPackage] = Unassigned()
     model_package_group: Optional[ModelPackageGroup] = Unassigned()
@@ -17478,15 +14993,10 @@ class SearchRecord(Base):
     pipeline_version: Optional[PipelineVersion] = Unassigned()
     feature_group: Optional[FeatureGroup] = Unassigned()
     feature_metadata: Optional[FeatureMetadata] = Unassigned()
-    image: Optional[ImageSearchShape] = Unassigned()
-    image_version: Optional[ImageVersionSearchShape] = Unassigned()
     project: Optional[Project] = Unassigned()
     hyper_parameter_tuning_job: Optional[HyperParameterTuningJobSearchEntity] = Unassigned()
     model_card: Optional[ModelCard] = Unassigned()
     model: Optional[ModelDashboardModel] = Unassigned()
-    app: Optional[App] = Unassigned()
-    user_profile: Optional[UserProfile] = Unassigned()
-    domain: Optional[Domain] = Unassigned()
 
 
 class VisibilityConditions(Base):
@@ -17527,7 +15037,7 @@ class TrainingPlanOffering(Base):
     Attributes
     ----------------------
     training_plan_offering_id: The unique identifier for this training plan offering.
-    target_resources: The target resources (e.g., SageMaker Training Jobs, SageMaker HyperPod) for this training plan offering. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.
+    target_resources: The target resources (e.g., SageMaker Training Jobs, SageMaker HyperPod, SageMaker Endpoints) for this training plan offering. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.   A training plan for SageMaker endpoints can be used exclusively to provide compute resources to SageMaker endpoints for model deployment.
     requested_start_time_after: The requested start time that the user specified when searching for the training plan offering.
     requested_end_time_before: The requested end time that the user specified when searching for the training plan offering.
     duration_hours: The number of whole hours in the total duration for this training plan offering.
@@ -17548,6 +15058,31 @@ class TrainingPlanOffering(Base):
     reserved_capacity_offerings: Optional[List[ReservedCapacityOffering]] = Unassigned()
 
 
+class TrainingPlanExtensionOffering(Base):
+    """
+    TrainingPlanExtensionOffering
+      Details about an available extension offering for a training plan. Use the offering ID with the  ExtendTrainingPlan  API to extend a training plan.
+
+    Attributes
+    ----------------------
+    training_plan_extension_offering_id: The unique identifier for this extension offering.
+    availability_zone: The Availability Zone for this extension offering.
+    start_date: The start date of this extension offering.
+    end_date: The end date of this extension offering.
+    duration_hours: The duration of this extension offering in hours.
+    upfront_fee: The upfront fee for this extension offering.
+    currency_code: The currency code for the upfront fee (e.g., USD).
+    """
+
+    training_plan_extension_offering_id: StrPipeVar
+    availability_zone: Optional[StrPipeVar] = Unassigned()
+    start_date: Optional[datetime.datetime] = Unassigned()
+    end_date: Optional[datetime.datetime] = Unassigned()
+    duration_hours: Optional[int] = Unassigned()
+    upfront_fee: Optional[StrPipeVar] = Unassigned()
+    currency_code: Optional[StrPipeVar] = Unassigned()
+
+
 class ServiceCatalogProvisioningUpdateDetails(Base):
     """
     ServiceCatalogProvisioningUpdateDetails
@@ -17561,114 +15096,6 @@ class ServiceCatalogProvisioningUpdateDetails(Base):
 
     provisioning_artifact_id: Optional[StrPipeVar] = Unassigned()
     provisioning_parameters: Optional[List[ProvisioningParameter]] = Unassigned()
-
-
-class StudioUserSettings(Base):
-    """
-    StudioUserSettings
-
-    Attributes
-    ----------------------
-    space_storage_settings
-    default_landing_uri
-    """
-
-    space_storage_settings: Optional[SpaceStorageSettings] = Unassigned()
-    default_landing_uri: Optional[StrPipeVar] = Unassigned()
-
-
-class TagrisAccessDeniedException(Base):
-    """
-    TagrisAccessDeniedException
-
-    Attributes
-    ----------------------
-    message
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
-
-
-class TagrisInternalServiceException(Base):
-    """
-    TagrisInternalServiceException
-
-    Attributes
-    ----------------------
-    message
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
-
-
-class TagrisSweepListItem(Base):
-    """
-    TagrisSweepListItem
-
-    Attributes
-    ----------------------
-    tagris_account_id
-    tagris_amazon_resource_name
-    tagris_internal_id
-    tagris_version
-    """
-
-    tagris_account_id: Optional[StrPipeVar] = Unassigned()
-    tagris_amazon_resource_name: Optional[StrPipeVar] = Unassigned()
-    tagris_internal_id: Optional[StrPipeVar] = Unassigned()
-    tagris_version: Optional[int] = Unassigned()
-
-
-class TagrisInvalidArnException(Base):
-    """
-    TagrisInvalidArnException
-
-    Attributes
-    ----------------------
-    message
-    sweep_list_item
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
-    sweep_list_item: Optional[TagrisSweepListItem] = Unassigned()
-
-
-class TagrisInvalidParameterException(Base):
-    """
-    TagrisInvalidParameterException
-
-    Attributes
-    ----------------------
-    message
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
-
-
-class TagrisPartialResourcesExistResultsException(Base):
-    """
-    TagrisPartialResourcesExistResultsException
-
-    Attributes
-    ----------------------
-    message
-    resource_existence_information
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
-    resource_existence_information: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-
-
-class TagrisThrottledException(Base):
-    """
-    TagrisThrottledException
-
-    Attributes
-    ----------------------
-    message
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
 
 
 class ThroughputConfigUpdate(Base):
@@ -17696,11 +15123,9 @@ class UpdateClusterSoftwareInstanceGroupSpecification(Base):
     Attributes
     ----------------------
     instance_group_name: The name of the instance group to update.
-    custom_metadata
     """
 
     instance_group_name: StrPipeVar
-    custom_metadata: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
 
 
 class VariantProperty(Base):
