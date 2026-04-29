@@ -2039,7 +2039,7 @@ class ResourcesCodeGen:
             Dict with attributes that can be configurable
 
         """
-        PYTHON_TYPES = ["StrPipeVar", "datetime.datetime", "bool", "int", "float"]
+        PYTHON_TYPES = ["StrPipeVar", "IntPipeVar", "datetime.datetime", "bool", "int", "float"]
         default_attributes = {}
         for key, value in class_attributes.items():
             if value in PYTHON_TYPES or value.startswith("List"):
