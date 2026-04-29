@@ -496,7 +496,6 @@ class TestTelemetryLogging(unittest.TestCase):
         self.assertEqual(url, expected_url)
         self.assertIn("x-createdBy=awslabs%2Fagent-plugins%2Fsagemaker-ai", url)
 
-
     @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
     @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
     def test_telemetry_emitter_with_resource_arn(

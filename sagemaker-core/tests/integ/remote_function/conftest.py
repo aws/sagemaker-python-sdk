@@ -150,42 +150,70 @@ def gpu_instance_type():
 
 
 @pytest.fixture(scope="session")
-def dummy_container_without_error(sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_without_error(
+    sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return _build_container_once(
-        "dummy_container_without_error", sagemaker_session, compatible_python_version,
-        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        "dummy_container_without_error",
+        sagemaker_session,
+        compatible_python_version,
+        DOCKERFILE_TEMPLATE,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
 @pytest.fixture(scope="session")
-def dummy_container_with_user_and_workdir(sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_with_user_and_workdir(
+    sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return _build_container_once(
-        "dummy_container_with_user_and_workdir", sagemaker_session, compatible_python_version,
-        DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR, sagemaker_sdk_tar_path, tmp_path_factory,
+        "dummy_container_with_user_and_workdir",
+        sagemaker_session,
+        compatible_python_version,
+        DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
 @pytest.fixture(scope="session")
-def dummy_container_incompatible_python_runtime(sagemaker_session, incompatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_incompatible_python_runtime(
+    sagemaker_session, incompatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return _build_container_once(
-        "dummy_container_incompatible_python_runtime", sagemaker_session, incompatible_python_version,
-        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        "dummy_container_incompatible_python_runtime",
+        sagemaker_session,
+        incompatible_python_version,
+        DOCKERFILE_TEMPLATE,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
 @pytest.fixture(scope="session")
-def dummy_container_with_conda(sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory):
+def dummy_container_with_conda(
+    sagemaker_session, compatible_python_version, sagemaker_sdk_tar_path, tmp_path_factory
+):
     return _build_container_once(
-        "dummy_container_with_conda", sagemaker_session, compatible_python_version,
-        DOCKERFILE_TEMPLATE_WITH_CONDA, sagemaker_sdk_tar_path, tmp_path_factory,
+        "dummy_container_with_conda",
+        sagemaker_session,
+        compatible_python_version,
+        DOCKERFILE_TEMPLATE_WITH_CONDA,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
 @pytest.fixture(scope="session")
 def auto_capture_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_path_factory):
     return _build_container_once(
-        "auto_capture_test_container", sagemaker_session, "3.10",
-        AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        "auto_capture_test_container",
+        sagemaker_session,
+        "3.10",
+        AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
         is_auto_capture=True,
     )
 
@@ -193,8 +221,12 @@ def auto_capture_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_p
 @pytest.fixture(scope="session")
 def spark_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_path_factory):
     return _build_container_once(
-        "spark_test_container", sagemaker_session, "3.9",
-        DOCKERFILE_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
+        "spark_test_container",
+        sagemaker_session,
+        "3.9",
+        DOCKERFILE_TEMPLATE,
+        sagemaker_sdk_tar_path,
+        tmp_path_factory,
     )
 
 
@@ -252,8 +284,13 @@ _tmpdir = contextmanager(_tmpdir)
 
 
 def _build_container_once(
-    fixture_name, sagemaker_session, py_version, docker_template, sdk_tar_path,
-    tmp_path_factory, is_auto_capture=False,
+    fixture_name,
+    sagemaker_session,
+    py_version,
+    docker_template,
+    sdk_tar_path,
+    tmp_path_factory,
+    is_auto_capture=False,
 ):
     """Build and push a container image exactly once across all xdist workers.
 

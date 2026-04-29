@@ -64,7 +64,7 @@ class TestRemoteExecutorValidation:
 
         with pytest.raises(TypeError):
             RemoteExecutor._validate_submit_args(my_function, 1, 2)
-        
+
     def test_validate_env_names_valid(self):
         """Test valid conda environment names"""
         valid_names = [
@@ -86,6 +86,7 @@ class TestRemoteExecutorValidation:
         for name in invalid_names:
             with pytest.raises(ValueError):
                 RemoteExecutor._validate_env_name(name)
+
 
 class TestWorkerFunctions:
     """Test worker thread functions"""

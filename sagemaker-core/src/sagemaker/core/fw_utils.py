@@ -458,9 +458,7 @@ def tar_and_upload_dir(
 
     try:
         source_files = _list_files_to_compress(script, directory) + dependencies
-        tar_file = utils.create_tar_file(
-            source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME)
-        )
+        tar_file = utils.create_tar_file(source_files, os.path.join(tmp, _TAR_SOURCE_FILENAME))
 
         if kms_key:
             extra_args = {"ServerSideEncryption": "aws:kms", "SSEKMSKeyId": kms_key}
@@ -1208,7 +1206,7 @@ def create_image_uri(
         the image uri
     """
     from sagemaker.core import image_uris
-    
+
     renamed_warning("The method create_image_uri")
     return image_uris.retrieve(
         framework=framework,

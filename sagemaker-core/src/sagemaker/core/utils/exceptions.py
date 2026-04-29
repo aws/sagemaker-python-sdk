@@ -81,7 +81,13 @@ class TimeoutExceededError(WaiterError):
 
     fmt = "Timeout exceeded while waiting for {resource_type}. Final Resource State: {status}. {message}"
 
-    def __init__(self, resource_type="(Unkown)", status="(Unkown)", reason="(Unkown)", message="Increase the timeout and try again."):
+    def __init__(
+        self,
+        resource_type="(Unkown)",
+        status="(Unkown)",
+        reason="(Unkown)",
+        message="Increase the timeout and try again.",
+    ):
         """Initialize a TimeoutExceededError exception.
         Args:
             resource_type (str): The type of resource being waited on.

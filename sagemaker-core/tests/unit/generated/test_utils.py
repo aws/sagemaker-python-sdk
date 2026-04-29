@@ -375,7 +375,7 @@ def test_serialize_method_nested_shape():
 
 class TestUnassignedBehavior:
     """Test Unassigned class methods for proper behavior.
-    
+
     Bug fix: GetRecordResponse is not printable and cannot be parsed via iterator.
     Error: TypeError: 'Unassigned' object is not iterable
     """
@@ -411,10 +411,10 @@ class TestUnassignedBehavior:
     def test_unassigned_in_conditional(self):
         """Test that Unassigned works correctly in conditionals."""
         u = Unassigned()
-        
+
         # Should evaluate to False
         if u:
             pytest.fail("Unassigned should be falsy")
-        
+
         # Should work with not
         assert not u

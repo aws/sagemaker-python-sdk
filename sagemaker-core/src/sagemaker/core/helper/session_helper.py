@@ -240,6 +240,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.sagemaker_client = sagemaker_client
         else:
             from sagemaker.core.user_agent import get_user_agent_extra_suffix
+
             config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
             self.sagemaker_client = self.boto_session.client("sagemaker", config=config)
 
@@ -1877,7 +1878,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if "/" in role:
             return role
         return self.boto_session.resource("iam").Role(role).arn
-    
+
 
 def _expand_container_def(c_def):
     """Placeholder docstring"""
@@ -2714,7 +2715,9 @@ def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, pagina
         if endpoint_status != "Creating":
             stop = True
             if endpoint_status == "InService":
-                LOGGER.info("Created endpoint with name %s. Waiting for it to be InService", endpoint_name)
+                LOGGER.info(
+                    "Created endpoint with name %s. Waiting for it to be InService", endpoint_name
+                )
             else:
                 time.sleep(poll)
 

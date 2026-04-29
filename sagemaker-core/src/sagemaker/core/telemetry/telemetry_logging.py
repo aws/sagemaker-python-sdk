@@ -132,9 +132,7 @@ def _telemetry_emitter(feature: str, func_name: str):
                                     FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION_OSS)]
                                 )
                     except Exception:  # pylint: disable=W0703
-                        logger.debug(
-                            "Unable to determine NOVA/OSS model type for telemetry."
-                        )
+                        logger.debug("Unable to determine NOVA/OSS model type for telemetry.")
 
                 if (
                     hasattr(sagemaker_session, "sagemaker_config")

@@ -303,7 +303,7 @@ def remote(
     """
 
     def _remote(func):
-        
+
         if job_conda_env:
             RemoteExecutor._validate_env_name(job_conda_env)
 
@@ -775,7 +775,7 @@ class RemoteExecutor(object):
                 + "without spark_config or use_torchrun or use_mpirun. "
                 + "Please provide instance_count = 1"
             )
-        
+
         if job_conda_env:
             self._validate_env_name(job_conda_env)
 
@@ -955,21 +955,22 @@ class RemoteExecutor(object):
                 + f"{'arguments' if len(missing_kwargs) > 1 else 'argument'}: "
                 + f"{missing_kwargs_string}"
             )
-    
+
     @staticmethod
     def _validate_env_name(env_name: str) -> None:
         """Validate conda environment name to prevent command injection.
-        
+
         Args:
             env_name (str): The environment name to validate
-            
+
         Raises:
             ValueError: If the environment name contains invalid characters
         """
-        
+
         # Allow only alphanumeric, underscore, and hyphen
         import re
-        if not re.match(r'^[a-zA-Z0-9_-]+$', env_name):
+
+        if not re.match(r"^[a-zA-Z0-9_-]+$", env_name):
             raise ValueError(
                 f"Invalid environment name '{env_name}'. "
                 "Only alphanumeric characters, underscores, and hyphens are allowed."

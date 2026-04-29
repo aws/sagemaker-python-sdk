@@ -238,8 +238,6 @@ class TestProcessorNormalizeOutputs:
             processor._normalize_outputs(["invalid"])
 
 
-
-
 class TestBugConditionFileUriReplacedInLocalMode:
     """Bug condition exploration test: file:// URIs should be preserved in local mode.
 
@@ -444,7 +442,9 @@ class TestPreservationNonLocalFileBehavior:
             [{"key": "value"}],
         ],
     )
-    def test_non_processing_output_raises_type_error(self, invalid_output, session_local_mode_false):
+    def test_non_processing_output_raises_type_error(
+        self, invalid_output, session_local_mode_false
+    ):
         """Non-ProcessingOutput objects must raise TypeError.
 
         **Validates: Requirements 3.4**
@@ -1155,7 +1155,6 @@ class TestFrameworkProcessorPackageCode:
                 kms_key=None,
             )
 
-
     def test_package_code_with_code_location(self, mock_session):
         processor = FrameworkProcessor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
@@ -1459,11 +1458,17 @@ class TestProcessorStartNewWithTags:
                 "tags": [{"Key": "Key", "Value": "Value"}],
             },
         ):
-            with patch("sagemaker.core.processing.serialize", return_value={"tags": [{"Key": "Key", "Value": "Value"}]}):
+            with patch(
+                "sagemaker.core.processing.serialize",
+                return_value={"tags": [{"Key": "Key", "Value": "Value"}]},
+            ):
                 with patch("sagemaker.core.processing.ProcessingJob") as mock_job_class:
                     with patch(
                         "sagemaker.core.utils.code_injection.codec.transform",
-                        return_value={"processing_job_name": "test-job", "tags": [{"Key": "Key", "Value": "Value"}]},
+                        return_value={
+                            "processing_job_name": "test-job",
+                            "tags": [{"Key": "Key", "Value": "Value"}],
+                        },
                     ):
                         processor._start_new([], [], None)
                         # Verify ProcessingJob was called without tags

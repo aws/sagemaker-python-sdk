@@ -1370,7 +1370,9 @@ class TestBucketCheckWithPrefix:
             Bucket="test-bucket", Prefix="sample-prefix", ExpectedBucketOwner="123456789012"
         )
 
-    def test_expected_bucket_owner_check_without_prefix(self, mock_boto_session, mock_sagemaker_client):
+    def test_expected_bucket_owner_check_without_prefix(
+        self, mock_boto_session, mock_sagemaker_client
+    ):
         """Test expected bucket owner check uses head_bucket without prefix."""
         session = Session(
             boto_session=mock_boto_session,

@@ -124,10 +124,11 @@ class SourceCode(BaseConfig):
         ".ipynb_checkpoints",
     ]
 
+
 class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 
-    Provides the configuration for the output data location of the training job 
+    Provides the configuration for the output data location of the training job
     (will not be carried over to any model repository or deployment).
 
     Parameters:
