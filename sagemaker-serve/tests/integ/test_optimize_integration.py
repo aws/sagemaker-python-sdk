@@ -32,7 +32,7 @@ ENDPOINT_NAME_PREFIX = "jumpstart-optimize-test-endpoint"
 
 # Configuration from optimize test
 AWS_ACCOUNT_ID = "593793038179"
-AWS_REGION = "us-west-2"
+AWS_REGION = "us-east-2"
 
 
 def test_optimize_build_deploy_invoke_cleanup():
