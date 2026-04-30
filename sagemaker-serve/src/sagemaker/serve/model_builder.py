@@ -2411,6 +2411,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         f"{self.model._latest_training_job.model_artifacts.s3_model_artifacts}"
                         "/checkpoints/hf/"
                     )
+                elif isinstance(self.model, ModelPackage):
+                    self._adapter_s3_uri = (
+                        model_package.inference_specification.containers[
+                            0
+                        ].model_data_source.s3_data_source.s3_uri
+                    )
             else:
                 # Non-LORA: Model points at training output
                 self.s3_upload_path = model_package.inference_specification.containers[
@@ -2418,6 +2424,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ].model_data_source.s3_data_source.s3_uri
                 container_def = ContainerDefinition(
                     image=self.image_uri,
+                    environment=self.env_vars,
                     model_data_source={
                         "s3_data_source": {
                             "s3_uri": self.s3_upload_path.rstrip("/") + "/",
@@ -4554,6 +4561,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             training_job = self.model
         elif isinstance(self.model, ModelTrainer):
             training_job = self.model._latest_training_job
+        elif isinstance(self.model, ModelPackage):
+            try:
+                recipe_name = (
+                    self.model.inference_specification.containers[0].base_model.recipe_name
+                )
+                if recipe_name and "lora" in recipe_name.lower():
+                    return "LORA"
+            except (AttributeError, IndexError):
+                pass
+            return None
         else:
             return None
 
