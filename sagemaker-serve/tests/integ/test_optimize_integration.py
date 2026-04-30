@@ -35,7 +35,6 @@ AWS_ACCOUNT_ID = "593793038179"
 AWS_REGION = "us-east-2"
 
 
-@pytest.mark.skip(reason="Test takes too long to run")
 def test_optimize_build_deploy_invoke_cleanup():
     """Integration test for Optimize workflow"""
     logger.info("Starting Optimize integration test...")
@@ -98,7 +97,8 @@ def build_and_deploy():
         quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
         accept_eula=True,
         job_name=f"js-optimize-{int(time.time())}",
-        image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.31.0-lmi13.0.0-cu124"
+        image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.31.0-lmi13.0.0-cu124",
+        region=AWS_REGION
     )
     logger.info(f"Model Successfully Optimized: {optimized_model.model_name}")
     
