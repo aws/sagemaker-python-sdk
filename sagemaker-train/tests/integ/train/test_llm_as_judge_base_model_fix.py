@@ -76,7 +76,6 @@ TEST_CONFIG = {
 }
 
 
-@pytest.mark.serial
 class TestLLMAsJudgeBaseModelFix:
     """Integration test for base model fix in LLMAsJudgeEvaluator"""
 
@@ -274,6 +273,32 @@ class TestLLMAsJudgeBaseModelFix:
         logger.info(f"✓ Pipeline started successfully")
         logger.info(f"  Execution ARN: {execution.arn}")
         
+        # Verify pipeline structure - should only have custom inference step
+        execution.refresh()
+        step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
+        
+        logger.info(f"Pipeline steps ({len(step_names)}): {step_names}")
+        
+        # If no steps yet, wait a bit for pipeline to initialize
+        if not step_names:
+            logger.info("No steps found yet, waiting for pipeline initialization...")
+            import time
+            time.sleep(10)
+            execution.refresh()
+            step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
+            logger.info(f"Pipeline steps after wait ({len(step_names)}): {step_names}")
+        
+        # Should NOT have base inference step (case-insensitive, flexible matching)
+        has_base_step = any("base" in name.lower() and "inference" in name.lower() for name in step_names)
+        has_custom_step = any("custom" in name.lower() and "inference" in name.lower() for name in step_names)
+        
+        assert not has_base_step, f"Pipeline should NOT have base inference step when evaluate_base_model=False. Found steps: {step_names}"
+        assert has_custom_step, f"Pipeline should have custom inference step. Found steps: {step_names}"
+        
+        logger.info(f"✓ Pipeline structure correct for evaluate_base_model=False")
+        logger.info(f"  Base model step: {'Found (ERROR!)' if has_base_step else 'Not present (correct)'}")
+        logger.info(f"  Custom model step: {'Found (correct)' if has_custom_step else 'Missing (ERROR!)'}")
+        
         # Wait for completion
         logger.info(f"\nWaiting for evaluation to complete...")
         
@@ -282,28 +307,6 @@ class TestLLMAsJudgeBaseModelFix:
             logger.info(f"\n✓ Evaluation completed successfully")
             
             assert execution.status.overall_status == "Succeeded"
-            
-            # Verify pipeline structure - should only have custom inference step
-            # Check after completion — step details are
-            # only reliable once the execution has finished.  Checking earlier
-            # is racy when tests run in parallel (pytest-xdist) because
-            # _get_or_create_pipeline may update a shared pipeline resource
-            # and the service can briefly return stale step metadata.
-            execution.refresh()
-            step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
-            
-            logger.info(f"Pipeline steps ({len(step_names)}): {step_names}")
-            
-            # Should NOT have base inference step (case-insensitive, flexible matching)
-            has_base_step = any("base" in name.lower() and "inference" in name.lower() for name in step_names)
-            has_custom_step = any("custom" in name.lower() and "inference" in name.lower() for name in step_names)
-            
-            assert not has_base_step, f"Pipeline should NOT have base inference step when evaluate_base_model=False. Found steps: {step_names}"
-            assert has_custom_step, f"Pipeline should have custom inference step. Found steps: {step_names}"
-            
-            logger.info(f"✓ Pipeline structure correct for evaluate_base_model=False")
-            logger.info(f"  Base model step: {'Found (ERROR!)' if has_base_step else 'Not present (correct)'}")
-            logger.info(f"  Custom model step: {'Found (correct)' if has_custom_step else 'Missing (ERROR!)'}")
             
             logger.info("\n" + "=" * 80)
             logger.info("Backward Compatibility Test: PASSED")
