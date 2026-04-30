@@ -49,9 +49,14 @@ def endpoint_name():
 
 
 @pytest.fixture(scope="session", autouse=True)
-def cleanup_e2e_endpoints():
-    """Cleanup e2e endpoints before and after tests."""
+def cleanup_e2e_endpoints(tmp_path_factory):
+    """Cleanup e2e endpoints before tests.
+
+    Fixture session scope is per-worker in pytest-xdist, so filelock ensures only one
+    worker actually performs the cleanup while the others wait and skip.
+    """
     import os
+    import filelock
     from botocore.exceptions import ClientError
 
     # This file's tests use us-west-2 resources. Set SAGEMAKER_REGION so the
@@ -62,29 +67,25 @@ def cleanup_e2e_endpoints():
 
     from sagemaker.core.resources import Endpoint
 
-    # Cleanup before tests
-    try:
-        for endpoint in Endpoint.get_all():
+    # Use filelock so only one worker performs the cleanup in parallel runs
+    root_tmp = tmp_path_factory.getbasetemp().parent
+    lock_file = root_tmp / "e2e_endpoint_cleanup.lock"
+    done_file = root_tmp / "e2e_endpoint_cleanup.done"
+
+    with filelock.FileLock(str(lock_file)):
+        if not done_file.exists():
             try:
-                if endpoint.endpoint_name.startswith('e2e-'):
-                    endpoint.delete()
+                for endpoint in Endpoint.get_all():
+                    try:
+                        if endpoint.endpoint_name.startswith('e2e-'):
+                            endpoint.delete()
+                    except (ClientError, Exception):
+                        pass
             except (ClientError, Exception):
                 pass
-    except (ClientError, Exception):
-        pass
+            done_file.write_text("done")
 
     yield
-
-    # Cleanup after tests
-    try:
-        for endpoint in Endpoint.get_all():
-            try:
-                if endpoint.endpoint_name.startswith('e2e-'):
-                    endpoint.delete()
-            except (ClientError, Exception):
-                pass
-    except (ClientError, Exception):
-        pass
 
     # Restore original SAGEMAKER_REGION
     if original_sm_region:
