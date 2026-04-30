@@ -704,3 +704,108 @@ class TestGitUrlSanitization:
                     "Invalid characters in hostname",
                 ]
             )
+
+
+class TestCredentialRedaction:
+    """Test cases for credential redaction in clone error handling."""
+
+    def test_redact_token_from_url(self):
+        """Test that a token embedded in an HTTPS URL is redacted."""
+        url = "https://ghp_SuperSecretToken123@github.com/user/repo.git"
+        result = git_utils._redact_credentials_from_url(url)
+        assert "ghp_SuperSecretToken123" not in result
+        assert result == "https://<credentials-redacted>@github.com/user/repo.git"
+
+    def test_redact_username_password_from_url(self):
+        """Test that username:password embedded in an HTTPS URL is redacted."""
+        url = "https://myuser:mypassword@github.com/user/repo.git"
+        result = git_utils._redact_credentials_from_url(url)
+        assert "myuser" not in result
+        assert "mypassword" not in result
+        assert result == "https://<credentials-redacted>@github.com/user/repo.git"
+
+    def test_redact_url_encoded_password(self):
+        """Test that URL-encoded credentials are redacted."""
+        url = "https://user:p%40ss%20word@git-codecommit.us-east-1.amazonaws.com/v1/repos/myrepo"
+        result = git_utils._redact_credentials_from_url(url)
+        assert "p%40ss%20word" not in result
+        assert "<credentials-redacted>" in result
+
+    def test_no_redaction_without_credentials(self):
+        """Test that URLs without credentials are unchanged."""
+        url = "https://github.com/user/repo.git"
+        result = git_utils._redact_credentials_from_url(url)
+        assert result == url
+
+    def test_no_redaction_for_ssh_url(self):
+        """Test that SSH URLs are not affected by redaction."""
+        url = "git@github.com:user/repo.git"
+        result = git_utils._redact_credentials_from_url(url)
+        assert result == url
+
+    def test_clone_failure_redacts_token(self):
+        """Test that CalledProcessError from a failed clone does not contain the token."""
+        token_url = "https://ghp_secret123@github.com/user/repo.git"
+        with patch(
+            "subprocess.check_call",
+            side_effect=subprocess.CalledProcessError(
+                128, ["git", "clone", token_url, "/tmp/dest"]
+            ),
+        ):
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                git_utils._run_clone_command(token_url, "/tmp/dest")
+
+            assert "ghp_secret123" not in str(exc_info.value)
+            assert "ghp_secret123" not in str(exc_info.value.cmd)
+            assert "<credentials-redacted>" in str(exc_info.value.cmd)
+
+    def test_clone_failure_redacts_username_password(self):
+        """Test that CalledProcessError from a failed clone does not contain username/password."""
+        cred_url = "https://admin:hunter2@github.com/org/repo.git"
+        with patch(
+            "subprocess.check_call",
+            side_effect=subprocess.CalledProcessError(
+                128, ["git", "clone", cred_url, "/tmp/dest"]
+            ),
+        ):
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                git_utils._run_clone_command(cred_url, "/tmp/dest")
+
+            assert "admin" not in str(exc_info.value.cmd)
+            assert "hunter2" not in str(exc_info.value.cmd)
+            assert "<credentials-redacted>" in str(exc_info.value.cmd)
+
+    def test_clone_failure_redacts_codecommit_credentials(self):
+        """Test that CodeCommit HTTPS credentials are redacted on failure."""
+        cc_url = "https://user:pass@git-codecommit.us-east-1.amazonaws.com/v1/repos/myrepo"
+        with patch(
+            "subprocess.check_call",
+            side_effect=subprocess.CalledProcessError(
+                128, ["git", "clone", cc_url, "/tmp/dest"]
+            ),
+        ):
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                git_utils._run_clone_command(cc_url, "/tmp/dest")
+
+            assert "user:pass" not in str(exc_info.value.cmd)
+            assert "<credentials-redacted>" in str(exc_info.value.cmd)
+
+    def test_clone_failure_suppresses_exception_chain(self):
+        """Test that the original exception chain is suppressed (from None)."""
+        token_url = "https://ghp_secret@github.com/user/repo.git"
+        with patch(
+            "subprocess.check_call",
+            side_effect=subprocess.CalledProcessError(
+                128, ["git", "clone", token_url, "/tmp/dest"]
+            ),
+        ):
+            with pytest.raises(subprocess.CalledProcessError) as exc_info:
+                git_utils._run_clone_command(token_url, "/tmp/dest")
+
+            assert exc_info.value.__cause__ is None
+
+    def test_clone_success_no_exception(self):
+        """Test that successful clone does not raise."""
+        url = "https://ghp_token@github.com/user/repo.git"
+        with patch("subprocess.check_call"):
+            git_utils._run_clone_command(url, "/tmp/dest")
