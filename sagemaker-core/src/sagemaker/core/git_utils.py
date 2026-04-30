@@ -371,6 +371,9 @@ def _run_clone_command(repo_url, dest_dir):
                 output=e.output,
                 stderr=e.stderr,
             ) from None
+        except Exception as e:
+            safe_url = _redact_credentials_from_url(repo_url)
+            raise type(e)(str(e).replace(repo_url, safe_url)) from None
     elif repo_url.startswith("git@") or repo_url.startswith("ssh://"):
         try:
             with tempfile.TemporaryDirectory() as tmp_dir:
