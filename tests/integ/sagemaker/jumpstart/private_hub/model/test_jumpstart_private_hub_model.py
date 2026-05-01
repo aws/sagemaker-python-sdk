@@ -116,6 +116,7 @@ def test_jumpstart_hub_gated_model(setup, add_model_references):
     predictor = model.deploy(
         accept_eula=True,
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        instance_type="ml.g5.2xlarge",
     )
 
     payload = model.retrieve_example_payload()
