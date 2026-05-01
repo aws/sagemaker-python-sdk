@@ -1,5 +1,5 @@
 # Changelog
-## v3.10.0 (2026-04-30)
+## v3.10.0 (2026-05-01)
 
 ### New Features
 - Make _PipelineExecution a public class
