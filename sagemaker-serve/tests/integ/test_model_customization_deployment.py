@@ -61,6 +61,38 @@ def endpoint_name():
     return f"e2e-{int(time.time())}-{random.randint(100, 10000)}"
 
 
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_e2e_endpoints():
+    """Cleanup old e2e endpoints (if any)."""
+    from botocore.exceptions import ClientError
+
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    from datetime import datetime, timezone, timedelta
+    from sagemaker.core.resources import Endpoint
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=24)
+
+    # Cleanup before tests — only delete endpoints created more than 24 hours ago
+    try:
+        for endpoint in Endpoint.get_all(creation_time_before=cutoff):
+            try:
+                if endpoint.endpoint_name.startswith('e2e-'):
+                    endpoint.delete()
+                    logger.info(
+                        "cleanup_e2e_endpoints: deleted old endpoint '%s' "
+                        "(created %s)",
+                        endpoint.endpoint_name,
+                        endpoint.creation_time,
+                    )
+            except (ClientError, Exception):
+                pass
+    except (ClientError, Exception):
+        pass
+
+
 @pytest.fixture(scope="module")
 def cleanup_endpoints():
     """Track endpoints to cleanup after tests."""
