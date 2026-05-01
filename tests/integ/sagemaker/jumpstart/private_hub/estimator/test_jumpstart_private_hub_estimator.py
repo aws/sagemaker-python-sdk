@@ -148,6 +148,7 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
         model_id=model_id,
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        instance_type="ml.g5.2xlarge",
     )
 
     estimator.fit(
@@ -162,6 +163,7 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
+        instance_type="ml.g5.2xlarge",
     )
 
     payload = {
@@ -182,6 +184,7 @@ def test_jumpstart_hub_gated_estimator_without_eula(setup, add_model_references)
         model_id=model_id,
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        instance_type="ml.g5.2xlarge",
     )
     with pytest.raises(Exception):
         estimator.fit(
