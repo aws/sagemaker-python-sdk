@@ -1,4 +1,10 @@
 # Changelog
+## v1.10.0 (2026-05-01)
+
+### Bug Fixes
+
+- Fix potential S3 path traversal
+
 ## v1.9.0 (2026-04-23)
 
 ### Bug Fixes

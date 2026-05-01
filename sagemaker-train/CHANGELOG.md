@@ -1,4 +1,18 @@
 # Changelog
+## v1.10.0 (2026-05-01)
+
+### New Features
+
+- Add CodeArtifact support for ModelTrainer and FrameworkProcessor requirements.txt installation
+
+### Bug Fixes
+
+- Fix failing train tests for v3
+
+### Other
+
+- Update service-2.json with latest public botocore service model
+
 ## v1.9.0 (2026-04-23)
 
 ### New Features

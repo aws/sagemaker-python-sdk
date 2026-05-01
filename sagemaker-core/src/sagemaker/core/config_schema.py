@@ -16,6 +16,33 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                         "Resources": {
                             "type": "object",
                             "properties": {
+                                "AIBenchmarkJob": {
+                                    "type": "object",
+                                    "properties": {
+                                        "output_config": {"s3_output_location": {"type": "string"}},
+                                        "role_arn": {"type": "string"},
+                                        "network_config": {
+                                            "vpc_config": {
+                                                "security_group_ids": {
+                                                    "type": "array",
+                                                    "items": {"type": "string"},
+                                                },
+                                                "subnets": {
+                                                    "type": "array",
+                                                    "items": {"type": "string"},
+                                                },
+                                            }
+                                        },
+                                    },
+                                },
+                                "AIRecommendationJob": {
+                                    "type": "object",
+                                    "properties": {
+                                        "model_source": {"s3": {"s3_uri": {"type": "string"}}},
+                                        "output_config": {"s3_output_location": {"type": "string"}},
+                                        "role_arn": {"type": "string"},
+                                    },
+                                },
                                 "Algorithm": {
                                     "type": "object",
                                     "properties": {
@@ -23,7 +50,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                             "additional_s3_data_source": {
                                                 "s3_data_type": {"type": "string"},
                                                 "s3_uri": {"type": "string"},
-                                                "manifest_s3_uri": {"type": "string"},
                                             }
                                         },
                                         "validation_specification": {
@@ -123,9 +149,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                             "s3_output_location": {"type": "string"},
                                             "kms_key_id": {"type": "string"},
                                         },
-                                        "resource_config": {
-                                            "volume_kms_key_id": {"type": "string"}
-                                        },
                                         "vpc_config": {
                                             "security_group_ids": {
                                                 "type": "array",
@@ -135,46 +158,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                                 "type": "array",
                                                 "items": {"type": "string"},
                                             },
-                                        },
-                                    },
-                                },
-                                "CustomMonitoringJobDefinition": {
-                                    "type": "object",
-                                    "properties": {
-                                        "custom_monitoring_job_input": {
-                                            "endpoint_input": {
-                                                "s3_input_mode": {"type": "string"},
-                                                "s3_data_distribution_type": {"type": "string"},
-                                            },
-                                            "batch_transform_input": {
-                                                "data_captured_destination_s3_uri": {
-                                                    "type": "string"
-                                                },
-                                                "s3_input_mode": {"type": "string"},
-                                                "s3_data_distribution_type": {"type": "string"},
-                                            },
-                                            "ground_truth_s3_input": {"s3_uri": {"type": "string"}},
-                                        },
-                                        "job_resources": {
-                                            "cluster_config": {
-                                                "volume_kms_key_id": {"type": "string"}
-                                            }
-                                        },
-                                        "role_arn": {"type": "string"},
-                                        "custom_monitoring_job_output_config": {
-                                            "kms_key_id": {"type": "string"}
-                                        },
-                                        "network_config": {
-                                            "vpc_config": {
-                                                "security_group_ids": {
-                                                    "type": "array",
-                                                    "items": {"type": "string"},
-                                                },
-                                                "subnets": {
-                                                    "type": "array",
-                                                    "items": {"type": "string"},
-                                                },
-                                            }
                                         },
                                     },
                                 },
@@ -238,10 +221,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         "security_group_id_for_domain_boundary": {"type": "string"},
                                         "default_user_settings": {
                                             "execution_role": {"type": "string"},
-                                            "environment_settings": {
-                                                "default_s3_artifact_path": {"type": "string"},
-                                                "default_s3_kms_key_id": {"type": "string"},
-                                            },
                                             "security_groups": {
                                                 "type": "array",
                                                 "items": {"type": "string"},
@@ -281,16 +260,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                                         "items": {"type": "string"},
                                                     },
                                                 }
-                                            },
-                                            "emr_settings": {
-                                                "assumable_role_arns": {
-                                                    "type": "array",
-                                                    "items": {"type": "string"},
-                                                },
-                                                "execution_role_arns": {
-                                                    "type": "array",
-                                                    "items": {"type": "string"},
-                                                },
                                             },
                                         },
                                         "domain_settings": {
@@ -388,26 +357,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         },
                                     },
                                 },
-                                "EvaluationJob": {
-                                    "type": "object",
-                                    "properties": {
-                                        "output_data_config": {
-                                            "s3_uri": {"type": "string"},
-                                            "kms_key_id": {"type": "string"},
-                                        },
-                                        "role_arn": {"type": "string"},
-                                        "upstream_platform_config": {
-                                            "upstream_platform_customer_output_data_config": {
-                                                "s3_uri": {"type": "string"},
-                                                "kms_key_id": {"type": "string"},
-                                                "s3_kms_encryption_context": {"type": "string"},
-                                            },
-                                            "upstream_platform_customer_execution_role": {
-                                                "type": "string"
-                                            },
-                                        },
-                                    },
-                                },
                                 "FeatureGroup": {
                                     "type": "object",
                                     "properties": {
@@ -432,34 +381,13 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                             "kms_key_id": {"type": "string"},
                                         },
                                         "role_arn": {"type": "string"},
-                                        "task_rendering_role_arn": {"type": "string"},
-                                        "kms_key_id": {"type": "string"},
                                     },
-                                },
-                                "GroundTruthJob": {
-                                    "type": "object",
-                                    "properties": {
-                                        "input_config": {
-                                            "data_source": {
-                                                "s3_data_source": {"s3_uri": {"type": "string"}}
-                                            }
-                                        },
-                                        "output_config": {"s3_output_path": {"type": "string"}},
-                                    },
-                                },
-                                "GroundTruthWorkflow": {
-                                    "type": "object",
-                                    "properties": {"execution_role_arn": {"type": "string"}},
                                 },
                                 "Hub": {
                                     "type": "object",
                                     "properties": {
                                         "s3_storage_config": {"s3_output_path": {"type": "string"}}
                                     },
-                                },
-                                "HumanTaskUi": {
-                                    "type": "object",
-                                    "properties": {"kms_key_id": {"type": "string"}},
                                 },
                                 "HyperParameterTuningJob": {
                                     "type": "object",
@@ -469,9 +397,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                             "output_data_config": {
                                                 "s3_output_path": {"type": "string"},
                                                 "kms_key_id": {"type": "string"},
-                                                "remove_job_name_from_s3_output_path": {
-                                                    "type": "boolean"
-                                                },
                                             },
                                             "vpc_config": {
                                                 "security_group_ids": {
@@ -522,15 +447,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                                 },
                                             },
                                         },
-                                        "output_config": {
-                                            "kms_key_id": {"type": "string"},
-                                            "compiled_output_config": {
-                                                "s3_output_uri": {"type": "string"}
-                                            },
-                                            "benchmark_results_output_config": {
-                                                "s3_output_uri": {"type": "string"}
-                                            },
-                                        },
                                     },
                                 },
                                 "LabelingJob": {
@@ -551,7 +467,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         "human_task_config": {
                                             "ui_config": {"ui_template_s3_uri": {"type": "string"}}
                                         },
-                                        "task_rendering_role_arn": {"type": "string"},
                                         "label_category_config_s3_uri": {"type": "string"},
                                         "labeling_job_algorithms_config": {
                                             "labeling_job_resource_config": {
@@ -579,7 +494,11 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                 },
                                 "MlflowTrackingServer": {
                                     "type": "object",
-                                    "properties": {"role_arn": {"type": "string"}},
+                                    "properties": {
+                                        "role_arn": {"type": "string"},
+                                        "s3_bucket_owner_account_id": {"type": "string"},
+                                        "s3_bucket_owner_verification": {"type": "boolean"},
+                                    },
                                 },
                                 "Model": {
                                     "type": "object",
@@ -734,19 +653,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                                 "report": {"s3_uri": {"type": "string"}}
                                             },
                                         },
-                                        "deployment_specification": {
-                                            "test_input": {
-                                                "data_source": {
-                                                    "s3_data_source": {
-                                                        "s3_data_type": {"type": "string"},
-                                                        "s3_uri": {"type": "string"},
-                                                        "s3_data_distribution_type": {
-                                                            "type": "string"
-                                                        },
-                                                    }
-                                                }
-                                            }
-                                        },
                                         "drift_check_baselines": {
                                             "bias": {
                                                 "config_file": {"s3_uri": {"type": "string"}},
@@ -851,219 +757,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                                     }
                                                 },
                                             }
-                                        },
-                                        "custom_monitoring_job_definition": {
-                                            "custom_monitoring_job_input": {
-                                                "endpoint_input": {
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                                "batch_transform_input": {
-                                                    "data_captured_destination_s3_uri": {
-                                                        "type": "string"
-                                                    },
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                                "ground_truth_s3_input": {
-                                                    "s3_uri": {"type": "string"}
-                                                },
-                                            },
-                                            "custom_monitoring_job_output_config": {
-                                                "kms_key_id": {"type": "string"}
-                                            },
-                                            "job_resources": {
-                                                "cluster_config": {
-                                                    "volume_kms_key_id": {"type": "string"}
-                                                }
-                                            },
-                                            "role_arn": {"type": "string"},
-                                            "network_config": {
-                                                "vpc_config": {
-                                                    "security_group_ids": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                    "subnets": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                }
-                                            },
-                                        },
-                                        "data_quality_job_definition": {
-                                            "data_quality_job_input": {
-                                                "endpoint_input": {
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                                "batch_transform_input": {
-                                                    "data_captured_destination_s3_uri": {
-                                                        "type": "string"
-                                                    },
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                            },
-                                            "data_quality_job_output_config": {
-                                                "kms_key_id": {"type": "string"}
-                                            },
-                                            "job_resources": {
-                                                "cluster_config": {
-                                                    "volume_kms_key_id": {"type": "string"}
-                                                }
-                                            },
-                                            "role_arn": {"type": "string"},
-                                            "data_quality_baseline_config": {
-                                                "constraints_resource": {
-                                                    "s3_uri": {"type": "string"}
-                                                },
-                                                "statistics_resource": {
-                                                    "s3_uri": {"type": "string"}
-                                                },
-                                            },
-                                            "network_config": {
-                                                "vpc_config": {
-                                                    "security_group_ids": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                    "subnets": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                }
-                                            },
-                                        },
-                                        "model_quality_job_definition": {
-                                            "model_quality_job_input": {
-                                                "ground_truth_s3_input": {
-                                                    "s3_uri": {"type": "string"}
-                                                },
-                                                "endpoint_input": {
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                                "batch_transform_input": {
-                                                    "data_captured_destination_s3_uri": {
-                                                        "type": "string"
-                                                    },
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                            },
-                                            "model_quality_job_output_config": {
-                                                "kms_key_id": {"type": "string"}
-                                            },
-                                            "job_resources": {
-                                                "cluster_config": {
-                                                    "volume_kms_key_id": {"type": "string"}
-                                                }
-                                            },
-                                            "role_arn": {"type": "string"},
-                                            "model_quality_baseline_config": {
-                                                "constraints_resource": {
-                                                    "s3_uri": {"type": "string"}
-                                                }
-                                            },
-                                            "network_config": {
-                                                "vpc_config": {
-                                                    "security_group_ids": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                    "subnets": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                }
-                                            },
-                                        },
-                                        "model_bias_job_definition": {
-                                            "model_bias_job_input": {
-                                                "ground_truth_s3_input": {
-                                                    "s3_uri": {"type": "string"}
-                                                },
-                                                "endpoint_input": {
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                                "batch_transform_input": {
-                                                    "data_captured_destination_s3_uri": {
-                                                        "type": "string"
-                                                    },
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                            },
-                                            "model_bias_job_output_config": {
-                                                "kms_key_id": {"type": "string"}
-                                            },
-                                            "job_resources": {
-                                                "cluster_config": {
-                                                    "volume_kms_key_id": {"type": "string"}
-                                                }
-                                            },
-                                            "role_arn": {"type": "string"},
-                                            "model_bias_baseline_config": {
-                                                "constraints_resource": {
-                                                    "s3_uri": {"type": "string"}
-                                                }
-                                            },
-                                            "network_config": {
-                                                "vpc_config": {
-                                                    "security_group_ids": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                    "subnets": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                }
-                                            },
-                                        },
-                                        "model_explainability_job_definition": {
-                                            "model_explainability_job_input": {
-                                                "endpoint_input": {
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                                "batch_transform_input": {
-                                                    "data_captured_destination_s3_uri": {
-                                                        "type": "string"
-                                                    },
-                                                    "s3_input_mode": {"type": "string"},
-                                                    "s3_data_distribution_type": {"type": "string"},
-                                                },
-                                            },
-                                            "model_explainability_job_output_config": {
-                                                "kms_key_id": {"type": "string"}
-                                            },
-                                            "job_resources": {
-                                                "cluster_config": {
-                                                    "volume_kms_key_id": {"type": "string"}
-                                                }
-                                            },
-                                            "role_arn": {"type": "string"},
-                                            "model_explainability_baseline_config": {
-                                                "constraints_resource": {
-                                                    "s3_uri": {"type": "string"}
-                                                }
-                                            },
-                                            "network_config": {
-                                                "vpc_config": {
-                                                    "security_group_ids": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                    "subnets": {
-                                                        "type": "array",
-                                                        "items": {"type": "string"},
-                                                    },
-                                                }
-                                            },
-                                        },
+                                        }
                                     },
                                 },
                                 "NotebookInstance": {
@@ -1136,30 +830,16 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         "role_arn": {"type": "string"},
                                     },
                                 },
-                                "QuotaAllocation": {
-                                    "type": "object",
-                                    "properties": {
-                                        "quota_allocation_target": {
-                                            "roles": {"type": "array", "items": {"type": "string"}}
-                                        }
-                                    },
-                                },
                                 "TrainingJob": {
                                     "type": "object",
                                     "properties": {
                                         "model_artifacts": {
                                             "s3_model_artifacts": {"type": "string"}
                                         },
-                                        "training_job_output": {
-                                            "s3_training_job_output": {"type": "string"}
-                                        },
                                         "role_arn": {"type": "string"},
                                         "output_data_config": {
                                             "s3_output_path": {"type": "string"},
                                             "kms_key_id": {"type": "string"},
-                                            "remove_job_name_from_s3_output_path": {
-                                                "type": "boolean"
-                                            },
                                         },
                                         "resource_config": {
                                             "volume_kms_key_id": {"type": "string"}
@@ -1179,43 +859,7 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         "tensor_board_output_config": {
                                             "s3_output_path": {"type": "string"}
                                         },
-                                        "upstream_platform_config": {
-                                            "credential_proxy_config": {
-                                                "customer_credential_provider_kms_key_id": {
-                                                    "type": "string"
-                                                },
-                                                "platform_credential_provider_kms_key_id": {
-                                                    "type": "string"
-                                                },
-                                            },
-                                            "vpc_config": {
-                                                "security_group_ids": {
-                                                    "type": "array",
-                                                    "items": {"type": "string"},
-                                                },
-                                                "subnets": {
-                                                    "type": "array",
-                                                    "items": {"type": "string"},
-                                                },
-                                            },
-                                            "output_data_config": {
-                                                "kms_key_id": {"type": "string"}
-                                            },
-                                            "checkpoint_config": {"s3_uri": {"type": "string"}},
-                                            "enable_s3_context_keys_on_input_data": {
-                                                "type": "boolean"
-                                            },
-                                            "execution_role": {"type": "string"},
-                                        },
                                         "profiler_config": {"s3_output_path": {"type": "string"}},
-                                        "processing_job_config": {
-                                            "processing_output_config": {
-                                                "kms_key_id": {"type": "string"}
-                                            },
-                                            "upstream_processing_output_config": {
-                                                "kms_key_id": {"type": "string"}
-                                            },
-                                        },
                                     },
                                 },
                                 "TransformJob": {
@@ -1247,10 +891,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                     "properties": {
                                         "user_settings": {
                                             "execution_role": {"type": "string"},
-                                            "environment_settings": {
-                                                "default_s3_artifact_path": {"type": "string"},
-                                                "default_s3_kms_key_id": {"type": "string"},
-                                            },
                                             "security_groups": {
                                                 "type": "array",
                                                 "items": {"type": "string"},
@@ -1290,16 +930,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                                         "items": {"type": "string"},
                                                     },
                                                 }
-                                            },
-                                            "emr_settings": {
-                                                "assumable_role_arns": {
-                                                    "type": "array",
-                                                    "items": {"type": "string"},
-                                                },
-                                                "execution_role_arns": {
-                                                    "type": "array",
-                                                    "items": {"type": "string"},
-                                                },
                                             },
                                         }
                                     },

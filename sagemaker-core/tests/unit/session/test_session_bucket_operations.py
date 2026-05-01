@@ -222,3 +222,216 @@ class TestSessionBucketOperations:
         assert result == "sagemaker-us-west-2-123456789012"
         # Should check bucket ownership
         mock_s3_resource.meta.client.head_bucket.assert_called()
+
+
+class TestGeneralBucketCheckExpectedBucketOwner:
+    """Test general_bucket_check_if_user_has_permission passes ExpectedBucketOwner
+    when the SDK generated the default bucket name (bucket-squatting defense).
+    """
+
+    @pytest.fixture
+    def mock_boto_session(self):
+        mock_session = Mock()
+        mock_session.region_name = "us-west-2"
+        mock_session.client.return_value = Mock()
+        mock_session.resource.return_value = Mock()
+        return mock_session
+
+    def test_probe_includes_expected_owner_when_sdk_selected_name(self, mock_boto_session):
+        """head_bucket should carry ExpectedBucketOwner when SDK picked the name."""
+        mock_s3_resource = Mock()
+        mock_s3_resource.meta.client.head_bucket.return_value = None  # 200 OK
+
+        session = Session(boto_session=mock_boto_session)
+        session._default_bucket_set_by_sdk = True
+        with patch.object(session, "account_id", return_value="123456789012"):
+            session.general_bucket_check_if_user_has_permission(
+                "sagemaker-us-west-2-123456789012",
+                mock_s3_resource,
+                Mock(),
+                "us-west-2",
+                False,
+            )
+
+        mock_s3_resource.meta.client.head_bucket.assert_called_once_with(
+            Bucket="sagemaker-us-west-2-123456789012",
+            ExpectedBucketOwner="123456789012",
+        )
+
+    def test_probe_omits_expected_owner_when_user_selected_name(self, mock_boto_session):
+        """Probe must NOT pass ExpectedBucketOwner when the user picked the bucket name.
+
+        This keeps legitimate cross-account bucket overrides working.
+        """
+        mock_s3_resource = Mock()
+        mock_s3_resource.meta.client.head_bucket.return_value = None  # 200 OK
+
+        session = Session(boto_session=mock_boto_session)
+        session._default_bucket_set_by_sdk = False
+        session.general_bucket_check_if_user_has_permission(
+            "customer-cross-account-bucket", mock_s3_resource, Mock(), "us-west-2", False
+        )
+
+        mock_s3_resource.meta.client.head_bucket.assert_called_once_with(
+            Bucket="customer-cross-account-bucket"
+        )
+
+    def test_list_objects_probe_includes_expected_owner_when_sdk_selected(
+        self, mock_boto_session
+    ):
+        """list_objects_v2 branch (default_bucket_prefix set) passes ExpectedBucketOwner
+        only when SDK picked the name.
+        """
+        mock_s3_resource = Mock()
+        mock_s3_resource.meta.client.list_objects_v2.return_value = {}  # 200 OK
+
+        session = Session(boto_session=mock_boto_session)
+        session.default_bucket_prefix = "team-prefix"
+        session._default_bucket_set_by_sdk = True
+        with patch.object(session, "account_id", return_value="123456789012"):
+            session.general_bucket_check_if_user_has_permission(
+                "sagemaker-us-west-2-123456789012",
+                mock_s3_resource,
+                Mock(),
+                "us-west-2",
+                False,
+            )
+
+        mock_s3_resource.meta.client.list_objects_v2.assert_called_once_with(
+            Bucket="sagemaker-us-west-2-123456789012",
+            Prefix="team-prefix",
+            ExpectedBucketOwner="123456789012",
+        )
+
+    def test_squatted_bucket_raises_on_403(self, mock_boto_session):
+        """If S3 returns 403 Forbidden (bucket owned by another account),
+        the probe must re-raise instead of silently accepting the bucket.
+        """
+        mock_s3_resource = Mock()
+        mock_bucket = Mock()
+        mock_bucket.name = "sagemaker-us-west-2-123456789012"
+        mock_s3_resource.meta.client.head_bucket.side_effect = ClientError(
+            {"Error": {"Code": "403", "Message": "Forbidden"}}, "HeadBucket"
+        )
+
+        session = Session(boto_session=mock_boto_session)
+        session._default_bucket_set_by_sdk = True
+        with patch.object(session, "account_id", return_value="123456789012"):
+            with pytest.raises(ClientError):
+                session.general_bucket_check_if_user_has_permission(
+                    "sagemaker-us-west-2-123456789012",
+                    mock_s3_resource,
+                    mock_bucket,
+                    "us-west-2",
+                    True,  # bucket_creation_date_none -> enters 403 handling branch
+                )
+
+    def test_missing_bucket_still_triggers_creation(self, mock_boto_session):
+        """404 response path (bucket truly doesn't exist) must still create the bucket."""
+        mock_s3_resource = Mock()
+        mock_bucket = Mock()
+        mock_bucket.name = "sagemaker-us-west-2-123456789012"
+        mock_s3_resource.meta.client.head_bucket.side_effect = ClientError(
+            {"Error": {"Code": "404", "Message": "Not Found"}}, "HeadBucket"
+        )
+
+        session = Session(boto_session=mock_boto_session)
+        session._default_bucket_set_by_sdk = True
+
+        with patch.object(session, "account_id", return_value="123456789012"), patch.object(
+            session, "create_bucket_for_not_exist_error"
+        ) as mock_create:
+            session.general_bucket_check_if_user_has_permission(
+                "sagemaker-us-west-2-123456789012",
+                mock_s3_resource,
+                mock_bucket,
+                "us-west-2",
+                True,
+            )
+
+        mock_create.assert_called_once_with(
+            "sagemaker-us-west-2-123456789012", "us-west-2", mock_s3_resource
+        )
+
+
+class TestExpectedBucketOwnerIdIfDefaultBucket:
+    """Test the spot-check helper used by Group B S3 operations."""
+
+    @pytest.fixture
+    def mock_boto_session(self):
+        mock_session = Mock()
+        mock_session.region_name = "us-west-2"
+        mock_session.client.return_value = Mock()
+        mock_session.resource.return_value = Mock()
+        return mock_session
+
+    def test_returns_none_for_empty_bucket(self, mock_boto_session):
+        session = Session(boto_session=mock_boto_session)
+        assert session._get_account_id_if_default_bucket(None) is None
+        assert session._get_account_id_if_default_bucket("") is None
+
+    def test_returns_account_id_when_bucket_matches_resolved_default(
+        self, mock_boto_session
+    ):
+        session = Session(boto_session=mock_boto_session)
+        session._default_bucket = "sagemaker-us-west-2-123456789012"
+        session._default_bucket_set_by_sdk = True
+
+        with patch.object(session, "account_id", return_value="123456789012"):
+            assert (
+                session._get_account_id_if_default_bucket(
+                    "sagemaker-us-west-2-123456789012"
+                )
+                == "123456789012"
+            )
+
+    def test_returns_none_when_bucket_matches_user_override(self, mock_boto_session):
+        """User-overridden default buckets may be cross-account, so the spot check
+        must NOT fire — only SDK-generated names are vulnerable to squatting.
+        """
+        session = Session(boto_session=mock_boto_session, default_bucket="my-override")
+        session._default_bucket_name_override = "my-override"
+        # _default_bucket_set_by_sdk remains False (user chose the name)
+
+        assert session._get_account_id_if_default_bucket("my-override") is None
+
+    def test_returns_none_for_non_default_bucket(self, mock_boto_session):
+        """Cross-account flows must not trigger the owner check."""
+        session = Session(boto_session=mock_boto_session)
+        session._default_bucket = "sagemaker-us-west-2-123456789012"
+        session._default_bucket_set_by_sdk = True
+
+        with patch.object(session, "account_id", return_value="123456789012"):
+            assert (
+                session._get_account_id_if_default_bucket(
+                    "jumpstart-cache-prod-us-west-2"
+                )
+                is None
+            )
+
+    def test_returns_none_when_default_not_yet_resolved(self, mock_boto_session):
+        """Helper must be passive - not trigger default_bucket() resolution."""
+        session = Session(boto_session=mock_boto_session)
+        session._default_bucket = None
+        session._default_bucket_name_override = None
+
+        assert (
+            session._get_account_id_if_default_bucket(
+                "sagemaker-us-west-2-123456789012"
+            )
+            is None
+        )
+
+    def test_returns_none_when_account_id_fails(self, mock_boto_session):
+        """If STS call fails, fall back gracefully rather than block the S3 op."""
+        session = Session(boto_session=mock_boto_session)
+        session._default_bucket = "sagemaker-us-west-2-123456789012"
+        session._default_bucket_set_by_sdk = True
+
+        with patch.object(session, "account_id", side_effect=Exception("sts failure")):
+            assert (
+                session._get_account_id_if_default_bucket(
+                    "sagemaker-us-west-2-123456789012"
+                )
+                is None
+            )

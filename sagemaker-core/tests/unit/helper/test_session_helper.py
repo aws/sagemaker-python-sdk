@@ -651,6 +651,89 @@ class TestDownloadDataWithDirectories:
         mock_s3_client.download_file.assert_called_once()
 
 
+class TestDownloadDataPathTraversal:
+    """Test download_data blocks path traversal attacks via crafted S3 keys."""
+
+    def test_path_traversal_in_file_key(self, mock_boto_session, mock_sagemaker_client, tmp_path):
+        """Test that S3 keys with '..' traversal sequences are blocked."""
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "data/../../../../etc/passwd", "Size": 100},
+            ]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session.s3_client = mock_s3_client
+
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            session.download_data(
+                path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
+            )
+
+        mock_s3_client.download_file.assert_not_called()
+
+    def test_path_traversal_in_directory_key(
+        self, mock_boto_session, mock_sagemaker_client, tmp_path
+    ):
+        """Test that directory keys resolving outside target are blocked."""
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "data/../../../etc/cron.d/", "Size": 0},
+            ]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session.s3_client = mock_s3_client
+
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            session.download_data(
+                path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
+            )
+
+    def test_path_traversal_overwrite_aws_credentials(
+        self, mock_boto_session, mock_sagemaker_client, tmp_path
+    ):
+        """Test the exact attack scenario from the vulnerability report."""
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "data/../../../../Users/alice/.aws/credentials", "Size": 200},
+            ]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session.s3_client = mock_s3_client
+
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            session.download_data(
+                path=str(tmp_path), bucket="shared-bucket", key_prefix="data/"
+            )
+
+        mock_s3_client.download_file.assert_not_called()
+
+    def test_safe_keys_are_allowed(self, mock_boto_session, mock_sagemaker_client, tmp_path):
+        """Test that normal S3 keys within the target directory are allowed."""
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [
+                {"Key": "data/train.csv", "Size": 100},
+                {"Key": "data/models/model.pkl", "Size": 500},
+            ]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session.s3_client = mock_s3_client
+
+        result = session.download_data(
+            path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
+        )
+
+        assert len(result) == 2
+        assert mock_s3_client.download_file.call_count == 2
+
+
 class TestUploadDataWithExtraArgs:
     """Test upload_data with extra arguments."""
 
@@ -1412,3 +1495,296 @@ class TestBucketCheckWithPrefix:
             "test-bucket", mock_s3_resource, mock_bucket, "us-west-2", True
         )
         mock_s3_resource.meta.client.head_bucket.assert_called_once_with(Bucket="test-bucket")
+
+
+class TestUploadDataSpotCheck:
+    """Spot-check behavior in Session.upload_data.
+
+    ExpectedBucketOwner must be added to ExtraArgs when the destination bucket
+    is the session's default bucket, and NOT added for any other bucket.
+    """
+
+    def test_upload_to_default_bucket_includes_expected_owner(
+        self, mock_boto_session, mock_sagemaker_client, tmp_path
+    ):
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("x")
+
+        mock_s3_resource = Mock()
+        mock_s3_object = Mock()
+        mock_s3_resource.Object.return_value = mock_s3_object
+
+        session = Session(
+            boto_session=mock_boto_session,
+            sagemaker_client=mock_sagemaker_client,
+            default_bucket="sagemaker-us-west-2-111111111111",
+        )
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_resource = mock_s3_resource
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.upload_data(
+                path=str(test_file),
+                bucket="sagemaker-us-west-2-111111111111",
+                key_prefix="data",
+            )
+
+            call_args = mock_s3_object.upload_file.call_args
+            assert call_args[1]["ExtraArgs"] == {"ExpectedBucketOwner": "111111111111"}
+
+    def test_upload_to_non_default_bucket_omits_expected_owner(
+        self, mock_boto_session, mock_sagemaker_client, tmp_path
+    ):
+        """Cross-account uploads (e.g. to a partner or shared bucket) must not
+        carry ExpectedBucketOwner, or they would break.
+        """
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("x")
+
+        mock_s3_resource = Mock()
+        mock_s3_object = Mock()
+        mock_s3_resource.Object.return_value = mock_s3_object
+
+        session = Session(
+            boto_session=mock_boto_session,
+            sagemaker_client=mock_sagemaker_client,
+            default_bucket="sagemaker-us-west-2-111111111111",
+        )
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_resource = mock_s3_resource
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.upload_data(
+                path=str(test_file),
+                bucket="partner-cross-account-bucket",
+                key_prefix="data",
+            )
+
+        call_args = mock_s3_object.upload_file.call_args
+        # ExtraArgs should remain None since caller didn't pass any and bucket is not default.
+        assert call_args[1]["ExtraArgs"] is None
+
+    def test_upload_default_bucket_merges_with_existing_extra_args(
+        self, mock_boto_session, mock_sagemaker_client, tmp_path
+    ):
+        """Existing ExtraArgs (e.g. KMS config) must be preserved alongside ExpectedBucketOwner."""
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("x")
+
+        mock_s3_resource = Mock()
+        mock_s3_object = Mock()
+        mock_s3_resource.Object.return_value = mock_s3_object
+
+        session = Session(
+            boto_session=mock_boto_session,
+            sagemaker_client=mock_sagemaker_client,
+            default_bucket="sagemaker-us-west-2-111111111111",
+        )
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_resource = mock_s3_resource
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.upload_data(
+                path=str(test_file),
+                bucket="sagemaker-us-west-2-111111111111",
+                key_prefix="data",
+                extra_args={"ServerSideEncryption": "AES256"},
+            )
+
+        merged = mock_s3_object.upload_file.call_args[1]["ExtraArgs"]
+        assert merged["ServerSideEncryption"] == "AES256"
+        assert merged["ExpectedBucketOwner"] == "111111111111"
+
+
+class TestUploadStringAsFileBodySpotCheck:
+    """Spot check in Session.upload_string_as_file_body."""
+
+    def test_to_default_bucket_includes_expected_owner(
+        self, mock_boto_session, mock_sagemaker_client
+    ):
+        mock_s3_resource = Mock()
+        mock_s3_object = Mock()
+        mock_s3_resource.Object.return_value = mock_s3_object
+
+        session = Session(
+            boto_session=mock_boto_session,
+            sagemaker_client=mock_sagemaker_client,
+            default_bucket="sagemaker-us-west-2-111111111111",
+        )
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_resource = mock_s3_resource
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.upload_string_as_file_body(
+                body="data",
+                bucket="sagemaker-us-west-2-111111111111",
+                key="some/key",
+            )
+
+        mock_s3_object.put.assert_called_once_with(
+            Body="data", ExpectedBucketOwner="111111111111"
+        )
+
+    def test_to_non_default_bucket_omits_expected_owner(
+        self, mock_boto_session, mock_sagemaker_client
+    ):
+        mock_s3_resource = Mock()
+        mock_s3_object = Mock()
+        mock_s3_resource.Object.return_value = mock_s3_object
+
+        session = Session(
+            boto_session=mock_boto_session,
+            sagemaker_client=mock_sagemaker_client,
+            default_bucket="sagemaker-us-west-2-111111111111",
+        )
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_resource = mock_s3_resource
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.upload_string_as_file_body(
+                body="data",
+                bucket="shared-partner-bucket",
+                key="some/key",
+            )
+
+        mock_s3_object.put.assert_called_once_with(Body="data")
+
+    def test_to_default_bucket_preserves_kms(self, mock_boto_session, mock_sagemaker_client):
+        mock_s3_resource = Mock()
+        mock_s3_object = Mock()
+        mock_s3_resource.Object.return_value = mock_s3_object
+
+        session = Session(
+            boto_session=mock_boto_session,
+            sagemaker_client=mock_sagemaker_client,
+            default_bucket="sagemaker-us-west-2-111111111111",
+        )
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_resource = mock_s3_resource
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.upload_string_as_file_body(
+                body="data",
+                bucket="sagemaker-us-west-2-111111111111",
+                key="some/key",
+                kms_key="kms-key-id",
+            )
+
+        mock_s3_object.put.assert_called_once_with(
+            Body="data",
+            SSEKMSKeyId="kms-key-id",
+            ServerSideEncryption="aws:kms",
+            ExpectedBucketOwner="111111111111",
+        )
+
+
+class TestReadS3FileSpotCheck:
+    """Spot check in Session.read_s3_file."""
+
+    def test_read_from_default_bucket_includes_expected_owner(
+        self, mock_boto_session, mock_sagemaker_client
+    ):
+        mock_s3_client = Mock()
+        mock_body = Mock()
+        mock_body.read.return_value = b"content"
+        mock_s3_client.get_object.return_value = {"Body": mock_body}
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_client = mock_s3_client
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.read_s3_file("sagemaker-us-west-2-111111111111", "k")
+
+        mock_s3_client.get_object.assert_called_once_with(
+            Bucket="sagemaker-us-west-2-111111111111",
+            Key="k",
+            ExpectedBucketOwner="111111111111",
+        )
+
+    def test_read_from_non_default_bucket_omits_expected_owner(
+        self, mock_boto_session, mock_sagemaker_client
+    ):
+        """JumpStart / cross-account reads must not break."""
+        mock_s3_client = Mock()
+        mock_body = Mock()
+        mock_body.read.return_value = b"content"
+        mock_s3_client.get_object.return_value = {"Body": mock_body}
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_client = mock_s3_client
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.read_s3_file("jumpstart-cache-prod-us-west-2", "k")
+
+        mock_s3_client.get_object.assert_called_once_with(
+            Bucket="jumpstart-cache-prod-us-west-2", Key="k"
+        )
+
+
+class TestDownloadDataSpotCheck:
+    """Spot check in Session.download_data."""
+
+    def test_download_from_default_bucket_includes_expected_owner(
+        self, mock_boto_session, mock_sagemaker_client, tmp_path
+    ):
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [{"Key": "p/f.txt", "Size": 1}]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_client = mock_s3_client
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.download_data(
+                path=str(tmp_path),
+                bucket="sagemaker-us-west-2-111111111111",
+                key_prefix="p/f.txt",
+            )
+
+        mock_s3_client.list_objects_v2.assert_called_once_with(
+            Bucket="sagemaker-us-west-2-111111111111",
+            Prefix="p/f.txt",
+            ExpectedBucketOwner="111111111111",
+        )
+        assert (
+            mock_s3_client.download_file.call_args[1]["ExtraArgs"]
+            == {"ExpectedBucketOwner": "111111111111"}
+        )
+
+    def test_download_from_non_default_bucket_omits_expected_owner(
+        self, mock_boto_session, mock_sagemaker_client, tmp_path
+    ):
+        mock_s3_client = Mock()
+        mock_s3_client.list_objects_v2.return_value = {
+            "Contents": [{"Key": "p/f.txt", "Size": 1}]
+        }
+
+        session = Session(boto_session=mock_boto_session, sagemaker_client=mock_sagemaker_client)
+        session._default_bucket = "sagemaker-us-west-2-111111111111"
+        session._default_bucket_set_by_sdk = True
+        session.s3_client = mock_s3_client
+
+        with patch.object(session, "account_id", return_value="111111111111"):
+            session.download_data(
+                path=str(tmp_path),
+                bucket="jumpstart-cache-prod-us-west-2",
+                key_prefix="p/f.txt",
+            )
+
+        mock_s3_client.list_objects_v2.assert_called_once_with(
+            Bucket="jumpstart-cache-prod-us-west-2", Prefix="p/f.txt"
+        )
+        assert mock_s3_client.download_file.call_args[1]["ExtraArgs"] is None
