@@ -207,7 +207,7 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         accept_eula=True,
         endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
-        instance_type="ml.g5.4xlarge",
+        instance_type="ml.g5.12xlarge",
     )
 
     predictor = retrieve_default(
