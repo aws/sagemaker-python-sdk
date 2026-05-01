@@ -134,6 +134,49 @@ def cleanup_feature_group(fg: FeatureGroupManager):
         pass
 
 
+def cleanup_old_lf_registrations(region, max_resources=400, num_to_delete=100):
+    """Remove the oldest Lake Formation test registrations when approaching the
+    service-linked-role inline-policy size limit.
+
+    Every ``RegisterResource`` call with ``UseServiceLinkedRole=True`` appends an
+    S3 ARN to the ``AWSServiceRoleForLakeFormationDataAccess`` inline policy.
+    That policy has a size ceiling; once reached, new registrations fail with
+    ``InvalidInputException: Unable to register the following path``.
+
+    This helper counts existing ``test-lf-fg-*`` registrations and, if the total
+    exceeds *max_resources*, deregisters the oldest *num_to_delete* entries.
+    """
+    client = boto3.client("lakeformation", region_name=region)
+    resources = []
+    next_token = None
+    while True:
+        kwargs = {}
+        if next_token:
+            kwargs["NextToken"] = next_token
+        resp = client.list_resources(**kwargs)
+        resources.extend(resp["ResourceInfoList"])
+        next_token = resp.get("NextToken")
+        if not next_token:
+            break
+
+    test_resources = [r for r in resources if "test-lf-fg-" in r["ResourceArn"]]
+    if len(test_resources) <= max_resources:
+        return
+
+    test_resources.sort(key=lambda r: r["LastModified"])
+    for r in test_resources[:num_to_delete]:
+        try:
+            client.deregister_resource(ResourceArn=r["ResourceArn"])
+        except ClientError:
+            pass
+
+
+@pytest.fixture(scope="module", autouse=True)
+def _ensure_lf_capacity(region):
+    """Proactively free Lake Formation registration capacity before tests run."""
+    cleanup_old_lf_registrations(region)
+
+
 @pytest.mark.serial
 @pytest.mark.slow_test
 def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
