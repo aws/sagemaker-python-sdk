@@ -58,7 +58,7 @@ def model_package_arn():
 def endpoint_name():
     """Generate unique endpoint name."""
     import time
-    return f"e2e-{int(time.time())}-{random.randint(100, 10000)}"
+    return f"xe2e-{int(time.time())}-{random.randint(100, 10000)}"
 
 
 @pytest.fixture(scope="module")
