@@ -325,22 +325,11 @@ class SingletonMeta(type):
     def __call__(cls, *args, **kwargs):
         """
         Overrides the call method to return an existing instance of the class if it exists,
-        or create a new one if it doesn't. If a region_name is provided and differs from
-        the existing instance's region, a new instance is created.
+        or create a new one if it doesn't.
         """
-        region_name = kwargs.get("region_name")
-        if region_name is None and len(args) > 1:
-            region_name = args[1]
-
-        if cls in cls._instances:
-            existing_client = cls._instances[cls]
-            if region_name and hasattr(existing_client, "region_name") and existing_client.region_name != region_name:
-                instance = super().__call__(*args, **kwargs)
-                return instance
-        else:
+        if cls not in cls._instances:
             instance = super().__call__(*args, **kwargs)
             cls._instances[cls] = instance
-
         return cls._instances[cls]
 
 
