@@ -56,6 +56,7 @@ PYTHON_TYPES_TO_BASIC_JSON_TYPES = {
     "str": "string",
     "StrPipeVar": "string",
     "int": "integer",
+    "IntPipeVar": "integer",
     "bool": "boolean",
     "float": "double",
     "datetime.datetime": "timestamp",
@@ -108,6 +109,7 @@ INTELLIGENT_DEFAULTS_HELPER_CODEGEN_FILE_NAME = "intelligent_defaults_helper.py"
 RESOURCES_CODEGEN_FILE_NAME = "resources.py"
 
 SHAPES_CODEGEN_FILE_NAME = "shapes.py"
+SHAPES_CODEGEN_OUTPUT_DIR = os.getcwd() + "/src/sagemaker/core/shapes"
 
 CONFIG_SCHEMA_FILE_NAME = "config_schema.py"
 
@@ -117,4 +119,18 @@ API_COVERAGE_JSON_FILE_PATH = os.getcwd() + "/src/sagemaker/core/tools/api_cover
 # E.g. DescribeInferenceComponent returns empty ComputeResourceRequirements for adapter ICs.
 REQUIRED_TO_OPTIONAL_OVERRIDES = {
     "InferenceComponentComputeResourceRequirements": ["MinMemoryRequiredInMb"],
+    # ModelPackageName is not applicable to versioned model packages (group-based).
+    # ModelPackageSecurityConfig.KmsKeyId is absent when no KMS key is configured.
+    "DescribeModelPackageOutput": ["ModelPackageName"],
+    "ModelPackageSecurityConfig": ["KmsKeyId"],
+}
+
+# Members where the generated primitive type should be replaced with a PipelineVariable
+# Key: shape name, Value: dict of member name -> replacement type.
+PIPE_VAR_OVERRIDES = {
+    "ResourceConfig": {
+        "InstanceCount": "IntPipeVar",
+        "VolumeSizeInGB": "IntPipeVar",
+        "KeepAlivePeriodInSeconds": "IntPipeVar",
+    },
 }

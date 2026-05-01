@@ -823,6 +823,8 @@ class TestFrameworkProcessor:
         assert "#!/bin/bash" in script
         assert "train.py" in script
         assert "python3" in script
+        assert "install_requirements.py" in script
+        assert "pip install -r requirements.txt" not in script
 
     def test_create_and_upload_runproc_with_pipeline(self, mock_session):
         processor = FrameworkProcessor(
@@ -1154,6 +1156,82 @@ class TestFrameworkProcessorPackageCode:
             )
 
 
+    def test_package_code_with_code_location(self, mock_session):
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            code_location="s3://my-custom-bucket/my-prefix",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            result = processor._package_code(
+                entry_point=entry_point,
+                source_dir=tmpdir,
+                requirements=None,
+                job_name="test-job",
+                kms_key=None,
+            )
+            assert result.startswith("s3://my-custom-bucket/my-prefix")
+            assert "sourcedir.tar.gz" in result
+
+    def test_package_code_without_code_location_uses_default_bucket(self, mock_session):
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            result = processor._package_code(
+                entry_point=entry_point,
+                source_dir=tmpdir,
+                requirements=None,
+                job_name="test-job",
+                kms_key=None,
+            )
+            assert result.startswith("s3://test-bucket/sagemaker")
+            assert "sourcedir.tar.gz" in result
+
+    def test_package_code_with_code_location_trailing_slash(self, mock_session):
+        processor = FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            code_location="s3://my-custom-bucket/my-prefix/",
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point = os.path.join(tmpdir, "train.py")
+            with open(entry_point, "w") as f:
+                f.write("print('training')")
+
+            result = processor._package_code(
+                entry_point=entry_point,
+                source_dir=tmpdir,
+                requirements=None,
+                job_name="test-job",
+                kms_key=None,
+            )
+            # Trailing slash is stripped in __init__, so same result
+            assert result.startswith("s3://my-custom-bucket/my-prefix")
+            assert "sourcedir.tar.gz" in result
+
+
 class TestFrameworkProcessorRun:
     def test_run_with_s3_code(self, mock_session):
         processor = FrameworkProcessor(
@@ -1240,7 +1318,7 @@ class TestFrameworkProcessorPackAndUpload:
                 with patch(
                     "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
                     return_value="s3://bucket/runproc.sh",
-                ):
+                ) as mock_upload:
                     result_uri, result_inputs, result_job_name = processor._pack_and_upload_code(
                         code=entry_point,
                         source_dir=None,
@@ -1252,6 +1330,15 @@ class TestFrameworkProcessorPackAndUpload:
 
                     assert result_uri == "s3://bucket/runproc.sh"
                     assert len(result_inputs) == 1
+
+                    # Verify both install_requirements.py and runproc.sh were uploaded
+                    upload_uris = [
+                        call.kwargs.get("desired_s3_uri") or call.args[1]
+                        for call in mock_upload.call_args_list
+                    ]
+                    assert any("install_requirements.py" in uri for uri in upload_uris)
+                    assert any("runproc.sh" in uri for uri in upload_uris)
+                    assert mock_upload.call_count == 2
 
 
 class TestProcessingInputOutputHelpers:

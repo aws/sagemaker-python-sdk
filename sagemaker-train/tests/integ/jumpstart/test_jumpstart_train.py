@@ -30,7 +30,7 @@ from sagemaker.train.configs import Compute
             },
             # Override default instance type; the model's default
             # (ml.p3.2xlarge) is deprecated.
-            "compute": Compute(instance_type="ml.g5.xlarge"),
+            "compute": Compute(instance_type="ml.g4dn.xlarge"),
         },
         {"model_id": "xgboost-classification-model"},
         {"model_id": "catboost-regression-model"},

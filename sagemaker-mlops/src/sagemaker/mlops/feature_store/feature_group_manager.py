@@ -14,7 +14,6 @@ import botocore.exceptions
 from sagemaker.core.resources import FeatureGroup
 from sagemaker.core.resources import Base
 from sagemaker.core.shapes import (
-    AddOnlineStoreReplicaAction,
     FeatureDefinition,
     OfflineStoreConfig,
     OnlineStoreConfig,

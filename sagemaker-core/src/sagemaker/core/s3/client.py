@@ -117,6 +117,13 @@ class S3Uploader(object):
         else:
             extra_args = None
 
+        # Spot check: enforce ownership only when uploading to the session's default
+        # bucket. Cross-account destinations are left untouched.
+        expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            extra_args = dict(extra_args) if extra_args else {}
+            extra_args["ExpectedBucketOwner"] = expected_owner
+
         b = b if isinstance(b, io.BytesIO) else io.BytesIO(b)
         sagemaker_session.s3_resource.Bucket(bucket).upload_fileobj(
             b, object_key, ExtraArgs=extra_args
@@ -193,8 +200,17 @@ class S3Downloader(object):
 
         bucket, object_key = parse_s3_url(s3_uri)
 
+        # Spot check: enforce ownership only when reading from the session's default
+        # bucket. Cross-account reads (e.g. JumpStart) are left untouched.
+        extra_args = None
+        expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            extra_args = {"ExpectedBucketOwner": expected_owner}
+
         bytes_io = io.BytesIO()
-        sagemaker_session.s3_resource.Bucket(bucket).download_fileobj(object_key, bytes_io)
+        sagemaker_session.s3_resource.Bucket(bucket).download_fileobj(
+            object_key, bytes_io, ExtraArgs=extra_args
+        )
         bytes_io.seek(0)
         return bytes_io.read()
 

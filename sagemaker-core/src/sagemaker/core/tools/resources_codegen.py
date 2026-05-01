@@ -247,13 +247,16 @@ class ResourcesCodeGen:
         self,
         output_folder: str = GENERATED_CLASSES_LOCATION,
         file_name: str = RESOURCES_CODEGEN_FILE_NAME,
-    ) -> None:
+    ) -> str:
         """
         Generate the resources file.
 
         Args:
             output_folder (str, optional): The output folder path. Defaults to "GENERATED_CLASSES_LOCATION".
             file_name (str, optional): The output file name. Defaults to "RESOURCES_CODEGEN_FILE_NAME".
+
+        Returns:
+            str: The path to the generated output file.
         """
         # Check if the output folder exists, if not, create it
         os.makedirs(output_folder, exist_ok=True)
@@ -303,6 +306,8 @@ class ResourcesCodeGen:
                 # If the resource class was successfully generated, write it to the file
                 if resource_class:
                     file.write(f"{resource_class}\n\n")
+
+        return output_file
 
     def _evaluate_method(
         self, resource_name: str, method_name: str, methods: list, **kwargs
@@ -1934,13 +1939,15 @@ class ResourcesCodeGen:
         )
         return formatted_method
 
-    def generate_config_schema(self):
+    def generate_config_schema(self) -> str:
         """
         Generates the Config Schema that is used by json Schema to validate config jsons .
         This function creates a python file with a variable that is consumed in the scripts to further fetch configs.
 
         Input for generating the Schema is the service JSON that is already loaded in the class
 
+        Returns:
+            str: The path to the generated output file.
         """
         resource_properties = {}
 
@@ -2001,6 +2008,8 @@ class ResourcesCodeGen:
                 f"SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {json.dumps(combined_config_schema, indent=4)}"
             )
 
+        return output
+
     def _cleanup_class_attributes_types(self, class_attributes: dict) -> dict:
         """
         Helper function that creates a direct mapping of attribute to type without default parameters assigned and without Optionals
@@ -2030,7 +2039,7 @@ class ResourcesCodeGen:
             Dict with attributes that can be configurable
 
         """
-        PYTHON_TYPES = ["StrPipeVar", "datetime.datetime", "bool", "int", "float"]
+        PYTHON_TYPES = ["StrPipeVar", "IntPipeVar", "datetime.datetime", "bool", "int", "float"]
         default_attributes = {}
         for key, value in class_attributes.items():
             if value in PYTHON_TYPES or value.startswith("List"):

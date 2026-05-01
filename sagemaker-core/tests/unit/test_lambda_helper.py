@@ -478,7 +478,33 @@ class TestHelperFunctions:
 
         assert result == "prefix/lambda/my-function/code"
         mock_s3_client.upload_file.assert_called_once_with(
-            "/path/to/code.zip", "my-bucket", "prefix/lambda/my-function/code"
+            "/path/to/code.zip",
+            "my-bucket",
+            "prefix/lambda/my-function/code",
+            ExtraArgs=None,
+        )
+
+    def test_upload_to_s3_with_expected_bucket_owner(self):
+        """When expected_bucket_owner is provided (caller resolved default bucket),
+        ExtraArgs must carry ExpectedBucketOwner.
+        """
+        mock_s3_client = Mock()
+
+        result = _upload_to_s3(
+            mock_s3_client,
+            "my-function",
+            "/path/to/code.zip",
+            "sagemaker-us-west-2-111111111111",
+            "prefix",
+            expected_bucket_owner="111111111111",
+        )
+
+        assert result == "prefix/lambda/my-function/code"
+        mock_s3_client.upload_file.assert_called_once_with(
+            "/path/to/code.zip",
+            "sagemaker-us-west-2-111111111111",
+            "prefix/lambda/my-function/code",
+            ExtraArgs={"ExpectedBucketOwner": "111111111111"},
         )
 
     def test_zip_lambda_code(self, tmp_path):
