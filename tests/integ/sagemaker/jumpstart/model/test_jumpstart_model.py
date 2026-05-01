@@ -95,9 +95,10 @@ def test_prepacked_jumpstart_model(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.p3.2xlarge instance
+    # uses ml.g4dn.xlarge instance
     predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
+        instance_type="ml.g4dn.xlarge",
     )
 
     response = predictor.predict("hello world!")
@@ -120,7 +121,7 @@ def test_model_package_arn_jumpstart_model(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.g5.2xlarge instance
+    # uses ml.g4dn.2xlarge instance
     predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
     )
@@ -175,7 +176,7 @@ def test_jumpstart_gated_model(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.g5.2xlarge instance
+    # uses ml.g4dn.2xlarge instance
     predictor = model.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         accept_eula=True,
@@ -206,6 +207,7 @@ def test_jumpstart_gated_model_inference_component_enabled(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         accept_eula=True,
         endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
+        instance_type="ml.g5.4xlarge",
     )
 
     predictor = retrieve_default(
@@ -262,7 +264,7 @@ def test_jumpstart_model_register(setup):
 
     # uses  instance
     predictor = model_package.deploy(
-        instance_type="ml.p3.2xlarge",
+        instance_type="ml.g4dn.xlarge",
         initial_instance_count=1,
     )
 
@@ -379,7 +381,7 @@ def test_jumpstart_model_with_deployment_configs(setup):
 
     model.set_deployment_config(
         configs[0]["ConfigName"],
-        "ml.g5.2xlarge",
+        "ml.g4dn.2xlarge",
     )
     assert model.config_name == configs[0]["ConfigName"]
 
