@@ -24,6 +24,7 @@ from sagemaker.core import common_utils as utils
 from sagemaker.core.jumpstart.constants import DEFAULT_JUMPSTART_SAGEMAKER_SESSION, JUMPSTART_LOGGER
 from sagemaker.core.jumpstart.enums import JumpStartModelType
 from sagemaker.core.jumpstart.utils import is_jumpstart_model_input
+from sagemaker.core.region_validation import validate_region
 from sagemaker.core.spark import defaults
 from sagemaker.core.jumpstart import artifacts
 from sagemaker.core.workflow import is_pipeline_variable
@@ -213,6 +214,7 @@ def retrieve(
     py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
     version_config = version_config.get(py_version) or version_config
     registry = _registry_from_region(region, version_config["registries"])
+    validate_region(region)
     endpoint_data = utils._botocore_resolver().construct_endpoint("ecr", region)
     if region == "il-central-1" and not endpoint_data:
         endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}
@@ -749,6 +751,7 @@ def get_base_python_image_uri(region, py_version="310") -> str:
 
     framework = "sagemaker-base-python"
     version = "1.0"
+    validate_region(region)
     endpoint_data = utils._botocore_resolver().construct_endpoint("ecr", region)
     if region == "il-central-1" and not endpoint_data:
         endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}

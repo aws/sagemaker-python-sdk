@@ -570,7 +570,10 @@ class _SparkProcessorBase(ScriptProcessor):
 
     def _get_notebook_instance_domain(self):
         """Get the instance's domain."""
+        from sagemaker.core.region_validation import validate_region
+
         region = self.sagemaker_session.boto_region_name
+        validate_region(region)
         with open("/opt/ml/metadata/resource-metadata.json") as file:
             data = json.load(file)
             notebook_name = data["ResourceName"]

@@ -15,18 +15,25 @@ def _is_in_studio() -> bool:
 
 def _get_studio_base_url(region: str) -> str:
     """Get Studio base URL, or empty string if domain not resolvable."""
+    from sagemaker.core.region_validation import validate_region
     from sagemaker.train.common_utils.finetune_utils import _read_domain_id_from_metadata
     domain_id = _read_domain_id_from_metadata()
     if not domain_id or not region:
         return ""
+    validate_region(region)
     return f"https://studio-{domain_id}.studio.{region}.sagemaker.aws"
 
 
 def _parse_job_arn(job_arn: str):
     """Parse a SageMaker job ARN into (region, resource) or None."""
     import re
+    from sagemaker.core.region_validation import validate_region
     m = re.match(r'arn:aws(?:-[a-z]+)?:sagemaker:([a-z0-9-]+):\d+:(\S+)', job_arn)
-    return (m.group(1), m.group(2)) if m else None
+    if not m:
+        return None
+    region = m.group(1)
+    validate_region(region)
+    return (region, m.group(2))
 
 
 def get_console_job_url(job_arn: str) -> str:

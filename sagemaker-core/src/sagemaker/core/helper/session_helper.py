@@ -2121,6 +2121,9 @@ def sts_regional_endpoint(region):
     Returns:
         str: AWS STS regional endpoint
     """
+    from sagemaker.core.region_validation import validate_region
+
+    validate_region(region)
     endpoint_data = botocore_resolver().construct_endpoint("sts", region)
     if region == "il-central-1" and not endpoint_data:
         endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}

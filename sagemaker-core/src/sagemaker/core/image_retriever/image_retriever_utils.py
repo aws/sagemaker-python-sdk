@@ -483,6 +483,9 @@ def _retrieve_latest_pytorch_training_uri(region: str):
     version_config = config[image_scope]["versions"][latest_version]
     py_version = _validate_py_version_and_set_if_needed(None, version_config, None)
 
+    from sagemaker.core.region_validation import validate_region
+
+    validate_region(region)
     endpoint_data = _botocore_resolver().construct_endpoint("ecr", region)
     if region == "il-central-1" and not endpoint_data:
         endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}

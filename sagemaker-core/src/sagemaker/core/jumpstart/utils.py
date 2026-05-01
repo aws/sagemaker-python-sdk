@@ -88,11 +88,14 @@ def get_eula_url(document: HubContentDocument, sagemaker_session: Optional[Sessi
     if sagemaker_session is None:
         sagemaker_session = Session()
 
+    from sagemaker.core.region_validation import validate_region
+
     path_parts = document.HostingEulaUri.replace("s3://", "").split("/")
 
     bucket = path_parts[0]
     key = "/".join(path_parts[1:])
     region = sagemaker_session.boto_region_name
+    validate_region(region)
 
     botocore_session = sagemaker_session.boto_session._session
     endpoint_resolver = botocore_session.get_component("endpoint_resolver")

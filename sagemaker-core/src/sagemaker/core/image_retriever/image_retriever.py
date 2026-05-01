@@ -5,6 +5,7 @@ from graphene.utils.str_converters import to_camel_case
 from sagemaker.core.inference_config import ServerlessInferenceConfig
 from sagemaker.core.training_compiler.config import TrainingCompilerConfig
 from sagemaker.core.common_utils import _botocore_resolver
+from sagemaker.core.region_validation import validate_region
 from sagemaker.core.workflow import is_pipeline_variable
 from sagemaker.core.image_retriever.image_retriever_utils import (
     _config_for_framework_and_scope,
@@ -161,6 +162,7 @@ class ImageRetriever:
         )
         version_config = version_config.get(py_version) or version_config
         registry = _registry_from_region(region, version_config["registries"])
+        validate_region(region)
         endpoint_data = _botocore_resolver().construct_endpoint("ecr", region)
         if region == "il-central-1" and not endpoint_data:
             endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}
@@ -359,6 +361,7 @@ class ImageRetriever:
         py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
         version_config = version_config.get(py_version) or version_config
         registry = _registry_from_region(region, version_config["registries"])
+        validate_region(region)
         endpoint_data = _botocore_resolver().construct_endpoint("ecr", region)
         if region == "il-central-1" and not endpoint_data:
             endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}
@@ -561,6 +564,7 @@ class ImageRetriever:
         py_version = _validate_py_version_and_set_if_needed(py_version, version_config, framework)
         version_config = version_config.get(py_version) or version_config
         registry = _registry_from_region(region, version_config["registries"])
+        validate_region(region)
         endpoint_data = _botocore_resolver().construct_endpoint("ecr", region)
         if region == "il-central-1" and not endpoint_data:
             endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}
@@ -623,6 +627,7 @@ class ImageRetriever:
 
         framework = "sagemaker-base-python"
         version = "1.0"
+        validate_region(region)
         endpoint_data = _botocore_resolver().construct_endpoint("ecr", region)
         if region == "il-central-1" and not endpoint_data:
             endpoint_data = {"hostname": "ecr.{}.amazonaws.com".format(region)}

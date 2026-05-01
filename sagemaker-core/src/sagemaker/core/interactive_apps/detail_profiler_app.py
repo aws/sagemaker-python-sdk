@@ -79,6 +79,10 @@ class DetailProfilerApp(object):
         Returns:
             str: An unsigned URL for DetailProfiler hosted on SageMaker.
         """
+        from sagemaker.core.region_validation import validate_region
+
+        validate_region(self.region)
+
         if self._valid_domain_and_user:
             url = f"https://{self._domain_id}.studio.{self.region}.sagemaker.aws/profiler/default"
             if training_job_name is not None:

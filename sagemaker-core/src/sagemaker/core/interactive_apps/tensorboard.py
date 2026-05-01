@@ -84,8 +84,12 @@ class TensorBoardApp(BaseInteractiveApp):
         Returns:
             str: A URL for TensorBoard hosted on SageMaker.
         """
+        from sagemaker.core.region_validation import validate_region
+
         if training_job_name is not None:
             self._validate_job_name(training_job_name)
+
+        validate_region(self.region)
 
         if (
             self._in_studio_env

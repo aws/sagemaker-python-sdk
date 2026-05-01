@@ -819,6 +819,9 @@ def sts_regional_endpoint(region):
     Returns:
         str: AWS STS regional endpoint
     """
+    from sagemaker.core.region_validation import validate_region
+
+    validate_region(region)
     endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
     if region == "il-central-1" and not endpoint_data:
         endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}
@@ -906,6 +909,9 @@ def aws_partition(region):
     Returns:
         str: partition corresponding to the region name passed in. Ex: "aws-cn"
     """
+    from sagemaker.core.region_validation import validate_region
+
+    validate_region(region)
     endpoint_data = _botocore_resolver().construct_endpoint("sts", region)
     if region == "il-central-1" and not endpoint_data:
         endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}
