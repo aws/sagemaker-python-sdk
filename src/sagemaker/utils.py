@@ -419,7 +419,11 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
     # Spot check: enforce ownership only when downloading from the session's default
     # bucket. Cross-account buckets are left untouched.
-    expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket_name)
+    expected_owner = (
+        sagemaker_session._get_account_id_if_default_bucket(bucket_name)
+        if hasattr(sagemaker_session, "_get_account_id_if_default_bucket")
+        else None
+    )
     extra_args = None
     if expected_owner:
         extra_args = {"ExpectedBucketOwner": expected_owner}
