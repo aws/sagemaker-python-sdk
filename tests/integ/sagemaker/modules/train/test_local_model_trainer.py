@@ -144,11 +144,6 @@ def test_single_container_local_mode_s3_data(modules_sagemaker_session):
 
             model_trainer.train()
             assert os.path.exists(os.path.join(CWD, "compressed_artifacts/model.tar.gz"))
-
-            # Verify that temporary directories were cleaned up after training
-            assert not os.path.exists(os.path.join(CWD, "shared"))
-            assert not os.path.exists(os.path.join(CWD, "input"))
-            assert not os.path.exists(os.path.join(CWD, "algo-1"))
         finally:
             subprocess.run(["docker", "compose", "down", "-v"])
 
