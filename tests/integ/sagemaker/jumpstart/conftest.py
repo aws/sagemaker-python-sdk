@@ -186,13 +186,19 @@ def _cleanup_old_hubs(sagemaker_session):
 
 def _delete_hubs(sagemaker_session, hub_name):
     # list and delete all hub contents first
-    list_hub_content_response = sagemaker_session.list_hub_contents(
-        hub_name=hub_name, hub_content_type=HubContentType.MODEL_REFERENCE.value
-    )
-    for model in list_hub_content_response["HubContentSummaries"]:
-        _delete_hub_contents(sagemaker_session, hub_name, model)
+    try:
+        list_hub_content_response = sagemaker_session.list_hub_contents(
+            hub_name=hub_name, hub_content_type=HubContentType.MODEL_REFERENCE.value
+        )
+        for model in list_hub_content_response["HubContentSummaries"]:
+            _delete_hub_contents(sagemaker_session, hub_name, model)
 
-    sagemaker_session.delete_hub(hub_name)
+        sagemaker_session.delete_hub(hub_name)
+    except Exception as e:
+        if "ResourceNotFound" in str(e):
+            print(f"Hub {hub_name} does not exist, skipping deletion.")
+        else:
+            raise
 
 
 @with_exponential_backoff()
