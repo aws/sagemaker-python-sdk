@@ -104,12 +104,9 @@ def test_model_builder_ic_sagemaker_endpoint(
         except Exception as e:
             caught_ex = e
         finally:
-            if caught_ex:
-                logger.exception(caught_ex)
-                cleanup_resources(sagemaker_session, [LLAMA_IC_NAME])
-                assert False, f"{caught_ex} thrown when running mb-IC deployment test."
-
             cleanup_resources(sagemaker_session, [LLAMA_IC_NAME])
+            if caught_ex:
+                raise caught_ex
 
 
 def cleanup_resources(sagemaker_session, ic_base_names):
