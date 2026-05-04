@@ -919,7 +919,7 @@ class TestBuildForJumpStart(unittest.TestCase):
 
         with self.assertRaises(ValueError) as ctx:
             self.builder._build_for_jumpstart()
-        self.assertIn("Unsupported", str(ctx.exception))
+        self.assertIn("Local container mode is not yet supported", str(ctx.exception))
 
     @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
     @patch("sagemaker.serve.model_builder_servers.prepare_djl_js_resources")
@@ -985,21 +985,21 @@ class TestBuildForJumpStart(unittest.TestCase):
 
     @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
     @patch.object(MockModelBuilderServers, "_prepare_for_mode")
-    @patch.object(MockModelBuilderServers, "_build_for_djl_jumpstart")
-    def test_build_sagemaker_endpoint_djl(self, mock_djl_build, mock_prepare, mock_init):
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_sagemaker_endpoint_djl(self, mock_create, mock_prepare, mock_init):
         """Test building DJL JumpStart for SAGEMAKER_ENDPOINT."""
         mock_init_kwargs = Mock()
         mock_init_kwargs.image_uri = "djl-inference:0.21.0"
         mock_init_kwargs.env = {}
         mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
         mock_init.return_value = mock_init_kwargs
-        mock_djl_build.return_value = Mock()
+        mock_create.return_value = Mock()
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
         self.builder.image_uri = None
 
         result = self.builder._build_for_jumpstart()
 
-        mock_djl_build.assert_called_once()
+        mock_create.assert_called_once()
 
 
 class TestDeployWrappers(unittest.TestCase):
