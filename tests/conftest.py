@@ -641,42 +641,17 @@ def cpu_instance_type(sagemaker_session, request):
 
 @pytest.fixture(scope="session")
 def gpu_instance_type(sagemaker_session, request):
-    region = sagemaker_session.boto_session.region_name
-    if region in NO_P3_REGIONS:
-        return "ml.p2.xlarge"
-    else:
-        return "ml.p3.2xlarge"
+    return "ml.g4dn.xlarge"
 
 
 @pytest.fixture()
 def gpu_pytorch_instance_type(sagemaker_session, request):
-    fw_version = None
-    for pytorch_version_fixture in [
-        "pytorch_inference_version",
-        "huggingface_training_pytorch_latest_version",
-        "huggingface_inference_pytorch_latest_version",
-    ]:
-        if pytorch_version_fixture in request.fixturenames:
-            fw_version = request.getfixturevalue(pytorch_version_fixture)
-    if fw_version is None:
-        fw_version = request.param
-    region = sagemaker_session.boto_session.region_name
-    if region in NO_P3_REGIONS:
-        if Version(fw_version) >= Version("1.13"):
-            return PYTORCH_RENEWED_GPU
-        else:
-            return "ml.p2.xlarge"
-    else:
-        return "ml.p3.2xlarge"
+    return "ml.g4dn.xlarge"
 
 
 @pytest.fixture(scope="session")
 def gpu_instance_type_list(sagemaker_session, request):
-    region = sagemaker_session.boto_session.region_name
-    if region in NO_P3_REGIONS:
-        return ["ml.p2.xlarge"]
-    else:
-        return ["ml.p3.2xlarge", "ml.p2.xlarge"]
+    return ["ml.g4dn.xlarge"]
 
 
 @pytest.fixture(scope="session")
@@ -717,16 +692,7 @@ def pytest_generate_tests(metafunc):
         cpu_instance_type = "ml.m5.xlarge" if region in NO_M4_REGIONS else "ml.m4.xlarge"
 
         params = [cpu_instance_type]
-        if not (
-            region in tests.integ.HOSTING_NO_P3_REGIONS
-            or region in tests.integ.TRAINING_NO_P3_REGIONS
-        ):
-            params.append("ml.p3.2xlarge")
-        elif not (
-            region in tests.integ.HOSTING_NO_P2_REGIONS
-            or region in tests.integ.TRAINING_NO_P2_REGIONS
-        ):
-            params.append("ml.p2.xlarge")
+        params.append("ml.g4dn.xlarge")
 
         metafunc.parametrize("instance_type", params, scope="session")
 

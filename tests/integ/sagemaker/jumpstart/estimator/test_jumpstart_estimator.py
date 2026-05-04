@@ -60,9 +60,10 @@ def test_jumpstart_estimator(setup):
         sagemaker_session=get_sm_session(),
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         max_run=259200,  # avoid exceeding resource limits
+        instance_type="ml.g4dn.xlarge",
     )
 
-    # uses ml.p3.2xlarge instance
+    # uses ml.g4dn.xlarge instance
     estimator.fit(
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
@@ -78,11 +79,12 @@ def test_jumpstart_estimator(setup):
         sagemaker_session=get_sm_session(),
     )
 
-    # uses ml.p3.2xlarge instance
+    # uses ml.g4dn.xlarge instance
     predictor = estimator.deploy(
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         role=get_sm_session().get_caller_identity_arn(),
         sagemaker_session=get_sm_session(),
+        instance_type="ml.g4dn.xlarge",
     )
 
     response = predictor.predict(["hello", "world"])

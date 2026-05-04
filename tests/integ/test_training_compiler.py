@@ -30,7 +30,7 @@ from tests.integ.timeout import timeout
 
 @pytest.fixture(scope="module")
 def gpu_instance_type(request):
-    return "ml.p3.2xlarge"
+    return "ml.g4dn.xlarge"
 
 
 @pytest.fixture(scope="module")
@@ -86,8 +86,8 @@ def skip_if_incompatible(gpu_instance_type, request):
 @pytest.mark.parametrize(
     "gpu_instance_type,instance_count",
     [
-        pytest.param("ml.p3.2xlarge", 1, marks=pytest.mark.release),
-        pytest.param("ml.p3.16xlarge", 2),
+        pytest.param("ml.g4dn.xlarge", 1, marks=pytest.mark.release),
+        pytest.param("ml.g4dn.12xlarge", 2),
     ],
 )
 @pytest.mark.skipif(
@@ -138,8 +138,8 @@ def test_huggingface_pytorch(
 @pytest.mark.parametrize(
     "gpu_instance_type,instance_count",
     [
-        pytest.param("ml.p3.2xlarge", 1, marks=pytest.mark.release),
-        pytest.param("ml.p3.16xlarge", 2),
+        pytest.param("ml.g4dn.xlarge", 1, marks=pytest.mark.release),
+        pytest.param("ml.g4dn.12xlarge", 2),
     ],
 )
 @pytest.mark.skip("Temporarily skip to unblock")

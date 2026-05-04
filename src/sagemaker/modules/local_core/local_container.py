@@ -204,12 +204,18 @@ class _LocalContainer(BaseModel):
         # Print our Job Complete line
         logger.info("Local training job completed, output artifacts saved to %s", artifacts)
 
-        shutil.rmtree(os.path.join(self.container_root, "input"))
-        shutil.rmtree(os.path.join(self.container_root, "shared"))
+        for dir_name in ["input", "shared"]:
+            dir_path = os.path.join(self.container_root, dir_name)
+            if os.path.exists(dir_path):
+                shutil.rmtree(dir_path, ignore_errors=True)
         for host in self.hosts:
-            shutil.rmtree(os.path.join(self.container_root, host))
+            host_path = os.path.join(self.container_root, host)
+            if os.path.exists(host_path):
+                shutil.rmtree(host_path, ignore_errors=True)
         for folder in self._temporary_folders:
-            shutil.rmtree(os.path.join(self.container_root, folder))
+            folder_path = os.path.join(self.container_root, folder)
+            if os.path.exists(folder_path):
+                shutil.rmtree(folder_path, ignore_errors=True)
         return artifacts
 
     def retrieve_artifacts(
