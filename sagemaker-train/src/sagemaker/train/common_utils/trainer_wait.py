@@ -200,7 +200,7 @@ def get_mlflow_url(training_job) -> str:
 def wait(
         training_job: TrainingJob,
         poll: int = 5,
-        timeout: Optional[int] = 3000
+        timeout: Optional[int] = 43200
 ) -> None:
     """Wait for training job to complete with progress tracking.
 
