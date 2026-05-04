@@ -1,16 +1,5 @@
 # Changelog
 
-## v2.257.3 (2026-05-04)
-
-### Bug Fixes
-* S3 bucket operations in V2 (#5803)
-* Improve subprocess exception handling in git_utils (#5812)
-* Fix v2 integ tests (#5822)
-
-### Other Changes
-* Added ISO accounts for DJI LMI (#5789)
-
-
 ## v2.257.2 (2026-04-10)
 
 ### Enhancements
