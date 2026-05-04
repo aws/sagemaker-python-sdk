@@ -130,6 +130,10 @@ class RLVRTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
             If not specified, uses SageMaker service default (24 hours for serverless training).
+        sequence_length (Optional[str]):
+            The sequence length for the training job. Valid values are
+            "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K".
+            If not specified, the service will use default recipe selection behavior.
         is_multimodal (Optional[bool]):
             Whether the training dataset contains multimodal data. If None (default),
             auto-detected from the training dataset at train time.
@@ -157,6 +161,7 @@ class RLVRTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         accept_eula: bool = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        sequence_length: Optional[str] = None,
         recipe: Optional[str] = None,
         overrides: Optional[dict] = None,
         is_multimodal: Optional[bool] = None,
@@ -195,6 +200,7 @@ class RLVRTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self.sequence_length = sequence_length
         self._recipe_path = recipe
         self._overrides = overrides
         self._recipe_resolver = None
@@ -209,6 +215,7 @@ class RLVRTrainer(BaseTrainer):
                                                                      self.sagemaker_session or TrainDefaults.get_sagemaker_session(
                                                                      sagemaker_session=self.sagemaker_session
                                                                     ),
+                                                                     sequence_length=self.sequence_length,
                                                                      compute=self.compute)
 
         # Remove constructor-handled hyperparameters
@@ -450,6 +457,7 @@ class RLVRTrainer(BaseTrainer):
                                                      training_type=self.training_type,
                                                      accept_eula=self.accept_eula,
                                                      evaluator_arn=evaluator_arn,
+                                                     sequence_length=self.sequence_length,
                                                      job_type=JOB_TYPE
                                                      )
         mlflow_config = _create_mlflow_config(

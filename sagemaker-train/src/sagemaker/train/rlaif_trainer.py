@@ -115,6 +115,10 @@ class RLAIFTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
             If not specified, uses SageMaker service default (24 hours for serverless training).
+        sequence_length (Optional[str]):
+            The sequence length for the training job. Valid values are
+            "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K".
+            If not specified, the service will use default recipe selection behavior.
         is_multimodal (Optional[bool]):
             Whether the training dataset contains multimodal data. If None (default),
             auto-detected from the training dataset at train time.
@@ -139,6 +143,7 @@ class RLAIFTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         accept_eula: bool = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        sequence_length: Optional[str] = None,
         is_multimodal: Optional[bool] = None,
         **kwargs,
     ):
@@ -161,15 +166,17 @@ class RLAIFTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self.sequence_length = sequence_length
         self.is_multimodal = is_multimodal
 
         # Initialize fine-tuning options with beta session fallback
-        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
-                                                                     CustomizationTechnique.RLAIF.value,
-                                                                     self.training_type,
-                                                                     self.sagemaker_session or TrainDefaults.get_sagemaker_session(
-                                                                     sagemaker_session=self.sagemaker_session
-                                                                    ))
+        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(
+            self._model_name,
+            CustomizationTechnique.RLAIF.value,
+            self.training_type,
+            self.sagemaker_session or TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
+            sequence_length=self.sequence_length
+        )
         
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
@@ -248,13 +255,15 @@ class RLAIFTrainer(BaseTrainer):
         )
 
         evaluator_arn = getattr(self, '_evaluator_arn', None)
-        serverless_config = _create_serverless_config(model_arn=self._model_arn,
-                                                     customization_technique=CustomizationTechnique.RLAIF.value,
-                                                     training_type=self.training_type,
-                                                     accept_eula=self.accept_eula,
-                                                     evaluator_arn=evaluator_arn,
-                                                     job_type=JOB_TYPE
-                                                     )
+        serverless_config = _create_serverless_config(
+            model_arn=self._model_arn,
+            customization_technique=CustomizationTechnique.RLAIF.value,
+            training_type=self.training_type,
+            accept_eula=self.accept_eula,
+            evaluator_arn=evaluator_arn,
+            sequence_length=self.sequence_length,
+            job_type=JOB_TYPE
+        )
 
         mlflow_config = _create_mlflow_config(
             sagemaker_session,
