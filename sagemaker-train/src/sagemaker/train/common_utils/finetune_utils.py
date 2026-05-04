@@ -407,9 +407,43 @@ def _resolve_model_package_arn(model_package) -> Optional[str]:
         return None
 
 
-def _get_fine_tuning_options_and_model_arn(model_name: str, customization_technique: str, training_type, sagemaker_session,
-                                         hub_name: Optional[str] = None) -> tuple:
+def _parse_context_length(value) -> int:
+    """Parse a context length value like '8K', '32K', '128K' into an integer (e.g., 8192).
+    
+    Returns 0 if value is None or unparseable.
+    """
+    if not value:
+        return 0
+    value = str(value).strip().upper()
+    if value.endswith("K"):
+        try:
+            return int(value[:-1]) * 1024
+        except ValueError:
+            return 0
+    try:
+        return int(value)
+    except ValueError:
+        return 0
+
+
+def _get_fine_tuning_options_and_model_arn(
+    model_name: str, 
+    customization_technique: str, 
+    training_type, 
+    sagemaker_session, 
+    sequence_length=None, 
+    hub_name: str = "SageMakerPublicHub"
+) -> tuple:
     """Get fine-tuning options and model ARN for given customization technique.
+    
+    Args:
+        model_name: Name of the model in the hub.
+        customization_technique: Technique (e.g., "SFT", "DPO", "RLVR", "RLAIF").
+        training_type: TrainingType enum or string ("LORA", "FULL").
+        sagemaker_session: SageMaker session for API calls.
+        sequence_length: Optional sequence length (e.g., "8K"). When provided, filters
+            recipes by MaxContextLength >= the requested value.
+        hub_name: Hub name (default: "SageMakerPublicHub").
     
     Returns:
         tuple: (FineTuningOptions, model_arn, is_gated_model)
@@ -452,12 +486,40 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         # if no standard recipe exists (some models only have subscription recipes).
         recipe = None
         if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-            recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-            if not recipe:
-                recipe = next((r for r in recipes_with_template if r.get("Peft") and r.get("IsSubscriptionModel")), None)
+            candidates = [r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")]
         elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-            recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-            if not recipe:
+            candidates = [r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")]
+        else:
+            candidates = []
+
+        # Filter by SequenceLength if sequence_length is provided
+        if sequence_length and candidates:
+            requested = _parse_context_length(sequence_length)
+            candidates_with_context = [r for r in candidates if r.get("SequenceLength")]
+            if candidates_with_context:
+                filtered = [r for r in candidates_with_context if _parse_context_length(r.get("SequenceLength")) >= requested]
+                if filtered:
+                    filtered.sort(key=lambda r: _parse_context_length(r.get("SequenceLength")))
+                    recipe = filtered[0]
+                else:
+                    available = sorted(set(r.get("SequenceLength") for r in candidates_with_context))
+                    raise ValueError(
+                        f"No recipes found with SequenceLength >= {sequence_length}. "
+                        f"Available sequence lengths: {available}"
+                    )
+            else:
+                raise ValueError(
+                    f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}, "
+                    f"and sequence length:{sequence_length}"
+                )
+        elif candidates:
+            recipe = candidates[0]
+
+        # Fall back to subscription recipes if no standard recipe found
+        if not recipe:
+            if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+                recipe = next((r for r in recipes_with_template if r.get("Peft") and r.get("IsSubscriptionModel")), None)
+            elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
                 recipe = next((r for r in recipes_with_template if not r.get("Peft") and r.get("IsSubscriptionModel")), None)
 
         if not recipe:
@@ -636,7 +698,8 @@ def _resolve_model_and_name(model, sagemaker_session=None):
 
 
 def _create_serverless_config(model_arn, customization_technique,
-                           training_type, accept_eula, evaluator_arn=None, job_type=JOB_TYPE) -> Optional['ServerlessJobConfig']:
+                           training_type, accept_eula, evaluator_arn=None,
+                           sequence_length=None, job_type=JOB_TYPE) -> Optional['ServerlessJobConfig']:
     """Create serverless job configuration for fine-tuning.
     
     Args:
@@ -645,6 +708,7 @@ def _create_serverless_config(model_arn, customization_technique,
         training_type: Training type (TrainingType enum or string)
         accept_eula: Boolean indicating if EULA is accepted
         evaluator_arn: Optional evaluator ARN for RLVR/RLAIF
+        sequence_length: Optional sequence length enum value (e.g., "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K")
         job_type: Type of job (default: "FineTuning")
     
     Returns:
@@ -654,14 +718,18 @@ def _create_serverless_config(model_arn, customization_technique,
         else (training_type.value if isinstance(training_type, TrainingType) else training_type)
 
     # Create ServerlessJobConfig using shapes
-    serverless_config = ServerlessJobConfig(
+    config_kwargs = dict(
         job_type=job_type,
         base_model_arn=model_arn,
         customization_technique=customization_technique,
         peft=peft,
         evaluator_arn=evaluator_arn,
-        accept_eula=accept_eula
+        accept_eula=accept_eula,
     )
+    if sequence_length is not None:
+        config_kwargs["sequence_length"] = sequence_length
+
+    serverless_config = ServerlessJobConfig(**config_kwargs)
 
     return serverless_config
 
