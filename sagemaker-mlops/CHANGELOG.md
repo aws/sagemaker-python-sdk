@@ -1,4 +1,14 @@
 # Changelog
+## v1.10.0 (2026-05-01)
+
+### New Features
+
+- Make _PipelineExecution a public class
+
+### Other
+
+- Update service-2.json with latest public botocore service model
+
 ## v1.9.0 (2026-04-23)
 
 - Update module dependencies

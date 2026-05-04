@@ -1,4 +1,21 @@
 # Changelog
+## v2.10.0 (2026-05-01)
+
+### New Features
+
+- Add CodeArtifact support for ModelTrainer and FrameworkProcessor requirements.txt installation
+
+### Bug Fixes
+
+- Fix S3 bucket operations
+- Fix potential S3 path traversal
+- Wire FrameworkProcessor code_location into code upload paths
+- Improve subprocess exception handling in git_utils
+
+### Other
+
+- Update service-2.json with latest public botocore service model
+
 ## v2.9.0 (2026-04-23)
 
 ### Bug Fixes

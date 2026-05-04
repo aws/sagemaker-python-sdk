@@ -1,4 +1,19 @@
 # Changelog
+## v3.10.0 (2026-05-01)
+
+### New Features
+- Make _PipelineExecution a public class
+- Add CodeArtifact support for ModelTrainer and FrameworkProcessor requirements.txt installation
+
+### Bug Fixes
+- Fix S3 bucket operations
+- Fix potential S3 path traversal
+- Wire FrameworkProcessor code_location into code upload paths
+- Improve subprocess exception handling in git_utils
+
+### Other
+- Update service-2.json with latest public botocore service model
+
 ## v3.9.0 (2026-04-23)
 
 ### New Features
