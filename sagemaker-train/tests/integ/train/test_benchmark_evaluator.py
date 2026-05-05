@@ -72,7 +72,6 @@ NOVA_CONFIG = {
 }
 
 
-@pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
 class TestBenchmarkEvaluatorIntegration:
     """Integration tests for BenchmarkEvaluator with fine-tuned model package"""
 
@@ -286,16 +285,12 @@ class TestBenchmarkEvaluatorIntegration:
         
         logger.info("Subtask validation tests passed")
 
-    @pytest.mark.skip(reason="Base model only evaluation - to be enabled when needed")
     def test_benchmark_evaluation_base_model_only(self):
         """
         Test benchmark evaluation with base model only (no fine-tuned model).
         
         This test uses a JumpStart model ID directly instead of a model package ARN.
         Configuration from commented section in benchmark_demo.ipynb.
-        
-        Note: This test is currently skipped. Remove the @pytest.mark.skip decorator
-        when you want to enable it.
         """
         # Get benchmarks
         Benchmark = get_benchmarks()
@@ -339,16 +334,12 @@ class TestBenchmarkEvaluatorIntegration:
         assert execution.status.overall_status == "Succeeded"
         logger.info("Base model only evaluation completed successfully")
 
-    @pytest.mark.skip(reason="Nova model evaluation - to be enabled when needed")
     def test_benchmark_evaluation_nova_model(self):
         """
         Test benchmark evaluation with Nova model.
         
         This test uses a Nova fine-tuned model package in us-east-1 region.
         Configuration from commented section in benchmark_demo.ipynb.
-        
-        Note: This test is currently skipped. Remove the @pytest.mark.skip decorator
-        when you want to enable it.
         """
         # Get benchmarks
         Benchmark = get_benchmarks()
