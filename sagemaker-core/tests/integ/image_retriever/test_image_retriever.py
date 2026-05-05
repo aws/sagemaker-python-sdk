@@ -87,14 +87,14 @@ def test_retrieve_hugging_face_uri():
 
 @pytest.mark.integ
 def test_retrieve_base_python_image_uri():
-    image_uri = ImageRetriever.retrieve_base_python_image_uri()
+    image_uri = ImageRetriever.retrieve_base_python_image_uri(region="us-west-2")
     assert image_uri == "236514542706.dkr.ecr.us-west-2.amazonaws.com/sagemaker-base-python-310:1.0"
 
 
 @pytest.mark.integ
 @patch.object(SageMakerConfig, "resolve_value_from_config")
 def test_retrieve_image_uri_intelligent_default(mock_load_config):
-    def custom_return(config_path):
+    def custom_return(config_path=None, **kwargs):
         if config_path == _simple_path(
             SAGEMAKER, PYTHON_SDK, MODULES, IMAGE_RETRIEVER, "ImageScope"
         ):
