@@ -55,7 +55,6 @@ TEST_CONFIG = {
 }
 
 
-@pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
 class TestCustomScorerEvaluatorIntegration:
     """Integration tests for CustomScorerEvaluator with custom evaluator"""
 
@@ -233,16 +232,12 @@ class TestCustomScorerEvaluatorIntegration:
         
         logger.info("Validation tests passed")
 
-    @pytest.mark.skip(reason="Built-in metric evaluation - to be enabled when needed")
     def test_custom_scorer_with_builtin_metric(self):
         """
         Test custom scorer evaluation with built-in metric.
         
         This test uses a built-in metric (PRIME_MATH) instead of a custom evaluator ARN.
         Configuration adapted from commented section in custom_scorer_demo.ipynb.
-        
-        Note: This test is currently skipped. Remove the @pytest.mark.skip decorator
-        when you want to enable it.
         """
         # Get built-in metrics
         BuiltInMetric = get_builtin_metrics()
@@ -285,7 +280,6 @@ class TestCustomScorerEvaluatorIntegration:
         assert execution.status.overall_status == "Succeeded"
         logger.info("Built-in metric evaluation completed successfully")
 
-    @pytest.mark.skip(reason="Base model only evaluation - not working yet per notebook")
     def test_custom_scorer_base_model_only(self):
         """
         Test custom scorer evaluation with base model only (no fine-tuned model).

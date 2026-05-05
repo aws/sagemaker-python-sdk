@@ -22,7 +22,6 @@ from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLVR training workflow with LORA."""
     
@@ -60,7 +59,6 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     """Test RLVR trainer with custom reward function."""
     
@@ -98,8 +96,6 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-# @pytest.mark.skipif(os.environ.get('AWS_DEFAULT_REGION') != 'us-east-1', reason="Nova models only available in us-east-1")
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlvr_trainer_nova_workflow(sagemaker_session):
     """Test RLVR training workflow with Nova model."""
     import os

@@ -21,7 +21,6 @@ from sagemaker.train.common import TrainingType
 import pytest
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLAIF training workflow with LORA."""
     
@@ -61,7 +60,6 @@ def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     """Test RLAIF trainer with different reward model and prompt."""
 
@@ -100,7 +98,6 @@ def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlaif_trainer_continued_finetuning(sagemaker_session):
     """Test complete RLAIF training workflow with LORA."""
 

@@ -118,8 +118,6 @@ def test_remote_python_runtime_is_incompatible(
         divide(10, 2)
 
 
-# TODO: add VPC settings, update SageMakerRole with KMS permissions
-@pytest.mark.skip
 def test_advanced_job_setting(
     sagemaker_session, dummy_container_without_error, cpu_instance_type, s3_kms_key
 ):
@@ -552,7 +550,6 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
     assert client_error_message in str(error)
 
 
-@pytest.mark.skip
 def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
     @remote(
         role=ROLE,
@@ -578,7 +575,6 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
     test_spark_transform()
 
 
-@pytest.mark.skip
 def test_decorator_auto_capture(sagemaker_session, auto_capture_test_container):
     """
     This test runs a docker container. The Container invocation will execute a python script

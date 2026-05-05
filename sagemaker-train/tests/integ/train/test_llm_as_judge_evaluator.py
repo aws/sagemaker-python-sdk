@@ -84,7 +84,6 @@ TEST_CONFIG = {
 }
 
 
-@pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
 class TestLLMAsJudgeEvaluatorIntegration:
     """Integration tests for LLMAsJudgeEvaluator"""
 
@@ -254,15 +253,11 @@ class TestLLMAsJudgeEvaluatorIntegration:
         
         logger.info("Built-in metrics prefix handling tests passed")
 
-    @pytest.mark.skip(reason="Built-in metrics only test - to be enabled when needed")
     def test_llm_as_judge_builtin_metrics_only(self):
         """
         Test LLM-as-Judge evaluation with only built-in metrics (no custom metrics).
         
         This test uses only built-in metrics without custom metrics.
-        
-        Note: This test is currently skipped. Remove the @pytest.mark.skip decorator
-        when you want to enable it.
         """
         logger.info("Creating LLMAsJudgeEvaluator with built-in metrics only")
         
@@ -302,15 +297,11 @@ class TestLLMAsJudgeEvaluatorIntegration:
         assert execution.status.overall_status == "Succeeded"
         logger.info("Built-in metrics only evaluation completed successfully")
 
-    @pytest.mark.skip(reason="Custom metrics only test - to be enabled when needed")
     def test_llm_as_judge_custom_metrics_only(self):
         """
         Test LLM-as-Judge evaluation with only custom metrics (no built-in metrics).
         
         This test uses only custom metrics without built-in metrics.
-        
-        Note: This test is currently skipped. Remove the @pytest.mark.skip decorator
-        when you want to enable it.
         """
         logger.info("Creating LLMAsJudgeEvaluator with custom metrics only")
         
