@@ -20,7 +20,7 @@ import pytest
 
 TEST_DOMAIN = "testdomain"
 TEST_USER_PROFILE = "testuser"
-TEST_REGION = "testregion"
+TEST_REGION = "us-west-2"
 TEST_NOTEBOOK_METADATA = json.dumps({"DomainId": TEST_DOMAIN, "UserProfileName": TEST_USER_PROFILE})
 TEST_TRAINING_JOB = "testjob"
 

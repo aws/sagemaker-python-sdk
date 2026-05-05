@@ -25,7 +25,7 @@ from sagemaker.core.interactive_apps.tensorboard import TensorBoardApp
 
 TEST_DOMAIN = "testdomain"
 TEST_USER_PROFILE = "testuser"
-TEST_REGION = "testregion"
+TEST_REGION = "us-west-2"
 TEST_NOTEBOOK_METADATA = json.dumps({"DomainId": TEST_DOMAIN, "UserProfileName": TEST_USER_PROFILE})
 TEST_PRESIGNED_URL = (
     f"https://{TEST_DOMAIN}.studio.{TEST_REGION}.sagemaker.aws/auth?token=FAKETOKEN"
