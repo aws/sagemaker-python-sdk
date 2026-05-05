@@ -38,6 +38,8 @@ class DetailProfilerApp(object):
             region (str): The name of the region e.g. us-east-1. If not specified,
                 one is created using the default AWS configuration chain.
         """
+        from sagemaker.core.region_validation import validate_region
+
         if region:
             self.region = region
         else:
@@ -48,6 +50,8 @@ class DetailProfilerApp(object):
                     "Failed to get region from default config. Please eihter pass region "
                     "as an input argument or setup the local AWS config."
                 )
+
+        validate_region(self.region)
 
         self._domain_id = None
         self._user_profile_name = None
@@ -79,10 +83,6 @@ class DetailProfilerApp(object):
         Returns:
             str: An unsigned URL for DetailProfiler hosted on SageMaker.
         """
-        from sagemaker.core.region_validation import validate_region
-
-        validate_region(self.region)
-
         if self._valid_domain_and_user:
             url = f"https://{self._domain_id}.studio.{self.region}.sagemaker.aws/profiler/default"
             if training_job_name is not None:

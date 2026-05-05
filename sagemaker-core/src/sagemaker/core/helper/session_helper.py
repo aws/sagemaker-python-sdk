@@ -228,6 +228,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 "Must setup local AWS configuration with a region supported by SageMaker."
             )
 
+        from sagemaker.core.region_validation import validate_region
+
+        validate_region(self._region_name)
+
         # Make use of user_agent_extra field of the botocore_config object
         # to append SageMaker Python SDK specific user_agent suffix
         # to the current User-Agent header value from boto3
@@ -2121,9 +2125,6 @@ def sts_regional_endpoint(region):
     Returns:
         str: AWS STS regional endpoint
     """
-    from sagemaker.core.region_validation import validate_region
-
-    validate_region(region)
     endpoint_data = botocore_resolver().construct_endpoint("sts", region)
     if region == "il-central-1" and not endpoint_data:
         endpoint_data = {"hostname": "sts.{}.amazonaws.com".format(region)}

@@ -824,16 +824,17 @@ def test_tb_init_with_default_region():
     """
     # happy case
     with patch(
-        "sagemaker.core.helper.session_helper.Session.boto_region_name", new_callable=PropertyMock
-    ) as region_mock:
-        region_mock.return_value = TEST_REGION
+        "sagemaker.core.interactive_apps.base_interactive_app.Session"
+    ) as session_mock:
+        session_mock.return_value.boto_region_name = TEST_REGION
         tb_app = TensorBoardApp()
         assert tb_app.region == TEST_REGION
 
     # no default region configured
     with patch(
-        "sagemaker.core.helper.session_helper.Session.boto_region_name", new_callable=PropertyMock
-    ) as region_mock:
-        region_mock.side_effect = [ValueError()]
+        "sagemaker.core.interactive_apps.base_interactive_app.Session"
+    ) as session_mock:
+        session_mock.return_value.boto_region_name = PropertyMock(side_effect=ValueError())
+        session_mock.side_effect = ValueError()
         with pytest.raises(ValueError):
             tb_app = TensorBoardApp()

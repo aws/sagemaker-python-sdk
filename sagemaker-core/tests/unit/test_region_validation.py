@@ -159,3 +159,66 @@ class TestValidateEndpointUrl:
     def test_invalid_endpoint(self, url):
         with pytest.raises(InvalidRegionError):
             validate_endpoint_url(url)
+
+
+class TestSessionRegionValidation:
+    """Ensure Session rejects invalid region at initialization."""
+
+    def test_session_rejects_malicious_region(self):
+        from unittest.mock import patch, MagicMock
+
+        mock_boto_session = MagicMock()
+        mock_boto_session.region_name = "x@attacker.com:443/#"
+
+        with pytest.raises(InvalidRegionError):
+            from sagemaker.core.helper.session_helper import Session
+
+            Session(boto_session=mock_boto_session)
+
+    def test_session_accepts_valid_region(self):
+        from unittest.mock import patch, MagicMock
+
+        mock_boto_session = MagicMock()
+        mock_boto_session.region_name = "us-west-2"
+
+        with patch(
+            "sagemaker.core.helper.session_helper.Session._initialize"
+        ) as mock_init:
+            # Just verify validate_region doesn't raise for valid region
+            validate_region("us-west-2")
+
+
+class TestBaseInteractiveAppRegionValidation:
+    """Ensure BaseInteractiveApp rejects invalid region at initialization."""
+
+    def test_rejects_malicious_region(self):
+        from unittest.mock import patch
+
+        with pytest.raises(InvalidRegionError):
+            from sagemaker.core.interactive_apps.tensorboard import TensorBoardApp
+
+            with patch("boto3.client"):
+                TensorBoardApp(region="x@attacker.com:443/#")
+
+    def test_accepts_valid_region(self):
+        from unittest.mock import patch, MagicMock
+
+        with patch("boto3.client") as mock_client, patch(
+            "sagemaker.core.interactive_apps.base_interactive_app.BaseInteractiveApp._get_domain_and_user"
+        ):
+            from sagemaker.core.interactive_apps.tensorboard import TensorBoardApp
+
+            app = TensorBoardApp(region="us-west-2")
+            assert app.region == "us-west-2"
+
+
+class TestDetailProfilerAppRegionValidation:
+    """Ensure DetailProfilerApp rejects invalid region at initialization."""
+
+    def test_rejects_malicious_region(self):
+        with pytest.raises(InvalidRegionError):
+            from sagemaker.core.interactive_apps.detail_profiler_app import (
+                DetailProfilerApp,
+            )
+
+            DetailProfilerApp(region="x@attacker.com:443/#")

@@ -271,9 +271,6 @@ def _construct_url(
 ) -> str:
     """Construct the URL for the telemetry request"""
 
-    from sagemaker.core.region_validation import validate_region
-
-    validate_region(region)
     base_url = (
         f"https://sm-pysdk-t-{region}.s3.{region}.amazonaws.com/telemetry?"
         f"x-accountId={accountId}"

@@ -43,6 +43,8 @@ class BaseInteractiveApp(abc.ABC):
                 one is created using the default AWS configuration chain.
                 Default: ``None``
         """
+        from sagemaker.core.region_validation import validate_region
+
         if isinstance(region, str):
             self.region = region
         else:
@@ -55,6 +57,7 @@ class BaseInteractiveApp(abc.ABC):
                     " configuration."
                 )
 
+        validate_region(self.region)
         self._sagemaker_client = boto3.client("sagemaker", region_name=self.region)
         # Used to store domain and user profile info retrieved from Studio environment.
         self._domain_id = None
