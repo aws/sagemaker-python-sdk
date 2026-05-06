@@ -3621,6 +3621,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         )
         mb_instance.inference_ami_version = deploy_kwargs.get("inference_ami_version")
 
+        # Apply network isolation from JumpStart model spec if not set by user via network param
+        if not mb_instance._enable_network_isolation and deploy_kwargs.get(
+            "enable_network_isolation"
+        ):
+            mb_instance._enable_network_isolation = deploy_kwargs["enable_network_isolation"]
+
         return mb_instance
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.transformer")
