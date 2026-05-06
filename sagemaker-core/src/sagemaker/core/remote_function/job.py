@@ -678,10 +678,16 @@ class _JobSettings:
                 " 'sagemaker-feature-store-pyspark>=2,<3'"
             )
             copy_jar_cmd = (
-                "python3 -c \"import feature_store_pyspark, shutil, os, glob; "
+                "python3 -c \""
+                "import feature_store_pyspark, shutil, os, glob, re; "
+                "release_file = os.path.join(os.environ.get('SPARK_HOME', '/usr/lib/spark'), 'RELEASE'); "
+                "spark_ver = '3.5'; "
+                "rf = open(release_file).read() if os.path.exists(release_file) else ''; "
+                "m = re.search(r'Spark (\\d+\\.\\d+)', rf); "
+                "spark_ver = m.group(1) if m else spark_ver; "
                 "jars_dir = os.path.join(os.path.dirname(feature_store_pyspark.__file__), 'jars'); "
                 "[shutil.copy(j, '/usr/lib/spark/jars/') "
-                "for j in glob.glob(os.path.join(jars_dir, '*3.5*.jar'))]\""
+                "for j in glob.glob(os.path.join(jars_dir, '*' + spark_ver + '*.jar'))]\""
             )
             if self.pre_execution_commands is None:
                 self.pre_execution_commands = [install_cmd, copy_jar_cmd]
