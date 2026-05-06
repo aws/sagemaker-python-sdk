@@ -281,25 +281,33 @@ class ClarifyCheckStep(Step):
                 }
             processing_inputs.append(input_dict)
         
+        s3_output_dict = {
+            "S3Uri": self._processing_params["result_output"].s3_output.s3_uri,
+            "LocalPath": self._processing_params["result_output"].s3_output.local_path,
+            "S3UploadMode": self._processing_params["result_output"].s3_output.s3_upload_mode,
+        }
+        if self.check_job_config.output_kms_key:
+            s3_output_dict["KmsKeyId"] = self.check_job_config.output_kms_key
+
         processing_outputs = [{
             "OutputName": self._processing_params["result_output"].output_name,
-            "S3Output": {
-                "S3Uri": self._processing_params["result_output"].s3_output.s3_uri,
-                "LocalPath": self._processing_params["result_output"].s3_output.local_path,
-                "S3UploadMode": self._processing_params["result_output"].s3_output.s3_upload_mode,
-            }
+            "S3Output": s3_output_dict,
         }]
-        
+
+        cluster_config = {
+            "InstanceCount": self._baselining_processor.instance_count,
+            "InstanceType": self._baselining_processor.instance_type,
+            "VolumeSizeInGB": getattr(self._baselining_processor, 'volume_size_in_gb', 30),
+        }
+        if self.check_job_config.volume_kms_key:
+            cluster_config["VolumeKmsKeyId"] = self.check_job_config.volume_kms_key
+
         request_dict = {
             "ProcessingInputs": processing_inputs,
             "ProcessingOutputConfig": {"Outputs": processing_outputs},
             "ProcessingJobName": self._baselining_processor._current_job_name or "clarify-job",
             "ProcessingResources": {
-                "ClusterConfig": {
-                    "InstanceCount": self._baselining_processor.instance_count,
-                    "InstanceType": self._baselining_processor.instance_type,
-                    "VolumeSizeInGB": getattr(self._baselining_processor, 'volume_size_in_gb', 30),
-                }
+                "ClusterConfig": cluster_config,
             },
             "AppSpecification": {
                 "ImageUri": self._baselining_processor.image_uri,
