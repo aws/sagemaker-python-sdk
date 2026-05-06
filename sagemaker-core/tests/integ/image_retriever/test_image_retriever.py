@@ -12,7 +12,6 @@ from sagemaker.core.image_retriever.image_retriever import ImageRetriever
 from sagemaker.core.config.config_manager import SageMakerConfig
 
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
 @pytest.mark.integ
 def test_retrieve_image_uri():
     image_uri = ImageRetriever.retrieve("clarify", "us-west-2")
@@ -56,7 +55,6 @@ def test_retrieve_image_uri():
     )
 
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
 @pytest.mark.integ
 def test_retrieve_pytorch_uri():
     image_uri = ImageRetriever.retrieve_pytorch_uri(
@@ -72,7 +70,6 @@ def test_retrieve_pytorch_uri():
     )
 
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
 @pytest.mark.integ
 def test_retrieve_hugging_face_uri():
     image_uri = ImageRetriever.retrieve_hugging_face_uri(
@@ -88,18 +85,16 @@ def test_retrieve_hugging_face_uri():
     ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
 
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
 @pytest.mark.integ
 def test_retrieve_base_python_image_uri():
-    image_uri = ImageRetriever.retrieve_base_python_image_uri()
+    image_uri = ImageRetriever.retrieve_base_python_image_uri(region="us-west-2")
     assert image_uri == "236514542706.dkr.ecr.us-west-2.amazonaws.com/sagemaker-base-python-310:1.0"
 
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
 @pytest.mark.integ
 @patch.object(SageMakerConfig, "resolve_value_from_config")
 def test_retrieve_image_uri_intelligent_default(mock_load_config):
-    def custom_return(config_path):
+    def custom_return(config_path=None, **kwargs):
         if config_path == _simple_path(
             SAGEMAKER, PYTHON_SDK, MODULES, IMAGE_RETRIEVER, "ImageScope"
         ):

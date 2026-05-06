@@ -52,6 +52,8 @@ CONFIGURABLE_ATTRIBUTES = [
 
 
 class ImageRetriever:
+    _config = SageMakerConfig()
+
     @staticmethod
     def retrieve_hugging_face_uri(
         region: str,
@@ -110,7 +112,7 @@ class ImageRetriever:
         args = dict(locals())
         for name, val in args.items():
             if name in CONFIGURABLE_ATTRIBUTES and not val:
-                default_value = SageMakerConfig.resolve_value_from_config(
+                default_value = ImageRetriever._config.resolve_value_from_config(
                     config_path=_simple_path(
                         SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name)
                     )
@@ -499,7 +501,7 @@ class ImageRetriever:
         args = dict(locals())
         for name, val in args.items():
             if name in CONFIGURABLE_ATTRIBUTES and not val:
-                default_value = SageMakerConfig.resolve_value_from_config(
+                default_value = ImageRetriever._config.resolve_value_from_config(
                     config_path=_simple_path(
                         SAGEMAKER, MODULES, IMAGE_RETRIEVER, to_camel_case(name)
                     )
