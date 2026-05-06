@@ -27,7 +27,7 @@ def test_retrieve_image_uri():
     )
     assert (
         image_uri
-        == "053634841547.dkr.ecr.us-west-1.amazonaws.com/sagemaker-distribution-prod:3.0.0-gpu"
+        == "053634841547.dkr.ecr.us-west-1.amazonaws.com/sagemaker-distribution-prod:3.2.0-gpu"
     )
 
     image_uri = ImageRetriever.retrieve(
