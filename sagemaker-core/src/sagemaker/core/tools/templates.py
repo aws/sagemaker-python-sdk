@@ -332,7 +332,7 @@ def wait(
                 return
 
             if timeout is not None and time.time() - start_time >= timeout:
-                raise TimeoutExceededError(resouce_type="{resource_name}", status=current_status)
+                raise TimeoutExceededError(resource_type="{resource_name}", status=current_status, message="{timeout_message}")
             time.sleep(poll)
 '''
 
@@ -385,7 +385,7 @@ def wait_for_status(
                 return
 {failed_error_block}
             if timeout is not None and time.time() - start_time >= timeout:
-                raise TimeoutExceededError(resouce_type="{resource_name}", status=current_status)
+                raise TimeoutExceededError(resource_type="{resource_name}", status=current_status)
             time.sleep(poll)
 '''
 
@@ -436,7 +436,7 @@ def wait_for_delete(
 {deleted_status_check}
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="{resource_name}", status=current_status)
+                    raise TimeoutExceededError(resource_type="{resource_name}", status=current_status)
             except botocore.exceptions.ClientError as e:
                 error_code = e.response["Error"]["Code"]
                 

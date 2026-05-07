@@ -1,4 +1,37 @@
 # Changelog
+## v1.10.0 (2026-05-01)
+
+### New Features
+
+- Add CodeArtifact support for ModelTrainer and FrameworkProcessor requirements.txt installation
+
+### Bug Fixes
+
+- Fix failing train tests for v3
+
+### Other
+
+- Update service-2.json with latest public botocore service model
+
+## v1.9.0 (2026-04-23)
+
+### New Features
+
+- **Train**: Add `wait_timeout` parameter to `train()` for SFT, DPO, RLAIF, RLVR, and BaseTrainer
+- **Evaluate**: Add MLflow experiment link to eval output
+- **JumpStart**: Allow `SAGEMAKER_HUB_NAME` environment variable to override the `HUB_NAME` constant
+
+### Bug Fixes
+
+- **HyperparameterTuner**: Pass through full `OutputDataConfig` from `ModelTrainer` so `kms_key_id`, `compression_type`, and other fields are preserved
+- **HyperparameterTuner / ModelTrainer**: Propagate environment variables that were previously dropped
+- **Evaluate**: Skip `None` hyperparameters in `to_dict` instead of converting them to the string `"None"`
+- **Nova**: Add `us-west-2` to Nova supported regions
+
+## v1.8.0 (2026-04-16)
+
+- Update module dependencies
+
 ## v1.7.1 (2026-03-31)
 
 ### Features

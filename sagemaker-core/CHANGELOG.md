@@ -1,4 +1,40 @@
 # Changelog
+## v2.10.0 (2026-05-01)
+
+### New Features
+
+- Add CodeArtifact support for ModelTrainer and FrameworkProcessor requirements.txt installation
+
+### Bug Fixes
+
+- Fix S3 bucket operations
+- Fix potential S3 path traversal
+- Wire FrameworkProcessor code_location into code upload paths
+- Improve subprocess exception handling in git_utils
+
+### Other
+
+- Update service-2.json with latest public botocore service model
+
+## v2.9.0 (2026-04-23)
+
+### Bug Fixes
+
+- **Waiters**: Improve error messages for waiter timeouts
+- **DJL LMI**: Update ISO account mappings in image URI config
+
+## v2.8.0 (2026-04-16)
+
+### New Features
+
+- **Image Upgrades**: Updated image URI configurations
+
+### Bug Fixes
+
+- **ModelBuilder**: Add MLFlowConfig to Base Model
+- **Local Mode**: Support for docker compose > v2
+- **Dependencies**: Remove Pytorch hard dependency
+
 ## v2.7.1 (2026-03-31)
 
 ### Features

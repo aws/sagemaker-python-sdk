@@ -23,7 +23,7 @@ from sagemaker.train.common_utils.finetune_utils import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train.constants import HUB_NAME
+from sagemaker.train.constants import get_sagemaker_hub_name
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -180,7 +180,8 @@ class DPOTrainer(BaseTrainer):
     def train(self,
               training_dataset: Optional[Union[str, DataSet]] = None,
               validation_dataset: Optional[Union[str, DataSet]] = None,
-              wait: bool = True):
+              wait: bool = True,
+              wait_timeout: Optional[int] = None):
         """Execute the DPO training job.
 
         Parameters:
@@ -192,6 +193,9 @@ class DPOTrainer(BaseTrainer):
                 Can be an S3 URI, dataset ARN, or DataSet object.
             wait (bool):
                 Whether to wait for the training job to complete. Defaults to True.
+            wait_timeout (Optional[int]):
+                Maximum time in seconds to wait for the training job to complete. Only used when wait=True.
+                If None, uses the default timeout from the wait utility.
 
         Returns:
             TrainingJob: The SageMaker training job object.
@@ -244,7 +248,7 @@ class DPOTrainer(BaseTrainer):
         )
 
         vpc_config = self.networking if self.networking else None
-        tags = _get_studio_tags(self._model_name, HUB_NAME)
+        tags = _get_studio_tags(self._model_name, get_sagemaker_hub_name())
 
         # Build TrainingJob.create() arguments
         create_args = {
@@ -276,7 +280,10 @@ class DPOTrainer(BaseTrainer):
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
             from sagemaker.core.utils.exceptions import TimeoutExceededError
             try :
-                _wait(training_job)
+                wait_kwargs = {}
+                if wait_timeout is not None:
+                    wait_kwargs['timeout'] = wait_timeout
+                _wait(training_job, **wait_kwargs)
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
 

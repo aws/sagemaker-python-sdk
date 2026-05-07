@@ -63,7 +63,6 @@ class TestModelResolver:
         """Test ModelResolver initialization."""
         resolver = _ModelResolver()
         assert resolver.sagemaker_session is None
-        assert resolver.DEFAULT_HUB_NAME == "SageMakerPublicHub"
     
     def test_resolver_with_session(self):
         """Test ModelResolver with custom session."""

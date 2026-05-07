@@ -44,8 +44,15 @@ def generate_code(
         service_json=service_json_data.sagemaker
     )
 
-    shapes_code_gen.generate_shapes()
-    reformat_file_with_black(".")
+    # Collect paths of all generated files, then reformat only those.
+    generated_files = []
+
+    generated_files.append(shapes_code_gen.generate_shapes())
+    generated_files.append(resources_code_gen.generate_resources())
+    generated_files.append(resources_code_gen.generate_config_schema())
+
+    for filepath in generated_files:
+        reformat_file_with_black(filepath)
 
 
 """

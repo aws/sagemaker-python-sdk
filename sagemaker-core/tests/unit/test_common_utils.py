@@ -961,6 +961,94 @@ class TestDownloadFolder:
                 download_folder("bucket", "/../prefix/", tmpdir, mock_session)
 
 
+class TestDownloadFilesUnderPrefixPathTraversal:
+    """Test _download_files_under_prefix blocks path traversal attacks."""
+
+    def test_path_traversal_via_dotdot_in_key(self):
+        """Test that S3 keys with '..' traversal sequences are blocked."""
+        from sagemaker.core.common_utils import _download_files_under_prefix
+
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        # Simulate an S3 object with a traversal key
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/../../../../etc/passwd"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        # Ensure no file was actually downloaded
+        mock_obj.download_file.assert_not_called()
+
+    def test_path_traversal_via_relative_escape(self):
+        """Test that keys resolving outside target via relpath are blocked."""
+        from sagemaker.core.common_utils import _download_files_under_prefix
+
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "prefix/../../../etc/cron.d/backdoor"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                _download_files_under_prefix("bucket", "prefix/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_not_called()
+
+    def test_safe_keys_are_allowed(self):
+        """Test that normal S3 keys within the target directory are allowed."""
+        from sagemaker.core.common_utils import _download_files_under_prefix
+
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/subdir/file.txt"
+        mock_obj_summary.bucket_name = "bucket"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        mock_obj = Mock()
+        mock_s3.Object.return_value = mock_obj
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_obj.download_file.assert_called_once()
+
+    def test_folder_objects_are_skipped(self):
+        """Test that S3 folder objects (keys ending with /) are skipped."""
+        from sagemaker.core.common_utils import _download_files_under_prefix
+
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_obj_summary = Mock()
+        mock_obj_summary.key = "data/subdir/"
+        mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+        mock_s3.Object.assert_not_called()
+
+
 class TestRepackModel:
     """Test repack_model function."""
 
@@ -2514,3 +2602,145 @@ class TestCreateOrUpdateCodeDir:
                         None,
                         tmpdir,
                     )
+
+
+class TestDownloadFileSpotCheck:
+    """Spot-check behavior in common_utils.download_file."""
+
+    def test_download_from_default_bucket_includes_expected_owner(self, tmp_path):
+        from sagemaker.core.common_utils import download_file
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_session._get_account_id_if_default_bucket.return_value = "111111111111"
+
+        download_file(
+            "sagemaker-us-west-2-111111111111", "k", str(tmp_path / "f"), mock_session
+        )
+
+        mock_session._get_account_id_if_default_bucket.assert_called_once_with(
+            "sagemaker-us-west-2-111111111111"
+        )
+        mock_bucket.download_file.assert_called_once_with(
+            "k", str(tmp_path / "f"), ExtraArgs={"ExpectedBucketOwner": "111111111111"}
+        )
+
+    def test_download_from_non_default_bucket_omits_expected_owner(self, tmp_path):
+        from sagemaker.core.common_utils import download_file
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_s3 = Mock()
+        mock_bucket = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Bucket.return_value = mock_bucket
+
+        mock_session._get_account_id_if_default_bucket.return_value = None
+
+        download_file("cross-account-bucket", "k", str(tmp_path / "f"), mock_session)
+
+        mock_bucket.download_file.assert_called_once_with(
+            "k", str(tmp_path / "f"), ExtraArgs=None
+        )
+
+
+class TestSaveModelSpotCheck:
+    """Spot-check behavior in common_utils._save_model."""
+
+    def test_save_to_default_bucket_includes_expected_owner(self, tmp_path):
+        from sagemaker.core.common_utils import _save_model
+        from sagemaker.core.session_settings import SessionSettings
+
+        model_file = tmp_path / "m.tar.gz"
+        model_file.write_text("x")
+
+        mock_session = Mock()
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.settings = SessionSettings(encrypt_repacked_artifacts=False)
+        mock_s3 = Mock()
+        mock_obj = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Object.return_value = mock_obj
+
+        mock_session._get_account_id_if_default_bucket.return_value = "111111111111"
+
+        _save_model(
+            "s3://sagemaker-us-west-2-111111111111/m.tar.gz",
+            str(model_file),
+            mock_session,
+            kms_key=None,
+        )
+
+        call_args = mock_obj.upload_file.call_args
+        assert call_args[1]["ExtraArgs"] == {"ExpectedBucketOwner": "111111111111"}
+
+    def test_save_to_non_default_bucket_omits_expected_owner(self, tmp_path):
+        from sagemaker.core.common_utils import _save_model
+        from sagemaker.core.session_settings import SessionSettings
+
+        model_file = tmp_path / "m.tar.gz"
+        model_file.write_text("x")
+
+        mock_session = Mock()
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.settings = SessionSettings(encrypt_repacked_artifacts=False)
+        mock_s3 = Mock()
+        mock_obj = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Object.return_value = mock_obj
+
+        mock_session._get_account_id_if_default_bucket.return_value = None
+
+        _save_model(
+            "s3://marketplace-vendor-bucket/m.tar.gz",
+            str(model_file),
+            mock_session,
+            kms_key=None,
+        )
+
+        call_args = mock_obj.upload_file.call_args
+        assert call_args[1]["ExtraArgs"] is None
+
+    def test_save_to_default_bucket_preserves_kms(self, tmp_path):
+        from sagemaker.core.common_utils import _save_model
+        from sagemaker.core.session_settings import SessionSettings
+
+        model_file = tmp_path / "m.tar.gz"
+        model_file.write_text("x")
+
+        mock_session = Mock()
+        mock_boto_session = Mock()
+        mock_session.boto_session = mock_boto_session
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.settings = SessionSettings()
+        mock_s3 = Mock()
+        mock_obj = Mock()
+        mock_boto_session.resource.return_value = mock_s3
+        mock_s3.Object.return_value = mock_obj
+
+        mock_session._get_account_id_if_default_bucket.return_value = "111111111111"
+
+        _save_model(
+            "s3://sagemaker-us-west-2-111111111111/m.tar.gz",
+            str(model_file),
+            mock_session,
+            kms_key="kms-key-id",
+        )
+
+        merged = mock_obj.upload_file.call_args[1]["ExtraArgs"]
+        assert merged["ServerSideEncryption"] == "aws:kms"
+        assert merged["SSEKMSKeyId"] == "kms-key-id"
+        assert merged["ExpectedBucketOwner"] == "111111111111"

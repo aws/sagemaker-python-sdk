@@ -105,6 +105,25 @@ autodoc_mock_imports = [
     'sagemaker.serve.model_server.torchserve.inference',
     'sagemaker.serve.model_server.torchserve.xgboost_inference',
     'sagemaker.serve.model_server.triton.model',
+    # Heavy runtime dependencies — mock to avoid slow/failing imports during doc build
+    'boto3',
+    'botocore',
+    'torch',
+    'tensorflow',
+    'sklearn',
+    'numpy',
+    'pandas',
+    'scipy',
+    'xgboost',
+    'lightgbm',
+    'mlflow',
+    'pyspark',
+    'transformers',
+    'datasets',
+    'trl',
 ]
 
 suppress_warnings = ['autodoc.import_error']
+
+# Speed up builds: only regenerate autosummary stubs if they don't exist
+autosummary_generate_overwrite = False
