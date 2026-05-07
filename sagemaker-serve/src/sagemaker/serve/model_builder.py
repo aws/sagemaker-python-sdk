@@ -463,7 +463,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     def _initialize_network_config(self) -> None:
         """Initialize network configuration from Networking object."""
         if self.network:
-            if self.network.vpc_config:
+            if hasattr(self.network, "vpc_config") and self.network.vpc_config:
                 self.vpc_config = self.network.vpc_config
             else:
                 self.vpc_config = (

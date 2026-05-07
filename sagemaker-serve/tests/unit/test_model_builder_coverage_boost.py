@@ -399,6 +399,7 @@ class TestFromJumpStartConfig(unittest.TestCase):
 
         mock_session = Mock()
         mock_session.boto_region_name = "us-west-2"
+        mock_session.sagemaker_config = None
 
         mb = ModelBuilder.from_jumpstart_config(
             jumpstart_config=js_config,
