@@ -877,6 +877,13 @@ class _ModelBuilderServers(object):
         if hasattr(init_kwargs, "env") and init_kwargs.env:
             self.env_vars.update(init_kwargs.env)
 
+        # Apply network isolation from JumpStart model spec if not already set by user
+        if (
+            not self._enable_network_isolation
+            and getattr(init_kwargs, "enable_network_isolation", None) is not None
+        ):
+            self._enable_network_isolation = init_kwargs.enable_network_isolation
+
         # Handle model artifacts for fine-tuned models
         if hasattr(init_kwargs, "model_data") and init_kwargs.model_data:
             if (

@@ -501,6 +501,71 @@ class TestBuildForJumpStart(unittest.TestCase):
         mock_create.assert_called_once()
 
 
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._create_model")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode")
+    def test_build_for_jumpstart_applies_network_isolation_from_spec(
+        self, mock_prepare, mock_create, mock_get_kwargs
+    ):
+        """Test that enable_network_isolation from JumpStart model spec is applied."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.0-cu117"
+        )
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://jumpstart-cache/models/model.tar.gz"
+        mock_init_kwargs.enable_network_isolation = True
+        mock_get_kwargs.return_value = mock_init_kwargs
+
+        mock_model = Mock(spec=Model)
+        mock_create.return_value = mock_model
+
+        builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-8b",
+            role_arn=MOCK_ROLE_ARN,
+            sagemaker_session=self.mock_session,
+            mode=Mode.SAGEMAKER_ENDPOINT,
+        )
+        builder._optimizing = False
+
+        builder._build_for_jumpstart()
+
+        self.assertTrue(builder._enable_network_isolation)
+
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._create_model")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode")
+    def test_build_for_jumpstart_does_not_override_user_network_isolation(
+        self, mock_prepare, mock_create, mock_get_kwargs
+    ):
+        """Test that user-set network isolation is not overridden by spec."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.21.0-deepspeed0.8.0-cu117"
+        )
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://jumpstart-cache/models/model.tar.gz"
+        mock_init_kwargs.enable_network_isolation = False
+        mock_get_kwargs.return_value = mock_init_kwargs
+
+        mock_model = Mock(spec=Model)
+        mock_create.return_value = mock_model
+
+        builder = ModelBuilder(
+            model="meta-textgeneration-llama-3-8b",
+            role_arn=MOCK_ROLE_ARN,
+            sagemaker_session=self.mock_session,
+            mode=Mode.SAGEMAKER_ENDPOINT,
+        )
+        builder._optimizing = False
+        builder._enable_network_isolation = True  # User explicitly set
+
+        builder._build_for_jumpstart()
+
+        # User's True should not be overridden by spec's False
+        self.assertTrue(builder._enable_network_isolation)
+
+
 class TestDeployWrappers(unittest.TestCase):
     """Test deploy wrapper methods."""
 

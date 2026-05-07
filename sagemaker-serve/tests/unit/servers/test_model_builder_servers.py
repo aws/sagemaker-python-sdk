@@ -47,6 +47,7 @@ class MockModelBuilderServers(_ModelBuilderServers):
         self.framework_version = None
         self._is_mlflow_model = False
         self.config_name = None
+        self._enable_network_isolation = False
 
     def _deploy_local_endpoint(self, **kwargs):
         return Mock()
