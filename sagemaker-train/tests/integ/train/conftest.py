@@ -38,3 +38,13 @@ def sagemaker_session():
 
     if region_manual_set and "AWS_DEFAULT_REGION" in os.environ:
         del os.environ["AWS_DEFAULT_REGION"]
+
+
+NOVA_REGION = "us-east-1"
+
+
+@pytest.fixture(scope="module")
+def sagemaker_session_us_east_1():
+    """Create a SageMaker session in us-east-1 for Nova model tests."""
+    boto_session = boto3.Session(region_name=NOVA_REGION)
+    return Session(boto_session=boto_session)

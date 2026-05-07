@@ -21,7 +21,6 @@ from sagemaker.train.common import TrainingType
 import pytest
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLAIF training workflow with LORA."""
     
@@ -33,7 +32,7 @@ def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
         reward_prompt='Builtin.Summarize',
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
         mlflow_run_name="test-rlaif-finetuned-models-run",
-        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
@@ -61,7 +60,6 @@ def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     """Test RLAIF trainer with different reward model and prompt."""
 
@@ -73,7 +71,7 @@ def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
         reward_prompt="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlaif-test-prompt/0.0.1",
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
         mlflow_run_name="test-rlaif-finetuned-models-run",
-        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
@@ -100,7 +98,6 @@ def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlaif_trainer_continued_finetuning(sagemaker_session):
     """Test complete RLAIF training workflow with LORA."""
 
@@ -112,7 +109,7 @@ def test_rlaif_trainer_continued_finetuning(sagemaker_session):
         reward_prompt='Builtin.Summarize',
         mlflow_experiment_name="test-rlaif-finetuned-models-exp",
         mlflow_run_name="test-rlaif-finetuned-models-run",
-        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
