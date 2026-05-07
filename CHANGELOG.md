@@ -1,4 +1,14 @@
 # Changelog
+## v3.10.1 (2026-05-07)
+
+### Bug Fixes
+- Fix KMS key propagation in check steps (QualityCheckStep, ClarifyCheckStep)
+- Fix JumpStart network isolation in ModelBuilder
+- Fix base_model_arn construction to use private hub when SAGEMAKER_HUB_NAME is set
+- Fix imports for Model Customization interfaces
+- Fix handling of unrecognized JumpStart container images in ModelBuilder
+- Increase default timeout for training jobs
+
 ## v3.10.0 (2026-05-01)
 
 ### New Features
