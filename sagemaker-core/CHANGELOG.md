@@ -1,4 +1,10 @@
 # Changelog
+## v2.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix image retriever tests
+
 ## v2.10.0 (2026-05-01)
 
 ### New Features

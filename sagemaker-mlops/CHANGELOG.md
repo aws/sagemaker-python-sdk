@@ -1,4 +1,10 @@
 # Changelog
+## v1.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix KMS key propagation in QualityCheckStep and ClarifyCheckStep
+
 ## v1.10.0 (2026-05-01)
 
 ### New Features

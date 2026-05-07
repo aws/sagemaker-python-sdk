@@ -381,6 +381,34 @@ class TestFromJumpStartConfig(unittest.TestCase):
         self.assertEqual(mb.model, "test-model")
         self.assertEqual(mb.model_version, "1.0.0")
 
+    @patch("sagemaker.serve.model_builder._retrieve_model_deploy_kwargs")
+    def test_from_jumpstart_config_applies_network_isolation(self, mock_deploy_kwargs):
+        """Test that enable_network_isolation from deploy kwargs is applied."""
+        from sagemaker.core.jumpstart.configs import JumpStartConfig
+        from sagemaker.core.training.configs import Compute
+
+        mock_deploy_kwargs.return_value = {
+            "model_data_download_timeout": 600,
+            "enable_network_isolation": True,
+        }
+
+        js_config = JumpStartConfig(
+            model_id="test-model",
+            model_version="1.0.0"
+        )
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+
+        mb = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            compute=Compute(instance_type="ml.g5.xlarge"),
+            sagemaker_session=mock_session,
+        )
+
+        self.assertTrue(mb._enable_network_isolation)
+
 
 if __name__ == "__main__":
     unittest.main()

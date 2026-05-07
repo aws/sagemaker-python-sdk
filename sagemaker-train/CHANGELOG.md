@@ -1,4 +1,12 @@
 # Changelog
+## v1.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix base_model_arn construction to use private hub when SAGEMAKER_HUB_NAME is set
+- Fix imports for Model Customization interfaces
+- Increase default timeout for training jobs
+
 ## v1.10.0 (2026-05-01)
 
 ### New Features
