@@ -22,7 +22,6 @@ from sagemaker.train.common import TrainingType
 import pytest
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete DPO training workflow with LORA."""
     # Create DPOTrainer instance with comprehensive configuration
@@ -30,7 +29,7 @@ def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group="sdk-test-finetuned-models",
-        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/dpo-oss-test-data/0.0.1",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/dpo/preference_dataset_train_256.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
@@ -61,7 +60,6 @@ def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_dpo_trainer_with_validation_dataset(sagemaker_session):
     """Test DPO trainer with both training and validation datasets."""
     
@@ -69,8 +67,8 @@ def test_dpo_trainer_with_validation_dataset(sagemaker_session):
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group="sdk-test-finetuned-models",
-        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/dpo-oss-test-data/0.0.1",
-        validation_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/dpo-oss-test-data/0.0.1",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/dpo/preference_dataset_train_256.jsonl",
+        validation_dataset="s3://mc-flows-sdk-testing/input_data/dpo/preference_dataset_train_256.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True
     )
