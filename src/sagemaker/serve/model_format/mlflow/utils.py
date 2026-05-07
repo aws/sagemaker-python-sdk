@@ -21,6 +21,7 @@ import shutil
 import os
 
 from sagemaker import Session, image_uris
+from sagemaker.utils import validate_path_within_directory
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.detector.image_detector import _cast_to_compatible_version
 from sagemaker.serve.model_format.mlflow.constants import (
@@ -243,6 +244,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
     s3 = session.boto_session.client("s3")
 
     os.makedirs(dst_path, exist_ok=True)
+    dst_path_real = os.path.realpath(dst_path)
 
     # Spot check: enforce ownership only when downloading from the session's default
     # bucket. Cross-account reads are left untouched.
@@ -259,6 +261,10 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
             key = obj["Key"]
             rel_path = os.path.relpath(key, s3_key)
             local_file_path = os.path.join(dst_path, rel_path)
+
+            validate_path_within_directory(
+                local_file_path, dst_path, source_description=key
+            )
 
             if not key.endswith("/"):
                 local_file_dir = os.path.dirname(local_file_path)

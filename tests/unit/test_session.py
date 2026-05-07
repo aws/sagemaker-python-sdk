@@ -7052,6 +7052,83 @@ def test_download_data_with_file_and_directory(makedirs, sagemaker_session):
     )
 
 
+@patch("os.makedirs")
+def test_download_data_path_traversal_in_file_key(makedirs, sagemaker_session, tmp_path):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/../../../../etc/passwd", "Size": 100},
+            ]
+        }
+    )
+
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        sagemaker_session.download_data(
+            path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
+        )
+
+    sagemaker_session.s3_client.download_file.assert_not_called()
+
+
+@patch("os.makedirs")
+def test_download_data_path_traversal_in_directory_key(makedirs, sagemaker_session, tmp_path):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/../../../etc/cron.d/", "Size": 0},
+            ]
+        }
+    )
+
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        sagemaker_session.download_data(
+            path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
+        )
+
+
+@patch("os.makedirs")
+def test_download_data_path_traversal_overwrite_aws_credentials(
+    makedirs, sagemaker_session, tmp_path
+):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/../../../../Users/alice/.aws/credentials", "Size": 200},
+            ]
+        }
+    )
+
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        sagemaker_session.download_data(
+            path=str(tmp_path), bucket="shared-bucket", key_prefix="data/"
+        )
+
+    sagemaker_session.s3_client.download_file.assert_not_called()
+
+
+@patch("os.makedirs")
+def test_download_data_safe_keys_are_allowed(makedirs, sagemaker_session, tmp_path):
+    sagemaker_session.s3_client = Mock()
+    sagemaker_session.s3_client.list_objects_v2 = Mock(
+        return_value={
+            "Contents": [
+                {"Key": "data/train.csv", "Size": 100},
+                {"Key": "data/models/model.pkl", "Size": 500},
+            ]
+        }
+    )
+
+    result = sagemaker_session.download_data(
+        path=str(tmp_path), bucket="test-bucket", key_prefix="data/"
+    )
+
+    assert len(result) == 2
+    assert sagemaker_session.s3_client.download_file.call_count == 2
+
+
 def test_create_hub(sagemaker_session):
     sagemaker_session.create_hub(
         hub_name="mock-hub-name",

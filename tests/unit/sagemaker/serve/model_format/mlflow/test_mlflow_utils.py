@@ -230,6 +230,113 @@ def test_download_s3_artifacts_valid_s3_path(mock_os_makedirs, mock_session):
     )
 
 
+@patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
+def test_download_s3_artifacts_path_traversal_via_dotdot_in_key(mock_makedirs):
+    """Test that S3 keys with '..' traversal sequences are blocked."""
+    import tempfile
+
+    mock_session = MagicMock()
+    mock_s3_client = MagicMock()
+    mock_session.boto_session.client.return_value = mock_s3_client
+
+    mock_paginator = MagicMock()
+    mock_s3_client.get_paginator.return_value = mock_paginator
+    mock_paginator.paginate.return_value = [
+        {
+            "Contents": [
+                {"Key": "model/../../../../etc/passwd"},
+            ]
+        }
+    ]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            _download_s3_artifacts("s3://my-bucket/model", tmpdir, mock_session)
+
+    mock_s3_client.download_file.assert_not_called()
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
+def test_download_s3_artifacts_path_traversal_overwrite_ssh_keys(mock_makedirs):
+    """Test the attack scenario targeting SSH keys."""
+    import tempfile
+
+    mock_session = MagicMock()
+    mock_s3_client = MagicMock()
+    mock_session.boto_session.client.return_value = mock_s3_client
+
+    mock_paginator = MagicMock()
+    mock_s3_client.get_paginator.return_value = mock_paginator
+    mock_paginator.paginate.return_value = [
+        {
+            "Contents": [
+                {"Key": "mlruns/exp1/model/../../../../Users/alice/.ssh/authorized_keys"},
+            ]
+        }
+    ]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            _download_s3_artifacts(
+                "s3://shared-bucket/mlruns/exp1/model", tmpdir, mock_session
+            )
+
+    mock_s3_client.download_file.assert_not_called()
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
+def test_download_s3_artifacts_safe_keys_are_allowed(mock_makedirs):
+    """Test that normal S3 keys within the target directory are allowed."""
+    import tempfile
+
+    mock_session = MagicMock()
+    mock_s3_client = MagicMock()
+    mock_session.boto_session.client.return_value = mock_s3_client
+
+    mock_paginator = MagicMock()
+    mock_s3_client.get_paginator.return_value = mock_paginator
+    mock_paginator.paginate.return_value = [
+        {
+            "Contents": [
+                {"Key": "model/MLmodel"},
+                {"Key": "model/subdir/model.pkl"},
+            ]
+        }
+    ]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _download_s3_artifacts("s3://my-bucket/model", tmpdir, mock_session)
+
+    assert mock_s3_client.download_file.call_count == 2
+
+
+@patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
+def test_download_s3_artifacts_folder_keys_are_skipped(mock_makedirs):
+    """Test that S3 folder objects (keys ending with /) are not downloaded."""
+    import tempfile
+
+    mock_session = MagicMock()
+    mock_s3_client = MagicMock()
+    mock_session.boto_session.client.return_value = mock_s3_client
+
+    mock_paginator = MagicMock()
+    mock_s3_client.get_paginator.return_value = mock_paginator
+    mock_paginator.paginate.return_value = [
+        {
+            "Contents": [
+                {"Key": "model/subdir/"},
+                {"Key": "model/subdir/file.txt"},
+            ]
+        }
+    ]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _download_s3_artifacts("s3://my-bucket/model", tmpdir, mock_session)
+
+    # Only the file should be downloaded, not the folder
+    assert mock_s3_client.download_file.call_count == 1
+
+
 @patch("sagemaker.image_uris.retrieve")
 @patch("sagemaker.serve.model_format.mlflow.utils._cast_to_compatible_version")
 @patch("sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements")

@@ -18,6 +18,7 @@ import copy
 import logging
 import shutil
 import tarfile
+import tempfile
 from datetime import datetime
 import os
 import re
@@ -727,6 +728,92 @@ def test_download_folder_points_to_single_file(makedirs):
     obj_mock.download_file.assert_has_calls(calls)
     boto_mock.resource("s3").Bucket(BUCKET_NAME).objects.filter.assert_not_called()
     obj_mock.reset_mock()
+
+
+def test_download_files_under_prefix_path_traversal_via_dotdot_in_key():
+    """Test that S3 keys with '..' traversal sequences are blocked."""
+    from sagemaker.utils import _download_files_under_prefix
+
+    mock_s3 = Mock()
+    mock_bucket = Mock()
+    mock_s3.Bucket.return_value = mock_bucket
+
+    mock_obj_summary = Mock()
+    mock_obj_summary.key = "data/../../../../etc/passwd"
+    mock_obj_summary.bucket_name = "bucket"
+    mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+    mock_obj = Mock()
+    mock_s3.Object.return_value = mock_obj
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+    mock_obj.download_file.assert_not_called()
+
+
+def test_download_files_under_prefix_path_traversal_via_relative_escape():
+    """Test that keys resolving outside target via relpath are blocked."""
+    from sagemaker.utils import _download_files_under_prefix
+
+    mock_s3 = Mock()
+    mock_bucket = Mock()
+    mock_s3.Bucket.return_value = mock_bucket
+
+    mock_obj_summary = Mock()
+    mock_obj_summary.key = "prefix/../../../etc/cron.d/backdoor"
+    mock_obj_summary.bucket_name = "bucket"
+    mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+    mock_obj = Mock()
+    mock_s3.Object.return_value = mock_obj
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with pytest.raises(ValueError, match="Path traversal detected"):
+            _download_files_under_prefix("bucket", "prefix/", tmpdir, mock_s3)
+
+    mock_obj.download_file.assert_not_called()
+
+
+def test_download_files_under_prefix_safe_keys_are_allowed():
+    """Test that normal S3 keys within the target directory are allowed."""
+    from sagemaker.utils import _download_files_under_prefix
+
+    mock_s3 = Mock()
+    mock_bucket = Mock()
+    mock_s3.Bucket.return_value = mock_bucket
+
+    mock_obj_summary = Mock()
+    mock_obj_summary.key = "data/subdir/file.txt"
+    mock_obj_summary.bucket_name = "bucket"
+    mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+    mock_obj = Mock()
+    mock_s3.Object.return_value = mock_obj
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+    mock_obj.download_file.assert_called_once()
+
+
+def test_download_files_under_prefix_folder_objects_are_skipped():
+    """Test that S3 folder objects (keys ending with /) are skipped."""
+    from sagemaker.utils import _download_files_under_prefix
+
+    mock_s3 = Mock()
+    mock_bucket = Mock()
+    mock_s3.Bucket.return_value = mock_bucket
+
+    mock_obj_summary = Mock()
+    mock_obj_summary.key = "data/subdir/"
+    mock_bucket.objects.filter.return_value = [mock_obj_summary]
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        _download_files_under_prefix("bucket", "data/", tmpdir, mock_s3)
+
+    mock_s3.Object.assert_not_called()
 
 
 def test_download_file():

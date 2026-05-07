@@ -173,6 +173,99 @@ def test_local_transform_job_perform_batch_inference(
     assert "file2.out" in output_files
 
 
+@patch("sagemaker.local.data.get_batch_strategy_instance")
+@patch("sagemaker.local.data.get_data_source_instance")
+@patch("sagemaker.local.entities.get_config_value")
+def test_perform_batch_inference_path_traversal_in_file_list(
+    get_config_value,
+    get_data_source_instance,
+    get_batch_strategy_instance,
+    local_transform_job,
+):
+    """Test that file paths resolving outside working_dir are blocked."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as working_dir:
+        with tempfile.TemporaryDirectory() as dataset_dir:
+            get_config_value.return_value = working_dir
+
+            data_source = Mock()
+            data_source.get_root_dir.return_value = dataset_dir
+            traversal_file = os.path.join(dataset_dir, "..", "..", "..", "etc", "passwd")
+            data_source.get_file_list.return_value = [traversal_file]
+            get_data_source_instance.return_value = data_source
+
+            batch_strategy = Mock()
+            get_batch_strategy_instance.return_value = batch_strategy
+
+            local_transform_job._get_working_directory = Mock(return_value=working_dir)
+
+            input_data = {
+                "DataSource": {"S3DataSource": {"S3Uri": "s3://some_bucket/data"}},
+                "ContentType": "text/csv",
+            }
+            output_data = {"S3OutputPath": "s3://bucket/output", "Accept": "text/csv"}
+
+            with pytest.raises(ValueError, match="Path traversal detected"):
+                local_transform_job._perform_batch_inference(
+                    input_data, output_data, BatchStrategy="MultiRecord", MaxPayloadInMB="6"
+                )
+
+
+@patch("sagemaker.local.entities.move_to_destination")
+@patch("sagemaker.local.data.get_batch_strategy_instance")
+@patch("sagemaker.local.data.get_data_source_instance")
+@patch("sagemaker.local.entities.get_config_value")
+def test_perform_batch_inference_safe_file_paths_are_allowed(
+    get_config_value,
+    get_data_source_instance,
+    get_batch_strategy_instance,
+    move_to_destination,
+    local_transform_job,
+):
+    """Test that normal file paths within dataset_dir are allowed."""
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as working_dir:
+        with tempfile.TemporaryDirectory() as dataset_dir:
+            test_file = os.path.join(dataset_dir, "input.csv")
+            with open(test_file, "w") as f:
+                f.write("test data")
+
+            get_config_value.return_value = working_dir
+
+            data_source = Mock()
+            data_source.get_root_dir.return_value = dataset_dir
+            data_source.get_file_list.return_value = [test_file]
+            get_data_source_instance.return_value = data_source
+
+            batch_strategy = Mock()
+            batch_strategy.pad.return_value = [b"test data"]
+            get_batch_strategy_instance.return_value = batch_strategy
+
+            local_transform_job._get_working_directory = Mock(return_value=working_dir)
+            local_transform_job.container = Mock()
+
+            runtime_client = Mock()
+            response_object = Mock()
+            response_object.read.return_value = b"result"
+            runtime_client.invoke_endpoint.return_value = {"Body": response_object}
+            local_transform_job.local_session.sagemaker_runtime_client = runtime_client
+
+            input_data = {
+                "DataSource": {"S3DataSource": {"S3Uri": "s3://some_bucket/data"}},
+                "ContentType": "text/csv",
+            }
+            output_data = {"S3OutputPath": "s3://bucket/output", "Accept": "text/csv"}
+
+            local_transform_job._perform_batch_inference(
+                input_data, output_data, BatchStrategy="MultiRecord", MaxPayloadInMB="6"
+            )
+
+            expected_output = os.path.join(working_dir, "input.csv.out")
+            assert os.path.exists(expected_output)
+
+
 @patch("sagemaker.local.entities._SageMakerContainer", Mock())
 @patch("sagemaker.local.entities.get_docker_host")
 @patch("sagemaker.local.entities._perform_request")
