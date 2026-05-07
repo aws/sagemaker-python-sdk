@@ -1,4 +1,11 @@
 # Changelog
+## v1.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix JumpStart network isolation in ModelBuilder
+- Fix handling of unrecognized JumpStart container images in ModelBuilder
+
 ## v1.10.0 (2026-05-01)
 
 ### Bug Fixes
