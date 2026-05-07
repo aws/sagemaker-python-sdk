@@ -99,7 +99,7 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
         model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-nova-finetuned-models-exp",
         mlflow_run_name="test-nova-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/sft-nova/sft_8_samples.jsonl",
+        training_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/sft-nova/sft_200_samples.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing-us-east-1/output/",
         sagemaker_session=sagemaker_session_us_east_1
     )
