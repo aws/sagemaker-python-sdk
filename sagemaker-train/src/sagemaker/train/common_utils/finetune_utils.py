@@ -105,12 +105,22 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
         return mlflow_resource_arn
     
     try:
+        target_region = sagemaker_session.boto_session.region_name
+        logger.info("Resolving MLflow app for region: %s", target_region)
+        
         mlflow_apps = MlflowApp.get_all(
             session=sagemaker_session.boto_session,
-            region=sagemaker_session.boto_session.region_name
+            region=target_region
         )
         
         mlflow_apps_list = list(mlflow_apps)
+        logger.info("Found %d MLflow apps from ListMlflowApps API (region=%s):", len(mlflow_apps_list), target_region)
+        for app in mlflow_apps_list:
+            logger.info("  App ARN: %s | status: %s | account_default_status: %s",
+                       getattr(app, 'arn', 'N/A'),
+                       getattr(app, 'status', 'N/A'),
+                       getattr(app, 'account_default_status', 'N/A'))
+        
         current_domain_id = _get_current_domain_id(sagemaker_session)
         
         # Check for domain match

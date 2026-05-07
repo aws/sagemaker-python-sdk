@@ -111,10 +111,6 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
         accept_eula=True,
         sagemaker_session=sagemaker_session_us_east_1
     )
-    rlvr_trainer.hyperparameters.data_s3_path = 's3://example-bucket'
-
-    rlvr_trainer.hyperparameters.reward_lambda_arn = 'arn:aws:lambda:us-east-1:729646638167:function:rlvr-nova-reward-function'
-
     training_job = rlvr_trainer.train(wait=False)
     
     # Manual wait loop
