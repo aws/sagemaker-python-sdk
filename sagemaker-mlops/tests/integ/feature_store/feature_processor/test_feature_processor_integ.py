@@ -594,6 +594,7 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
 
         transform()
 
+
         featurestore_client = sagemaker_session.sagemaker_featurestore_runtime_client
         results = featurestore_client.batch_get_record(
             Identifiers=[
