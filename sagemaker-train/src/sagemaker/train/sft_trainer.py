@@ -272,10 +272,20 @@ class SFTTrainer(BaseTrainer):
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
 
+        # Log the IAM role being used
+        logger.info(f"IAM Role ARN: {role}")
+
+        # Log the full training job arguments for debugging
+        logger.info(f"TrainingJob.create() arguments: {create_args}")
+
         try:
             training_job = TrainingJob.create(**create_args)
         except Exception as e:
-            logger.error("Error: %s", e)
+            logger.error(f"Error creating training job: {e}")
+            logger.error(f"Training job name: {current_training_job_name}")
+            logger.error(f"Serverless config: {serverless_config}")
+            logger.error(f"Role ARN: {role}")
+            logger.error(f"Full create_args: {create_args}")
             raise e
 
         if wait:
