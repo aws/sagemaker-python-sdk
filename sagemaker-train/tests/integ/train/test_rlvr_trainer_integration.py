@@ -95,6 +95,7 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.skip(reason="TODO: Nova test to be enabled in us-east-1")
 def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test RLVR training workflow with Nova model."""
     # sagemaker_session_us_east_1 fixture is defined in conftest.py (us-east-1 region)

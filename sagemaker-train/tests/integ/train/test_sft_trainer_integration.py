@@ -89,6 +89,7 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
     assert hasattr(training_job, 'output_model_package_arn')
 
 
+@pytest.mark.skip(reason="TODO: Nova test to be enabled in us-east-1")
 def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test SFT trainer with Nova model."""
     # sagemaker_session_us_east_1 fixture is defined in conftest.py (us-east-1 region)
