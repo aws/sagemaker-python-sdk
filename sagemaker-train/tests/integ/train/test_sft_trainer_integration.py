@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import time
+import random
 import pytest
 import boto3
 from sagemaker.core.helper.session_helper import Session
@@ -23,6 +24,7 @@ from sagemaker.train.common import TrainingType
 
 def test_sft_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete SFT training workflow with LORA."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     
     sft_trainer = SFTTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -30,7 +32,8 @@ def test_sft_trainer_lora_complete_workflow(sagemaker_session):
         model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
         training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
-        accept_eula=True
+        accept_eula=True,
+        base_job_name=f"sft-lora-integ-{unique_id}",
     )
     
     # Create training job
@@ -58,6 +61,7 @@ def test_sft_trainer_lora_complete_workflow(sagemaker_session):
 
 def test_sft_trainer_with_validation_dataset(sagemaker_session):
     """Test SFT trainer with both training and validation datasets."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
 
     sft_trainer = SFTTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -65,7 +69,8 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
         model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
         training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
         validation_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
-        accept_eula=True
+        accept_eula=True,
+        base_job_name=f"sft-val-integ-{unique_id}",
     )
     
     training_job = sft_trainer.train(wait=False)
@@ -94,6 +99,7 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test SFT trainer with Nova model."""
     # sagemaker_session_us_east_1 fixture is defined in conftest.py (us-east-1 region)
 
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     sft_trainer_nova = SFTTrainer(
         model="nova-textgeneration-lite-v2",
         training_type=TrainingType.LORA, 
@@ -102,7 +108,8 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
         mlflow_run_name="test-nova-finetuned-models-run",
         training_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/sft-nova/sft_200_samples.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing-us-east-1/output/",
-        sagemaker_session=sagemaker_session_us_east_1
+        sagemaker_session=sagemaker_session_us_east_1,
+        base_job_name=f"sft-nova-integ-{unique_id}",
     )
     
     # Create training job

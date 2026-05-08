@@ -24,6 +24,7 @@ import pytest
 
 def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete DPO training workflow with LORA."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     # Create DPOTrainer instance with comprehensive configuration
     trainer = DPOTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -31,7 +32,8 @@ def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
         model_package_group="sdk-test-finetuned-models",
         training_dataset="s3://mc-flows-sdk-testing/input_data/dpo/preference_dataset_train_256.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
-        accept_eula=True
+        accept_eula=True,
+        base_job_name=f"dpo-lora-integ-{unique_id}",
     )
     
     # Customize hyperparameters for quick training
@@ -62,6 +64,7 @@ def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
 
 def test_dpo_trainer_with_validation_dataset(sagemaker_session):
     """Test DPO trainer with both training and validation datasets."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     
     dpo_trainer = DPOTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -70,7 +73,8 @@ def test_dpo_trainer_with_validation_dataset(sagemaker_session):
         training_dataset="s3://mc-flows-sdk-testing/input_data/dpo/preference_dataset_train_256.jsonl",
         validation_dataset="s3://mc-flows-sdk-testing/input_data/dpo/preference_dataset_train_256.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
-        accept_eula=True
+        accept_eula=True,
+        base_job_name=f"dpo-val-integ-{unique_id}",
     )
     
     # Customize hyperparameters for quick training

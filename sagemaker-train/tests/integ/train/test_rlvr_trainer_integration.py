@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import time
+import random
 import pytest
 import boto3
 from sagemaker.core.helper.session_helper import Session
@@ -23,6 +24,7 @@ from sagemaker.train.common import TrainingType
 
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLVR training workflow with LORA."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -32,7 +34,8 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
         mlflow_run_name="test-rlvr-finetuned-models-run",
         training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
-        accept_eula=True
+        accept_eula=True,
+        base_job_name=f"rlvr-lora-integ-{unique_id}",
     )
     
     # Create training job
@@ -60,6 +63,7 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
 
 def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     """Test RLVR trainer with custom reward function."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -70,7 +74,8 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
         training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
-        accept_eula=True
+        accept_eula=True,
+        base_job_name=f"rlvr-rf-integ-{unique_id}",
     )
     
     training_job = rlvr_trainer.train(wait=False)
@@ -100,6 +105,7 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test RLVR training workflow with Nova model."""
     # sagemaker_session_us_east_1 fixture is defined in conftest.py (us-east-1 region)
 
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     rlvr_trainer = RLVRTrainer(
         model="nova-textgeneration-lite-v2",
         model_package_group="sdk-test-finetuned-models",
@@ -110,7 +116,8 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
         s3_output_path="s3://mc-flows-sdk-testing-us-east-1/output/",
         custom_reward_function="arn:aws:sagemaker:us-east-1:729646638167:hub-content/sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1",
         accept_eula=True,
-        sagemaker_session=sagemaker_session_us_east_1
+        sagemaker_session=sagemaker_session_us_east_1,
+        base_job_name=f"rlvr-nova-integ-{unique_id}",
     )
     training_job = rlvr_trainer.train(wait=False)
     
