@@ -559,9 +559,10 @@ def test_train_with_distributed_config(
         )
 
         assert os.path.exists(expected_train_script_path)
-        with open(expected_train_script_path, "r") as f:
+        with open(expected_train_script_path, "rb") as f:
             train_script_content = f.read()
-            assert test_case["expected_template"] in train_script_content
+            assert test_case["expected_template"] in train_script_content.decode("utf-8")
+            assert b"\r\n" not in train_script_content
 
         assert os.path.exists(expected_runner_json_path)
         with open(expected_runner_json_path, "r") as f:
