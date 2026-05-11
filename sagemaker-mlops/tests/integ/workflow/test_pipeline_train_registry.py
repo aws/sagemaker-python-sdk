@@ -37,7 +37,7 @@ def role():
     return get_execution_role()
 
 
-def test_pipeline_with_train_and_registry(sagemaker_session, pipeline_session, role):
+def test_pipeline_with_train_and_registry(sagemaker_session, pipeline_session, role, sklearn_latest_version):
     region = sagemaker_session.boto_region_name
     bucket = sagemaker_session.default_bucket()
     prefix = "integ-test-v3-pipeline"
@@ -45,7 +45,7 @@ def test_pipeline_with_train_and_registry(sagemaker_session, pipeline_session, r
 
     # Upload abalone data to S3
     s3_client = boto3.client("s3")
-    abalone_path = os.path.join(os.path.dirname(__file__), "data", "pipeline", "abalone.csv")
+    abalone_path = os.path.join(os.path.dirname(__file__), "..", "data", "pipeline", "abalone.csv")
     s3_client.upload_file(abalone_path, bucket, f"{prefix}/input/abalone.csv")
     input_data_s3 = f"s3://{bucket}/{prefix}/input/abalone.csv"
 
@@ -68,7 +68,7 @@ def test_pipeline_with_train_and_registry(sagemaker_session, pipeline_session, r
         image_uri=image_uris.retrieve(
             framework="sklearn",
             region=region,
-            version="1.2-1",
+            version=sklearn_latest_version,
             py_version="py3",
             instance_type="ml.m5.xlarge",
         ),
@@ -118,7 +118,7 @@ def test_pipeline_with_train_and_registry(sagemaker_session, pipeline_session, r
                 ),
             ),
         ],
-        code=os.path.join(os.path.dirname(__file__), "code", "pipeline", "preprocess.py"),
+        code=os.path.join(os.path.dirname(__file__), "..", "code", "pipeline", "preprocess.py"),
         arguments=["--input-data", input_data],
     )
 
