@@ -32,7 +32,8 @@ def env_helper():
     )
 
 
-def test_spark_session_factory_configuration():
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
+def test_spark_session_factory_configuration(mock_classpath_jars):
     env_helper = Mock()
     spark_config = {"spark.test.key": "spark.test.value"}
     spark_session_factory = SparkSessionFactory(env_helper, spark_config)
@@ -72,7 +73,7 @@ def test_spark_session_factory_configuration():
     assert jsc_hadoop_configs.get("mapreduce.fileoutputcommitter.marksuccessfuljobs") == "false"
 
     # Verify configurations when not running on a training job
-    assert ",".join(feature_store_pyspark.classpath_jars()) in spark_configs.get("spark.jars")
+    assert ",".join(mock_classpath_jars.return_value) in spark_configs.get("spark.jars")
     from sagemaker.mlops.feature_store.feature_processor._spark_factory import _get_hadoop_version
     hadoop_version = _get_hadoop_version()
     assert ",".join(
@@ -83,7 +84,8 @@ def test_spark_session_factory_configuration():
     ) in spark_configs.get("spark.jars.packages")
 
 
-def test_spark_session_factory_configuration_on_training_job():
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
+def test_spark_session_factory_configuration_on_training_job(mock_classpath_jars):
     env_helper = Mock()
     spark_config = {"spark.test.key": "spark.test.value"}
     spark_session_factory = SparkSessionFactory(env_helper, spark_config)
@@ -94,11 +96,12 @@ def test_spark_session_factory_configuration_on_training_job():
     assert all(tup[0] != "spark.jars.packages" for tup in spark_config)
 
     # spark.jars should always be present (Feature Store JARs are always on the classpath)
-    assert ",".join(feature_store_pyspark.classpath_jars()) in dict(spark_config).get("spark.jars")
+    assert ",".join(mock_classpath_jars.return_value) in dict(spark_config).get("spark.jars")
 
 
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
 @patch("pyspark.context.SparkContext.getOrCreate")
-def test_spark_session_factory(mock_spark_context):
+def test_spark_session_factory(mock_spark_context, mock_classpath_jars):
     env_helper = Mock()
     env_helper.get_instance_count.return_value = 1
     spark_session_factory = SparkSessionFactory(env_helper)
@@ -114,8 +117,9 @@ def test_spark_session_factory(mock_spark_context):
         assert spark_conf.get(cfg[0]) == cfg[1]
 
 
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
 @patch("pyspark.context.SparkContext.getOrCreate")
-def test_spark_session_factory_with_iceberg_config(mock_spark_context):
+def test_spark_session_factory_with_iceberg_config(mock_spark_context, mock_classpath_jars):
     mock_env_helper = Mock()
     mock_spark_context.side_effect = [Mock(), Mock()]
 
@@ -138,8 +142,9 @@ def test_spark_session_factory_with_iceberg_config(mock_spark_context):
         mock_conf.assert_has_calls(expected_calls, any_order=False)
 
 
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
 @patch("pyspark.context.SparkContext.getOrCreate")
-def test_spark_session_factory_same_instance(mock_spark_context):
+def test_spark_session_factory_same_instance(mock_spark_context, mock_classpath_jars):
     mock_env_helper = Mock()
     mock_spark_context.side_effect = [Mock(), Mock()]
 
@@ -202,7 +207,8 @@ def test_get_hadoop_version_unknown_falls_back():
         assert _get_hadoop_version() == "3.3.4"
 
 
-def test_spark_configs_use_dynamic_hadoop_version():
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
+def test_spark_configs_use_dynamic_hadoop_version(mock_classpath_jars):
     with patch.object(pyspark, "__version__", "3.5.1"):
         env_helper = Mock()
         factory = SparkSessionFactory(env_helper)
