@@ -358,21 +358,58 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique}")
 
         # Select recipe based on training type
+        # Collect override_params from ALL matching recipes (standard + subscription)
         recipe = None
         if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-            recipe = next((r for r in recipes_with_template if r.get("Peft")), None)
+            recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
         elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-            recipe = next((r for r in recipes_with_template if not r.get("Peft")), None)
+            recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
 
         if not recipe:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}")
 
-        elif recipe and recipe.get("SmtjOverrideParamsS3Uri"):
+        # Start with the standard recipe's override_params
+        options_dict = {}
+        if recipe.get("SmtjOverrideParamsS3Uri"):
             s3_uri = recipe["SmtjOverrideParamsS3Uri"]
-            s3 = boto3.client("s3")
-            bucket, key = s3_uri.replace("s3://", "").split("/", 1)
+            s3 = sagemaker_session.boto_session.client("s3")
+            uri_path = s3_uri.replace("s3://", "")
+            bucket, key = uri_path.split("/", 1)
             obj = s3.get_object(Bucket=bucket, Key=key)
             options_dict = json.loads(obj["Body"].read())
+
+        # Auto-detect and merge subscription recipe's override_params if available
+        if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+            sub_recipe = next((r for r in recipes_with_template if r.get("Peft") and r.get("IsSubscriptionModel")), None)
+        else:
+            sub_recipe = next((r for r in recipes_with_template if not r.get("Peft") and r.get("IsSubscriptionModel")), None)
+
+        if sub_recipe and sub_recipe.get("SmtjOverrideParamsS3Uri"):
+            try:
+                sub_s3_uri = sub_recipe["SmtjOverrideParamsS3Uri"].replace("{customer_id}", sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"])
+                sub_uri_path = sub_s3_uri.replace("s3://", "")
+                # Handle access point ARN URIs
+                if sub_uri_path.startswith("arn:"):
+                    arn_parts = sub_uri_path.split("/", 2)
+                    sub_bucket = arn_parts[0] + "/" + arn_parts[1]
+                    sub_key = arn_parts[2] if len(arn_parts) > 2 else ""
+                else:
+                    sub_bucket, sub_key = sub_uri_path.split("/", 1)
+                s3_sub = sagemaker_session.boto_session.client("s3")
+                sub_obj = s3_sub.get_object(Bucket=sub_bucket, Key=sub_key)
+                sub_options = json.loads(sub_obj["Body"].read())
+                # Merge: subscription params into _specs only (don't set defaults)
+                # This makes them settable but not serialized unless user explicitly sets them
+                for k, v in sub_options.items():
+                    if k not in options_dict:
+                        v_copy = v.copy() if isinstance(v, dict) else v
+                        if isinstance(v_copy, dict):
+                            v_copy['default'] = None  # No default — won't appear in to_dict() unless set
+                        options_dict[k] = v_copy
+            except Exception as e:
+                logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
+
+        if options_dict:
             return FineTuningOptions(options_dict), model_arn, is_gated_model
         else:
             return FineTuningOptions({}), model_arn, is_gated_model
