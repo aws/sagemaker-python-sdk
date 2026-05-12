@@ -366,34 +366,6 @@ def serialize_exception_to_s3(
     )
 
 
-def _upload_payload_and_metadata_to_s3(
-    bytes_to_upload: Union[bytes, io.BytesIO],
-    hmac_key: str,
-    s3_uri: str,
-    sagemaker_session: Session,
-    s3_kms_key,
-):
-    """Uploads serialized payload and metadata to s3.
-
-    Args:
-        bytes_to_upload (bytes): Serialized bytes to upload.
-        hmac_key (str): Key used to calculate hmac-sha256 hash of the serialized obj.
-        s3_uri (str): S3 root uri to which resulting serialized artifacts will be uploaded.
-        sagemaker_session (sagemaker.core.helper.session.Session):
-            The underlying Boto3 session which AWS service calls are delegated to.
-        s3_kms_key (str): KMS key used to encrypt artifacts uploaded to S3.
-    """
-    _upload_bytes_to_s3(bytes_to_upload, f"{s3_uri}/payload.pkl", s3_kms_key, sagemaker_session)
-
-    sha256_hash = _compute_hash(bytes_to_upload, secret_key=hmac_key)
-
-    _upload_bytes_to_s3(
-        _MetaData(sha256_hash).to_json(),
-        f"{s3_uri}/metadata.json",
-        s3_kms_key,
-        sagemaker_session,
-    )
-
 def _upload_payload_and_metadata_to_s3_signed(
     bytes_to_upload: Union[bytes, io.BytesIO],
     private_key: ec.EllipticCurvePrivateKey,
@@ -557,25 +529,6 @@ def _verify_sha256_hash(expected_hash: str, buffer: bytes):
     """
     actual_hash = hashlib.sha256(buffer).hexdigest()
     if actual_hash != expected_hash:
-        raise DeserializationError(
-            "Integrity check for the serialized function or data failed. "
-            "Please restrict access to your S3 bucket"
-        )
-
-
-def _compute_hash(buffer: bytes, secret_key: str) -> str:
-    """Compute the hmac-sha256 hash"""
-    return hmac.new(secret_key.encode(), msg=buffer, digestmod=hashlib.sha256).hexdigest()
-
-
-def _perform_integrity_check(expected_hash_value: str, secret_key: str, buffer: bytes):
-    """Performs integrity checks for serialized code/arguments uploaded to s3.
-
-    Verifies whether the hash read from s3 matches the hash calculated
-    during remote function execution.
-    """
-    actual_hash_value = _compute_hash(buffer=buffer, secret_key=secret_key)
-    if not hmac.compare_digest(expected_hash_value, actual_hash_value):
         raise DeserializationError(
             "Integrity check for the serialized function or data failed. "
             "Please restrict access to your S3 bucket"
