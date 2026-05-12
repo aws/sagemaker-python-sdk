@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from sagemaker.train.common_utils.finetune_utils import (
@@ -304,6 +305,8 @@ class TestFinetuneUtils:
         mock_s3_client.get_object.return_value = {
             "Body": Mock(read=Mock(return_value=b'{"learning_rate": 0.001}'))
         }
+        mock_session.boto_session.client.return_value = mock_s3_client
+        mock_session.boto_session.client.return_value = mock_s3_client
         
         result = _get_fine_tuning_options_and_model_arn("test-model", "SFT", "LORA", mock_session)
         
@@ -551,3 +554,140 @@ class TestFinetuneUtils:
         mock_s3_client.put_object.assert_called_once_with(Bucket="test-bucket", Key="prefix/", Body=b'')
 
 
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_with_subscription_recipe_enabled(self, mock_get_hub_content):
+        """When  and user is subscribed, datamix HPs are available."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/standard_params.json",
+                        "Name": "standard_sft"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-123456789012/source/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/params.json",
+                        "Name": "datamix_sft",
+                        "IsSubscriptionModel": True
+                    }
+                ]
+            }
+        }
+
+        # Standard recipe returns base params
+        standard_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        # Subscription recipe returns datamix params
+        datamix_params = json.dumps({"customer_data_percent": {"type": "integer", "required": False, "default": 50}})
+
+        mock_s3.get_object.side_effect = [
+            {"Body": Mock(read=Mock(return_value=standard_params.encode()))},
+            {"Body": Mock(read=Mock(return_value=datamix_params.encode()))},
+        ]
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "test-model", "SFT", "FULL", mock_session, 
+        )
+
+        assert "max_steps" in options._specs
+        assert "customer_data_percent" in options._specs
+        assert options._specs["customer_data_percent"]["default"] is None  # defaults are None so they dont serialize unless explicitly set
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_subscription_disabled_no_datamix_hps(self, mock_get_hub_content):
+        """When  (default), datamix HPs are NOT available."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/standard_params.json",
+                        "Name": "standard_sft"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/params.json",
+                        "Name": "datamix_sft",
+                        "IsSubscriptionModel": True
+                    }
+                ]
+            }
+        }
+
+        standard_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=standard_params.encode()))}
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "test-model", "SFT", "FULL", mock_session, 
+        )
+
+        assert "max_steps" in options._specs
+        assert "customer_data_percent" not in options._specs
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_subscription_enabled_but_not_subscribed(self, mock_get_hub_content):
+        """When  but user is NOT subscribed, falls back gracefully."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "999999999999"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/standard_params.json",
+                        "Name": "standard_sft"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/params.json",
+                        "Name": "datamix_sft",
+                        "IsSubscriptionModel": True
+                    }
+                ]
+            }
+        }
+
+        standard_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        # First call succeeds (standard recipe), second call fails (access denied)
+        mock_s3.get_object.side_effect = [
+            {"Body": Mock(read=Mock(return_value=standard_params.encode()))},
+            Exception("Access Denied"),
+        ]
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "test-model", "SFT", "FULL", mock_session, 
+        )
+
+        # Should still have standard params, just not datamix ones
+        assert "max_steps" in options._specs
+        assert "customer_data_percent" not in options._specs

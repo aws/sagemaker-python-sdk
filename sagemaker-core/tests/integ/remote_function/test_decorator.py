@@ -71,6 +71,7 @@ def test_decorator(sagemaker_session, dummy_container_without_error, cpu_instanc
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-decorator",
     )
     def divide(x, y):
         return x / y
@@ -87,6 +88,7 @@ def test_decorated_function_raises_exception(
         image_uri=dummy_container_without_error,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-decorated-fn-raises",
     )
     def divide(x, y):
         logging.warning(f"{x}/{y}")
@@ -104,6 +106,7 @@ def test_remote_python_runtime_is_incompatible(
         image_uri=dummy_container_incompatible_python_runtime,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-remote-py-incompatible",
     )
     def divide(x, y):
         return x / y
@@ -129,6 +132,7 @@ def test_advanced_job_setting(
         instance_type=cpu_instance_type,
         s3_kms_key=s3_kms_key,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-advanced-job-setting",
     )
     def divide(x, y):
         return x / y
@@ -153,6 +157,7 @@ def test_with_custom_file_filter(
             include_local_workdir=True,
             custom_file_filter=CustomFileFilter(),
             keep_alive_period_in_seconds=300,
+            job_name_prefix="test-custom-file-filter",
         )
         def train(x):
             from helpers import local_module
@@ -181,6 +186,7 @@ def test_with_misconfigured_custom_file_filter(
             # exclude critical modules
             custom_file_filter=CustomFileFilter(ignore_name_patterns=["helpers"]),
             keep_alive_period_in_seconds=300,
+            job_name_prefix="test-misconfig-file-filter",
         )
         def train(x):
             from helpers import local_module
@@ -203,6 +209,7 @@ def test_with_additional_dependencies(
         dependencies=dependencies_path,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-additional-deps",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -224,6 +231,7 @@ def test_additional_dependencies_with_job_conda_env(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         job_conda_env="integ_test_env",
+        job_name_prefix="test-deps-job-conda-env",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -244,6 +252,7 @@ def test_additional_dependencies_with_default_conda_env(
         dependencies=dependencies_path,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-deps-default-conda",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -265,6 +274,7 @@ def test_additional_dependencies_with_non_existent_conda_env(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         job_conda_env="non_existent_env",
+        job_name_prefix="test-deps-nonexist-conda",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -286,6 +296,7 @@ def test_additional_dependencies_with_conda_yml_file(
         sagemaker_session=sagemaker_session,
         job_conda_env="integ_test_env",
         keep_alive_period_in_seconds=120,
+        job_name_prefix="test-deps-conda-yml",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -307,6 +318,7 @@ def test_with_non_existent_dependencies(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=30,
+        job_name_prefix="test-nonexist-deps",
     )
     def divide(x, y):
         return x / y
@@ -335,6 +347,7 @@ def test_decorator_pre_execution_command(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-pre-exec-command",
     )
     def get_file_content(file_names):
         joined_content = ""
@@ -363,6 +376,7 @@ def test_decorator_pre_execution_script(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-pre-exec-script",
     )
     def get_file_content(file_names):
         joined_content = ""
@@ -397,6 +411,7 @@ def test_decorator_pre_execution_command_error(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-pre-exec-cmd-error",
     )
     def get_file_content(file_names):
         joined_content = ""
@@ -426,6 +441,7 @@ def test_decorator_pre_execution_script_error(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-pre-exec-script-err",
     )
     def get_file_content(file_names):
         joined_content = ""
@@ -450,6 +466,7 @@ def test_decorator_with_spot_instances(
         sagemaker_session=sagemaker_session,
         use_spot_instances=True,
         max_wait_time_in_seconds=48 * 60 * 60,
+        job_name_prefix="test-spot-instances",
     )
     def divide(x, y):
         return x / y
@@ -471,6 +488,7 @@ def test_decorator_with_spot_instances_save_and_load_checkpoints(
         sagemaker_session=sagemaker_session,
         use_spot_instances=True,
         max_wait_time_in_seconds=48 * 60 * 60,
+        job_name_prefix="test-spot-checkpoints",
     )
     def save_checkpoints(checkpoint_path: Union[str, os.PathLike]):
         file_path_1 = os.path.join(checkpoint_path, "checkpoint_1.json")
@@ -490,6 +508,7 @@ def test_decorator_with_spot_instances_save_and_load_checkpoints(
         sagemaker_session=sagemaker_session,
         use_spot_instances=True,
         max_wait_time_in_seconds=48 * 60 * 60,
+        job_name_prefix="test-spot-checkpoints",
     )
     def load_checkpoints(checkpoint_path: Union[str, os.PathLike]):
         file_path_1 = os.path.join(checkpoint_path, "checkpoint_1.json")
@@ -524,6 +543,7 @@ def test_with_user_and_workdir_set_in_the_image(
         dependencies=dependencies_path,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-user-workdir",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -543,6 +563,7 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
         image_uri=dummy_container_with_user_and_workdir,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-user-workdir-err",
     )
     def my_func():
         raise RuntimeError(client_error_message)
@@ -621,6 +642,7 @@ def test_decorator_torchrun(
         keep_alive_period_in_seconds=60,
         use_torchrun=use_torchrun,
         use_mpirun=use_mpirun,
+        job_name_prefix="test-torchrun",
     )
     def divide(x, y):
         return x / y
