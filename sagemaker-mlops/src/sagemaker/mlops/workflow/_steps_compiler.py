@@ -14,8 +14,9 @@
 from __future__ import absolute_import
 
 import logging
-import secrets
 from typing import Sequence, Union, List
+
+from cryptography.hazmat.primitives.asymmetric import ec
 
 from sagemaker.core.helper.pipeline_variable import RequestType
 from sagemaker.mlops.workflow.function_step import _FunctionStep
@@ -188,15 +189,13 @@ class StepsCompiler(object):
         self._all_known_steps = _StepsSet()
         self._build_queue = _BuildQueue()
 
-        self._function_step_secret_token = secrets.token_hex(32)
+        self._function_step_secret_token = ec.generate_private_key(ec.SECP256R1())
 
         self._build_count = 0
         self._steps_need_json_serialization = set()
 
     @staticmethod
-    def _generate_step_map(
-        steps: Sequence[Union[Step, StepOutput]], step_map: dict
-    ):
+    def _generate_step_map(steps: Sequence[Union[Step, StepOutput]], step_map: dict):
         """Helper method to create a mapping from Step/Step Collection name to itself."""
         for item in steps:
             if isinstance(item, StepOutput):
@@ -211,7 +210,6 @@ class StepsCompiler(object):
             step_map[step.name] = step
             if isinstance(step, ConditionStep):
                 StepsCompiler._generate_step_map(step.if_steps + step.else_steps, step_map)
-
 
     def _simplify_step_list(
         self,
