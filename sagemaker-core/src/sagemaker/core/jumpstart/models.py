@@ -473,6 +473,8 @@ class HubContentDocument(HostingComponentsModel, TrainingComponentsModel):
     The HubContentDocument class represents the metadata for a JumpStart model.
     """
 
+    model_config = ConfigDict(validate_assignment=True, extra="ignore")
+
     ModelTypes: List[ModelTypeEnum]
     Url: str
     MinSdkVersion: Optional[str] = None
