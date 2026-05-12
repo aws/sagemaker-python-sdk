@@ -1,4 +1,10 @@
 # Changelog
+## v1.11.0 (2026-05-12)
+
+### New Features
+
+- Add Feature Store reference to Implement MLOps documentation page
+
 ## v1.10.1 (2026-05-07)
 
 ### Bug Fixes
