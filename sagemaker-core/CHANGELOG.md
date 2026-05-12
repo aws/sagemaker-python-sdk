@@ -1,4 +1,10 @@
 # Changelog
+## v2.11.0 (2026-05-12)
+
+### New Features
+
+- Create asymmetric ECDSA signing key in feature processor step compiler for remote function payload verification
+
 ## v2.10.1 (2026-05-07)
 
 ### Bug Fixes

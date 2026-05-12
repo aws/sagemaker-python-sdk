@@ -1,4 +1,10 @@
 # Changelog
+## v1.11.0 (2026-05-12)
+
+### New Features
+
+- Auto-detect subscription recipe hyperparameters in SFTTrainer for Nova Forge datamix support
+
 ## v1.10.1 (2026-05-07)
 
 ### Bug Fixes
