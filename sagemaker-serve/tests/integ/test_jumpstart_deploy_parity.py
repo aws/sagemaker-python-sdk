@@ -84,7 +84,7 @@ def test_jumpstart_build_sets_volume_size():
 
     # Test from_jumpstart_config path
     compute = Compute(instance_type=VOLUME_SIZE_INSTANCE_TYPE)
-    jumpstart_config = JumpStartConfig(model_id=VOLUME_SIZE_MODEL_ID)
+    jumpstart_config = JumpStartConfig(model_id=VOLUME_SIZE_MODEL_ID, accept_eula=True)
     model_builder = ModelBuilder.from_jumpstart_config(
         jumpstart_config=jumpstart_config, compute=compute
     )
