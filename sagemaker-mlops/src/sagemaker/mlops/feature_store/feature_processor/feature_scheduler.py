@@ -871,6 +871,8 @@ def _prepare_model_trainer_from_remote_decorator_config(
     # Build environment dict from remote_decorator_config
     environment = dict(remote_decorator_config.environment_variables or {})
     if public_key_pem:
+        # Legacy env var name — value is the ECDSA public key used by the container
+        # (invoke_function.py) for asymmetric signature verification, not a secret.
         environment["REMOTE_FUNCTION_SECRET_KEY"] = public_key_pem
 
     # Build command from container entry point and arguments
