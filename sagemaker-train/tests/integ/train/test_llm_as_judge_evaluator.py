@@ -254,7 +254,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
         
         logger.info("Built-in metrics prefix handling tests passed")
 
-    @pytest.mark.skip(reason="Built-in metrics only test - to be enabled when needed")
+    # @pytest.mark.skip(reason="Built-in metrics only test - to be enabled when needed")
     def test_llm_as_judge_builtin_metrics_only(self):
         """
         Test LLM-as-Judge evaluation with only built-in metrics (no custom metrics).
@@ -302,7 +302,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
         assert execution.status.overall_status == "Succeeded"
         logger.info("Built-in metrics only evaluation completed successfully")
 
-    @pytest.mark.skip(reason="Custom metrics only test - to be enabled when needed")
+    # @pytest.mark.skip(reason="Custom metrics only test - to be enabled when needed")
     def test_llm_as_judge_custom_metrics_only(self):
         """
         Test LLM-as-Judge evaluation with only custom metrics (no built-in metrics).

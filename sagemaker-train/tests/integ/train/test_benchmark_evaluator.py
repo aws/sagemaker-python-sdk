@@ -286,7 +286,7 @@ class TestBenchmarkEvaluatorIntegration:
         
         logger.info("Subtask validation tests passed")
 
-    @pytest.mark.skip(reason="Base model only evaluation - to be enabled when needed")
+    # @pytest.mark.skip(reason="Base model only evaluation - to be enabled when needed")
     def test_benchmark_evaluation_base_model_only(self):
         """
         Test benchmark evaluation with base model only (no fine-tuned model).
@@ -339,7 +339,7 @@ class TestBenchmarkEvaluatorIntegration:
         assert execution.status.overall_status == "Succeeded"
         logger.info("Base model only evaluation completed successfully")
 
-    @pytest.mark.skip(reason="Nova model evaluation - to be enabled when needed")
+    # @pytest.mark.skip(reason="Nova model evaluation - to be enabled when needed")
     def test_benchmark_evaluation_nova_model(self):
         """
         Test benchmark evaluation with Nova model.
