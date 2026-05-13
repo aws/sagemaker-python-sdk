@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import feature_store_pyspark
+import pyspark
 import pytest
 from mock import Mock, patch, call
 
@@ -31,7 +32,8 @@ def env_helper():
     )
 
 
-def test_spark_session_factory_configuration():
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
+def test_spark_session_factory_configuration(mock_classpath_jars):
     env_helper = Mock()
     spark_config = {"spark.test.key": "spark.test.value"}
     spark_session_factory = SparkSessionFactory(env_helper, spark_config)
@@ -71,16 +73,19 @@ def test_spark_session_factory_configuration():
     assert jsc_hadoop_configs.get("mapreduce.fileoutputcommitter.marksuccessfuljobs") == "false"
 
     # Verify configurations when not running on a training job
-    assert ",".join(feature_store_pyspark.classpath_jars()) in spark_configs.get("spark.jars")
+    assert ",".join(mock_classpath_jars.return_value) in spark_configs.get("spark.jars")
+    from sagemaker.mlops.feature_store.feature_processor._spark_factory import _get_hadoop_version
+    hadoop_version = _get_hadoop_version()
     assert ",".join(
         [
-            "org.apache.hadoop:hadoop-aws:3.3.1",
-            "org.apache.hadoop:hadoop-common:3.3.1",
+            f"org.apache.hadoop:hadoop-aws:{hadoop_version}",
+            f"org.apache.hadoop:hadoop-common:{hadoop_version}",
         ]
     ) in spark_configs.get("spark.jars.packages")
 
 
-def test_spark_session_factory_configuration_on_training_job():
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
+def test_spark_session_factory_configuration_on_training_job(mock_classpath_jars):
     env_helper = Mock()
     spark_config = {"spark.test.key": "spark.test.value"}
     spark_session_factory = SparkSessionFactory(env_helper, spark_config)
@@ -88,12 +93,15 @@ def test_spark_session_factory_configuration_on_training_job():
     spark_config = spark_session_factory._get_spark_configs(is_training_job=True)
     assert dict(spark_config).get("spark.test.key") == "spark.test.value"
 
-    assert all(tup[0] != "spark.jars" for tup in spark_config)
     assert all(tup[0] != "spark.jars.packages" for tup in spark_config)
 
+    # spark.jars should always be present (Feature Store JARs are always on the classpath)
+    assert ",".join(mock_classpath_jars.return_value) in dict(spark_config).get("spark.jars")
 
+
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
 @patch("pyspark.context.SparkContext.getOrCreate")
-def test_spark_session_factory(mock_spark_context):
+def test_spark_session_factory(mock_spark_context, mock_classpath_jars):
     env_helper = Mock()
     env_helper.get_instance_count.return_value = 1
     spark_session_factory = SparkSessionFactory(env_helper)
@@ -109,8 +117,9 @@ def test_spark_session_factory(mock_spark_context):
         assert spark_conf.get(cfg[0]) == cfg[1]
 
 
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
 @patch("pyspark.context.SparkContext.getOrCreate")
-def test_spark_session_factory_with_iceberg_config(mock_spark_context):
+def test_spark_session_factory_with_iceberg_config(mock_spark_context, mock_classpath_jars):
     mock_env_helper = Mock()
     mock_spark_context.side_effect = [Mock(), Mock()]
 
@@ -133,8 +142,9 @@ def test_spark_session_factory_with_iceberg_config(mock_spark_context):
         mock_conf.assert_has_calls(expected_calls, any_order=False)
 
 
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
 @patch("pyspark.context.SparkContext.getOrCreate")
-def test_spark_session_factory_same_instance(mock_spark_context):
+def test_spark_session_factory_same_instance(mock_spark_context, mock_classpath_jars):
     mock_env_helper = Mock()
     mock_spark_context.side_effect = [Mock(), Mock()]
 
@@ -173,3 +183,60 @@ def test_spark_session_factory_get_spark_session_with_iceberg_config(env_helper)
         == "smfs.shaded.org.apache.iceberg.aws.s3.S3FileIO"
     )
     assert iceberg_configs.get("spark.sql.catalog.catalog.glue.skip-name-validation") == "true"
+
+
+@pytest.mark.parametrize(
+    "spark_version,expected_hadoop",
+    [
+        ("3.1.3", "3.2.0"),
+        ("3.2.2", "3.3.1"),
+        ("3.3.2", "3.3.2"),
+        ("3.4.1", "3.3.4"),
+        ("3.5.1", "3.3.4"),
+    ],
+)
+def test_get_hadoop_version(spark_version, expected_hadoop):
+    with patch.object(pyspark, "__version__", spark_version):
+        from sagemaker.mlops.feature_store.feature_processor._spark_factory import _get_hadoop_version
+        assert _get_hadoop_version() == expected_hadoop
+
+
+def test_get_hadoop_version_unknown_falls_back():
+    with patch.object(pyspark, "__version__", "3.6.0"):
+        from sagemaker.mlops.feature_store.feature_processor._spark_factory import _get_hadoop_version
+        assert _get_hadoop_version() == "3.3.4"
+
+
+@patch("feature_store_pyspark.classpath_jars", return_value=["/path/to/jar.jar"])
+def test_spark_configs_use_dynamic_hadoop_version(mock_classpath_jars):
+    with patch.object(pyspark, "__version__", "3.5.1"):
+        env_helper = Mock()
+        factory = SparkSessionFactory(env_helper)
+        configs = dict(factory._get_spark_configs(is_training_job=False))
+        assert "org.apache.hadoop:hadoop-aws:3.3.4" in configs.get("spark.jars.packages")
+        assert "org.apache.hadoop:hadoop-common:3.3.4" in configs.get("spark.jars.packages")
+
+
+@patch("os.path.isdir", return_value=False)
+def test_install_feature_store_jars_skips_when_no_target_dir(mock_isdir):
+    SparkSessionFactory._install_feature_store_jars()
+    mock_isdir.assert_called_once_with("/usr/lib/spark/jars")
+
+
+@patch("shutil.copy")
+@patch("os.path.exists", return_value=False)
+@patch("os.path.isdir", return_value=True)
+@patch("feature_store_pyspark.classpath_jars")
+def test_install_feature_store_jars_copies_matching_jars(
+    mock_classpath, mock_isdir, mock_exists, mock_copy
+):
+    mock_classpath.return_value = [
+        "/path/to/jar-3.5-something.jar",
+        "/path/to/jar-3.3-something.jar",
+    ]
+    with patch.object(pyspark, "__version__", "3.5.1"):
+        SparkSessionFactory._install_feature_store_jars()
+    mock_copy.assert_called_once_with(
+        "/path/to/jar-3.5-something.jar",
+        "/usr/lib/spark/jars/jar-3.5-something.jar",
+    )
