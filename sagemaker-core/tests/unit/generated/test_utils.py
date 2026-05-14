@@ -353,6 +353,20 @@ def test_serialize_method_returns_correct_data():
     assert serialized_data["S3Uri"] == "s3/uri"
 
 
+def test_serialize_preserves_falsy_dict_values():
+    # Regression: previously False / 0 / "" were stripped along with None.
+    assert serialize({"k": False}) == {"k": False}
+    assert serialize({"k": 0}) == {"k": 0}
+    assert serialize({"k": ""}) == {"k": ""}
+    assert serialize({"k": None}) == {}
+    assert serialize({"k": Unassigned()}) == {}
+
+
+def test_serialize_preserves_falsy_list_values():
+    assert serialize([False, 0, ""]) == [False, 0, ""]
+    assert serialize([None, "x", Unassigned(), 1]) == ["x", 1]
+
+
 def test_serialize_method_nested_shape():
     trial_component_parameters = {
         "test_num_value": TrialComponentParameterValue(number_value=1),
