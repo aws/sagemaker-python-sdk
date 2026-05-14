@@ -4404,7 +4404,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             endpoint = Endpoint.create(
                 endpoint_name=endpoint_name, endpoint_config_name=endpoint_name
             )
-            endpoint.wait_for_status("InService")
+            print(f"\nDeploying endpoint: {endpoint_name}", flush=True)
+            print(f"Log group: /aws/sagemaker/Endpoints/{endpoint_name}", flush=True)
+            try:
+                endpoint.wait_for_status("InService")
+                print(f"\n✓ Endpoint in service: {endpoint_name}", flush=True)
+                print(f"Endpoint ARN: {endpoint.endpoint_arn}", flush=True)
+            except Exception:
+                print(f"\n✗ Endpoint failed: {endpoint_name}", flush=True)
+                print(f"Log group: /aws/sagemaker/Endpoints/{endpoint_name}", flush=True)
+                raise
         else:
             endpoint = Endpoint.get(endpoint_name=endpoint_name)
 
