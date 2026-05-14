@@ -419,7 +419,9 @@ def wait(
                         raise TimeoutExceededError(resource_type="TrainingJob", status=status)
 
         else:
-            print(f"\nTrainingJob Name: {training_job.training_job_name}")
+            print(f"\nTraining job started: {training_job.training_job_name}", flush=True)
+            print(f"Log group: /aws/sagemaker/TrainingJobs", flush=True)
+            print(f"Log stream prefix: {training_job.training_job_name}", flush=True)
             iteration = 0
             while True:
                 iteration += 1
@@ -432,8 +434,8 @@ def wait(
 
                 # Show transitions with checkmarks
                 if training_job.secondary_status_transitions:
-                    print("\n--------------------------------------\n")
-                    print("Status Transitions:")
+                    print("\n--------------------------------------\n", flush=True)
+                    print("Status Transitions:", flush=True)
                     for trans in training_job.secondary_status_transitions:
                         duration, check = _calculate_transition_duration(trans)
 
@@ -452,28 +454,39 @@ def wait(
                             if progress_pct is not None:
                                 step_msg += f" - {progress_pct:.1f}%{progress_text.replace(chr(10), ', ')}"
 
-                        print(step_msg)
-                print(f"\nStatus: {status} - {secondary_status} (Elapsed: {elapsed:.1f}s)")
+                        print(step_msg, flush=True)
+                print(f"\nStatus: {status} - {secondary_status} (Elapsed: {elapsed:.1f}s)", flush=True)
 
                 if status in ["Completed", "Failed", "Stopped"]:
                     if status == "Completed":
                         if mlflow_url:
-                            print(f"\n✓ Training completed! View metrics in MLflow: {mlflow_url}")
+                            print(f"\n✓ Training completed! View metrics in MLflow: {mlflow_url}", flush=True)
                         try:
                             steps_per_epoch = training_job.progress_info.total_step_count_per_epoch
                             loss_metrics_by_epoch = metrics_util._get_loss_metrics_by_epoch(run_name=mlflow_run_name,
                                                                                            steps_per_epoch=steps_per_epoch)
                             if loss_metrics_by_epoch:
-                                print("\n------------ Loss Metrics by Epoch ------------")
+                                print("\n------------ Loss Metrics by Epoch ------------", flush=True)
                                 for epoch, metrics in list(loss_metrics_by_epoch.items())[:-1]:
-                                    print(f"Epoch {epoch}: {metrics}")
-                                print("----------------------------------------------")
+                                    print(f"Epoch {epoch}: {metrics}", flush=True)
+                                print("----------------------------------------------", flush=True)
                         except Exception:
                             pass
+                    if status == "Failed":
+                        failure_reason = training_job.failure_reason
+                        if failure_reason and not _is_unassigned_attribute(failure_reason):
+                            print(f"\nFailure reason: {failure_reason}", flush=True)
+                        print(f"\nLog group: /aws/sagemaker/TrainingJobs", flush=True)
+                        print(f"Log stream prefix: {training_job.training_job_name}", flush=True)
+                        from sagemaker.train.common_utils.metrics_visualizer import get_cloudwatch_logs_url
+                        cw_url = get_cloudwatch_logs_url(training_job.training_job_arn)
+                        if cw_url:
+                            print(f"CloudWatch Logs: {cw_url}", flush=True)
+                        raise FailedStatusError(resource_type="TrainingJob", status=status, reason=failure_reason)
                     return
 
                 failure_reason = training_job.failure_reason
-                if status == "Failed" or (failure_reason and not _is_unassigned_attribute(failure_reason)):
+                if failure_reason and not _is_unassigned_attribute(failure_reason):
                     raise FailedStatusError(resource_type="TrainingJob", status=status, reason=failure_reason)
 
                 if timeout and elapsed >= timeout:
