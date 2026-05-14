@@ -87,6 +87,29 @@ class TestModelBuilderMissingCoverage(unittest.TestCase):
         assert builder.vpc_config is not None
         assert "Subnets" in builder.vpc_config
 
+    def test_initialize_network_config_with_real_networking_object(self):
+        """Test _initialize_network_config with Networking from sagemaker-core."""
+        from sagemaker.core.training.configs import Networking
+
+        network = Networking(
+            subnets=["subnet-123"],
+            security_group_ids=["sg-456"],
+            enable_network_isolation=True,
+        )
+
+        builder = ModelBuilder(
+            model=Mock(),
+            network=network,
+            role_arn="arn:aws:iam::123456789012:role/test",
+            sagemaker_session=self.mock_session,
+        )
+
+        assert builder.vpc_config == {
+            "Subnets": ["subnet-123"],
+            "SecurityGroupIds": ["sg-456"],
+        }
+        assert builder._enable_network_isolation is True
+
     def test_initialize_defaults_region_from_boto3(self):
         """Test _initialize_defaults region fallback to boto3 (lines 472-476)."""
         with patch('boto3.Session') as mock_boto_session:
