@@ -162,6 +162,7 @@ Key MLOps Features
 * **Model Performance Tracking** - Real-time monitoring of model accuracy, latency, and business metrics with alerting
 * **Bias Detection and Fairness** - Built-in bias detection across protected attributes with automated reporting and remediation
 * **Automated Retraining** - Trigger-based model retraining based on performance degradation or data drift detection
+* **Feature Store** - Centralized repository for storing, sharing, and managing ML features with support for both online and offline stores
 
 Supported MLOps Scenarios
 -------------------------
@@ -477,6 +478,75 @@ Train with MLflow metric tracking and deploy from the MLflow model registry.
 
 
 
+Feature Store
+--------------
+
+
+Create and manage feature groups for storing, retrieving, and sharing ML features across teams and models.
+
+**FeatureGroupManager with Lake Formation and Iceberg configuration:**
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import FeatureGroupManager, FeatureDefinition, FeatureTypeEnum
+   from sagemaker.mlops.feature_store.feature_group_manager import LakeFormationConfig, IcebergProperties
+   from sagemaker.core.shapes import OnlineStoreConfig, OfflineStoreConfig, S3StorageConfig
+
+   # Define features
+   feature_definitions = [
+       FeatureDefinition(feature_name="customer_id", feature_type=FeatureTypeEnum.STRING),
+       FeatureDefinition(feature_name="purchase_count", feature_type=FeatureTypeEnum.INTEGRAL),
+       FeatureDefinition(feature_name="avg_order_value", feature_type=FeatureTypeEnum.FRACTIONAL),
+       FeatureDefinition(feature_name="event_time", feature_type=FeatureTypeEnum.STRING),
+   ]
+
+   # Configure Lake Formation for fine-grained access control
+   lake_formation_config = LakeFormationConfig(
+       enabled=True,
+       hybrid_access_mode_enabled=True,
+       acknowledge_risk=True,
+   )
+
+   # Configure Iceberg table properties
+   iceberg_properties = IcebergProperties(
+       properties={
+           "write.target-file-size-bytes": "536870912",
+           "history.expire.min-snapshots-to-keep": "3",
+       }
+   )
+
+   # Create feature group with Lake Formation and Iceberg configs
+   feature_group = FeatureGroupManager.create(
+       feature_group_name="customer-features",
+       record_identifier_feature_name="customer_id",
+       event_time_feature_name="event_time",
+       feature_definitions=feature_definitions,
+       online_store_config=OnlineStoreConfig(enable_online_store=True),
+       offline_store_config=OfflineStoreConfig(
+           s3_storage_config=S3StorageConfig(s3_uri="s3://bucket/feature-store/"),
+           table_format="Iceberg",
+       ),
+       role_arn=role,
+       lake_formation_config=lake_formation_config,
+       iceberg_properties=iceberg_properties,
+   )
+
+**Using the base FeatureGroup resource:**
+
+.. code-block:: python
+
+   from sagemaker.core.resources import FeatureGroup
+
+   # Retrieve an existing feature group
+   feature_group = FeatureGroup.get(feature_group_name="customer-features")
+
+   # List feature groups
+   feature_groups = FeatureGroup.get_all()
+   for fg in feature_groups:
+       print(f"{fg.feature_group_name}: {fg.feature_group_status}")
+
+
+
 Migration from V2
 ------------------
 
@@ -524,6 +594,8 @@ MLOps Classes and Imports
      - ``sagemaker.core.workflow.pipeline_context.PipelineSession``
    * - ``sagemaker.lineage.context.Context``
      - ``sagemaker.core.lineage.context.Context``
+   * - ``sagemaker.feature_store.feature_group.FeatureGroup``
+     - ``sagemaker.mlops.feature_store.FeatureGroupManager``
 
 
 V3 Package Structure
@@ -543,7 +615,7 @@ V3 Package Structure
    * - ``sagemaker-serve``
      - ModelBuilder (build, register, deploy)
    * - ``sagemaker-mlops``
-     - Pipeline, ProcessingStep, TrainingStep, ModelStep, TuningStep, EMRServerlessStep, CacheConfig
+     - Pipeline, ProcessingStep, TrainingStep, ModelStep, TuningStep, EMRServerlessStep, CacheConfig, Feature Store (FeatureGroupManager, FeatureDefinition, DatasetBuilder)
 
 
 Explore comprehensive MLOps examples:

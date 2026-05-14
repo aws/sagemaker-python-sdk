@@ -1,4 +1,14 @@
 # Changelog
+## v3.11.0 (2026-05-12)
+
+### New Features
+- Auto-detect subscription recipe hyperparameters in SFTTrainer for Nova Forge datamix support
+- Create asymmetric ECDSA signing key in feature processor step compiler for remote function payload verification
+
+### Documentation
+- Add Feature Store reference to Implement MLOps page
+- Replace internal S3 URIs with user placeholders in SFT notebook
+
 ## v3.10.1 (2026-05-07)
 
 ### Bug Fixes

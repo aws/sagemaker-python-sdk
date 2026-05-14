@@ -1,1 +1,2 @@
 # unrelased sagemaker is installed via pre_execution_commands
+sagemaker-feature-store-pyspark>=2,<3
