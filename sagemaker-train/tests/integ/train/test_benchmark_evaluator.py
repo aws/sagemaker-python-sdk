@@ -52,12 +52,12 @@ TEST_CONFIG = {
     "region": "us-west-2",
 }
 
-# Base model only evaluation configuration (from commented section in notebook)
+# Base model only evaluation configuration
 BASE_MODEL_ONLY_CONFIG = {
     "base_model_id": "meta-textgeneration-llama-3-2-1b-instruct",
-    "dataset_s3_uri": "s3://sagemaker-us-west-2-052150106756/studio-users/d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
-    "s3_output_path": "s3://mufi-test-serverless-smtj/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
+    "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl",
+    "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-W7FOBBXZANVX",
     "region": "us-west-2",
 }
 
