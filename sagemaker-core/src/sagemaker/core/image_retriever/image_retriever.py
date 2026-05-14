@@ -28,6 +28,12 @@ from sagemaker.core.workflow.utilities import override_pipeline_parameter_var
 from sagemaker.core.config.config_schema import IMAGE_RETRIEVER, MODULES, PYTHON_SDK, SAGEMAKER, _simple_path
 from sagemaker.core.config.config_manager import SageMakerConfig
 
+
+def _to_pascal_case(name):
+    """Convert snake_case to PascalCase."""
+    camel = to_camel_case(name)
+    return camel[0].upper() + camel[1:] if camel else camel
+
 ECR_URI_TEMPLATE = "{registry}.dkr.{hostname}/{repository}"
 HUGGING_FACE_FRAMEWORK = "huggingface"
 PYTORCH_FRAMEWORK = "pytorch"
@@ -114,7 +120,7 @@ class ImageRetriever:
             if name in CONFIGURABLE_ATTRIBUTES and not val:
                 default_value = ImageRetriever._config.resolve_value_from_config(
                     config_path=_simple_path(
-                        SAGEMAKER, PYTHON_SDK, MODULES, IMAGE_RETRIEVER, to_camel_case(name)
+                        SAGEMAKER, PYTHON_SDK, MODULES, IMAGE_RETRIEVER, _to_pascal_case(name)
                     )
                 )
                 if default_value is not None:
@@ -517,7 +523,7 @@ class ImageRetriever:
             if name in CONFIGURABLE_ATTRIBUTES and not val:
                 default_value = ImageRetriever._config.resolve_value_from_config(
                     config_path=_simple_path(
-                        SAGEMAKER, PYTHON_SDK, MODULES, IMAGE_RETRIEVER, to_camel_case(name)
+                        SAGEMAKER, PYTHON_SDK, MODULES, IMAGE_RETRIEVER, _to_pascal_case(name)
                     )
                 )
                 if default_value is not None:
