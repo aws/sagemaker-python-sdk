@@ -515,6 +515,95 @@ def test_llm_as_judge_evaluator_get_llmaj_template_additions_no_metrics(mock_art
     assert additions['custom_metrics'] is None
 
 
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_llm_as_judge_evaluator_builtin_metrics_only_no_custom(mock_artifact, mock_resolve):
+    """Test that evaluator handles builtin_metrics with custom_metrics=None correctly."""
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+
+    evaluator = LLMAsJudgeEvaluator(
+        evaluator_model=DEFAULT_EVALUATOR_MODEL,
+        dataset=DEFAULT_DATASET,
+        model=DEFAULT_MODEL,
+        builtin_metrics=["Completeness", "Faithfulness"],
+        custom_metrics=None,
+        s3_output_path=DEFAULT_S3_OUTPUT,
+        mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+        model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+        sagemaker_session=mock_session,
+    )
+
+    assert evaluator.builtin_metrics == ["Completeness", "Faithfulness"]
+    assert evaluator.custom_metrics is None
+
+    eval_name = "test-eval"
+    additions = evaluator._get_llmaj_template_additions(eval_name)
+
+    assert additions['llmaj_metrics'] == json.dumps(["Completeness", "Faithfulness"])
+    assert additions['custom_metrics'] is None
+
+
+@patch('sagemaker.core.s3.client.S3Uploader.upload_string_as_file_body')
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_llm_as_judge_evaluator_custom_metrics_only_no_builtin(mock_artifact, mock_resolve, mock_s3_upload):
+    """Test that evaluator handles custom_metrics with builtin_metrics=None correctly."""
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+
+    custom_metrics_json = json.dumps([{"customMetricDefinition": {"name": "TestMetric"}}])
+
+    evaluator = LLMAsJudgeEvaluator(
+        evaluator_model=DEFAULT_EVALUATOR_MODEL,
+        dataset=DEFAULT_DATASET,
+        model=DEFAULT_MODEL,
+        builtin_metrics=None,
+        custom_metrics=custom_metrics_json,
+        s3_output_path=DEFAULT_S3_OUTPUT,
+        mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+        model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+        sagemaker_session=mock_session,
+    )
+
+    assert evaluator.builtin_metrics is None
+    assert evaluator.custom_metrics == custom_metrics_json
+
+    eval_name = "test-eval"
+    additions = evaluator._get_llmaj_template_additions(eval_name)
+
+    assert additions['llmaj_metrics'] == json.dumps([])
+    assert additions['custom_metrics'] is not None
+    assert additions['custom_metrics'].startswith("s3://")
+    mock_s3_upload.assert_called_once()
+
+
 @pytest.mark.skip(reason="Integration test - requires full pipeline execution setup")
 @patch('sagemaker.train.evaluate.execution.Pipeline')
 @patch('sagemaker.train.evaluate.llm_as_judge_evaluator.EvaluationPipelineExecution')
