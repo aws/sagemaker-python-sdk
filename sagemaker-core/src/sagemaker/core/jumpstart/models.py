@@ -186,6 +186,8 @@ class OutputKeysModel(BaseConfig):
 class DefaultPayloadsModel(BaseConfig):
     """DefaultPayloadsModel"""
 
+    model_config = ConfigDict(validate_assignment=True, extra="ignore")
+
     ContentType: str
     PromptKey: Optional[str] = None
     OutputKeys: Optional[OutputKeysModel] = None
