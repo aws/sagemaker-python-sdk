@@ -29,6 +29,7 @@ from sagemaker.core.model_monitor.model_monitoring import (
     CONSTRAINT_VIOLATIONS_JSON_DEFAULT_FILE_NAME,
     DEFAULT_REPOSITORY_NAME,
 )
+from sagemaker.core.model_monitor.dataset_format import MonitoringDatasetFormat
 from sagemaker.core.processing import ProcessingInput, ProcessingOutput
 from sagemaker.core.shapes import ProcessingS3Input, ProcessingS3Output
 from sagemaker.core.network import NetworkConfig
@@ -140,8 +141,81 @@ class TestMonitoringOutput:
 
 class TestBatchTransformInput:
     def test_init_minimal(self):
-        # Skip this test as BatchTransformInput has initialization issues in the source code
-        pytest.skip("BatchTransformInput has initialization issues in the source code")
+        bti = BatchTransformInput(
+            data_captured_destination_s3_uri="s3://bucket/captured",
+            destination="/opt/ml/processing/input",
+            dataset_format=MonitoringDatasetFormat.csv(header=False),
+        )
+        assert bti.data_captured_destination_s3_uri == "s3://bucket/captured"
+        assert bti.destination == "/opt/ml/processing/input"
+        assert bti.s3_input_mode == "File"
+        assert bti.s3_data_distribution_type == "FullyReplicated"
+
+    def test_init_with_all_parameters(self):
+        bti = BatchTransformInput(
+            data_captured_destination_s3_uri="s3://bucket/captured",
+            destination="/opt/ml/processing/input",
+            dataset_format=MonitoringDatasetFormat.csv(header=False),
+            s3_input_mode="Pipe",
+            s3_data_distribution_type="ShardedByS3Key",
+            start_time_offset="-PT1H",
+            end_time_offset="-PT0H",
+            features_attribute="features",
+            inference_attribute="prediction",
+            probability_attribute="probability",
+            probability_threshold_attribute=0.5,
+            exclude_features_attribute="feature1,feature2",
+        )
+        assert bti.s3_input_mode == "Pipe"
+        assert bti.start_time_offset == "-PT1H"
+        assert bti.features_attribute == "features"
+
+    def test_to_request_dict_minimal(self):
+        bti = BatchTransformInput(
+            data_captured_destination_s3_uri="s3://bucket/captured",
+            destination="/opt/ml/processing/input",
+            dataset_format=MonitoringDatasetFormat.csv(header=False),
+        )
+        request_dict = bti._to_request_dict()
+        assert "BatchTransformInput" in request_dict
+        payload = request_dict["BatchTransformInput"]
+        assert payload["DataCapturedDestinationS3Uri"] == "s3://bucket/captured"
+        assert payload["LocalPath"] == "/opt/ml/processing/input"
+        assert payload["S3InputMode"] == "File"
+        assert payload["S3DataDistributionType"] == "FullyReplicated"
+
+    def test_to_request_dict_excludes_none_values(self):
+        bti = BatchTransformInput(
+            data_captured_destination_s3_uri="s3://bucket/captured",
+            destination="/opt/ml/processing/input",
+            dataset_format=MonitoringDatasetFormat.csv(header=False),
+        )
+        payload = bti._to_request_dict()["BatchTransformInput"]
+        assert "StartTimeOffset" not in payload
+        assert "EndTimeOffset" not in payload
+        assert "FeaturesAttribute" not in payload
+        assert "InferenceAttribute" not in payload
+        assert "ProbabilityAttribute" not in payload
+        assert "ProbabilityThresholdAttribute" not in payload
+        assert "ExcludeFeaturesAttribute" not in payload
+
+    def test_to_request_dict_includes_optional_values(self):
+        bti = BatchTransformInput(
+            data_captured_destination_s3_uri="s3://bucket/captured",
+            destination="/opt/ml/processing/input",
+            dataset_format=MonitoringDatasetFormat.csv(header=False),
+            start_time_offset="-PT1H",
+            end_time_offset="-PT0H",
+            probability_attribute="probability",
+            probability_threshold_attribute=0.5,
+            exclude_features_attribute="f1,f2",
+        )
+        payload = bti._to_request_dict()["BatchTransformInput"]
+        assert payload["StartTimeOffset"] == "-PT1H"
+        assert payload["EndTimeOffset"] == "-PT0H"
+        assert payload["ProbabilityAttribute"] == "probability"
+        assert payload["ProbabilityThresholdAttribute"] == 0.5
+        assert payload["ExcludeFeaturesAttribute"] == "f1,f2"
 
 
 class TestBaseliningJob:
