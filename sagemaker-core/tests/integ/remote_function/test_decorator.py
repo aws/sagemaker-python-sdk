@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import sys
 import time
 from typing import Union
 
@@ -573,7 +574,10 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
     assert client_error_message in str(error)
 
 
-# @pytest.mark.skip
+@pytest.mark.skipif(
+    sys.version_info[:2] not in [(3, 9), (3, 12)],
+    reason="SageMaker Spark image only available for Python 3.9 and 3.12",
+)
 def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
     @remote(
         role=ROLE,
@@ -584,7 +588,7 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
             configuration=[
                 {
                     "Classification": "spark-defaults",
-                    "Properties": {"spark.app.name", "remote-spark-test"},
+                    "Properties": {"spark.app.name": "remote-spark-test"},
                 }
             ]
         ),
@@ -594,7 +598,7 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
 
         spark = SparkSession.builder.getOrCreate()
 
-        assert spark.conf.get(spark.app.name) == "remote-spark-test"
+        assert spark.conf.get("spark.app.name") == "remote-spark-test"
 
     test_spark_transform()
 
