@@ -1,4 +1,17 @@
 # Changelog
+## v2.12.0 (2026-05-19)
+
+### New Features
+
+- Embed the `aws-sagemaker-token-generator` library into `sagemaker.core` so users can generate SageMaker bearer tokens without installing a separate wheel (#5868)
+- Add Lake Formation credential vending, Spark 3.5/Python 3.12 support, stored function signing key, and export `IcebergProperties` in feature processor (#5816)
+
+### Bug Fixes
+
+- Fix `AttributeError` on `vpc_config` in networking and telemetry region fallback for classmethods (#5839)
+- Add missing `CustomAttributes` field to `DefaultPayloadsModel` (#5870)
+- Preserve falsy values in `serialize()` output — `False`, `0`, and `""` were silently dropped due to truthy check (#5860)
+
 ## v2.11.0 (2026-05-12)
 
 ### New Features
