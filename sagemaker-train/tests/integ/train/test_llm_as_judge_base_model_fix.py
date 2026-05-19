@@ -19,6 +19,7 @@ while the custom model evaluation correctly loads fine-tuned weights.
 from __future__ import absolute_import
 
 import json
+import time
 import pytest
 import logging
 
@@ -140,21 +141,33 @@ class TestLLMAsJudgeBaseModelFix:
         
         # Step 3: Verify pipeline structure
         logger.info("\nVerifying pipeline structure...")
-        execution.refresh()
         
-        # Check that we have both base and custom inference steps
-        step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
-        
-        logger.info(f"Pipeline steps ({len(step_names)}): {step_names}")
-        
-        # If no steps yet, wait a bit for pipeline to initialize
-        if not step_names:
-            logger.info("No steps found yet, waiting for pipeline initialization...")
-            import time
-            time.sleep(10)
+        # Poll for steps to appear since the pipeline takes time to initialize all steps
+        max_wait_seconds = 120
+        poll_interval = 10
+        elapsed = 0
+        step_names = []
+
+        while elapsed < max_wait_seconds:
             execution.refresh()
             step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
-            logger.info(f"Pipeline steps after wait ({len(step_names)}): {step_names}")
+            logger.info(f"Pipeline steps after {elapsed}s ({len(step_names)}): {step_names}")
+
+            # Check if both inference steps have appeared
+            has_base_step = any("base" in name.lower() and "inference" in name.lower() for name in step_names)
+            has_custom_step = any("custom" in name.lower() and "inference" in name.lower() for name in step_names)
+            if has_base_step and has_custom_step:
+                break
+
+            # Also break if the pipeline has finished (all steps reported)
+            if execution.status.overall_status in ("Succeeded", "Failed", "Stopped"):
+                logger.info(f"Pipeline reached terminal status: {execution.status.overall_status}")
+                break
+
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+
+        logger.info(f"Final pipeline steps ({len(step_names)}): {step_names}")
         
         # Verify both inference steps exist (case-insensitive, flexible matching)
         has_base_step = any("base" in name.lower() and "inference" in name.lower() for name in step_names)
@@ -275,19 +288,31 @@ class TestLLMAsJudgeBaseModelFix:
         logger.info(f"  Execution ARN: {execution.arn}")
         
         # Verify pipeline structure - should only have custom inference step
-        execution.refresh()
-        step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
-        
-        logger.info(f"Pipeline steps ({len(step_names)}): {step_names}")
-        
-        # If no steps yet, wait a bit for pipeline to initialize
-        if not step_names:
-            logger.info("No steps found yet, waiting for pipeline initialization...")
-            import time
-            time.sleep(10)
+        # Poll for steps to appear since the pipeline takes time to initialize all steps
+        max_wait_seconds = 120
+        poll_interval = 10
+        elapsed = 0
+        step_names = []
+
+        while elapsed < max_wait_seconds:
             execution.refresh()
             step_names = [step.name for step in execution.status.step_details] if execution.status.step_details else []
-            logger.info(f"Pipeline steps after wait ({len(step_names)}): {step_names}")
+            logger.info(f"Pipeline steps after {elapsed}s ({len(step_names)}): {step_names}")
+
+            # Check if the custom inference step has appeared
+            has_custom_step = any("custom" in name.lower() and "inference" in name.lower() for name in step_names)
+            if has_custom_step:
+                break
+
+            # Also break if the pipeline has finished (all steps reported)
+            if execution.status.overall_status in ("Succeeded", "Failed", "Stopped"):
+                logger.info(f"Pipeline reached terminal status: {execution.status.overall_status}")
+                break
+
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+
+        logger.info(f"Final pipeline steps ({len(step_names)}): {step_names}")
         
         # Should NOT have base inference step (case-insensitive, flexible matching)
         has_base_step = any("base" in name.lower() and "inference" in name.lower() for name in step_names)
