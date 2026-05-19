@@ -120,3 +120,28 @@ def test_feature_processor_validation_fails(udf, udf_wrapper, validator_chain, f
                 get_validation_chain.assert_called_once()
                 validator_chain.validate.assert_called_with(fp_config=fp_config, udf=udf)
                 udf_wrapper.wrap.assert_not_called()
+
+
+def test_feature_processor_passes_use_lake_formation_credentials(
+    udf, udf_wrapper, validator_chain, fp_config, wrapped_udf
+):
+    with patch.object(
+        FeatureProcessorConfig, "create", return_value=fp_config
+    ) as fp_config_create_method:
+        with patch.object(
+            UDFWrapperFactory, "get_udf_wrapper", return_value=udf_wrapper
+        ):
+            with patch.object(
+                ValidatorFactory,
+                "get_validation_chain",
+                return_value=validator_chain,
+            ):
+                feature_processor(
+                    inputs=[tdh.FEATURE_GROUP_DATA_SOURCE],
+                    output="",
+                    use_lake_formation_credentials=True,
+                )(udf)
+
+                fp_config_create_method.assert_called_once()
+                call_kwargs = fp_config_create_method.call_args
+                assert call_kwargs.kwargs["use_lake_formation_credentials"] is True

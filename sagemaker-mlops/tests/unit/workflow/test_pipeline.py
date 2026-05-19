@@ -342,7 +342,7 @@ def test_get_function_step_result_wrong_container(mock_session):
     from sagemaker.mlops.workflow.pipeline import get_function_step_result
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": ["python"]},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path"}
     }
@@ -357,7 +357,7 @@ def test_get_function_step_result_incomplete_job(mock_session):
     from sagemaker.core.remote_function.errors import RemoteFunctionError
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path"},
         "TrainingJobStatus": "Failed",
@@ -373,7 +373,7 @@ def test_get_function_step_result_success(mock_session):
     from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
@@ -496,7 +496,7 @@ def test_pipeline_execution_result_terminal_failure(mock_session):
     mock_session.sagemaker_client.list_pipeline_execution_steps.return_value = {
         "PipelineExecutionSteps": [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
     }
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
@@ -514,13 +514,49 @@ def test_get_function_step_result_obsolete_s3_path(mock_session):
     from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/different/path"},
         "TrainingJobStatus": "Completed",
         "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "key"}
     }
     
-    with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result"):
+    with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result") as mock_deserialize:
         result = get_function_step_result("step1", step_list, "exec-id", mock_session)
         assert result == "result"
+        # Obsolete format: exec-id/step_name/results suffix must be appended
+        mock_deserialize.assert_called_once_with(
+            sagemaker_session=mock_session,
+            s3_uri="s3://bucket/different/path/exec-id/step1/results",
+            verification_key=None,
+        )
+
+
+def test_get_function_step_result_new_format_with_build_timestamp(mock_session):
+    """New S3 path format includes a build timestamp segment between step name and exec-id.
+
+    Format: s3://bucket/<step_name>/<build_timestamp>/<exec_id>/results
+    The S3OutputPath already points directly to the results folder, so the function
+    must use it as-is without appending any extra path segments.
+    """
+    from sagemaker.mlops.workflow.pipeline import get_function_step_result
+    from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
+
+    new_format_path = "s3://bucket/step1/20240101T120000/exec-id/results"
+    step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
+    mock_session.sagemaker_client.describe_training_job.return_value = {
+        "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
+        "OutputDataConfig": {"S3OutputPath": new_format_path},
+        "TrainingJobStatus": "Completed",
+        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "key"},
+    }
+
+    with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result") as mock_deserialize:
+        result = get_function_step_result("step1", step_list, "exec-id", mock_session)
+        assert result == "result"
+        # New format: S3OutputPath already ends with /results, must be used verbatim
+        mock_deserialize.assert_called_once_with(
+            sagemaker_session=mock_session,
+            s3_uri=new_format_path,
+            verification_key=None,
+        )

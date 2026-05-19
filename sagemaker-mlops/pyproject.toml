@@ -23,9 +23,10 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.10.1",
-    "sagemaker-train>=1.10.1",
-    "sagemaker-serve>=1.10.1",
+    "sagemaker-core>=2.11.0",
+    "sagemaker-train>=1.11.0",
+    "sagemaker-serve>=1.11.0",
+    "cryptography>=46.0.0",
     "boto3>=1.42.2,<2.0",
     "botocore>=1.42.2,<2.0",
     "pyiceberg[glue]>=0.8.0",
@@ -35,8 +36,8 @@ dependencies = [
 
 [project.optional-dependencies]
 feature-processor = [
-    "pyspark==3.3.2",
-    "sagemaker-feature-store-pyspark-3.3",
+    "pyspark==3.5.1",
+    "sagemaker-feature-store-pyspark==2.0.0",
     "setuptools<82",
 ]
 
@@ -45,8 +46,8 @@ test = [
     "pytest-cov",
     "mock",
     "setuptools<82",
-    "pyspark==3.3.2",
-    "sagemaker-feature-store-pyspark-3.3",
+    "pyspark==3.5.1",
+    "sagemaker-feature-store-pyspark==2.0.0",
     "pandas<3.0",
     "numpy<3.0",
 ]
