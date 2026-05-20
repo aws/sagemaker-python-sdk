@@ -41,7 +41,7 @@ from sagemaker.core.remote_function.errors import (
 from sagemaker.core.common_utils import unique_name_from_base
 from tests.integ.s3_utils import assert_s3_files_exist
 
-from tests.integ.kms_utils import get_or_create_kms_key
+from tests.integ.integ_test_kms_helpers import get_or_create_kms_key
 import os
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")

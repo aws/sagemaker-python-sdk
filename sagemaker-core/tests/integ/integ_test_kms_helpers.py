@@ -10,6 +10,16 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
+"""KMS test helpers for integration tests.
+
+Ported from SageMakerHulkPythonSDK/tests/integ/kms_utils.py.
+
+NOTE: KMS keys created by these helpers use a fixed alias and are intentionally
+reused across test runs rather than deleted after each run. This is because KMS
+keys have a mandatory 7-day minimum deletion window (schedule_key_deletion), so
+per-run create/delete is not practical. The persistent shared key approach avoids
+accumulating orphaned keys and unnecessary costs.
+"""
 from __future__ import absolute_import
 
 import json
