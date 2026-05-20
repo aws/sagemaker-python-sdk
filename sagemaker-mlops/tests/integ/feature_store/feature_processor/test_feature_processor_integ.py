@@ -528,10 +528,11 @@ def test_feature_processor_transform_offline_only_store_ingestion(
         )
 
 
-@pytest.mark.skipif(
-    sys.version_info[:2] not in [(3, 9), (3, 12)],
-    reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
-)
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
+# )
+@pytest.mark.spark_py312
 @pytest.mark.slow_test
 def test_feature_processor_transform_offline_only_store_ingestion_run_with_remote(
     sagemaker_session,
@@ -669,10 +670,11 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
         )
 
 
-@pytest.mark.skipif(
-    sys.version_info[:2] not in [(3, 9), (3, 12)],
-    reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
-)
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
+# )
+@pytest.mark.spark_py312
 @pytest.mark.slow_test
 def test_to_pipeline_and_execute(
     sagemaker_session,
@@ -792,10 +794,11 @@ def test_to_pipeline_and_execute(
         # cleanup_pipeline(pipeline_name="pipeline-name-01", sagemaker_session=sagemaker_session)
 
 
-@pytest.mark.skipif(
-    sys.version_info[:2] not in [(3, 9), (3, 12)],
-    reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
-)
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
+# )
+@pytest.mark.spark_py312
 @pytest.mark.slow_test
 def test_to_pipeline_and_execute_with_lake_formation(
     sagemaker_session,
@@ -940,10 +943,11 @@ def test_to_pipeline_and_execute_with_lake_formation(
             cleanup_feature_group(car_data_fg, sagemaker_session=sagemaker_session)
 
 
-@pytest.mark.skipif(
-    sys.version_info[:2] not in [(3, 9), (3, 12)],
-    reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
-)
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
+# )
+@pytest.mark.spark_py312
 @pytest.mark.slow_test
 def test_schedule_and_event_trigger(
     sagemaker_session,
