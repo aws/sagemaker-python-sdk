@@ -54,6 +54,7 @@ def test_spark_session_factory_configs_include_dynamic_hadoop():
     assert f"org.apache.hadoop:hadoop-common:{hadoop_version}" in packages
 
 
+@pytest.mark.spark_py312
 @pytest.mark.slow_test
 def test_image_resolver_returns_uri_for_installed_pyspark():
     """Verify the image resolver returns a valid URI for the installed PySpark + Python version."""

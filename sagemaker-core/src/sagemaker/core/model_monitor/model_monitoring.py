@@ -4174,7 +4174,7 @@ class BatchTransformInput(MonitoringInput):
 
         """
         self.data_captured_destination_s3_uri = data_captured_destination_s3_uri
-        self.s3_output.s3_uri = destination
+        self.destination = destination
         self.s3_input_mode = s3_input_mode
         self.s3_data_distribution_type = s3_data_distribution_type
         self.dataset_format = dataset_format
@@ -4193,7 +4193,7 @@ class BatchTransformInput(MonitoringInput):
         """Generates a request dictionary using the parameters provided to the class."""
         batch_transform_input_data = {
             "DataCapturedDestinationS3Uri": self.data_captured_destination_s3_uri,
-            "LocalPath": self.s3_output.s3_uri,
+            "LocalPath": self.destination,
             "S3InputMode": self.s3_input_mode,
             "S3DataDistributionType": self.s3_data_distribution_type,
             "DatasetFormat": self.dataset_format,
