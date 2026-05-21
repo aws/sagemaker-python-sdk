@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import sys
 import time
 from typing import Union
 
@@ -40,7 +41,7 @@ from sagemaker.core.remote_function.errors import (
 from sagemaker.core.common_utils import unique_name_from_base
 from tests.integ.s3_utils import assert_s3_files_exist
 
-# from tests.integ.kms_utils import get_or_create_kms_key  # TODO: provide KMS utils
+from tests.integ.integ_test_kms_helpers import get_or_create_kms_key
 import os
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
@@ -122,7 +123,7 @@ def test_remote_python_runtime_is_incompatible(
 
 
 # TODO: add VPC settings, update SageMakerRole with KMS permissions
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_advanced_job_setting(
     sagemaker_session, dummy_container_without_error, cpu_instance_type, s3_kms_key
 ):
@@ -573,7 +574,10 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
     assert client_error_message in str(error)
 
 
-@pytest.mark.skip
+@pytest.mark.skipif(
+    sys.version_info[:2] not in [(3, 9), (3, 12)],
+    reason="SageMaker Spark image only available for Python 3.9 and 3.12",
+)
 def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
     @remote(
         role=ROLE,
@@ -584,7 +588,7 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
             configuration=[
                 {
                     "Classification": "spark-defaults",
-                    "Properties": {"spark.app.name", "remote-spark-test"},
+                    "Properties": {"spark.app.name": "remote-spark-test"},
                 }
             ]
         ),
@@ -594,12 +598,12 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
 
         spark = SparkSession.builder.getOrCreate()
 
-        assert spark.conf.get(spark.app.name) == "remote-spark-test"
+        assert spark.conf.get("spark.app.name") == "remote-spark-test"
 
     test_spark_transform()
 
 
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_decorator_auto_capture(sagemaker_session, auto_capture_test_container):
     """
     This test runs a docker container. The Container invocation will execute a python script
