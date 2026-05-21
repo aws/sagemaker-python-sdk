@@ -22,7 +22,7 @@ from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
+# @pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLVR training workflow with LORA."""
     
