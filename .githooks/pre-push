@@ -7,7 +7,7 @@ TOX_PARALLEL_NO_SPINNER=1,
 PY_COLORS=0
 start_time=`date +%s`
 tox -e flake8,pylint,docstyle,black-check,twine --parallel all
-./ci-scripts/displaytime.sh 'flake8,pylint,docstyle,black-check,twine' $start_time
+./ci-scripts/displaytime.sh 'flake8,pylint,docstyle,black-check,isort-check,twine' $start_time
 start_time=`date +%s`
 tox -e sphinx,doc8 --parallel all
 ./ci-scripts/displaytime.sh 'sphinx,doc8' $start_time
