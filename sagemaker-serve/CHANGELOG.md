@@ -1,4 +1,25 @@
 # Changelog
+## v1.12.0 (2026-05-19)
+
+### Bug Fixes
+
+- Fix `AttributeError` on `vpc_config` in networking and telemetry region fallback for classmethods (#5839)
+- Prevent code injection in `capture_dependencies` path interpolation via crafted directory names in `ModelBuilder` (#5792)
+- Fix `VolumeSizeInGB` not being passed through when deploying JumpStart models with `inference_volume_size` (#5847)
+
+## v1.11.0 (2026-05-12)
+
+### Other
+
+- Update module dependencies
+
+## v1.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix JumpStart network isolation in ModelBuilder
+- Fix handling of unrecognized JumpStart container images in ModelBuilder
+
 ## v1.10.0 (2026-05-01)
 
 ### Bug Fixes

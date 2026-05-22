@@ -40,7 +40,9 @@ from sagemaker.core.remote_function.spark_config import SparkConfig
 from sagemaker.mlops.feature_store import (
     FeatureGroup,
     FeatureDefinition,
+    FeatureGroupManager,
     FeatureTypeEnum,
+    LakeFormationConfig,
     OnlineStoreConfig,
     OfflineStoreConfig,
     S3StorageConfig,
@@ -526,11 +528,12 @@ def test_feature_processor_transform_offline_only_store_ingestion(
         )
 
 
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
+# )
+@pytest.mark.spark_py312
 @pytest.mark.slow_test
-@pytest.mark.skipif(
-    not sys.version.startswith("3.9"),
-    reason="Only allow this test to run with py39",
-)
 def test_feature_processor_transform_offline_only_store_ingestion_run_with_remote(
     sagemaker_session,
     pre_execution_commands,
@@ -591,6 +594,7 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
             return transformed_df
 
         transform()
+
 
         featurestore_client = sagemaker_session.sagemaker_featurestore_runtime_client
         results = featurestore_client.batch_get_record(
@@ -666,11 +670,12 @@ def test_feature_processor_transform_offline_only_store_ingestion_run_with_remot
         )
 
 
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
+# )
+@pytest.mark.spark_py312
 @pytest.mark.slow_test
-@pytest.mark.skipif(
-    not sys.version.startswith("3.9"),
-    reason="Only allow this test to run with py39",
-)
 def test_to_pipeline_and_execute(
     sagemaker_session,
     pre_execution_commands,
@@ -789,11 +794,166 @@ def test_to_pipeline_and_execute(
         # cleanup_pipeline(pipeline_name="pipeline-name-01", sagemaker_session=sagemaker_session)
 
 
-@pytest.mark.slow_test
-@pytest.mark.skipif(
-    not sys.version.startswith("3.9"),
-    reason="Only allow this test to run with py39",
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
+# )
+@pytest.mark.skip(
+    reason="Lake Formation credential vending (GetTemporaryGlueTableCredentials) requires "
+    "full LF environment setup (resource registration, trust policy, data location grants) "
+    "that is not configured in CI. See quip-amazon.com/S3FEAMMMuKm0 for details."
 )
+@pytest.mark.spark_py312
+@pytest.mark.slow_test
+def test_to_pipeline_and_execute_with_lake_formation(
+    sagemaker_session,
+    pre_execution_commands,
+    dependencies_path,
+):
+    pipeline_name = "pipeline-name-lf-01"
+    car_data_feature_group_name = get_car_data_feature_group_name()
+    car_data_fg = None
+    try:
+        offline_store_s3_uri = get_offline_store_s3_uri(sagemaker_session=sagemaker_session)
+        role_arn = get_execution_role(sagemaker_session)
+
+        lake_formation_config = LakeFormationConfig(
+            enabled=True,
+            hybrid_access_mode_enabled=False,
+            use_service_linked_role=False,
+            registration_role_arn=role_arn,
+            acknowledge_risk=True,
+        )
+        car_data_fg = FeatureGroupManager.create(
+            feature_group_name=car_data_feature_group_name,
+            record_identifier_feature_name="id",
+            event_time_feature_name="ingest_time",
+            feature_definitions=CAR_SALES_FG_FEATURE_DEFINITIONS,
+            offline_store_config=OfflineStoreConfig(
+                s3_storage_config=S3StorageConfig(s3_uri=f"{offline_store_s3_uri}/car-data")                
+            ),
+            online_store_config=OnlineStoreConfig(enable_online_store=True),
+            role_arn=role_arn,
+            lake_formation_config=lake_formation_config,
+        )
+        car_data_arn = car_data_fg.feature_group_arn
+
+        raw_data_uri = get_raw_car_data_s3_uri(sagemaker_session=sagemaker_session)
+
+        @remote(
+            pre_execution_commands=pre_execution_commands,
+            dependencies=dependencies_path,
+            spark_config=SparkConfig(),
+            instance_type="ml.m5.xlarge",
+        )
+        @feature_processor(
+            inputs=[CSVDataSource(raw_data_uri)],
+            output=car_data_arn,
+            target_stores=["OfflineStore"],
+            use_lake_formation_credentials=True,
+        )
+        def transform(raw_s3_data_as_df):
+            """Load data from S3, perform basic feature engineering, store it in a Feature Group"""
+            from pyspark.sql.functions import regexp_replace
+            from pyspark.sql.functions import lit
+
+            transformed_df = (
+                raw_s3_data_as_df
+                # Rename Columns
+                .withColumnRenamed("Id", "id")
+                .withColumnRenamed("Model", "model")
+                .withColumnRenamed("Year", "model_year")
+                .withColumnRenamed("Status", "status")
+                .withColumnRenamed("Mileage", "mileage")
+                .withColumnRenamed("Price", "price")
+                .withColumnRenamed("MSRP", "msrp")
+                # Add Event Time
+                .withColumn("ingest_time", lit(int(time.time())))
+                # Remove punctuation and fluff; replace with NA
+                .withColumn("Price", regexp_replace("Price", "\$", ""))  # noqa: W605
+                .withColumn("mileage", regexp_replace("mileage", "(,)|(mi\.)", ""))  # noqa: W605
+                .withColumn("mileage", regexp_replace("mileage", "Not available", "NA"))
+                .withColumn("price", regexp_replace("price", ",", ""))
+                .withColumn("msrp", regexp_replace("msrp", "(^MSRP\s\\$)|(,)", ""))  # noqa: W605
+                .withColumn("msrp", regexp_replace("msrp", "Not specified", "NA"))
+                .withColumn("msrp", regexp_replace("msrp", "\\$\d+[a-zA-Z\s]+", "NA"))  # noqa: W605
+                .withColumn("model", regexp_replace("model", "^\d\d\d\d\s", ""))  # noqa: W605
+            )
+
+            transformed_df.show()
+            return transformed_df
+
+        _wait_for_feature_group_lineage_contexts(
+            car_data_feature_group_name, sagemaker_session
+        )
+
+        pipeline_arn = to_pipeline(
+            pipeline_name=pipeline_name,
+            step=transform,
+            role_arn=role_arn,
+            max_retries=2,
+            tags=[("integ_test_tag_key_1", "integ_test_tag_key_2")],
+            sagemaker_session=sagemaker_session,
+        )
+        _sagemaker_client = get_sagemaker_client(sagemaker_session=sagemaker_session)
+
+        assert pipeline_arn is not None
+
+        tags = _sagemaker_client.list_tags(ResourceArn=pipeline_arn)["Tags"]
+
+        tag_keys = [tag["Key"] for tag in tags]
+        assert "integ_test_tag_key_1" in tag_keys
+
+        pipeline_description = Pipeline(name=pipeline_name).describe()
+        assert pipeline_arn == pipeline_description["PipelineArn"]
+        assert role_arn == pipeline_description["RoleArn"]
+
+        pipeline_definition = json.loads(pipeline_description["PipelineDefinition"])
+        assert len(pipeline_definition["Steps"]) == 1
+        for retry_policy in pipeline_definition["Steps"][0]["RetryPolicies"]:
+            assert retry_policy["MaxAttempts"] == 2
+
+        pipeline_execution_arn = execute(
+            pipeline_name=pipeline_name, sagemaker_session=sagemaker_session
+        )
+
+        status = _wait_for_pipeline_execution_to_reach_terminal_state(
+            pipeline_execution_arn=pipeline_execution_arn,
+            sagemaker_client=_sagemaker_client,
+        )
+        assert status == "Succeeded"
+
+    finally:
+        if car_data_fg is not None:
+            cleanup_offline_store(
+                feature_group=car_data_fg,
+                sagemaker_session=sagemaker_session,
+            )
+            try:
+                car_data_fg.refresh()
+                data_catalog_config = car_data_fg.offline_store_config.data_catalog_config
+                boto3_session = sagemaker_session.boto_session
+                glue_client = boto3_session.client(
+                    "glue", region_name=sagemaker_session.boto_region_name
+                )
+                glue_client.delete_table(
+                    DatabaseName=data_catalog_config.database,
+                    Name=data_catalog_config.table_name,
+                )
+                logging.info(
+                    f"Deleted Glue table {data_catalog_config.database}.{data_catalog_config.table_name}"
+                )
+            except Exception as e:
+                logging.warning(f"Failed to delete Glue table: {e}")
+            cleanup_feature_group(car_data_fg, sagemaker_session=sagemaker_session)
+
+
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
+# )
+@pytest.mark.spark_py312
+@pytest.mark.slow_test
 def test_schedule_and_event_trigger(
     sagemaker_session,
     pre_execution_commands,
@@ -1076,14 +1236,18 @@ def get_pre_execution_commands(sagemaker_session):
     """Build SDK wheels, upload to S3, and return pre-execution install commands."""
     s3_prefix, wheel_names = get_wheel_file_s3_uri(sagemaker_session=sagemaker_session)
     sagemaker_whl, core_whl, mlops_whl = wheel_names
-    print(f'{sagemaker_whl=}, {core_whl=}, {mlops_whl}')
-    return [
-        f"aws s3 cp {s3_prefix}/ /tmp/packages/ --recursive",
-        "pip3 install 'setuptools<75'",
-        f"pip3 install --no-build-isolation '/tmp/packages/{sagemaker_whl}[feature-processor]' 'numpy<2.0.0' 'ml_dtypes<=0.4.1' 'setuptools<75' || true",
-        f"pip3 install --no-deps --force-reinstall /tmp/packages/{sagemaker_whl}",
-        f"pip3 install --no-deps --force-reinstall /tmp/packages/{core_whl} /tmp/packages/{mlops_whl}",
+    print(f'{sagemaker_whl=}, {core_whl=}, {mlops_whl=}')
+    PIP = "python3 -m pip install --root-user-action=ignore"
+    AWS = "python3 -m awscli"
+    cmds =  [
+        f"{PIP} awscli",
+        f"{AWS} s3 cp {s3_prefix}/ /tmp/packages/ --recursive",
+        f"{PIP} 'setuptools<75'",
+        f"{PIP} --no-build-isolation '/tmp/packages/{mlops_whl}' 'numpy<2.0.0' 'ml_dtypes<=0.4.1' 'setuptools<75' || true",
+        f"{PIP} --no-deps --force-reinstall /tmp/packages/{sagemaker_whl}",
+        f"{PIP} --no-deps --force-reinstall /tmp/packages/{core_whl} /tmp/packages/{mlops_whl}",
     ]
+    return cmds
 
 
 def create_feature_groups(

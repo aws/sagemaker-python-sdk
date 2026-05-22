@@ -1146,31 +1146,41 @@ def get_function_step_result(
     job_arn = step_metadata["Arn"]
     job_name = job_arn.split("/")[-1]
 
-    if isinstance(sagemaker_session, LocalSession):
-        describe_training_job_response = sagemaker_session.sagemaker_client.describe_training_job(
-            job_name
-        )
-    else:
-        describe_training_job_response = sagemaker_session.describe_training_job(job_name)
+    describe_training_job_response = sagemaker_session.sagemaker_client.describe_training_job(
+        TrainingJobName=job_name
+    )
     container_args = describe_training_job_response["AlgorithmSpecification"]["ContainerEntrypoint"]
     if container_args != JOBS_CONTAINER_ENTRYPOINT:
         raise ValueError(_ERROR_MSG_OF_WRONG_STEP_TYPE)
     s3_output_path = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
 
-    s3_uri_suffix = s3_path_join(execution_id, step_name, RESULTS_FOLDER)
-    if s3_output_path.endswith(s3_uri_suffix) or s3_output_path[0:-1].endswith(s3_uri_suffix):
-        s3_uri = s3_output_path
+    # S3OutputPath can be in one of two formats:
+    # 1. New format (pipeline step): base/step_name/build_timestamp/execution_id/results
+    #    - S3OutputPath already points directly to the results folder
+    # 2. Old format (legacy, pre-build-timestamp): base/execution_id/step_name/results
+    #    - S3OutputPath also already points to the results folder
+    # 3. Obsoleted format: base path only, without the results suffix
+    #    - Must append execution_id/step_name/results for backward compatibility
+    #
+    # Cases 1 and 2 both end with RESULTS_FOLDER; case 3 does not.
+    s3_output_path_stripped = s3_output_path.rstrip("/")
+    if s3_output_path_stripped.endswith("/" + RESULTS_FOLDER) or s3_output_path_stripped == RESULTS_FOLDER:
+        # S3OutputPath already points to the results folder (new or old format)
+        s3_uri = s3_output_path_stripped
     else:
-        # This is the obsoleted version of s3_output_path
-        # Keeping it for backward compatible
-        s3_uri = s3_path_join(s3_output_path, s3_uri_suffix)
+        # Obsoleted version of s3_output_path — append the suffix for backward compatibility
+        s3_uri = s3_path_join(s3_output_path, execution_id, step_name, RESULTS_FOLDER)
 
     job_status = describe_training_job_response["TrainingJobStatus"]
     if job_status == "Completed":
+        # Results are written by the job side using plain SHA-256 hashing (no asymmetric
+        # signature). The REMOTE_FUNCTION_SECRET_KEY is the public key used by the job to
+        # verify client-uploaded payloads (function/args), not for verifying job-uploaded
+        # results. Pass verification_key=None to use plain SHA-256 hash verification.
         return deserialize_obj_from_s3(
             sagemaker_session=sagemaker_session,
             s3_uri=s3_uri,
-            verification_key=describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"],
+            verification_key=None,
         )
 
     raise RemoteFunctionError(_ERROR_MSG_OF_STEP_INCOMPLETE)

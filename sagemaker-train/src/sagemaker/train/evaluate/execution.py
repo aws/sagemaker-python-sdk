@@ -1161,87 +1161,104 @@ class EvaluationPipelineExecution(BaseModel):
                 
                 time.sleep(poll)
         else:
-            # Terminal experience with rich library
-            try:
-                from rich.live import Live
-                from rich.panel import Panel
-                from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
-                from rich.console import Group
-                from rich.status import Status
-                from rich.style import Style
-                
-                progress = Progress(
-                    SpinnerColumn("bouncingBar"),
-                    TextColumn("{task.description}"),
-                    TimeElapsedColumn(),
-                )
-                progress.add_task(f"Waiting for PipelineExecution to reach [bold]{target_status}[/bold] status...")
-                status = Status("Current status:")
-                
-                with Live(
-                    Panel(
-                        Group(progress, status),
-                        title="Wait Log Panel",
-                        border_style=Style(color="blue"),
-                    ),
-                    transient=True,
-                ):
-                    while True:
-                        self.refresh()
-                        current_status = self.status.overall_status
-                        status.update(f"Current status: [bold]{current_status}[/bold]")
-                        
-                        if target_status == current_status:
-                            logger.info(f"Final Resource Status: [bold]{current_status}[/bold]")
-                            return
-                        
-                        if "failed" in current_status.lower():
-                            from sagemaker.core.utils.exceptions import FailedStatusError
-                            raise FailedStatusError(
-                                resource_type="PipelineExecution",
-                                status=current_status,
-                                reason=self.status.failure_reason,
-                            )
-                        
-                        if timeout is not None and time.time() - start_time >= timeout:
-                            from sagemaker.core.utils.exceptions import TimeoutExceededError
-                            raise TimeoutExceededError(
-                                resource_type="EvaluationJob",
-                                status=current_status,
-                                message="Your evaluation job is still running. Call .refresh() to check its current status.",
-                            )
-                        
-                        time.sleep(poll)
-            except ImportError:
-                # Fallback to simple print-based progress if rich is not available
-                logger.info(f"Waiting for PipelineExecution to reach {target_status} status...")
-                while True:
-                    self.refresh()
-                    current_status = self.status.overall_status
-                    elapsed = time.time() - start_time
-                    print(f"Current status: {current_status} (Elapsed: {elapsed:.1f}s)")
-                    
-                    if target_status == current_status:
-                        logger.info(f"Final Resource Status: {current_status}")
-                        return
-                    
-                    if "failed" in current_status.lower():
-                        from sagemaker.core.utils.exceptions import FailedStatusError
-                        raise FailedStatusError(
-                            resource_type="PipelineExecution",
-                            status=current_status,
-                            reason=self.status.failure_reason,
-                        )
-                    
-                    if timeout is not None and elapsed >= timeout:
-                        from sagemaker.core.utils.exceptions import TimeoutExceededError
-                        raise TimeoutExceededError(
-                            resource_type="EvaluationJob",
-                            status=current_status,
-                            message="Your evaluation job is still running. Call .refresh() to check its current status.",
-                        )
-                    
-                    time.sleep(poll)
+            # Terminal experience - plain print matching training format
+            pipeline_name = None
+            if self.arn:
+                arn_parts = self.arn.split('/')
+                if len(arn_parts) >= 3:
+                    pipeline_name = arn_parts[-3]
+            print(f"\nEvaluation started: {self.name}", flush=True)
+            if pipeline_name:
+                print(f"Pipeline: {pipeline_name}", flush=True)
+            print(f"Execution ARN: {self.arn}", flush=True)
+
+            while True:
+                self.refresh()
+                current_status = self.status.overall_status
+                elapsed = time.time() - start_time
+
+                # Print step transitions (matching training format)
+                if self.status.step_details:
+                    print("\n--------------------------------------\n", flush=True)
+                    print("Status Transitions:", flush=True)
+                    for step in self.status.step_details:
+                        duration = ""
+                        check = ""
+                        if step.start_time and step.end_time:
+                            try:
+                                from datetime import datetime
+                                start_dt = datetime.fromisoformat(step.start_time.replace('Z', '+00:00'))
+                                end_dt = datetime.fromisoformat(step.end_time.replace('Z', '+00:00'))
+                                duration = f"({(end_dt - start_dt).total_seconds():.1f}s)"
+                            except Exception:
+                                pass
+                            check = "✓"
+                        elif step.start_time:
+                            try:
+                                from datetime import datetime, timezone
+                                start_dt = datetime.fromisoformat(step.start_time.replace('Z', '+00:00'))
+                                running_secs = (datetime.now(timezone.utc) - start_dt).total_seconds()
+                                duration = f"(Running... {running_secs:.0f}s)"
+                            except Exception:
+                                duration = "(Running...)"
+                            check = "⋯"
+
+                        step_msg = f"  {check} {step.display_name or step.name}: {step.status} {duration}"
+                        print(step_msg, flush=True)
+                        if step.job_arn and ('executing' in step.status.lower() or 'failed' in step.status.lower()):
+                            print(f"    Job ARN: {step.job_arn}", flush=True)
+
+                print(f"\nStatus: {current_status} (Elapsed: {elapsed:.1f}s)", flush=True)
+
+                if target_status == current_status:
+                    if self.s3_output_path:
+                        print(f"\nResults S3: {self.s3_output_path}", flush=True)
+                    return
+
+                if "failed" in current_status.lower():
+                    if self.status.failure_reason:
+                        print(f"\nFailure reason: {self.status.failure_reason}", flush=True)
+                    if self.status.step_details:
+                        for step in self.status.step_details:
+                            if 'failed' in step.status.lower():
+                                print(f"\nFailed step: {step.display_name or step.name}", flush=True)
+                                if step.failure_reason:
+                                    print(f"Failure reason: {step.failure_reason}", flush=True)
+                                if step.job_arn:
+                                    print(f"Job ARN: {step.job_arn}", flush=True)
+                                    job_name = step.job_arn.split('/')[-1] if '/' in step.job_arn else ''
+                                    if job_name:
+                                        # Derive log group from ARN type
+                                        if 'training-job/' in step.job_arn:
+                                            log_group = "/aws/sagemaker/TrainingJobs"
+                                        elif 'processing-job/' in step.job_arn:
+                                            log_group = "/aws/sagemaker/ProcessingJobs"
+                                        elif 'transform-job/' in step.job_arn:
+                                            log_group = "/aws/sagemaker/TransformJobs"
+                                        else:
+                                            log_group = "/aws/sagemaker/TrainingJobs"
+                                        print(f"Log group: {log_group}", flush=True)
+                                        print(f"Log stream prefix: {job_name}", flush=True)
+                                        from sagemaker.train.common_utils.metrics_visualizer import get_cloudwatch_logs_url
+                                        cw_url = get_cloudwatch_logs_url(step.job_arn)
+                                        if cw_url:
+                                            print(f"CloudWatch Logs: {cw_url}", flush=True)
+                    from sagemaker.core.utils.exceptions import FailedStatusError
+                    raise FailedStatusError(
+                        resource_type="PipelineExecution",
+                        status=current_status,
+                        reason=self.status.failure_reason,
+                    )
+
+                if timeout is not None and time.time() - start_time >= timeout:
+                    from sagemaker.core.utils.exceptions import TimeoutExceededError
+                    raise TimeoutExceededError(
+                        resource_type="EvaluationJob",
+                        status=current_status,
+                        message="Your evaluation job is still running. Call .refresh() to check its current status.",
+                    )
+
+                time.sleep(poll)
     
     def _enrich_with_step_details(
         self,

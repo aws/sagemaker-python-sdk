@@ -13,11 +13,11 @@
 """Contains factory classes for instantiating Spark objects."""
 from __future__ import absolute_import
 
+import logging
 from functools import lru_cache
 from typing import List, Tuple, Dict
 
-import feature_store_pyspark
-import feature_store_pyspark.FeatureStoreManager as fsm
+import pyspark
 from pyspark.conf import SparkConf
 from pyspark.context import SparkContext
 from pyspark.sql import SparkSession
@@ -25,6 +25,32 @@ from pyspark.sql import SparkSession
 from sagemaker.mlops.feature_store.feature_processor._env import EnvironmentHelper
 
 SPARK_APP_NAME = "FeatureProcessor"
+
+logger = logging.getLogger(__name__)
+
+SPARK_TO_HADOOP_MAP = {
+    "3.1": "3.2.0",
+    "3.2": "3.3.1",
+    "3.3": "3.3.2",
+    "3.4": "3.3.4",
+    "3.5": "3.3.4",
+}
+
+_DEFAULT_HADOOP_VERSION = "3.3.4"
+
+def _get_hadoop_version():
+    """Resolve the Hadoop version for the installed PySpark version."""
+    spark_version = pyspark.__version__
+    major_minor = ".".join(spark_version.split(".")[:2])
+    hadoop_version = SPARK_TO_HADOOP_MAP.get(major_minor)
+    if hadoop_version is None:
+        hadoop_version = _DEFAULT_HADOOP_VERSION
+        logger.warning(
+            "Unknown Spark version %s. Falling back to Hadoop %s.",
+            spark_version,
+            hadoop_version,
+        )
+    return hadoop_version
 
 
 class SparkSessionFactory:
@@ -55,6 +81,10 @@ class SparkSessionFactory:
         is_training_job = self.environment_helper.is_training_job()
         instance_count = self.environment_helper.get_instance_count()
 
+        # Copy version-matched Feature Store JAR to Spark's system classpath
+        # so it's available to the JVM even if SparkContext is already running.
+        self._install_feature_store_jars()
+
         spark_configs = self._get_spark_configs(is_training_job)
         spark_conf = SparkConf().setAll(spark_configs).setAppName(SPARK_APP_NAME)
 
@@ -68,6 +98,24 @@ class SparkSessionFactory:
             jsc.hadoopConfiguration().set(cfg[0], cfg[1])
 
         return SparkSession(sparkContext=sc)
+
+    @staticmethod
+    def _install_feature_store_jars():
+        """Copy the Spark-version-matched Feature Store JAR to Spark's system classpath."""
+        import feature_store_pyspark
+        import shutil
+        import os
+
+        spark_version = ".".join(pyspark.__version__.split(".")[:2])
+        target_dir = "/usr/lib/spark/jars"
+        if not os.path.isdir(target_dir):
+            return
+        for jar in feature_store_pyspark.classpath_jars():
+            if spark_version in os.path.basename(jar):
+                dest = os.path.join(target_dir, os.path.basename(jar))
+                if not os.path.exists(dest):
+                    shutil.copy(jar, dest)
+                    logger.info("Copied %s to %s", jar, target_dir)
 
     def _get_spark_configs(self, is_training_job) -> List[Tuple[str, str]]:
         """Generate Spark Configurations optimized for feature_processing functionality.
@@ -115,27 +163,36 @@ class SparkSessionFactory:
             spark_configs.extend(self.spark_config.items())
 
         if not is_training_job:
-            fp_spark_jars = feature_store_pyspark.classpath_jars()
+            hadoop_version = _get_hadoop_version()
             fp_spark_packages = [
-                "org.apache.hadoop:hadoop-aws:3.3.1",
-                "org.apache.hadoop:hadoop-common:3.3.1",
+                f"org.apache.hadoop:hadoop-aws:{hadoop_version}",
+                f"org.apache.hadoop:hadoop-common:{hadoop_version}",
             ]
-
-            if self.spark_config and "spark.jars" in self.spark_config:
-                fp_spark_jars.append(self.spark_config.get("spark.jars"))
 
             if self.spark_config and "spark.jars.packages" in self.spark_config:
                 fp_spark_packages.append(self.spark_config.get("spark.jars.packages"))
 
-            spark_configs.extend(
-                (
-                    ("spark.jars", ",".join(fp_spark_jars)),
-                    (
-                        "spark.jars.packages",
-                        ",".join(fp_spark_packages),
-                    ),
-                )
+            spark_configs.append(
+                ("spark.jars.packages", ",".join(fp_spark_packages))
             )
+
+        # Always add Feature Store JARs so they are on the classpath
+        # regardless of whether we are in a training job or not.
+        import feature_store_pyspark
+        import os
+
+        spark_version = ".".join(pyspark.__version__.split(".")[:2])
+        fp_spark_jars = [
+            j for j in feature_store_pyspark.classpath_jars()
+            if spark_version in os.path.basename(j)
+        ]
+        if not fp_spark_jars:
+            fp_spark_jars = feature_store_pyspark.classpath_jars()
+
+        if self.spark_config and "spark.jars" in self.spark_config:
+            fp_spark_jars.append(self.spark_config.get("spark.jars"))
+
+        spark_configs.append(("spark.jars", ",".join(fp_spark_jars)))
 
         return spark_configs
 
@@ -197,6 +254,8 @@ class FeatureStoreManagerFactory:
 
     @property
     @lru_cache()
-    def feature_store_manager(self) -> fsm.FeatureStoreManager:
+    def feature_store_manager(self) -> "fsm.FeatureStoreManager":
         """Instansiate a new FeatureStoreManager."""
+        import feature_store_pyspark.FeatureStoreManager as fsm
+
         return fsm.FeatureStoreManager()

@@ -1,4 +1,43 @@
 # Changelog
+## v3.12.0 (2026-05-19)
+
+### New Features
+- **SageMaker Token Generator** (#5868): Embed the `aws-sagemaker-token-generator` library into `sagemaker.core` so users can generate SageMaker bearer tokens without installing a separate wheel. Usage: `from sagemaker.core.aws_sagemaker_token_generator import provide_token`
+- **Feature Processor - Lake Formation credential vending** (#5816): Add configurable `use_lake_formation_credentials` parameter to the `@feature_processor` decorator, enabling Lake Formation credential vending when set to `True`.
+- **Feature Processor - Spark 3.5 / Python 3.12 support** (#5816): Dynamic Spark image resolution based on installed PySpark and Python versions. Supports Spark 3.1/3.2/3.3/3.5 with Python 3.9 and 3.12. Auto-installs `sagemaker-feature-store-pyspark` for Spark remote jobs.
+- **Feature Processor - Stored function signing key** (#5816): Generate ECDSA signing key in `ConfigUploader` for function payload signature verification.
+- **Feature Store - Export IcebergProperties** (#5816): Add `IcebergProperties` to the `feature_store` public API surface.
+
+### Documentation
+- None
+
+### Bug Fixes
+- **Networking** `vpc_config` AttributeError and telemetry region fallback (#5839): Fix `AttributeError` on `vpc_config` in networking and telemetry region fallback for classmethods.
+- **Add CustomAttributes field to DefaultPayloadsModel** (#5870): Add missing `CustomAttributes` field to `DefaultPayloadsModel`.
+- **sagemaker-core**: Preserve falsy values in `serialize()` output (#5860): Fix bug where `False`, `0`, and `""` were silently dropped by `serialize()` due to truthy check. This caused issues like `optimize_model=False` being sent as `True`.
+- **serve**: Prevent code injection in `capture_dependencies` path interpolation (#5792): Security fix — use `repr()` escaping to prevent code injection via crafted directory names in `ModelBuilder` with `dependencies={"auto": True}`. (CWE-94, P414309851)
+- **VolumeSizeInGB** missing from v3 deploy for JumpStart models (#5847): Fix `VolumeSizeInGB` not being passed through when deploying models with `inference_volume_size` from JumpStart config.
+
+## v3.11.0 (2026-05-12)
+
+### New Features
+- Auto-detect subscription recipe hyperparameters in SFTTrainer for Nova Forge datamix support
+- Create asymmetric ECDSA signing key in feature processor step compiler for remote function payload verification
+
+### Documentation
+- Add Feature Store reference to Implement MLOps page
+- Replace internal S3 URIs with user placeholders in SFT notebook
+
+## v3.10.1 (2026-05-07)
+
+### Bug Fixes
+- Fix KMS key propagation in check steps (QualityCheckStep, ClarifyCheckStep)
+- Fix JumpStart network isolation in ModelBuilder
+- Fix base_model_arn construction to use private hub when SAGEMAKER_HUB_NAME is set
+- Fix imports for Model Customization interfaces
+- Fix handling of unrecognized JumpStart container images in ModelBuilder
+- Increase default timeout for training jobs
+
 ## v3.10.0 (2026-05-01)
 
 ### New Features
