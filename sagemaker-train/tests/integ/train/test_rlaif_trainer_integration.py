@@ -21,6 +21,8 @@ from sagemaker.train.rlaif_trainer import RLAIFTrainer
 from sagemaker.train.common import TrainingType
 import pytest
 
+pytestmark = pytest.mark.gpu_intensive
+
 
 def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLAIF training workflow with LORA."""

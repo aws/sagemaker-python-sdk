@@ -22,6 +22,8 @@ from sagemaker.train.evaluate import (
     EvaluationPipelineExecution,
 )
 
+pytestmark = pytest.mark.gpu_intensive
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,

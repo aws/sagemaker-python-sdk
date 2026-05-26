@@ -21,6 +21,8 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 
+pytestmark = pytest.mark.gpu_intensive
+
 
 def test_sft_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete SFT training workflow with LORA."""

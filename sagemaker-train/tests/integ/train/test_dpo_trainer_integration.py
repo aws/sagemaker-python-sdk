@@ -21,6 +21,8 @@ from sagemaker.train.dpo_trainer import DPOTrainer
 from sagemaker.train.common import TrainingType
 import pytest
 
+pytestmark = pytest.mark.gpu_intensive
+
 
 def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete DPO training workflow with LORA."""

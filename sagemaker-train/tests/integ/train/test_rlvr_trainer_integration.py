@@ -21,6 +21,8 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
 
+pytestmark = pytest.mark.gpu_intensive
+
 
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLVR training workflow with LORA."""
