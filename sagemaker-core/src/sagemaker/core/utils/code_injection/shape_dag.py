@@ -2041,6 +2041,7 @@ SHAPE_DAG = {
             {"name": "EventTime", "shape": "Timestamp", "type": "timestamp"},
             {"name": "EventDetails", "shape": "EventDetails", "type": "structure"},
             {"name": "Description", "shape": "String", "type": "string"},
+            {"name": "EventLevel", "shape": "ClusterEventLevel", "type": "string"},
         ],
         "type": "structure",
     },
@@ -2059,6 +2060,7 @@ SHAPE_DAG = {
             {"name": "ResourceType", "shape": "ClusterEventResourceType", "type": "string"},
             {"name": "EventTime", "shape": "Timestamp", "type": "timestamp"},
             {"name": "Description", "shape": "String", "type": "string"},
+            {"name": "EventLevel", "shape": "ClusterEventLevel", "type": "string"},
         ],
         "type": "structure",
     },
@@ -2114,6 +2116,7 @@ SHAPE_DAG = {
             },
             {"name": "CurrentImageId", "shape": "ImageId", "type": "string"},
             {"name": "DesiredImageId", "shape": "ImageId", "type": "string"},
+            {"name": "ImageVersionStatus", "shape": "ClusterImageVersionStatus", "type": "string"},
             {"name": "ActiveOperations", "shape": "ActiveOperations", "type": "map"},
             {
                 "name": "KubernetesConfig",
@@ -2347,6 +2350,7 @@ SHAPE_DAG = {
             {"name": "Placement", "shape": "ClusterInstancePlacement", "type": "structure"},
             {"name": "CurrentImageId", "shape": "ImageId", "type": "string"},
             {"name": "DesiredImageId", "shape": "ImageId", "type": "string"},
+            {"name": "ImageVersionStatus", "shape": "ClusterImageVersionStatus", "type": "string"},
             {"name": "UltraServerInfo", "shape": "UltraServerInfo", "type": "structure"},
             {
                 "name": "KubernetesConfig",
@@ -2388,6 +2392,7 @@ SHAPE_DAG = {
             },
             {"name": "UltraServerInfo", "shape": "UltraServerInfo", "type": "structure"},
             {"name": "PrivateDnsHostname", "shape": "ClusterPrivateDnsHostname", "type": "string"},
+            {"name": "ImageVersionStatus", "shape": "ClusterImageVersionStatus", "type": "string"},
         ],
         "type": "structure",
     },
@@ -3270,6 +3275,11 @@ SHAPE_DAG = {
                 "shape": "AppSecurityGroupManagement",
                 "type": "string",
             },
+            {
+                "name": "HomeEfsFileSystemCreation",
+                "shape": "HomeEfsFileSystemCreation",
+                "type": "string",
+            },
             {"name": "TagPropagation", "shape": "TagPropagation", "type": "string"},
             {"name": "DefaultSpaceSettings", "shape": "DefaultSpaceSettings", "type": "structure"},
         ],
@@ -3563,6 +3573,11 @@ SHAPE_DAG = {
                 "type": "structure",
             },
             {
+                "name": "Specifications",
+                "shape": "InferenceComponentSpecificationList",
+                "type": "list",
+            },
+            {
                 "name": "RuntimeConfig",
                 "shape": "InferenceComponentRuntimeConfig",
                 "type": "structure",
@@ -3832,6 +3847,7 @@ SHAPE_DAG = {
                 "type": "string",
             },
             {"name": "Tags", "shape": "TagList", "type": "list"},
+            {"name": "ManagedConfiguration", "shape": "ManagedConfiguration", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -3887,6 +3903,7 @@ SHAPE_DAG = {
             {"name": "SecurityConfig", "shape": "ModelPackageSecurityConfig", "type": "structure"},
             {"name": "ModelCard", "shape": "ModelPackageModelCard", "type": "structure"},
             {"name": "ModelLifeCycle", "shape": "ModelLifeCycle", "type": "structure"},
+            {"name": "ManagedStorageType", "shape": "ManagedStorageType", "type": "string"},
         ],
         "type": "structure",
     },
@@ -5966,6 +5983,11 @@ SHAPE_DAG = {
                 "shape": "AppSecurityGroupManagement",
                 "type": "string",
             },
+            {
+                "name": "HomeEfsFileSystemCreation",
+                "shape": "HomeEfsFileSystemCreation",
+                "type": "string",
+            },
             {"name": "TagPropagation", "shape": "TagPropagation", "type": "string"},
             {"name": "DefaultSpaceSettings", "shape": "DefaultSpaceSettings", "type": "structure"},
         ],
@@ -6411,6 +6433,11 @@ SHAPE_DAG = {
                 "type": "structure",
             },
             {
+                "name": "Specifications",
+                "shape": "InferenceComponentSpecificationSummaryList",
+                "type": "list",
+            },
+            {
                 "name": "RuntimeConfig",
                 "shape": "InferenceComponentRuntimeConfigSummary",
                 "type": "structure",
@@ -6784,6 +6811,7 @@ SHAPE_DAG = {
                 "shape": "ModelPackageGroupStatus",
                 "type": "string",
             },
+            {"name": "ManagedConfiguration", "shape": "ManagedConfiguration", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -6848,6 +6876,7 @@ SHAPE_DAG = {
             {"name": "SecurityConfig", "shape": "ModelPackageSecurityConfig", "type": "structure"},
             {"name": "ModelCard", "shape": "ModelPackageModelCard", "type": "structure"},
             {"name": "ModelLifeCycle", "shape": "ModelLifeCycle", "type": "structure"},
+            {"name": "ManagedStorageType", "shape": "ManagedStorageType", "type": "string"},
         ],
         "type": "structure",
     },
@@ -9531,6 +9560,18 @@ SHAPE_DAG = {
         "members": [{"name": "Arn", "shape": "String2048", "type": "string"}],
         "type": "structure",
     },
+    "InferenceComponentPlacementStatus": {
+        "members": [
+            {"name": "InstanceType", "shape": "ProductionVariantInstanceType", "type": "string"},
+            {"name": "CurrentCopyCount", "shape": "InferenceComponentCopyCount", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "InferenceComponentPlacementStatusList": {
+        "member_shape": "InferenceComponentPlacementStatus",
+        "member_type": "structure",
+        "type": "list",
+    },
     "InferenceComponentRollingUpdatePolicy": {
         "members": [
             {
@@ -9562,6 +9603,11 @@ SHAPE_DAG = {
         "members": [
             {"name": "DesiredCopyCount", "shape": "InferenceComponentCopyCount", "type": "integer"},
             {"name": "CurrentCopyCount", "shape": "InferenceComponentCopyCount", "type": "integer"},
+            {
+                "name": "PlacementStatus",
+                "shape": "InferenceComponentPlacementStatusList",
+                "type": "list",
+            },
         ],
         "type": "structure",
     },
@@ -9582,6 +9628,7 @@ SHAPE_DAG = {
     },
     "InferenceComponentSpecification": {
         "members": [
+            {"name": "InstanceType", "shape": "ProductionVariantInstanceType", "type": "string"},
             {"name": "ModelName", "shape": "ModelName", "type": "string"},
             {
                 "name": "Container",
@@ -9616,8 +9663,14 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "InferenceComponentSpecificationList": {
+        "member_shape": "InferenceComponentSpecification",
+        "member_type": "structure",
+        "type": "list",
+    },
     "InferenceComponentSpecificationSummary": {
         "members": [
+            {"name": "InstanceType", "shape": "ProductionVariantInstanceType", "type": "string"},
             {"name": "ModelName", "shape": "ModelName", "type": "string"},
             {
                 "name": "Container",
@@ -9651,6 +9704,11 @@ SHAPE_DAG = {
             },
         ],
         "type": "structure",
+    },
+    "InferenceComponentSpecificationSummaryList": {
+        "member_shape": "InferenceComponentSpecificationSummary",
+        "member_type": "structure",
+        "type": "list",
     },
     "InferenceComponentStartupParameters": {
         "members": [
@@ -9880,6 +9938,11 @@ SHAPE_DAG = {
         "members": [
             {"name": "CustomerEni", "shape": "String", "type": "string"},
             {"name": "AdditionalEnis", "shape": "AdditionalEnis", "type": "structure"},
+            {
+                "name": "InstanceRequirementsEniConfigurations",
+                "shape": "InstanceRequirementsEniConfigurations",
+                "type": "list",
+            },
             {"name": "CapacityReservation", "shape": "CapacityReservation", "type": "structure"},
             {"name": "FailureMessage", "shape": "String", "type": "string"},
             {"name": "LcsExecutionState", "shape": "String", "type": "string"},
@@ -9903,6 +9966,43 @@ SHAPE_DAG = {
             {"name": "PlacementSpecifications", "shape": "PlacementSpecifications", "type": "list"},
         ],
         "type": "structure",
+    },
+    "InstancePool": {
+        "members": [
+            {"name": "InstanceType", "shape": "ProductionVariantInstanceType", "type": "string"},
+            {"name": "ModelNameOverride", "shape": "ModelName", "type": "string"},
+            {"name": "Priority", "shape": "InstancePoolPriority", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "InstancePoolList": {
+        "member_shape": "InstancePool",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "InstancePoolSummary": {
+        "members": [
+            {"name": "InstanceType", "shape": "ProductionVariantInstanceType", "type": "string"},
+            {"name": "CurrentInstanceCount", "shape": "TaskCount", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "InstancePoolSummaryList": {
+        "member_shape": "InstancePoolSummary",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "InstanceRequirementsEniConfiguration": {
+        "members": [
+            {"name": "CustomerEni", "shape": "String", "type": "string"},
+            {"name": "AdditionalEnis", "shape": "AdditionalEnis", "type": "structure"},
+        ],
+        "type": "structure",
+    },
+    "InstanceRequirementsEniConfigurations": {
+        "member_shape": "InstanceRequirementsEniConfiguration",
+        "member_type": "structure",
+        "type": "list",
     },
     "IntegerParameterRange": {
         "members": [
@@ -12243,6 +12343,12 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "ManagedConfiguration": {
+        "members": [
+            {"name": "ManagedStorageType", "shape": "ManagedStorageType", "type": "string"}
+        ],
+        "type": "structure",
+    },
     "MapString2048": {
         "key_shape": "String2048",
         "key_type": "string",
@@ -12940,6 +13046,7 @@ SHAPE_DAG = {
                 "shape": "ModelPackageGroupStatus",
                 "type": "string",
             },
+            {"name": "ManagedConfiguration", "shape": "ManagedConfiguration", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -14058,6 +14165,7 @@ SHAPE_DAG = {
             {"name": "CurrentInstanceCount", "shape": "TaskCount", "type": "integer"},
             {"name": "DesiredInstanceCount", "shape": "TaskCount", "type": "integer"},
             {"name": "InstanceType", "shape": "ProductionVariantInstanceType", "type": "string"},
+            {"name": "InstancePools", "shape": "InstancePoolSummaryList", "type": "list"},
             {
                 "name": "AcceleratorType",
                 "shape": "ProductionVariantAcceleratorType",
@@ -14566,6 +14674,12 @@ SHAPE_DAG = {
             {"name": "ModelName", "shape": "ModelName", "type": "string"},
             {"name": "InitialInstanceCount", "shape": "InitialTaskCount", "type": "integer"},
             {"name": "InstanceType", "shape": "ProductionVariantInstanceType", "type": "string"},
+            {"name": "InstancePools", "shape": "InstancePoolList", "type": "list"},
+            {
+                "name": "VariantInstanceProvisionTimeoutInSeconds",
+                "shape": "VariantInstanceProvisionTimeoutInSeconds",
+                "type": "integer",
+            },
             {"name": "InitialVariantWeight", "shape": "VariantWeight", "type": "float"},
             {
                 "name": "AcceleratorType",
@@ -14752,6 +14866,7 @@ SHAPE_DAG = {
             {"name": "DesiredWeight", "shape": "VariantWeight", "type": "float"},
             {"name": "CurrentInstanceCount", "shape": "TaskCount", "type": "integer"},
             {"name": "DesiredInstanceCount", "shape": "TaskCount", "type": "integer"},
+            {"name": "InstancePools", "shape": "InstancePoolSummaryList", "type": "list"},
             {"name": "VariantStatus", "shape": "ProductionVariantStatusList", "type": "list"},
             {
                 "name": "CurrentServerlessConfig",
@@ -15065,7 +15180,7 @@ SHAPE_DAG = {
     },
     "RealTimeInferenceConfig": {
         "members": [
-            {"name": "InstanceType", "shape": "InstanceType", "type": "string"},
+            {"name": "InstanceType", "shape": "ProductionVariantInstanceType", "type": "string"},
             {"name": "InstanceCount", "shape": "TaskCount", "type": "integer"},
         ],
         "type": "structure",
@@ -15494,6 +15609,11 @@ SHAPE_DAG = {
             {"name": "SageMakerImageVersionAlias", "shape": "ImageVersionAlias", "type": "string"},
             {"name": "InstanceType", "shape": "AppInstanceType", "type": "string"},
             {"name": "LifecycleConfigArn", "shape": "StudioLifecycleConfigArn", "type": "string"},
+            {
+                "name": "TrainingPlanArn",
+                "shape": "StudioResourceSpecTrainingPlanArn",
+                "type": "string",
+            },
         ],
         "type": "structure",
     },
@@ -16384,6 +16504,11 @@ SHAPE_DAG = {
                 "shape": "HiddenSageMakerImageVersionAliasesList",
                 "type": "list",
             },
+            {
+                "name": "ExecutionRoleSessionNameMode",
+                "shape": "ExecutionRoleSessionNameMode",
+                "type": "string",
+            },
         ],
         "type": "structure",
     },
@@ -16706,6 +16831,7 @@ SHAPE_DAG = {
             {"name": "InputDataConfig", "shape": "InputDataConfig", "type": "list"},
             {"name": "OutputDataConfig", "shape": "OutputDataConfig", "type": "structure"},
             {"name": "ResourceConfig", "shape": "ResourceConfig", "type": "structure"},
+            {"name": "WarmPoolStatus", "shape": "WarmPoolStatus", "type": "structure"},
             {"name": "VpcConfig", "shape": "VpcConfig", "type": "structure"},
             {"name": "StoppingCondition", "shape": "StoppingCondition", "type": "structure"},
             {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
@@ -17637,6 +17763,11 @@ SHAPE_DAG = {
             {"name": "SubnetIds", "shape": "Subnets", "type": "list"},
             {"name": "AppNetworkAccessType", "shape": "AppNetworkAccessType", "type": "string"},
             {"name": "TagPropagation", "shape": "TagPropagation", "type": "string"},
+            {
+                "name": "HomeEfsFileSystemCreation",
+                "shape": "HomeEfsFileSystemCreation",
+                "type": "string",
+            },
             {"name": "VpcId", "shape": "VpcId", "type": "string"},
         ],
         "type": "structure",
@@ -17810,6 +17941,11 @@ SHAPE_DAG = {
                 "name": "Specification",
                 "shape": "InferenceComponentSpecification",
                 "type": "structure",
+            },
+            {
+                "name": "Specifications",
+                "shape": "InferenceComponentSpecificationList",
+                "type": "list",
             },
             {
                 "name": "RuntimeConfig",
