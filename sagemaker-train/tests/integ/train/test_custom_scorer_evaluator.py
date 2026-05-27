@@ -22,8 +22,6 @@ from sagemaker.train.evaluate import (
     EvaluationPipelineExecution,
 )
 
-pytestmark = pytest.mark.gpu_intensive
-
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -237,6 +235,7 @@ class TestCustomScorerEvaluatorIntegration:
         logger.info("Validation tests passed")
 
     # @pytest.mark.skip(reason="Built-in metric evaluation - to be enabled when needed")
+    @pytest.mark.gpu_intensive
     def test_custom_scorer_with_builtin_metric(self):
         """
         Test custom scorer evaluation with built-in metric.

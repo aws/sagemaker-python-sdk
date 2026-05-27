@@ -21,9 +21,7 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
 
-pytestmark = pytest.mark.gpu_intensive
-
-
+@pytest.mark.gpu_intensive
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLVR training workflow with LORA."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
@@ -63,6 +61,7 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.gpu_intensive
 def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     """Test RLVR trainer with custom reward function."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
@@ -102,6 +101,7 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.gpu_intensive
 @pytest.mark.skip(reason="TODO: Nova test to be enabled in us-east-1")
 def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test RLVR training workflow with Nova model."""

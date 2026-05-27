@@ -21,9 +21,7 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 
-pytestmark = pytest.mark.gpu_intensive
-
-
+@pytest.mark.gpu_intensive
 def test_sft_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete SFT training workflow with LORA."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
@@ -61,6 +59,7 @@ def test_sft_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.gpu_intensive
 def test_sft_trainer_with_validation_dataset(sagemaker_session):
     """Test SFT trainer with both training and validation datasets."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
@@ -96,6 +95,7 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
     assert hasattr(training_job, 'output_model_package_arn')
 
 
+@pytest.mark.gpu_intensive
 @pytest.mark.skip(reason="TODO: Nova test to be enabled in us-east-1")
 def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test SFT trainer with Nova model."""
