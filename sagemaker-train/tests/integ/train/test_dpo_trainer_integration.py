@@ -21,9 +21,7 @@ from sagemaker.train.dpo_trainer import DPOTrainer
 from sagemaker.train.common import TrainingType
 import pytest
 
-pytestmark = pytest.mark.gpu_intensive
-
-
+@pytest.mark.gpu_intensive
 def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete DPO training workflow with LORA."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
@@ -64,6 +62,7 @@ def test_dpo_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.gpu_intensive
 def test_dpo_trainer_with_validation_dataset(sagemaker_session):
     """Test DPO trainer with both training and validation datasets."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
