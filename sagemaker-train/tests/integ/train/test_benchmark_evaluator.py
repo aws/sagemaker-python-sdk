@@ -61,13 +61,12 @@ BASE_MODEL_ONLY_CONFIG = {
     "region": "us-west-2",
 }
 
-# Nova model evaluation configuration (from commented section in notebook)
+# Nova model evaluation configuration (uses our own test account in us-east-1)
 NOVA_CONFIG = {
-    "model_package_arn": "arn:aws:sagemaker:us-east-1:052150106756:model-package/test-nova-finetuned-models/3",
-    "dataset_s3_uri": "s3://sagemaker-us-east-1-052150106756/studio-users/d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
-    "s3_output_path": "s3://mufi-test-serverless-iad/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-east-1:052150106756:mlflow-tracking-server/mlflow-prod-server",
-    "model_package_group_arn": "arn:aws:sagemaker:us-east-1:052150106756:model-package-group/test-nova-finetuned-models",
+    "model_package_arn": "arn:aws:sagemaker:us-east-1:729646638167:model-package/sdk-test-finetuned-models/65",
+    "dataset_s3_uri": "s3://sagemaker-us-east-1-729646638167/model-customization/eval/zc_test.jsonl",
+    "s3_output_path": "s3://sagemaker-us-east-1-729646638167/model-customization/eval/",
+    "model_package_group_arn": "arn:aws:sagemaker:us-east-1:729646638167:model-package-group/sdk-test-finetuned-models",
     "region": "us-east-1",
 }
 
@@ -339,7 +338,7 @@ class TestBenchmarkEvaluatorIntegration:
         assert execution.status.overall_status == "Succeeded"
         logger.info("Base model only evaluation completed successfully")
 
-    # @pytest.mark.skip(reason="Requires us-east-1 test infrastructure - tracked in AI-5")
+    @pytest.mark.skip(reason="Pending us-east-1 test infrastructure migration to dedicated test account")
     def test_benchmark_evaluation_nova_model(self):
         """
         Test benchmark evaluation with Nova model.
@@ -347,8 +346,7 @@ class TestBenchmarkEvaluatorIntegration:
         This test uses a Nova fine-tuned model package in us-east-1 region.
         Configuration from commented section in benchmark_demo.ipynb.
         
-        Note: This test is currently skipped. Remove the @pytest.mark.skip decorator
-        when you want to enable it.
+        Note: This test is currently skipped pending us-east-1 test infra migration.
         """
         # Get benchmarks
         Benchmark = get_benchmarks()
@@ -360,7 +358,6 @@ class TestBenchmarkEvaluatorIntegration:
             benchmark=Benchmark.MMLU,
             model=NOVA_CONFIG["model_package_arn"],
             s3_output_path=NOVA_CONFIG["s3_output_path"],
-            mlflow_resource_arn=NOVA_CONFIG["mlflow_tracking_server_arn"],
             model_package_group=NOVA_CONFIG["model_package_group_arn"],
             base_eval_name="integ-test-nova-eval",
             region=NOVA_CONFIG["region"],
