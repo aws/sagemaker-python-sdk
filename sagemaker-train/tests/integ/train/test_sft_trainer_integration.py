@@ -13,26 +13,29 @@
 """Integration tests for SFT trainer"""
 from __future__ import absolute_import
 
-import os
 import time
+import random
 import pytest
 import boto3
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 
+pytestmark = pytest.mark.gpu_intensive
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
+
 def test_sft_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete SFT training workflow with LORA."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     
     sft_trainer = SFTTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
-        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
-        accept_eula=True
+        accept_eula=True,
+        base_job_name=f"sft-lora-integ-{unique_id}",
     )
     
     # Create training job
@@ -58,17 +61,18 @@ def test_sft_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
 def test_sft_trainer_with_validation_dataset(sagemaker_session):
     """Test SFT trainer with both training and validation datasets."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
 
     sft_trainer = SFTTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
         training_type=TrainingType.LORA,
         model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
-        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
-        validation_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/sft-oss-test-data/0.0.1",
-        accept_eula=True
+        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+        validation_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+        accept_eula=True,
+        base_job_name=f"sft-val-integ-{unique_id}",
     )
     
     training_job = sft_trainer.train(wait=False)
@@ -92,22 +96,22 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
     assert hasattr(training_job, 'output_model_package_arn')
 
 
-# @pytest.mark.skipif(os.environ.get('AWS_DEFAULT_REGION') != 'us-east-1', reason="Nova models only available in us-east-1")
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
-def test_sft_trainer_nova_workflow(sagemaker_session):
+@pytest.mark.skip(reason="TODO: Nova test to be enabled in us-east-1")
+def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test SFT trainer with Nova model."""
-    import os
-    os.environ['SAGEMAKER_REGION'] = 'us-east-1'
+    # sagemaker_session_us_east_1 fixture is defined in conftest.py (us-east-1 region)
 
-    # For fine-tuning 
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     sft_trainer_nova = SFTTrainer(
         model="nova-textgeneration-lite-v2",
         training_type=TrainingType.LORA, 
         model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-nova-finetuned-models-exp",
         mlflow_run_name="test-nova-finetuned-models-run",
-        training_dataset="arn:aws:sagemaker:us-east-1:729646638167:hub-content/sdktest/DataSet/sft-nova-test-dataset/0.0.1",
-        s3_output_path="s3://mc-flows-sdk-testing-us-east-1/output/"
+        training_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/sft-nova/sft_200_samples.jsonl",
+        s3_output_path="s3://mc-flows-sdk-testing-us-east-1/output/",
+        sagemaker_session=sagemaker_session_us_east_1,
+        base_job_name=f"sft-nova-integ-{unique_id}",
     )
     
     # Create training job
