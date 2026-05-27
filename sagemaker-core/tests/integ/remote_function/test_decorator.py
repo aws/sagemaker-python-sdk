@@ -574,10 +574,11 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
     assert client_error_message in str(error)
 
 
-@pytest.mark.skipif(
-    sys.version_info[:2] not in [(3, 9), (3, 12)],
-    reason="SageMaker Spark image only available for Python 3.9 and 3.12",
-)
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason="SageMaker Spark image only available for Python 3.9 and 3.12",
+# )
+@pytest.mark.spark_py312
 def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
     @remote(
         role=ROLE,
