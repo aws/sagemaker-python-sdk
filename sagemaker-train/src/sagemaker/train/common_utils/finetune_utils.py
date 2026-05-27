@@ -105,6 +105,7 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
         return mlflow_resource_arn
     
     try:
+        
         mlflow_apps = MlflowApp.get_all(
             session=sagemaker_session.boto_session,
             region=sagemaker_session.boto_session.region_name
