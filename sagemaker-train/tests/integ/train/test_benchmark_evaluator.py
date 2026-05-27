@@ -289,6 +289,7 @@ class TestBenchmarkEvaluatorIntegration:
         logger.info("Subtask validation tests passed")
 
     @pytest.mark.skip(reason="Pipeline creation fails - under investigation")
+    @pytest.mark.gpu_intensive
     def test_benchmark_evaluation_base_model_only(self):
         """
         Test benchmark evaluation with base model only (no fine-tuned model).

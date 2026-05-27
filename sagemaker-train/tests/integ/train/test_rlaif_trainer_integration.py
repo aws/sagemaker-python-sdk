@@ -21,9 +21,7 @@ from sagemaker.train.rlaif_trainer import RLAIFTrainer
 from sagemaker.train.common import TrainingType
 import pytest
 
-pytestmark = pytest.mark.gpu_intensive
-
-
+@pytest.mark.gpu_intensive
 def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLAIF training workflow with LORA."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
@@ -65,6 +63,7 @@ def test_rlaif_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.gpu_intensive
 def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     """Test RLAIF trainer with different reward model and prompt."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
@@ -105,6 +104,7 @@ def test_rlaif_trainer_with_custom_reward_settings(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
+@pytest.mark.gpu_intensive
 def test_rlaif_trainer_continued_finetuning(sagemaker_session):
     """Test complete RLAIF training workflow with LORA."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
