@@ -154,7 +154,7 @@ class TestModelCustomizationFromTrainingJob:
             inference_component_name=invoke_ic_name,
         )
 
-        response_body = json.loads(invoke_response.body)
+        response_body = json.loads(invoke_response.body.read())
 
         # Validate response structure
         assert response_body is not None, f"Empty response from invoke on {invoke_ic_name}"
