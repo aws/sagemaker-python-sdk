@@ -392,30 +392,15 @@ def _get_fine_tuning_options_and_model_arn(
         if not recipes_with_template:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique}")
 
-        # Select recipe based on training type
-        # Collect override_params from ALL matching recipes (standard + subscription)
-        recipe = None
-        if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-            recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-        elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-            recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-
-        # Override recipe selection when sequence_length is explicitly requested
+        # Filter by SequenceLength before recipe selection if sequence_length is requested
         if sequence_length:
-            if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-                candidates = [r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")]
-            elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-                candidates = [r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")]
-            else:
-                candidates = []
-
             requested = _parse_context_length(sequence_length)
-            candidates_with_context = [r for r in candidates if r.get("SequenceLength")]
+            candidates_with_context = [r for r in recipes_with_template if r.get("SequenceLength")]
             if candidates_with_context:
                 filtered = [r for r in candidates_with_context if _parse_context_length(r.get("SequenceLength")) >= requested]
                 if filtered:
                     filtered.sort(key=lambda r: _parse_context_length(r.get("SequenceLength")))
-                    recipe = filtered[0]
+                    recipes_with_template = filtered
                 else:
                     available = sorted(set(r.get("SequenceLength") for r in candidates_with_context))
                     raise ValueError(
@@ -427,6 +412,14 @@ def _get_fine_tuning_options_and_model_arn(
                     f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}, "
                     f"and sequence length:{sequence_length}"
                 )
+
+        # Select recipe based on training type
+        # Collect override_params from ALL matching recipes (standard + subscription)
+        recipe = None
+        if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+            recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+        elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
+            recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
 
         if not recipe:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}")
@@ -601,18 +594,15 @@ def _create_serverless_config(model_arn, customization_technique,
         else (training_type.value if isinstance(training_type, TrainingType) else training_type)
 
     # Create ServerlessJobConfig using shapes
-    config_kwargs = dict(
+    serverless_config = ServerlessJobConfig(
         job_type=job_type,
         base_model_arn=model_arn,
         customization_technique=customization_technique,
         peft=peft,
         evaluator_arn=evaluator_arn,
         accept_eula=accept_eula,
+        sequence_length=sequence_length,
     )
-    if sequence_length is not None:
-        config_kwargs["sequence_length"] = sequence_length
-
-    serverless_config = ServerlessJobConfig(**config_kwargs)
 
     return serverless_config
 
