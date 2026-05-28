@@ -43236,6 +43236,10 @@
         "EvaluatorArn":{
           "shape":"EvaluatorArn",
           "documentation":"<p> The evaluator Amazon Resource Name (ARN) used as reward function or reward prompt. </p>"
+        },
+        "SequenceLength":{
+          "shape":"SequenceLength",
+          "documentation":"<p> The sequence length for the training job. </p>"
         }
       },
       "documentation":"<p> The configuration for the serverless training job. </p>"
@@ -43245,6 +43249,19 @@
       "enum":[
         "FineTuning",
         "Evaluation"
+      ]
+    },
+    "SequenceLength":{
+      "type":"string",
+      "enum":[
+        "1K",
+        "2K",
+        "4K",
+        "8K",
+        "16K",
+        "32K",
+        "64K",
+        "128K"
       ]
     },
     "ServerlessMaxConcurrency":{
