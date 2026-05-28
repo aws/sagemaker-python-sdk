@@ -1726,9 +1726,13 @@ class JumpStartMetadataConfigs(JumpStartDataHolderType):
             ranked_config_names = rankings.rankings
         for config_name in ranked_config_names:
             resolved_config = self.configs[config_name].resolved_config
-            if instance_type and instance_type not in getattr(
-                resolved_config, instance_type_attribute
-            ):
+            # Fix: resolved_config is a dict (from deep_override_dict), not an object
+            # Use dict.get() for dicts, getattr() for objects
+            if isinstance(resolved_config, dict):
+                supported_instance_types = resolved_config.get(instance_type_attribute, [])
+            else:
+                supported_instance_types = getattr(resolved_config, instance_type_attribute, [])
+            if instance_type and instance_type not in supported_instance_types:
                 continue
             return self.configs[config_name]
 
