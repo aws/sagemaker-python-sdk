@@ -427,12 +427,12 @@ def _parse_context_length(value) -> int:
 
 
 def _get_fine_tuning_options_and_model_arn(
-    model_name: str, 
-    customization_technique: str, 
-    training_type, 
-    sagemaker_session, 
-    sequence_length=None, 
-    hub_name: str = "SageMakerPublicHub"
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    sequence_length=None,
+    hub_name: Optional[str] = None
 ) -> tuple:
     """Get fine-tuning options and model ARN for given customization technique.
     
