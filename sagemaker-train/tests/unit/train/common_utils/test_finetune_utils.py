@@ -34,8 +34,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_s3_path_exists,
     _parse_context_length
 )
-from sagemaker.core.resources import ModelPackage
-from sagemaker.core.utils.utils import Unassigned, ModelPackageGroup
+from sagemaker.core.resources import ModelPackage, ModelPackageGroup
+from sagemaker.core.utils.utils import Unassigned
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.train.common import TrainingType
 from sagemaker.train.configs import InputData
@@ -1064,10 +1064,14 @@ class TestResolveIntermediateCheckpointMpg:
         assert _parse_context_length("") == 0
 
     @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
-    @patch('boto3.client')
-    def test__get_fine_tuning_options_filters_by_sequence_length(self, mock_boto_client, mock_get_hub_content):
+    def test__get_fine_tuning_options_filters_by_sequence_length(self, mock_get_hub_content):
         mock_session = Mock()
         mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=b'{"max_length": {"default": 32768}}'))
+        }
+        mock_session.boto_session.client.return_value = mock_s3
 
         mock_get_hub_content.return_value = {
             'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
@@ -1092,19 +1096,13 @@ class TestResolveIntermediateCheckpointMpg:
             }
         }
 
-        mock_s3_client = Mock()
-        mock_boto_client.return_value = mock_s3_client
-        mock_s3_client.get_object.return_value = {
-            "Body": Mock(read=Mock(return_value=b'{"max_length": {"default": 32768}}'))
-        }
-
         result = _get_fine_tuning_options_and_model_arn("test-model", "SFT", "LORA", mock_session, sequence_length="8K")
 
         if result is not None:
             options, model_arn, is_gated_model = result
             # Should pick the 32K recipe (smallest >= 8K)
-            mock_s3_client.get_object.assert_called_once()
-            call_args = mock_s3_client.get_object.call_args[1]
+            mock_s3.get_object.assert_called_once()
+            call_args = mock_s3.get_object.call_args[1]
             assert "params-32k" in call_args["Key"]
 
     @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
