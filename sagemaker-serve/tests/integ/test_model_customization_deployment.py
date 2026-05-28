@@ -14,6 +14,8 @@
 from __future__ import absolute_import
 
 import boto3
+import json
+import time
 import pytest
 import random
 
@@ -134,6 +136,38 @@ class TestModelCustomizationFromTrainingJob:
             # Verify adapter IC was created
             adapter_ic = InferenceComponent.get(inference_component_name=adapter_name, region=AWS_REGION)
             assert adapter_ic is not None
+
+        # Invoke verification
+        time.sleep(5)  # brief buffer for IC readiness
+
+        invoke_ic_name = adapter_name if peft_type == "LORA" else f"{endpoint_name}-inference-component"
+
+        test_payload = {
+            "inputs": "What is machine learning?",
+            "parameters": {"max_new_tokens": 32},
+        }
+
+        invoke_response = endpoint.invoke(
+            body=json.dumps(test_payload),
+            content_type="application/json",
+            accept="application/json",
+            inference_component_name=invoke_ic_name,
+        )
+
+        response_body = json.loads(invoke_response.body)
+
+        # Validate response structure
+        assert response_body is not None, f"Empty response from invoke on {invoke_ic_name}"
+        if isinstance(response_body, list):
+            assert len(response_body) > 0
+            assert "generated_text" in response_body[0] or "generation" in response_body[0]
+        elif isinstance(response_body, dict):
+            assert (
+                "generated_text" in response_body
+                or "generation" in response_body
+                or "outputs" in response_body
+            )
+
 
     def test_fetch_endpoint_names_for_base_model(self, training_job_name, sagemaker_session):
         """Test fetching endpoint names for base model."""
