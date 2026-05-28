@@ -16206,6 +16206,7 @@ SHAPE_DAG = {
             {"name": "Peft", "shape": "Peft", "type": "string"},
             {"name": "EvaluationType", "shape": "EvaluationType", "type": "string"},
             {"name": "EvaluatorArn", "shape": "EvaluatorArn", "type": "string"},
+            {"name": "SequenceLength", "shape": "SequenceLength", "type": "string"},
         ],
         "type": "structure",
     },
