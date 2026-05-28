@@ -61,12 +61,11 @@ BASE_MODEL_ONLY_CONFIG = {
     "region": "us-west-2",
 }
 
-# Nova model evaluation configuration (uses our own test account in us-east-1)
+# Nova model evaluation configuration (uses dedicated test account in us-east-1)
 NOVA_CONFIG = {
-    "model_package_arn": "arn:aws:sagemaker:us-east-1:729646638167:model-package/sdk-test-finetuned-models/65",
-    "dataset_s3_uri": "s3://sagemaker-us-east-1-729646638167/model-customization/eval/zc_test.jsonl",
-    "s3_output_path": "s3://sagemaker-us-east-1-729646638167/model-customization/eval/",
-    "model_package_group_arn": "arn:aws:sagemaker:us-east-1:729646638167:model-package-group/sdk-test-finetuned-models",
+    "dataset_s3_uri": "s3://sagemaker-us-east-1-784379639078/model-customization/eval/zc_test.jsonl",
+    "s3_output_path": "s3://sagemaker-us-east-1-784379639078/model-customization/eval/",
+    "model_package_group_arn": "arn:aws:sagemaker:us-east-1:784379639078:model-package-group/sdk-test-finetuned-models",
     "region": "us-east-1",
 }
 
@@ -339,7 +338,8 @@ class TestBenchmarkEvaluatorIntegration:
         assert execution.status.overall_status == "Succeeded"
         logger.info("Base model only evaluation completed successfully")
 
-    @pytest.mark.skip(reason="Pending us-east-1 test infrastructure migration to dedicated test account")
+    @pytest.mark.gpu_intensive
+    @pytest.mark.us_east_1
     def test_benchmark_evaluation_nova_model(self):
         """
         Test benchmark evaluation with Nova model.
@@ -347,17 +347,35 @@ class TestBenchmarkEvaluatorIntegration:
         This test uses a Nova fine-tuned model package in us-east-1 region.
         Configuration from commented section in benchmark_demo.ipynb.
         
-        Note: This test is currently skipped pending us-east-1 test infra migration.
+        Note: This test requires a model package to exist in the model package group.
+        It should be run after a successful SFT or RLVR training job has produced one.
         """
+        import boto3
+        
         # Get benchmarks
         Benchmark = get_benchmarks()
+        
+        # Dynamically find the latest model package in the group
+        sm_client = boto3.client("sagemaker", region_name=NOVA_CONFIG["region"])
+        packages = sm_client.list_model_packages(
+            ModelPackageGroupName="sdk-test-finetuned-models",
+            SortBy="CreationTime",
+            SortOrder="Descending",
+            MaxResults=1,
+        )
+        
+        if not packages["ModelPackageSummaryList"]:
+            pytest.skip("No model packages available in sdk-test-finetuned-models group. Run SFT/RLVR training first.")
+        
+        model_package_arn = packages["ModelPackageSummaryList"][0]["ModelPackageArn"]
+        logger.info(f"Using model package: {model_package_arn}")
         
         logger.info("Creating BenchmarkEvaluator with Nova model")
         
         # Create evaluator with Nova model package
         evaluator = BenchMarkEvaluator(
             benchmark=Benchmark.MMLU,
-            model=NOVA_CONFIG["model_package_arn"],
+            model=model_package_arn,
             s3_output_path=NOVA_CONFIG["s3_output_path"],
             model_package_group=NOVA_CONFIG["model_package_group_arn"],
             base_eval_name="integ-test-nova-eval",
@@ -367,7 +385,7 @@ class TestBenchmarkEvaluatorIntegration:
         # Verify evaluator was created
         assert evaluator is not None
         assert evaluator.benchmark == Benchmark.MMLU
-        assert evaluator.model == NOVA_CONFIG["model_package_arn"]
+        assert evaluator.model == model_package_arn
         assert evaluator.region == NOVA_CONFIG["region"]
         
         logger.info(f"Created evaluator: {evaluator.base_eval_name}")
