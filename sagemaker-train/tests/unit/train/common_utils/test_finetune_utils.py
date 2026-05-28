@@ -1043,8 +1043,7 @@ class TestResolveIntermediateCheckpointMpg:
     def test__create_serverless_config_without_sequence_length(self):
         config = _create_serverless_config("model-arn", "SFT", TrainingType.LORA, accept_eula=True)
 
-        # sequence_length should remain Unassigned (not set), not None
-        assert isinstance(config.sequence_length, Unassigned)
+        assert config.sequence_length is None
 
     def test__parse_context_length_with_k_suffix(self):
         assert _parse_context_length("8K") == 8192

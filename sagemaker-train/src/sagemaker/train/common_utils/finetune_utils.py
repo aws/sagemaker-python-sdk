@@ -942,18 +942,15 @@ def _create_serverless_config(model_arn, customization_technique,
         else (training_type.value if isinstance(training_type, TrainingType) else training_type)
 
     # Create ServerlessJobConfig using shapes
-    config_kwargs = dict(
+    serverless_config = ServerlessJobConfig(
         job_type=job_type,
         base_model_arn=model_arn,
         customization_technique=customization_technique,
         peft=peft,
         evaluator_arn=evaluator_arn,
         accept_eula=accept_eula,
+        sequence_length=sequence_length,
     )
-    if sequence_length is not None:
-        config_kwargs["sequence_length"] = sequence_length
-
-    serverless_config = ServerlessJobConfig(**config_kwargs)
 
     return serverless_config
 
