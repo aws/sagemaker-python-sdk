@@ -396,14 +396,19 @@ def _get_fine_tuning_options_and_model_arn(
         # Collect override_params from ALL matching recipes (standard + subscription)
         recipe = None
         if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-            candidates = [r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")]
+            recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
         elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-            candidates = [r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")]
-        else:
-            candidates = []
+            recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
 
-        # Filter by SequenceLength if sequence_length is provided
-        if sequence_length and candidates:
+        # Override recipe selection when sequence_length is explicitly requested
+        if sequence_length:
+            if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+                candidates = [r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")]
+            elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
+                candidates = [r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")]
+            else:
+                candidates = []
+
             requested = _parse_context_length(sequence_length)
             candidates_with_context = [r for r in candidates if r.get("SequenceLength")]
             if candidates_with_context:
@@ -422,8 +427,6 @@ def _get_fine_tuning_options_and_model_arn(
                     f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}, "
                     f"and sequence length:{sequence_length}"
                 )
-        elif candidates:
-            recipe = candidates[0]
 
         if not recipe:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}")
