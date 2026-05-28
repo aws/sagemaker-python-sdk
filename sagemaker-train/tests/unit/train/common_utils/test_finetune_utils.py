@@ -852,3 +852,177 @@ class TestFinetuneUtils:
             _get_fine_tuning_options_and_model_arn(
                 "test-model", "SFT", "LORA", mock_session, sequence_length="128K"
             )
+
+    def test__parse_context_length_with_invalid_k_value(self):
+        assert _parse_context_length("abcK") == 0
+
+    def test__parse_context_length_with_non_numeric_string(self):
+        assert _parse_context_length("hello") == 0
+
+    @patch("sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata")
+    def test__get_fine_tuning_options_raises_when_no_recipes_have_sequence_length(
+        self, mock_get_hub_content
+    ):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+
+        mock_get_hub_content.return_value = {
+            "hub_content_arn": "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            "hub_content_document": {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params.json",
+                        "Peft": True,
+                    }
+                ],
+            },
+        }
+
+        with pytest.raises(ValueError, match="and sequence length"):
+            _get_fine_tuning_options_and_model_arn(
+                "test-model", "SFT", "LORA", mock_session, sequence_length="8K"
+            )
+
+    @patch("sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata")
+    def test__get_fine_tuning_options_filters_by_sequence_length_full_training(
+        self, mock_get_hub_content
+    ):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=b'{"max_length": {"default": 8192}}'))
+        }
+        mock_session.boto_session.client.return_value = mock_s3
+
+        mock_get_hub_content.return_value = {
+            "hub_content_arn": "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            "hub_content_document": {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-8k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-8k.json",
+                        "SequenceLength": "8K",
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-32k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-32k.json",
+                        "SequenceLength": "32K",
+                    },
+                ],
+            },
+        }
+
+        result = _get_fine_tuning_options_and_model_arn(
+            "test-model", "SFT", "FULL", mock_session, sequence_length="8K"
+        )
+
+        if result is not None:
+            options, model_arn, is_gated_model = result
+            mock_s3.get_object.assert_called_once()
+            call_args = mock_s3.get_object.call_args[1]
+            assert "params-8k" in call_args["Key"]
+
+    @patch("sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata")
+    def test__get_fine_tuning_options_selects_smallest_sufficient_sequence_length(
+        self, mock_get_hub_content
+    ):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=b'{"max_length": {"default": 16384}}'))
+        }
+        mock_session.boto_session.client.return_value = mock_s3
+
+        mock_get_hub_content.return_value = {
+            "hub_content_arn": "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            "hub_content_document": {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-4k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-4k.json",
+                        "Peft": True,
+                        "SequenceLength": "4K",
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-16k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-16k.json",
+                        "Peft": True,
+                        "SequenceLength": "16K",
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-128k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-128k.json",
+                        "Peft": True,
+                        "SequenceLength": "128K",
+                    },
+                ],
+            },
+        }
+
+        result = _get_fine_tuning_options_and_model_arn(
+            "test-model", "SFT", "LORA", mock_session, sequence_length="8K"
+        )
+
+        if result is not None:
+            options, model_arn, is_gated_model = result
+            # Should pick 16K (smallest >= 8K), not 128K
+            mock_s3.get_object.assert_called_once()
+            call_args = mock_s3.get_object.call_args[1]
+            assert "params-16k" in call_args["Key"]
+
+    @patch("sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata")
+    def test__get_fine_tuning_options_without_sequence_length_uses_first_recipe(
+        self, mock_get_hub_content
+    ):
+        """Verify that when no sequence_length is provided, existing behavior is unchanged."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=b'{"max_length": {"default": 4096}}'))
+        }
+        mock_session.boto_session.client.return_value = mock_s3
+
+        mock_get_hub_content.return_value = {
+            "hub_content_arn": "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            "hub_content_document": {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-first.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-first.json",
+                        "Peft": True,
+                        "SequenceLength": "4K",
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-second.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-second.json",
+                        "Peft": True,
+                        "SequenceLength": "32K",
+                    },
+                ],
+            },
+        }
+
+        result = _get_fine_tuning_options_and_model_arn("test-model", "SFT", "LORA", mock_session)
+
+        if result is not None:
+            options, model_arn, is_gated_model = result
+            # Without sequence_length, should pick the first matching recipe
+            mock_s3.get_object.assert_called_once()
+            call_args = mock_s3.get_object.call_args[1]
+            assert "params-first" in call_args["Key"]
