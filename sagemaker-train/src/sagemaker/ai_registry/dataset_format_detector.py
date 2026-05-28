@@ -32,48 +32,57 @@ class DatasetFormatDetector:
         return {}
     
     @staticmethod
-    def validate_dataset(file_path: str) -> bool:
-        """
-        Validate if the dataset adheres to any known format.
-        
+    def detect_format(file_path: str) -> Optional[str]:
+        """Detect the dataset format from the first record in a JSONL file.
+
         Args:
-            file_path: Path to the JSONL file
-            
+            file_path: Path to the JSONL file.
+
         Returns:
-            True if dataset is valid according to any known format, False otherwise
+            Format name (e.g. 'genqa', 'openai_chat') if detected, None otherwise.
         """
         import jsonschema
-        
-        # Schema-based formats
+
         schema_formats = [
             "dpo", "converse", "hf_preference", "hf_prompt_completion",
             "verl", "openai_chat", "genqa"
         ]
-        
+
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, "r") as f:
                 for line in f:
                     line = line.strip()
-                    if line:
-                        data = json.loads(line)
-                        
-                        # Try schema validation first
-                        for format_name in schema_formats:
-                            schema = DatasetFormatDetector._load_schema(format_name)
-                            if schema:
-                                try:
-                                    jsonschema.validate(instance=data, schema=schema)
-                                    return True
-                                except jsonschema.exceptions.ValidationError:
-                                    continue
-                        
-                        # Check for RFT-style format (messages + additional fields)
-                        if DatasetFormatDetector._is_rft_format(data):
-                            return True
-                        break
-            return False
+                    if not line:
+                        continue
+                    data = json.loads(line)
+
+                    for format_name in schema_formats:
+                        schema = DatasetFormatDetector._load_schema(format_name)
+                        if schema:
+                            try:
+                                jsonschema.validate(instance=data, schema=schema)
+                                return format_name
+                            except jsonschema.exceptions.ValidationError:
+                                continue
+
+                    if DatasetFormatDetector._is_rft_format(data):
+                        return "rft"
+                    break
         except (json.JSONDecodeError, FileNotFoundError, IOError):
-            return False
+            pass
+        return None
+
+    @staticmethod
+    def validate_dataset(file_path: str) -> bool:
+        """Validate if the dataset adheres to any known format.
+
+        Args:
+            file_path: Path to the JSONL file.
+
+        Returns:
+            True if dataset is valid according to any known format, False otherwise.
+        """
+        return DatasetFormatDetector.detect_format(file_path) is not None
     
     @staticmethod
     def _is_rft_format(data: Dict[str, Any]) -> bool:
