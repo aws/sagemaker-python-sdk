@@ -135,3 +135,39 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     assert training_job.training_job_status == "Completed"
     assert hasattr(training_job, 'output_model_package_arn')
     assert training_job.output_model_package_arn is not None
+
+
+@pytest.mark.gpu_intensive
+def test_sft_trainer_lora_with_sequence_length(sagemaker_session):
+    """Test SFT training workflow with LORA and sequence_length specified."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    sft_trainer = SFTTrainer(
+        model="meta-textgeneration-llama-3-2-1b-instruct",
+        training_type=TrainingType.LORA,
+        model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        accept_eula=True,
+        sequence_length="8K",
+        base_job_name=f"sft-seqlen-integ-{unique_id}",
+    )
+
+    training_job = sft_trainer.train(wait=False)
+
+    max_wait_time = 3600
+    poll_interval = 30
+    start_time = time.time()
+
+    while time.time() - start_time < max_wait_time:
+        training_job.refresh()
+        status = training_job.training_job_status
+
+        if status in ["Completed", "Failed", "Stopped"]:
+            break
+
+        time.sleep(poll_interval)
+
+    assert training_job.training_job_status == "Completed"
+    assert hasattr(training_job, 'output_model_package_arn')
+    assert training_job.output_model_package_arn is not None
