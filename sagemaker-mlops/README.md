@@ -77,6 +77,51 @@ The following files were moved from `sagemaker-core/src/sagemaker/core/workflow/
 - `retry.py` - Retry policies
 - `selective_execution_config.py` - Selective execution settings
 
+### Feature Store
+
+The Feature Store module (`sagemaker.mlops.feature_store`) provides comprehensive support for Amazon SageMaker Feature Store operations. This is the V3 equivalent of the V2 `sagemaker.feature_store` module.
+
+**Key Modules:**
+
+- `__init__.py` - Re-exports all Feature Store components from a single entry point
+- `feature_definition.py` - Feature definition helpers (FractionalFeatureDefinition, IntegralFeatureDefinition, etc.)
+- `feature_utils.py` - Utility functions (ingest_dataframe, create_athena_query, as_hive_ddl, etc.)
+- `ingestion_manager_pandas.py` - Multi-threaded DataFrame ingestion manager
+- `athena_query.py` - Athena query execution and result retrieval
+- `dataset_builder.py` - Dataset building with point-in-time joins across feature groups
+- `inputs.py` - Enums for Feature Store operations (TargetStoreEnum, DeletionModeEnum, etc.)
+- `feature_processor/` - Feature processor for PySpark-based transformations
+
+**Quick Start:**
+
+```python
+from sagemaker.mlops.feature_store import (
+    FeatureGroup,
+    OnlineStoreConfig,
+    OfflineStoreConfig,
+    S3StorageConfig,
+    load_feature_definitions_from_dataframe,
+    ingest_dataframe,
+    create_athena_query,
+)
+
+# Create a feature group
+feature_defs = load_feature_definitions_from_dataframe(df)
+FeatureGroup.create(
+    feature_group_name="my-feature-group",
+    feature_definitions=feature_defs,
+    record_identifier_feature_name="id",
+    event_time_feature_name="timestamp",
+    role_arn=role,
+    online_store_config=OnlineStoreConfig(enable_online_store=True),
+)
+
+# Ingest data
+ingest_dataframe(feature_group_name="my-feature-group", data_frame=df, max_workers=4)
+```
+
+> **Migrating from V2?** See the detailed [Feature Store Migration Guide](src/sagemaker/mlops/feature_store/MIGRATION_GUIDE.md) for V2-to-V3 migration instructions.
+
 ### Model Building
 
 ModelBuilder is now located in the `sagemaker-serve` package but is re-exported from MLOps for convenience.
