@@ -860,6 +860,10 @@ class _JobSettings:
         except ImportError:
             pass
 
+        # Spark 3.3 and below do not support py312; use 3.5 which supports both py39 and py312
+        if py_version == "312" and spark_version in ("2.4", "3.0", "3.1", "3.2", "3.3"):
+            spark_version = "3.5"
+
         image_uri = image_uris.retrieve(
             framework=SPARK_NAME,
             region=region,
