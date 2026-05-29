@@ -942,9 +942,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         recipe_name = model_package.inference_specification.containers[0].base_model.recipe_name
 
         if not self.s3_upload_path:
-            self.s3_upload_path = model_package.inference_specification.containers[
-                0
-            ].model_data_source.s3_data_source.s3_uri
+            from sagemaker.serve.utils.model_package_utils import get_s3_uri_from_inference_spec
+            s3_uri = get_s3_uri_from_inference_spec(model_package.inference_specification)
+            if s3_uri:
+                self.s3_upload_path = s3_uri
 
         for recipe in hub_document.get("RecipeCollection", []):
             if recipe.get("Name") == recipe_name:
@@ -1641,8 +1642,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         result = {}
         if hasattr(model_data_source, "s3_data_source") and model_data_source.s3_data_source:
             s3_source = model_data_source.s3_data_source
+            s3_uri = getattr(s3_source, "s3_uri", None)
+            if not s3_uri:
+                return None  # No local conversion for restricted model packages
             result["S3DataSource"] = {
-                "S3Uri": s3_source.s3_uri,
+                "S3Uri": s3_uri,
                 "S3DataType": s3_source.s3_data_type,
                 "CompressionType": s3_source.compression_type,
             }
@@ -2289,8 +2293,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             raise ValueError(
                 "This functionality is only supported for Model Customization use cases"
             )
+        from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
+        model_package = self._fetch_model_package()
+        if is_restricted_model_package(model_package):
+            return set()
         recipe_name = (
-            self._fetch_model_package().inference_specification.containers[0].base_model.recipe_name
+            model_package.inference_specification.containers[0].base_model.recipe_name
         )
         endpoint_names = set()
         logger.error(f"recipe_name: {recipe_name}")
@@ -2337,6 +2345,33 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     "Only SageMaker Endpoint Mode is supported for Model Customization use cases"
                 )
             model_package = self._fetch_model_package()
+
+            # Restricted model packages: artifacts are resolved by the service
+            from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
+            if is_restricted_model_package(model_package):
+                model_name = self.model_name or f"model-{uuid.uuid4().hex[:10]}"
+                container_kwargs = {"model_package_name": self._fetch_model_package_arn()}
+                if self.image_uri:
+                    container_kwargs["image"] = self.image_uri
+                is_nova = self._is_nova_model()
+                if is_nova:
+                    nova_config = self._get_nova_hosting_config(instance_type=self.instance_type)
+                    if not self.image_uri:
+                        container_kwargs["image"] = nova_config["image_uri"]
+                    container_kwargs["environment"] = nova_config["env_vars"]
+                    if not self.instance_type:
+                        self.instance_type = nova_config["instance_type"]
+                container_def = ContainerDefinition(**container_kwargs)
+                create_kwargs = {
+                    "execution_role_arn": self.role_arn,
+                    "model_name": model_name,
+                    "containers": [container_def],
+                }
+                if is_nova:
+                    create_kwargs["enable_network_isolation"] = True
+                self.built_model = Model.create(**create_kwargs)
+                return self.built_model
+
             # Fetch recipe config first to set image_uri, instance_type, env_vars, and s3_upload_path
             base_model = model_package.inference_specification.containers[0].base_model
             if base_model is not None:
@@ -2413,9 +2448,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     )
             else:
                 # Non-LORA: Model points at training output
-                self.s3_upload_path = model_package.inference_specification.containers[
-                    0
-                ].model_data_source.s3_data_source.s3_uri
+                from sagemaker.serve.utils.model_package_utils import get_s3_uri_from_inference_spec
+                s3_uri = get_s3_uri_from_inference_spec(model_package.inference_specification)
+                if not s3_uri:
+                    raise ValueError(
+                        "Cannot resolve model artifacts: s3_uri is None and model package "
+                        "is not a Restricted Model Package."
+                    )
+                self.s3_upload_path = s3_uri
                 container_def = ContainerDefinition(
                     image=self.image_uri,
                     model_data_source={
@@ -4384,6 +4424,29 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         # Fetch model package
         model_package = self._fetch_model_package()
+
+        # Restricted model packages: simple endpoint deployment
+        from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
+        if is_restricted_model_package(model_package):
+            if not endpoint_name:
+                endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
+            EndpointConfig.create(
+                endpoint_config_name=endpoint_name,
+                production_variants=[
+                    ProductionVariant(
+                        variant_name="AllTraffic",
+                        model_name=self.built_model.model_name,
+                        instance_type=self.instance_type,
+                        initial_instance_count=initial_instance_count or 1,
+                    )
+                ],
+            )
+            endpoint = Endpoint.create(
+                endpoint_name=endpoint_name, endpoint_config_name=endpoint_name
+            )
+            if kwargs.get("wait", True):
+                endpoint.wait_for_status("InService")
+            return endpoint
 
         # Check if endpoint exists
         is_existing_endpoint = self._does_endpoint_exist(endpoint_name)
