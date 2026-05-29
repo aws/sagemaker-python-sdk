@@ -15,10 +15,13 @@ from __future__ import absolute_import
 
 import boto3
 import json
+import logging
 import os
 import time
 import pytest
 import random
+
+logger = logging.getLogger(__name__)
 
 from sagemaker.core.helper.session_helper import Session
 
@@ -140,7 +143,7 @@ class TestModelCustomizationFromTrainingJob:
             assert adapter_ic is not None
 
         # Invoke verification
-        time.sleep(5)  # brief buffer for IC readiness
+        time.sleep(10)  # brief buffer for IC readiness
 
         invoke_ic_name = adapter_name if peft_type == "LORA" else f"{endpoint_name}-inference-component"
 
@@ -544,27 +547,44 @@ class TestModelCustomizationDeployment:
     def test_bedrock_model_invoke(self, deployed_model_arn, bedrock_runtime):
         """Test invoking the imported Bedrock model to ensure it works end-to-end.
 
-        Invokes the imported model directly using the Converse API and validates
-        the response contains generated text.
+        Retries on failure since models can take several minutes
+        to become ready after import.
         """
-        message = "What is machine learning?"
+        max_retries = 5
+        base_delay = 10
 
-        response = bedrock_runtime.invoke_model(
-                modelId=deployed_model_arn,
-                body=json.dumps({
-                    "prompt": "What is the capital of France?",
-                    "max_gen_len": 100,
-                    "temperature": 0.7,
-                    "top_p": 0.9
-                })
-        )
+        for attempt in range(max_retries):
+            try:
+                response = bedrock_runtime.invoke_model(
+                    modelId=deployed_model_arn,
+                    body=json.dumps({
+                        "prompt": "What is the capital of France?",
+                        "max_gen_len": 100,
+                        "temperature": 0.7,
+                        "top_p": 0.9
+                    })
+                )
 
-        result = json.loads(response['body'].read().decode())
+                result = json.loads(response['body'].read().decode())
 
-        # Validate response structure
-        assert "generation" in result, "Response missing 'generation' field"
-        assert isinstance(result["generation"], str), "'generation' should be a string"
-        assert len(result["generation"]) > 0, "'generation' should not be empty"
+                # Validate response structure
+                assert "generation" in result, "Response missing 'generation' field"
+                assert isinstance(result["generation"], str), "'generation' should be a string"
+                assert len(result["generation"]) > 0, "'generation' should not be empty"
+                return  # Success
+
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    logger.info(
+                        f"Invoke failed (attempt {attempt + 1}/{max_retries}): {e}. "
+                        f"Retrying in {base_delay}s..."
+                    )
+                    time.sleep(base_delay)
+                else:
+                    pytest.fail(
+                        f"Invoke failed after {max_retries} attempts. "
+                        f"Last error: {e}"
+                    )
 
 
     def test_zzz_cleanup_deployed_model(self, bedrock_client):
