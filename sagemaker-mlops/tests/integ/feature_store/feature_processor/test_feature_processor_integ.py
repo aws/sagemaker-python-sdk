@@ -798,11 +798,11 @@ def test_to_pipeline_and_execute(
 #     sys.version_info[:2] not in [(3, 9), (3, 12)],
 #     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
 # )
-@pytest.mark.skip(
-    reason="Lake Formation credential vending (GetTemporaryGlueTableCredentials) requires "
-    "full LF environment setup (resource registration, trust policy, data location grants) "
-    "that is not configured in CI. See quip-amazon.com/S3FEAMMMuKm0 for details."
-)
+# @pytest.mark.skip(
+#     reason="Lake Formation credential vending (GetTemporaryGlueTableCredentials) requires "
+#     "full LF environment setup (resource registration, trust policy, data location grants) "
+#     "that is not configured in CI. See quip-amazon.com/S3FEAMMMuKm0 for details."
+# )
 @pytest.mark.spark_py312
 @pytest.mark.slow_test
 def test_to_pipeline_and_execute_with_lake_formation(

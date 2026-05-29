@@ -574,16 +574,18 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
     assert client_error_message in str(error)
 
 
-@pytest.mark.skipif(
-    sys.version_info[:2] not in [(3, 9), (3, 12)],
-    reason="SageMaker Spark image only available for Python 3.9 and 3.12",
-)
-def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason="SageMaker Spark image only available for Python 3.9 and 3.12",
+# )
+@pytest.mark.spark_py312
+def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type, spark_pre_execution_commands):
     @remote(
         role=ROLE,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        pre_execution_commands=spark_pre_execution_commands,
         spark_config=SparkConfig(
             configuration=[
                 {
@@ -598,7 +600,14 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
 
         spark = SparkSession.builder.getOrCreate()
 
-        assert spark.conf.get("spark.app.name") == "remote-spark-test"
+        # Avoid bare assert here: pytest's assertion rewriting injects _pytest
+        # module references into the function bytecode, which causes
+        # deserialization to fail in the Spark container (no pytest installed).
+        app_name = spark.conf.get("spark.app.name")
+        if app_name != "remote-spark-test":
+            raise RuntimeError(
+                f"Expected spark.app.name='remote-spark-test', got '{app_name}'"
+            )
 
     test_spark_transform()
 
