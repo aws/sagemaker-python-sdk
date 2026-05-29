@@ -79,8 +79,9 @@ class TestDataSetIntegration:
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.DPO
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_sft(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova SFT dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_sft_train.jsonl"
         dataset = DataSet.create(
             name=unique_name,
@@ -92,8 +93,9 @@ class TestDataSetIntegration:
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.SFT
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_dpo(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova DPO dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_dpo_train.jsonl"
         dataset = DataSet.create(
             name=unique_name,
@@ -105,8 +107,9 @@ class TestDataSetIntegration:
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.DPO
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_rft(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova RFT dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_rft_train.jsonl"
         dataset = DataSet.create(
             name=unique_name,
@@ -118,8 +121,9 @@ class TestDataSetIntegration:
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.RLVR
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_eval(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova eval dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_eval.jsonl"
         dataset = DataSet.create(
             name=unique_name,

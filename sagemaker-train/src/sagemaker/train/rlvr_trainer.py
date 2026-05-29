@@ -171,6 +171,9 @@ class RLVRTrainer(BaseTrainer):
             if hasattr(self.hyperparameters, 'reward_lambda_arn'):
                 delattr(self.hyperparameters, 'reward_lambda_arn')
                 self.hyperparameters._specs.pop('reward_lambda_arn', None)
+            if hasattr(self.hyperparameters, 'preset_reward_function'):
+                delattr(self.hyperparameters, 'preset_reward_function')
+                self.hyperparameters._specs.pop('preset_reward_function', None)
             if hasattr(self.hyperparameters, 'data_path'):
                 delattr(self.hyperparameters, 'data_path')
                 self.hyperparameters._specs.pop('data_path', None)

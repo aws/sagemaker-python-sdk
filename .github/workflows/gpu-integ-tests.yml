@@ -1,0 +1,39 @@
+name: GPU Integ Tests
+on:
+  schedule:
+    - cron: "0 */8 * * *"
+  workflow_dispatch:
+
+permissions:
+    id-token: write # This is required for requesting the JWT
+
+jobs:
+  gpu-integ-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run GPU Integ Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests
+          source-version: refs/heads/master
+
+  gpu-integ-tests-us-east-1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials (us-east-1)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_US_EAST_1_ARN }}
+          aws-region: us-east-1
+          role-duration-seconds: 10800
+      - name: Run GPU Integ Tests (us-east-1)
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests
+          source-version: refs/heads/master
