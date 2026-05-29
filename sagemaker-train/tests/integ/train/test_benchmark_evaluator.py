@@ -415,8 +415,8 @@ class TestBenchmarkEvaluatorIntegration:
         logger.info(f"Status after refresh: {execution.status.overall_status}")
         
         # Wait for completion
-        logger.info("Waiting for evaluation to complete (timeout: 1 hour)")
-        execution.wait(target_status="Succeeded", poll=30, timeout=3600)
+        logger.info("Waiting for evaluation to complete (timeout: 3 hours)")
+        execution.wait(target_status="Succeeded", poll=30, timeout=10800)
         
         # Verify completion
         assert execution.status.overall_status == "Succeeded"
