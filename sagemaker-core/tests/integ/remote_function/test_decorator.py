@@ -579,12 +579,13 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
 #     reason="SageMaker Spark image only available for Python 3.9 and 3.12",
 # )
 @pytest.mark.spark_py312
-def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
+def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type, spark_pre_execution_commands):
     @remote(
         role=ROLE,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        pre_execution_commands=spark_pre_execution_commands,
         spark_config=SparkConfig(
             configuration=[
                 {
