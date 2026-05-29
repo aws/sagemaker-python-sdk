@@ -417,7 +417,7 @@ class TestModelCustomizationDeployment:
                     break
                 time.sleep(30)
 
-            model_arn = response['importedModelName']
+            model_arn = response['importedModelArn']
             return model_arn
 
         except Exception as e:
