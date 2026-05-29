@@ -118,7 +118,7 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     training_job = sft_trainer_nova.train(wait=False)
     
     # Manual wait loop
-    max_wait_time = 3600  # 1 hour timeout
+    max_wait_time = 10800  # 3 hour timeout (Nova training takes >1 hour)
     poll_interval = 30    # Check every 30 seconds
     start_time = time.time()
     

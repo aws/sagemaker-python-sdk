@@ -124,7 +124,7 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     training_job = rlvr_trainer.train(wait=False)
     
     # Manual wait loop
-    max_wait_time = 3600
+    max_wait_time = 10800  # 3 hour timeout (Nova training takes >1 hour)
     poll_interval = 30
     start_time = time.time()
     
