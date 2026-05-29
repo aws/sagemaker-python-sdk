@@ -16,6 +16,8 @@ from __future__ import absolute_import
 import json
 import time
 import logging
+
+from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
 from typing import Optional, Dict, Any, Union
 from urllib.parse import urlparse
 
@@ -27,7 +29,6 @@ from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
-
 
 def _is_nova_model(container) -> bool:
     """Determine whether a model package container represents a Nova model.
@@ -73,6 +74,7 @@ class BedrockModelBuilder:
         self._sagemaker_client = None
         self.boto_session = Session().boto_session
         self.model_package = self._fetch_model_package() if model else None
+        self._is_rmp = is_restricted_model_package(self.model_package)
         self.s3_model_artifacts = self._get_s3_artifacts() if model else None
 
     def _get_bedrock_client(self):
@@ -151,20 +153,33 @@ class BedrockModelBuilder:
                 "model_package is not set. Provide a valid model during initialization."
             )
 
-        container = self.model_package.inference_specification.containers[0]
-        is_nova = _is_nova_model(container)
+        spec = getattr(self.model_package, "inference_specification", None)
+        containers = getattr(spec, "containers", None) if spec else None
+        container = containers[0] if containers else None
+        is_nova = _is_nova_model(container) if container else False
 
-        if is_nova:
+        if self._is_rmp or is_nova:
             if not custom_model_name:
                 raise ValueError("custom_model_name is required for Nova model deployment.")
             if not role_arn:
                 raise ValueError("role_arn is required for Nova model deployment.")
 
-            params = {
-                "modelName": custom_model_name,
-                "modelSourceConfig": {"s3DataSource": {"s3Uri": self.s3_model_artifacts}},
-                "roleArn": role_arn,
-            }
+            if self._is_rmp:
+                params = {
+                    "modelName": custom_model_name,
+                    "customModelDataSource": {
+                        "modelPackageArnDataSource": {
+                            "modelPackageArn": self.model_package.model_package_arn
+                        }
+                    },
+                    "roleArn": role_arn,
+                }
+            else:
+                params = {
+                    "modelName": custom_model_name,
+                    "modelSourceConfig": {"s3DataSource": {"s3Uri": self.s3_model_artifacts}},
+                    "roleArn": role_arn,
+                }
             if model_tags:
                 params["modelTags"] = model_tags
             params = {k: v for k, v in params.items() if v is not None}
@@ -340,6 +355,9 @@ class BedrockModelBuilder:
         if not self.model_package:
             return None
 
+        if self._is_rmp:
+            return None
+
         container = self.model_package.inference_specification.containers[0]
         is_nova = _is_nova_model(container)
 
@@ -349,7 +367,10 @@ class BedrockModelBuilder:
         if hasattr(container, "model_data_source") and container.model_data_source:
             data_source = container.model_data_source
             if hasattr(data_source, "s3_data_source") and data_source.s3_data_source:
-                return data_source.s3_data_source.s3_uri
+                s3_uri = data_source.s3_data_source.s3_uri
+                if s3_uri:
+                    return s3_uri
+
         return None
 
     def _get_checkpoint_uri_from_manifest(self) -> Optional[str]:
