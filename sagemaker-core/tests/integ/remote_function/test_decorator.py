@@ -600,7 +600,14 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type, spark_pr
 
         spark = SparkSession.builder.getOrCreate()
 
-        assert spark.conf.get("spark.app.name") == "remote-spark-test"
+        # Avoid bare assert here: pytest's assertion rewriting injects _pytest
+        # module references into the function bytecode, which causes
+        # deserialization to fail in the Spark container (no pytest installed).
+        app_name = spark.conf.get("spark.app.name")
+        if app_name != "remote-spark-test":
+            raise RuntimeError(
+                f"Expected spark.app.name='remote-spark-test', got '{app_name}'"
+            )
 
     test_spark_transform()
 
