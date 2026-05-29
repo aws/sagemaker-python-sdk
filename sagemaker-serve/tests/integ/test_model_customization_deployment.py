@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import boto3
 import json
+import os
 import time
 import pytest
 import random
@@ -23,6 +24,7 @@ from sagemaker.core.helper.session_helper import Session
 
 # This test relies on resources in a specific region
 AWS_REGION = "us-west-2"
+os.environ.setdefault("AWS_DEFAULT_REGION", AWS_REGION)
 
 
 @pytest.fixture(scope="module")
@@ -350,7 +352,7 @@ class TestModelCustomizationDeployment:
         from sagemaker.core.helper.session_helper import get_execution_role
         return {
             "training_job_name": training_job_name,
-            "region": "us-west-2",
+            "region": AWS_REGION,
             "bucket": "models-sdk-testing-pdx",
             "role_arn": get_execution_role()
         }
@@ -537,6 +539,33 @@ class TestModelCustomizationDeployment:
     def test_bedrock_job_created(self, deployed_model_arn):
         """Test that Bedrock import job was created successfully."""
         assert deployed_model_arn is not None
+
+    @pytest.mark.slow
+    def test_bedrock_model_invoke(self, deployed_model_arn, bedrock_runtime):
+        """Test invoking the imported Bedrock model to ensure it works end-to-end.
+
+        Invokes the imported model directly using the Converse API and validates
+        the response contains generated text.
+        """
+        message = "What is machine learning?"
+
+        response = bedrock_runtime.invoke_model(
+                modelId=deployed_model_arn,
+                body=json.dumps({
+                    "prompt": "What is the capital of France?",
+                    "max_gen_len": 100,
+                    "temperature": 0.7,
+                    "top_p": 0.9
+                })
+        )
+
+        result = json.loads(response['body'].read().decode())
+
+        # Validate response structure
+        assert "generation" in result, "Response missing 'generation' field"
+        assert isinstance(result["generation"], str), "'generation' should be a string"
+        assert len(result["generation"]) > 0, "'generation' should not be empty"
+
 
     def test_zzz_cleanup_deployed_model(self, bedrock_client):
         """Cleanup deployed model and import jobs (runs last due to zzz prefix)."""
