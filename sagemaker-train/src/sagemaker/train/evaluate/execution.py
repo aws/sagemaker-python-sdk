@@ -297,13 +297,12 @@ def _start_pipeline_execution(
     import boto3
     
     execution_display_name = f"{name}-{int(time.time())}"
-    endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
-    
+
     # Get boto3 client
     if session:
-        sm_client = session.client('sagemaker', region_name=region, endpoint_url=endpoint_url)
+        sm_client = session.client('sagemaker', region_name=region)
     else:
-        sm_client = boto3.client('sagemaker', region_name=region, endpoint_url=endpoint_url)
+        sm_client = boto3.client('sagemaker', region_name=region)
     
     # Start pipeline execution
     logger.info(f"Starting pipeline execution: {execution_display_name}")
@@ -381,14 +380,11 @@ def _extract_output_s3_location_from_steps(raw_steps: List[Any], session: Option
         import boto3
         import os
         
-        # Get endpoint URL from environment variable (for beta endpoint support)
-        endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
-        
-        # Get SageMaker client with optional endpoint URL
+        # Get SageMaker client
         if session:
-            sm_client = session.client('sagemaker', region_name=region, endpoint_url=endpoint_url)
+            sm_client = session.client('sagemaker', region_name=region)
         else:
-            sm_client = boto3.client('sagemaker', region_name=region, endpoint_url=endpoint_url)
+            sm_client = boto3.client('sagemaker', region_name=region)
         
         for step in raw_steps:
             step_name = getattr(step, 'step_name', '')
@@ -447,6 +443,7 @@ class StepDetail(BaseModel):
     end_time: Optional[str] = Field(None, description="Step end time")
     display_name: Optional[str] = Field(None, description="Display name for the step")
     failure_reason: Optional[str] = Field(None, description="Reason for failure if step failed")
+
     job_arn: Optional[str] = Field(None, description="ARN of the underlying job (training, processing, transform, etc.)")
 
 
@@ -843,18 +840,15 @@ class EvaluationPipelineExecution(BaseModel):
             import os
             import boto3
             
-            endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
-            
             # Get boto3 client - extract from pipeline execution if available
             if self._pipeline_execution and hasattr(self._pipeline_execution, '_session'):
                 session = self._pipeline_execution._session
                 if hasattr(session, 'boto_session'):
-                    sm_client = session.boto_session.client('sagemaker', endpoint_url=endpoint_url)
+                    sm_client = session.boto_session.client('sagemaker')
                 else:
-                    sm_client = session.client('sagemaker', endpoint_url=endpoint_url)
+                    sm_client = session.client('sagemaker')
             else:
-                # Fallback to default boto3 client
-                sm_client = boto3.client('sagemaker', endpoint_url=endpoint_url)
+                sm_client = boto3.client('sagemaker')
             
             # Stop the pipeline execution using boto3
             sm_client.stop_pipeline_execution(
@@ -930,16 +924,27 @@ class EvaluationPipelineExecution(BaseModel):
 
                 current_time = time.time()
                 if mlflow_link_cache['url'] is None or (current_time - mlflow_link_cache['timestamp']) > 240:
+                    arn = None
+                    exp_name = None
+
                     pe = self._pipeline_execution
                     mlflow_cfg = getattr(pe, 'm_lflow_config', None) if pe else None
                     if mlflow_cfg and not _is_unassigned_attribute(mlflow_cfg):
                         arn = getattr(mlflow_cfg, 'mlflow_resource_arn', None)
-                        if arn and not _is_unassigned_attribute(arn):
-                            exp_name = getattr(mlflow_cfg, 'mlflow_experiment_name', None)
-                            if exp_name and _is_unassigned_attribute(exp_name):
-                                exp_name = None
-                            mlflow_link_cache['url'] = get_presigned_mlflow_experiment_url(arn, exp_name)
-                            mlflow_link_cache['timestamp'] = current_time
+                        if arn and _is_unassigned_attribute(arn):
+                            arn = None
+                        exp_name = getattr(mlflow_cfg, 'mlflow_experiment_name', None)
+                        if exp_name and _is_unassigned_attribute(exp_name):
+                            exp_name = None
+
+                    if not arn:
+                        arn = getattr(self, 'mlflow_resource_arn', None)
+                    if not exp_name:
+                        exp_name = getattr(self, 'mlflow_experiment_name', None)
+
+                    if arn:
+                        mlflow_link_cache['url'] = get_presigned_mlflow_experiment_url(arn, exp_name)
+                        mlflow_link_cache['timestamp'] = current_time
                 return mlflow_link_cache['url']
             
             while True:
@@ -974,16 +979,30 @@ class EvaluationPipelineExecution(BaseModel):
                 try:
                     from sagemaker.core.utils.utils import SageMakerClient
                     from sagemaker.train.common_utils.metrics_visualizer import _is_in_studio, _get_studio_base_url
+                    region = SageMakerClient().region_name
                     if pipeline_name and _is_in_studio():
-                        region = SageMakerClient().region_name
                         base = _get_studio_base_url(region)
                         if base:
                             pipeline_url = f"{base}/jobs/evaluation/detail?pipeline_name={pipeline_name}&execution_id={exec_id}"
                             links.append(f"[bright_blue underline][link={pipeline_url}]🔗 Pipeline Execution (Studio)[/link][/bright_blue underline]")
                 except Exception:
                     pass
+                # Add CloudWatch Logs link from the first job step
+                try:
+                    if self.status.step_details:
+                        for step in self.status.step_details:
+                            if step.job_arn:
+                                from sagemaker.train.common_utils.metrics_visualizer import get_cloudwatch_logs_url
+                                cw_url = get_cloudwatch_logs_url(step.job_arn)
+                                if cw_url:
+                                    links.append(f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs[/link][/bright_blue underline]")
+                                break
+                except Exception:
+                    pass
                 # Add MLflow experiment link if available
                 cached_mlflow_url = get_cached_mlflow_url()
+                if not cached_mlflow_url:
+                    cached_mlflow_url = getattr(self, 'mlflow_url', None)
                 if cached_mlflow_url:
                     links.append(f"[bright_blue underline][link={cached_mlflow_url}]🔗 MLflow Experiment[/link][/bright_blue underline]")
                 if links:
@@ -1315,6 +1334,8 @@ class EvaluationPipelineExecution(BaseModel):
             execution = BenchmarkEvaluationExecution(**execution_dict)
         elif eval_type == EvalType.LLM_AS_JUDGE:
             execution = LLMAJEvaluationExecution(**execution_dict)
+        elif eval_type == EvalType.MTRL:
+            execution = MTRLEvaluationExecution(**execution_dict)
         else:
             execution = self
         
@@ -1491,3 +1512,16 @@ class LLMAJEvaluationExecution(EvaluationPipelineExecution):
         # Delegate to utility
         from ..common_utils.show_results_utils import _show_llmaj_results
         _show_llmaj_results(self, limit=limit, offset=offset, show_explanations=show_explanations)
+
+
+class MTRLEvaluationExecution(EvaluationPipelineExecution):
+    """MultiTurnRL (MTRL) evaluation execution subclass.
+
+    Inherits the standard sagemaker-core-based ``wait()``, ``refresh()``,
+    and ``stop()`` from ``EvaluationPipelineExecution``. No custom overrides
+    are needed — the shared pipeline infrastructure handles lifecycle.
+    """
+
+    mlflow_url: Optional[str] = Field(None, description="Presigned MLflow tracking URL")
+    mlflow_resource_arn: Optional[str] = Field(None, description="MLflow app/tracking server ARN")
+    mlflow_experiment_name: Optional[str] = Field(None, description="MLflow experiment name for this eval")

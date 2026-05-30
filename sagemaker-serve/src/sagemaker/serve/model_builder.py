@@ -64,6 +64,8 @@ from sagemaker.core.helper.pipeline_variable import StrPipeVar, PipelineVariable
 
 from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.core.training.configs import Compute, Networking, SourceCode
+from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+from sagemaker.train.agent_rft_job import AgentRFTJob
 
 from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.local_resources import LocalEndpoint
@@ -455,7 +457,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if not hasattr(self, "instance_count") or self.instance_count is None:
                 self.instance_count = 1
 
-        self._user_provided_instance_type = bool(self.compute and self.compute.instance_type)
+        self._user_provided_instance_type = bool(
+            (self.compute and self.compute.instance_type) or self.instance_type
+        )
 
         if not self.instance_type:
             self.instance_type = self._get_default_instance_type()
@@ -570,16 +574,18 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
                     container = model_package.inference_specification.containers[0]
 
-                    # For fine-tuned models (have model_data_source), return None.
-                    # The model data is handled by the recipe/container configuration,
-                    # not via artifact_url in CreateInferenceComponent.
+                    # For fine-tuned models, return the S3 model weights path
                     if (
                         hasattr(container, "model_data_source")
                         and container.model_data_source
                         and hasattr(container.model_data_source, "s3_data_source")
                         and container.model_data_source.s3_data_source
                     ):
-                        return None
+                        s3_uri = container.model_data_source.s3_data_source.s3_uri
+                        if getattr(container, "is_checkpoint", None) is False:
+                            hf_merged_uri = s3_uri.rstrip("/") + "/checkpoints/hf_merged/"
+                            return hf_merged_uri
+                        return s3_uri
 
                     # For base models, get HostingArtifactUri from JumpStart
                     if hasattr(container, "base_model") and container.base_model:
@@ -939,7 +945,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         """Fetch and cache image URI, compute requirements, and s3_upload_path from recipe during build."""
         hub_document = self._fetch_hub_document_for_custom_model()
         model_package = self._fetch_model_package()
-        recipe_name = model_package.inference_specification.containers[0].base_model.recipe_name
+        container = model_package.inference_specification.containers[0]
+        recipe_name = getattr(container.base_model, 'recipe_name', None) or ''
 
         if not self.s3_upload_path:
             from sagemaker.serve.utils.model_package_utils import get_s3_uri_from_inference_spec
@@ -964,16 +971,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     else:
                         self.env_vars = config.get("Environment", {})
 
-                    # Infer instance type from JumpStart metadata if not provided
-                    # This is only called for model_customization deployments
-                    if not self.instance_type:
-                        # Try to get from recipe config first
-                        self.instance_type = config.get("InstanceType") or config.get(
+                    # Infer instance type from JumpStart metadata if not provided by user
+                    if not self._user_provided_instance_type:
+                        recipe_instance_type = config.get("InstanceType") or config.get(
                             "DefaultInstanceType"
                         )
-
-                        # If still not available, use the inference method
-                        if not self.instance_type:
+                        if recipe_instance_type:
+                            self.instance_type = recipe_instance_type
+                        elif not self.instance_type:
                             self.instance_type = self._infer_instance_type_from_jumpstart()
 
                     # Resolve compute requirements using the already-fetched hub document
@@ -1517,7 +1522,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             ):
                 return True
 
+        # AgentRFTJob from MultiTurnRLTrainer.attach()
+        if isinstance(self.model, AgentRFTJob):
+            return True
+
         # BaseTrainer with model customization
+        if isinstance(self.model, MultiTurnRLTrainer):
+            return True
         if isinstance(self.model, BaseTrainer) and hasattr(self.model, "_latest_training_job"):
             # Check model_package_config first (new location)
             if (
@@ -1552,6 +1563,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if isinstance(self.model, ModelPackage):
             return self.model.model_package_arn
+        if isinstance(self.model, AgentRFTJob):
+            return self.model.output_model_package_arn
         if isinstance(self.model, TrainingJob):
             # Try output_model_package_arn first (preferred)
             if hasattr(self.model, "output_model_package_arn"):
@@ -1581,26 +1594,31 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             return None
 
-        if isinstance(self.model, (ModelTrainer, BaseTrainer)) and hasattr(
-            self.model, "_latest_training_job"
-        ):
-            # Try output_model_package_arn first (preferred)
-            if hasattr(self.model._latest_training_job, "output_model_package_arn"):
-                arn = self.model._latest_training_job.output_model_package_arn
-                if not isinstance(arn, Unassigned):
+        if isinstance(self.model, (ModelTrainer, BaseTrainer)):
+            # Try output_model_package_arn directly on the trainer (e.g., MultiTurnRLTrainer)
+            if hasattr(self.model, "output_model_package_arn"):
+                arn = self.model.output_model_package_arn
+                if arn and not isinstance(arn, Unassigned):
                     return arn
 
-            # Fallback to model_package_config.source_model_package_arn
-            if (
-                hasattr(self.model._latest_training_job, "model_package_config")
-                and self.model._latest_training_job.model_package_config != Unassigned
-                and hasattr(
-                    self.model._latest_training_job.model_package_config, "source_model_package_arn"
-                )
-            ):
-                arn = self.model._latest_training_job.model_package_config.source_model_package_arn
-                if not isinstance(arn, Unassigned):
-                    return arn
+            if hasattr(self.model, "_latest_training_job"):
+                # Try output_model_package_arn first (preferred)
+                if hasattr(self.model._latest_training_job, "output_model_package_arn"):
+                    arn = self.model._latest_training_job.output_model_package_arn
+                    if not isinstance(arn, Unassigned):
+                        return arn
+
+                # Fallback to model_package_config.source_model_package_arn
+                if (
+                    hasattr(self.model._latest_training_job, "model_package_config")
+                    and self.model._latest_training_job.model_package_config != Unassigned
+                    and hasattr(
+                        self.model._latest_training_job.model_package_config, "source_model_package_arn"
+                    )
+                ):
+                    arn = self.model._latest_training_job.model_package_config.source_model_package_arn
+                    if not isinstance(arn, Unassigned):
+                        return arn
 
             # Fallback to serverless_job_config.source_model_package_arn (legacy)
             if (
@@ -2446,6 +2464,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         f"{self.model._latest_training_job.model_artifacts.s3_model_artifacts}"
                         "/checkpoints/hf/"
                     )
+                elif isinstance(self.model, AgentRFTJob):
+                    s3_uri = model_package.inference_specification.containers[
+                        0
+                    ].model_data_source.s3_data_source.s3_uri
+                    self._adapter_s3_uri = s3_uri.rstrip("/") + "/checkpoints/hf/"
+                elif isinstance(self.model, ModelPackage):
+                    s3_uri = model_package.inference_specification.containers[
+                        0
+                    ].model_data_source.s3_data_source.s3_uri
+                    self._adapter_s3_uri = s3_uri.rstrip("/") + "/model/checkpoints/hf/"
             else:
                 # Non-LORA: Model points at training output
                 from sagemaker.serve.utils.model_package_utils import get_s3_uri_from_inference_spec
@@ -2455,9 +2483,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         "Cannot resolve model artifacts: s3_uri is None and model package "
                         "is not a Restricted Model Package."
                     )
-                self.s3_upload_path = s3_uri
+                container = model_package.inference_specification.containers[0]
+                if getattr(container, "is_checkpoint", None) is False:
+                    self.s3_upload_path = s3_uri.rstrip("/") + "/checkpoints/hf_merged/"
+                else:
+                    self.s3_upload_path = s3_uri
                 container_def = ContainerDefinition(
                     image=self.image_uri,
+                    environment=self.env_vars,
                     model_data_source={
                         "s3_data_source": {
                             "s3_uri": self.s3_upload_path.rstrip("/") + "/",
@@ -4550,12 +4583,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if not inference_component_name:
                 inference_component_name = f"{endpoint_name}-inference-component"
 
-            artifact_url = self._resolve_model_artifact_uri()
-
             ic_spec = InferenceComponentSpecification(
-                container=InferenceComponentContainerSpecification(
-                    image=self.image_uri, artifact_url=artifact_url, environment=self.env_vars
-                )
+                model_name=self.built_model.model_name,
             )
 
             if inference_config is not None:
@@ -4618,11 +4647,23 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return endpoint
 
     def _fetch_peft(self) -> Optional[str]:
-        """Fetch the PEFT (Parameter-Efficient Fine-Tuning) type from the training job."""
+        """Fetch the PEFT (Parameter-Efficient Fine-Tuning) type from the training job or model package."""
         if isinstance(self.model, TrainingJob):
             training_job = self.model
         elif isinstance(self.model, ModelTrainer):
             training_job = self.model._latest_training_job
+        elif isinstance(self.model, (ModelPackage, BaseTrainer, AgentRFTJob)):
+            model_package = self._fetch_model_package()
+            if model_package:
+                container = model_package.inference_specification.containers[0]
+                if getattr(container, "is_checkpoint", None) is False:
+                    return None
+                recipe_name = getattr(
+                    getattr(container, "base_model", None), "recipe_name", ""
+                ) or ""
+                if "lora" in recipe_name.lower():
+                    return "LORA"
+            return None
         else:
             return None
 

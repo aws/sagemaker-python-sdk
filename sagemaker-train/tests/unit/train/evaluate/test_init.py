@@ -133,9 +133,9 @@ class TestModuleAll:
             assert cls in __all__, f"{cls} not found in __all__"
 
     def test_all_items_count(self):
-        """Test that __all__ contains exactly 10 items."""
+        """Test that __all__ contains exactly 11 items."""
         from sagemaker.train.evaluate import __all__
-        assert len(__all__) == 10
+        assert len(__all__) == 11
 
     def test_all_items_are_strings(self):
         """Test that all items in __all__ are strings."""
@@ -366,6 +366,7 @@ class TestNamespaceIsolation:
             "BenchMarkEvaluator",
             "CustomScorerEvaluator",
             "LLMAsJudgeEvaluator",
+            "MultiTurnRLEvaluator",
             # Benchmark utility functions
             "get_benchmarks",
             "get_benchmark_properties",

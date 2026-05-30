@@ -32,6 +32,20 @@ def wrap_model(model: Any) -> Any:
 
     Returns:
         A wrapped model that transparently injects RFT headers.
+
+    Example::
+
+        from strands.models.openai import OpenAIModel
+        from strands import Agent
+        from sagemaker.train.rft.adapters.strands import wrap_model
+
+        model = OpenAIModel(
+            client_args={"api_key": "...", "base_url": "..."},
+            model_id="my-model",
+        )
+        wrapped = wrap_model(model)
+        agent = Agent(model=wrapped, tools=[...])
+        result = agent("Solve this task")
     """
     return _RFTModelWrapper(model)
 

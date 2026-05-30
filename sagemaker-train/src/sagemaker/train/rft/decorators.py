@@ -26,6 +26,22 @@ def sagemaker_rft_handler(func: Callable) -> Callable:
     4. Clears context when done
 
     Works with both sync and async functions.
+
+    Example::
+
+        from sagemaker.train.rft import rft_handler
+        from sagemaker.train.rft.adapters.strands import wrap_model
+        from strands import Agent
+        from strands.models.openai import OpenAIModel
+
+        model = wrap_model(OpenAIModel(client_args={...}, model_id="my-model"))
+        agent = Agent(model=model, tools=[...])
+
+        @app.entrypoint
+        @rft_handler
+        async def invoke_agent(payload):
+            result = await agent.invoke_async(payload["instance"]["prompt"])
+            return {"reward": compute_reward(result)}
     """
     if asyncio.iscoroutinefunction(func):
 

@@ -17527,7 +17527,7 @@ class InferenceRecommendationsJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        job_name: StrPipeVar,
+        job_name: Union[StrPipeVar, object],
         job_type: StrPipeVar,
         role_arn: StrPipeVar,
         input_config: RecommendationJobInputConfig,
@@ -17986,6 +17986,509 @@ class InferenceRecommendationsJob(Base):
             summaries_key="Steps",
             summary_name="InferenceRecommendationsJobStep",
             resource_cls=InferenceRecommendationsJobStep,
+            list_method_kwargs=operation_input_args,
+        )
+
+
+class Job(Base):
+    """
+    Class representing resource Job
+
+    Attributes:
+        job_name:
+        job_arn:
+        role_arn:
+        job_category:
+        job_config_schema_version:
+        creation_time:
+        last_modified_time:
+        job_status:
+        secondary_status:
+        secondary_status_transitions:
+        job_config_document:
+        end_time:
+        failure_reason:
+        tags:
+
+    """
+
+    job_name: StrPipeVar
+    job_category: StrPipeVar
+    job_arn: Optional[StrPipeVar] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    job_config_schema_version: Optional[StrPipeVar] = Unassigned()
+    job_config_document: Optional[StrPipeVar] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
+    last_modified_time: Optional[datetime.datetime] = Unassigned()
+    end_time: Optional[datetime.datetime] = Unassigned()
+    job_status: Optional[StrPipeVar] = Unassigned()
+    secondary_status: Optional[StrPipeVar] = Unassigned()
+    secondary_status_transitions: Optional[List[JobSecondaryStatusTransition]] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    tags: Optional[List[Tag]] = Unassigned()
+
+    def get_name(self) -> str:
+        attributes = vars(self)
+        resource_name = "job_name"
+        resource_name_split = resource_name.split("_")
+        attribute_name_candidates = []
+
+        l = len(resource_name_split)
+        for i in range(0, l):
+            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
+
+        for attribute, value in attributes.items():
+            if attribute == "name" or attribute in attribute_name_candidates:
+                return value
+        logger.error("Name attribute not found for object job")
+        return None
+
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {"role_arn": {"type": "string"}}
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "Job", **kwargs
+                ),
+            )
+
+        return wrapper
+
+    @classmethod
+    @populate_inputs_decorator
+    @Base.add_validate_call
+    def create(
+        cls,
+        job_name: StrPipeVar,
+        role_arn: StrPipeVar,
+        job_category: StrPipeVar,
+        job_config_schema_version: StrPipeVar,
+        job_config_document: StrPipeVar,
+        tags: Optional[List[Tag]] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["Job"]:
+        """
+        Create a Job resource
+
+        Parameters:
+            job_name:
+            role_arn:
+            job_category:
+            job_config_schema_version:
+            job_config_document:
+            tags:
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The Job resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceInUse: Resource being accessed is in use.
+            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
+            ResourceNotFound: Resource being access is not found.
+            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
+            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
+            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
+        """
+
+        logger.info("Creating job resource.")
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "JobName": job_name,
+            "RoleArn": role_arn,
+            "JobCategory": job_category,
+            "JobConfigSchemaVersion": job_config_schema_version,
+            "JobConfigDocument": job_config_document,
+            "Tags": tags,
+        }
+
+        operation_input_args = Base.populate_chained_attributes(
+            resource_name="Job", operation_input_args=operation_input_args
+        )
+
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.create_job(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        return cls.get(job_name=job_name, job_category=job_category, session=session, region=region)
+
+    @classmethod
+    @Base.add_validate_call
+    def get(
+        cls,
+        job_name: StrPipeVar,
+        job_category: StrPipeVar,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["Job"]:
+        """
+        Get a Job resource
+
+        Parameters:
+            job_name:
+            job_category:
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The Job resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "JobName": job_name,
+            "JobCategory": job_category,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+        response = client.describe_job(**operation_input_args)
+
+        logger.debug(response)
+
+        # deserialize the response
+        transformed_response = transform(response, "DescribeJobResponse")
+        job = cls(**transformed_response)
+        return job
+
+    @Base.add_validate_call
+    def refresh(
+        self,
+    ) -> Optional["Job"]:
+        """
+        Refresh a Job resource
+
+        Returns:
+            The Job resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "JobName": self.job_name,
+            "JobCategory": self.job_category,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client()
+        response = client.describe_job(**operation_input_args)
+
+        # deserialize response and update self
+        transform(response, "DescribeJobResponse", self)
+        return self
+
+    @Base.add_validate_call
+    def delete(
+        self,
+    ) -> None:
+        """
+        Delete a Job resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceInUse: Resource being accessed is in use.
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = Base.get_sagemaker_client()
+
+        operation_input_args = {
+            "JobName": self.job_name,
+            "JobCategory": self.job_category,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.delete_job(**operation_input_args)
+
+        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
+
+    @Base.add_validate_call
+    def stop(self) -> None:
+        """
+        Stop a Job resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = SageMakerClient().sagemaker_client
+
+        operation_input_args = {
+            "JobName": self.job_name,
+            "JobCategory": self.job_category,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.stop_job(**operation_input_args)
+
+        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
+
+    @Base.add_validate_call
+    def wait(
+        self,
+        poll: int = 5,
+        timeout: Optional[int] = None,
+    ) -> None:
+        """
+        Wait for a Job resource.
+
+        Parameters:
+            poll: The number of seconds to wait between each poll.
+            timeout: The maximum number of seconds to wait before timing out.
+
+        Raises:
+            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
+            FailedStatusError:   If the resource reaches a failed state.
+            WaiterError: Raised when an error occurs while waiting.
+
+        """
+        terminal_states = ["Completed", "Failed", "Stopped", "DeleteFailed"]
+        start_time = time.time()
+
+        progress = Progress(
+            SpinnerColumn("bouncingBar"),
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+        )
+        progress.add_task("Waiting for Job...")
+        status = Status("Current status:")
+
+        with Live(
+            Panel(
+                Group(progress, status),
+                title="Wait Log Panel",
+                border_style=Style(color=Color.BLUE.value),
+            ),
+            transient=True,
+        ):
+            while True:
+                self.refresh()
+                current_status = self.job_status
+                status.update(f"Current status: [bold]{current_status}")
+
+                if current_status in terminal_states:
+                    logger.info(f"Final Resource Status: [bold]{current_status}")
+
+                    if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="Job", status=current_status, reason=self.failure_reason
+                        )
+
+                    return
+
+                if timeout is not None and time.time() - start_time >= timeout:
+                    raise TimeoutExceededError(
+                        resource_type="Job",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
+                    )
+                time.sleep(poll)
+
+    @Base.add_validate_call
+    def wait_for_delete(
+        self,
+        poll: int = 5,
+        timeout: Optional[int] = None,
+    ) -> None:
+        """
+        Wait for a Job resource to be deleted.
+
+        Parameters:
+            poll: The number of seconds to wait between each poll.
+            timeout: The maximum number of seconds to wait before timing out.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
+            DeleteFailedStatusError:   If the resource reaches a failed state.
+            WaiterError: Raised when an error occurs while waiting.
+        """
+        start_time = time.time()
+
+        progress = Progress(
+            SpinnerColumn("bouncingBar"),
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+        )
+        progress.add_task("Waiting for Job to be deleted...")
+        status = Status("Current status:")
+
+        with Live(
+            Panel(
+                Group(progress, status),
+                title="Wait Log Panel",
+                border_style=Style(color=Color.BLUE.value),
+            )
+        ):
+            while True:
+                try:
+                    self.refresh()
+                    current_status = self.job_status
+                    status.update(f"Current status: [bold]{current_status}")
+
+                    if timeout is not None and time.time() - start_time >= timeout:
+                        raise TimeoutExceededError(resource_type="Job", status=current_status)
+                except botocore.exceptions.ClientError as e:
+                    error_code = e.response["Error"]["Code"]
+
+                    if "ResourceNotFound" in error_code or "ValidationException" in error_code:
+                        logger.info("Resource was not found. It may have been deleted.")
+                        return
+                    raise e
+                time.sleep(poll)
+
+    @classmethod
+    @Base.add_validate_call
+    def get_all(
+        cls,
+        job_category: StrPipeVar,
+        creation_time_after: Optional[datetime.datetime] = Unassigned(),
+        creation_time_before: Optional[datetime.datetime] = Unassigned(),
+        last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
+        last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> ResourceIterator["Job"]:
+        """
+        Get all Job resources
+
+        Parameters:
+            job_category:
+            next_token:
+            max_results:
+            creation_time_after:
+            creation_time_before:
+            last_modified_time_after:
+            last_modified_time_before:
+            name_contains:
+            sort_by:
+            sort_order:
+            status_equals:
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            Iterator for listed Job resources.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+        """
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "JobCategory": job_category,
+            "CreationTimeAfter": creation_time_after,
+            "CreationTimeBefore": creation_time_before,
+            "LastModifiedTimeAfter": last_modified_time_after,
+            "LastModifiedTimeBefore": last_modified_time_before,
+            "NameContains": name_contains,
+            "SortBy": sort_by,
+            "SortOrder": sort_order,
+            "StatusEquals": status_equals,
+        }
+
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        return ResourceIterator(
+            client=client,
+            list_method="list_jobs",
+            summaries_key="JobSummaries",
+            summary_name="JobSummary",
+            resource_cls=Job,
             list_method_kwargs=operation_input_args,
         )
 

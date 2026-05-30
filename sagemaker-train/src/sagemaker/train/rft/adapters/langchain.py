@@ -28,6 +28,15 @@ def create_http_client(**kwargs) -> httpx.Client:
 
     Returns:
         httpx.Client configured with header injection.
+
+    Example::
+
+        from sagemaker.train.rft.adapters.langchain import create_http_client
+        from langchain_openai import ChatOpenAI
+
+        http_client = create_http_client()
+        llm = ChatOpenAI(model="gpt-4", http_client=http_client)
+        response = llm.invoke("Hello")
     """
     event_hooks = kwargs.pop("event_hooks", {})
     request_hooks = event_hooks.get("request", [])
@@ -46,6 +55,15 @@ def create_async_http_client(**kwargs) -> httpx.AsyncClient:
 
     Returns:
         httpx.AsyncClient configured with header injection.
+
+    Example::
+
+        from sagemaker.train.rft.adapters.langchain import create_async_http_client
+        from langchain_openai import ChatOpenAI
+
+        async_client = create_async_http_client()
+        llm = ChatOpenAI(model="gpt-4", http_async_client=async_client)
+        response = await llm.ainvoke("Hello")
     """
     event_hooks = kwargs.pop("event_hooks", {})
     request_hooks = event_hooks.get("request", [])
@@ -62,5 +80,17 @@ def create_http_clients(**kwargs) -> tuple[httpx.Client, httpx.AsyncClient]:
 
     Returns:
         Tuple of (httpx.Client, httpx.AsyncClient).
+
+    Example::
+
+        from sagemaker.train.rft.adapters.langchain import create_http_clients
+        from langchain_openai import ChatOpenAI
+
+        http_client, async_client = create_http_clients()
+        llm = ChatOpenAI(
+            model="gpt-4",
+            http_client=http_client,
+            http_async_client=async_client,
+        )
     """
     return create_http_client(**kwargs), create_async_http_client(**kwargs)

@@ -3639,6 +3639,21 @@ SHAPE_DAG = {
         "members": [{"name": "JobArn", "shape": "RecommendationJobArn", "type": "string"}],
         "type": "structure",
     },
+    "CreateJobRequest": {
+        "members": [
+            {"name": "JobName", "shape": "JobName", "type": "string"},
+            {"name": "RoleArn", "shape": "RoleArn", "type": "string"},
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+            {"name": "JobConfigSchemaVersion", "shape": "JobSchemaVersion", "type": "string"},
+            {"name": "JobConfigDocument", "shape": "JobConfigDocument", "type": "string"},
+            {"name": "Tags", "shape": "TagList", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "CreateJobResponse": {
+        "members": [{"name": "JobArn", "shape": "JobArn", "type": "string"}],
+        "type": "structure",
+    },
     "CreateLabelingJobRequest": {
         "members": [
             {"name": "LabelingJobName", "shape": "LabelingJobName", "type": "string"},
@@ -5057,6 +5072,14 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "DeleteJobRequest": {
+        "members": [
+            {"name": "JobName", "shape": "JobName", "type": "string"},
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "DeleteJobResponse": {"members": [], "type": "structure"},
     "DeleteMlflowAppRequest": {
         "members": [{"name": "Arn", "shape": "MlflowAppArn", "type": "string"}],
         "type": "structure",
@@ -6514,6 +6537,51 @@ SHAPE_DAG = {
                 "type": "list",
             },
             {"name": "EndpointPerformances", "shape": "EndpointPerformances", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "DescribeJobRequest": {
+        "members": [
+            {"name": "JobName", "shape": "JobName", "type": "string"},
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "DescribeJobResponse": {
+        "members": [
+            {"name": "JobName", "shape": "JobName", "type": "string"},
+            {"name": "JobArn", "shape": "JobArn", "type": "string"},
+            {"name": "RoleArn", "shape": "RoleArn", "type": "string"},
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+            {"name": "JobConfigSchemaVersion", "shape": "JobSchemaVersion", "type": "string"},
+            {"name": "JobConfigDocument", "shape": "JobConfigDocument", "type": "string"},
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "LastModifiedTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "EndTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "JobStatus", "shape": "JobStatus", "type": "string"},
+            {"name": "SecondaryStatus", "shape": "JobSecondaryStatus", "type": "string"},
+            {
+                "name": "SecondaryStatusTransitions",
+                "shape": "JobSecondaryStatusTransitions",
+                "type": "list",
+            },
+            {"name": "FailureReason", "shape": "FailureReason", "type": "string"},
+            {"name": "Tags", "shape": "TagList", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "DescribeJobSchemaVersionRequest": {
+        "members": [
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+            {"name": "JobConfigSchemaVersion", "shape": "JobSchemaVersion", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "DescribeJobSchemaVersionResponse": {
+        "members": [
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+            {"name": "JobConfigSchemaVersion", "shape": "JobSchemaVersion", "type": "string"},
+            {"name": "JobConfigSchema", "shape": "JobConfigDocument", "type": "string"},
         ],
         "type": "structure",
     },
@@ -10130,6 +10198,45 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "JobConfigSchemaVersionSummary": {
+        "members": [
+            {"name": "JobConfigSchemaVersion", "shape": "JobSchemaVersion", "type": "string"}
+        ],
+        "type": "structure",
+    },
+    "JobConfigSchemas": {
+        "member_shape": "JobConfigSchemaVersionSummary",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "JobSecondaryStatusTransition": {
+        "members": [
+            {"name": "Status", "shape": "JobSecondaryStatus", "type": "string"},
+            {"name": "StartTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "EndTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "StatusMessage", "shape": "String", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "JobSecondaryStatusTransitions": {
+        "member_shape": "JobSecondaryStatusTransition",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "JobSummaries": {"member_shape": "JobSummary", "member_type": "structure", "type": "list"},
+    "JobSummary": {
+        "members": [
+            {"name": "JobArn", "shape": "JobArn", "type": "string"},
+            {"name": "JobName", "shape": "JobName", "type": "string"},
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+            {"name": "JobStatus", "shape": "JobStatus", "type": "string"},
+            {"name": "JobSecondaryStatus", "shape": "JobSecondaryStatus", "type": "string"},
+            {"name": "CreationTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "LastModifiedTime", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "EndTime", "shape": "Timestamp", "type": "timestamp"},
+        ],
+        "type": "structure",
+    },
     "JsonContentTypes": {
         "member_shape": "JsonContentType",
         "member_type": "string",
@@ -11295,6 +11402,45 @@ SHAPE_DAG = {
                 "type": "list",
             },
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "ListJobSchemaVersionsRequest": {
+        "members": [
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+            {"name": "MaxResults", "shape": "MaxResults", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "ListJobSchemaVersionsResponse": {
+        "members": [
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+            {"name": "JobConfigSchemas", "shape": "JobConfigSchemas", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "ListJobsRequest": {
+        "members": [
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+            {"name": "MaxResults", "shape": "MaxResults", "type": "integer"},
+            {"name": "CreationTimeAfter", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "CreationTimeBefore", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "LastModifiedTimeAfter", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "LastModifiedTimeBefore", "shape": "Timestamp", "type": "timestamp"},
+            {"name": "NameContains", "shape": "NameContains", "type": "string"},
+            {"name": "SortBy", "shape": "SortBy", "type": "string"},
+            {"name": "SortOrder", "shape": "SortOrder", "type": "string"},
+            {"name": "StatusEquals", "shape": "JobStatus", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "ListJobsResponse": {
+        "members": [
+            {"name": "NextToken", "shape": "NextToken", "type": "string"},
+            {"name": "JobSummaries", "shape": "JobSummaries", "type": "list"},
         ],
         "type": "structure",
     },
@@ -16400,6 +16546,14 @@ SHAPE_DAG = {
         "members": [{"name": "JobName", "shape": "RecommendationJobName", "type": "string"}],
         "type": "structure",
     },
+    "StopJobRequest": {
+        "members": [
+            {"name": "JobName", "shape": "JobName", "type": "string"},
+            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "StopJobResponse": {"members": [], "type": "structure"},
     "StopLabelingJobRequest": {
         "members": [{"name": "LabelingJobName", "shape": "LabelingJobName", "type": "string"}],
         "type": "structure",

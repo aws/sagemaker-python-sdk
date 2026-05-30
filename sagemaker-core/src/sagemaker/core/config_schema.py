@@ -454,6 +454,10 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                         },
                                     },
                                 },
+                                "Job": {
+                                    "type": "object",
+                                    "properties": {"role_arn": {"type": "string"}},
+                                },
                                 "LabelingJob": {
                                     "type": "object",
                                     "properties": {

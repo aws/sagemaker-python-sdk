@@ -1113,7 +1113,7 @@ class S3ModelDataSource(Base):
     manifest_etag: The ETag associated with Manifest S3 URI.
     """
 
-    s3_uri: StrPipeVar
+    s3_uri: Optional[StrPipeVar] = Unassigned()
     s3_data_type: StrPipeVar
     compression_type: StrPipeVar
     model_access_config: Optional[ModelAccessConfig] = Unassigned()
@@ -7488,6 +7488,7 @@ class InferenceComponentComputeResourceRequirements(Base):
     max_memory_required_in_mb: The maximum MB of memory to allocate to run a model that you assign to an inference component.
     """
 
+    min_memory_required_in_mb: Optional[int] = Unassigned()
     number_of_cpu_cores_required: Optional[float] = Unassigned()
     number_of_accelerator_devices_required: Optional[float] = Unassigned()
     min_memory_required_in_mb: Optional[int] = Unassigned()
@@ -10901,6 +10902,24 @@ class EndpointPerformance(Base):
     endpoint_info: EndpointInfo
 
 
+class JobSecondaryStatusTransition(Base):
+    """
+    JobSecondaryStatusTransition
+
+    Attributes
+    ----------------------
+    status
+    start_time
+    end_time
+    status_message
+    """
+
+    status: StrPipeVar
+    start_time: datetime.datetime
+    end_time: Optional[datetime.datetime] = Unassigned()
+    status_message: Optional[StrPipeVar] = Unassigned()
+
+
 class LabelCounters(Base):
     """
     LabelCounters
@@ -12715,7 +12734,7 @@ class InferenceRecommendationsJob(Base):
     model_package_version_arn: The Amazon Resource Name (ARN) of a versioned model package.
     """
 
-    job_name: StrPipeVar
+    job_name: Union[StrPipeVar, object]
     job_description: StrPipeVar
     job_type: StrPipeVar
     job_arn: StrPipeVar
@@ -12769,7 +12788,7 @@ class InferenceRecommendationsJobStep(Base):
     """
 
     step_type: StrPipeVar
-    job_name: StrPipeVar
+    job_name: Union[StrPipeVar, object]
     status: StrPipeVar
     inference_benchmark: Optional[RecommendationJobInferenceBenchmark] = Unassigned()
 
@@ -12789,6 +12808,44 @@ class InstanceGroupHealthCheckConfiguration(Base):
     instance_group_name: StrPipeVar
     deep_health_checks: List[StrPipeVar]
     instance_ids: Optional[List[StrPipeVar]] = Unassigned()
+
+
+class JobConfigSchemaVersionSummary(Base):
+    """
+    JobConfigSchemaVersionSummary
+
+    Attributes
+    ----------------------
+    job_config_schema_version
+    """
+
+    job_config_schema_version: StrPipeVar
+
+
+class JobSummary(Base):
+    """
+    JobSummary
+
+    Attributes
+    ----------------------
+    job_arn
+    job_name
+    job_category
+    job_status
+    job_secondary_status
+    creation_time
+    last_modified_time
+    end_time
+    """
+
+    job_arn: StrPipeVar
+    job_name: Union[StrPipeVar, object]
+    job_category: StrPipeVar
+    job_status: StrPipeVar
+    job_secondary_status: StrPipeVar
+    creation_time: datetime.datetime
+    last_modified_time: datetime.datetime
+    end_time: Optional[datetime.datetime] = Unassigned()
 
 
 class LabelCountersForWorkteam(Base):

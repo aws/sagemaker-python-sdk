@@ -44,6 +44,10 @@ def _setup_mlflow_integration(training_job: TrainingJob) -> Tuple[
         if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
             return None, None, None
 
+        # Check if mlflow_config exists and is assigned
+        if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
+            return None, None, None
+
         sm_client = boto3.client('sagemaker')
         mlflow_arn = training_job.mlflow_config.mlflow_resource_arn
 
@@ -181,7 +185,7 @@ def get_mlflow_url(training_job) -> str:
     
     if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
         raise ValueError("Training job does not have MLflow configured")
-    
+
     from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
 
     mlflow_arn = training_job.mlflow_config.mlflow_resource_arn
