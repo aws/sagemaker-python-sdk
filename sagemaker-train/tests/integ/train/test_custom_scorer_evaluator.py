@@ -246,6 +246,7 @@ class TestCustomScorerEvaluatorIntegration:
 
     # @pytest.mark.skip(reason="Built-in metric evaluation - to be enabled when needed")
     @pytest.mark.gpu_intensive
+    @pytest.mark.serial
     def test_custom_scorer_with_builtin_metric(self):
         """
         Test custom scorer evaluation with built-in metric.
@@ -299,6 +300,7 @@ class TestCustomScorerEvaluatorIntegration:
 
     # @pytest.mark.skip(reason="Base model only evaluation - not working yet per notebook")
     @pytest.mark.gpu_intensive
+    @pytest.mark.serial
     def test_custom_scorer_base_model_only(self):
         """
         Test custom scorer evaluation with base model only (no fine-tuned model).
