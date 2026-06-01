@@ -450,12 +450,45 @@ class TestFinetuneUtils:
         mock_validate_s3.assert_called_once_with("s3://bucket/output", mock_session)
 
     def test__convert_input_data_to_channels(self):
+        """Test basic conversion of InputData to Channel, including content_type."""
+        input_data = [InputData(channel_name="train", data_source="s3://bucket/data", content_type="application/json")]
+        channels = _convert_input_data_to_channels(input_data)
+        
+        assert len(channels) == 1
+        assert channels[0].channel_name == "train"
+        assert channels[0].content_type == "application/json"
 
+    def test__convert_input_data_to_channels_with_content_type_preserved(self):
+        """Test that content_type is preserved when converting InputData to Channel."""
+        input_data = [
+            InputData(channel_name="train", data_source="s3://bucket/data", content_type="application/json"),
+            InputData(channel_name="validation", data_source="s3://bucket/val", content_type="text/csv"),
+        ]
+        channels = _convert_input_data_to_channels(input_data)
+        
+        assert len(channels) == 2
+        assert channels[0].channel_name == "train"
+        assert channels[0].content_type == "application/json"
+        assert channels[1].channel_name == "validation"
+        assert channels[1].content_type == "text/csv"
+
+    def test__convert_input_data_to_channels_without_content_type(self):
+        """Test that omitting content_type doesn't cause issues."""
         input_data = [InputData(channel_name="train", data_source="s3://bucket/data")]
         channels = _convert_input_data_to_channels(input_data)
         
         assert len(channels) == 1
         assert channels[0].channel_name == "train"
+        assert channels[0].content_type is None
+
+    def test__convert_input_data_to_channels_without_compression_type(self):
+        """Test that InputData without compression_type doesn't cause issues in conversion."""
+        input_data = [InputData(channel_name="train", data_source="s3://bucket/data", content_type="application/json")]
+        channels = _convert_input_data_to_channels(input_data)
+        
+        assert len(channels) == 1
+        assert channels[0].channel_name == "train"
+        assert channels[0].compression_type is None
 
     def test__validate_eula_for_gated_model_with_model_package(self):
         """Test EULA validation returns True for ModelPackage input"""
