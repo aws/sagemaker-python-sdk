@@ -89,8 +89,11 @@ def _live_logging_deploy_done_with_progress(sagemaker_client, endpoint_name, pag
                 progress_tracker.log(f"✅ Created endpoint with name {endpoint_name}")
             elif endpoint_status != "InService":
                 time.sleep(poll)
+            # Return immediately when endpoint is no longer creating.
+            # Log fetching below is best-effort and must not block completion.
+            return desc
 
-        # Fetch and route CloudWatch logs to progress tracker
+        # Fetch and route CloudWatch logs to progress tracker (only while Creating)
         pages = paginator.paginate(
             logGroupName=f"/aws/sagemaker/Endpoints/{endpoint_name}",
             logStreamNamePrefix="AllTraffic/",
@@ -108,9 +111,6 @@ def _live_logging_deploy_done_with_progress(sagemaker_client, endpoint_name, pag
         if progress_tracker:
             progress_tracker.update_status(endpoint_status)
         
-        # Return desc if we should stop polling
-        if stop:
-            return desc
     except ClientError as e:
         if e.response["Error"]["Code"] == "ResourceNotFoundException":
             return None
