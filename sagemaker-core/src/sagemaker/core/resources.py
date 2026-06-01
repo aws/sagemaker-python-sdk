@@ -8629,6 +8629,9 @@ class Domain(Base):
                             "execution_role_arns": {"type": "array", "items": {"type": "string"}},
                         }
                     },
+                    "studio_web_portal_settings": {
+                        "execution_role_session_name_mode": {"type": "string"}
+                    },
                 },
                 "domain_settings": {
                     "security_group_ids": {"type": "array", "items": {"type": "string"}},
@@ -33481,6 +33484,9 @@ class UserProfile(Base):
                             "assumable_role_arns": {"type": "array", "items": {"type": "string"}},
                             "execution_role_arns": {"type": "array", "items": {"type": "string"}},
                         }
+                    },
+                    "studio_web_portal_settings": {
+                        "execution_role_session_name_mode": {"type": "string"}
                     },
                 }
             }

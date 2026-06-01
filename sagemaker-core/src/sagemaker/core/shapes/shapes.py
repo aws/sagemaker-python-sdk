@@ -1113,9 +1113,9 @@ class S3ModelDataSource(Base):
     manifest_etag: The ETag associated with Manifest S3 URI.
     """
 
-    s3_uri: Optional[StrPipeVar] = Unassigned()
     s3_data_type: StrPipeVar
     compression_type: StrPipeVar
+    s3_uri: Optional[StrPipeVar] = Unassigned()
     model_access_config: Optional[ModelAccessConfig] = Unassigned()
     hub_access_config: Optional[InferenceHubAccessConfig] = Unassigned()
     manifest_s3_uri: Optional[StrPipeVar] = Unassigned()
@@ -7488,7 +7488,6 @@ class InferenceComponentComputeResourceRequirements(Base):
     max_memory_required_in_mb: The maximum MB of memory to allocate to run a model that you assign to an inference component.
     """
 
-    min_memory_required_in_mb: Optional[int] = Unassigned()
     number_of_cpu_cores_required: Optional[float] = Unassigned()
     number_of_accelerator_devices_required: Optional[float] = Unassigned()
     min_memory_required_in_mb: Optional[int] = Unassigned()

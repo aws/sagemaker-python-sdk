@@ -16,6 +16,7 @@ from __future__ import absolute_import
 import math
 import os
 import json
+import re
 import shutil
 import tempfile
 from urllib.request import urlretrieve
@@ -31,6 +32,8 @@ from sagemaker.train.utils import _run_clone_command_silent
 from sagemaker.train.configs import Compute, SourceCode
 from sagemaker.train.distributed import Torchrun, SMP
 from sagemaker.train.constants import SM_RECIPE_YAML
+
+_MODEL_PACKAGE_ARN_PATTERN = re.compile(r"^arn:aws:sagemaker:[a-z0-9-]+:\d{12}:model-package/.+$")
 
 
 def _try_resolve_recipe(recipe, key=None):
@@ -401,10 +404,19 @@ def _get_args_from_nova_recipe(
     run_config = recipe.get("run", {})
     model_name_or_path = run_config.get("model_name_or_path")
     if model_name_or_path:
-        if model_name_or_path.startswith("s3://"):
+        if _MODEL_PACKAGE_ARN_PATTERN.match(model_name_or_path):
+            args.setdefault("model_package_config", {})
+            args["model_package_config"]["source_model_package_arn"] = model_name_or_path
+        elif model_name_or_path.startswith("s3://"):
             args["hyperparameters"]["base_model_location"] = model_name_or_path
         else:
             args["hyperparameters"]["base_model"] = model_name_or_path
+
+    # model_package_group from recipe -> ModelPackageConfig.ModelPackageGroupArn
+    model_package_group = run_config.get("model_package_group")
+    if model_package_group:
+        args.setdefault("model_package_config", {})
+        args["model_package_config"]["model_package_group_arn"] = model_package_group
 
     # Handle distillation configuration
     training_config = recipe.get("training_config", {})
