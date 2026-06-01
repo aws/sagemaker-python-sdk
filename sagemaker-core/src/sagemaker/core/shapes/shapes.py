@@ -9588,6 +9588,7 @@ class ServerlessJobConfig(Base):
     peft:  The parameter-efficient fine-tuning configuration.
     evaluation_type:  The evaluation job type. Required when serverless job type is Evaluation.
     evaluator_arn:  The evaluator Amazon Resource Name (ARN) used as reward function or reward prompt.
+    sequence_length:  The sequence length for the training job.
     """
 
     base_model_arn: StrPipeVar
@@ -9597,6 +9598,7 @@ class ServerlessJobConfig(Base):
     peft: Optional[StrPipeVar] = Unassigned()
     evaluation_type: Optional[StrPipeVar] = Unassigned()
     evaluator_arn: Optional[StrPipeVar] = Unassigned()
+    sequence_length: Optional[StrPipeVar] = Unassigned()
 
 
 class MlflowConfig(Base):

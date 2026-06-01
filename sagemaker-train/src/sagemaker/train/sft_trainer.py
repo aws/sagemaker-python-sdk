@@ -20,7 +20,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_mlflow_config,
     _create_model_package_config,
     _validate_eula_for_gated_model,
-    _validate_hyperparameter_values
+    _validate_hyperparameter_values,
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
@@ -55,19 +55,19 @@ class SFTTrainer(BaseTrainer):
             model="meta-llama/Llama-2-7b-hf",
             model_package_group="my-fine-tuned-models"
         )
-        
+
         # Create training job (non-blocking)
         training_job = trainer.train(
             training_dataset="s3://bucket/train.jsonl",
             wait=False
         )
-        
+
         # Wait for completion
         training_job.wait()
-        
+
         # Refresh job status
         training_job.refresh()
-        
+
         # Get the fine-tuned model artifacts ARN
         model_package_arn = training_job.output_model_package_arn
 
@@ -102,6 +102,10 @@ class SFTTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
             If not specified, uses SageMaker service default (24 hours for serverless training).
+        sequence_length (Optional[str]):
+            The sequence length for the training job. Valid values are
+            "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K".
+            If not specified, the service will use default recipe selection behavior.
     """
 
     def __init__(
@@ -119,16 +123,18 @@ class SFTTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         accept_eula: Optional[bool] = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        sequence_length: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
-        
+
         # Resolve model and model name
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
         self.training_type = training_type
 
-        self.model_package_group = _validate_and_resolve_model_package_group(model,
-                                                                                 model_package_group)
+        self.model_package_group = _validate_and_resolve_model_package_group(
+            model, model_package_group
+        )
         self.mlflow_resource_arn = mlflow_resource_arn
         self.mlflow_experiment_name = mlflow_experiment_name
         self.mlflow_run_name = mlflow_run_name
@@ -138,18 +144,23 @@ class SFTTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self.sequence_length = sequence_length
 
         # Initialize fine-tuning options with beta session fallback
-        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
-                                                                     CustomizationTechnique.SFT.value,
-                                                                     self.training_type,
-                                                                     self.sagemaker_session or TrainDefaults.get_sagemaker_session(
-                                                                     sagemaker_session=self.sagemaker_session
-                                                                     ))
-        
+        self.hyperparameters, self._model_arn, is_gated_model = (
+            _get_fine_tuning_options_and_model_arn(
+                self._model_name,
+                CustomizationTechnique.SFT.value,
+                self.training_type,
+                self.sagemaker_session
+                or TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
+                sequence_length=self.sequence_length,
+            )
+        )
+
         # Process hyperparameters
         self._process_hyperparameters()
-        
+
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
 
@@ -157,30 +168,37 @@ class SFTTrainer(BaseTrainer):
         """Remove hyperparameter keys that are handled by constructor inputs."""
         if self.hyperparameters:
             # Remove keys that are handled by constructor inputs
-            if hasattr(self.hyperparameters, 'data_path'):
-                delattr(self.hyperparameters, 'data_path')
-                self.hyperparameters._specs.pop('data_path', None)
-            if hasattr(self.hyperparameters, 'output_path'):
-                delattr(self.hyperparameters, 'output_path')
-                self.hyperparameters._specs.pop('output_path', None)
-            if hasattr(self.hyperparameters, 'data_s3_path'):
-                delattr(self.hyperparameters, 'data_s3_path')
-                self.hyperparameters._specs.pop('data_s3_path', None)
-            if hasattr(self.hyperparameters, 'output_s3_path'):
-                delattr(self.hyperparameters, 'output_s3_path')
-                self.hyperparameters._specs.pop('output_s3_path', None)
-            if hasattr(self.hyperparameters, 'training_data_name'):
-                delattr(self.hyperparameters, 'training_data_name')
-                self.hyperparameters._specs.pop('training_data_name', None)
-            if hasattr(self.hyperparameters, 'validation_data_name'):
-                delattr(self.hyperparameters, 'validation_data_name')
-                self.hyperparameters._specs.pop('validation_data_name', None)
-            if hasattr(self.hyperparameters, 'validation_data_path'):
-                delattr(self.hyperparameters, 'validation_data_path')
-                self.hyperparameters._specs.pop('validation_data_path', None)
+            if hasattr(self.hyperparameters, "data_path"):
+                delattr(self.hyperparameters, "data_path")
+                self.hyperparameters._specs.pop("data_path", None)
+            if hasattr(self.hyperparameters, "output_path"):
+                delattr(self.hyperparameters, "output_path")
+                self.hyperparameters._specs.pop("output_path", None)
+            if hasattr(self.hyperparameters, "data_s3_path"):
+                delattr(self.hyperparameters, "data_s3_path")
+                self.hyperparameters._specs.pop("data_s3_path", None)
+            if hasattr(self.hyperparameters, "output_s3_path"):
+                delattr(self.hyperparameters, "output_s3_path")
+                self.hyperparameters._specs.pop("output_s3_path", None)
+            if hasattr(self.hyperparameters, "training_data_name"):
+                delattr(self.hyperparameters, "training_data_name")
+                self.hyperparameters._specs.pop("training_data_name", None)
+            if hasattr(self.hyperparameters, "validation_data_name"):
+                delattr(self.hyperparameters, "validation_data_name")
+                self.hyperparameters._specs.pop("validation_data_name", None)
+            if hasattr(self.hyperparameters, "validation_data_path"):
+                delattr(self.hyperparameters, "validation_data_path")
+                self.hyperparameters._specs.pop("validation_data_path", None)
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="SFTTrainer.train")
-    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
+    def train(
+        self,
+        training_dataset: Optional[Union[str, DataSet]] = None,
+        validation_dataset: Optional[Union[str, DataSet]] = None,
+        wait: bool = True,
+        wait_timeout: Optional[int] = None,
+        poll: int = 5,
+    ):
         """Execute the SFT training job.
 
         Parameters:
@@ -213,24 +231,26 @@ class SFTTrainer(BaseTrainer):
 
         logger.info(f"Training Job Name: {current_training_job_name}")
 
-        #data
-        input_data_config = _create_input_data_config(training_dataset or self.training_dataset,
-                                                     validation_dataset or self.validation_dataset
-                                                     )
+        # data
+        input_data_config = _create_input_data_config(
+            training_dataset or self.training_dataset, validation_dataset or self.validation_dataset
+        )
         channels = _convert_input_data_to_channels(input_data_config)
 
         output_config = _create_output_config(
             s3_output_path=self.s3_output_path,
             sagemaker_session=sagemaker_session,
-            kms_key_id=self.kms_key_id
+            kms_key_id=self.kms_key_id,
         )
 
-        serverless_config = _create_serverless_config(model_arn=self._model_arn,
-                                                     customization_technique=CustomizationTechnique.SFT.value,
-                                                     training_type=self.training_type,
-                                                     accept_eula=self.accept_eula,
-                                                     job_type=JOB_TYPE
-                                                     )
+        serverless_config = _create_serverless_config(
+            model_arn=self._model_arn,
+            customization_technique=CustomizationTechnique.SFT.value,
+            training_type=self.training_type,
+            accept_eula=self.accept_eula,
+            sequence_length=self.sequence_length,
+            job_type=JOB_TYPE,
+        )
         mlflow_config = _create_mlflow_config(
             sagemaker_session,
             mlflow_resource_arn=self.mlflow_resource_arn,
@@ -239,14 +259,14 @@ class SFTTrainer(BaseTrainer):
         )
 
         final_hyperparameters = self.hyperparameters.to_dict()
-        
+
         # Validate hyperparameter values
         _validate_hyperparameter_values(final_hyperparameters)
 
         model_package_config = _create_model_package_config(
             model_package_group_name=self.model_package_group,
             model=self.model,
-            sagemaker_session=sagemaker_session
+            sagemaker_session=sagemaker_session,
         )
 
         vpc_config = self.networking if self.networking else None
@@ -267,7 +287,7 @@ class SFTTrainer(BaseTrainer):
             "region": sagemaker_session.boto_session.region_name,
             "tags": tags,
         }
-        
+
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
@@ -281,16 +301,15 @@ class SFTTrainer(BaseTrainer):
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
             from sagemaker.core.utils.exceptions import TimeoutExceededError
-            try :
+
+            try:
                 wait_kwargs = {}
                 if wait_timeout is not None:
-                    wait_kwargs['timeout'] = wait_timeout
-                wait_kwargs['poll'] = poll
+                    wait_kwargs["timeout"] = wait_timeout
+                wait_kwargs["poll"] = poll
                 _wait(training_job, **wait_kwargs)
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
 
         self._latest_training_job = training_job
         return training_job
-
-
