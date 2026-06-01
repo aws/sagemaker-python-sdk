@@ -102,7 +102,7 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
 
 
 @pytest.mark.gpu_intensive
-@pytest.mark.skip(reason="TODO: Nova test to be enabled in us-east-1")
+@pytest.mark.us_east_1
 def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test RLVR training workflow with Nova model."""
     # sagemaker_session_us_east_1 fixture is defined in conftest.py (us-east-1 region)
@@ -113,10 +113,10 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
         model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-nova-rlvr-finetuned-models-exp",
         mlflow_run_name="test-nova-rlvr-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/rlvr-nova/grpo-64-sample.jsonl",
-        validation_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/rlvr-nova/grpo-64-sample.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing-us-east-1/output/",
-        custom_reward_function="arn:aws:sagemaker:us-east-1:729646638167:hub-content/sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1",
+        training_dataset="s3://sagemaker-us-east-1-784379639078/input_data/rlvr-nova/grpo-64-sample.jsonl",
+        validation_dataset="s3://sagemaker-us-east-1-784379639078/input_data/rlvr-nova/grpo-64-sample.jsonl",
+        s3_output_path="s3://sagemaker-us-east-1-784379639078/output/",
+        custom_reward_function="arn:aws:sagemaker:us-east-1:784379639078:hub-content/sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1",
         accept_eula=True,
         sagemaker_session=sagemaker_session_us_east_1,
         base_job_name=f"rlvr-nova-integ-{unique_id}",
@@ -124,7 +124,7 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     training_job = rlvr_trainer.train(wait=False)
     
     # Manual wait loop
-    max_wait_time = 3600
+    max_wait_time = 10800  # 3 hour timeout (Nova training takes >1 hour)
     poll_interval = 30
     start_time = time.time()
     

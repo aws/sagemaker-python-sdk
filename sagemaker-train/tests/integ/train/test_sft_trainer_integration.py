@@ -97,7 +97,7 @@ def test_sft_trainer_with_validation_dataset(sagemaker_session):
 
 
 @pytest.mark.gpu_intensive
-@pytest.mark.skip(reason="TODO: Nova test to be enabled in us-east-1")
+@pytest.mark.us_east_1
 def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test SFT trainer with Nova model."""
     # sagemaker_session_us_east_1 fixture is defined in conftest.py (us-east-1 region)
@@ -109,8 +109,8 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
         model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-nova-finetuned-models-exp",
         mlflow_run_name="test-nova-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/sft-nova/sft_200_samples.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing-us-east-1/output/",
+        training_dataset="s3://sagemaker-us-east-1-784379639078/input_data/sft-nova/sft_200_samples.jsonl",
+        s3_output_path="s3://sagemaker-us-east-1-784379639078/output/",
         sagemaker_session=sagemaker_session_us_east_1,
         base_job_name=f"sft-nova-integ-{unique_id}",
     )
@@ -119,8 +119,8 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     training_job = sft_trainer_nova.train(wait=False)
 
     # Manual wait loop
-    max_wait_time = 3600  # 1 hour timeout
-    poll_interval = 30  # Check every 30 seconds
+    max_wait_time = 10800  # 3 hour timeout (Nova training takes >1 hour)
+    poll_interval = 30    # Check every 30 seconds
     start_time = time.time()
 
     while time.time() - start_time < max_wait_time:
