@@ -20,6 +20,7 @@ import time
 import pytest
 import random
 import logging
+from botocore.config import Config
 from datetime import datetime, timezone, timedelta
 
 
@@ -404,7 +405,14 @@ class TestModelCustomizationDeployment:
     @pytest.fixture(scope="class")
     def bedrock_runtime(self, setup_config):
         """Create Bedrock runtime client."""
-        return boto3.client('bedrock-runtime', region_name=setup_config["region"])
+        # Adding config based on: https://docs.aws.amazon.com/bedrock/latest/userguide/invoke-imported-model.html#handle-model-not-ready-exception
+        config = Config(
+            retries={
+                'total_max_attempts': 10,
+                'mode': 'standard'
+            }
+        )
+        return boto3.client('bedrock-runtime', region_name=setup_config["region"], config=config)
 
     @pytest.fixture(scope="class")
     def deployed_model_arn(self, training_job, bedrock_client, s3_client, setup_config):
@@ -575,12 +583,17 @@ class TestModelCustomizationDeployment:
     # TODO: Fix using provisioned throughput or better wait mechanism
     @pytest.mark.slow
     def test_bedrock_model_invoke(self, deployed_model_arn, bedrock_runtime):
+        logger.warning(
+            "This test is known to be flaky due to 'model not ready' exceptions from Bedrock. "
+            "See: https://docs.aws.amazon.com/bedrock/latest/userguide/invoke-imported-model.html"
+            "#handle-model-not-ready-exception"
+        )
         """Test invoking the imported Bedrock model to ensure it works end-to-end.
 
         Retries on failure since models can take several minutes
         to become ready after import.
         """
-        max_retries = 5
+        max_retries = 2
         base_delay = 10
 
         for attempt in range(max_retries):
