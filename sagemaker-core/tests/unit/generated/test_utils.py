@@ -8,7 +8,18 @@ from sagemaker.core.shapes import (
     TrialComponent,
     TrialComponentParameterValue,
 )
-from sagemaker.core.utils.utils import *
+from sagemaker.core.utils.utils import (
+    configure_logging,
+    is_snake_case,
+    snake_to_pascal,
+    pascal_to_snake,
+    is_not_primitive,
+    is_primitive_class,
+    serialize,
+    ResourceIterator,
+    SageMakerClient,
+    Unassigned,
+)
 
 
 LIST_TRAINING_JOB_RESPONSE_WITH_NEXT_TOKEN = {
@@ -266,7 +277,6 @@ def test_next_with_custom_key_mapping(resource_iterator_with_custom_key_mapping)
             try:
                 next_item = next(iterator)
                 assert isinstance(next_item, DataQualityJobDefinition)
-                print(next_item)
                 expected_data_quality_job_definition_data = (
                     LIST_DATA_QUALITY_JOB_DEFINITION_RESPONSE_WITHOUT_NEXT_TOKEN[
                         "JobDefinitionSummaries"
@@ -303,7 +313,6 @@ def test_next_with_primitive_class(resource_iterator_with_primitive_class):
         try:
             next_item = next(iterator)
             assert isinstance(next_item, str)
-            print(next_item)
             expected_image_version_alias_data = LIST_ALIASES_RESPONSE_WITHOUT_NEXT_TOKEN[
                 "SageMakerImageVersionAliases"
             ][index]
@@ -385,6 +394,25 @@ def test_serialize_method_nested_shape():
             "StringValue": "string",
         },
     }
+
+
+def test_serialize_shape_preserves_falsy_attribute_values():
+    """Regression: _serialize_shape should preserve falsy values like empty string, 0, False."""
+    # TrialComponentParameterValue with number_value=0 should preserve the 0
+    param_zero = TrialComponentParameterValue(number_value=0)
+    serialized = serialize(param_zero)
+    assert serialized["NumberValue"] == 0
+
+    # TrialComponentParameterValue with string_value="" should preserve the empty string
+    param_empty_str = TrialComponentParameterValue(string_value="")
+    serialized = serialize(param_empty_str)
+    assert serialized["StringValue"] == ""
+
+    # Test that Unassigned values are still excluded
+    param_unassigned = TrialComponentParameterValue()
+    serialized = serialize(param_unassigned)
+    assert "NumberValue" not in serialized
+    assert "StringValue" not in serialized
 
 
 class TestUnassignedBehavior:
