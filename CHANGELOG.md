@@ -1,4 +1,20 @@
 # Changelog
+## v3.13.0 (2026-06-02)
+### New Features
+
+- **feat: Model customization** - Add new finetuning Trainer - MultiTurnRLTrainer(Multi-Turn Reinforcement Learning)
+- **feat: Model customization** - Add new evaluator - MultiTurnRLEvaluator
+
+### Documentation
+
+- Add details for MTRL trainer along with other finetuning interfaces under Model customization Section - https://sagemaker.readthedocs.io/en/stable/model_customization/model_customization.html
+- Add details for MTRL evaluator along with existing evaluators.
+
+### Bug Fixes
+
+- fix: set sagemaker_config=None on mock session in test_from_jumpstart_config_applies_volume_size
+- Restore BatchTransformInput.destination attribute in v3
+
 ## v3.12.0 (2026-05-19)
 
 ### New Features
