@@ -2,6 +2,11 @@
 
 ## v1.13.0 (2026-06-02)
 
+### New Features
+
+- **feat: Model customization** - Add new finetuning Trainer - MultiTurnRLTrainer(Multi-Turn Reinforcement Learning)
+- **feat: Model customization** - Add new evaluator - MultiTurnRLEvaluator
+
 ### Bug Fixes
 
 - fix: apply gpu_intensive mark at test-level instead of module-level (#5896)
