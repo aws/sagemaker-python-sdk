@@ -467,7 +467,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     def _initialize_network_config(self) -> None:
         """Initialize network configuration from Networking object."""
         if self.network:
-            if self.network.vpc_config:
+            if hasattr(self.network, "vpc_config") and self.network.vpc_config:
                 self.vpc_config = self.network.vpc_config
             else:
                 self.vpc_config = (
@@ -2847,7 +2847,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self._deserializer = deserializer
 
         data_capture_config = kwargs.get("data_capture_config", None)
-        volume_size = kwargs.get("volume_size", None)
+        volume_size = kwargs.get("volume_size", getattr(self, "volume_size", None))
         inference_recommendation_id = kwargs.get("inference_recommendation_id", None)
         explainer_config = kwargs.get("explainer_config", None)
         endpoint_logging = kwargs.get("endpoint_logging", False)
@@ -3693,6 +3693,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             "container_startup_health_check_timeout"
         )
         mb_instance.inference_ami_version = deploy_kwargs.get("inference_ami_version")
+        mb_instance.volume_size = deploy_kwargs.get("volume_size")
 
         # Apply network isolation from JumpStart model spec if not set by user via network param
         if not mb_instance._enable_network_isolation and deploy_kwargs.get(

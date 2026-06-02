@@ -571,9 +571,11 @@ def _serialize_dict(value: Dict) -> dict:
         dict: The serialized dict
     """
     serialized_dict = {}
+    # Drop only Unassigned/None; preserve valid falsy values like False, 0, "".
     for k, v in value.items():
-        if serialize_result := serialize(v):
-            serialized_dict.update({k: serialize_result})
+        serialize_result = serialize(v)
+        if serialize_result is not None:
+            serialized_dict[k] = serialize_result
     return serialized_dict
 
 
@@ -588,8 +590,10 @@ def _serialize_list(value: List) -> list:
         list: The serialized list
     """
     serialized_list = []
+    # Drop only Unassigned/None; preserve valid falsy values like False, 0, "".
     for v in value:
-        if serialize_result := serialize(v):
+        serialize_result = serialize(v)
+        if serialize_result is not None:
             serialized_list.append(serialize_result)
     return serialized_list
 

@@ -217,3 +217,21 @@ jobs:
         with:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-integ-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+
+  integ-tests-us-east-1:
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: contains(fromJson(needs.detect-changes.outputs.submodules), 'sagemaker-train')
+    steps:
+      - name: Configure AWS Credentials (us-east-1)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_US_EAST_1_ARN }}
+          aws-region: us-east-1
+          role-duration-seconds: 10800
+
+      - name: Run us-east-1 Integ Tests for sagemaker-train
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: ${{ github.event.repository.name }}-ci-sagemaker-train-integ-tests
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'

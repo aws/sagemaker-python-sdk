@@ -1,4 +1,12 @@
 # Changelog
+## v1.12.0 (2026-05-19)
+
+### New Features
+
+- Add configurable `use_lake_formation_credentials` parameter to the `@feature_processor` decorator for Lake Formation credential vending (#5816)
+- Dynamic Spark image resolution supporting Spark 3.5 with Python 3.12 (#5816)
+- Export `IcebergProperties` to the `feature_store` public API surface (#5816)
+
 ## v1.11.0 (2026-05-12)
 
 ### New Features

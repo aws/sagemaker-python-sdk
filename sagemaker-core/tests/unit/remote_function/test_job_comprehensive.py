@@ -131,9 +131,20 @@ class TestJobSettingsValidation:
         with patch.object(sys, "version_info", (3, 8, 0)):
             with pytest.raises(
                 ValueError,
-                match="SageMaker Spark image for remote job only supports Python version 3.9",
+                match="SageMaker Spark image for remote job only supports Python versions 3.9 and 3.12",
             ):
                 _JobSettings._get_default_spark_image(mock_session)
+
+    @patch("sagemaker.core.remote_function.job.image_uris.retrieve", return_value="mock-image-uri")
+    def test_get_default_spark_image_auto_detects_pyspark_version(
+        self, mock_retrieve, mock_session
+    ):
+        mock_pyspark = MagicMock(__version__="3.5.1")
+        with patch.object(sys, "version_info", (3, 9, 0)):
+            with patch.dict("sys.modules", {"pyspark": mock_pyspark}):
+                result = _JobSettings._get_default_spark_image(mock_session)
+        assert result == "mock-image-uri"
+        assert mock_retrieve.call_args.kwargs["version"] == "3.5"
 
 
 class TestJobMethods:

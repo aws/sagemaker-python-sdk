@@ -40,6 +40,7 @@ def feature_processor(
     parameters: Optional[Dict[str, Union[str, Dict]]] = None,
     enable_ingestion: bool = True,
     spark_config: Dict[str, str] = None,
+    use_lake_formation_credentials: bool = False,
 ) -> Callable:
     """Decorator to facilitate feature engineering for Feature Groups.
 
@@ -96,6 +97,8 @@ def feature_processor(
             development phase to ensure that data is not used until the function is ready. It also
             useful for users that want to manage their own data ingestion. Defaults to True.
         spark_config (Dict[str, str]): A dict contains the key-value paris for Spark configurations.
+        use_lake_formation_credentials (bool, optional): Whether to use Lake Formation credential
+            vending for data ingestion. Defaults to False.
 
     Raises:
         IngestionError: If any rows are not ingested successfully then a sample of the records,
@@ -114,6 +117,7 @@ def feature_processor(
             parameters=parameters,
             enable_ingestion=enable_ingestion,
             spark_config=spark_config,
+            use_lake_formation_credentials=use_lake_formation_credentials,
         )
 
         validator_chain = ValidatorFactory.get_validation_chain(fp_config)

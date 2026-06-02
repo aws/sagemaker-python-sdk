@@ -172,6 +172,52 @@ def spark_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_path_fac
 
 
 @pytest.fixture(scope="session")
+def spark_pre_execution_commands(sagemaker_session):
+    """Build sagemaker-core wheel, upload to S3, and return pre-execution install commands.
+
+    This mirrors the pattern used in sagemaker-mlops feature_processor integ tests.
+    The Spark processing image does not have sagemaker-core pre-installed, so we must
+    build the local dev wheel and install it in the container via pre_execution_commands.
+    """
+    import subprocess
+    import glob
+    import tempfile
+    from sagemaker.core.s3 import S3Uploader
+
+    repo_root = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
+    )
+    core_dir = os.path.join(repo_root, "sagemaker-core")
+
+    with tempfile.TemporaryDirectory() as dist_dir:
+        subprocess.run(
+            f"python -m build --wheel --outdir {dist_dir}",
+            shell=True,
+            cwd=core_dir,
+            check=True,
+        )
+        wheels = glob.glob(os.path.join(dist_dir, "sagemaker_core-*.whl"))
+        if not wheels:
+            raise FileNotFoundError(f"No sagemaker-core wheel found in {dist_dir}")
+        wheel_path = wheels[0]
+        wheel_name = os.path.basename(wheel_path)
+
+        s3_prefix = "s3://{}/spark-integ-test/wheels".format(
+            sagemaker_session.default_bucket()
+        )
+        S3Uploader.upload(wheel_path, s3_prefix, sagemaker_session=sagemaker_session)
+
+    PIP = "python3 -m pip install --root-user-action=ignore"
+    AWS = "python3 -m awscli"
+    cmds = [
+        f"{PIP} awscli",
+        f"{AWS} s3 cp {s3_prefix}/{wheel_name} /tmp/{wheel_name}",
+        f"{PIP} /tmp/{wheel_name}",
+    ]
+    return cmds
+
+
+@pytest.fixture(scope="session")
 def conda_env_yml():
     """Write conda yml file needed for tests."""
     conda_yml_file_name = "conda_env.yml"

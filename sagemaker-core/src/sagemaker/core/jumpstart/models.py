@@ -190,6 +190,7 @@ class DefaultPayloadsModel(BaseConfig):
     PromptKey: Optional[str] = None
     OutputKeys: Optional[OutputKeysModel] = None
     Body: Union[str, Dict[str, Any]]
+    CustomAttributes: Optional[str] = None
 
 
 class HostingResourceRequirementsModel(BaseConfig):

@@ -1114,7 +1114,7 @@ class TestEvaluationPipelineExecutionWait:
         with pytest.raises(FailedStatusError):
             execution.wait(target_status="Succeeded", poll=1)
 
-    @patch("time.time")
+    @patch("sagemaker.train.evaluate.execution.time")
     def test_wait_timeout_exceeded(self, mock_time):
         """Test wait raises exception on timeout."""
         execution = EvaluationPipelineExecution(
@@ -1130,8 +1130,16 @@ class TestEvaluationPipelineExecutionWait:
         
         execution._pipeline_execution = mock_pe
         
-        # Mock time to simulate timeout
-        mock_time.side_effect = [0, 10, 20, 30, 40, 50, 60]  # Exceeds timeout
+        # Mock time.time() to simulate timeout - use a counter that always exceeds timeout
+        # First call sets start_time=0, second call returns value >= timeout (5)
+        call_count = {"n": 0}
+        def time_side_effect():
+            val = call_count["n"] * 10
+            call_count["n"] += 1
+            return val
+        
+        mock_time.time.side_effect = time_side_effect
+        mock_time.sleep = MagicMock()  # no-op sleep
         
         with pytest.raises(TimeoutExceededError, match="EvaluationJob") as exc_info:
             execution.wait(target_status="Succeeded", poll=1, timeout=5)

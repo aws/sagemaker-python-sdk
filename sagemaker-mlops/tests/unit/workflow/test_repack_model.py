@@ -92,7 +92,7 @@ def test_is_bad_link_unsafe():
 
 def test_get_safe_members_all_safe():
     """Test _get_safe_members yields all safe members."""
-    base = _get_resolved_path("")
+    base = _get_resolved_path("/tmp/extract")
     
     mock_member1 = Mock()
     mock_member1.name = "safe/file1.txt"
@@ -105,7 +105,7 @@ def test_get_safe_members_all_safe():
     mock_member2.islnk = Mock(return_value=False)
     
     members = [mock_member1, mock_member2]
-    safe_members = list(_get_safe_members(members, "/tmp/extract"))
+    safe_members = list(_get_safe_members(members, base))
     
     assert len(safe_members) == 2
     assert mock_member1 in safe_members
