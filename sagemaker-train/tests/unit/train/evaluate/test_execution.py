@@ -1501,7 +1501,7 @@ class TestGetMlflowExperimentUrl:
 
             result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
 
-        assert result == f"{MOCK_PRESIGNED_URL}&deepLink=/#/experiments/42"
+        assert result == f"https://mlflow.example.com/auth?authToken=abc123#/experiments/42?workspace=default"
 
     @patch("sagemaker.core.utils.utils.SageMakerClient")
     def test_returns_base_url_when_no_experiment_name(self, mock_sm_client_cls):

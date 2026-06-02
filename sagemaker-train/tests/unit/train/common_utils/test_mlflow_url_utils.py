@@ -30,13 +30,13 @@ class TestBuildMlflowDeepLink:
         url = "https://app-ABC.mlflow.sagemaker.us-west-2.app.aws/auth?authToken=token123"
         result = _build_mlflow_deep_link(url, "25")
         assert "authToken=token123" in result
-        assert "deepLink=/#/experiments/25" in result
+        assert result.endswith("#/experiments/25?workspace=default")
         assert result.startswith("https://app-ABC.mlflow.sagemaker.us-west-2.app.aws/auth?")
 
     def test_with_experiment_id_and_run_id(self):
         url = "https://app-ABC.mlflow.sagemaker.us-west-2.app.aws/auth?authToken=token123"
         result = _build_mlflow_deep_link(url, "25", "run-abc")
-        assert "deepLink=/#/experiments/25/runs/run-abc" in result
+        assert "#/experiments/25/runs/run-abc?workspace=default" in result
 
     def test_empty_url(self):
         assert _build_mlflow_deep_link("", "25") == ""
@@ -45,7 +45,7 @@ class TestBuildMlflowDeepLink:
         url = "https://app.mlflow.aws/auth?authToken=eyJhbGciOiJIUzI1NiJ9.payload.sig"
         result = _build_mlflow_deep_link(url, "5")
         assert "authToken=eyJhbGciOiJIUzI1NiJ9.payload.sig" in result
-        assert "deepLink=/#/experiments/5" in result
+        assert result.endswith("#/experiments/5?workspace=default")
 
 
 class TestResolveExperimentId:
@@ -102,7 +102,7 @@ class TestBuildMlflowDeepLinkByName:
         mock_resolve.return_value = "23"
         url = "https://app.mlflow.aws/auth?authToken=tok123"
         result = _build_mlflow_deep_link_by_name(url, "mtrl-eval-model")
-        assert "deepLink=/#/experiments/23" in result
+        assert result.endswith("#/experiments/23?workspace=default")
         assert "authToken=tok123" in result
 
     @patch(
@@ -112,7 +112,7 @@ class TestBuildMlflowDeepLinkByName:
         mock_resolve.return_value = None
         url = "https://app.mlflow.aws/auth?authToken=tok123"
         result = _build_mlflow_deep_link_by_name(url, "mtrl-eval-model")
-        assert "deepLink=/#/experiments?searchFilter=mtrl-eval-model" in result
+        assert "#/experiments?searchFilter=mtrl-eval-model" in result
 
     def test_empty_url(self):
         assert _build_mlflow_deep_link_by_name("", "exp") == ""
@@ -137,7 +137,7 @@ class TestGetPresignedMlflowExperimentUrl:
             "arn:aws:sagemaker:us-west-2:123:mlflow-app/app-XYZ",
             "my-experiment",
         )
-        assert "deepLink=/#/experiments/42" in result
+        assert result.endswith("#/experiments/42?workspace=default")
 
     @patch("sagemaker.core.utils.utils.SageMakerClient")
     def test_without_experiment_name(self, mock_sm_class):

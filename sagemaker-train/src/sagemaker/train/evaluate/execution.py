@@ -918,12 +918,21 @@ class EvaluationPipelineExecution(BaseModel):
             mlflow_link_cache = {'url': None, 'timestamp': 0}
             
             def get_cached_mlflow_url():
-                """Get cached MLflow URL, regenerating every 4 minutes."""
+                """Get cached MLflow URL, regenerating every 4 minutes.
+
+                Attempts run-level deep-linking via MLflow REST API.
+                Falls back to experiment-name deep link otherwise.
+                """
                 from sagemaker.train.common_utils.trainer_wait import _is_unassigned_attribute
-                from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
+                from sagemaker.train.common_utils.mlflow_url_utils import (
+                    _build_mlflow_deep_link,
+                    _build_mlflow_deep_link_by_name,
+                    _resolve_experiment_id,
+                    _resolve_run_id,
+                )
 
                 current_time = time.time()
-                if mlflow_link_cache['url'] is None or (current_time - mlflow_link_cache['timestamp']) > 240:
+                if mlflow_link_cache['url'] is None or (current_time - mlflow_link_cache['timestamp']) > 30:
                     arn = None
                     exp_name = None
 
@@ -943,7 +952,35 @@ class EvaluationPipelineExecution(BaseModel):
                         exp_name = getattr(self, 'mlflow_experiment_name', None)
 
                     if arn:
-                        mlflow_link_cache['url'] = get_presigned_mlflow_experiment_url(arn, exp_name)
+                        try:
+                            from sagemaker.core.utils.utils import SageMakerClient
+                            sm_client = SageMakerClient().sagemaker_client
+                            response = sm_client.create_presigned_mlflow_app_url(Arn=arn)
+                            base_url = response.get("AuthorizedUrl")
+                        except Exception:
+                            base_url = None
+
+                        if base_url:
+                            details = self.get_mlflow_details() if hasattr(self, 'get_mlflow_details') else None
+                            if details and details.get("ExperimentId"):
+                                mlflow_link_cache['url'] = _build_mlflow_deep_link(
+                                    base_url,
+                                    details["ExperimentId"],
+                                    details.get("RunId"),
+                                )
+                            elif exp_name:
+                                exp_id = _resolve_experiment_id(base_url, exp_name)
+                                if exp_id:
+                                    run_id = _resolve_run_id(base_url, exp_id)
+                                    mlflow_link_cache['url'] = _build_mlflow_deep_link(
+                                        base_url, exp_id, run_id
+                                    )
+                                else:
+                                    mlflow_link_cache['url'] = _build_mlflow_deep_link_by_name(
+                                        base_url, exp_name
+                                    )
+                            else:
+                                mlflow_link_cache['url'] = base_url
                         mlflow_link_cache['timestamp'] = current_time
                 return mlflow_link_cache['url']
             
@@ -1525,3 +1562,124 @@ class MTRLEvaluationExecution(EvaluationPipelineExecution):
     mlflow_url: Optional[str] = Field(None, description="Presigned MLflow tracking URL")
     mlflow_resource_arn: Optional[str] = Field(None, description="MLflow app/tracking server ARN")
     mlflow_experiment_name: Optional[str] = Field(None, description="MLflow experiment name for this eval")
+    _mlflow_details_cache: Optional[Dict[str, Any]] = None
+
+    def get_mlflow_details(self) -> Optional[Dict[str, Any]]:
+        """Fetch MLflow details (ExperimentId, RunId, etc.) from the first completed eval Job step.
+
+        Describes the underlying Job via sagemaker-core and extracts
+        ``ServiceOutput.MlflowDetails`` from the JobConfigDocument.
+
+        Returns:
+            Dict with keys ExperimentName, RunName, ExperimentId, RunId, or None.
+        """
+        if self._mlflow_details_cache:
+            return self._mlflow_details_cache
+
+        if not self.status.step_details:
+            return None
+
+        for step in self.status.step_details:
+            if step.status != "Succeeded" or not step.job_arn:
+                continue
+            if step.name not in ("EvaluateBaseModel", "EvaluateFineTunedModel"):
+                continue
+            try:
+                from sagemaker.core.resources import Job
+                job_name = step.job_arn.rsplit("/", 1)[-1]
+                region = step.job_arn.split(":")[3]
+                job = Job.get(job_name=job_name, job_category="AgentRFTEvaluation", region=region)
+                config_doc = job.job_config_document
+                if config_doc:
+                    config = json.loads(config_doc)
+                    details = config.get("ServiceOutput", {}).get("MlflowDetails")
+                    if details and details.get("ExperimentId"):
+                        self._mlflow_details_cache = details
+                        return details
+            except Exception as e:
+                logger.debug(f"Failed to fetch MLflow details from step {step.name}: {e}")
+                continue
+
+        return None
+
+    def get_mlflow_url(self) -> Optional[str]:
+        """Generate a presigned MLflow URL deep-linked to the eval run.
+
+        Deep-links to the specific experiment/run (matching training behavior).
+        Raises an error if unable to resolve the full URL with run_id.
+
+        Returns:
+            Presigned URL string with experiment + run deep link.
+
+        Raises:
+            RuntimeError: If unable to resolve the full MLflow URL with run details.
+        """
+        from sagemaker.train.common_utils.mlflow_url_utils import (
+            _build_mlflow_deep_link,
+            _resolve_experiment_id,
+            _resolve_run_id,
+        )
+
+        arn = self.mlflow_resource_arn
+        if not arn:
+            pe = self._pipeline_execution
+            if pe:
+                from sagemaker.train.common_utils.trainer_wait import _is_unassigned_attribute
+                mlflow_cfg = getattr(pe, 'm_lflow_config', None)
+                if mlflow_cfg and not _is_unassigned_attribute(mlflow_cfg):
+                    arn = getattr(mlflow_cfg, 'mlflow_resource_arn', None)
+                    if arn and _is_unassigned_attribute(arn):
+                        arn = None
+
+        if not arn:
+            raise RuntimeError(
+                "Cannot generate MLflow URL: no mlflow_resource_arn configured on this execution."
+            )
+
+        # Get presigned base URL
+        try:
+            from sagemaker.core.utils.utils import SageMakerClient
+            sm_client = SageMakerClient().sagemaker_client
+            response = sm_client.create_presigned_mlflow_app_url(Arn=arn)
+            base_url = response.get("AuthorizedUrl")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to get presigned MLflow URL from CreatePresignedMlflowAppUrl: {e}"
+            ) from e
+
+        if not base_url:
+            raise RuntimeError(
+                "CreatePresignedMlflowAppUrl returned empty AuthorizedUrl."
+            )
+
+        # Try run-level deep link from ServiceOutput.MlflowDetails (via Job describe)
+        details = self.get_mlflow_details()
+        if details:
+            exp_id = details.get("ExperimentId")
+            run_id = details.get("RunId")
+            if exp_id and run_id:
+                return _build_mlflow_deep_link(base_url, exp_id, run_id)
+
+        # Resolve experiment ID + run ID via MLflow REST API
+        exp_name = self.mlflow_experiment_name
+        if not exp_name:
+            raise RuntimeError(
+                "Cannot generate MLflow URL: no mlflow_experiment_name configured and "
+                "ServiceOutput.MlflowDetails not available from the eval job."
+            )
+
+        exp_id = _resolve_experiment_id(base_url, exp_name)
+        if not exp_id:
+            raise RuntimeError(
+                f"Failed to resolve MLflow experiment ID for experiment name '{exp_name}'. "
+                f"The experiment may not exist yet (eval job still running?)."
+            )
+
+        run_id = _resolve_run_id(base_url, exp_id)
+        if not run_id:
+            raise RuntimeError(
+                f"Failed to resolve MLflow run ID for experiment '{exp_name}' (id={exp_id}). "
+                f"No runs found — the eval job may still be running."
+            )
+
+        return _build_mlflow_deep_link(base_url, exp_id, run_id)
