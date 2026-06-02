@@ -20,34 +20,34 @@ from __future__ import annotations
 import os
 import time
 
+os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
+os.environ.setdefault("SAGEMAKER_REGION", "us-west-2")
+os.environ.setdefault("AWS_REGION", "us-west-2")
+
 import boto3
 import pytest
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.agent_rft_job import AgentRFTJob
 
-REGION = "us-west-2"
-STAGE = "prod"
-CUSTOMER_ACCOUNT = "603273546571"
-MLFLOW_APP_ID = "app-GPJWBUIDIF2G"
+_REGION = "us-west-2"
+_ACCOUNT_ID = boto3.client("sts", region_name=_REGION).get_caller_identity()["Account"]
 
-AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-02fXvC4iWD"
-ROLE_ARN = f"arn:aws:iam::{CUSTOMER_ACCOUNT}:role/RFTTestingExecutionRole-integ-{STAGE}"
-MLFLOW_ARN = f"arn:aws:sagemaker:{REGION}:{CUSTOMER_ACCOUNT}:mlflow-app/{MLFLOW_APP_ID}"
-S3_INPUT_PATH = (
-    f"s3://{REGION}-{CUSTOMER_ACCOUNT}-{STAGE}-rftjob-input"
-    f"/test-data/prompts/math-2560-parquet/"
-)
-S3_OUTPUT_PATH = f"s3://{REGION}-{CUSTOMER_ACCOUNT}-{STAGE}-rftjob-output/"
-LAMBDA_ARN = f"arn:aws:lambda:{REGION}:{CUSTOMER_ACCOUNT}:function:AgenticRFT-RolloutForwarder-prod"
+AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-UwSB6LEfEq"
+ROLE_ARN = f"arn:aws:iam::{_ACCOUNT_ID}:role/Admin"
+MLFLOW_ARN = f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/app-DC47LIKHJV3L"
+S3_INPUT_PATH = f"s3://sagemaker-rft-beta-{_ACCOUNT_ID}/prompts/gsm8k_small/prompts.parquet"
+S3_OUTPUT_PATH = f"s3://sagemaker-{_REGION}-{_ACCOUNT_ID}/model-evaluation/mtrl-trainer-integ/"
+LAMBDA_ARN = f"arn:aws:lambda:{_REGION}:{_ACCOUNT_ID}:function:SageMaker-AgentConnector-aruthen-3pconnector-1779228583"
 BASE_MODEL = "openai-reasoning-gpt-oss-20b"
+EXISTING_JOB_NAME="openai-reasoning-gpt-oss-20b-mtrl-20260602005937"
 
 
 @pytest.fixture(scope="module")
 def sagemaker_session():
-    os.environ.setdefault("AWS_DEFAULT_REGION", REGION)
-    os.environ["SAGEMAKER_MLFLOW_CUSTOM_ENDPOINT"] = f"https://mlflow.sagemaker.{REGION}.app.aws"
-    boto_session = boto3.Session(region_name=REGION)
+    os.environ.setdefault("AWS_DEFAULT_REGION", _REGION)
+    os.environ["SAGEMAKER_MLFLOW_CUSTOM_ENDPOINT"] = f"https://mlflow.sagemaker.{_REGION}.app.aws"
+    boto_session = boto3.Session(region_name=_REGION)
     session = Session(boto_session=boto_session)
     yield session
 
@@ -62,7 +62,7 @@ class TestMultiTurnRLTrainerBedrockAgent:
             model=BASE_MODEL,
             agent_env=AGENT_RUNTIME_ID,
             training_dataset=S3_INPUT_PATH,
-            mlflow_resource_arn=MLFLOW_ARN,
+            mlflow_app_arn=MLFLOW_ARN,
             s3_output_path=S3_OUTPUT_PATH,
             role=ROLE_ARN,
             accept_eula=True,
@@ -87,7 +87,7 @@ class TestMultiTurnRLTrainerBedrockAgent:
             model=BASE_MODEL,
             agent_env=AGENT_RUNTIME_ID,
             training_dataset=S3_INPUT_PATH,
-            mlflow_resource_arn=MLFLOW_ARN,
+            mlflow_app_arn=MLFLOW_ARN,
             role=ROLE_ARN,
             accept_eula=True,
             sagemaker_session=sagemaker_session,
@@ -114,7 +114,7 @@ class TestMultiTurnRLTrainerLambdaAgent:
             model=BASE_MODEL,
             agent_env=LAMBDA_ARN,
             training_dataset=S3_INPUT_PATH,
-            mlflow_resource_arn=MLFLOW_ARN,
+            mlflow_app_arn=MLFLOW_ARN,
             s3_output_path=S3_OUTPUT_PATH,
             accept_eula=True,
             role=ROLE_ARN,
@@ -139,29 +139,13 @@ class TestMultiTurnRLTrainerAttach:
 
     def test_attach_and_get_properties(self, sagemaker_session):
         """Test attaching to a completed job and reading properties."""
-        # First create a job to attach to
-        trainer = MultiTurnRLTrainer(
-            model=BASE_MODEL,
-            agent_env=AGENT_RUNTIME_ID,
-            training_dataset=S3_INPUT_PATH,
-            s3_output_path=S3_OUTPUT_PATH,
-            mlflow_resource_arn=MLFLOW_ARN,
-            accept_eula=True,
-            role=ROLE_ARN,
-            sagemaker_session=sagemaker_session,
-        )
-        trainer.hyperparameters.global_batch_size = 32
-
-        job = trainer.train(wait=False)
-        job.wait(poll=30, timeout=3600)
 
         # Attach to the same job by name
         attached_job = MultiTurnRLTrainer.attach(
-            job.job_name, session=sagemaker_session.boto_session
+            EXISTING_JOB_NAME, session=sagemaker_session.boto_session
         )
 
-        assert attached_job.job_name == job.job_name
-        assert attached_job.job_arn == job.job_arn
+        assert attached_job.job_name == EXISTING_JOB_NAME
         assert attached_job.job_status == "Completed"
         assert attached_job.output_model_package_arn is not None
         assert attached_job.s3_output_path is not None
