@@ -1,4 +1,10 @@
 # Changelog
+## v1.13.0 (2026-06-02)
+
+### Bug Fixes
+
+- fix: set sagemaker_config=None on mock session in test_from_jumpstart_config_applies_volume_size (#5882)
+
 ## v1.12.0 (2026-05-19)
 
 ### Bug Fixes
