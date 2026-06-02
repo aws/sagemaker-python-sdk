@@ -4,6 +4,7 @@
 
 - **feat: Model customization** - Add new finetuning Trainer - MultiTurnRLTrainer(Multi-Turn Reinforcement Learning)
 - **feat: Model customization** - Add new evaluator - MultiTurnRLEvaluator
+- **feat: Deployment** - Add MTRL support for BedrockModelBuilder and ModelBuilder.
 
 ### Documentation
 
