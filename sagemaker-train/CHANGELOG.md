@@ -1,4 +1,11 @@
 # Changelog
+
+## v1.13.0 (2026-06-02)
+
+### Bug Fixes
+
+- fix: apply gpu_intensive mark at test-level instead of module-level (#5896)
+
 ## v1.12.0 (2026-05-19)
 
 ### Other
