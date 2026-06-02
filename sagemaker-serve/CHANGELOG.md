@@ -1,6 +1,10 @@
 # Changelog
 ## v1.13.0 (2026-06-02)
 
+### Features
+
+- **feat: Deployment** - Add MTRL support for BedrockModelBuilder and ModelBuilder.
+
 ### Bug Fixes
 
 - fix: set sagemaker_config=None on mock session in test_from_jumpstart_config_applies_volume_size (#5882)
