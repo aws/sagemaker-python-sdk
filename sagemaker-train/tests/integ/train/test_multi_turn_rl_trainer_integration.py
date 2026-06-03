@@ -33,12 +33,12 @@ from sagemaker.train.agent_rft_job import AgentRFTJob
 _REGION = "us-west-2"
 _ACCOUNT_ID = boto3.client("sts", region_name=_REGION).get_caller_identity()["Account"]
 
-AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-UwSB6LEfEq"
+AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS"
 ROLE_ARN = f"arn:aws:iam::{_ACCOUNT_ID}:role/Admin"
-MLFLOW_ARN = f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/app-DC47LIKHJV3L"
-S3_INPUT_PATH = f"s3://sagemaker-rft-beta-{_ACCOUNT_ID}/prompts/gsm8k_small/prompts.parquet"
+MLFLOW_ARN = f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/app-ZG6FYITNGMMU"
+S3_INPUT_PATH = f"s3://sagemaker-rft-{_ACCOUNT_ID}/prompts/gsm8k_small/prompts.parquet"
 S3_OUTPUT_PATH = f"s3://sagemaker-{_REGION}-{_ACCOUNT_ID}/model-evaluation/mtrl-trainer-integ/"
-LAMBDA_ARN = f"arn:aws:lambda:{_REGION}:{_ACCOUNT_ID}:function:SageMaker-AgentConnector-aruthen-3pconnector-1779228583"
+LAMBDA_ARN = f"arn:aws:lambda:{_REGION}:{_ACCOUNT_ID}:function:SageMaker-AgentConnector-Lambda-MTRL-integ-test"
 BASE_MODEL = "openai-reasoning-gpt-oss-20b"
 EXISTING_JOB_NAME="openai-reasoning-gpt-oss-20b-mtrl-20260602005937"
 
@@ -92,6 +92,7 @@ class TestMultiTurnRLTrainerBedrockAgent:
             accept_eula=True,
             sagemaker_session=sagemaker_session,
         )
+        trainer.hyperparameters.global_batch_size = 32
 
         job = trainer.train(wait=False)
         assert job.job_status in ("Pending", "InProgress")

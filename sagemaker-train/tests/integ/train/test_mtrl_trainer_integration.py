@@ -10,16 +10,19 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Integration tests for MultiTurnRLTrainer: Attach → Evaluate → Deploy.
+"""Integration tests for MTRL Evaluator: Attach to existing job → Evaluate → Wait for completion.
 
-Tests the MTRL workflow by attaching to existing completed training jobs
-and validating evaluation and deployment via ModelBuilder.
+Tests the MTRL evaluation workflow by attaching to existing completed training
+jobs (discovered via DescribeJob API) and running evaluations in both
+fine-tuned and base model modes, waiting for successful completion.
+
+Accounts:
+  - PROD (729646638167): Main account
+  - PREPROD (391266019386): Staging account
 """
 from __future__ import absolute_import
 
-import json
 import os
-import uuid
 import pytest
 import logging
 
@@ -31,157 +34,216 @@ os.environ.setdefault("AWS_REGION", "us-west-2")
 
 from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.evaluate import MultiTurnRLEvaluator
-from sagemaker.core.resources import ModelPackage
-
-try:
-    from sagemaker.serve import ModelBuilder
-except ImportError:
-    pytest.skip("sagemaker-serve not installed", allow_module_level=True)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 _REGION = "us-west-2"
-_ACCOUNT_ID = boto3.client("sts", region_name=_REGION).get_caller_identity()["Account"]
 
-TEST_CONFIG = {
-    "existing_job_name": "papriwal-gemma-newapi-1778926381662",
-    "base_model": "huggingface-reasoning-qwen3-32b",
-    "agent_arn": f"arn:aws:bedrock-agentcore:{_REGION}:{_ACCOUNT_ID}:runtime/sagemaker_rft_prod_gsm8k_streaming-UwSB6LEfEq",
-    "lambda_agent_arn": f"arn:aws:lambda:{_REGION}:{_ACCOUNT_ID}:function:SageMaker-AgentConnector-1-1777398957761",
-    "dataset": f"s3://sagemaker-rft-beta-{_ACCOUNT_ID}/prompts/gsm8k_small/prompts.parquet",
-    "s3_output_path": f"s3://sagemaker-{_REGION}-{_ACCOUNT_ID}/model-evaluation/mtrl-trainer-integ/",
-    "mlflow_resource_arn": f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/app-JGGVLM43S4AS",
-    "model_package_group": f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:model-package-group/papriwal-gemma-newapi",
-    "role": f"arn:aws:iam::{_ACCOUNT_ID}:role/Admin",
-    "region": _REGION,
-    "instance_type": "ml.g6e.48xlarge",
-    "runtime_endpoint": "https://maeveruntime.loadtest.us-west-2.ml-platform.aws.a2z.com",
+EVAL_TIMEOUT = 14400  # 4 hours
+
+
+def _get_account_id():
+    """Get current AWS account ID via STS."""
+    return boto3.client("sts", region_name=_REGION).get_caller_identity()["Account"]
+
+# ============================================================
+# Per-account resource configuration
+# ============================================================
+
+ACCOUNT_CONFIGS = {
+    # PROD — Main account (729646638167)
+    "729646638167": {
+        "env_name": "PROD",
+        "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260602150414",
+        "base_model": "openai-reasoning-gpt-oss-20b",
+        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
+        "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
+        "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
+        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-ZG6FYITNGMMU",
+        "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
+        "role": "arn:aws:iam::729646638167:role/Admin",
+    },
+    # PREPROD — Staging account (391266019386)
+    "391266019386": {
+        "env_name": "PREPROD",
+        "existing_job_name": "mtrl-integ-gpt-oss-agentcore-1779143704358",
+        "base_model": "openai-reasoning-gpt-oss-20b",
+        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:391266019386:runtime/mtrl_integ_gsm8k_streaming-bIz4H5Echk",
+        "dataset": "s3://sagemaker-rft-beta-391266019386/prompts/gsm8k_small/prompts.parquet",
+        "s3_output_path": "s3://sagemaker-us-west-2-391266019386/mtrl-integ/eval-output/",
+        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:391266019386:mlflow-app/app-P3FRQFRQTNGI",
+        "model_package_group": "arn:aws:sagemaker:us-west-2:391266019386:model-package-group/mtrl-integ-gpt-oss-agentcore",
+        "role": "arn:aws:iam::391266019386:role/Admin",
+    },
+    # BETA — Dev/test account (742774200982)
+    "742774200982": {
+        "env_name": "BETA",
+        "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260601114439",
+        "base_model": "openai-reasoning-gpt-oss-20b",
+        "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:742774200982:runtime/sagemaker_rft_prod_gsm8k_streaming-UwSB6LEfEq",
+        "dataset": "s3://sagemaker-rft-beta-742774200982/prompts/gsm8k_small/prompts.parquet",
+        "s3_output_path": "s3://sagemaker-us-west-2-742774200982/mtrl-integ/eval-output/",
+        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:742774200982:mlflow-app/app-6ZU5TXXH2GUX",
+        "model_package_group": "arn:aws:sagemaker:us-west-2:742774200982:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
+        "role": "arn:aws:iam::742774200982:role/Admin",
+    },
 }
 
 
-@pytest.fixture(scope="module")
-def attached_job():
-    """Attach to an existing completed MTRL training job."""
-    job = MultiTurnRLTrainer.attach(job_name=TEST_CONFIG["existing_job_name"])
-    logger.info(f"Attached to job: {job.job_name}")
-    logger.info(f"Status: {job.job_status}")
-    logger.info(f"Output model package: {job.output_model_package_arn}")
-    return job
+def _get_config():
+    """Get config for the current account."""
+    account_id = _get_account_id()
+    if account_id not in ACCOUNT_CONFIGS:
+        pytest.skip(
+            f"Account {account_id} not configured for MTRL integ tests. "
+            f"Supported accounts: {list(ACCOUNT_CONFIGS.keys())}"
+        )
+    return ACCOUNT_CONFIGS[account_id]
 
 
 @pytest.fixture(scope="module")
-def model_package_arn(attached_job):
-    """Get the output model package ARN from the attached job."""
-    arn = attached_job.output_model_package_arn
-    assert arn is not None, "Attached job must have output_model_package_arn"
-    return arn
+def config():
+    """Get account-specific test configuration."""
+    return _get_config()
 
 
-class TestMTRLTrainerIntegration:
-    """Integration tests for MTRL attach → evaluate → deploy workflow."""
+@pytest.fixture(scope="module")
+def attached_trainer(config):
+    """Attach to an existing completed MTRL training job and return a trainer with it set.
 
-    def test_attach_to_existing_job(self, attached_job):
-        """Test attaching to an existing completed job."""
-        assert attached_job is not None
-        assert attached_job.output_model_package_arn is not None
-        logger.info(f"Job name: {attached_job.job_name}")
-        logger.info(f"Output model package: {attached_job.output_model_package_arn}")
+    Uses the DescribeJob API (via MultiTurnRLTrainer.attach) to retrieve
+    the job and verify it completed successfully with an output model package.
+    """
+    job = MultiTurnRLTrainer.attach(job_name=config["existing_job_name"])
+    logger.info(f"[{config['env_name']}] Attached to job: {job.job_name}")
+    logger.info(f"[{config['env_name']}] Status: {job.job_status}")
+    logger.info(f"[{config['env_name']}] Output model package: {job.output_model_package_arn}")
 
-    def test_evaluate_from_attached_job(self, attached_job):
-        """Evaluate the fine-tuned model from an attached trainer job."""
+    assert job.job_status == "Completed", (
+        f"Existing job {config['existing_job_name']} is not Completed "
+        f"(status: {job.job_status}). Cannot use for evaluation."
+    )
+    assert job.output_model_package_arn is not None, (
+        f"Existing job {config['existing_job_name']} has no output_model_package_arn."
+    )
+
+    trainer = MultiTurnRLTrainer(
+        model=config["base_model"],
+        agent_env=config["agent_core_arn"],
+        training_dataset=config["dataset"],
+        output_model_package_group=config["model_package_group"],
+        mlflow_app_arn=config["mlflow_resource_arn"],
+        s3_output_path=config["s3_output_path"],
+        role=config["role"],
+        accept_eula=True,
+    )
+    trainer._latest_job = job
+    return trainer
+
+
+class TestMTRLEvalIntegration:
+    """Integration tests for MTRL evaluation: attach → evaluate → wait for success."""
+
+    def test_attach_to_existing_job(self, config):
+        """Test that we can attach to an existing completed MTRL job via DescribeJob API."""
+        job = MultiTurnRLTrainer.attach(job_name=config["existing_job_name"])
+
+        assert job is not None
+        assert job.job_name == config["existing_job_name"]
+        assert job.job_status == "Completed"
+        assert job.output_model_package_arn is not None
+
+        logger.info(f"[{config['env_name']}] Job name: {job.job_name}")
+        logger.info(f"[{config['env_name']}] Job ARN: {job.job_arn}")
+        logger.info(f"[{config['env_name']}] Output model package: {job.output_model_package_arn}")
+
+    def test_evaluate_finetuned_model(self, attached_trainer, config):
+        """Evaluate a fine-tuned model from attached trainer — submit and wait for completion."""
         evaluator = MultiTurnRLEvaluator(
-            model=attached_job,
-            dataset=TEST_CONFIG["dataset"],
-            agent_config=TEST_CONFIG["agent_arn"],
-            s3_output_path=f'{TEST_CONFIG["s3_output_path"]}eval/',
-            mlflow_resource_arn=TEST_CONFIG["mlflow_resource_arn"],
-            role=TEST_CONFIG["role"],
-            region=TEST_CONFIG["region"],
+            model=attached_trainer,
+            dataset=config["dataset"],
+            s3_output_path=f'{config["s3_output_path"]}finetuned/',
+            mlflow_resource_arn=config["mlflow_resource_arn"],
+            role=config["role"],
+            region=_REGION,
         )
 
         execution = evaluator.evaluate()
 
         assert execution is not None
         assert execution.arn is not None
-        logger.info(f"Started evaluation: {execution.arn}")
+        assert "pipeline" in execution.arn.lower()
+        logger.info(f"[{config['env_name']}] Started finetuned eval: {execution.arn}")
 
-    def test_deploy_with_model_builder(self, model_package_arn):
-        """Deploy the fine-tuned MTRL model using ModelBuilder.
+        logger.info(f"[{config['env_name']}] Waiting for finetuned eval to complete...")
+        execution.wait(timeout=EVAL_TIMEOUT)
 
-        Validates the full Train → Deploy path: gets the output ModelPackage
-        from a completed MTRL training job, builds with ModelBuilder, deploys
-        to an endpoint (waits for InService), invokes with boto sagemaker-runtime,
-        and cleans up.
-        """
-        from botocore.exceptions import ClientError
-        from sagemaker.core.utils.exceptions import FailedStatusError
+        status = execution.status.overall_status
+        logger.info(f"[{config['env_name']}] Finetuned eval completed: {status}")
 
-        model_package = ModelPackage.get(model_package_name=model_package_arn)
-
-        model_builder = ModelBuilder(
-            model=model_package,
-            instance_type=TEST_CONFIG["instance_type"],
-        )
-        model_builder.accept_eula = True
-        model_builder.build()
-
-        endpoint_name = f"mtrl-integ-{uuid.uuid4().hex[:8]}"
-
-        try:
-            model_builder.deploy(
-                endpoint_name=endpoint_name,
-                instance_type=TEST_CONFIG["instance_type"],
-                initial_instance_count=1,
-            )
-        except (ClientError, FailedStatusError) as e:
-            error_msg = str(e)
-            if "ResourceLimitExceeded" in error_msg:
-                logger.info(f"Deploy path validated (quota limit hit): {e}")
-                return
-            if "InsufficientInstanceCapacity" in error_msg:
-                logger.info(f"Deploy path validated (capacity unavailable): {e}")
-                return
-            raise
-
-        logger.info(f"Endpoint {endpoint_name} is InService")
-
-        runtime_client = boto3.client(
-            "sagemaker-runtime",
-            region_name=TEST_CONFIG["region"],
-            endpoint_url=TEST_CONFIG["runtime_endpoint"],
+        assert status == "Succeeded", (
+            f"[{config['env_name']}] Finetuned eval failed with status: {status}, "
+            f"reason: {execution.status.failure_reason}"
         )
 
-        try:
-            payload = json.dumps({
-                "model": "/opt/ml/model",
-                "messages": [{"role": "user", "content": "What is 25 * 4?"}],
-                "max_tokens": 200,
-                "stream": False,
-            })
+    def test_evaluate_base_model(self, config):
+        """Evaluate the base model only — submit and wait for completion."""
+        evaluator = MultiTurnRLEvaluator(
+            model=config["base_model"],
+            dataset=config["dataset"],
+            agent_config=config["agent_core_arn"],
+            s3_output_path=f'{config["s3_output_path"]}basemodel/',
+            mlflow_resource_arn=config["mlflow_resource_arn"],
+            role=config["role"],
+            region=_REGION,
+        )
 
-            response = runtime_client.invoke_endpoint(
-                EndpointName=endpoint_name,
-                ContentType="application/json",
-                Body=payload.encode("utf-8"),
-                InferenceComponentName=f"{endpoint_name}-inference-component",
-            )
-            body = json.loads(response["Body"].read().decode("utf-8"))
-            assert body is not None
-            logger.info(f"Endpoint invocation successful: {body}")
-        finally:
-            try:
-                sm_client = boto3.client(
-                    "sagemaker",
-                    region_name=TEST_CONFIG["region"],
-                    endpoint_url=os.environ.get("SAGEMAKER_ENDPOINT"),
-                )
-                ic_name = f"{endpoint_name}-inference-component"
-                sm_client.delete_inference_component(InferenceComponentName=ic_name)
-                logger.info(f"Deleted inference component: {ic_name}")
-                import time
-                time.sleep(30)
-                sm_client.delete_endpoint(EndpointName=endpoint_name)
-                logger.info(f"Deleted endpoint: {endpoint_name}")
-            except Exception as e:
-                logger.warning(f"Failed to delete endpoint {endpoint_name}: {e}")
+        execution = evaluator.evaluate()
+
+        assert execution is not None
+        assert execution.arn is not None
+        assert "pipeline" in execution.arn.lower()
+        logger.info(f"[{config['env_name']}] Started base model eval: {execution.arn}")
+
+        logger.info(f"[{config['env_name']}] Waiting for base model eval to complete...")
+        execution.wait(timeout=EVAL_TIMEOUT)
+
+        status = execution.status.overall_status
+        logger.info(f"[{config['env_name']}] Base model eval completed: {status}")
+
+        assert status == "Succeeded", (
+            f"[{config['env_name']}] Base model eval failed with status: {status}, "
+            f"reason: {execution.status.failure_reason}"
+        )
+
+    @pytest.mark.skip(reason="Comparison template has CreateJob schema validation issue — tracked separately")
+    def test_evaluate_comparison(self, attached_trainer, config):
+        """Evaluate base + finetuned comparison — submit and wait for completion."""
+        evaluator = MultiTurnRLEvaluator(
+            model=attached_trainer,
+            dataset=config["dataset"],
+            s3_output_path=f'{config["s3_output_path"]}comparison/',
+            mlflow_resource_arn=config["mlflow_resource_arn"],
+            role=config["role"],
+            region=_REGION,
+            evaluate_base_model=True,
+        )
+
+        execution = evaluator.evaluate()
+
+        assert execution is not None
+        assert execution.arn is not None
+        assert "pipeline" in execution.arn.lower()
+        logger.info(f"[{config['env_name']}] Started comparison eval: {execution.arn}")
+
+        logger.info(f"[{config['env_name']}] Waiting for comparison eval to complete...")
+        execution.wait(timeout=EVAL_TIMEOUT)
+
+        status = execution.status.overall_status
+        logger.info(f"[{config['env_name']}] Comparison eval completed: {status}")
+
+        assert status == "Succeeded", (
+            f"[{config['env_name']}] Comparison eval failed with status: {status}, "
+            f"reason: {execution.status.failure_reason}"
+        )

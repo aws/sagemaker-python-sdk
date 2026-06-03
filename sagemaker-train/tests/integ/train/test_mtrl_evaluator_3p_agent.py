@@ -49,7 +49,7 @@ _REGION = "us-west-2"
 _ACCOUNT_ID = boto3.client("sts", region_name=_REGION).get_caller_identity()["Account"]
 
 # Lambda configuration
-LAMBDA_FUNCTION_NAME = "mtrl-integ-3p-agent-forwarder"
+LAMBDA_FUNCTION_NAME = "SageMaker-AgentConnector-Lambda-MTRL-integ-test"
 LAMBDA_ROLE = f"arn:aws:iam::{_ACCOUNT_ID}:role/Admin"
 LAMBDA_RUNTIME = "python3.12"
 LAMBDA_TIMEOUT = 120
@@ -150,10 +150,10 @@ def handler(event, context):
 
 # Test configuration for 3P agent evaluation.
 TEST_CONFIG = {
-    "base_model": "huggingface-reasoning-qwen3-32b",
+    "base_model": "openai-reasoning-gpt-oss-20b",
     "dataset": os.environ.get(
         "MTRL_3P_DATASET",
-        f"s3://sagemaker-rft-beta-{_ACCOUNT_ID}/prompts/gsm8k_small/prompts.parquet",
+        f"s3://sagemaker-rft-{_ACCOUNT_ID}/prompts/gsm8k_small/prompts.parquet",
     ),
     "s3_output_path": os.environ.get(
         "MTRL_3P_S3_OUTPUT",
@@ -161,7 +161,7 @@ TEST_CONFIG = {
     ),
     "mlflow_resource_arn": os.environ.get(
         "MTRL_3P_MLFLOW_ARN",
-        f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/rft-beta-mlflow",
+        f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/app-ZG6FYITNGMMU",
     ),
     "role": os.environ.get(
         "MTRL_3P_ROLE",
@@ -352,3 +352,30 @@ class TestMTRLEvaluator3PAgentIntegration:
             "Pipeline tagging may not be working correctly."
         )
         logger.info(f"Successfully discovered evaluation via get_all: {started_arn}")
+
+
+
+    def test_evaluate_with_attached_trainer(self, lambda_agent_arn):
+        """Test evaluating a fine-tuned model by attaching to an existing training job."""
+        from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+
+        attached_job = MultiTurnRLTrainer.attach(
+            "openai-reasoning-gpt-oss-20b-mtrl-20260602164546", session=boto3.Session(region_name=_REGION)
+        )
+
+        evaluator = MultiTurnRLEvaluator(
+            model=attached_job,
+            dataset=TEST_CONFIG["dataset"],
+            agent_config=lambda_agent_arn,
+            s3_output_path=f'{TEST_CONFIG["s3_output_path"]}attached-trainer/',
+            mlflow_resource_arn=TEST_CONFIG["mlflow_resource_arn"],
+            role=TEST_CONFIG["role"],
+            region=TEST_CONFIG["region"],
+            accept_eula=True,
+        )
+
+        execution = evaluator.evaluate()
+
+        assert execution is not None
+        assert execution.arn is not None
+        logger.info(f"Started attached trainer evaluation: {execution.arn}")
