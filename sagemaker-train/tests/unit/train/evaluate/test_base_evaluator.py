@@ -311,15 +311,16 @@ class TestModelPackageGroupValidation:
         assert evaluator.model_package_group == DEFAULT_MODEL_PACKAGE_GROUP_ARN
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.core.resources.ModelPackageGroup.get")
-    def test_model_package_group_name_resolution(self, mock_mpg_get, mock_resolve, mock_session, mock_model_info):
+    def test_model_package_group_name_resolution(self, mock_resolve, mock_session, mock_model_info):
         """Test model package group name resolution to ARN."""
         mock_resolve.return_value = mock_model_info
         
-        # Mock ModelPackageGroup.get to return an object with ARN
-        mock_mpg = MagicMock()
-        mock_mpg.model_package_group_arn = DEFAULT_MODEL_PACKAGE_GROUP_ARN
-        mock_mpg_get.return_value = mock_mpg
+        # Mock the boto client's describe_model_package_group call
+        mock_sm_client = MagicMock()
+        mock_sm_client.describe_model_package_group.return_value = {
+            "ModelPackageGroupArn": DEFAULT_MODEL_PACKAGE_GROUP_ARN
+        }
+        mock_session.boto_session.client.return_value = mock_sm_client
         
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
@@ -331,9 +332,8 @@ class TestModelPackageGroupValidation:
         )
         
         assert evaluator.model_package_group == DEFAULT_MODEL_PACKAGE_GROUP_ARN
-        mock_mpg_get.assert_called_once_with(
-            model_package_group_name="my-package",
-            region=DEFAULT_REGION,
+        mock_sm_client.describe_model_package_group.assert_called_once_with(
+            ModelPackageGroupName="my-package"
         )
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
@@ -355,11 +355,14 @@ class TestModelPackageGroupValidation:
         assert evaluator.model_package_group == DEFAULT_MODEL_PACKAGE_GROUP_ARN
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.core.resources.ModelPackageGroup.get")
-    def test_model_package_group_name_not_found(self, mock_mpg_get, mock_resolve, mock_session, mock_model_info):
+    def test_model_package_group_name_not_found(self, mock_resolve, mock_session, mock_model_info):
         """Test model package group name that doesn't exist."""
         mock_resolve.return_value = mock_model_info
-        mock_mpg_get.side_effect = Exception("Model package group not found")
+        
+        # Mock the boto client to raise an exception
+        mock_sm_client = MagicMock()
+        mock_sm_client.describe_model_package_group.side_effect = Exception("Model package group not found")
+        mock_session.boto_session.client.return_value = mock_sm_client
         
         with pytest.raises(ValidationError, match="Failed to resolve model package group name"):
             BaseEvaluator(

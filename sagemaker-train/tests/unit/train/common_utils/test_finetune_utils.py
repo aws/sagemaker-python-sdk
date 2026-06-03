@@ -168,17 +168,21 @@ class TestFinetuneUtils:
         with pytest.raises(ValueError, match="model_package_group_name must be provided"):
             _validate_model_package_group_requirement("string-model", None)
 
-    @patch('sagemaker.core.resources.ModelPackageGroup.get')
-    def test__resolve_model_package_group_arn_with_name(self, mock_get):
+    def test__resolve_model_package_group_arn_with_name(self):
         mock_session = Mock()
         mock_session.boto_session.region_name = "us-east-1"
-        mock_group = Mock()
-        mock_group.model_package_group_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/test-group"
-        mock_get.return_value = mock_group
+        mock_sm_client = Mock()
+        mock_sm_client.describe_model_package_group.return_value = {
+            "ModelPackageGroupArn": "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/test-group"
+        }
+        mock_session.boto_session.client.return_value = mock_sm_client
         
         result = _resolve_model_package_group_arn("test-group", mock_session)
         
-        assert result == mock_group.model_package_group_arn
+        assert result == "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/test-group"
+        mock_sm_client.describe_model_package_group.assert_called_once_with(
+            ModelPackageGroupName="test-group"
+        )
 
     def test__resolve_model_package_group_arn_with_arn(self):
         mock_session = Mock()
@@ -362,23 +366,35 @@ class TestFinetuneUtils:
         with pytest.raises(ValueError, match="model_package_group_name must be provided"):
             _validate_and_resolve_model_package_group("string-model", None)
 
-    @patch('sagemaker.core.resources.ModelPackage.get')
-    def test__resolve_model_and_name_with_model_package_arn(self, mock_get):
+    def test__resolve_model_and_name_with_model_package_arn(self):
         mock_session = Mock()
         mock_session.boto_region_name = "us-east-1"  # Set valid region
-        mock_model_package = Mock(spec=ModelPackage)
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_sm_client = Mock()
+        mock_session.boto_session.client.return_value = mock_sm_client
+        
+        # Mock describe_model_package response
+        mock_sm_client.describe_model_package.return_value = {
+            "ModelPackageArn": "arn:aws:sagemaker:us-east-1:123456789012:model-package/test",
+        }
+        
+        # Mock transform and ModelPackage constructor
         mock_container = Mock()
         mock_base_model = Mock()
         mock_base_model.hub_content_name = "test-model"
         mock_container.base_model = mock_base_model
-        mock_model_package.inference_specification = Mock()
-        mock_model_package.inference_specification.containers = [mock_container]
-        mock_get.return_value = mock_model_package
+        mock_inference_spec = Mock()
+        mock_inference_spec.containers = [mock_container]
         
-        model, name = _resolve_model_and_name("arn:aws:sagemaker:us-east-1:123456789012:model-package/test", mock_session)
+        mock_model_package = Mock(spec=ModelPackage)
+        mock_model_package.inference_specification = mock_inference_spec
         
-        assert model == mock_model_package
-        assert name == "test-model"
+        with patch('sagemaker.core.utils.code_injection.codec.transform', return_value={}):
+            with patch('sagemaker.train.common_utils.finetune_utils.ModelPackage', return_value=mock_model_package):
+                model, name = _resolve_model_and_name("arn:aws:sagemaker:us-east-1:123456789012:model-package/test", mock_session)
+        
+                assert model == mock_model_package
+                assert name == "test-model"
 
     def test__resolve_model_and_name_with_string(self):
         model, name = _resolve_model_and_name("test-model")
