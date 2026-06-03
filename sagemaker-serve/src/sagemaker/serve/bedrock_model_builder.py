@@ -153,8 +153,11 @@ class BedrockModelBuilder:
         """Deploy the model to Bedrock.
 
         Automatically detects if the model is a Nova model and uses the appropriate
-        Bedrock API (create_custom_model for Nova, create_model_import_job for others).
-        For Nova models, also creates a custom model deployment for inference.
+        Bedrock API (create_custom_model for Nova, create_model_import_job for OSS).
+        For Nova models, creates a custom model deployment and polls until active.
+        For OSS models, creates a model import job and polls until complete. Once
+        deploy() returns, the model is ready for on-demand inference. For provisioned
+        throughput, use the separate create_provisioned_throughput() method.
 
         Args:
             job_name: Name for the model import job (OSS models only).
@@ -170,12 +173,12 @@ class BedrockModelBuilder:
                 defaults to custom_model_name suffixed with '-deployment'.
 
         Returns:
-            Response from Bedrock API. For Nova models, returns the
-            create_custom_model_deployment response. For others, returns
-            the create_model_import_job response.
+            For Nova models: the create_custom_model_deployment response.
+            For OSS models: the completed get_model_import_job response.
 
         Raises:
             ValueError: If model_package is not set or required parameters are missing.
+            RuntimeError: If the import job or deployment fails or times out.
         """
         if not self.model_package:
             raise ValueError(
