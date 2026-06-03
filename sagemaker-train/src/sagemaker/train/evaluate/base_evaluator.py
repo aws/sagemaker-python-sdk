@@ -222,21 +222,17 @@ class BaseEvaluator(BaseModel):
                              if hasattr(session, 'boto_region_name') 
                              else 'us-west-2')
                 
-                # Fetch the object
-                obj = ModelPackageGroup.get(
-                    model_package_group_name=v,
-                    region=region
-                )
-                
-                # Extract ARN
-                if hasattr(obj, 'model_package_group_arn'):
-                    arn = obj.model_package_group_arn
-                    _logger.info(f"Resolved model package group name '{v}' to ARN: {arn}")
-                    return arn
+                # Resolve directly via boto3 client to avoid SageMakerClient singleton
+                # which may cache a different region.
+                import boto3 as _boto3
+                if session and hasattr(session, 'boto_session'):
+                    sm_client = session.boto_session.client("sagemaker", region_name=region)
                 else:
-                    raise ValueError(
-                        f"ModelPackageGroup object for name '{v}' does not have model_package_group_arn attribute"
-                    )
+                    sm_client = _boto3.client("sagemaker", region_name=region)
+                response = sm_client.describe_model_package_group(ModelPackageGroupName=v)
+                arn = response["ModelPackageGroupArn"]
+                _logger.info(f"Resolved model package group name '{v}' to ARN: {arn}")
+                return arn
                     
             except Exception as e:
                 raise ValueError(
