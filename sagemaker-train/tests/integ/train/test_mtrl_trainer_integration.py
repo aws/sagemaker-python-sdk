@@ -55,10 +55,8 @@ ACCOUNT_CONFIGS = {
     # PROD — Main account (729646638167)
     "729646638167": {
         "env_name": "PROD",
-        #"existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260602215955",
-        "existing_job_name": "nova-textgeneration-lite-v2-mtrl-20260603105131",
-        #"base_model": "openai-reasoning-gpt-oss-20b",
-        "base_model": "nova-textgeneration-lite-v2",
+        "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260602215955",
+        "base_model": "openai-reasoning-gpt-oss-20b",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
