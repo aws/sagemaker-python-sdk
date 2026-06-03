@@ -1157,7 +1157,8 @@ class FrameworkProcessor(ScriptProcessor):
 
         # Create tar.gz with source_dir contents
         with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
-            with tarfile.open(tmp.name, "w:gz") as tar:
+            tmp_path = tmp.name
+            with tarfile.open(tmp_path, "w:gz") as tar:
                 # Add all files from source_dir to the root of the tar
                 for item in os.listdir(source_dir):
                     item_path = os.path.join(source_dir, item)
@@ -1172,15 +1173,22 @@ class FrameworkProcessor(ScriptProcessor):
             )
 
             # Upload the tar file directly to S3
-            s3.S3Uploader.upload_string_as_file_body(
-                body=open(tmp.name, "rb").read(),
-                desired_s3_uri=s3_uri,
-                kms_key=kms_key,
-                sagemaker_session=self.sagemaker_session,
-            )
+            with open(tmp_path, "rb") as f:
+                s3.S3Uploader.upload_string_as_file_body(
+                    body=f.read(),
+                    desired_s3_uri=s3_uri,
+                    kms_key=kms_key,
+                    sagemaker_session=self.sagemaker_session,
+                )
 
-            os.unlink(tmp.name)
-            return s3_uri
+        # Delete outside the with block so the file handle is closed first.
+        # On Windows, a file cannot be deleted while any handle remains open
+        # (PermissionError WinError 32); on Linux/macOS this is not an issue.
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        return s3_uri
 
     @_telemetry_emitter(feature=Feature.PROCESSING, func_name="FrameworkProcessor.run")
     @runnable_by_pipeline
