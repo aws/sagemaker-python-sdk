@@ -1,4 +1,10 @@
 # Changelog
+## v2.13.0 (2026-06-02)
+
+### Bug Fixes
+
+- Fix: Restore BatchTransformInput.destination attribute in v3 (#5865)
+
 ## v2.12.0 (2026-05-19)
 
 ### New Features
