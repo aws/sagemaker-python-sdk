@@ -157,15 +157,15 @@ class BedrockModelBuilder:
         For Nova models, also creates a custom model deployment for inference.
 
         Args:
-            job_name: Name for the model import job (non-Nova models only).
-            imported_model_name: Name for the imported model (non-Nova models only).
+            job_name: Name for the model import job (OSS models only).
+            imported_model_name: Name for the imported model (OSS models only).
             custom_model_name: Name for the custom model (Nova models only).
             role_arn: IAM role ARN with permissions for Bedrock operations.
-            job_tags: Tags for the import job (non-Nova models only).
-            imported_model_tags: Tags for the imported model (non-Nova models only).
+            job_tags: Tags for the import job (OSS models only).
+            imported_model_tags: Tags for the imported model (OSS models only).
             model_tags: Tags for the custom model (Nova models only).
-            client_request_token: Unique token for idempotency (non-Nova models only).
-            imported_model_kms_key_id: KMS key ID for encryption (non-Nova models only).
+            client_request_token: Unique token for idempotency (OSS models only).
+            imported_model_kms_key_id: KMS key ID for encryption (OSS models only).
             deployment_name: Name for the deployment (Nova models only). If not provided,
                 defaults to custom_model_name suffixed with '-deployment'.
 
@@ -238,15 +238,23 @@ class BedrockModelBuilder:
             }
             params = {k: v for k, v in params.items() if v is not None}
 
-            logger.info("Creating model import job for non-Nova deployment")
+            logger.info("Creating model import job for OSS model deployment")
             print(f"[BedrockModelBuilder] Resolved S3 artifacts path: {self.s3_model_artifacts}")
             print(f"[BedrockModelBuilder] create_model_import_job params: {params}")
-            response = self._get_bedrock_client().create_model_import_job(**params)
+            import_response = self._get_bedrock_client().create_model_import_job(**params)
             logger.warning(
-                "Bedrock create_model_import_job request: %s, response: %s", params, response
+                "Bedrock create_model_import_job request: %s, response: %s", params, import_response
             )
-            _log_bedrock_api_call("create_model_import_job", params, response)
-            return response
+            _log_bedrock_api_call("create_model_import_job", params, import_response)
+
+            job_arn = import_response.get("jobArn")
+            self._wait_for_import_job_complete(job_arn)
+
+            # Return the completed job details
+            job_details = self._get_bedrock_client().get_model_import_job(
+                jobIdentifier=job_arn
+            )
+            return job_details
 
     def create_deployment(
         self,
@@ -302,6 +310,140 @@ class BedrockModelBuilder:
             )
 
         return response
+
+    def create_provisioned_throughput(
+        self,
+        model_id: str,
+        provisioned_model_name: str,
+        model_units: int = 1,
+        commitment_duration: Optional[str] = None,
+        tags: Optional[list] = None,
+        poll_interval: int = 60,
+        max_wait: int = 3600,
+    ) -> Dict[str, Any]:
+        """Create provisioned throughput for an imported model on Bedrock.
+
+        Calls CreateProvisionedModelThroughput and polls until the provisioned
+        throughput reaches InService status.
+
+        Args:
+            model_id: ARN or ID of the imported model.
+            provisioned_model_name: Name for the provisioned throughput resource.
+            model_units: Number of model units to provision. Defaults to 1.
+            commitment_duration: Commitment duration. Valid values: 'OneMonth',
+                'SixMonths'. If not provided, no commitment is set (on-demand).
+            tags: Tags for the provisioned throughput resource.
+            poll_interval: Seconds between status checks. Defaults to 60.
+            max_wait: Maximum seconds to wait. Defaults to 3600.
+
+        Returns:
+            Response from Bedrock create_provisioned_model_throughput API.
+
+        Raises:
+            RuntimeError: If the provisioned throughput fails or times out.
+            ValueError: If model_id or provisioned_model_name is not provided.
+        """
+        if not model_id:
+            raise ValueError("model_id is required for create_provisioned_throughput.")
+        if not provisioned_model_name:
+            raise ValueError(
+                "provisioned_model_name is required for create_provisioned_throughput."
+            )
+
+        params = {
+            "modelId": model_id,
+            "provisionedModelName": provisioned_model_name,
+            "modelUnits": model_units,
+        }
+        if commitment_duration:
+            params["commitmentDuration"] = commitment_duration
+        if tags:
+            params["tags"] = tags
+
+        logger.info(
+            "Creating provisioned throughput '%s' for model %s with %d model units",
+            provisioned_model_name,
+            model_id,
+            model_units,
+        )
+        response = self._get_bedrock_client().create_provisioned_model_throughput(**params)
+
+        provisioned_model_arn = response.get("provisionedModelArn")
+        if provisioned_model_arn:
+            self._wait_for_provisioned_throughput_in_service(
+                provisioned_model_arn, poll_interval=poll_interval, max_wait=max_wait
+            )
+
+        return response
+
+    def _wait_for_import_job_complete(
+        self, job_arn: str, poll_interval: int = 60, max_wait: int = 3600
+    ):
+        """Poll Bedrock until the model import job reaches Completed status.
+
+        Args:
+            job_arn: ARN of the model import job.
+            poll_interval: Seconds between status checks. Defaults to 60.
+            max_wait: Maximum seconds to wait. Defaults to 3600.
+
+        Raises:
+            RuntimeError: If the import job fails or times out.
+        """
+        elapsed = 0
+        status = None
+        while elapsed < max_wait:
+            resp = self._get_bedrock_client().get_model_import_job(jobIdentifier=job_arn)
+            status = resp.get("status")
+            logger.info("Import job status: %s (elapsed %ds)", status, elapsed)
+            if status == "Completed":
+                return
+            if status == "Failed":
+                failure_reason = resp.get("failureMessage", "Unknown")
+                raise RuntimeError(
+                    f"Model import job {job_arn} failed. Reason: {failure_reason}"
+                )
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+        raise RuntimeError(
+            f"Timed out after {max_wait}s waiting for import job {job_arn} to complete. "
+            f"Last status: {status}"
+        )
+
+    def _wait_for_provisioned_throughput_in_service(
+        self, provisioned_model_arn: str, poll_interval: int = 60, max_wait: int = 3600
+    ):
+        """Poll Bedrock until provisioned throughput reaches InService status.
+
+        Args:
+            provisioned_model_arn: ARN of the provisioned model throughput.
+            poll_interval: Seconds between status checks. Defaults to 60.
+            max_wait: Maximum seconds to wait. Defaults to 3600.
+
+        Raises:
+            RuntimeError: If the provisioned throughput fails or times out.
+        """
+        elapsed = 0
+        status = None
+        while elapsed < max_wait:
+            resp = self._get_bedrock_client().get_provisioned_model_throughput(
+                provisionedModelId=provisioned_model_arn
+            )
+            status = resp.get("status")
+            logger.info("Provisioned throughput status: %s (elapsed %ds)", status, elapsed)
+            if status == "InService":
+                return
+            if status == "Failed":
+                failure_reason = resp.get("failureMessage", "Unknown")
+                raise RuntimeError(
+                    f"Provisioned throughput {provisioned_model_arn} failed. "
+                    f"Reason: {failure_reason}"
+                )
+            time.sleep(poll_interval)
+            elapsed += poll_interval
+        raise RuntimeError(
+            f"Timed out after {max_wait}s waiting for provisioned throughput "
+            f"{provisioned_model_arn} to become InService. Last status: {status}"
+        )
 
     def _wait_for_model_active(
         self, model_arn: str, poll_interval: int = 60, max_wait: int = 3600
