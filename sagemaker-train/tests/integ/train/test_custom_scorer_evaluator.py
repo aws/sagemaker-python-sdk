@@ -36,7 +36,7 @@ EVALUATION_TIMEOUT_SECONDS = 14400  # 4 hours
 # TEST_CONFIG = {
 #     "evaluator_arn": "arn:aws:sagemaker:us-west-2:052150106756:hub-content/F3LMYANDKWPZCROJVCKMJ7TOML6QMZBZRRQOVTUL45VUK7PJ4SXA/JsonDoc/eval-lambda-test/0.0.1",
 #     "dataset_s3_uri": "s3://sagemaker-us-west-2-052150106756/studio-users/d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
-#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models-gamma/28",
+#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models/28",
 #     "s3_output_path": "s3://mufi-test-serverless-smtj/eval/",
 #     "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
 #     "evaluate_base_model": False,

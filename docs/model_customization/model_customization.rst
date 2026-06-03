@@ -15,6 +15,9 @@ SageMaker Python SDK V3 provides four specialized trainer classes for different 
 **RLVRTrainer (Reinforcement Learning from Verifiable Rewards)**
   Fine-tune with verifiable reward signals for objective optimization
 
+**MultiTurnRLTrainer (Agentic Reinforcement Fine-Tuning)**
+  Fine-tune models for multi-turn agent interactions using reinforcement learning from environment feedback
+
 .. toctree::
    :maxdepth: 1
    :hidden:
@@ -23,3 +26,4 @@ SageMaker Python SDK V3 provides four specialized trainer classes for different 
     DPOTrainer Finetuning <../../v3-examples/model-customization-examples/dpo_trainer_example_notebook_v3_prod>
     RLAIF Finetuning <../../v3-examples/model-customization-examples/rlaif_finetuning_example_notebook_v3_prod>
     RLVR Finetuning <../../v3-examples/model-customization-examples/rlvr_finetuning_example_notebook_v3_prod>
+    MTRL Training <mtrl_training>

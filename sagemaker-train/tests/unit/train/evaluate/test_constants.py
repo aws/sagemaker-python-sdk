@@ -49,14 +49,14 @@ class TestEvalType:
         assert EvalType.LLM_AS_JUDGE.value == "llmasjudge"
 
     def test_eval_type_has_all_expected_members(self):
-        """Test that EvalType has exactly three expected members."""
-        expected_members = {"BENCHMARK", "CUSTOM_SCORER", "LLM_AS_JUDGE"}
+        """Test that EvalType has all expected members."""
+        expected_members = {"BENCHMARK", "CUSTOM_SCORER", "LLM_AS_JUDGE", "MTRL"}
         actual_members = {member.name for member in EvalType}
         assert actual_members == expected_members
 
     def test_eval_type_member_count(self):
-        """Test that EvalType has exactly three members."""
-        assert len(EvalType) == 3
+        """Test that EvalType has exactly four members."""
+        assert len(EvalType) == 4
 
     def test_eval_type_members_accessible(self):
         """Test that all enum members are accessible."""
@@ -73,10 +73,11 @@ class TestEvalType:
     def test_eval_type_can_iterate(self):
         """Test that we can iterate over EvalType members."""
         members = list(EvalType)
-        assert len(members) == 3
+        assert len(members) == 4
         assert EvalType.BENCHMARK in members
         assert EvalType.CUSTOM_SCORER in members
         assert EvalType.LLM_AS_JUDGE in members
+        assert EvalType.MTRL in members
 
     def test_eval_type_value_uniqueness(self):
         """Test that all enum values are unique."""

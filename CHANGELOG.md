@@ -81,7 +81,7 @@
 - **Docker**: Support for docker compose > v2
 - **HuggingFace**: Improve SDK v3 Hugging Face support
 - **Dependencies**: Remove Pytorch hard dependency
-
+  
 ## v3.7.1 (2026-03-31)
 
 ### Features

@@ -43,12 +43,16 @@ dependencies = [
     "sagemaker-mlflow>=0.0.1,<1.0.0",
     "mlflow>=3.0.0,<4.0.0",
     "nest_asyncio>=1.5.0",
+    "requests>=2.28.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/aws/sagemaker-python-sdk"
 
 [project.optional-dependencies]
+rft-strands = ["strands-agents"]
+rft-langchain = ["httpx>=0.24.0"]
 test = [
     "pytest",
     "pytest-cov",

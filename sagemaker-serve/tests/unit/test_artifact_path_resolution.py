@@ -120,8 +120,8 @@ class TestArtifactPathResolution(unittest.TestCase):
         # Execute
         artifact_uri = builder._resolve_model_artifact_uri()
 
-        # Verify: Fine-tuned models return None - model data is handled by recipe/container
-        assert artifact_uri is None
+        # Verify: Fine-tuned models return the S3 URI from model_data_source
+        assert artifact_uri == "s3://my-bucket/fine-tuned-model/model.tar.gz"
 
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_peft")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization")
@@ -431,8 +431,8 @@ class TestArtifactPathResolution(unittest.TestCase):
         # Execute
         artifact_uri = builder._resolve_model_artifact_uri()
 
-        # Verify: Fine-tuned models return None - model data handled by recipe/container
-        assert artifact_uri is None
+        # Verify: Fine-tuned models return the S3 URI from model_data_source
+        assert artifact_uri == "s3://custom-bucket/my-fine-tuned-model/artifacts.tar.gz"
 
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model")
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_model_package")

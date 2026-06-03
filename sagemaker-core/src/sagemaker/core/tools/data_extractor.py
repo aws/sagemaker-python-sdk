@@ -11,6 +11,7 @@ from sagemaker.core.tools.constants import (
     RUNTIME_SERVICE_JSON_FILE_PATH,
 )
 
+SERVICE_JSON_FILE_PATH = "/Users/rsareddy/workplace/pysdk-v3-313-release/sagemaker-python-sdk/sagemaker-core/sample/sagemaker/2017-07-24/service-2.json"
 
 class ServiceJsonData(BaseModel):
     sagemaker: dict
