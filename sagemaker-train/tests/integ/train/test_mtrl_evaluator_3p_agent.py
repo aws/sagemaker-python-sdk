@@ -262,6 +262,7 @@ class TestMTRLEvaluator3PAgentIntegration:
         logger.info(f"Started 3P agent base model evaluation: {execution.arn}")
         logger.info(f"Status: {execution.status.overall_status}")
 
+    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_base_model_with_agent_lambda_object(self, lambda_agent_arn):
         """Test evaluating using an CustomAgentLambda object as agent_config.
 
@@ -287,6 +288,7 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution.arn is not None
         logger.info(f"Started CustomAgentLambda object evaluation: {execution.arn}")
 
+    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_with_lambda_agent_wait_for_completion(self, lambda_agent_arn):
         """Test full end-to-end: start evaluation and wait for completion.
 
@@ -316,6 +318,7 @@ class TestMTRLEvaluator3PAgentIntegration:
         if execution.status.overall_status == "Failed":
             logger.error(f"Failure reason: {execution.status.failure_reason}")
 
+    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_lambda_agent_discoverable_via_get_all(self, lambda_agent_arn):
         """Test that 3P agent evaluations are discoverable via get_all.
 
@@ -355,6 +358,7 @@ class TestMTRLEvaluator3PAgentIntegration:
 
 
 
+    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_with_attached_trainer(self, lambda_agent_arn):
         """Test evaluating a fine-tuned model by attaching to an existing training job."""
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer

@@ -187,6 +187,7 @@ class TestMTRLEvalIntegration:
             f"reason: {execution.status.failure_reason}"
         )
 
+    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_base_model(self, config):
         """Evaluate the base model only — submit and wait for completion."""
         evaluator = MultiTurnRLEvaluator(
@@ -248,6 +249,7 @@ class TestMTRLEvalIntegration:
             f"reason: {execution.status.failure_reason}"
         )
 
+    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_with_hyperparam_override(self, attached_trainer, config):
         """Test that hyperparameter overrides are passed through to the eval job."""
         evaluator = MultiTurnRLEvaluator(
