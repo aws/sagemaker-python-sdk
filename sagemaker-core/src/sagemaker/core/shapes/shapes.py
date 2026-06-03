@@ -5090,6 +5090,66 @@ class ClusterRestrictedInstanceGroupSpecification(Base):
     environment_config: Optional[EnvironmentConfig] = Unassigned()
 
 
+class ClusterSharedEnvironmentConfig(Base):
+    """
+    ClusterSharedEnvironmentConfig
+      The shared environment configuration for the restricted instance groups (RIG).
+
+    Attributes
+    ----------------------
+    f_sx_lustre_deletion_policy: The deletion policy for the Amazon FSx for Lustre file system in the shared environment.
+    f_sx_lustre_config: Configuration settings for an Amazon FSx for Lustre file system in the shared environment.
+    """
+
+    f_sx_lustre_deletion_policy: StrPipeVar
+    f_sx_lustre_config: FSxLustreConfig
+
+
+class ClusterRestrictedInstanceGroupsConfig(Base):
+    """
+    ClusterRestrictedInstanceGroupsConfig
+      The configuration for the restricted instance groups (RIG) in the SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    shared_environment_config: The shared environment configuration for the restricted instance groups (RIG).
+    """
+
+    shared_environment_config: ClusterSharedEnvironmentConfig
+
+
+class ClusterSharedEnvironmentConfigDetails(Base):
+    """
+    ClusterSharedEnvironmentConfigDetails
+      The shared environment configuration details for the restricted instance groups (RIG).
+
+    Attributes
+    ----------------------
+    current_f_sx_lustre_config: The current Amazon FSx for Lustre file system configuration in the shared environment.
+    desired_f_sx_lustre_config: The desired Amazon FSx for Lustre file system configuration in the shared environment.
+    current_f_sx_lustre_deletion_policy: The current deletion policy for the Amazon FSx for Lustre file system in the shared environment.
+    desired_f_sx_lustre_deletion_policy: The desired deletion policy for the Amazon FSx for Lustre file system in the shared environment.
+    """
+
+    current_f_sx_lustre_config: Optional[FSxLustreConfig] = Unassigned()
+    desired_f_sx_lustre_config: Optional[FSxLustreConfig] = Unassigned()
+    current_f_sx_lustre_deletion_policy: Optional[StrPipeVar] = Unassigned()
+    desired_f_sx_lustre_deletion_policy: Optional[StrPipeVar] = Unassigned()
+
+
+class ClusterRestrictedInstanceGroupsConfigOutput(Base):
+    """
+    ClusterRestrictedInstanceGroupsConfigOutput
+      The output configuration for the restricted instance groups (RIG) in the SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    shared_environment_config: The shared environment configuration details for the restricted instance groups (RIG).
+    """
+
+    shared_environment_config: ClusterSharedEnvironmentConfigDetails
+
+
 class ClusterSchedulerConfigSummary(Base):
     """
     ClusterSchedulerConfigSummary
@@ -10904,13 +10964,14 @@ class EndpointPerformance(Base):
 class JobSecondaryStatusTransition(Base):
     """
     JobSecondaryStatusTransition
+      Represents a secondary status transition for a job. Jobs progress through multiple secondary statuses during execution. Each transition records the status, start time, optional end time, and an optional message with additional details.
 
     Attributes
     ----------------------
-    status
-    start_time
-    end_time
-    status_message
+    status: The secondary status of the job at this transition point.
+    start_time: The date and time that the status transition started.
+    end_time: The date and time that the status transition ended.
+    status_message: A detailed message about the status transition.
     """
 
     status: StrPipeVar
@@ -11357,6 +11418,7 @@ class ReservedCapacitySummary(Base):
     total_instance_count: The total number of instances in the reserved capacity.
     status: The current status of the reserved capacity.
     availability_zone: The availability zone for the reserved capacity.
+    availability_zone_id: The Availability Zone ID of the reserved capacity.
     duration_hours: The number of whole hours in the total duration for this reserved capacity.
     duration_minutes: The additional minutes beyond whole hours in the total duration for this reserved capacity.
     start_time: The start time of the reserved capacity.
@@ -11371,6 +11433,7 @@ class ReservedCapacitySummary(Base):
     ultra_server_type: Optional[StrPipeVar] = Unassigned()
     ultra_server_count: Optional[int] = Unassigned()
     availability_zone: Optional[StrPipeVar] = Unassigned()
+    availability_zone_id: Optional[StrPipeVar] = Unassigned()
     duration_hours: Optional[int] = Unassigned()
     duration_minutes: Optional[int] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
@@ -12812,29 +12875,44 @@ class InstanceGroupHealthCheckConfiguration(Base):
 class JobConfigSchemaVersionSummary(Base):
     """
     JobConfigSchemaVersionSummary
+      Provides summary information about a job configuration schema version.
 
     Attributes
     ----------------------
-    job_config_schema_version
+    job_config_schema_version: The version of the job configuration schema.
     """
 
     job_config_schema_version: StrPipeVar
 
 
-class JobSummary(Base):
+class JobStepMetadata(Base):
     """
-    JobSummary
+    JobStepMetadata
+      Metadata for a SageMaker job step.
 
     Attributes
     ----------------------
-    job_arn
-    job_name
-    job_category
-    job_status
-    job_secondary_status
-    creation_time
-    last_modified_time
-    end_time
+    arn: The Amazon Resource Name (ARN) of the SageMaker job that was run by this step execution.
+    """
+
+    arn: Optional[StrPipeVar] = Unassigned()
+
+
+class JobSummary(Base):
+    """
+    JobSummary
+      Provides summary information about a job, returned by the ListJobs operation. Use DescribeJob to get full details for a specific job.
+
+    Attributes
+    ----------------------
+    job_arn: The Amazon Resource Name (ARN) of the job.
+    job_name: The name of the job.
+    job_category: The category of the job.
+    job_status: The current status of the job.
+    job_secondary_status: The secondary status of the job, providing more granular information about the job's progress. Secondary statuses may change between releases.
+    creation_time: The date and time that the job was created.
+    last_modified_time: The date and time that the job was last modified.
+    end_time: The date and time that the job ended.
     """
 
     job_arn: StrPipeVar
@@ -13570,6 +13648,7 @@ class PipelineExecutionStepMetadata(Base):
     bedrock_model_import:  The metadata of Amazon Bedrock model import used in pipeline execution step.
     inference_component:  The metadata of the inference component used in pipeline execution step.
     lineage:  The metadata of the lineage used in pipeline execution step.
+    job: The metadata for a SageMaker job used in a pipeline execution step.
     """
 
     training_job: Optional[TrainingJobStepMetadata] = Unassigned()
@@ -13596,6 +13675,7 @@ class PipelineExecutionStepMetadata(Base):
     bedrock_model_import: Optional[BedrockModelImportMetadata] = Unassigned()
     inference_component: Optional[InferenceComponentMetadata] = Unassigned()
     lineage: Optional[LineageMetadata] = Unassigned()
+    job: Optional[JobStepMetadata] = Unassigned()
 
 
 class SelectiveExecutionResult(Base):

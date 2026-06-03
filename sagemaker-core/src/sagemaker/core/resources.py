@@ -4420,6 +4420,7 @@ class Cluster(Base):
         creation_time: The time when the SageMaker Cluster is created.
         failure_message: The failure message of the SageMaker HyperPod cluster.
         restricted_instance_groups: The specialized instance groups for training models like Amazon Nova to be created in the SageMaker HyperPod cluster.
+        restricted_instance_groups_config: The configuration for the restricted instance groups (RIG) in the SageMaker HyperPod cluster.
         vpc_config:
         orchestrator: The type of orchestrator used for the SageMaker HyperPod cluster.
         tiered_storage_config: The current configuration for managed tier checkpointing on the HyperPod cluster. For example, this shows whether the feature is enabled and the percentage of cluster memory allocated for checkpoint storage.
@@ -4437,6 +4438,9 @@ class Cluster(Base):
     failure_message: Optional[StrPipeVar] = Unassigned()
     instance_groups: Optional[List[ClusterInstanceGroupDetails]] = Unassigned()
     restricted_instance_groups: Optional[List[ClusterRestrictedInstanceGroupDetails]] = Unassigned()
+    restricted_instance_groups_config: Optional[ClusterRestrictedInstanceGroupsConfigOutput] = (
+        Unassigned()
+    )
     vpc_config: Optional[VpcConfig] = Unassigned()
     orchestrator: Optional[ClusterOrchestrator] = Unassigned()
     tiered_storage_config: Optional[ClusterTieredStorageConfig] = Unassigned()
@@ -4490,6 +4494,9 @@ class Cluster(Base):
         restricted_instance_groups: Optional[
             List[ClusterRestrictedInstanceGroupSpecification]
         ] = Unassigned(),
+        restricted_instance_groups_config: Optional[
+            ClusterRestrictedInstanceGroupsConfig
+        ] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         orchestrator: Optional[ClusterOrchestrator] = Unassigned(),
@@ -4508,6 +4515,7 @@ class Cluster(Base):
             cluster_name: The name for the new SageMaker HyperPod cluster.
             instance_groups: The instance groups to be created in the SageMaker HyperPod cluster.
             restricted_instance_groups: The specialized instance groups for training models like Amazon Nova to be created in the SageMaker HyperPod cluster.
+            restricted_instance_groups_config: The configuration for the restricted instance groups (RIG) in the SageMaker HyperPod cluster.
             vpc_config: Specifies the Amazon Virtual Private Cloud (VPC) that is associated with the Amazon SageMaker HyperPod cluster. You can control access to and from your resources by configuring your VPC. For more information, see Give SageMaker access to resources in your Amazon VPC.  When your Amazon VPC and subnets support IPv6, network communications differ based on the cluster orchestration platform:   Slurm-orchestrated clusters automatically configure nodes with dual IPv6 and IPv4 addresses, allowing immediate IPv6 network communications.   In Amazon EKS-orchestrated clusters, nodes receive dual-stack addressing, but pods can only use IPv6 when the Amazon EKS cluster is explicitly IPv6-enabled. For information about deploying an IPv6 Amazon EKS cluster, see Amazon EKS IPv6 Cluster Deployment.   Additional resources for IPv6 configuration:   For information about adding IPv6 support to your VPC, see to IPv6 Support for VPC.   For information about creating a new IPv6-compatible VPC, see Amazon VPC Creation Guide.   To configure SageMaker HyperPod with a custom Amazon VPC, see Custom Amazon VPC Setup for SageMaker HyperPod.
             tags: Custom tags for managing the SageMaker HyperPod cluster as an Amazon Web Services resource. You can add tags to your cluster in the same way you add them in other Amazon Web Services services that support tagging. To learn more about tagging Amazon Web Services resources in general, see Tagging Amazon Web Services Resources User Guide.
             orchestrator: The type of orchestrator to use for the SageMaker HyperPod cluster. Currently, supported values are "Eks" and "Slurm", which is to use an Amazon Elastic Kubernetes Service or Slurm cluster as the orchestrator.  If you specify the Orchestrator field, you must provide exactly one orchestrator configuration: either Eks or Slurm. Specifying both or providing an empty configuration returns a validation error.
@@ -4548,6 +4556,7 @@ class Cluster(Base):
             "ClusterName": cluster_name,
             "InstanceGroups": instance_groups,
             "RestrictedInstanceGroups": restricted_instance_groups,
+            "RestrictedInstanceGroupsConfig": restricted_instance_groups_config,
             "VpcConfig": vpc_config,
             "Tags": tags,
             "Orchestrator": orchestrator,
@@ -4669,6 +4678,9 @@ class Cluster(Base):
         restricted_instance_groups: Optional[
             List[ClusterRestrictedInstanceGroupSpecification]
         ] = Unassigned(),
+        restricted_instance_groups_config: Optional[
+            ClusterRestrictedInstanceGroupsConfig
+        ] = Unassigned(),
         tiered_storage_config: Optional[ClusterTieredStorageConfig] = Unassigned(),
         node_recovery: Optional[StrPipeVar] = Unassigned(),
         instance_groups_to_delete: Optional[List[StrPipeVar]] = Unassigned(),
@@ -4708,6 +4720,7 @@ class Cluster(Base):
             "ClusterName": self.cluster_name,
             "InstanceGroups": instance_groups,
             "RestrictedInstanceGroups": restricted_instance_groups,
+            "RestrictedInstanceGroupsConfig": restricted_instance_groups_config,
             "TieredStorageConfig": tiered_storage_config,
             "NodeRecovery": node_recovery,
             "InstanceGroupsToDelete": instance_groups_to_delete,
@@ -17998,20 +18011,20 @@ class Job(Base):
     Class representing resource Job
 
     Attributes:
-        job_name:
-        job_arn:
-        role_arn:
-        job_category:
-        job_config_schema_version:
-        creation_time:
-        last_modified_time:
-        job_status:
-        secondary_status:
-        secondary_status_transitions:
-        job_config_document:
-        end_time:
-        failure_reason:
-        tags:
+        job_name: The name of the job.
+        job_arn: The Amazon Resource Name (ARN) of the job.
+        role_arn: The ARN of the IAM role associated with the job.
+        job_category: The category of the job.
+        job_config_schema_version: The schema version used for the job configuration document.
+        creation_time: The date and time that the job was created.
+        last_modified_time: The date and time that the job was last modified.
+        job_status: The current status of the job.
+        secondary_status: The detailed secondary status of the job, providing more granular information about the job's progress. Secondary statuses may change between releases.
+        secondary_status_transitions: A list of secondary status transitions for the job, with timestamps and optional status messages.
+        job_config_document: The JSON configuration document for the job.
+        end_time: The date and time that the job ended.
+        failure_reason: If the job failed, the reason it failed.
+        tags: The tags associated with the job.
 
     """
 
@@ -18077,12 +18090,12 @@ class Job(Base):
         Create a Job resource
 
         Parameters:
-            job_name:
-            role_arn:
-            job_category:
-            job_config_schema_version:
-            job_config_document:
-            tags:
+            job_name: The name of the job. The name must be unique within your account and Amazon Web Services Region.
+            role_arn: The Amazon Resource Name (ARN) of the IAM role that Amazon SageMaker assumes to perform the job. The role must have the necessary permissions to access the resources required by the job configuration.
+            job_category: The category of the job. The category determines the type of workload that the job runs.
+            job_config_schema_version: The version of the configuration schema to use for the job configuration document. Use ListJobSchemaVersions to get available schema versions for a job category.
+            job_config_document: The JSON configuration document for the job. The document must conform to the schema specified by JobConfigSchemaVersion. Use DescribeJobSchemaVersion to retrieve the schema for validation.
+            tags: An array of key-value pairs to apply to the job as tags. For more information, see Tagging Amazon Web Services Resources.
             session: Boto3 session.
             region: Region name.
 
@@ -18149,8 +18162,8 @@ class Job(Base):
         Get a Job resource
 
         Parameters:
-            job_name:
-            job_category:
+            job_name: The name of the job to describe.
+            job_category: The category of the job.
             session: Boto3 session.
             region: Region name.
 
@@ -18437,17 +18450,17 @@ class Job(Base):
         Get all Job resources
 
         Parameters:
-            job_category:
-            next_token:
-            max_results:
-            creation_time_after:
-            creation_time_before:
-            last_modified_time_after:
-            last_modified_time_before:
-            name_contains:
-            sort_by:
-            sort_order:
-            status_equals:
+            job_category: The category of jobs to list.
+            next_token: If the previous response was truncated, this token retrieves the next set of results.
+            max_results: The maximum number of jobs to return in the response. The default value is 50.
+            creation_time_after: A filter that returns only jobs created after the specified time.
+            creation_time_before: A filter that returns only jobs created before the specified time.
+            last_modified_time_after: A filter that returns only jobs modified after the specified time.
+            last_modified_time_before: A filter that returns only jobs modified before the specified time.
+            name_contains: A string in the job name to filter results. Only jobs whose name contains the specified string are returned.
+            sort_by: The field to sort results by.
+            sort_order: The sort order for results. Valid values are Ascending and Descending.
+            status_equals: A filter that returns only jobs with the specified status.
             session: Boto3 session.
             region: Region name.
 
@@ -20390,8 +20403,8 @@ class Model(Base):
                 "primary_container": {
                     "model_data_source": {
                         "s3_data_source": {
-                            "s3_uri": {"type": "string"},
                             "s3_data_type": {"type": "string"},
+                            "s3_uri": {"type": "string"},
                             "manifest_s3_uri": {"type": "string"},
                         }
                     }

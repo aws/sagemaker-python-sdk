@@ -2484,6 +2484,26 @@ SHAPE_DAG = {
         "member_type": "structure",
         "type": "list",
     },
+    "ClusterRestrictedInstanceGroupsConfig": {
+        "members": [
+            {
+                "name": "SharedEnvironmentConfig",
+                "shape": "ClusterSharedEnvironmentConfig",
+                "type": "structure",
+            }
+        ],
+        "type": "structure",
+    },
+    "ClusterRestrictedInstanceGroupsConfigOutput": {
+        "members": [
+            {
+                "name": "SharedEnvironmentConfig",
+                "shape": "ClusterSharedEnvironmentConfigDetails",
+                "type": "structure",
+            }
+        ],
+        "type": "structure",
+    },
     "ClusterSchedulerConfigSummary": {
         "members": [
             {
@@ -2509,6 +2529,34 @@ SHAPE_DAG = {
         "member_shape": "ClusterSchedulerConfigSummary",
         "member_type": "structure",
         "type": "list",
+    },
+    "ClusterSharedEnvironmentConfig": {
+        "members": [
+            {
+                "name": "FSxLustreDeletionPolicy",
+                "shape": "ClusterFSxLustreDeletionPolicy",
+                "type": "string",
+            },
+            {"name": "FSxLustreConfig", "shape": "FSxLustreConfig", "type": "structure"},
+        ],
+        "type": "structure",
+    },
+    "ClusterSharedEnvironmentConfigDetails": {
+        "members": [
+            {"name": "CurrentFSxLustreConfig", "shape": "FSxLustreConfig", "type": "structure"},
+            {"name": "DesiredFSxLustreConfig", "shape": "FSxLustreConfig", "type": "structure"},
+            {
+                "name": "CurrentFSxLustreDeletionPolicy",
+                "shape": "ClusterFSxLustreDeletionPolicy",
+                "type": "string",
+            },
+            {
+                "name": "DesiredFSxLustreDeletionPolicy",
+                "shape": "ClusterFSxLustreDeletionPolicy",
+                "type": "string",
+            },
+        ],
+        "type": "structure",
     },
     "ClusterSlurmConfig": {
         "members": [
@@ -3098,6 +3146,11 @@ SHAPE_DAG = {
                 "name": "RestrictedInstanceGroups",
                 "shape": "ClusterRestrictedInstanceGroupSpecifications",
                 "type": "list",
+            },
+            {
+                "name": "RestrictedInstanceGroupsConfig",
+                "shape": "ClusterRestrictedInstanceGroupsConfig",
+                "type": "structure",
             },
             {"name": "VpcConfig", "shape": "VpcConfig", "type": "structure"},
             {"name": "Tags", "shape": "TagList", "type": "list"},
@@ -5739,6 +5792,11 @@ SHAPE_DAG = {
                 "name": "RestrictedInstanceGroups",
                 "shape": "ClusterRestrictedInstanceGroupDetailsList",
                 "type": "list",
+            },
+            {
+                "name": "RestrictedInstanceGroupsConfig",
+                "shape": "ClusterRestrictedInstanceGroupsConfigOutput",
+                "type": "structure",
             },
             {"name": "VpcConfig", "shape": "VpcConfig", "type": "structure"},
             {"name": "Orchestrator", "shape": "ClusterOrchestrator", "type": "structure"},
@@ -10223,6 +10281,10 @@ SHAPE_DAG = {
         "member_type": "structure",
         "type": "list",
     },
+    "JobStepMetadata": {
+        "members": [{"name": "Arn", "shape": "String1024", "type": "string"}],
+        "type": "structure",
+    },
     "JobSummaries": {"member_shape": "JobSummary", "member_type": "structure", "type": "list"},
     "JobSummary": {
         "members": [
@@ -11416,7 +11478,6 @@ SHAPE_DAG = {
     "ListJobSchemaVersionsResponse": {
         "members": [
             {"name": "NextToken", "shape": "NextToken", "type": "string"},
-            {"name": "JobCategory", "shape": "JobCategory", "type": "string"},
             {"name": "JobConfigSchemas", "shape": "JobConfigSchemas", "type": "list"},
         ],
         "type": "structure",
@@ -14503,6 +14564,7 @@ SHAPE_DAG = {
                 "type": "structure",
             },
             {"name": "Lineage", "shape": "LineageMetadata", "type": "structure"},
+            {"name": "Job", "shape": "JobStepMetadata", "type": "structure"},
         ],
         "type": "structure",
     },
@@ -15640,6 +15702,7 @@ SHAPE_DAG = {
             {"name": "TotalInstanceCount", "shape": "TotalInstanceCount", "type": "integer"},
             {"name": "Status", "shape": "ReservedCapacityStatus", "type": "string"},
             {"name": "AvailabilityZone", "shape": "AvailabilityZone", "type": "string"},
+            {"name": "AvailabilityZoneId", "shape": "AvailabilityZoneId", "type": "string"},
             {"name": "DurationHours", "shape": "ReservedCapacityDurationHours", "type": "long"},
             {"name": "DurationMinutes", "shape": "ReservedCapacityDurationMinutes", "type": "long"},
             {"name": "StartTime", "shape": "Timestamp", "type": "timestamp"},
@@ -17757,6 +17820,11 @@ SHAPE_DAG = {
                 "name": "RestrictedInstanceGroups",
                 "shape": "ClusterRestrictedInstanceGroupSpecifications",
                 "type": "list",
+            },
+            {
+                "name": "RestrictedInstanceGroupsConfig",
+                "shape": "ClusterRestrictedInstanceGroupsConfig",
+                "type": "structure",
             },
             {
                 "name": "TieredStorageConfig",
