@@ -50,7 +50,7 @@ AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE = (
     "ENV PATH $PATH:/opt/conda/bin\n"
     "COPY {source_archive} ./\n"
     "RUN mamba create -n auto_capture_client python={py_version} -y \
-        && mamba run -n auto_capture_client pip install --no-cache-dir '{source_archive}' awscli boto3\n"
+        && mamba run -n auto_capture_client pip install --no-cache-dir 'pycparser<3.0.1' '{source_archive}' awscli boto3\n"
     "COPY test_auto_capture.py .\n"
     'CMD ["mamba", "run", "-n", "auto_capture_client", "python", "test_auto_capture.py"]\n'
 )
