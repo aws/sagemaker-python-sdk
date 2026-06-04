@@ -77,7 +77,6 @@ TEST_CONFIG = {
 }
 
 
-@pytest.mark.serial
 class TestLLMAsJudgeBaseModelFix:
     """Integration test for base model fix in LLMAsJudgeEvaluator"""
 
