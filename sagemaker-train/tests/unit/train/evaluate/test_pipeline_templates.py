@@ -121,7 +121,6 @@ class TestDeterministicTemplate:
         pipeline_def = json.loads(rendered)
         
         assert pipeline_def["MlflowConfig"]["MlflowExperimentName"] == "test-experiment"
-        assert pipeline_def["MlflowConfig"]["MlflowRunName"] == "test-run"
 
     def test_deterministic_template_with_all_hyperparameters(self):
         """Test DETERMINISTIC_TEMPLATE with all optional hyperparameters."""
@@ -318,8 +317,9 @@ class TestDeterministicTemplateBaseModelOnly:
         
         base_model_step = pipeline_def["Steps"][0]
         
-        # Verify MLflow config is not present in BASE_MODEL_ONLY template
-        assert "MlflowConfig" not in pipeline_def
+        # Verify MLflow config is present in BASE_MODEL_ONLY template
+        assert "MlflowConfig" in pipeline_def
+        assert pipeline_def["MlflowConfig"]["MlflowResourceArn"] == BASE_CONTEXT["mlflow_resource_arn"]
         
         # Verify KMS key
         assert base_model_step["Arguments"]["OutputDataConfig"]["KmsKeyId"] == context["kms_key_id"]
@@ -404,8 +404,9 @@ class TestCustomScorerTemplateBaseModelOnly:
         
         pipeline_def = json.loads(rendered)
         
-        # Verify MLflow config is not present in BASE_MODEL_ONLY template
-        assert "MlflowConfig" not in pipeline_def
+        # Verify MLflow config is present in BASE_MODEL_ONLY template
+        assert "MlflowConfig" in pipeline_def
+        assert pipeline_def["MlflowConfig"]["MlflowResourceArn"] == BASE_CONTEXT["mlflow_resource_arn"]
         
         # Should have only 1 step
         assert len(pipeline_def["Steps"]) == 1
@@ -575,8 +576,9 @@ class TestLLMAJTemplateBaseModelOnly:
         
         pipeline_def = json.loads(rendered)
         
-        # Verify MLflow config is not present in BASE_MODEL_ONLY template
-        assert "MlflowConfig" not in pipeline_def
+        # Verify MLflow config is present in BASE_MODEL_ONLY template
+        assert "MlflowConfig" in pipeline_def
+        assert pipeline_def["MlflowConfig"]["MlflowResourceArn"] == BASE_CONTEXT["mlflow_resource_arn"]
         
         # Should have 2 steps: EvaluateBaseInferenceModel and EvaluateBaseModelMetrics
         assert len(pipeline_def["Steps"]) == 2

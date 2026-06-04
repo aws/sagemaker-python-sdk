@@ -67,6 +67,7 @@ class TestTransformer:
             base_transform_job_name="test-job",
             sagemaker_session=mock_session,
             volume_kms_key="volume-key",
+            transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
         )
 
         assert transformer.strategy == "MultiRecord"
@@ -77,6 +78,7 @@ class TestTransformer:
         assert transformer.max_concurrent_transforms == 4
         assert transformer.max_payload == 10
         assert transformer.volume_kms_key == "volume-key"
+        assert transformer.transform_ami_version == "al2-ami-sagemaker-batch-gpu-535"
 
     def test_format_inputs_to_input_config(self, mock_session):
         """Test _format_inputs_to_input_config method"""
@@ -179,6 +181,27 @@ class TestTransformer:
         assert config["instance_type"] == "ml.m5.xlarge"
         assert config["volume_kms_key_id"] == "volume-key"
 
+    def test_prepare_resource_config_with_ami_version(self, mock_session):
+        """Test _prepare_resource_config with transform_ami_version"""
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        config = transformer._prepare_resource_config(
+            instance_count=2,
+            instance_type="ml.g4dn.xlarge",
+            volume_kms_key="volume-key",
+            transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
+        )
+
+        assert config["instance_count"] == 2
+        assert config["instance_type"] == "ml.g4dn.xlarge"
+        assert config["volume_kms_key_id"] == "volume-key"
+        assert config["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
+
     def test_prepare_resource_config_no_kms(self, mock_session):
         """Test _prepare_resource_config without KMS key"""
         transformer = Transformer(
@@ -195,6 +218,7 @@ class TestTransformer:
         assert config["instance_count"] == 1
         assert config["instance_type"] == "ml.m5.xlarge"
         assert "volume_kms_key_id" not in config
+        assert "transform_ami_version" not in config
 
     def test_prepare_data_processing_all_params(self, mock_session):
         """Test _prepare_data_processing with all parameters"""
@@ -437,6 +461,87 @@ class TestTransformer:
         assert init_params["max_payload"] == 20
         assert init_params["volume_kms_key"] == "volume-key"
         assert init_params["base_transform_job_name"] == "test-job-456"
+
+    def test_prepare_init_params_from_job_description_with_ami_version(self, mock_session):
+        """Test _prepare_init_params_from_job_description with transform_ami_version"""
+        job_details = {
+            "model_name": "test-model",
+            "transform_resources": Mock(
+                instance_count=2,
+                instance_type="ml.g4dn.xlarge",
+                volume_kms_key_id="volume-key",
+                transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
+            ),
+            "batch_strategy": "SingleRecord",
+            "transform_output": Mock(
+                assemble_with="None",
+                s3_output_path="s3://bucket/output",
+                kms_key_id="output-key",
+                accept="text/csv",
+            ),
+            "max_concurrent_transforms": 8,
+            "max_payload_in_mb": 20,
+            "transform_job_name": "test-job-789",
+        }
+
+        init_params = Transformer._prepare_init_params_from_job_description(job_details)
+
+        assert init_params["model_name"] == "test-model"
+        assert init_params["instance_count"] == 2
+        assert init_params["instance_type"] == "ml.g4dn.xlarge"
+        assert init_params["volume_kms_key"] == "volume-key"
+        assert init_params["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
+        assert init_params["base_transform_job_name"] == "test-job-789"
+
+    def test_init_with_transform_ami_version(self, mock_session):
+        """Test initialization with transform_ami_version parameter"""
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.g4dn.xlarge",
+            transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
+            sagemaker_session=mock_session,
+        )
+
+        assert transformer.model_name == "test-model"
+        assert transformer.instance_count == 1
+        assert transformer.instance_type == "ml.g4dn.xlarge"
+        assert transformer.transform_ami_version == "al2-ami-sagemaker-batch-gpu-535"
+
+    def test_init_without_transform_ami_version(self, mock_session):
+        """Test initialization without transform_ami_version parameter"""
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.g4dn.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        assert transformer.transform_ami_version is None
+
+    def test_load_config_with_transform_ami_version(self, mock_session):
+        """Test _load_config includes transform_ami_version in resource_config"""
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=2,
+            instance_type="ml.g4dn.xlarge",
+            output_path="s3://bucket/output",
+            transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
+            sagemaker_session=mock_session,
+        )
+
+        config = transformer._load_config(
+            data="s3://bucket/input",
+            data_type="S3Prefix",
+            content_type="text/csv",
+            compression_type=None,
+            split_type="Line",
+        )
+
+        assert "resource_config" in config
+        assert config["resource_config"]["instance_count"] == 2
+        assert config["resource_config"]["instance_type"] == "ml.g4dn.xlarge"
+        assert config["resource_config"]["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
 
     def test_delete_model(self, mock_session):
         """Test delete_model method"""

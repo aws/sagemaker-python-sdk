@@ -188,15 +188,6 @@ class _Filter:
             # Pattern token
             return _PatternNode(token), pos + 1
 
-    def _convert_expression(self, expr: str) -> str:
-        """
-        Legacy method for backward compatibility.
-        This method is no longer used but kept to avoid breaking changes.
-        """
-        # This method is deprecated and should not be used
-        # It's kept only for backward compatibility
-        return expr
-
 
 def _list_all_hub_models(hub_name: str, sm_client: Session) -> Iterator[HubContent]:
     """

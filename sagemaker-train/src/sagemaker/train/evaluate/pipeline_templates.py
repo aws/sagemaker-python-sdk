@@ -11,8 +11,7 @@ DETERMINISTIC_TEMPLATE = """{
     "Metadata": {},
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
-        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}{% if mlflow_run_name %},
-        "MlflowRunName": "{{ mlflow_run_name }}"{% endif %}
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
     },
     "Parameters": [],
     "Steps": [
@@ -94,10 +93,6 @@ DETERMINISTIC_TEMPLATE = """{
             "Type": "Training",
             "Arguments": {
                 "RoleArn": "{{ role_arn }}",
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
-                },
                 "ServerlessJobConfig": {
                     "BaseModelArn": "{{ base_model_arn }}",
                     "AcceptEula": true,
@@ -331,6 +326,10 @@ DETERMINISTIC_TEMPLATE = """{
 LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
     "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
     "Parameters": [],
     "Steps": [
         {
@@ -462,6 +461,10 @@ LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
 DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
     "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
     "Parameters": [],
     "Steps": [
         {
@@ -531,8 +534,7 @@ CUSTOM_SCORER_TEMPLATE = """{
     "Metadata": {},
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
-        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}{% if mlflow_run_name %},
-        "MlflowRunName": "{{ mlflow_run_name }}"{% endif %}
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
     },
     "Parameters": [],
     "Steps": [
@@ -614,10 +616,6 @@ CUSTOM_SCORER_TEMPLATE = """{
             "Type": "Training",
             "Arguments": {
                 "RoleArn": "{{ role_arn }}",
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
-                },
                 "ServerlessJobConfig": {
                     "BaseModelArn": "{{ base_model_arn }}",
                     "AcceptEula": true,
@@ -853,6 +851,10 @@ CUSTOM_SCORER_TEMPLATE = """{
 CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
     "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
     "Parameters": [],
     "Steps": [
         {
@@ -925,8 +927,7 @@ LLMAJ_TEMPLATE = """{
     "Metadata": {},
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
-        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}{% if mlflow_run_name %},
-        "MlflowRunName": "{{ mlflow_run_name }}"{% endif %}
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
     },
     "Parameters": [],
     "Steps": [
@@ -1028,10 +1029,6 @@ LLMAJ_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
                 }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
@@ -1183,10 +1180,6 @@ LLMAJ_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
                 }
             }
         },{% endif %}

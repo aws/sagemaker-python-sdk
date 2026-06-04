@@ -38,6 +38,7 @@ from sagemaker.train.evaluate.execution import (
     _create_execution_from_pipeline_execution,
     _extract_output_s3_location_from_steps,
 )
+from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
 from sagemaker.train.evaluate.constants import EvalType, _get_pipeline_name, _get_pipeline_name_prefix
 
 # Test constants
@@ -57,10 +58,17 @@ class MockUnassigned:
 
 @pytest.fixture
 def mock_session():
-    """Mock SageMaker session."""
+    """Mock SageMaker session that passes isinstance checks."""
+    from sagemaker.core.helper.session_helper import Session
+    
+    # Create a mock that will pass isinstance(obj, Session) checks
     session = MagicMock()
     session.boto_region_name = DEFAULT_REGION
     session.client.return_value = MagicMock()
+    
+    # Make isinstance check pass
+    session.__class__ = type('MockSession', (Session,), {})
+    
     return session
 
 
@@ -247,7 +255,7 @@ class TestExtractEvalTypeFromArn:
 class TestGetOrCreatePipeline:
     """Tests for _get_or_create_pipeline function."""
 
-    @patch("sagemaker.train.evaluate.execution.Tag")
+    @patch("sagemaker.train.evaluate.execution.ResourceTag")
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     def test_get_existing_pipeline_and_update(self, mock_pipeline_class, mock_tag_class, mock_session):
         """Test getting and updating existing pipeline via Pipeline.get_all with prefix."""
@@ -375,8 +383,7 @@ class TestStartPipelineExecution:
         assert result == DEFAULT_EXECUTION_ARN
         mock_boto3_client.assert_called_once_with(
             'sagemaker',
-            region_name=DEFAULT_REGION,
-            endpoint_url=None
+            region_name=DEFAULT_REGION
         )
         mock_client.start_pipeline_execution.assert_called_once()
 
@@ -757,7 +764,7 @@ class TestEvaluationPipelineExecutionGet:
 class TestEvaluationPipelineExecutionGetAll:
     """Tests for EvaluationPipelineExecution.get_all() method."""
 
-    @patch("sagemaker.train.evaluate.execution.Tag")
+    @patch("sagemaker.train.evaluate.execution.ResourceTag")
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
     def test_get_all_executions(self, mock_pe_class, mock_pipeline_class, mock_tag_class, mock_session):
@@ -800,7 +807,7 @@ class TestEvaluationPipelineExecutionGetAll:
         # Verify PipelineExecution.get_all was called with the pipeline name
         mock_pe_class.get_all.assert_called_once()
 
-    @patch("sagemaker.train.evaluate.execution.Tag")
+    @patch("sagemaker.train.evaluate.execution.ResourceTag")
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
     def test_get_all_multiple_eval_types(self, mock_pe_class, mock_pipeline_class, mock_tag_class, mock_session):
@@ -810,12 +817,13 @@ class TestEvaluationPipelineExecutionGetAll:
         mock_pipeline.pipeline_name = DEFAULT_PIPELINE_NAME
         mock_pipeline.pipeline_arn = DEFAULT_PIPELINE_ARN
         
-        # Pipeline.get_all called 3 times (once per eval type)
+        # Pipeline.get_all called 4 times (once per eval type)
         # Return pipeline for BENCHMARK, empty for others
         mock_pipeline_class.get_all.side_effect = [
             iter([mock_pipeline]),  # BENCHMARK - found
             iter([]),              # CUSTOM_SCORER - not found
-            iter([])               # LLM_AS_JUDGE - not found
+            iter([]),              # LLM_AS_JUDGE - not found
+            iter([]),              # MTRL - not found
         ]
         
         # Mock tags with required tag (only called for BENCHMARK since others have no pipelines)
@@ -840,7 +848,7 @@ class TestEvaluationPipelineExecutionGetAll:
         ))
         
         assert len(executions) == 1
-        assert mock_pipeline_class.get_all.call_count == 3  # Called for each eval type
+        assert mock_pipeline_class.get_all.call_count == 4  # Called for each eval type
 
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
     def test_get_all_pipeline_not_found(self, mock_pe_class, mock_session):
@@ -1106,7 +1114,7 @@ class TestEvaluationPipelineExecutionWait:
         with pytest.raises(FailedStatusError):
             execution.wait(target_status="Succeeded", poll=1)
 
-    @patch("time.time")
+    @patch("sagemaker.train.evaluate.execution.time")
     def test_wait_timeout_exceeded(self, mock_time):
         """Test wait raises exception on timeout."""
         execution = EvaluationPipelineExecution(
@@ -1122,11 +1130,21 @@ class TestEvaluationPipelineExecutionWait:
         
         execution._pipeline_execution = mock_pe
         
-        # Mock time to simulate timeout
-        mock_time.side_effect = [0, 10, 20, 30, 40, 50, 60]  # Exceeds timeout
+        # Mock time.time() to simulate timeout - use a counter that always exceeds timeout
+        # First call sets start_time=0, second call returns value >= timeout (5)
+        call_count = {"n": 0}
+        def time_side_effect():
+            val = call_count["n"] * 10
+            call_count["n"] += 1
+            return val
         
-        with pytest.raises(TimeoutExceededError):
+        mock_time.time.side_effect = time_side_effect
+        mock_time.sleep = MagicMock()  # no-op sleep
+        
+        with pytest.raises(TimeoutExceededError, match="EvaluationJob") as exc_info:
             execution.wait(target_status="Succeeded", poll=1, timeout=5)
+        assert "still running" in str(exc_info.value)
+        assert ".refresh()" in str(exc_info.value)
 
     def test_wait_without_pipeline_execution(self):
         """Test wait when no pipeline execution is set."""
@@ -1458,3 +1476,183 @@ class TestEvaluationPipelineExecutionIntegration:
 
 
 # Additional tests for improved coverage - removed as they don't add significant value
+
+
+# ============================================================================
+# Tests for MLflow Link Functions
+# ============================================================================
+
+MOCK_MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test-server"
+MOCK_PRESIGNED_URL = "https://mlflow.example.com/auth?authToken=abc123"
+
+
+class TestGetMlflowExperimentUrl:
+    """Tests for get_presigned_mlflow_experiment_url function."""
+
+    @patch("sagemaker.core.utils.utils.SageMakerClient")
+    def test_returns_deep_link_with_experiment(self, mock_sm_client_cls):
+        """Test returns URL with experiment fragment when experiment exists."""
+        mock_client = MagicMock()
+        mock_client.sagemaker_client.create_presigned_mlflow_app_url.return_value = {
+            "AuthorizedUrl": MOCK_PRESIGNED_URL
+        }
+        mock_sm_client_cls.return_value = mock_client
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"experiment": {"experiment_id": "42"}}
+
+        with patch("requests.Session") as mock_session_cls:
+            mock_session = MagicMock()
+            mock_session.get.return_value = mock_response
+            mock_session_cls.return_value = mock_session
+
+            result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
+
+        assert result == f"https://mlflow.example.com/auth?authToken=abc123#/experiments/42?workspace=default"
+
+    @patch("sagemaker.core.utils.utils.SageMakerClient")
+    def test_returns_base_url_when_no_experiment_name(self, mock_sm_client_cls):
+        """Test returns base URL when experiment name is None."""
+        mock_client = MagicMock()
+        mock_client.sagemaker_client.create_presigned_mlflow_app_url.return_value = {
+            "AuthorizedUrl": MOCK_PRESIGNED_URL
+        }
+        mock_sm_client_cls.return_value = mock_client
+
+        result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
+
+        assert result == MOCK_PRESIGNED_URL
+
+    @patch("sagemaker.core.utils.utils.SageMakerClient")
+    def test_returns_base_url_when_experiment_lookup_fails(self, mock_sm_client_cls):
+        """Test falls back to base URL when MLflow experiment lookup raises."""
+        mock_client = MagicMock()
+        mock_client.sagemaker_client.create_presigned_mlflow_app_url.return_value = {
+            "AuthorizedUrl": MOCK_PRESIGNED_URL
+        }
+        mock_sm_client_cls.return_value = mock_client
+
+        with patch("mlflow.set_tracking_uri"), \
+             patch("mlflow.tracking.MlflowClient") as mock_mlflow_client:
+            mock_mlflow_client.return_value.get_experiment_by_name.side_effect = Exception("connection error")
+
+            result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
+
+        assert result == MOCK_PRESIGNED_URL
+
+    @patch("sagemaker.core.utils.utils.SageMakerClient")
+    def test_returns_base_url_when_experiment_not_found(self, mock_sm_client_cls):
+        """Test falls back to base URL when experiment doesn't exist."""
+        mock_client = MagicMock()
+        mock_client.sagemaker_client.create_presigned_mlflow_app_url.return_value = {
+            "AuthorizedUrl": MOCK_PRESIGNED_URL
+        }
+        mock_sm_client_cls.return_value = mock_client
+
+        with patch("mlflow.set_tracking_uri"), \
+             patch("mlflow.tracking.MlflowClient") as mock_mlflow_client:
+            mock_mlflow_client.return_value.get_experiment_by_name.return_value = None
+
+            result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "nonexistent")
+
+        assert result == MOCK_PRESIGNED_URL
+
+    @patch("sagemaker.core.utils.utils.SageMakerClient")
+    def test_returns_none_when_presigned_url_fails(self, mock_sm_client_cls):
+        """Test returns None when create_presigned_mlflow_app_url raises."""
+        mock_client = MagicMock()
+        mock_client.sagemaker_client.create_presigned_mlflow_app_url.side_effect = Exception("access denied")
+        mock_sm_client_cls.return_value = mock_client
+
+        result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
+
+        assert result is None
+
+    @patch("sagemaker.core.utils.utils.SageMakerClient")
+    def test_returns_none_when_authorized_url_empty(self, mock_sm_client_cls):
+        """Test returns None when AuthorizedUrl is missing from response."""
+        mock_client = MagicMock()
+        mock_client.sagemaker_client.create_presigned_mlflow_app_url.return_value = {}
+        mock_sm_client_cls.return_value = mock_client
+
+        result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
+
+        assert result is None
+
+
+class TestGetCachedMlflowUrl:
+    """Tests for the get_cached_mlflow_url closure inside wait()."""
+
+    @patch("sagemaker.core.utils.utils.SageMakerClient")
+    def test_cache_hit_within_240s(self, mock_sm_client_cls):
+        """Test that cached URL is returned within 240s window."""
+        mock_client = MagicMock()
+        mock_client.sagemaker_client.create_presigned_mlflow_app_url.return_value = {
+            "AuthorizedUrl": MOCK_PRESIGNED_URL
+        }
+        mock_sm_client_cls.return_value = mock_client
+
+        mlflow_link_cache = {"url": None, "timestamp": 0}
+
+        def get_cached(current_time):
+            if mlflow_link_cache["url"] is None or (current_time - mlflow_link_cache["timestamp"]) > 240:
+                mlflow_link_cache["url"] = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
+                mlflow_link_cache["timestamp"] = current_time
+            return mlflow_link_cache["url"]
+
+        url1 = get_cached(1000.0)
+        assert url1 == MOCK_PRESIGNED_URL
+        assert mock_client.sagemaker_client.create_presigned_mlflow_app_url.call_count == 1
+
+        # Second call within 240s returns cached — no additional API call
+        url2 = get_cached(1100.0)
+        assert url2 == url1
+        assert mock_client.sagemaker_client.create_presigned_mlflow_app_url.call_count == 1
+
+    @patch("sagemaker.core.utils.utils.SageMakerClient")
+    def test_cache_refresh_after_240s(self, mock_sm_client_cls):
+        """Test that URL is regenerated after 240s."""
+        mock_client = MagicMock()
+        mock_client.sagemaker_client.create_presigned_mlflow_app_url.side_effect = [
+            {"AuthorizedUrl": MOCK_PRESIGNED_URL},
+            {"AuthorizedUrl": "https://mlflow.example.com/auth?authToken=newtoken"},
+        ]
+        mock_sm_client_cls.return_value = mock_client
+
+        mlflow_link_cache = {"url": None, "timestamp": 0}
+
+        def get_cached(current_time):
+            if mlflow_link_cache["url"] is None or (current_time - mlflow_link_cache["timestamp"]) > 240:
+                mlflow_link_cache["url"] = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
+                mlflow_link_cache["timestamp"] = current_time
+            return mlflow_link_cache["url"]
+
+        url1 = get_cached(1000.0)
+        assert url1 == MOCK_PRESIGNED_URL
+
+        # After 241 seconds, should refresh
+        url2 = get_cached(1241.0)
+        assert url2 == "https://mlflow.example.com/auth?authToken=newtoken"
+        assert mock_client.sagemaker_client.create_presigned_mlflow_app_url.call_count == 2
+
+    def test_returns_none_when_no_mlflow_config(self):
+        """Test returns None when pipeline execution has no mlflow config."""
+        from sagemaker.train.common_utils.trainer_wait import _is_unassigned_attribute
+
+        mock_pe = MagicMock()
+        mock_pe.m_lflow_config = MockUnassigned()
+
+        mlflow_cfg = getattr(mock_pe, "m_lflow_config", None)
+        assert _is_unassigned_attribute(mlflow_cfg) is True
+
+    def test_returns_none_when_arn_is_unassigned(self):
+        """Test returns None when mlflow_resource_arn is Unassigned."""
+        from sagemaker.train.common_utils.trainer_wait import _is_unassigned_attribute
+
+        mock_mlflow_cfg = MagicMock()
+        mock_mlflow_cfg.mlflow_resource_arn = MockUnassigned()
+        mock_mlflow_cfg.__class__ = type("MLflowConfiguration", (), {})
+
+        assert not _is_unassigned_attribute(mock_mlflow_cfg)
+        assert _is_unassigned_attribute(mock_mlflow_cfg.mlflow_resource_arn)

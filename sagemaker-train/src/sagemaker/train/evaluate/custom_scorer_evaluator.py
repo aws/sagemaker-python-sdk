@@ -16,6 +16,7 @@ from .constants import EvalType
 from .execution import EvaluationPipelineExecution
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.train.constants import get_sagemaker_hub_name
 
 _logger = logging.getLogger(__name__)
 
@@ -240,7 +241,7 @@ class CustomScorerEvaluator(BaseEvaluator):
             
             override_params = _get_evaluation_override_params(
                 hub_content_name=hub_content_name,
-                hub_name="SageMakerPublicHub",
+                hub_name=get_sagemaker_hub_name(),
                 evaluation_type="DeterministicEvaluation",
                 region=region,
                 session=boto_session
@@ -365,7 +366,7 @@ class CustomScorerEvaluator(BaseEvaluator):
             _logger.info(f"Fetching evaluation recipe override parameters from hub for model: {hub_content_name}")
             override_params = _get_evaluation_override_params(
                 hub_content_name=hub_content_name,
-                hub_name="SageMakerPublicHub",
+                hub_name=get_sagemaker_hub_name(),
                 evaluation_type="DeterministicEvaluation",
                 region=region,
                 session=session

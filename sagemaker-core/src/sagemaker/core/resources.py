@@ -145,6 +145,1193 @@ class Base(BaseModel):
         return wrapper
 
 
+class AIBenchmarkJob(Base):
+    """
+    Class representing resource AIBenchmarkJob
+
+    Attributes:
+        ai_benchmark_job_name: The name of the AI benchmark job.
+        ai_benchmark_job_arn: The Amazon Resource Name (ARN) of the AI benchmark job.
+        ai_benchmark_job_status: The status of the AI benchmark job.
+        benchmark_target: The target endpoint that was benchmarked.
+        output_config: The output configuration for the benchmark job, including the Amazon S3 output location and CloudWatch log information.
+        ai_workload_config_identifier: The name or Amazon Resource Name (ARN) of the AI workload configuration used for this benchmark job.
+        role_arn: The Amazon Resource Name (ARN) of the IAM role used by the benchmark job.
+        creation_time: A timestamp that indicates when the benchmark job was created.
+        failure_reason: If the benchmark job failed, the reason it failed.
+        network_config: The network configuration for the benchmark job.
+        start_time: A timestamp that indicates when the benchmark job started running.
+        end_time: A timestamp that indicates when the benchmark job completed.
+        tags: The tags associated with the benchmark job.
+
+    """
+
+    ai_benchmark_job_name: StrPipeVar
+    ai_benchmark_job_arn: Optional[StrPipeVar] = Unassigned()
+    ai_benchmark_job_status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    benchmark_target: Optional[AIBenchmarkTarget] = Unassigned()
+    output_config: Optional[AIBenchmarkOutputResult] = Unassigned()
+    ai_workload_config_identifier: Optional[StrPipeVar] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    network_config: Optional[AIBenchmarkNetworkConfig] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
+    start_time: Optional[datetime.datetime] = Unassigned()
+    end_time: Optional[datetime.datetime] = Unassigned()
+    tags: Optional[List[Tag]] = Unassigned()
+
+    def get_name(self) -> str:
+        attributes = vars(self)
+        resource_name = "ai_benchmark_job_name"
+        resource_name_split = resource_name.split("_")
+        attribute_name_candidates = []
+
+        l = len(resource_name_split)
+        for i in range(0, l):
+            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
+
+        for attribute, value in attributes.items():
+            if attribute == "name" or attribute in attribute_name_candidates:
+                return value
+        logger.error("Name attribute not found for object ai_benchmark_job")
+        return None
+
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {
+                "output_config": {"s3_output_location": {"type": "string"}},
+                "role_arn": {"type": "string"},
+                "network_config": {
+                    "vpc_config": {
+                        "security_group_ids": {"type": "array", "items": {"type": "string"}},
+                        "subnets": {"type": "array", "items": {"type": "string"}},
+                    }
+                },
+            }
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "AIBenchmarkJob", **kwargs
+                ),
+            )
+
+        return wrapper
+
+    @classmethod
+    @populate_inputs_decorator
+    @Base.add_validate_call
+    def create(
+        cls,
+        ai_benchmark_job_name: StrPipeVar,
+        benchmark_target: AIBenchmarkTarget,
+        output_config: AIBenchmarkOutputConfig,
+        ai_workload_config_identifier: StrPipeVar,
+        role_arn: StrPipeVar,
+        network_config: Optional[AIBenchmarkNetworkConfig] = Unassigned(),
+        tags: Optional[List[Tag]] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["AIBenchmarkJob"]:
+        """
+        Create a AIBenchmarkJob resource
+
+        Parameters:
+            ai_benchmark_job_name: The name of the AI benchmark job. The name must be unique within your Amazon Web Services account in the current Amazon Web Services Region.
+            benchmark_target: The target endpoint to benchmark. Specify a SageMaker endpoint by providing its name or Amazon Resource Name (ARN).
+            output_config: The output configuration for the benchmark job, including the Amazon S3 location where benchmark results are stored.
+            ai_workload_config_identifier: The name or Amazon Resource Name (ARN) of the AI workload configuration to use for this benchmark job.
+            role_arn: The Amazon Resource Name (ARN) of an IAM role that enables Amazon SageMaker AI to perform tasks on your behalf.
+            network_config: The network configuration for the benchmark job, including VPC settings.
+            tags: The metadata that you apply to Amazon Web Services resources to help you categorize and organize them. Each tag consists of a key and a value, both of which you define.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The AIBenchmarkJob resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceInUse: Resource being accessed is in use.
+            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
+            ResourceNotFound: Resource being access is not found.
+            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
+            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
+            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
+        """
+
+        logger.info("Creating ai_benchmark_job resource.")
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "AIBenchmarkJobName": ai_benchmark_job_name,
+            "BenchmarkTarget": benchmark_target,
+            "OutputConfig": output_config,
+            "AIWorkloadConfigIdentifier": ai_workload_config_identifier,
+            "RoleArn": role_arn,
+            "NetworkConfig": network_config,
+            "Tags": tags,
+        }
+
+        operation_input_args = Base.populate_chained_attributes(
+            resource_name="AIBenchmarkJob", operation_input_args=operation_input_args
+        )
+
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.create_ai_benchmark_job(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        return cls.get(ai_benchmark_job_name=ai_benchmark_job_name, session=session, region=region)
+
+    @classmethod
+    @Base.add_validate_call
+    def get(
+        cls,
+        ai_benchmark_job_name: StrPipeVar,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["AIBenchmarkJob"]:
+        """
+        Get a AIBenchmarkJob resource
+
+        Parameters:
+            ai_benchmark_job_name: The name of the AI benchmark job to describe.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The AIBenchmarkJob resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "AIBenchmarkJobName": ai_benchmark_job_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+        response = client.describe_ai_benchmark_job(**operation_input_args)
+
+        logger.debug(response)
+
+        # deserialize the response
+        transformed_response = transform(response, "DescribeAIBenchmarkJobResponse")
+        ai_benchmark_job = cls(**transformed_response)
+        return ai_benchmark_job
+
+    @Base.add_validate_call
+    def refresh(
+        self,
+    ) -> Optional["AIBenchmarkJob"]:
+        """
+        Refresh a AIBenchmarkJob resource
+
+        Returns:
+            The AIBenchmarkJob resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "AIBenchmarkJobName": self.ai_benchmark_job_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client()
+        response = client.describe_ai_benchmark_job(**operation_input_args)
+
+        # deserialize response and update self
+        transform(response, "DescribeAIBenchmarkJobResponse", self)
+        return self
+
+    @Base.add_validate_call
+    def delete(
+        self,
+    ) -> None:
+        """
+        Delete a AIBenchmarkJob resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = Base.get_sagemaker_client()
+
+        operation_input_args = {
+            "AIBenchmarkJobName": self.ai_benchmark_job_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.delete_ai_benchmark_job(**operation_input_args)
+
+        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
+
+    @Base.add_validate_call
+    def stop(self) -> None:
+        """
+        Stop a AIBenchmarkJob resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = SageMakerClient().sagemaker_client
+
+        operation_input_args = {
+            "AIBenchmarkJobName": self.ai_benchmark_job_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.stop_ai_benchmark_job(**operation_input_args)
+
+        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
+
+    @Base.add_validate_call
+    def wait(
+        self,
+        poll: int = 5,
+        timeout: Optional[int] = None,
+    ) -> None:
+        """
+        Wait for a AIBenchmarkJob resource.
+
+        Parameters:
+            poll: The number of seconds to wait between each poll.
+            timeout: The maximum number of seconds to wait before timing out.
+
+        Raises:
+            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
+            FailedStatusError:   If the resource reaches a failed state.
+            WaiterError: Raised when an error occurs while waiting.
+
+        """
+        terminal_states = ["Completed", "Failed", "Stopped"]
+        start_time = time.time()
+
+        progress = Progress(
+            SpinnerColumn("bouncingBar"),
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+        )
+        progress.add_task("Waiting for AIBenchmarkJob...")
+        status = Status("Current status:")
+
+        with Live(
+            Panel(
+                Group(progress, status),
+                title="Wait Log Panel",
+                border_style=Style(color=Color.BLUE.value),
+            ),
+            transient=True,
+        ):
+            while True:
+                self.refresh()
+                current_status = self.ai_benchmark_job_status
+                status.update(f"Current status: [bold]{current_status}")
+
+                if current_status in terminal_states:
+                    logger.info(f"Final Resource Status: [bold]{current_status}")
+
+                    if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="AIBenchmarkJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    return
+
+                if timeout is not None and time.time() - start_time >= timeout:
+                    raise TimeoutExceededError(
+                        resource_type="AIBenchmarkJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
+                    )
+                time.sleep(poll)
+
+    @classmethod
+    @Base.add_validate_call
+    def get_all(
+        cls,
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        creation_time_after: Optional[datetime.datetime] = Unassigned(),
+        creation_time_before: Optional[datetime.datetime] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> ResourceIterator["AIBenchmarkJob"]:
+        """
+        Get all AIBenchmarkJob resources
+
+        Parameters:
+            max_results: The maximum number of benchmark jobs to return in the response.
+            next_token: If the previous call to ListAIBenchmarkJobs didn't return the full set of jobs, the call returns a token for getting the next set.
+            name_contains: A string in the job name. This filter returns only jobs whose name contains the specified string.
+            status_equals: A filter that returns only benchmark jobs with the specified status.
+            creation_time_after: A filter that returns only jobs created after the specified time.
+            creation_time_before: A filter that returns only jobs created before the specified time.
+            sort_by: The field to sort results by. The default is CreationTime.
+            sort_order: The sort order for results. The default is Descending.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            Iterator for listed AIBenchmarkJob resources.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+        """
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "NameContains": name_contains,
+            "StatusEquals": status_equals,
+            "CreationTimeAfter": creation_time_after,
+            "CreationTimeBefore": creation_time_before,
+            "SortBy": sort_by,
+            "SortOrder": sort_order,
+        }
+
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        return ResourceIterator(
+            client=client,
+            list_method="list_ai_benchmark_jobs",
+            summaries_key="AIBenchmarkJobs",
+            summary_name="AIBenchmarkJobSummary",
+            resource_cls=AIBenchmarkJob,
+            list_method_kwargs=operation_input_args,
+        )
+
+
+class AIRecommendationJob(Base):
+    """
+    Class representing resource AIRecommendationJob
+
+    Attributes:
+        ai_recommendation_job_name: The name of the AI recommendation job.
+        ai_recommendation_job_arn: The Amazon Resource Name (ARN) of the AI recommendation job.
+        ai_recommendation_job_status: The status of the AI recommendation job.
+        model_source: The source of the model that was analyzed.
+        output_config: The output configuration for the recommendation job.
+        ai_workload_config_identifier: The name or Amazon Resource Name (ARN) of the AI workload configuration used for this recommendation job.
+        role_arn: The Amazon Resource Name (ARN) of the IAM role used by the recommendation job.
+        creation_time: A timestamp that indicates when the recommendation job was created.
+        failure_reason: If the recommendation job failed, the reason it failed.
+        inference_specification: The inference framework configuration.
+        optimize_model: Whether model optimization techniques were allowed.
+        performance_target: The performance targets specified for the recommendation job.
+        recommendations: The list of optimization recommendations generated by the job. Each recommendation includes optimization details, deployment configuration, expected performance metrics, and the associated benchmark job ARN.
+        compute_spec: The compute resource specification for the recommendation job.
+        start_time: A timestamp that indicates when the recommendation job started running.
+        end_time: A timestamp that indicates when the recommendation job completed.
+        tags: The tags associated with the recommendation job.
+
+    """
+
+    ai_recommendation_job_name: StrPipeVar
+    ai_recommendation_job_arn: Optional[StrPipeVar] = Unassigned()
+    ai_recommendation_job_status: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    model_source: Optional[AIModelSource] = Unassigned()
+    output_config: Optional[AIRecommendationOutputResult] = Unassigned()
+    inference_specification: Optional[AIRecommendationInferenceSpecification] = Unassigned()
+    ai_workload_config_identifier: Optional[StrPipeVar] = Unassigned()
+    optimize_model: Optional[bool] = Unassigned()
+    performance_target: Optional[AIRecommendationPerformanceTarget] = Unassigned()
+    recommendations: Optional[List[AIRecommendation]] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    compute_spec: Optional[AIRecommendationComputeSpec] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
+    start_time: Optional[datetime.datetime] = Unassigned()
+    end_time: Optional[datetime.datetime] = Unassigned()
+    tags: Optional[List[Tag]] = Unassigned()
+
+    def get_name(self) -> str:
+        attributes = vars(self)
+        resource_name = "ai_recommendation_job_name"
+        resource_name_split = resource_name.split("_")
+        attribute_name_candidates = []
+
+        l = len(resource_name_split)
+        for i in range(0, l):
+            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
+
+        for attribute, value in attributes.items():
+            if attribute == "name" or attribute in attribute_name_candidates:
+                return value
+        logger.error("Name attribute not found for object ai_recommendation_job")
+        return None
+
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {
+                "model_source": {"s3": {"s3_uri": {"type": "string"}}},
+                "output_config": {"s3_output_location": {"type": "string"}},
+                "role_arn": {"type": "string"},
+            }
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "AIRecommendationJob", **kwargs
+                ),
+            )
+
+        return wrapper
+
+    @classmethod
+    @populate_inputs_decorator
+    @Base.add_validate_call
+    def create(
+        cls,
+        ai_recommendation_job_name: StrPipeVar,
+        model_source: AIModelSource,
+        output_config: AIRecommendationOutputConfig,
+        ai_workload_config_identifier: StrPipeVar,
+        performance_target: AIRecommendationPerformanceTarget,
+        role_arn: StrPipeVar,
+        inference_specification: Optional[AIRecommendationInferenceSpecification] = Unassigned(),
+        optimize_model: Optional[bool] = Unassigned(),
+        compute_spec: Optional[AIRecommendationComputeSpec] = Unassigned(),
+        tags: Optional[List[Tag]] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["AIRecommendationJob"]:
+        """
+        Create a AIRecommendationJob resource
+
+        Parameters:
+            ai_recommendation_job_name: The name of the AI recommendation job. The name must be unique within your Amazon Web Services account in the current Amazon Web Services Region.
+            model_source: The source of the model to optimize. Specify the Amazon S3 location of the model artifacts.
+            output_config: The output configuration for the recommendation job, including the Amazon S3 location for results and an optional model package group where the optimized model is registered.
+            ai_workload_config_identifier: The name or Amazon Resource Name (ARN) of the AI workload configuration to use for this recommendation job.
+            performance_target: The performance targets for the recommendation job. Specify constraints on metrics such as time to first token (ttft-ms), throughput, or cost.
+            role_arn: The Amazon Resource Name (ARN) of an IAM role that enables Amazon SageMaker AI to perform tasks on your behalf.
+            inference_specification: The inference framework configuration. Specify the framework (such as LMI or vLLM) for the recommendation job.
+            optimize_model: Whether to allow model optimization techniques such as quantization, speculative decoding, and kernel tuning. The default is true.
+            compute_spec: The compute resource specification for the recommendation job. You can specify up to 3 instance types to consider, and optionally provide capacity reservation configuration.
+            tags: The metadata that you apply to Amazon Web Services resources to help you categorize and organize them.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The AIRecommendationJob resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceInUse: Resource being accessed is in use.
+            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
+            ResourceNotFound: Resource being access is not found.
+            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
+            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
+            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
+        """
+
+        logger.info("Creating ai_recommendation_job resource.")
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "AIRecommendationJobName": ai_recommendation_job_name,
+            "ModelSource": model_source,
+            "OutputConfig": output_config,
+            "AIWorkloadConfigIdentifier": ai_workload_config_identifier,
+            "PerformanceTarget": performance_target,
+            "RoleArn": role_arn,
+            "InferenceSpecification": inference_specification,
+            "OptimizeModel": optimize_model,
+            "ComputeSpec": compute_spec,
+            "Tags": tags,
+        }
+
+        operation_input_args = Base.populate_chained_attributes(
+            resource_name="AIRecommendationJob", operation_input_args=operation_input_args
+        )
+
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.create_ai_recommendation_job(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        return cls.get(
+            ai_recommendation_job_name=ai_recommendation_job_name, session=session, region=region
+        )
+
+    @classmethod
+    @Base.add_validate_call
+    def get(
+        cls,
+        ai_recommendation_job_name: StrPipeVar,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["AIRecommendationJob"]:
+        """
+        Get a AIRecommendationJob resource
+
+        Parameters:
+            ai_recommendation_job_name: The name of the AI recommendation job to describe.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The AIRecommendationJob resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "AIRecommendationJobName": ai_recommendation_job_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+        response = client.describe_ai_recommendation_job(**operation_input_args)
+
+        logger.debug(response)
+
+        # deserialize the response
+        transformed_response = transform(response, "DescribeAIRecommendationJobResponse")
+        ai_recommendation_job = cls(**transformed_response)
+        return ai_recommendation_job
+
+    @Base.add_validate_call
+    def refresh(
+        self,
+    ) -> Optional["AIRecommendationJob"]:
+        """
+        Refresh a AIRecommendationJob resource
+
+        Returns:
+            The AIRecommendationJob resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "AIRecommendationJobName": self.ai_recommendation_job_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client()
+        response = client.describe_ai_recommendation_job(**operation_input_args)
+
+        # deserialize response and update self
+        transform(response, "DescribeAIRecommendationJobResponse", self)
+        return self
+
+    @Base.add_validate_call
+    def delete(
+        self,
+    ) -> None:
+        """
+        Delete a AIRecommendationJob resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = Base.get_sagemaker_client()
+
+        operation_input_args = {
+            "AIRecommendationJobName": self.ai_recommendation_job_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.delete_ai_recommendation_job(**operation_input_args)
+
+        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
+
+    @Base.add_validate_call
+    def stop(self) -> None:
+        """
+        Stop a AIRecommendationJob resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = SageMakerClient().sagemaker_client
+
+        operation_input_args = {
+            "AIRecommendationJobName": self.ai_recommendation_job_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.stop_ai_recommendation_job(**operation_input_args)
+
+        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
+
+    @Base.add_validate_call
+    def wait(
+        self,
+        poll: int = 5,
+        timeout: Optional[int] = None,
+    ) -> None:
+        """
+        Wait for a AIRecommendationJob resource.
+
+        Parameters:
+            poll: The number of seconds to wait between each poll.
+            timeout: The maximum number of seconds to wait before timing out.
+
+        Raises:
+            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
+            FailedStatusError:   If the resource reaches a failed state.
+            WaiterError: Raised when an error occurs while waiting.
+
+        """
+        terminal_states = ["Completed", "Failed", "Stopped"]
+        start_time = time.time()
+
+        progress = Progress(
+            SpinnerColumn("bouncingBar"),
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+        )
+        progress.add_task("Waiting for AIRecommendationJob...")
+        status = Status("Current status:")
+
+        with Live(
+            Panel(
+                Group(progress, status),
+                title="Wait Log Panel",
+                border_style=Style(color=Color.BLUE.value),
+            ),
+            transient=True,
+        ):
+            while True:
+                self.refresh()
+                current_status = self.ai_recommendation_job_status
+                status.update(f"Current status: [bold]{current_status}")
+
+                if current_status in terminal_states:
+                    logger.info(f"Final Resource Status: [bold]{current_status}")
+
+                    if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="AIRecommendationJob",
+                            status=current_status,
+                            reason=self.failure_reason,
+                        )
+
+                    return
+
+                if timeout is not None and time.time() - start_time >= timeout:
+                    raise TimeoutExceededError(
+                        resource_type="AIRecommendationJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
+                    )
+                time.sleep(poll)
+
+    @classmethod
+    @Base.add_validate_call
+    def get_all(
+        cls,
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        creation_time_after: Optional[datetime.datetime] = Unassigned(),
+        creation_time_before: Optional[datetime.datetime] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> ResourceIterator["AIRecommendationJob"]:
+        """
+        Get all AIRecommendationJob resources
+
+        Parameters:
+            max_results: The maximum number of recommendation jobs to return in the response.
+            next_token: If the previous call to ListAIRecommendationJobs didn't return the full set of jobs, the call returns a token for getting the next set.
+            name_contains: A string in the job name. This filter returns only jobs whose name contains the specified string.
+            status_equals: A filter that returns only recommendation jobs with the specified status.
+            creation_time_after: A filter that returns only jobs created after the specified time.
+            creation_time_before: A filter that returns only jobs created before the specified time.
+            sort_by: The field to sort results by. The default is CreationTime.
+            sort_order: The sort order for results. The default is Descending.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            Iterator for listed AIRecommendationJob resources.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+        """
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "NameContains": name_contains,
+            "StatusEquals": status_equals,
+            "CreationTimeAfter": creation_time_after,
+            "CreationTimeBefore": creation_time_before,
+            "SortBy": sort_by,
+            "SortOrder": sort_order,
+        }
+
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        return ResourceIterator(
+            client=client,
+            list_method="list_ai_recommendation_jobs",
+            summaries_key="AIRecommendationJobs",
+            summary_name="AIRecommendationJobSummary",
+            resource_cls=AIRecommendationJob,
+            list_method_kwargs=operation_input_args,
+        )
+
+
+class AIWorkloadConfig(Base):
+    """
+    Class representing resource AIWorkloadConfig
+
+    Attributes:
+        ai_workload_config_name: The name of the AI workload configuration.
+        ai_workload_config_arn: The Amazon Resource Name (ARN) of the AI workload configuration.
+        creation_time: A timestamp that indicates when the AI workload configuration was created.
+        dataset_config: The dataset configuration for the workload.
+        ai_workload_configs: The benchmark tool configuration and workload specification.
+        tags: The tags associated with the AI workload configuration.
+
+    """
+
+    ai_workload_config_name: StrPipeVar
+    ai_workload_config_arn: Optional[StrPipeVar] = Unassigned()
+    dataset_config: Optional[AIDatasetConfig] = Unassigned()
+    ai_workload_configs: Optional[AIWorkloadConfigs] = Unassigned()
+    tags: Optional[List[Tag]] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
+
+    def get_name(self) -> str:
+        attributes = vars(self)
+        resource_name = "ai_workload_config_name"
+        resource_name_split = resource_name.split("_")
+        attribute_name_candidates = []
+
+        l = len(resource_name_split)
+        for i in range(0, l):
+            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
+
+        for attribute, value in attributes.items():
+            if attribute == "name" or attribute in attribute_name_candidates:
+                return value
+        logger.error("Name attribute not found for object ai_workload_config")
+        return None
+
+    @classmethod
+    @Base.add_validate_call
+    def create(
+        cls,
+        ai_workload_config_name: StrPipeVar,
+        dataset_config: Optional[AIDatasetConfig] = Unassigned(),
+        ai_workload_configs: Optional[AIWorkloadConfigs] = Unassigned(),
+        tags: Optional[List[Tag]] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["AIWorkloadConfig"]:
+        """
+        Create a AIWorkloadConfig resource
+
+        Parameters:
+            ai_workload_config_name: The name of the AI workload configuration. The name must be unique within your Amazon Web Services account in the current Amazon Web Services Region.
+            dataset_config: The dataset configuration for the workload. Specify input data channels with their data sources for benchmark workloads.
+            ai_workload_configs: The benchmark tool configuration and workload specification. Provide the specification as an inline YAML or JSON string.
+            tags: The metadata that you apply to Amazon Web Services resources to help you categorize and organize them. Each tag consists of a key and a value, both of which you define. For more information, see Tagging Amazon Web Services Resources in the Amazon Web Services General Reference.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The AIWorkloadConfig resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceInUse: Resource being accessed is in use.
+            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
+            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
+            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
+            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
+        """
+
+        logger.info("Creating ai_workload_config resource.")
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "AIWorkloadConfigName": ai_workload_config_name,
+            "DatasetConfig": dataset_config,
+            "AIWorkloadConfigs": ai_workload_configs,
+            "Tags": tags,
+        }
+
+        operation_input_args = Base.populate_chained_attributes(
+            resource_name="AIWorkloadConfig", operation_input_args=operation_input_args
+        )
+
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.create_ai_workload_config(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        return cls.get(
+            ai_workload_config_name=ai_workload_config_name, session=session, region=region
+        )
+
+    @classmethod
+    @Base.add_validate_call
+    def get(
+        cls,
+        ai_workload_config_name: StrPipeVar,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["AIWorkloadConfig"]:
+        """
+        Get a AIWorkloadConfig resource
+
+        Parameters:
+            ai_workload_config_name: The name of the AI workload configuration to describe.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The AIWorkloadConfig resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "AIWorkloadConfigName": ai_workload_config_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+        response = client.describe_ai_workload_config(**operation_input_args)
+
+        logger.debug(response)
+
+        # deserialize the response
+        transformed_response = transform(response, "DescribeAIWorkloadConfigResponse")
+        ai_workload_config = cls(**transformed_response)
+        return ai_workload_config
+
+    @Base.add_validate_call
+    def refresh(
+        self,
+    ) -> Optional["AIWorkloadConfig"]:
+        """
+        Refresh a AIWorkloadConfig resource
+
+        Returns:
+            The AIWorkloadConfig resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "AIWorkloadConfigName": self.ai_workload_config_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client()
+        response = client.describe_ai_workload_config(**operation_input_args)
+
+        # deserialize response and update self
+        transform(response, "DescribeAIWorkloadConfigResponse", self)
+        return self
+
+    @Base.add_validate_call
+    def delete(
+        self,
+    ) -> None:
+        """
+        Delete a AIWorkloadConfig resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceInUse: Resource being accessed is in use.
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = Base.get_sagemaker_client()
+
+        operation_input_args = {
+            "AIWorkloadConfigName": self.ai_workload_config_name,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.delete_ai_workload_config(**operation_input_args)
+
+        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
+
+    @classmethod
+    @Base.add_validate_call
+    def get_all(
+        cls,
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        creation_time_after: Optional[datetime.datetime] = Unassigned(),
+        creation_time_before: Optional[datetime.datetime] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> ResourceIterator["AIWorkloadConfig"]:
+        """
+        Get all AIWorkloadConfig resources
+
+        Parameters:
+            max_results: The maximum number of AI workload configurations to return in the response.
+            next_token: If the previous call to ListAIWorkloadConfigs didn't return the full set of configurations, the call returns a token for getting the next set of configurations.
+            name_contains: A string in the configuration name. This filter returns only configurations whose name contains the specified string.
+            creation_time_after: A filter that returns only configurations created after the specified time.
+            creation_time_before: A filter that returns only configurations created before the specified time.
+            sort_by: The field to sort results by. The default is CreationTime.
+            sort_order: The sort order for results. The default is Descending.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            Iterator for listed AIWorkloadConfig resources.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+        """
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "NameContains": name_contains,
+            "CreationTimeAfter": creation_time_after,
+            "CreationTimeBefore": creation_time_before,
+            "SortBy": sort_by,
+            "SortOrder": sort_order,
+        }
+
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        return ResourceIterator(
+            client=client,
+            list_method="list_ai_workload_configs",
+            summaries_key="AIWorkloadConfigs",
+            summary_name="AIWorkloadConfigSummary",
+            resource_cls=AIWorkloadConfig,
+            list_method_kwargs=operation_input_args,
+        )
+
+
 class Action(Base):
     """
     Class representing resource Action
@@ -521,134 +1708,6 @@ class Action(Base):
         )
 
 
-class ActionInternal(Base):
-    """
-    Class representing resource ActionInternal
-
-    Attributes:
-        action_name:
-        source:
-        action_type:
-        customer_details:
-        creation_time:
-        description:
-        status:
-        properties:
-        metadata_properties:
-        tags:
-        action_arn:
-
-    """
-
-    action_name: Union[StrPipeVar, object]
-    source: ActionSource
-    action_type: StrPipeVar
-    customer_details: CustomerDetails
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    status: Optional[StrPipeVar] = Unassigned()
-    properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    metadata_properties: Optional[MetadataProperties] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    action_arn: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "action_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object action_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        action_name: Union[StrPipeVar, object],
-        source: ActionSource,
-        action_type: StrPipeVar,
-        customer_details: CustomerDetails,
-        creation_time: Optional[datetime.datetime] = Unassigned(),
-        description: Optional[StrPipeVar] = Unassigned(),
-        status: Optional[StrPipeVar] = Unassigned(),
-        properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["ActionInternal"]:
-        """
-        Create a ActionInternal resource
-
-        Parameters:
-            action_name:
-            source:
-            action_type:
-            customer_details:
-            creation_time:
-            description:
-            status:
-            properties:
-            metadata_properties:
-            tags:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The ActionInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "ActionName": action_name,
-            "Source": source,
-            "CreationTime": creation_time,
-            "ActionType": action_type,
-            "Description": description,
-            "Status": status,
-            "Properties": properties,
-            "MetadataProperties": metadata_properties,
-            "Tags": tags,
-            "CustomerDetails": customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_action_internal API")
-        response = client.create_action_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateActionInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-
 class Algorithm(Base):
     """
     Class representing resource Algorithm
@@ -728,8 +1787,6 @@ class Algorithm(Base):
         inference_specification: Optional[InferenceSpecification] = Unassigned(),
         validation_specification: Optional[AlgorithmValidationSpecification] = Unassigned(),
         certify_for_marketplace: Optional[bool] = Unassigned(),
-        require_image_scan: Optional[bool] = Unassigned(),
-        workflow_disabled: Optional[bool] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -744,8 +1801,6 @@ class Algorithm(Base):
             inference_specification: Specifies details about inference jobs that the algorithm runs, including the following:   The Amazon ECR paths of containers that contain the inference code and model artifacts.   The instance types that the algorithm supports for transform jobs and real-time endpoints used for inference.   The input and output content formats that the algorithm supports for inference.
             validation_specification: Specifies configurations for one or more training jobs and that SageMaker runs to test the algorithm's training code and, optionally, one or more batch transform jobs that SageMaker runs to test the algorithm's inference code.
             certify_for_marketplace: Whether to certify the algorithm so that it can be listed in Amazon Web Services Marketplace.
-            require_image_scan:
-            workflow_disabled:
             tags: An array of key-value pairs. You can use tags to categorize your Amazon Web Services resources in different ways, for example, by purpose, owner, or environment. For more information, see Tagging Amazon Web Services Resources.
             session: Boto3 session.
             region: Region name.
@@ -780,8 +1835,6 @@ class Algorithm(Base):
             "InferenceSpecification": inference_specification,
             "ValidationSpecification": validation_specification,
             "CertifyForMarketplace": certify_for_marketplace,
-            "RequireImageScan": require_image_scan,
-            "WorkflowDisabled": workflow_disabled,
             "Tags": tags,
         }
 
@@ -972,7 +2025,7 @@ class Algorithm(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Algorithm", status=current_status)
+                    raise TimeoutExceededError(resource_type="Algorithm", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -1026,7 +2079,7 @@ class Algorithm(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Algorithm", status=current_status)
+                        raise TimeoutExceededError(resource_type="Algorithm", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -1120,11 +2173,9 @@ class App(Base):
         last_health_check_timestamp: The timestamp of the last health check.
         last_user_activity_timestamp: The timestamp of the last user's activity. LastUserActivityTimestamp is also updated when SageMaker AI performs health checks without user activity. As a result, this value is set to the same value as LastHealthCheckTimestamp.
         creation_time: The creation time of the application.  After an application has been shut down for 24 hours, SageMaker AI deletes all metadata for the application. To be considered an update and retain application metadata, applications must be restarted within 24 hours after the previous application has been shut down. After this time window, creation of an application is considered a new application rather than an update of the previous application.
-        restart_time:
         failure_reason: The failure reason.
         resource_spec: The instance type and the Amazon Resource Name (ARN) of the SageMaker AI image created on the instance.
         built_in_lifecycle_config_arn: The lifecycle configuration that runs before the default lifecycle configuration
-        app_launch_configuration:
 
     """
 
@@ -1140,11 +2191,9 @@ class App(Base):
     last_health_check_timestamp: Optional[datetime.datetime] = Unassigned()
     last_user_activity_timestamp: Optional[datetime.datetime] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    restart_time: Optional[datetime.datetime] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
     resource_spec: Optional[ResourceSpec] = Unassigned()
     built_in_lifecycle_config_arn: Optional[StrPipeVar] = Unassigned()
-    app_launch_configuration: Optional[AppLaunchConfiguration] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -1173,8 +2222,6 @@ class App(Base):
         space_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         resource_spec: Optional[ResourceSpec] = Unassigned(),
-        persistent_volume_names: Optional[List[StrPipeVar]] = Unassigned(),
-        app_launch_configuration: Optional[AppLaunchConfiguration] = Unassigned(),
         recovery_mode: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -1190,8 +2237,6 @@ class App(Base):
             space_name: The name of the space. If this value is not set, then UserProfileName must be set.
             tags: Each tag consists of a key and an optional value. Tag keys must be unique per resource.
             resource_spec: The instance type and the Amazon Resource Name (ARN) of the SageMaker AI image created on the instance.  The value of InstanceType passed as part of the ResourceSpec in the CreateApp call overrides the value passed as part of the ResourceSpec configured for the user profile or the domain. If InstanceType is not specified in any of those three ResourceSpec values for a KernelGateway app, the CreateApp call fails with a request validation error.
-            persistent_volume_names:
-            app_launch_configuration:
             recovery_mode:  Indicates whether the application is launched in recovery mode.
             session: Boto3 session.
             region: Region name.
@@ -1229,8 +2274,6 @@ class App(Base):
             "AppName": app_name,
             "Tags": tags,
             "ResourceSpec": resource_spec,
-            "PersistentVolumeNames": persistent_volume_names,
-            "AppLaunchConfiguration": app_launch_configuration,
             "RecoveryMode": recovery_mode,
         }
 
@@ -1360,55 +2403,6 @@ class App(Base):
         return self
 
     @Base.add_validate_call
-    def update(
-        self,
-        app_type: StrPipeVar,
-        user_profile_name: Optional[StrPipeVar] = Unassigned(),
-        space_name: Optional[StrPipeVar] = Unassigned(),
-    ) -> Optional["App"]:
-        """
-        Update a App resource
-
-        Returns:
-            The App resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        logger.info("Updating app resource.")
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "DomainId": self.domain_id,
-            "UserProfileName": user_profile_name,
-            "SpaceName": space_name,
-            "AppType": app_type,
-            "AppName": self.app_name,
-        }
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.update_app(**operation_input_args)
-        logger.debug(f"Response: {response}")
-        self.refresh()
-
-        return self
-
-    @Base.add_validate_call
     def delete(
         self,
     ) -> None:
@@ -1499,7 +2493,7 @@ class App(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="App", status=current_status)
+                    raise TimeoutExceededError(resource_type="App", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -1557,7 +2551,7 @@ class App(Base):
                         return
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="App", status=current_status)
+                        raise TimeoutExceededError(resource_type="App", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -1644,7 +2638,6 @@ class AppImageConfig(Base):
         creation_time: When the AppImageConfig was created.
         last_modified_time: When the AppImageConfig was last modified.
         kernel_gateway_image_config: The configuration of a KernelGateway app.
-        savitur_app_image_config:
         jupyter_lab_app_image_config: The configuration of the JupyterLab app.
         code_editor_app_image_config: The configuration of the Code Editor app.
 
@@ -1655,7 +2648,6 @@ class AppImageConfig(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     kernel_gateway_image_config: Optional[KernelGatewayImageConfig] = Unassigned()
-    savitur_app_image_config: Optional[SaviturAppImageConfig] = Unassigned()
     jupyter_lab_app_image_config: Optional[JupyterLabAppImageConfig] = Unassigned()
     code_editor_app_image_config: Optional[CodeEditorAppImageConfig] = Unassigned()
 
@@ -1682,7 +2674,6 @@ class AppImageConfig(Base):
         app_image_config_name: StrPipeVar,
         tags: Optional[List[Tag]] = Unassigned(),
         kernel_gateway_image_config: Optional[KernelGatewayImageConfig] = Unassigned(),
-        savitur_app_image_config: Optional[SaviturAppImageConfig] = Unassigned(),
         jupyter_lab_app_image_config: Optional[JupyterLabAppImageConfig] = Unassigned(),
         code_editor_app_image_config: Optional[CodeEditorAppImageConfig] = Unassigned(),
         session: Optional[Session] = None,
@@ -1695,7 +2686,6 @@ class AppImageConfig(Base):
             app_image_config_name: The name of the AppImageConfig. Must be unique to your account.
             tags: A list of tags to apply to the AppImageConfig.
             kernel_gateway_image_config: The KernelGatewayImageConfig. You can only specify one image kernel in the AppImageConfig API. This kernel will be shown to users before the image starts. Once the image runs, all kernels are visible in JupyterLab.
-            savitur_app_image_config:
             jupyter_lab_app_image_config: The JupyterLabAppImageConfig. You can only specify one image kernel in the AppImageConfig API. This kernel is shown to users before the image starts. After the image runs, all kernels are visible in JupyterLab.
             code_editor_app_image_config: The CodeEditorAppImageConfig. You can only specify one image kernel in the AppImageConfig API. This kernel is shown to users before the image starts. After the image runs, all kernels are visible in Code Editor.
             session: Boto3 session.
@@ -1729,7 +2719,6 @@ class AppImageConfig(Base):
             "AppImageConfigName": app_image_config_name,
             "Tags": tags,
             "KernelGatewayImageConfig": kernel_gateway_image_config,
-            "SaviturAppImageConfig": savitur_app_image_config,
             "JupyterLabAppImageConfig": jupyter_lab_app_image_config,
             "CodeEditorAppImageConfig": code_editor_app_image_config,
         }
@@ -1841,7 +2830,6 @@ class AppImageConfig(Base):
     def update(
         self,
         kernel_gateway_image_config: Optional[KernelGatewayImageConfig] = Unassigned(),
-        savitur_app_image_config: Optional[SaviturAppImageConfig] = Unassigned(),
         jupyter_lab_app_image_config: Optional[JupyterLabAppImageConfig] = Unassigned(),
         code_editor_app_image_config: Optional[CodeEditorAppImageConfig] = Unassigned(),
     ) -> Optional["AppImageConfig"]:
@@ -1870,7 +2858,6 @@ class AppImageConfig(Base):
         operation_input_args = {
             "AppImageConfigName": self.app_image_config_name,
             "KernelGatewayImageConfig": kernel_gateway_image_config,
-            "SaviturAppImageConfig": savitur_app_image_config,
             "JupyterLabAppImageConfig": jupyter_lab_app_image_config,
             "CodeEditorAppImageConfig": code_editor_app_image_config,
         }
@@ -2357,124 +3344,6 @@ class Artifact(Base):
         )
 
 
-class ArtifactInternal(Base):
-    """
-    Class representing resource ArtifactInternal
-
-    Attributes:
-        source:
-        artifact_type:
-        customer_details:
-        artifact_name:
-        creation_time:
-        properties:
-        metadata_properties:
-        tags:
-        artifact_arn:
-
-    """
-
-    source: ArtifactSource
-    artifact_type: StrPipeVar
-    customer_details: CustomerDetails
-    artifact_name: Optional[Union[StrPipeVar, object]] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    metadata_properties: Optional[MetadataProperties] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    artifact_arn: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "artifact_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object artifact_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        source: ArtifactSource,
-        artifact_type: StrPipeVar,
-        customer_details: CustomerDetails,
-        artifact_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
-        creation_time: Optional[datetime.datetime] = Unassigned(),
-        properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["ArtifactInternal"]:
-        """
-        Create a ArtifactInternal resource
-
-        Parameters:
-            source:
-            artifact_type:
-            customer_details:
-            artifact_name:
-            creation_time:
-            properties:
-            metadata_properties:
-            tags:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The ArtifactInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "ArtifactName": artifact_name,
-            "CreationTime": creation_time,
-            "Source": source,
-            "ArtifactType": artifact_type,
-            "Properties": properties,
-            "MetadataProperties": metadata_properties,
-            "Tags": tags,
-            "CustomerDetails": customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_artifact_internal API")
-        response = client.create_artifact_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateArtifactInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-
 class Association(Base):
     """
     Class representing resource Association
@@ -2706,7 +3575,6 @@ class AutoMLJob(Base):
         best_candidate: The best model candidate selected by SageMaker AI Autopilot using both the best objective metric and lowest InferenceLatency for an experiment.
         generate_candidate_definitions_only: Indicates whether the output for an AutoML job generates candidate definitions only.
         auto_ml_job_artifacts: Returns information on the job's artifacts found in AutoMLJobArtifacts.
-        image_url_overrides:
         resolved_attributes: Contains ProblemType, AutoMLJobObjective, and CompletionCriteria. If you do not provide these values, they are inferred.
         model_deploy_config: Indicates whether the model was deployed automatically to an endpoint and the name of that endpoint if deployed automatically.
         model_deploy_result: Provides information about endpoint for the model deployment.
@@ -2731,7 +3599,6 @@ class AutoMLJob(Base):
     auto_ml_job_secondary_status: Optional[StrPipeVar] = Unassigned()
     generate_candidate_definitions_only: Optional[bool] = Unassigned()
     auto_ml_job_artifacts: Optional[AutoMLJobArtifacts] = Unassigned()
-    image_url_overrides: Optional[ImageUrlOverrides] = Unassigned()
     resolved_attributes: Optional[ResolvedAttributes] = Unassigned()
     model_deploy_config: Optional[ModelDeployConfig] = Unassigned()
     model_deploy_result: Optional[ModelDeployResult] = Unassigned()
@@ -2797,7 +3664,6 @@ class AutoMLJob(Base):
         auto_ml_job_config: Optional[AutoMLJobConfig] = Unassigned(),
         generate_candidate_definitions_only: Optional[bool] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        image_url_overrides: Optional[ImageUrlOverrides] = Unassigned(),
         model_deploy_config: Optional[ModelDeployConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -2815,7 +3681,6 @@ class AutoMLJob(Base):
             auto_ml_job_config: A collection of settings used to configure an AutoML job.
             generate_candidate_definitions_only: Generates possible candidates without training the models. A candidate is a combination of data preprocessors, algorithms, and algorithm parameter settings.
             tags: An array of key-value pairs. You can use tags to categorize your Amazon Web Services resources in different ways, for example, by purpose, owner, or environment. For more information, see Tagging Amazon Web ServicesResources. Tag keys must be unique per resource.
-            image_url_overrides:
             model_deploy_config: Specifies how to generate the endpoint name for an automatic one-click Autopilot model deployment.
             session: Boto3 session.
             region: Region name.
@@ -2855,7 +3720,6 @@ class AutoMLJob(Base):
             "RoleArn": role_arn,
             "GenerateCandidateDefinitionsOnly": generate_candidate_definitions_only,
             "Tags": tags,
-            "ImageUrlOverrides": image_url_overrides,
             "ModelDeployConfig": model_deploy_config,
         }
 
@@ -2963,41 +3827,6 @@ class AutoMLJob(Base):
         return self
 
     @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a AutoMLJob resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            AccessDeniedException
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "AutoMLJobName": self.auto_ml_job_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_auto_ml_job(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
     def stop(self) -> None:
         """
         Stop a AutoMLJob resource
@@ -3015,7 +3844,7 @@ class AutoMLJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "AutoMLJobName": self.auto_ml_job_name,
@@ -3084,7 +3913,11 @@ class AutoMLJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="AutoMLJob", status=current_status)
+                    raise TimeoutExceededError(
+                        resource_type="AutoMLJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
+                    )
                 time.sleep(poll)
 
     @classmethod
@@ -3248,13 +4081,11 @@ class AutoMLJobV2(Base):
         partial_failure_reasons: Returns a list of reasons for partial failures within an AutoML job V2.
         best_candidate: Information about the candidate produced by an AutoML training job V2, including its status, steps, and other properties.
         auto_ml_job_artifacts:
-        image_url_overrides:
         resolved_attributes: Returns the resolved attributes used by the AutoML job V2.
         model_deploy_config: Indicates whether the model was deployed automatically to an endpoint and the name of that endpoint if deployed automatically.
         model_deploy_result: Provides information about endpoint for the model deployment.
         data_split_config: Returns the configuration settings of how the data are split into train and validation datasets.
         security_config: Returns the security configuration for traffic encryption or Amazon VPC settings.
-        external_feature_transformers:
         auto_ml_compute_config: The compute configuration used for the AutoML job V2.
 
     """
@@ -3276,13 +4107,11 @@ class AutoMLJobV2(Base):
     auto_ml_job_status: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_secondary_status: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_artifacts: Optional[AutoMLJobArtifacts] = Unassigned()
-    image_url_overrides: Optional[ImageUrlOverrides] = Unassigned()
     resolved_attributes: Optional[AutoMLResolvedAttributes] = Unassigned()
     model_deploy_config: Optional[ModelDeployConfig] = Unassigned()
     model_deploy_result: Optional[ModelDeployResult] = Unassigned()
     data_split_config: Optional[AutoMLDataSplitConfig] = Unassigned()
     security_config: Optional[AutoMLSecurityConfig] = Unassigned()
-    external_feature_transformers: Optional[AutoMLExternalFeatureTransformers] = Unassigned()
     auto_ml_compute_config: Optional[AutoMLComputeConfig] = Unassigned()
 
     def get_name(self) -> str:
@@ -3350,10 +4179,7 @@ class AutoMLJobV2(Base):
         security_config: Optional[AutoMLSecurityConfig] = Unassigned(),
         auto_ml_job_objective: Optional[AutoMLJobObjective] = Unassigned(),
         model_deploy_config: Optional[ModelDeployConfig] = Unassigned(),
-        image_url_overrides: Optional[ImageUrlOverrides] = Unassigned(),
         data_split_config: Optional[AutoMLDataSplitConfig] = Unassigned(),
-        auto_ml_execution_mode: Optional[StrPipeVar] = Unassigned(),
-        external_feature_transformers: Optional[AutoMLExternalFeatureTransformers] = Unassigned(),
         auto_ml_compute_config: Optional[AutoMLComputeConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -3371,10 +4197,7 @@ class AutoMLJobV2(Base):
             security_config: The security configuration for traffic encryption or Amazon VPC settings.
             auto_ml_job_objective: Specifies a metric to minimize or maximize as the objective of a job. If not specified, the default objective metric depends on the problem type. For the list of default values per problem type, see AutoMLJobObjective.    For tabular problem types: You must either provide both the AutoMLJobObjective and indicate the type of supervised learning problem in AutoMLProblemTypeConfig (TabularJobConfig.ProblemType), or none at all.   For text generation problem types (LLMs fine-tuning): Fine-tuning language models in Autopilot does not require setting the AutoMLJobObjective field. Autopilot fine-tunes LLMs without requiring multiple candidates to be trained and evaluated. Instead, using your dataset, Autopilot directly fine-tunes your target model to enhance a default objective metric, the cross-entropy loss. After fine-tuning a language model, you can evaluate the quality of its generated text using different metrics. For a list of the available metrics, see Metrics for fine-tuning LLMs in Autopilot.
             model_deploy_config: Specifies how to generate the endpoint name for an automatic one-click Autopilot model deployment.
-            image_url_overrides:
             data_split_config: This structure specifies how to split the data into train and validation datasets. The validation and training datasets must contain the same headers. For jobs created by calling CreateAutoMLJob, the validation dataset must be less than 2 GB in size.  This attribute must not be set for the time-series forecasting problem type, as Autopilot automatically splits the input dataset into training and validation sets.
-            auto_ml_execution_mode:
-            external_feature_transformers:
             auto_ml_compute_config: Specifies the compute configuration for the AutoML job V2.
             session: Boto3 session.
             region: Region name.
@@ -3414,10 +4237,7 @@ class AutoMLJobV2(Base):
             "SecurityConfig": security_config,
             "AutoMLJobObjective": auto_ml_job_objective,
             "ModelDeployConfig": model_deploy_config,
-            "ImageUrlOverrides": image_url_overrides,
             "DataSplitConfig": data_split_config,
-            "AutoMLExecutionMode": auto_ml_execution_mode,
-            "ExternalFeatureTransformers": external_feature_transformers,
             "AutoMLComputeConfig": auto_ml_compute_config,
         }
 
@@ -3580,703 +4400,12 @@ class AutoMLJobV2(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="AutoMLJobV2", status=current_status)
-                time.sleep(poll)
-
-
-class AutoMLTask(Base):
-    """
-    Class representing resource AutoMLTask
-
-    Attributes:
-        auto_ml_job_arn:
-        auto_ml_task_arn:
-        candidate_name:
-        auto_ml_task_type:
-        auto_ml_task_status:
-        creation_time:
-        last_modified_time:
-        end_time:
-        failure_reason:
-        auto_ml_task_artifacts_location:
-
-    """
-
-    auto_ml_task_arn: StrPipeVar
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    candidate_name: Optional[StrPipeVar] = Unassigned()
-    auto_ml_task_type: Optional[StrPipeVar] = Unassigned()
-    auto_ml_task_status: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    end_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    auto_ml_task_artifacts_location: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "auto_ml_task_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object auto_ml_task")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        auto_ml_job_name: StrPipeVar,
-        auto_ml_task_context: AutoMLTaskContext,
-        auto_ml_task_type: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["AutoMLTask"]:
-        """
-        Create a AutoMLTask resource
-
-        Parameters:
-            auto_ml_job_name:
-            auto_ml_task_context:
-            auto_ml_task_type:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The AutoMLTask resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating auto_ml_task resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "AutoMLJobName": auto_ml_job_name,
-            "AutoMLTaskContext": auto_ml_task_context,
-            "AutoMLTaskType": auto_ml_task_type,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="AutoMLTask", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_auto_ml_task(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(auto_ml_task_arn=response["AutoMlTaskArn"], session=session, region=region)
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        auto_ml_task_arn: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["AutoMLTask"]:
-        """
-        Get a AutoMLTask resource
-
-        Parameters:
-            auto_ml_task_arn:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The AutoMLTask resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "AutoMLTaskArn": auto_ml_task_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_auto_ml_task(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeAutoMLTaskResponse")
-        auto_ml_task = cls(**transformed_response)
-        return auto_ml_task
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-    ) -> Optional["AutoMLTask"]:
-        """
-        Refresh a AutoMLTask resource
-
-        Returns:
-            The AutoMLTask resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "AutoMLTaskArn": self.auto_ml_task_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_auto_ml_task(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeAutoMLTaskResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def wait_for_status(
-        self,
-        target_status: Literal["Completed", "InProgress", "Failed", "Stopped", "Stopping"],
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a AutoMLTask resource to reach certain status.
-
-        Parameters:
-            target_status: The status to wait for.
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-        """
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task(f"Waiting for AutoMLTask to reach [bold]{target_status} status...")
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            ),
-            transient=True,
-        ):
-            while True:
-                self.refresh()
-                current_status = self.auto_ml_task_status
-                status.update(f"Current status: [bold]{current_status}")
-
-                if target_status == current_status:
-                    logger.info(f"Final Resource Status: [bold]{current_status}")
-                    return
-
-                if "failed" in current_status.lower():
-                    raise FailedStatusError(
-                        resource_type="AutoMLTask",
-                        status=current_status,
-                        reason=self.failure_reason,
-                    )
-
-                if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="AutoMLTask", status=current_status)
-                time.sleep(poll)
-
-
-class CapacitySchedule(Base):
-    """
-    Class representing resource CapacitySchedule
-
-    Attributes:
-        capacity_schedule_arn:
-        capacity_schedule_type:
-        instance_type:
-        total_instance_count:
-        placement:
-        status:
-        requested_start_time:
-        owner_account_id:
-        available_instance_count:
-        availability_zone:
-        requested_end_time:
-        start_time:
-        end_time:
-        duration_in_hours:
-        capacity_block_offerings:
-        capacity_resources:
-        target_resources:
-        capacity_schedule_status_transitions:
-
-    """
-
-    capacity_schedule_arn: Optional[StrPipeVar] = Unassigned()
-    owner_account_id: Optional[StrPipeVar] = Unassigned()
-    capacity_schedule_type: Optional[StrPipeVar] = Unassigned()
-    instance_type: Optional[StrPipeVar] = Unassigned()
-    total_instance_count: Optional[int] = Unassigned()
-    available_instance_count: Optional[int] = Unassigned()
-    placement: Optional[StrPipeVar] = Unassigned()
-    availability_zone: Optional[StrPipeVar] = Unassigned()
-    status: Optional[StrPipeVar] = Unassigned()
-    requested_start_time: Optional[datetime.datetime] = Unassigned()
-    requested_end_time: Optional[datetime.datetime] = Unassigned()
-    start_time: Optional[datetime.datetime] = Unassigned()
-    end_time: Optional[datetime.datetime] = Unassigned()
-    duration_in_hours: Optional[int] = Unassigned()
-    capacity_block_offerings: Optional[List[CapacityBlockOffering]] = Unassigned()
-    capacity_resources: Optional[CapacityResources] = Unassigned()
-    target_resources: Optional[List[StrPipeVar]] = Unassigned()
-    capacity_schedule_status_transitions: Optional[List[CapacityScheduleStatusTransition]] = (
-        Unassigned()
-    )
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "capacity_schedule_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object capacity_schedule")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        capacity_schedule_name: StrPipeVar,
-        capacity_schedule_offering_id: StrPipeVar,
-        target_services: Optional[List[StrPipeVar]] = Unassigned(),
-        max_wait_time_in_seconds: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["CapacitySchedule"]:
-        """
-        Create a CapacitySchedule resource
-
-        Parameters:
-            capacity_schedule_name:
-            capacity_schedule_offering_id:
-            target_services:
-            max_wait_time_in_seconds:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The CapacitySchedule resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ResourceNotFound: Resource being access is not found.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating capacity_schedule resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "CapacityScheduleName": capacity_schedule_name,
-            "CapacityScheduleOfferingId": capacity_schedule_offering_id,
-            "TargetServices": target_services,
-            "MaxWaitTimeInSeconds": max_wait_time_in_seconds,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="CapacitySchedule", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_capacity_schedule(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(
-            capacity_schedule_name=capacity_schedule_name, session=session, region=region
-        )
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        capacity_schedule_name: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["CapacitySchedule"]:
-        """
-        Get a CapacitySchedule resource
-
-        Parameters:
-            capacity_schedule_name:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The CapacitySchedule resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "CapacityScheduleName": capacity_schedule_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_capacity_schedule(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeCapacityScheduleResponse")
-        capacity_schedule = cls(**transformed_response)
-        return capacity_schedule
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-        capacity_schedule_name: StrPipeVar,
-    ) -> Optional["CapacitySchedule"]:
-        """
-        Refresh a CapacitySchedule resource
-
-        Returns:
-            The CapacitySchedule resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "CapacityScheduleName": capacity_schedule_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_capacity_schedule(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeCapacityScheduleResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def update(
-        self,
-        capacity_schedule_name: StrPipeVar,
-        max_wait_time_in_seconds: Optional[int] = Unassigned(),
-        requested_start_time: Optional[datetime.datetime] = Unassigned(),
-        requested_end_time: Optional[datetime.datetime] = Unassigned(),
-        instance_count: Optional[int] = Unassigned(),
-    ) -> Optional["CapacitySchedule"]:
-        """
-        Update a CapacitySchedule resource
-
-        Parameters:
-            capacity_schedule_name:
-            max_wait_time_in_seconds:
-            instance_count:
-
-        Returns:
-            The CapacitySchedule resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        logger.info("Updating capacity_schedule resource.")
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "CapacityScheduleName": capacity_schedule_name,
-            "MaxWaitTimeInSeconds": max_wait_time_in_seconds,
-            "RequestedStartTime": requested_start_time,
-            "RequestedEndTime": requested_end_time,
-            "InstanceCount": instance_count,
-        }
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.update_capacity_schedule(**operation_input_args)
-        logger.debug(f"Response: {response}")
-        self.refresh()
-
-        return self
-
-    @Base.add_validate_call
-    def stop(self) -> None:
-        """
-        Stop a CapacitySchedule resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = SageMakerClient().client
-
-        operation_input_args = {
-            "CapacityScheduleName": self.capacity_schedule_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.stop_capacity_schedule(**operation_input_args)
-
-        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
-    def wait_for_status(
-        self,
-        target_status: Literal[
-            "Pending",
-            "Confirmed",
-            "Active",
-            "Updating",
-            "Stopping",
-            "Stopped",
-            "Rejected",
-            "Withdrawn",
-        ],
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a CapacitySchedule resource to reach certain status.
-
-        Parameters:
-            target_status: The status to wait for.
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-        """
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task(f"Waiting for CapacitySchedule to reach [bold]{target_status} status...")
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            ),
-            transient=True,
-        ):
-            while True:
-                self.refresh()
-                current_status = self.status
-                status.update(f"Current status: [bold]{current_status}")
-
-                if target_status == current_status:
-                    logger.info(f"Final Resource Status: [bold]{current_status}")
-                    return
-
-                if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="CapacitySchedule", status=current_status
+                        resource_type="AutoMLJobV2",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
                     )
                 time.sleep(poll)
-
-    @classmethod
-    @Base.add_validate_call
-    def load(
-        cls,
-        capacity_schedule_name: StrPipeVar,
-        capacity_resource_arn: StrPipeVar,
-        target_resources: List[StrPipeVar],
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["CapacitySchedule"]:
-        """
-        Import a CapacitySchedule resource
-
-        Parameters:
-            capacity_schedule_name:
-            capacity_resource_arn:
-            target_resources:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The CapacitySchedule resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceAlreadyExists
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        logger.info(f"Importing capacity_schedule resource.")
-        client = SageMakerClient(
-            session=session, region_name=region, service_name="sagemaker"
-        ).client
-
-        operation_input_args = {
-            "CapacityScheduleName": capacity_schedule_name,
-            "CapacityResourceArn": capacity_resource_arn,
-            "TargetResources": target_resources,
-        }
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # import the resource
-        response = client.import_capacity_schedule(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(
-            capacity_schedule_name=capacity_schedule_name, session=session, region=region
-        )
 
 
 class Cluster(Base):
@@ -4291,15 +4420,14 @@ class Cluster(Base):
         creation_time: The time when the SageMaker Cluster is created.
         failure_message: The failure message of the SageMaker HyperPod cluster.
         restricted_instance_groups: The specialized instance groups for training models like Amazon Nova to be created in the SageMaker HyperPod cluster.
+        restricted_instance_groups_config: The configuration for the restricted instance groups (RIG) in the SageMaker HyperPod cluster.
         vpc_config:
         orchestrator: The type of orchestrator used for the SageMaker HyperPod cluster.
-        resilience_config:
         tiered_storage_config: The current configuration for managed tier checkpointing on the HyperPod cluster. For example, this shows whether the feature is enabled and the percentage of cluster memory allocated for checkpoint storage.
         node_recovery: The node recovery mode configured for the SageMaker HyperPod cluster.
         node_provisioning_mode: The mode used for provisioning nodes in the cluster.
         cluster_role: The Amazon Resource Name (ARN) of the IAM role that HyperPod uses for cluster autoscaling operations.
         auto_scaling: The current autoscaling configuration and status for the autoscaler.
-        custom_metadata:
 
     """
 
@@ -4310,15 +4438,16 @@ class Cluster(Base):
     failure_message: Optional[StrPipeVar] = Unassigned()
     instance_groups: Optional[List[ClusterInstanceGroupDetails]] = Unassigned()
     restricted_instance_groups: Optional[List[ClusterRestrictedInstanceGroupDetails]] = Unassigned()
+    restricted_instance_groups_config: Optional[ClusterRestrictedInstanceGroupsConfigOutput] = (
+        Unassigned()
+    )
     vpc_config: Optional[VpcConfig] = Unassigned()
     orchestrator: Optional[ClusterOrchestrator] = Unassigned()
-    resilience_config: Optional[ClusterResilienceConfig] = Unassigned()
     tiered_storage_config: Optional[ClusterTieredStorageConfig] = Unassigned()
     node_recovery: Optional[StrPipeVar] = Unassigned()
     node_provisioning_mode: Optional[StrPipeVar] = Unassigned()
     cluster_role: Optional[StrPipeVar] = Unassigned()
     auto_scaling: Optional[ClusterAutoScalingConfigOutput] = Unassigned()
-    custom_metadata: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -4343,7 +4472,8 @@ class Cluster(Base):
                 "vpc_config": {
                     "security_group_ids": {"type": "array", "items": {"type": "string"}},
                     "subnets": {"type": "array", "items": {"type": "string"}},
-                }
+                },
+                "cluster_role": {"type": "string"},
             }
             return create_func(
                 *args,
@@ -4364,17 +4494,17 @@ class Cluster(Base):
         restricted_instance_groups: Optional[
             List[ClusterRestrictedInstanceGroupSpecification]
         ] = Unassigned(),
+        restricted_instance_groups_config: Optional[
+            ClusterRestrictedInstanceGroupsConfig
+        ] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         orchestrator: Optional[ClusterOrchestrator] = Unassigned(),
-        resilience_config: Optional[ClusterResilienceConfig] = Unassigned(),
         node_recovery: Optional[StrPipeVar] = Unassigned(),
         tiered_storage_config: Optional[ClusterTieredStorageConfig] = Unassigned(),
         node_provisioning_mode: Optional[StrPipeVar] = Unassigned(),
-        dry_run: Optional[bool] = Unassigned(),
         cluster_role: Optional[StrPipeVar] = Unassigned(),
         auto_scaling: Optional[ClusterAutoScalingConfig] = Unassigned(),
-        custom_metadata: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Cluster"]:
@@ -4385,17 +4515,15 @@ class Cluster(Base):
             cluster_name: The name for the new SageMaker HyperPod cluster.
             instance_groups: The instance groups to be created in the SageMaker HyperPod cluster.
             restricted_instance_groups: The specialized instance groups for training models like Amazon Nova to be created in the SageMaker HyperPod cluster.
+            restricted_instance_groups_config: The configuration for the restricted instance groups (RIG) in the SageMaker HyperPod cluster.
             vpc_config: Specifies the Amazon Virtual Private Cloud (VPC) that is associated with the Amazon SageMaker HyperPod cluster. You can control access to and from your resources by configuring your VPC. For more information, see Give SageMaker access to resources in your Amazon VPC.  When your Amazon VPC and subnets support IPv6, network communications differ based on the cluster orchestration platform:   Slurm-orchestrated clusters automatically configure nodes with dual IPv6 and IPv4 addresses, allowing immediate IPv6 network communications.   In Amazon EKS-orchestrated clusters, nodes receive dual-stack addressing, but pods can only use IPv6 when the Amazon EKS cluster is explicitly IPv6-enabled. For information about deploying an IPv6 Amazon EKS cluster, see Amazon EKS IPv6 Cluster Deployment.   Additional resources for IPv6 configuration:   For information about adding IPv6 support to your VPC, see to IPv6 Support for VPC.   For information about creating a new IPv6-compatible VPC, see Amazon VPC Creation Guide.   To configure SageMaker HyperPod with a custom Amazon VPC, see Custom Amazon VPC Setup for SageMaker HyperPod.
             tags: Custom tags for managing the SageMaker HyperPod cluster as an Amazon Web Services resource. You can add tags to your cluster in the same way you add them in other Amazon Web Services services that support tagging. To learn more about tagging Amazon Web Services resources in general, see Tagging Amazon Web Services Resources User Guide.
-            orchestrator: The type of orchestrator to use for the SageMaker HyperPod cluster. Currently, the only supported value is "eks", which is to use an Amazon Elastic Kubernetes Service cluster as the orchestrator.
-            resilience_config:
+            orchestrator: The type of orchestrator to use for the SageMaker HyperPod cluster. Currently, supported values are "Eks" and "Slurm", which is to use an Amazon Elastic Kubernetes Service or Slurm cluster as the orchestrator.  If you specify the Orchestrator field, you must provide exactly one orchestrator configuration: either Eks or Slurm. Specifying both or providing an empty configuration returns a validation error.
             node_recovery: The node recovery mode for the SageMaker HyperPod cluster. When set to Automatic, SageMaker HyperPod will automatically reboot or replace faulty nodes when issues are detected. When set to None, cluster administrators will need to manually manage any faulty cluster instances.
             tiered_storage_config: The configuration for managed tier checkpointing on the HyperPod cluster. When enabled, this feature uses a multi-tier storage approach for storing model checkpoints, providing faster checkpoint operations and improved fault tolerance across cluster nodes.
             node_provisioning_mode: The mode for provisioning nodes in the cluster. You can specify the following modes:    Continuous: Scaling behavior that enables 1) concurrent operation execution within instance groups, 2) continuous retry mechanisms for failed operations, 3) enhanced customer visibility into cluster events through detailed event streams, 4) partial provisioning capabilities. Your clusters and instance groups remain InService while scaling. This mode is only supported for EKS orchestrated clusters.
-            dry_run:
             cluster_role: The Amazon Resource Name (ARN) of the IAM role that HyperPod assumes to perform cluster autoscaling operations. This role must have permissions for sagemaker:BatchAddClusterNodes and sagemaker:BatchDeleteClusterNodes. This is only required when autoscaling is enabled and when HyperPod is performing autoscaling operations.
             auto_scaling: The autoscaling configuration for the cluster. Enables automatic scaling of cluster nodes based on workload demand using a Karpenter-based system.
-            custom_metadata:
             session: Boto3 session.
             region: Region name.
 
@@ -4412,7 +4540,6 @@ class Cluster(Base):
                     error_message = e.response['Error']['Message']
                     error_code = e.response['Error']['Code']
                 ```
-            DryRunOperation
             ResourceInUse: Resource being accessed is in use.
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
             ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
@@ -4429,17 +4556,15 @@ class Cluster(Base):
             "ClusterName": cluster_name,
             "InstanceGroups": instance_groups,
             "RestrictedInstanceGroups": restricted_instance_groups,
+            "RestrictedInstanceGroupsConfig": restricted_instance_groups_config,
             "VpcConfig": vpc_config,
             "Tags": tags,
             "Orchestrator": orchestrator,
-            "ResilienceConfig": resilience_config,
             "NodeRecovery": node_recovery,
             "TieredStorageConfig": tiered_storage_config,
             "NodeProvisioningMode": node_provisioning_mode,
-            "DryRun": dry_run,
             "ClusterRole": cluster_role,
             "AutoScaling": auto_scaling,
-            "CustomMetadata": custom_metadata,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -4553,22 +4678,22 @@ class Cluster(Base):
         restricted_instance_groups: Optional[
             List[ClusterRestrictedInstanceGroupSpecification]
         ] = Unassigned(),
-        resilience_config: Optional[ClusterResilienceConfig] = Unassigned(),
+        restricted_instance_groups_config: Optional[
+            ClusterRestrictedInstanceGroupsConfig
+        ] = Unassigned(),
         tiered_storage_config: Optional[ClusterTieredStorageConfig] = Unassigned(),
         node_recovery: Optional[StrPipeVar] = Unassigned(),
         instance_groups_to_delete: Optional[List[StrPipeVar]] = Unassigned(),
         node_provisioning_mode: Optional[StrPipeVar] = Unassigned(),
-        dry_run: Optional[bool] = Unassigned(),
         cluster_role: Optional[StrPipeVar] = Unassigned(),
         auto_scaling: Optional[ClusterAutoScalingConfig] = Unassigned(),
-        custom_metadata: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
+        orchestrator: Optional[ClusterOrchestrator] = Unassigned(),
     ) -> Optional["Cluster"]:
         """
         Update a Cluster resource
 
         Parameters:
             instance_groups_to_delete: Specify the names of the instance groups to delete. Use a single , as the separator between multiple names.
-            dry_run:
 
         Returns:
             The Cluster resource.
@@ -4584,7 +4709,6 @@ class Cluster(Base):
                     error_code = e.response['Error']['Code']
                 ```
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            DryRunOperation
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
             ResourceNotFound: Resource being access is not found.
         """
@@ -4596,15 +4720,14 @@ class Cluster(Base):
             "ClusterName": self.cluster_name,
             "InstanceGroups": instance_groups,
             "RestrictedInstanceGroups": restricted_instance_groups,
-            "ResilienceConfig": resilience_config,
+            "RestrictedInstanceGroupsConfig": restricted_instance_groups_config,
             "TieredStorageConfig": tiered_storage_config,
             "NodeRecovery": node_recovery,
             "InstanceGroupsToDelete": instance_groups_to_delete,
             "NodeProvisioningMode": node_provisioning_mode,
-            "DryRun": dry_run,
             "ClusterRole": cluster_role,
             "AutoScaling": auto_scaling,
-            "CustomMetadata": custom_metadata,
+            "Orchestrator": orchestrator,
         }
         logger.debug(f"Input request: {operation_input_args}")
         # serialize the input request
@@ -4621,7 +4744,6 @@ class Cluster(Base):
     @Base.add_validate_call
     def delete(
         self,
-        dry_run: Optional[bool] = Unassigned(),
     ) -> None:
         """
         Delete a Cluster resource
@@ -4637,7 +4759,6 @@ class Cluster(Base):
                     error_code = e.response['Error']['Code']
                 ```
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            DryRunOperation
             ResourceNotFound: Resource being access is not found.
         """
 
@@ -4645,7 +4766,6 @@ class Cluster(Base):
 
         operation_input_args = {
             "ClusterName": self.cluster_name,
-            "DryRun": dry_run,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -4716,7 +4836,7 @@ class Cluster(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Cluster", status=current_status)
+                    raise TimeoutExceededError(resource_type="Cluster", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -4770,7 +4890,7 @@ class Cluster(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Cluster", status=current_status)
+                        raise TimeoutExceededError(resource_type="Cluster", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -4975,7 +5095,6 @@ class Cluster(Base):
     def update_software(
         self,
         deployment_config: Optional[DeploymentConfiguration] = Unassigned(),
-        dry_run: Optional[bool] = Unassigned(),
         image_id: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
@@ -4985,7 +5104,6 @@ class Cluster(Base):
 
         Parameters:
             deployment_config: The configuration to use when updating the AMI versions.
-            dry_run:
             image_id: When configuring your HyperPod cluster, you can specify an image ID using one of the following options:    HyperPodPublicAmiId: Use a HyperPod public AMI    CustomAmiId: Use your custom AMI    default: Use the default latest system image   If you choose to use a custom AMI (CustomAmiId), ensure it meets the following requirements:   Encryption: The custom AMI must be unencrypted.   Ownership: The custom AMI must be owned by the same Amazon Web Services account that is creating the HyperPod cluster.   Volume support: Only the primary AMI snapshot volume is supported; additional AMI volumes are not supported.   When updating the instance group's AMI through the UpdateClusterSoftware operation, if an instance group uses a custom AMI, you must provide an ImageId or use the default as input. Note that if you don't specify an instance group in your UpdateClusterSoftware request, then all of the instance groups are patched with the specified image.
             session: Boto3 session.
             region: Region name.
@@ -5001,7 +5119,6 @@ class Cluster(Base):
                     error_code = e.response['Error']['Code']
                 ```
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            DryRunOperation
             ResourceNotFound: Resource being access is not found.
         """
 
@@ -5009,7 +5126,6 @@ class Cluster(Base):
             "ClusterName": self.cluster_name,
             "InstanceGroups": self.instance_groups,
             "DeploymentConfig": deployment_config,
-            "DryRun": dry_run,
             "ImageId": image_id,
         }
         # serialize the input request
@@ -5029,7 +5145,6 @@ class Cluster(Base):
         self,
         node_ids: Optional[List[StrPipeVar]] = Unassigned(),
         node_logical_ids: Optional[List[StrPipeVar]] = Unassigned(),
-        dry_run: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional[BatchDeleteClusterNodesResponse]:
@@ -5039,7 +5154,6 @@ class Cluster(Base):
         Parameters:
             node_ids: A list of node IDs to be deleted from the specified cluster.    For SageMaker HyperPod clusters using the Slurm workload manager, you cannot remove instances that are configured as Slurm controller nodes.   If you need to delete more than 99 instances, contact Support for assistance.
             node_logical_ids: A list of NodeLogicalIds identifying the nodes to be deleted. You can specify up to 50 NodeLogicalIds. You must specify either NodeLogicalIds, InstanceIds, or both, with a combined maximum of 50 identifiers.
-            dry_run:
             session: Boto3 session.
             region: Region name.
 
@@ -5056,7 +5170,6 @@ class Cluster(Base):
                     error_message = e.response['Error']['Message']
                     error_code = e.response['Error']['Code']
                 ```
-            DryRunOperation
             ResourceNotFound: Resource being access is not found.
         """
 
@@ -5064,7 +5177,6 @@ class Cluster(Base):
             "ClusterName": self.cluster_name,
             "NodeIds": node_ids,
             "NodeLogicalIds": node_logical_ids,
-            "DryRun": dry_run,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -5089,13 +5201,6 @@ class ClusterHealthCheck(Base):
     """
 
 
-class ClusterNode(Base):
-    """
-    Class representing resource ClusterNode
-
-    """
-
-
 class ClusterSchedulerConfig(Base):
     """
     Class representing resource ClusterSchedulerConfig
@@ -5108,6 +5213,7 @@ class ClusterSchedulerConfig(Base):
         status: Status of the cluster policy.
         creation_time: Creation time of the cluster policy.
         failure_reason: Failure reason of the cluster policy.
+        status_details: Additional details about the status of the cluster policy. This field provides context when the policy is in a non-active state, such as during creation, updates, or if failures occur.
         cluster_arn: ARN of the cluster where the cluster policy is applied.
         scheduler_config: Cluster policy configuration. This policy is used for task prioritization and fair-share allocation. This helps prioritize critical workloads and distributes idle compute across entities.
         description: Description of the cluster policy.
@@ -5123,6 +5229,7 @@ class ClusterSchedulerConfig(Base):
     cluster_scheduler_config_version: Optional[int] = Unassigned()
     status: Optional[StrPipeVar] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
+    status_details: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     cluster_arn: Optional[StrPipeVar] = Unassigned()
     scheduler_config: Optional[SchedulerConfig] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
@@ -5156,7 +5263,6 @@ class ClusterSchedulerConfig(Base):
         scheduler_config: SchedulerConfig,
         description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        dry_run: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ClusterSchedulerConfig"]:
@@ -5169,7 +5275,6 @@ class ClusterSchedulerConfig(Base):
             scheduler_config: Configuration about the monitoring schedule.
             description: Description of the cluster policy.
             tags: Tags of the cluster policy.
-            dry_run:
             session: Boto3 session.
             region: Region name.
 
@@ -5187,7 +5292,6 @@ class ClusterSchedulerConfig(Base):
                     error_code = e.response['Error']['Code']
                 ```
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            DryRunOperation
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
             ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
             LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
@@ -5205,7 +5309,6 @@ class ClusterSchedulerConfig(Base):
             "SchedulerConfig": scheduler_config,
             "Description": description,
             "Tags": tags,
-            "DryRun": dry_run,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -5325,14 +5428,12 @@ class ClusterSchedulerConfig(Base):
         target_version: int,
         scheduler_config: Optional[SchedulerConfig] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
-        dry_run: Optional[bool] = Unassigned(),
     ) -> Optional["ClusterSchedulerConfig"]:
         """
         Update a ClusterSchedulerConfig resource
 
         Parameters:
             target_version: Target version.
-            dry_run:
 
         Returns:
             The ClusterSchedulerConfig resource.
@@ -5348,7 +5449,6 @@ class ClusterSchedulerConfig(Base):
                     error_code = e.response['Error']['Code']
                 ```
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            DryRunOperation
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
             ResourceNotFound: Resource being access is not found.
         """
@@ -5361,7 +5461,6 @@ class ClusterSchedulerConfig(Base):
             "TargetVersion": target_version,
             "SchedulerConfig": scheduler_config,
             "Description": description,
-            "DryRun": dry_run,
         }
         logger.debug(f"Input request: {operation_input_args}")
         # serialize the input request
@@ -5378,7 +5477,6 @@ class ClusterSchedulerConfig(Base):
     @Base.add_validate_call
     def delete(
         self,
-        dry_run: Optional[bool] = Unassigned(),
     ) -> None:
         """
         Delete a ClusterSchedulerConfig resource
@@ -5393,7 +5491,6 @@ class ClusterSchedulerConfig(Base):
                     error_message = e.response['Error']['Message']
                     error_code = e.response['Error']['Code']
                 ```
-            DryRunOperation
             ResourceNotFound: Resource being access is not found.
         """
 
@@ -5401,7 +5498,6 @@ class ClusterSchedulerConfig(Base):
 
         operation_input_args = {
             "ClusterSchedulerConfigId": self.cluster_scheduler_config_id,
-            "DryRun": dry_run,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -5482,7 +5578,7 @@ class ClusterSchedulerConfig(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="ClusterSchedulerConfig", status=current_status
+                        resource_type="ClusterSchedulerConfig", status=current_status
                     )
                 time.sleep(poll)
 
@@ -5542,7 +5638,7 @@ class ClusterSchedulerConfig(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ClusterSchedulerConfig", status=current_status
+                            resource_type="ClusterSchedulerConfig", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -5979,7 +6075,6 @@ class CompilationJob(Base):
         inference_image: The inference image to use when compiling a model. Specify an image only if the target device is a cloud instance.
         model_package_version_arn: The Amazon Resource Name (ARN) of the versioned model package that was provided to SageMaker Neo when you initiated a compilation job.
         model_digests: Provides a BLAKE2 hash value that identifies the compiled model artifacts in Amazon S3.
-        resource_config:
         vpc_config: A VpcConfig object that specifies the VPC that you want your compilation job to connect to. Control access to your models by configuring the VPC. For more information, see Protect Compilation Jobs by Using an Amazon Virtual Private Cloud.
         derived_information: Information that SageMaker Neo automatically derived about the model.
 
@@ -6001,7 +6096,6 @@ class CompilationJob(Base):
     role_arn: Optional[StrPipeVar] = Unassigned()
     input_config: Optional[InputConfig] = Unassigned()
     output_config: Optional[OutputConfig] = Unassigned()
-    resource_config: Optional[NeoResourceConfig] = Unassigned()
     vpc_config: Optional[NeoVpcConfig] = Unassigned()
     derived_information: Optional[DerivedInformation] = Unassigned()
 
@@ -6057,7 +6151,6 @@ class CompilationJob(Base):
         stopping_condition: StoppingCondition,
         model_package_version_arn: Optional[StrPipeVar] = Unassigned(),
         input_config: Optional[InputConfig] = Unassigned(),
-        resource_config: Optional[NeoResourceConfig] = Unassigned(),
         vpc_config: Optional[NeoVpcConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -6073,7 +6166,6 @@ class CompilationJob(Base):
             stopping_condition: Specifies a limit to how long a model compilation job can run. When the job reaches the time limit, Amazon SageMaker AI ends the compilation job. Use this API to cap model training costs.
             model_package_version_arn: The Amazon Resource Name (ARN) of a versioned model package. Provide either a ModelPackageVersionArn or an InputConfig object in the request syntax. The presence of both objects in the CreateCompilationJob request will return an exception.
             input_config: Provides information about the location of input model artifacts, the name and shape of the expected data inputs, and the framework in which the model was trained.
-            resource_config:
             vpc_config: A VpcConfig object that specifies the VPC that you want your compilation job to connect to. Control access to your models by configuring the VPC. For more information, see Protect Compilation Jobs by Using an Amazon Virtual Private Cloud.
             tags: An array of key-value pairs. You can use tags to categorize your Amazon Web Services resources in different ways, for example, by purpose, owner, or environment. For more information, see Tagging Amazon Web Services Resources.
             session: Boto3 session.
@@ -6110,7 +6202,6 @@ class CompilationJob(Base):
             "ModelPackageVersionArn": model_package_version_arn,
             "InputConfig": input_config,
             "OutputConfig": output_config,
-            "ResourceConfig": resource_config,
             "VpcConfig": vpc_config,
             "StoppingCondition": stopping_condition,
             "Tags": tags,
@@ -6270,7 +6361,7 @@ class CompilationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "CompilationJobName": self.compilation_job_name,
@@ -6339,7 +6430,11 @@ class CompilationJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="CompilationJob", status=current_status)
+                    raise TimeoutExceededError(
+                        resource_type="CompilationJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
+                    )
                 time.sleep(poll)
 
     @classmethod
@@ -6484,7 +6579,6 @@ class ComputeQuota(Base):
         description: Optional[StrPipeVar] = Unassigned(),
         activation_state: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        dry_run: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ComputeQuota"]:
@@ -6499,7 +6593,6 @@ class ComputeQuota(Base):
             description: Description of the compute allocation definition.
             activation_state: The state of the compute allocation being described. Use to enable or disable compute allocation. Default is Enabled.
             tags: Tags of the compute allocation definition.
-            dry_run:
             session: Boto3 session.
             region: Region name.
 
@@ -6517,7 +6610,6 @@ class ComputeQuota(Base):
                     error_code = e.response['Error']['Code']
                 ```
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            DryRunOperation
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
             ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
             LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
@@ -6537,7 +6629,6 @@ class ComputeQuota(Base):
             "ComputeQuotaTarget": compute_quota_target,
             "ActivationState": activation_state,
             "Tags": tags,
-            "DryRun": dry_run,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -6655,14 +6746,12 @@ class ComputeQuota(Base):
         compute_quota_target: Optional[ComputeQuotaTarget] = Unassigned(),
         activation_state: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
-        dry_run: Optional[bool] = Unassigned(),
     ) -> Optional["ComputeQuota"]:
         """
         Update a ComputeQuota resource
 
         Parameters:
             target_version: Target version.
-            dry_run:
 
         Returns:
             The ComputeQuota resource.
@@ -6678,7 +6767,6 @@ class ComputeQuota(Base):
                     error_code = e.response['Error']['Code']
                 ```
             ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            DryRunOperation
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
             ResourceNotFound: Resource being access is not found.
         """
@@ -6693,7 +6781,6 @@ class ComputeQuota(Base):
             "ComputeQuotaTarget": compute_quota_target,
             "ActivationState": activation_state,
             "Description": description,
-            "DryRun": dry_run,
         }
         logger.debug(f"Input request: {operation_input_args}")
         # serialize the input request
@@ -6710,7 +6797,6 @@ class ComputeQuota(Base):
     @Base.add_validate_call
     def delete(
         self,
-        dry_run: Optional[bool] = Unassigned(),
     ) -> None:
         """
         Delete a ComputeQuota resource
@@ -6725,7 +6811,6 @@ class ComputeQuota(Base):
                     error_message = e.response['Error']['Message']
                     error_code = e.response['Error']['Code']
                 ```
-            DryRunOperation
             ResourceNotFound: Resource being access is not found.
         """
 
@@ -6733,7 +6818,6 @@ class ComputeQuota(Base):
 
         operation_input_args = {
             "ComputeQuotaId": self.compute_quota_id,
-            "DryRun": dry_run,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -6811,7 +6895,7 @@ class ComputeQuota(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ComputeQuota", status=current_status)
+                    raise TimeoutExceededError(resource_type="ComputeQuota", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -6870,7 +6954,7 @@ class ComputeQuota(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ComputeQuota", status=current_status
+                            resource_type="ComputeQuota", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -7314,592 +7398,6 @@ class Context(Base):
             summaries_key="ContextSummaries",
             summary_name="ContextSummary",
             resource_cls=Context,
-            list_method_kwargs=operation_input_args,
-        )
-
-
-class ContextInternal(Base):
-    """
-    Class representing resource ContextInternal
-
-    Attributes:
-        context_name:
-        source:
-        context_type:
-        customer_details:
-        creation_time:
-        description:
-        properties:
-        tags:
-        context_arn:
-
-    """
-
-    context_name: Union[StrPipeVar, object]
-    source: ContextSource
-    context_type: StrPipeVar
-    customer_details: CustomerDetails
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    context_arn: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "context_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object context_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        context_name: Union[StrPipeVar, object],
-        source: ContextSource,
-        context_type: StrPipeVar,
-        customer_details: CustomerDetails,
-        creation_time: Optional[datetime.datetime] = Unassigned(),
-        description: Optional[StrPipeVar] = Unassigned(),
-        properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["ContextInternal"]:
-        """
-        Create a ContextInternal resource
-
-        Parameters:
-            context_name:
-            source:
-            context_type:
-            customer_details:
-            creation_time:
-            description:
-            properties:
-            tags:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The ContextInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "ContextName": context_name,
-            "Source": source,
-            "CreationTime": creation_time,
-            "ContextType": context_type,
-            "Description": description,
-            "Properties": properties,
-            "Tags": tags,
-            "CustomerDetails": customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_context_internal API")
-        response = client.create_context_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateContextInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-
-class CrossAccountTrainingJob(Base):
-    """
-    Class representing resource CrossAccountTrainingJob
-
-    Attributes:
-        training_job_name:
-        algorithm_specification:
-        cross_account_role_arn:
-        input_data_config:
-        output_data_config:
-        resource_config:
-        stopping_condition:
-        training_job_arn:
-        hyper_parameters:
-        vpc_config:
-        tags:
-        environment:
-        source_arn:
-        source_account:
-
-    """
-
-    training_job_name: Union[StrPipeVar, object]
-    algorithm_specification: AlgorithmSpecification
-    cross_account_role_arn: StrPipeVar
-    input_data_config: List[Channel]
-    output_data_config: OutputDataConfig
-    resource_config: ResourceConfig
-    stopping_condition: StoppingCondition
-    training_job_arn: StrPipeVar
-    hyper_parameters: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    vpc_config: Optional[VpcConfig] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    source_arn: Optional[StrPipeVar] = Unassigned()
-    source_account: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "cross_account_training_job_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object cross_account_training_job")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        training_job_name: Union[StrPipeVar, object],
-        algorithm_specification: AlgorithmSpecification,
-        cross_account_role_arn: StrPipeVar,
-        input_data_config: List[Channel],
-        output_data_config: OutputDataConfig,
-        resource_config: ResourceConfig,
-        stopping_condition: StoppingCondition,
-        hyper_parameters: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        vpc_config: Optional[VpcConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        source_arn: Optional[StrPipeVar] = Unassigned(),
-        source_account: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["CrossAccountTrainingJob"]:
-        """
-        Create a CrossAccountTrainingJob resource
-
-        Parameters:
-            training_job_name:
-            algorithm_specification:
-            cross_account_role_arn:
-            input_data_config:
-            output_data_config:
-            resource_config:
-            stopping_condition:
-            hyper_parameters:
-            vpc_config:
-            tags:
-            environment:
-            source_arn:
-            source_account:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The CrossAccountTrainingJob resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "TrainingJobName": training_job_name,
-            "HyperParameters": hyper_parameters,
-            "AlgorithmSpecification": algorithm_specification,
-            "CrossAccountRoleArn": cross_account_role_arn,
-            "InputDataConfig": input_data_config,
-            "OutputDataConfig": output_data_config,
-            "ResourceConfig": resource_config,
-            "VpcConfig": vpc_config,
-            "StoppingCondition": stopping_condition,
-            "Tags": tags,
-            "Environment": environment,
-            "SourceArn": source_arn,
-            "SourceAccount": source_account,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_cross_account_training_job API")
-        response = client.create_cross_account_training_job(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateCrossAccountTrainingJobResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-
-class CustomMonitoringJobDefinition(Base):
-    """
-    Class representing resource CustomMonitoringJobDefinition
-
-    Attributes:
-        job_definition_arn:
-        job_definition_name:
-        creation_time:
-        custom_monitoring_app_specification:
-        custom_monitoring_job_input:
-        job_resources:
-        role_arn:
-        custom_monitoring_job_output_config:
-        network_config:
-        stopping_condition:
-
-    """
-
-    job_definition_name: StrPipeVar
-    job_definition_arn: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    custom_monitoring_app_specification: Optional[CustomMonitoringAppSpecification] = Unassigned()
-    custom_monitoring_job_input: Optional[CustomMonitoringJobInput] = Unassigned()
-    custom_monitoring_job_output_config: Optional[MonitoringOutputConfig] = Unassigned()
-    job_resources: Optional[MonitoringResources] = Unassigned()
-    network_config: Optional[MonitoringNetworkConfig] = Unassigned()
-    role_arn: Optional[StrPipeVar] = Unassigned()
-    stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "custom_monitoring_job_definition_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object custom_monitoring_job_definition")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        job_definition_name: StrPipeVar,
-        custom_monitoring_app_specification: CustomMonitoringAppSpecification,
-        custom_monitoring_job_input: CustomMonitoringJobInput,
-        job_resources: MonitoringResources,
-        role_arn: StrPipeVar,
-        custom_monitoring_job_output_config: Optional[MonitoringOutputConfig] = Unassigned(),
-        network_config: Optional[MonitoringNetworkConfig] = Unassigned(),
-        stopping_condition: Optional[MonitoringStoppingCondition] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["CustomMonitoringJobDefinition"]:
-        """
-        Create a CustomMonitoringJobDefinition resource
-
-        Parameters:
-            job_definition_name:
-            custom_monitoring_app_specification:
-            custom_monitoring_job_input:
-            job_resources:
-            role_arn:
-            custom_monitoring_job_output_config:
-            network_config:
-            stopping_condition:
-            tags:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The CustomMonitoringJobDefinition resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating custom_monitoring_job_definition resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "JobDefinitionName": job_definition_name,
-            "CustomMonitoringAppSpecification": custom_monitoring_app_specification,
-            "CustomMonitoringJobInput": custom_monitoring_job_input,
-            "CustomMonitoringJobOutputConfig": custom_monitoring_job_output_config,
-            "JobResources": job_resources,
-            "NetworkConfig": network_config,
-            "RoleArn": role_arn,
-            "StoppingCondition": stopping_condition,
-            "Tags": tags,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="CustomMonitoringJobDefinition", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_custom_monitoring_job_definition(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(job_definition_name=job_definition_name, session=session, region=region)
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        job_definition_name: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["CustomMonitoringJobDefinition"]:
-        """
-        Get a CustomMonitoringJobDefinition resource
-
-        Parameters:
-            job_definition_name:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The CustomMonitoringJobDefinition resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "JobDefinitionName": job_definition_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_custom_monitoring_job_definition(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeCustomMonitoringJobDefinitionResponse")
-        custom_monitoring_job_definition = cls(**transformed_response)
-        return custom_monitoring_job_definition
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-    ) -> Optional["CustomMonitoringJobDefinition"]:
-        """
-        Refresh a CustomMonitoringJobDefinition resource
-
-        Returns:
-            The CustomMonitoringJobDefinition resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "JobDefinitionName": self.job_definition_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_custom_monitoring_job_definition(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeCustomMonitoringJobDefinitionResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a CustomMonitoringJobDefinition resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "JobDefinitionName": self.job_definition_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_custom_monitoring_job_definition(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @classmethod
-    @Base.add_validate_call
-    def get_all(
-        cls,
-        endpoint_name: Optional[StrPipeVar] = Unassigned(),
-        sort_by: Optional[StrPipeVar] = Unassigned(),
-        sort_order: Optional[StrPipeVar] = Unassigned(),
-        name_contains: Optional[StrPipeVar] = Unassigned(),
-        creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> ResourceIterator["CustomMonitoringJobDefinition"]:
-        """
-        Get all CustomMonitoringJobDefinition resources
-
-        Parameters:
-            endpoint_name:
-            sort_by:
-            sort_order:
-            next_token:
-            max_results:
-            name_contains:
-            creation_time_before:
-            creation_time_after:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            Iterator for listed CustomMonitoringJobDefinition resources.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "EndpointName": endpoint_name,
-            "SortBy": sort_by,
-            "SortOrder": sort_order,
-            "NameContains": name_contains,
-            "CreationTimeBefore": creation_time_before,
-            "CreationTimeAfter": creation_time_after,
-        }
-        custom_key_mapping = {
-            "monitoring_job_definition_name": "job_definition_name",
-            "monitoring_job_definition_arn": "job_definition_arn",
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        return ResourceIterator(
-            client=client,
-            list_method="list_custom_monitoring_job_definitions",
-            summaries_key="JobDefinitionSummaries",
-            summary_name="MonitoringJobDefinitionSummary",
-            resource_cls=CustomMonitoringJobDefinition,
-            custom_key_mapping=custom_key_mapping,
             list_method_kwargs=operation_input_args,
         )
 
@@ -9058,7 +8556,6 @@ class Domain(Base):
         auth_mode: The domain's authentication mode.
         default_user_settings: Settings which are applied to UserProfiles in this domain if settings are not explicitly specified in a given UserProfile.
         domain_settings: A collection of Domain settings.
-        app_network_access:
         app_network_access_type: Specifies the VPC used for non-EFS traffic. The default value is PublicInternetOnly.    PublicInternetOnly - Non-EFS traffic is through a VPC managed by Amazon SageMaker AI, which allows direct internet access    VpcOnly - All traffic is through the specified VPC and subnets
         home_efs_file_system_kms_key_id: Use KmsKeyId.
         subnet_ids: The VPC subnets that the domain uses for communication.
@@ -9066,7 +8563,7 @@ class Domain(Base):
         vpc_id: The ID of the Amazon Virtual Private Cloud (VPC) that the domain uses for communication.
         kms_key_id: The Amazon Web Services KMS customer managed key used to encrypt the EFS volume attached to the domain.
         app_security_group_management: The entity that creates and manages the required security groups for inter-app communication in VPCOnly mode. Required when CreateDomain.AppNetworkAccessType is VPCOnly and DomainSettings.RStudioServerProDomainSettings.DomainExecutionRoleArn is provided.
-        app_storage_type:
+        home_efs_file_system_creation: Indicates whether a home EFS file system is created for the domain.
         tag_propagation: Indicates whether custom tag propagation is supported for the domain.
         default_space_settings: The default settings for shared spaces that users create in the domain.
 
@@ -9086,7 +8583,6 @@ class Domain(Base):
     auth_mode: Optional[StrPipeVar] = Unassigned()
     default_user_settings: Optional[UserSettings] = Unassigned()
     domain_settings: Optional[DomainSettings] = Unassigned()
-    app_network_access: Optional[StrPipeVar] = Unassigned()
     app_network_access_type: Optional[StrPipeVar] = Unassigned()
     home_efs_file_system_kms_key_id: Optional[StrPipeVar] = Unassigned()
     subnet_ids: Optional[List[StrPipeVar]] = Unassigned()
@@ -9094,7 +8590,7 @@ class Domain(Base):
     vpc_id: Optional[StrPipeVar] = Unassigned()
     kms_key_id: Optional[StrPipeVar] = Unassigned()
     app_security_group_management: Optional[StrPipeVar] = Unassigned()
-    app_storage_type: Optional[StrPipeVar] = Unassigned()
+    home_efs_file_system_creation: Optional[StrPipeVar] = Unassigned()
     tag_propagation: Optional[StrPipeVar] = Unassigned()
     default_space_settings: Optional[DefaultSpaceSettings] = Unassigned()
 
@@ -9146,6 +8642,9 @@ class Domain(Base):
                             "execution_role_arns": {"type": "array", "items": {"type": "string"}},
                         }
                     },
+                    "studio_web_portal_settings": {
+                        "execution_role_session_name_mode": {"type": "string"}
+                    },
                 },
                 "domain_settings": {
                     "security_group_ids": {"type": "array", "items": {"type": "string"}},
@@ -9153,6 +8652,7 @@ class Domain(Base):
                         "domain_execution_role_arn": {"type": "string"}
                     },
                     "execution_role_identity_config": {"type": "string"},
+                    "unified_studio_settings": {"project_s3_path": {"type": "string"}},
                 },
                 "home_efs_file_system_kms_key_id": {"type": "string"},
                 "subnet_ids": {"type": "array", "items": {"type": "string"}},
@@ -9190,12 +8690,11 @@ class Domain(Base):
         subnet_ids: Optional[List[StrPipeVar]] = Unassigned(),
         vpc_id: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        app_network_access: Optional[StrPipeVar] = Unassigned(),
         app_network_access_type: Optional[StrPipeVar] = Unassigned(),
         home_efs_file_system_kms_key_id: Optional[StrPipeVar] = Unassigned(),
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
         app_security_group_management: Optional[StrPipeVar] = Unassigned(),
-        app_storage_type: Optional[StrPipeVar] = Unassigned(),
+        home_efs_file_system_creation: Optional[StrPipeVar] = Unassigned(),
         tag_propagation: Optional[StrPipeVar] = Unassigned(),
         default_space_settings: Optional[DefaultSpaceSettings] = Unassigned(),
         session: Optional[Session] = None,
@@ -9212,12 +8711,11 @@ class Domain(Base):
             subnet_ids: The VPC subnets that the domain uses for communication. The field is optional when the AppNetworkAccessType parameter is set to PublicInternetOnly for domains created from Amazon SageMaker Unified Studio.
             vpc_id: The ID of the Amazon Virtual Private Cloud (VPC) that the domain uses for communication. The field is optional when the AppNetworkAccessType parameter is set to PublicInternetOnly for domains created from Amazon SageMaker Unified Studio.
             tags: Tags to associated with the Domain. Each tag consists of a key and an optional value. Tag keys must be unique per resource. Tags are searchable using the Search API. Tags that you specify for the Domain are also added to all Apps that the Domain launches.
-            app_network_access:
             app_network_access_type: Specifies the VPC used for non-EFS traffic. The default value is PublicInternetOnly.    PublicInternetOnly - Non-EFS traffic is through a VPC managed by Amazon SageMaker AI, which allows direct internet access    VpcOnly - All traffic is through the specified VPC and subnets
             home_efs_file_system_kms_key_id: Use KmsKeyId.
             kms_key_id: SageMaker AI uses Amazon Web Services KMS to encrypt EFS and EBS volumes attached to the domain with an Amazon Web Services managed key by default. For more control, specify a customer managed key.
             app_security_group_management: The entity that creates and manages the required security groups for inter-app communication in VPCOnly mode. Required when CreateDomain.AppNetworkAccessType is VPCOnly and DomainSettings.RStudioServerProDomainSettings.DomainExecutionRoleArn is provided. If setting up the domain for use with RStudio, this value must be set to Service.
-            app_storage_type:
+            home_efs_file_system_creation: Indicates whether to create a home EFS file system for the domain. Defaults to Enabled. Set to Disabled to skip EFS creation and reduce domain creation time. You can enable EFS later by calling UpdateDomain.
             tag_propagation: Indicates whether custom tag propagation is supported for the domain. Defaults to DISABLED.
             default_space_settings: The default settings for shared spaces that users create in the domain.
             session: Boto3 session.
@@ -9256,12 +8754,11 @@ class Domain(Base):
             "SubnetIds": subnet_ids,
             "VpcId": vpc_id,
             "Tags": tags,
-            "AppNetworkAccess": app_network_access,
             "AppNetworkAccessType": app_network_access_type,
             "HomeEfsFileSystemKmsKeyId": home_efs_file_system_kms_key_id,
             "KmsKeyId": kms_key_id,
             "AppSecurityGroupManagement": app_security_group_management,
-            "AppStorageType": app_storage_type,
+            "HomeEfsFileSystemCreation": home_efs_file_system_creation,
             "TagPropagation": tag_propagation,
             "DefaultSpaceSettings": default_space_settings,
         }
@@ -9380,6 +8877,7 @@ class Domain(Base):
         subnet_ids: Optional[List[StrPipeVar]] = Unassigned(),
         app_network_access_type: Optional[StrPipeVar] = Unassigned(),
         tag_propagation: Optional[StrPipeVar] = Unassigned(),
+        home_efs_file_system_creation: Optional[StrPipeVar] = Unassigned(),
         vpc_id: Optional[StrPipeVar] = Unassigned(),
     ) -> Optional["Domain"]:
         """
@@ -9418,6 +8916,7 @@ class Domain(Base):
             "SubnetIds": subnet_ids,
             "AppNetworkAccessType": app_network_access_type,
             "TagPropagation": tag_propagation,
+            "HomeEfsFileSystemCreation": home_efs_file_system_creation,
             "VpcId": vpc_id,
         }
         logger.debug(f"Input request: {operation_input_args}")
@@ -9529,7 +9028,7 @@ class Domain(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Domain", status=current_status)
+                    raise TimeoutExceededError(resource_type="Domain", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -9591,7 +9090,7 @@ class Domain(Base):
                         )
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Domain", status=current_status)
+                        raise TimeoutExceededError(resource_type="Domain", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -10447,7 +9946,7 @@ class EdgePackagingJob(Base):
                 ```
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "EdgePackagingJobName": self.edge_packaging_job_name,
@@ -10517,7 +10016,9 @@ class EdgePackagingJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="EdgePackagingJob", status=current_status
+                        resource_type="EdgePackagingJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
                     )
                 time.sleep(poll)
 
@@ -10611,7 +10112,6 @@ class Endpoint(Base):
         creation_time: A timestamp that shows when the endpoint was created.
         last_modified_time: A timestamp that shows when the endpoint was last modified.
         endpoint_config_name: The name of the endpoint configuration associated with this endpoint.
-        deletion_condition:
         production_variants: An array of ProductionVariantSummary objects, one for each model hosted behind this endpoint.
         data_capture_config:
         failure_reason: If the status of the endpoint is Failed, the reason why it failed.
@@ -10620,15 +10120,13 @@ class Endpoint(Base):
         pending_deployment_summary: Returns the summary of an in-progress deployment. This field is only returned when the endpoint is creating or updating with a new endpoint configuration.
         explainer_config: The configuration parameters for an explainer.
         shadow_production_variants: An array of ProductionVariantSummary objects, one for each model that you want to host at this endpoint in shadow mode with production traffic replicated from the model specified on ProductionVariants.
-        graph_config_name:
-        metrics_config: The Configuration parameters for Utilization metrics.
+        metrics_config: The configuration parameters for utilization metrics.
 
     """
 
     endpoint_name: StrPipeVar
     endpoint_arn: Optional[StrPipeVar] = Unassigned()
     endpoint_config_name: Optional[StrPipeVar] = Unassigned()
-    deletion_condition: Optional[EndpointDeletionCondition] = Unassigned()
     production_variants: Optional[List[ProductionVariantSummary]] = Unassigned()
     data_capture_config: Optional[DataCaptureConfigSummary] = Unassigned()
     endpoint_status: Optional[StrPipeVar] = Unassigned()
@@ -10640,7 +10138,6 @@ class Endpoint(Base):
     pending_deployment_summary: Optional[PendingDeploymentSummary] = Unassigned()
     explainer_config: Optional[ExplainerConfig] = Unassigned()
     shadow_production_variants: Optional[List[ProductionVariantSummary]] = Unassigned()
-    graph_config_name: Optional[StrPipeVar] = Unassigned()
     metrics_config: Optional[MetricsConfig] = Unassigned()
     serializer: Optional[BaseSerializer] = None
     deserializer: Optional[BaseDeserializer] = None
@@ -10693,8 +10190,6 @@ class Endpoint(Base):
         cls,
         endpoint_name: StrPipeVar,
         endpoint_config_name: Union[StrPipeVar, object],
-        graph_config_name: Optional[StrPipeVar] = Unassigned(),
-        deletion_condition: Optional[EndpointDeletionCondition] = Unassigned(),
         deployment_config: Optional[DeploymentConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -10706,8 +10201,6 @@ class Endpoint(Base):
         Parameters:
             endpoint_name: The name of the endpoint.The name must be unique within an Amazon Web Services Region in your Amazon Web Services account. The name is case-insensitive in CreateEndpoint, but the case is preserved and must be matched in InvokeEndpoint.
             endpoint_config_name: The name of an endpoint configuration. For more information, see CreateEndpointConfig.
-            graph_config_name:
-            deletion_condition:
             deployment_config:
             tags: An array of key-value pairs. You can use tags to categorize your Amazon Web Services resources in different ways, for example, by purpose, owner, or environment. For more information, see Tagging Amazon Web Services Resources.
             session: Boto3 session.
@@ -10740,8 +10233,6 @@ class Endpoint(Base):
         operation_input_args = {
             "EndpointName": endpoint_name,
             "EndpointConfigName": endpoint_config_name,
-            "GraphConfigName": graph_config_name,
-            "DeletionCondition": deletion_condition,
             "DeploymentConfig": deployment_config,
             "Tags": tags,
         }
@@ -10907,7 +10398,6 @@ class Endpoint(Base):
     @Base.add_validate_call
     def delete(
         self,
-        force_delete: Optional[bool] = Unassigned(),
     ) -> None:
         """
         Delete a Endpoint resource
@@ -10928,7 +10418,6 @@ class Endpoint(Base):
 
         operation_input_args = {
             "EndpointName": self.endpoint_name,
-            "ForceDelete": force_delete,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -10954,7 +10443,6 @@ class Endpoint(Base):
         ],
         poll: int = 5,
         timeout: Optional[int] = None,
-        logs: Optional[bool] = False,
     ) -> None:
         """
         Wait for a Endpoint resource to reach certain status.
@@ -10963,7 +10451,6 @@ class Endpoint(Base):
             target_status: The status to wait for.
             poll: The number of seconds to wait between each poll.
             timeout: The maximum number of seconds to wait before timing out.
-            logs: Whether to print logs while waiting.
 
         Raises:
             TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
@@ -10980,21 +10467,6 @@ class Endpoint(Base):
         progress.add_task(f"Waiting for Endpoint to reach [bold]{target_status} status...")
         status = Status("Current status:")
 
-        if logs:
-            instance_count = (
-                sum(variant.current_instance_count for variant in self.production_variants)
-                if self.production_variants and not isinstance(self.production_variants, Unassigned)
-                else 1
-            )
-            log_group_name = f"/aws/sagemaker/Endpoints/{self.get_name()}"
-            logger.info(f"log_group_name")
-            logger.info(log_group_name)
-            multi_stream_logger = MultiLogStreamHandler(
-                log_group_name=f"/aws/sagemaker/Endpoints/{self.get_name()}",
-                log_stream_name_prefix=self.get_name(),
-                expected_stream_count=instance_count,
-            )
-
         with Live(
             Panel(
                 Group(progress, status),
@@ -11008,11 +10480,6 @@ class Endpoint(Base):
                 current_status = self.endpoint_status
                 status.update(f"Current status: [bold]{current_status}")
 
-                if logs and multi_stream_logger.ready():
-                    stream_log_events = multi_stream_logger.get_latest_log_events()
-                    for stream_id, event in stream_log_events:
-                        logger.info(f"{stream_id}:\n{event['message']}")
-
                 if target_status == current_status:
                     logger.info(f"Final Resource Status: [bold]{current_status}")
                     return
@@ -11023,7 +10490,7 @@ class Endpoint(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Endpoint", status=current_status)
+                    raise TimeoutExceededError(resource_type="Endpoint", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -11077,7 +10544,7 @@ class Endpoint(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Endpoint", status=current_status)
+                        raise TimeoutExceededError(resource_type="Endpoint", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -11476,7 +10943,7 @@ class EndpointConfig(Base):
         execution_role_arn: The Amazon Resource Name (ARN) of the IAM role that you assigned to the endpoint configuration.
         vpc_config:
         enable_network_isolation: Indicates whether all model containers deployed to the endpoint are isolated. If they are, no inbound or outbound network calls can be made to or from the model containers.
-        metrics_config: The Configuration parameters for Utilization metrics.
+        metrics_config: The configuration parameters for utilization metrics.
 
     """
 
@@ -11576,7 +11043,7 @@ class EndpointConfig(Base):
             execution_role_arn: The Amazon Resource Name (ARN) of an IAM role that Amazon SageMaker AI can assume to perform actions on your behalf. For more information, see SageMaker AI Roles.   To be able to pass this role to Amazon SageMaker AI, the caller of this action must have the iam:PassRole permission.
             vpc_config:
             enable_network_isolation: Sets whether all model containers deployed to the endpoint are isolated. If they are, no inbound or outbound network calls can be made to or from the model containers.
-            metrics_config: The Configuration parameters for Utilization metrics.
+            metrics_config: The configuration parameters for utilization metrics.
             session: Boto3 session.
             region: Region name.
 
@@ -11818,697 +11285,6 @@ class EndpointConfig(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
-class EndpointConfigInternal(Base):
-    """
-    Class representing resource EndpointConfigInternal
-
-    Attributes:
-        endpoint_config_input:
-        account_id:
-        auto_ml_job_arn:
-        endpoint_config_output:
-
-    """
-
-    endpoint_config_input: CreateEndpointConfigInput
-    account_id: StrPipeVar
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    endpoint_config_output: Optional[CreateEndpointConfigOutput] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "endpoint_config_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object endpoint_config_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        endpoint_config_input: CreateEndpointConfigInput,
-        account_id: StrPipeVar,
-        auto_ml_job_arn: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["EndpointConfigInternal"]:
-        """
-        Create a EndpointConfigInternal resource
-
-        Parameters:
-            endpoint_config_input:
-            account_id:
-            auto_ml_job_arn:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The EndpointConfigInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "EndpointConfigInput": endpoint_config_input,
-            "AccountId": account_id,
-            "AutoMLJobArn": auto_ml_job_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_endpoint_config_internal API")
-        response = client.create_endpoint_config_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateEndpointConfigOutputInternal")
-        return cls(**operation_input_args, **transformed_response)
-
-    @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a EndpointConfigInternal resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "EndpointConfigInput": self.endpoint_config_input,
-            "AccountId": self.account_id,
-            "AutoMLJobArn": self.auto_ml_job_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_endpoint_config_internal(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-
-class EndpointInternal(Base):
-    """
-    Class representing resource EndpointInternal
-
-    Attributes:
-        endpoint_input:
-        account_id:
-        auto_ml_job_arn:
-        fas_credentials:
-        encrypted_fas_credentials:
-        billing_mode:
-        endpoint_output:
-
-    """
-
-    endpoint_input: CreateEndpointInput
-    account_id: StrPipeVar
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    fas_credentials: Optional[StrPipeVar] = Unassigned()
-    encrypted_fas_credentials: Optional[StrPipeVar] = Unassigned()
-    billing_mode: Optional[StrPipeVar] = Unassigned()
-    endpoint_output: Optional[CreateEndpointOutput] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "endpoint_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object endpoint_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        endpoint_input: CreateEndpointInput,
-        account_id: StrPipeVar,
-        auto_ml_job_arn: Optional[StrPipeVar] = Unassigned(),
-        fas_credentials: Optional[StrPipeVar] = Unassigned(),
-        encrypted_fas_credentials: Optional[StrPipeVar] = Unassigned(),
-        billing_mode: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["EndpointInternal"]:
-        """
-        Create a EndpointInternal resource
-
-        Parameters:
-            endpoint_input:
-            account_id:
-            auto_ml_job_arn:
-            fas_credentials:
-            encrypted_fas_credentials:
-            billing_mode:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The EndpointInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "EndpointInput": endpoint_input,
-            "AccountId": account_id,
-            "AutoMLJobArn": auto_ml_job_arn,
-            "FasCredentials": fas_credentials,
-            "EncryptedFasCredentials": encrypted_fas_credentials,
-            "BillingMode": billing_mode,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_endpoint_internal API")
-        response = client.create_endpoint_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateEndpointOutputInternal")
-        return cls(**operation_input_args, **transformed_response)
-
-    @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a EndpointInternal resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "EndpointInput": self.endpoint_input,
-            "AccountId": self.account_id,
-            "AutoMLJobArn": self.auto_ml_job_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_endpoint_internal(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-
-class EvaluationJob(Base):
-    """
-    Class representing resource EvaluationJob
-
-    Attributes:
-        evaluation_job_name:
-        evaluation_job_arn:
-        creation_time:
-        evaluation_job_status:
-        output_data_config:
-        role_arn:
-        evaluation_method:
-        input_data_config:
-        evaluation_config:
-        failure_reason:
-        description:
-        tags:
-        model_config:
-        job_id:
-        upstream_platform_config:
-
-    """
-
-    evaluation_job_name: StrPipeVar
-    evaluation_job_arn: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    evaluation_job_status: Optional[StrPipeVar] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    output_data_config: Optional[EvaluationJobOutputDataConfig] = Unassigned()
-    role_arn: Optional[StrPipeVar] = Unassigned()
-    evaluation_method: Optional[StrPipeVar] = Unassigned()
-    model_config: Optional[EvaluationJobModelConfig] = Unassigned()
-    input_data_config: Optional[EvaluationJobInputDataConfig] = Unassigned()
-    evaluation_config: Optional[EvaluationJobEvaluationConfig] = Unassigned()
-    job_id: Optional[StrPipeVar] = Unassigned()
-    upstream_platform_config: Optional[EvaluationJobUpstreamPlatformConfig] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "evaluation_job_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object evaluation_job")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        evaluation_job_name: StrPipeVar,
-        evaluation_method: StrPipeVar,
-        output_data_config: EvaluationJobOutputDataConfig,
-        input_data_config: EvaluationJobInputDataConfig,
-        evaluation_config: EvaluationJobEvaluationConfig,
-        role_arn: StrPipeVar,
-        description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        model_config: Optional[EvaluationJobModelConfig] = Unassigned(),
-        upstream_platform_config: Optional[EvaluationJobUpstreamPlatformConfig] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["EvaluationJob"]:
-        """
-        Create a EvaluationJob resource
-
-        Parameters:
-            evaluation_job_name:
-            evaluation_method:
-            output_data_config:
-            input_data_config:
-            evaluation_config:
-            role_arn:
-            description:
-            tags:
-            model_config:
-            upstream_platform_config:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The EvaluationJob resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating evaluation_job resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "EvaluationJobName": evaluation_job_name,
-            "Description": description,
-            "EvaluationMethod": evaluation_method,
-            "Tags": tags,
-            "ModelConfig": model_config,
-            "OutputDataConfig": output_data_config,
-            "InputDataConfig": input_data_config,
-            "EvaluationConfig": evaluation_config,
-            "RoleArn": role_arn,
-            "UpstreamPlatformConfig": upstream_platform_config,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="EvaluationJob", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_evaluation_job(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(evaluation_job_name=evaluation_job_name, session=session, region=region)
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        evaluation_job_name: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["EvaluationJob"]:
-        """
-        Get a EvaluationJob resource
-
-        Parameters:
-            evaluation_job_name:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The EvaluationJob resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "EvaluationJobName": evaluation_job_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_evaluation_job(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeEvaluationJobResponse")
-        evaluation_job = cls(**transformed_response)
-        return evaluation_job
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-    ) -> Optional["EvaluationJob"]:
-        """
-        Refresh a EvaluationJob resource
-
-        Returns:
-            The EvaluationJob resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "EvaluationJobName": self.evaluation_job_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_evaluation_job(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeEvaluationJobResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a EvaluationJob resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "EvaluationJobName": self.evaluation_job_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_evaluation_job(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
-    def stop(self) -> None:
-        """
-        Stop a EvaluationJob resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = SageMakerClient().client
-
-        operation_input_args = {
-            "EvaluationJobName": self.evaluation_job_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.stop_evaluation_job(**operation_input_args)
-
-        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
-    def wait(
-        self,
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a EvaluationJob resource.
-
-        Parameters:
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-
-        """
-        terminal_states = ["Completed", "Failed", "Stopped"]
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task("Waiting for EvaluationJob...")
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            ),
-            transient=True,
-        ):
-            while True:
-                self.refresh()
-                current_status = self.evaluation_job_status
-                status.update(f"Current status: [bold]{current_status}")
-
-                if current_status in terminal_states:
-                    logger.info(f"Final Resource Status: [bold]{current_status}")
-
-                    if "failed" in current_status.lower():
-                        raise FailedStatusError(
-                            resource_type="EvaluationJob",
-                            status=current_status,
-                            reason=self.failure_reason,
-                        )
-
-                    return
-
-                if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="EvaluationJob", status=current_status)
-                time.sleep(poll)
-
-    @classmethod
-    @Base.add_validate_call
-    def get_all(
-        cls,
-        creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[StrPipeVar] = Unassigned(),
-        sort_by: Optional[StrPipeVar] = Unassigned(),
-        sort_order: Optional[StrPipeVar] = Unassigned(),
-        status_equals: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> ResourceIterator["EvaluationJob"]:
-        """
-        Get all EvaluationJob resources
-
-        Parameters:
-            creation_time_after:
-            creation_time_before:
-            name_contains:
-            next_token:
-            max_results:
-            sort_by:
-            sort_order:
-            status_equals:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            Iterator for listed EvaluationJob resources.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "CreationTimeAfter": creation_time_after,
-            "CreationTimeBefore": creation_time_before,
-            "NameContains": name_contains,
-            "SortBy": sort_by,
-            "SortOrder": sort_order,
-            "StatusEquals": status_equals,
-        }
-
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        return ResourceIterator(
-            client=client,
-            list_method="list_evaluation_jobs",
-            summaries_key="EvaluationJobSummaries",
-            summary_name="EvaluationJobSummary",
-            resource_cls=EvaluationJob,
-            list_method_kwargs=operation_input_args,
-        )
-'''
 
 class Experiment(Base):
     """
@@ -12852,119 +11628,6 @@ class Experiment(Base):
         )
 
 
-class ExperimentInternal(Base):
-    """
-    Class representing resource ExperimentInternal
-
-    Attributes:
-        experiment_name:
-        customer_details:
-        display_name:
-        description:
-        source:
-        creation_time:
-        tags:
-        experiment_arn:
-
-    """
-
-    experiment_name: Union[StrPipeVar, object]
-    customer_details: CustomerDetails
-    display_name: Optional[StrPipeVar] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    source: Optional[InputExperimentSource] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    experiment_arn: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "experiment_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object experiment_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        experiment_name: Union[StrPipeVar, object],
-        customer_details: CustomerDetails,
-        display_name: Optional[StrPipeVar] = Unassigned(),
-        description: Optional[StrPipeVar] = Unassigned(),
-        source: Optional[InputExperimentSource] = Unassigned(),
-        creation_time: Optional[datetime.datetime] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["ExperimentInternal"]:
-        """
-        Create a ExperimentInternal resource
-
-        Parameters:
-            experiment_name:
-            customer_details:
-            display_name:
-            description:
-            source:
-            creation_time:
-            tags:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The ExperimentInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "ExperimentName": experiment_name,
-            "DisplayName": display_name,
-            "Description": description,
-            "Source": source,
-            "CreationTime": creation_time,
-            "Tags": tags,
-            "CustomerDetails": customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_experiment_internal API")
-        response = client.create_experiment_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateExperimentInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-
 class FeatureGroup(Base):
     """
     Class representing resource FeatureGroup
@@ -12987,12 +11650,7 @@ class FeatureGroup(Base):
         last_update_status: A value indicating whether the update made to the feature group was successful.
         failure_reason: The reason that the FeatureGroup failed to be replicated in the OfflineStore. This is failure can occur because:   The FeatureGroup could not be created in the OfflineStore.   The FeatureGroup could not be deleted from the OfflineStore.
         description: A free form description of the feature group.
-        online_store_replicas:
-        online_store_read_write_type:
         online_store_total_size_bytes: The size of the OnlineStore in bytes.
-        online_store_total_item_count:
-        created_by:
-        last_modified_by:
 
     """
 
@@ -13013,12 +11671,7 @@ class FeatureGroup(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
     next_token: Optional[StrPipeVar] = Unassigned()
-    online_store_replicas: Optional[List[OnlineStoreReplica]] = Unassigned()
-    online_store_read_write_type: Optional[StrPipeVar] = Unassigned()
     online_store_total_size_bytes: Optional[int] = Unassigned()
-    online_store_total_item_count: Optional[int] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
-    last_modified_by: Optional[UserContext] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -13074,7 +11727,6 @@ class FeatureGroup(Base):
         role_arn: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        use_pre_prod_offline_store_replicator_lambda: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["FeatureGroup"]:
@@ -13092,7 +11744,6 @@ class FeatureGroup(Base):
             role_arn: The Amazon Resource Name (ARN) of the IAM execution role used to persist data into the OfflineStore if an OfflineStoreConfig is provided.
             description: A free-form description of a FeatureGroup.
             tags: Tags used to identify Features in each FeatureGroup.
-            use_pre_prod_offline_store_replicator_lambda:
             session: Boto3 session.
             region: Region name.
 
@@ -13132,7 +11783,6 @@ class FeatureGroup(Base):
             "RoleArn": role_arn,
             "Description": description,
             "Tags": tags,
-            "UsePreProdOfflineStoreReplicatorLambda": use_pre_prod_offline_store_replicator_lambda,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -13246,17 +11896,14 @@ class FeatureGroup(Base):
     @Base.add_validate_call
     def update(
         self,
-        add_online_store_replica: Optional[AddOnlineStoreReplicaAction] = Unassigned(),
         feature_additions: Optional[List[FeatureDefinition]] = Unassigned(),
         online_store_config: Optional[OnlineStoreConfigUpdate] = Unassigned(),
-        description: Optional[StrPipeVar] = Unassigned(),
         throughput_config: Optional[ThroughputConfigUpdate] = Unassigned(),
     ) -> Optional["FeatureGroup"]:
         """
         Update a FeatureGroup resource
 
         Parameters:
-            add_online_store_replica:
             feature_additions: Updates the feature group. Updating a feature group is an asynchronous operation. When you get an HTTP 200 response, you've made a valid request. It takes some time after you've made a valid request for Feature Store to update the feature group.
 
         Returns:
@@ -13281,10 +11928,8 @@ class FeatureGroup(Base):
 
         operation_input_args = {
             "FeatureGroupName": self.feature_group_name,
-            "AddOnlineStoreReplica": add_online_store_replica,
             "FeatureAdditions": feature_additions,
             "OnlineStoreConfig": online_store_config,
-            "Description": description,
             "ThroughputConfig": throughput_config,
         }
         logger.debug(f"Input request: {operation_input_args}")
@@ -13387,7 +12032,7 @@ class FeatureGroup(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="FeatureGroup", status=current_status)
+                    raise TimeoutExceededError(resource_type="FeatureGroup", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -13442,7 +12087,7 @@ class FeatureGroup(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="FeatureGroup", status=current_status
+                            resource_type="FeatureGroup", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -13750,175 +12395,6 @@ class FeatureGroup(Base):
         return BatchGetRecordResponse(**transformed_response)
 
 
-class FeatureGroupInternal(Base):
-    """
-    Class representing resource FeatureGroupInternal
-
-    Attributes:
-        feature_group_name:
-        record_identifier_feature_name:
-        event_time_feature_name:
-        feature_definitions:
-        feature_group_arn:
-        online_store_config:
-        offline_store_config:
-        role_arn:
-        description:
-        tags:
-        use_pre_prod_offline_store_replicator_lambda:
-        account_id:
-        aws_payer_token:
-        fas_credentials:
-        created_by:
-        ignore_sweeper_execution:
-        storage_account_stage_test_override:
-        online_store_metadata:
-        online_store_replica_metadata:
-
-    """
-
-    feature_group_name: Union[StrPipeVar, object]
-    record_identifier_feature_name: StrPipeVar
-    event_time_feature_name: StrPipeVar
-    feature_definitions: List[FeatureDefinition]
-    feature_group_arn: StrPipeVar
-    online_store_config: Optional[OnlineStoreConfig] = Unassigned()
-    offline_store_config: Optional[OfflineStoreConfig] = Unassigned()
-    role_arn: Optional[StrPipeVar] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    use_pre_prod_offline_store_replicator_lambda: Optional[bool] = Unassigned()
-    account_id: Optional[StrPipeVar] = Unassigned()
-    aws_payer_token: Optional[StrPipeVar] = Unassigned()
-    fas_credentials: Optional[StrPipeVar] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
-    ignore_sweeper_execution: Optional[bool] = Unassigned()
-    storage_account_stage_test_override: Optional[StrPipeVar] = Unassigned()
-    online_store_metadata: Optional[OnlineStoreMetadata] = Unassigned()
-    online_store_replica_metadata: Optional[OnlineStoreReplicaMetadata] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "feature_group_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object feature_group_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        feature_group_name: Union[StrPipeVar, object],
-        record_identifier_feature_name: StrPipeVar,
-        event_time_feature_name: StrPipeVar,
-        feature_definitions: List[FeatureDefinition],
-        online_store_config: Optional[OnlineStoreConfig] = Unassigned(),
-        offline_store_config: Optional[OfflineStoreConfig] = Unassigned(),
-        role_arn: Optional[StrPipeVar] = Unassigned(),
-        description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        use_pre_prod_offline_store_replicator_lambda: Optional[bool] = Unassigned(),
-        account_id: Optional[StrPipeVar] = Unassigned(),
-        aws_payer_token: Optional[StrPipeVar] = Unassigned(),
-        fas_credentials: Optional[StrPipeVar] = Unassigned(),
-        created_by: Optional[UserContext] = Unassigned(),
-        ignore_sweeper_execution: Optional[bool] = Unassigned(),
-        storage_account_stage_test_override: Optional[StrPipeVar] = Unassigned(),
-        online_store_metadata: Optional[OnlineStoreMetadata] = Unassigned(),
-        online_store_replica_metadata: Optional[OnlineStoreReplicaMetadata] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["FeatureGroupInternal"]:
-        """
-        Create a FeatureGroupInternal resource
-
-        Parameters:
-            feature_group_name:
-            record_identifier_feature_name:
-            event_time_feature_name:
-            feature_definitions:
-            online_store_config:
-            offline_store_config:
-            role_arn:
-            description:
-            tags:
-            use_pre_prod_offline_store_replicator_lambda:
-            account_id:
-            aws_payer_token:
-            fas_credentials:
-            created_by:
-            ignore_sweeper_execution:
-            storage_account_stage_test_override:
-            online_store_metadata:
-            online_store_replica_metadata:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The FeatureGroupInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "FeatureGroupName": feature_group_name,
-            "RecordIdentifierFeatureName": record_identifier_feature_name,
-            "EventTimeFeatureName": event_time_feature_name,
-            "FeatureDefinitions": feature_definitions,
-            "OnlineStoreConfig": online_store_config,
-            "OfflineStoreConfig": offline_store_config,
-            "RoleArn": role_arn,
-            "Description": description,
-            "Tags": tags,
-            "UsePreProdOfflineStoreReplicatorLambda": use_pre_prod_offline_store_replicator_lambda,
-            "AccountId": account_id,
-            "AwsPayerToken": aws_payer_token,
-            "FasCredentials": fas_credentials,
-            "CreatedBy": created_by,
-            "IgnoreSweeperExecution": ignore_sweeper_execution,
-            "StorageAccountStageTestOverride": storage_account_stage_test_override,
-            "OnlineStoreMetadata": online_store_metadata,
-            "OnlineStoreReplicaMetadata": online_store_replica_metadata,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_feature_group_internal API")
-        response = client.create_feature_group_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateFeatureGroupInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-
 class FeatureMetadata(Base):
     """
     Class representing resource FeatureMetadata
@@ -13930,7 +12406,6 @@ class FeatureMetadata(Base):
         feature_type: The data type of the feature.
         creation_time: A timestamp indicating when the feature was created.
         last_modified_time: A timestamp indicating when the metadata for the feature group was modified. For example, if you add a parameter describing the feature, the timestamp changes to reflect the last time you
-        feature_identifier:
         description: The description you added to describe the feature.
         parameters: The key-value pairs that you added to describe the feature.
 
@@ -13939,7 +12414,6 @@ class FeatureMetadata(Base):
     feature_group_name: StrPipeVar
     feature_name: StrPipeVar
     feature_group_arn: Optional[StrPipeVar] = Unassigned()
-    feature_identifier: Optional[StrPipeVar] = Unassigned()
     feature_type: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
@@ -14121,9 +12595,6 @@ class FlowDefinition(Base):
         human_loop_request_source: Container for configuring the source of human task requests. Used to specify if Amazon Rekognition or Amazon Textract is used as an integration source.
         human_loop_activation_config: An object containing information about what triggers a human review workflow.
         human_loop_config: An object containing information about who works on the task, the workforce task price, and other task details.
-        workflow_steps:
-        task_rendering_role_arn:
-        kms_key_id:
         failure_reason: The reason your flow definition failed.
 
     """
@@ -14135,11 +12606,8 @@ class FlowDefinition(Base):
     human_loop_request_source: Optional[HumanLoopRequestSource] = Unassigned()
     human_loop_activation_config: Optional[HumanLoopActivationConfig] = Unassigned()
     human_loop_config: Optional[HumanLoopConfig] = Unassigned()
-    workflow_steps: Optional[StrPipeVar] = Unassigned()
     output_config: Optional[FlowDefinitionOutputConfig] = Unassigned()
     role_arn: Optional[StrPipeVar] = Unassigned()
-    task_rendering_role_arn: Optional[StrPipeVar] = Unassigned()
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
 
     def get_name(self) -> str:
@@ -14188,9 +12656,6 @@ class FlowDefinition(Base):
         human_loop_request_source: Optional[HumanLoopRequestSource] = Unassigned(),
         human_loop_activation_config: Optional[HumanLoopActivationConfig] = Unassigned(),
         human_loop_config: Optional[HumanLoopConfig] = Unassigned(),
-        workflow_steps: Optional[StrPipeVar] = Unassigned(),
-        task_rendering_role_arn: Optional[StrPipeVar] = Unassigned(),
-        kms_key_id: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -14205,9 +12670,6 @@ class FlowDefinition(Base):
             human_loop_request_source: Container for configuring the source of human task requests. Use to specify if Amazon Rekognition or Amazon Textract is used as an integration source.
             human_loop_activation_config: An object containing information about the events that trigger a human workflow.
             human_loop_config: An object containing information about the tasks the human reviewers will perform.
-            workflow_steps:
-            task_rendering_role_arn:
-            kms_key_id:
             tags: An array of key-value pairs that contain metadata to help you categorize and organize a flow definition. Each tag consists of a key and a value, both of which you define.
             session: Boto3 session.
             region: Region name.
@@ -14242,11 +12704,8 @@ class FlowDefinition(Base):
             "HumanLoopRequestSource": human_loop_request_source,
             "HumanLoopActivationConfig": human_loop_activation_config,
             "HumanLoopConfig": human_loop_config,
-            "WorkflowSteps": workflow_steps,
             "OutputConfig": output_config,
             "RoleArn": role_arn,
-            "TaskRenderingRoleArn": task_rendering_role_arn,
-            "KmsKeyId": kms_key_id,
             "Tags": tags,
         }
 
@@ -14442,7 +12901,9 @@ class FlowDefinition(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="FlowDefinition", status=current_status)
+                    raise TimeoutExceededError(
+                        resource_type="FlowDefinition", status=current_status
+                    )
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -14497,7 +12958,7 @@ class FlowDefinition(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="FlowDefinition", status=current_status
+                            resource_type="FlowDefinition", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -14567,773 +13028,6 @@ class FlowDefinition(Base):
             resource_cls=FlowDefinition,
             list_method_kwargs=operation_input_args,
         )
-
-
-class GroundTruthJob(Base):
-    """
-    Class representing resource GroundTruthJob
-
-    Attributes:
-        ground_truth_project_arn:
-        ground_truth_workflow_arn:
-        ground_truth_job_arn:
-        ground_truth_job_name:
-        ground_truth_job_status:
-        input_config:
-        output_config:
-        created_at:
-        ground_truth_job_description:
-        failure_reason:
-
-    """
-
-    ground_truth_job_name: StrPipeVar
-    ground_truth_project_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_workflow_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_job_description: Optional[StrPipeVar] = Unassigned()
-    ground_truth_job_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_job_status: Optional[StrPipeVar] = Unassigned()
-    input_config: Optional[GroundTruthJobInputConfig] = Unassigned()
-    output_config: Optional[GroundTruthJobOutputConfig] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    created_at: Optional[datetime.datetime] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "ground_truth_job_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object ground_truth_job")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        ground_truth_project_name: Union[StrPipeVar, object],
-        ground_truth_workflow_name: Union[StrPipeVar, object],
-        ground_truth_job_name: StrPipeVar,
-        input_config: GroundTruthJobInputConfig,
-        output_config: GroundTruthJobOutputConfig,
-        ground_truth_job_description: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["GroundTruthJob"]:
-        """
-        Create a GroundTruthJob resource
-
-        Parameters:
-            ground_truth_project_name:
-            ground_truth_workflow_name:
-            ground_truth_job_name:
-            input_config:
-            output_config:
-            ground_truth_job_description:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The GroundTruthJob resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            ResourceNotFound: Resource being access is not found.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating ground_truth_job resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "GroundTruthProjectName": ground_truth_project_name,
-            "GroundTruthWorkflowName": ground_truth_workflow_name,
-            "GroundTruthJobName": ground_truth_job_name,
-            "GroundTruthJobDescription": ground_truth_job_description,
-            "InputConfig": input_config,
-            "OutputConfig": output_config,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="GroundTruthJob", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_ground_truth_job(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(
-            ground_truth_project_name=ground_truth_project_name,
-            ground_truth_workflow_name=ground_truth_workflow_name,
-            ground_truth_job_name=ground_truth_job_name,
-            session=session,
-            region=region,
-        )
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        ground_truth_project_name: StrPipeVar,
-        ground_truth_workflow_name: StrPipeVar,
-        ground_truth_job_name: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["GroundTruthJob"]:
-        """
-        Get a GroundTruthJob resource
-
-        Parameters:
-            ground_truth_project_name:
-            ground_truth_workflow_name:
-            ground_truth_job_name:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The GroundTruthJob resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "GroundTruthProjectName": ground_truth_project_name,
-            "GroundTruthWorkflowName": ground_truth_workflow_name,
-            "GroundTruthJobName": ground_truth_job_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_ground_truth_job(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeGroundTruthJobResponse")
-        ground_truth_job = cls(**transformed_response)
-        return ground_truth_job
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-        ground_truth_project_name: StrPipeVar,
-        ground_truth_workflow_name: StrPipeVar,
-    ) -> Optional["GroundTruthJob"]:
-        """
-        Refresh a GroundTruthJob resource
-
-        Returns:
-            The GroundTruthJob resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "GroundTruthProjectName": ground_truth_project_name,
-            "GroundTruthWorkflowName": ground_truth_workflow_name,
-            "GroundTruthJobName": self.ground_truth_job_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_ground_truth_job(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeGroundTruthJobResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def wait(
-        self,
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a GroundTruthJob resource.
-
-        Parameters:
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-
-        """
-        terminal_states = ["Completed", "Failed"]
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task("Waiting for GroundTruthJob...")
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            ),
-            transient=True,
-        ):
-            while True:
-                self.refresh()
-                current_status = self.ground_truth_job_status
-                status.update(f"Current status: [bold]{current_status}")
-
-                if current_status in terminal_states:
-                    logger.info(f"Final Resource Status: [bold]{current_status}")
-
-                    if "failed" in current_status.lower():
-                        raise FailedStatusError(
-                            resource_type="GroundTruthJob",
-                            status=current_status,
-                            reason=self.failure_reason,
-                        )
-
-                    return
-
-                if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="GroundTruthJob", status=current_status)
-                time.sleep(poll)
-
-
-class GroundTruthProject(Base):
-    """
-    Class representing resource GroundTruthProject
-
-    Attributes:
-        ground_truth_project_arn:
-        ground_truth_project_name:
-        ground_truth_project_description:
-        point_of_contact:
-        ground_truth_project_status:
-        created_at:
-
-    """
-
-    ground_truth_project_name: StrPipeVar
-    ground_truth_project_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_project_description: Optional[StrPipeVar] = Unassigned()
-    point_of_contact: Optional[GroundTruthProjectPointOfContact] = Unassigned()
-    ground_truth_project_status: Optional[StrPipeVar] = Unassigned()
-    created_at: Optional[datetime.datetime] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "ground_truth_project_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object ground_truth_project")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        ground_truth_project_name: StrPipeVar,
-        ground_truth_project_description: Optional[StrPipeVar] = Unassigned(),
-        point_of_contact: Optional[GroundTruthProjectPointOfContact] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["GroundTruthProject"]:
-        """
-        Create a GroundTruthProject resource
-
-        Parameters:
-            ground_truth_project_name:
-            ground_truth_project_description:
-            point_of_contact:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The GroundTruthProject resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating ground_truth_project resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "GroundTruthProjectName": ground_truth_project_name,
-            "GroundTruthProjectDescription": ground_truth_project_description,
-            "PointOfContact": point_of_contact,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="GroundTruthProject", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_ground_truth_project(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(
-            ground_truth_project_name=ground_truth_project_name, session=session, region=region
-        )
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        ground_truth_project_name: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["GroundTruthProject"]:
-        """
-        Get a GroundTruthProject resource
-
-        Parameters:
-            ground_truth_project_name:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The GroundTruthProject resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "GroundTruthProjectName": ground_truth_project_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_ground_truth_project(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeGroundTruthProjectResponse")
-        ground_truth_project = cls(**transformed_response)
-        return ground_truth_project
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-    ) -> Optional["GroundTruthProject"]:
-        """
-        Refresh a GroundTruthProject resource
-
-        Returns:
-            The GroundTruthProject resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "GroundTruthProjectName": self.ground_truth_project_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_ground_truth_project(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeGroundTruthProjectResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def wait_for_status(
-        self,
-        target_status: Literal["Pending", "Active"],
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a GroundTruthProject resource to reach certain status.
-
-        Parameters:
-            target_status: The status to wait for.
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-        """
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task(
-            f"Waiting for GroundTruthProject to reach [bold]{target_status} status..."
-        )
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            ),
-            transient=True,
-        ):
-            while True:
-                self.refresh()
-                current_status = self.ground_truth_project_status
-                status.update(f"Current status: [bold]{current_status}")
-
-                if target_status == current_status:
-                    logger.info(f"Final Resource Status: [bold]{current_status}")
-                    return
-
-                if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(
-                        resouce_type="GroundTruthProject", status=current_status
-                    )
-                time.sleep(poll)
-
-    @classmethod
-    @Base.add_validate_call
-    def get_all(
-        cls,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> ResourceIterator["GroundTruthProject"]:
-        """
-        Get all GroundTruthProject resources.
-
-        Parameters:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            Iterator for listed GroundTruthProject resources.
-
-        """
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        return ResourceIterator(
-            client=client,
-            list_method="list_ground_truth_projects",
-            summaries_key="GroundTruthProjectSummaries",
-            summary_name="GroundTruthProjectSummary",
-            resource_cls=GroundTruthProject,
-        )
-
-
-class GroundTruthWorkflow(Base):
-    """
-    Class representing resource GroundTruthWorkflow
-
-    Attributes:
-        ground_truth_project_arn:
-        ground_truth_workflow_arn:
-        ground_truth_workflow_name:
-        ground_truth_workflow_definition_spec:
-        execution_role_arn:
-        created_at:
-
-    """
-
-    ground_truth_workflow_name: StrPipeVar
-    ground_truth_project_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_workflow_arn: Optional[StrPipeVar] = Unassigned()
-    ground_truth_workflow_definition_spec: Optional[StrPipeVar] = Unassigned()
-    execution_role_arn: Optional[StrPipeVar] = Unassigned()
-    created_at: Optional[datetime.datetime] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "ground_truth_workflow_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object ground_truth_workflow")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        ground_truth_project_name: Union[StrPipeVar, object],
-        ground_truth_workflow_name: StrPipeVar,
-        ground_truth_workflow_definition_spec: StrPipeVar,
-        execution_role_arn: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["GroundTruthWorkflow"]:
-        """
-        Create a GroundTruthWorkflow resource
-
-        Parameters:
-            ground_truth_project_name:
-            ground_truth_workflow_name:
-            ground_truth_workflow_definition_spec:
-            execution_role_arn:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The GroundTruthWorkflow resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            ResourceNotFound: Resource being access is not found.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating ground_truth_workflow resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "GroundTruthProjectName": ground_truth_project_name,
-            "GroundTruthWorkflowName": ground_truth_workflow_name,
-            "GroundTruthWorkflowDefinitionSpec": ground_truth_workflow_definition_spec,
-            "ExecutionRoleArn": execution_role_arn,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="GroundTruthWorkflow", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_ground_truth_workflow(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(
-            ground_truth_project_name=ground_truth_project_name,
-            ground_truth_workflow_name=ground_truth_workflow_name,
-            session=session,
-            region=region,
-        )
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        ground_truth_project_name: StrPipeVar,
-        ground_truth_workflow_name: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["GroundTruthWorkflow"]:
-        """
-        Get a GroundTruthWorkflow resource
-
-        Parameters:
-            ground_truth_project_name:
-            ground_truth_workflow_name:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The GroundTruthWorkflow resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "GroundTruthProjectName": ground_truth_project_name,
-            "GroundTruthWorkflowName": ground_truth_workflow_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_ground_truth_workflow(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeGroundTruthWorkflowResponse")
-        ground_truth_workflow = cls(**transformed_response)
-        return ground_truth_workflow
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-        ground_truth_project_name: StrPipeVar,
-    ) -> Optional["GroundTruthWorkflow"]:
-        """
-        Refresh a GroundTruthWorkflow resource
-
-        Returns:
-            The GroundTruthWorkflow resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "GroundTruthProjectName": ground_truth_project_name,
-            "GroundTruthWorkflowName": self.ground_truth_workflow_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_ground_truth_workflow(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeGroundTruthWorkflowResponse", self)
-        return self
 
 
 class Hub(Base):
@@ -15703,7 +13397,7 @@ class Hub(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Hub", status=current_status)
+                    raise TimeoutExceededError(resource_type="Hub", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -15757,7 +13451,7 @@ class Hub(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Hub", status=current_status)
+                        raise TimeoutExceededError(resource_type="Hub", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -16148,7 +13842,7 @@ class HubContent(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="HubContent", status=current_status)
+                    raise TimeoutExceededError(resource_type="HubContent", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -16631,7 +14325,6 @@ class HumanTaskUi(Base):
         creation_time: The timestamp when the human task user interface was created.
         ui_template:
         human_task_ui_status: The status of the human task user interface (worker task template). Valid values are listed below.
-        kms_key_id:
 
     """
 
@@ -16640,7 +14333,6 @@ class HumanTaskUi(Base):
     human_task_ui_status: Optional[StrPipeVar] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     ui_template: Optional[UiTemplateInfo] = Unassigned()
-    kms_key_id: Optional[StrPipeVar] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -16664,7 +14356,6 @@ class HumanTaskUi(Base):
         cls,
         human_task_ui_name: StrPipeVar,
         ui_template: UiTemplate,
-        kms_key_id: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -16675,7 +14366,6 @@ class HumanTaskUi(Base):
         Parameters:
             human_task_ui_name: The name of the user interface you are creating.
             ui_template:
-            kms_key_id:
             tags: An array of key-value pairs that contain metadata to help you categorize and organize a human review workflow user interface. Each tag consists of a key and a value, both of which you define.
             session: Boto3 session.
             region: Region name.
@@ -16708,7 +14398,6 @@ class HumanTaskUi(Base):
         operation_input_args = {
             "HumanTaskUiName": human_task_ui_name,
             "UiTemplate": ui_template,
-            "KmsKeyId": kms_key_id,
             "Tags": tags,
         }
 
@@ -16816,50 +14505,6 @@ class HumanTaskUi(Base):
         return self
 
     @Base.add_validate_call
-    def update(
-        self,
-        ui_template: UiTemplate,
-    ) -> Optional["HumanTaskUi"]:
-        """
-        Update a HumanTaskUi resource
-
-        Returns:
-            The HumanTaskUi resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        logger.info("Updating human_task_ui resource.")
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "HumanTaskUiName": self.human_task_ui_name,
-            "UiTemplate": ui_template,
-        }
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.update_human_task_ui(**operation_input_args)
-        logger.debug(f"Response: {response}")
-        self.refresh()
-
-        return self
-
-    @Base.add_validate_call
     def delete(
         self,
     ) -> None:
@@ -16940,7 +14585,7 @@ class HumanTaskUi(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="HumanTaskUi", status=current_status)
+                    raise TimeoutExceededError(resource_type="HumanTaskUi", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -16995,7 +14640,7 @@ class HumanTaskUi(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="HumanTaskUi", status=current_status
+                            resource_type="HumanTaskUi", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -17088,7 +14733,6 @@ class HyperParameterTuningJob(Base):
         warm_start_config: The configuration for starting the hyperparameter parameter tuning job using one or more previous tuning jobs as a starting point. The results of previous tuning jobs are used to inform which combinations of hyperparameters to search over in the new tuning job.
         autotune: A flag to indicate if autotune is enabled for the hyperparameter tuning job.
         failure_reason: If the tuning job failed, the reason it failed.
-        tuning_job_completion_reason:
         tuning_job_completion_details: Tuning job completion information returned as the response from a hyperparameter tuning job. This information tells if your tuning job has or has not converged. It also includes the number of training jobs that have not improved model performance as evaluated against the objective function.
         consumed_resources:
 
@@ -17110,7 +14754,6 @@ class HyperParameterTuningJob(Base):
     warm_start_config: Optional[HyperParameterTuningJobWarmStartConfig] = Unassigned()
     autotune: Optional[Autotune] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
-    tuning_job_completion_reason: Optional[StrPipeVar] = Unassigned()
     tuning_job_completion_details: Optional[HyperParameterTuningJobCompletionDetails] = Unassigned()
     consumed_resources: Optional[HyperParameterTuningJobConsumedResources] = Unassigned()
 
@@ -17383,7 +15026,7 @@ class HyperParameterTuningJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "HyperParameterTuningJobName": self.hyper_parameter_tuning_job_name,
@@ -17453,7 +15096,9 @@ class HyperParameterTuningJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="HyperParameterTuningJob", status=current_status
+                        resource_type="HyperParameterTuningJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
                     )
                 time.sleep(poll)
 
@@ -17509,7 +15154,7 @@ class HyperParameterTuningJob(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="HyperParameterTuningJob", status=current_status
+                            resource_type="HyperParameterTuningJob", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -17654,184 +15299,6 @@ class HyperParameterTuningJob(Base):
             resource_cls=HyperParameterTrainingJobSummary,
             list_method_kwargs=operation_input_args,
         )
-
-
-class HyperParameterTuningJobInternal(Base):
-    """
-    Class representing resource HyperParameterTuningJobInternal
-
-    Attributes:
-        hyper_parameter_tuning_job_name:
-        hyper_parameter_tuning_job_config:
-        customer_details:
-        hyper_parameter_tuning_job_arn:
-        training_job_definition:
-        training_job_definitions:
-        warm_start_config:
-        tags:
-        autotune:
-        fas_credentials:
-        auto_ml_job_arn:
-        billing_mode:
-        source_identity:
-        identity_center_user_token:
-
-    """
-
-    hyper_parameter_tuning_job_name: Union[StrPipeVar, object]
-    hyper_parameter_tuning_job_config: HyperParameterTuningJobConfig
-    customer_details: CustomerDetails
-    hyper_parameter_tuning_job_arn: StrPipeVar
-    training_job_definition: Optional[HyperParameterTrainingJobDefinition] = Unassigned()
-    training_job_definitions: Optional[List[HyperParameterTrainingJobDefinition]] = Unassigned()
-    warm_start_config: Optional[HyperParameterTuningJobWarmStartConfig] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    autotune: Optional[Autotune] = Unassigned()
-    fas_credentials: Optional[StrPipeVar] = Unassigned()
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    billing_mode: Optional[StrPipeVar] = Unassigned()
-    source_identity: Optional[StrPipeVar] = Unassigned()
-    identity_center_user_token: Optional[IdentityCenterUserToken] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "hyper_parameter_tuning_job_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object hyper_parameter_tuning_job_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        hyper_parameter_tuning_job_name: Union[StrPipeVar, object],
-        hyper_parameter_tuning_job_config: HyperParameterTuningJobConfig,
-        customer_details: CustomerDetails,
-        training_job_definition: Optional[HyperParameterTrainingJobDefinition] = Unassigned(),
-        training_job_definitions: Optional[
-            List[HyperParameterTrainingJobDefinition]
-        ] = Unassigned(),
-        warm_start_config: Optional[HyperParameterTuningJobWarmStartConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        autotune: Optional[Autotune] = Unassigned(),
-        fas_credentials: Optional[StrPipeVar] = Unassigned(),
-        auto_ml_job_arn: Optional[StrPipeVar] = Unassigned(),
-        billing_mode: Optional[StrPipeVar] = Unassigned(),
-        source_identity: Optional[StrPipeVar] = Unassigned(),
-        identity_center_user_token: Optional[IdentityCenterUserToken] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["HyperParameterTuningJobInternal"]:
-        """
-        Create a HyperParameterTuningJobInternal resource
-
-        Parameters:
-            hyper_parameter_tuning_job_name:
-            hyper_parameter_tuning_job_config:
-            customer_details:
-            training_job_definition:
-            training_job_definitions:
-            warm_start_config:
-            tags:
-            autotune:
-            fas_credentials:
-            auto_ml_job_arn:
-            billing_mode:
-            source_identity:
-            identity_center_user_token:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The HyperParameterTuningJobInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "HyperParameterTuningJobName": hyper_parameter_tuning_job_name,
-            "HyperParameterTuningJobConfig": hyper_parameter_tuning_job_config,
-            "TrainingJobDefinition": training_job_definition,
-            "TrainingJobDefinitions": training_job_definitions,
-            "WarmStartConfig": warm_start_config,
-            "Tags": tags,
-            "Autotune": autotune,
-            "FasCredentials": fas_credentials,
-            "CustomerDetails": customer_details,
-            "AutoMLJobArn": auto_ml_job_arn,
-            "BillingMode": billing_mode,
-            "SourceIdentity": source_identity,
-            "IdentityCenterUserToken": identity_center_user_token,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_hyper_parameter_tuning_job_internal API")
-        response = client.create_hyper_parameter_tuning_job_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateHyperParameterTuningJobInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-    @Base.add_validate_call
-    def stop(self) -> None:
-        """
-        Stop a HyperParameterTuningJobInternal resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = SageMakerClient().client
-
-        operation_input_args = {
-            "HyperParameterTuningJobName": self.hyper_parameter_tuning_job_name,
-            "CustomerDetails": self.customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.stop_hyper_parameter_tuning_job_internal(**operation_input_args)
-
-        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
 
 
 class Image(Base):
@@ -18200,7 +15667,7 @@ class Image(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Image", status=current_status)
+                    raise TimeoutExceededError(resource_type="Image", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -18262,7 +15729,7 @@ class Image(Base):
                         )
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Image", status=current_status)
+                        raise TimeoutExceededError(resource_type="Image", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -18422,8 +15889,6 @@ class ImageVersion(Base):
         programming_lang: The supported programming language and its version.
         processor: Indicates CPU or GPU compatibility.    CPU: The image version is compatible with CPU.    GPU: The image version is compatible with GPU.
         horovod: Indicates Horovod compatibility.
-        override_alias_image_version:
-        soci_image:
         release_notes: The maintainer description of the image version.
 
     """
@@ -18444,8 +15909,6 @@ class ImageVersion(Base):
     programming_lang: Optional[StrPipeVar] = Unassigned()
     processor: Optional[StrPipeVar] = Unassigned()
     horovod: Optional[bool] = Unassigned()
-    override_alias_image_version: Optional[bool] = Unassigned()
-    soci_image: Optional[bool] = Unassigned()
     release_notes: Optional[StrPipeVar] = Unassigned()
 
     def get_name(self) -> str:
@@ -18478,7 +15941,6 @@ class ImageVersion(Base):
         programming_lang: Optional[StrPipeVar] = Unassigned(),
         processor: Optional[StrPipeVar] = Unassigned(),
         horovod: Optional[bool] = Unassigned(),
-        override_alias_image_version: Optional[bool] = Unassigned(),
         release_notes: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -18497,7 +15959,6 @@ class ImageVersion(Base):
             programming_lang: The supported programming language and its version.
             processor: Indicates CPU or GPU compatibility.    CPU: The image version is compatible with CPU.    GPU: The image version is compatible with GPU.
             horovod: Indicates Horovod compatibility.
-            override_alias_image_version:
             release_notes: The maintainer description of the image version.
             session: Boto3 session.
             region: Region name.
@@ -18539,7 +16000,6 @@ class ImageVersion(Base):
             "ProgrammingLang": programming_lang,
             "Processor": processor,
             "Horovod": horovod,
-            "OverrideAliasImageVersion": override_alias_image_version,
             "ReleaseNotes": release_notes,
         }
 
@@ -18816,7 +16276,7 @@ class ImageVersion(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ImageVersion", status=current_status)
+                    raise TimeoutExceededError(resource_type="ImageVersion", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -18879,7 +16339,7 @@ class ImageVersion(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ImageVersion", status=current_status
+                            resource_type="ImageVersion", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -18905,6 +16365,7 @@ class InferenceComponent(Base):
         variant_name: The name of the production variant that hosts the inference component.
         failure_reason: If the inference component status is Failed, the reason for the failure.
         specification: Details about the resources that are deployed with this inference component.
+        specifications: A list of specification summaries for the inference component, one per instance type. This parameter is populated when the inference component was created with multiple specifications. When this parameter is populated, the singular Specification parameter is not returned.
         runtime_config: Details about the runtime settings for the model that is deployed with the inference component.
         inference_component_status: The status of the inference component.
         last_deployment_config: The deployment and rollback settings that you assigned to the inference component.
@@ -18918,6 +16379,7 @@ class InferenceComponent(Base):
     variant_name: Optional[StrPipeVar] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
     specification: Optional[InferenceComponentSpecificationSummary] = Unassigned()
+    specifications: Optional[List[InferenceComponentSpecificationSummary]] = Unassigned()
     runtime_config: Optional[InferenceComponentRuntimeConfigSummary] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
@@ -18946,8 +16408,9 @@ class InferenceComponent(Base):
         cls,
         inference_component_name: StrPipeVar,
         endpoint_name: Union[StrPipeVar, object],
-        specification: InferenceComponentSpecification,
         variant_name: Optional[StrPipeVar] = Unassigned(),
+        specification: Optional[InferenceComponentSpecification] = Unassigned(),
+        specifications: Optional[List[InferenceComponentSpecification]] = Unassigned(),
         runtime_config: Optional[InferenceComponentRuntimeConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -18959,8 +16422,9 @@ class InferenceComponent(Base):
         Parameters:
             inference_component_name: A unique name to assign to the inference component.
             endpoint_name: The name of an existing endpoint where you host the inference component.
-            specification: Details about the resources to deploy with this inference component, including the model, container, and compute resources.
             variant_name: The name of an existing production variant where you host the inference component.
+            specification: Details about the resources to deploy with this inference component, including the model, container, and compute resources.
+            specifications: A list of specification objects for the inference component, one per instance type. Use this parameter when you want to deploy a different model or resource configuration for the inference component on each instance type. You can use either this parameter or the singular Specification parameter, but not both.
             runtime_config: Runtime settings for a model that is deployed with an inference component.
             tags: A list of key-value pairs associated with the model. For more information, see Tagging Amazon Web Services resources in the Amazon Web Services General Reference.
             session: Boto3 session.
@@ -18995,6 +16459,7 @@ class InferenceComponent(Base):
             "EndpointName": endpoint_name,
             "VariantName": variant_name,
             "Specification": specification,
+            "Specifications": specifications,
             "RuntimeConfig": runtime_config,
             "Tags": tags,
         }
@@ -19106,6 +16571,7 @@ class InferenceComponent(Base):
     def update(
         self,
         specification: Optional[InferenceComponentSpecification] = Unassigned(),
+        specifications: Optional[List[InferenceComponentSpecification]] = Unassigned(),
         runtime_config: Optional[InferenceComponentRuntimeConfig] = Unassigned(),
         deployment_config: Optional[InferenceComponentDeploymentConfig] = Unassigned(),
     ) -> Optional["InferenceComponent"]:
@@ -19137,6 +16603,7 @@ class InferenceComponent(Base):
         operation_input_args = {
             "InferenceComponentName": self.inference_component_name,
             "Specification": specification,
+            "Specifications": specifications,
             "RuntimeConfig": runtime_config,
             "DeploymentConfig": deployment_config,
         }
@@ -19242,7 +16709,7 @@ class InferenceComponent(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="InferenceComponent", status=current_status
+                        resource_type="InferenceComponent", status=current_status
                     )
                 time.sleep(poll)
 
@@ -19298,7 +16765,7 @@ class InferenceComponent(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="InferenceComponent", status=current_status
+                            resource_type="InferenceComponent", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -19836,7 +17303,7 @@ class InferenceExperiment(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "Name": self.name,
@@ -19913,7 +17380,7 @@ class InferenceExperiment(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="InferenceExperiment", status=current_status
+                        resource_type="InferenceExperiment", status=current_status
                     )
                 time.sleep(poll)
 
@@ -20013,10 +17480,8 @@ class InferenceRecommendationsJob(Base):
         completion_time: A timestamp that shows when the job completed.
         failure_reason: If the job fails, provides information why the job failed.
         stopping_conditions: The stopping conditions that you provided when you initiated the job.
-        endpoint_configuration_tuning:
         inference_recommendations: The recommendations made by Inference Recommender.
         endpoint_performances: The performance results from running an Inference Recommender job on an existing endpoint.
-        output_config:
 
     """
 
@@ -20032,12 +17497,8 @@ class InferenceRecommendationsJob(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
     input_config: Optional[RecommendationJobInputConfig] = Unassigned()
     stopping_conditions: Optional[RecommendationJobStoppingConditions] = Unassigned()
-    endpoint_configuration_tuning: Optional[RecommendationJobEndpointConfigurationTuning] = (
-        Unassigned()
-    )
     inference_recommendations: Optional[List[InferenceRecommendation]] = Unassigned()
     endpoint_performances: Optional[List[EndpointPerformance]] = Unassigned()
-    output_config: Optional[RecommendationJobOutputConfig] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -20082,15 +17543,12 @@ class InferenceRecommendationsJob(Base):
     @Base.add_validate_call
     def create(
         cls,
-        job_name: StrPipeVar,
+        job_name: Union[StrPipeVar, object],
         job_type: StrPipeVar,
         role_arn: StrPipeVar,
         input_config: RecommendationJobInputConfig,
         job_description: Optional[StrPipeVar] = Unassigned(),
         stopping_conditions: Optional[RecommendationJobStoppingConditions] = Unassigned(),
-        endpoint_configuration_tuning: Optional[
-            RecommendationJobEndpointConfigurationTuning
-        ] = Unassigned(),
         output_config: Optional[RecommendationJobOutputConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         session: Optional[Session] = None,
@@ -20106,7 +17564,6 @@ class InferenceRecommendationsJob(Base):
             input_config: Provides information about the versioned model package Amazon Resource Name (ARN), the traffic pattern, and endpoint configurations.
             job_description: Description of the recommendation job.
             stopping_conditions: A set of conditions for stopping a recommendation job. If any of the conditions are met, the job is automatically stopped.
-            endpoint_configuration_tuning:
             output_config: Provides information about the output artifacts and the KMS key to use for Amazon S3 server-side encryption.
             tags: The metadata that you apply to Amazon Web Services resources to help you categorize and organize them. Each tag consists of a key and a value, both of which you define. For more information, see Tagging Amazon Web Services Resources in the Amazon Web Services General Reference.
             session: Boto3 session.
@@ -20144,7 +17601,6 @@ class InferenceRecommendationsJob(Base):
             "InputConfig": input_config,
             "JobDescription": job_description,
             "StoppingConditions": stopping_conditions,
-            "EndpointConfigurationTuning": endpoint_configuration_tuning,
             "OutputConfig": output_config,
             "Tags": tags,
         }
@@ -20253,39 +17709,6 @@ class InferenceRecommendationsJob(Base):
         return self
 
     @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a InferenceRecommendationsJob resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "JobName": self.job_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_inference_recommendations_job(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
     def stop(self) -> None:
         """
         Stop a InferenceRecommendationsJob resource
@@ -20303,7 +17726,7 @@ class InferenceRecommendationsJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "JobName": self.job_name,
@@ -20373,7 +17796,9 @@ class InferenceRecommendationsJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="InferenceRecommendationsJob", status=current_status
+                        resource_type="InferenceRecommendationsJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
                     )
                 time.sleep(poll)
 
@@ -20433,7 +17858,7 @@ class InferenceRecommendationsJob(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="InferenceRecommendationsJob", status=current_status
+                            resource_type="InferenceRecommendationsJob", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -20581,6 +18006,509 @@ class InferenceRecommendationsJob(Base):
         )
 
 
+class Job(Base):
+    """
+    Class representing resource Job
+
+    Attributes:
+        job_name: The name of the job.
+        job_arn: The Amazon Resource Name (ARN) of the job.
+        role_arn: The ARN of the IAM role associated with the job.
+        job_category: The category of the job.
+        job_config_schema_version: The schema version used for the job configuration document.
+        creation_time: The date and time that the job was created.
+        last_modified_time: The date and time that the job was last modified.
+        job_status: The current status of the job.
+        secondary_status: The detailed secondary status of the job, providing more granular information about the job's progress. Secondary statuses may change between releases.
+        secondary_status_transitions: A list of secondary status transitions for the job, with timestamps and optional status messages.
+        job_config_document: The JSON configuration document for the job.
+        end_time: The date and time that the job ended.
+        failure_reason: If the job failed, the reason it failed.
+        tags: The tags associated with the job.
+
+    """
+
+    job_name: StrPipeVar
+    job_category: StrPipeVar
+    job_arn: Optional[StrPipeVar] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    job_config_schema_version: Optional[StrPipeVar] = Unassigned()
+    job_config_document: Optional[StrPipeVar] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
+    last_modified_time: Optional[datetime.datetime] = Unassigned()
+    end_time: Optional[datetime.datetime] = Unassigned()
+    job_status: Optional[StrPipeVar] = Unassigned()
+    secondary_status: Optional[StrPipeVar] = Unassigned()
+    secondary_status_transitions: Optional[List[JobSecondaryStatusTransition]] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    tags: Optional[List[Tag]] = Unassigned()
+
+    def get_name(self) -> str:
+        attributes = vars(self)
+        resource_name = "job_name"
+        resource_name_split = resource_name.split("_")
+        attribute_name_candidates = []
+
+        l = len(resource_name_split)
+        for i in range(0, l):
+            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
+
+        for attribute, value in attributes.items():
+            if attribute == "name" or attribute in attribute_name_candidates:
+                return value
+        logger.error("Name attribute not found for object job")
+        return None
+
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {"role_arn": {"type": "string"}}
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "Job", **kwargs
+                ),
+            )
+
+        return wrapper
+
+    @classmethod
+    @populate_inputs_decorator
+    @Base.add_validate_call
+    def create(
+        cls,
+        job_name: StrPipeVar,
+        role_arn: StrPipeVar,
+        job_category: StrPipeVar,
+        job_config_schema_version: StrPipeVar,
+        job_config_document: StrPipeVar,
+        tags: Optional[List[Tag]] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["Job"]:
+        """
+        Create a Job resource
+
+        Parameters:
+            job_name: The name of the job. The name must be unique within your account and Amazon Web Services Region.
+            role_arn: The Amazon Resource Name (ARN) of the IAM role that Amazon SageMaker assumes to perform the job. The role must have the necessary permissions to access the resources required by the job configuration.
+            job_category: The category of the job. The category determines the type of workload that the job runs.
+            job_config_schema_version: The version of the configuration schema to use for the job configuration document. Use ListJobSchemaVersions to get available schema versions for a job category.
+            job_config_document: The JSON configuration document for the job. The document must conform to the schema specified by JobConfigSchemaVersion. Use DescribeJobSchemaVersion to retrieve the schema for validation.
+            tags: An array of key-value pairs to apply to the job as tags. For more information, see Tagging Amazon Web Services Resources.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The Job resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceInUse: Resource being accessed is in use.
+            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
+            ResourceNotFound: Resource being access is not found.
+            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
+            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
+            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
+        """
+
+        logger.info("Creating job resource.")
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "JobName": job_name,
+            "RoleArn": role_arn,
+            "JobCategory": job_category,
+            "JobConfigSchemaVersion": job_config_schema_version,
+            "JobConfigDocument": job_config_document,
+            "Tags": tags,
+        }
+
+        operation_input_args = Base.populate_chained_attributes(
+            resource_name="Job", operation_input_args=operation_input_args
+        )
+
+        logger.debug(f"Input request: {operation_input_args}")
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        # create the resource
+        response = client.create_job(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        return cls.get(job_name=job_name, job_category=job_category, session=session, region=region)
+
+    @classmethod
+    @Base.add_validate_call
+    def get(
+        cls,
+        job_name: StrPipeVar,
+        job_category: StrPipeVar,
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> Optional["Job"]:
+        """
+        Get a Job resource
+
+        Parameters:
+            job_name: The name of the job to describe.
+            job_category: The category of the job.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            The Job resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "JobName": job_name,
+            "JobCategory": job_category,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+        response = client.describe_job(**operation_input_args)
+
+        logger.debug(response)
+
+        # deserialize the response
+        transformed_response = transform(response, "DescribeJobResponse")
+        job = cls(**transformed_response)
+        return job
+
+    @Base.add_validate_call
+    def refresh(
+        self,
+    ) -> Optional["Job"]:
+        """
+        Refresh a Job resource
+
+        Returns:
+            The Job resource.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        operation_input_args = {
+            "JobName": self.job_name,
+            "JobCategory": self.job_category,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client()
+        response = client.describe_job(**operation_input_args)
+
+        # deserialize response and update self
+        transform(response, "DescribeJobResponse", self)
+        return self
+
+    @Base.add_validate_call
+    def delete(
+        self,
+    ) -> None:
+        """
+        Delete a Job resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceInUse: Resource being accessed is in use.
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = Base.get_sagemaker_client()
+
+        operation_input_args = {
+            "JobName": self.job_name,
+            "JobCategory": self.job_category,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.delete_job(**operation_input_args)
+
+        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
+
+    @Base.add_validate_call
+    def stop(self) -> None:
+        """
+        Stop a Job resource
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            ResourceNotFound: Resource being access is not found.
+        """
+
+        client = SageMakerClient().sagemaker_client
+
+        operation_input_args = {
+            "JobName": self.job_name,
+            "JobCategory": self.job_category,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client.stop_job(**operation_input_args)
+
+        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
+
+    @Base.add_validate_call
+    def wait(
+        self,
+        poll: int = 5,
+        timeout: Optional[int] = None,
+    ) -> None:
+        """
+        Wait for a Job resource.
+
+        Parameters:
+            poll: The number of seconds to wait between each poll.
+            timeout: The maximum number of seconds to wait before timing out.
+
+        Raises:
+            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
+            FailedStatusError:   If the resource reaches a failed state.
+            WaiterError: Raised when an error occurs while waiting.
+
+        """
+        terminal_states = ["Completed", "Failed", "Stopped", "DeleteFailed"]
+        start_time = time.time()
+
+        progress = Progress(
+            SpinnerColumn("bouncingBar"),
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+        )
+        progress.add_task("Waiting for Job...")
+        status = Status("Current status:")
+
+        with Live(
+            Panel(
+                Group(progress, status),
+                title="Wait Log Panel",
+                border_style=Style(color=Color.BLUE.value),
+            ),
+            transient=True,
+        ):
+            while True:
+                self.refresh()
+                current_status = self.job_status
+                status.update(f"Current status: [bold]{current_status}")
+
+                if current_status in terminal_states:
+                    logger.info(f"Final Resource Status: [bold]{current_status}")
+
+                    if "failed" in current_status.lower():
+                        raise FailedStatusError(
+                            resource_type="Job", status=current_status, reason=self.failure_reason
+                        )
+
+                    return
+
+                if timeout is not None and time.time() - start_time >= timeout:
+                    raise TimeoutExceededError(
+                        resource_type="Job",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
+                    )
+                time.sleep(poll)
+
+    @Base.add_validate_call
+    def wait_for_delete(
+        self,
+        poll: int = 5,
+        timeout: Optional[int] = None,
+    ) -> None:
+        """
+        Wait for a Job resource to be deleted.
+
+        Parameters:
+            poll: The number of seconds to wait between each poll.
+            timeout: The maximum number of seconds to wait before timing out.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
+            DeleteFailedStatusError:   If the resource reaches a failed state.
+            WaiterError: Raised when an error occurs while waiting.
+        """
+        start_time = time.time()
+
+        progress = Progress(
+            SpinnerColumn("bouncingBar"),
+            TextColumn("{task.description}"),
+            TimeElapsedColumn(),
+        )
+        progress.add_task("Waiting for Job to be deleted...")
+        status = Status("Current status:")
+
+        with Live(
+            Panel(
+                Group(progress, status),
+                title="Wait Log Panel",
+                border_style=Style(color=Color.BLUE.value),
+            )
+        ):
+            while True:
+                try:
+                    self.refresh()
+                    current_status = self.job_status
+                    status.update(f"Current status: [bold]{current_status}")
+
+                    if timeout is not None and time.time() - start_time >= timeout:
+                        raise TimeoutExceededError(resource_type="Job", status=current_status)
+                except botocore.exceptions.ClientError as e:
+                    error_code = e.response["Error"]["Code"]
+
+                    if "ResourceNotFound" in error_code or "ValidationException" in error_code:
+                        logger.info("Resource was not found. It may have been deleted.")
+                        return
+                    raise e
+                time.sleep(poll)
+
+    @classmethod
+    @Base.add_validate_call
+    def get_all(
+        cls,
+        job_category: StrPipeVar,
+        creation_time_after: Optional[datetime.datetime] = Unassigned(),
+        creation_time_before: Optional[datetime.datetime] = Unassigned(),
+        last_modified_time_after: Optional[datetime.datetime] = Unassigned(),
+        last_modified_time_before: Optional[datetime.datetime] = Unassigned(),
+        name_contains: Optional[StrPipeVar] = Unassigned(),
+        sort_by: Optional[StrPipeVar] = Unassigned(),
+        sort_order: Optional[StrPipeVar] = Unassigned(),
+        status_equals: Optional[StrPipeVar] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[StrPipeVar] = None,
+    ) -> ResourceIterator["Job"]:
+        """
+        Get all Job resources
+
+        Parameters:
+            job_category: The category of jobs to list.
+            next_token: If the previous response was truncated, this token retrieves the next set of results.
+            max_results: The maximum number of jobs to return in the response. The default value is 50.
+            creation_time_after: A filter that returns only jobs created after the specified time.
+            creation_time_before: A filter that returns only jobs created before the specified time.
+            last_modified_time_after: A filter that returns only jobs modified after the specified time.
+            last_modified_time_before: A filter that returns only jobs modified before the specified time.
+            name_contains: A string in the job name to filter results. Only jobs whose name contains the specified string are returned.
+            sort_by: The field to sort results by.
+            sort_order: The sort order for results. Valid values are Ascending and Descending.
+            status_equals: A filter that returns only jobs with the specified status.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            Iterator for listed Job resources.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+        """
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker"
+        )
+
+        operation_input_args = {
+            "JobCategory": job_category,
+            "CreationTimeAfter": creation_time_after,
+            "CreationTimeBefore": creation_time_before,
+            "LastModifiedTimeAfter": last_modified_time_after,
+            "LastModifiedTimeBefore": last_modified_time_before,
+            "NameContains": name_contains,
+            "SortBy": sort_by,
+            "SortOrder": sort_order,
+            "StatusEquals": status_equals,
+        }
+
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        return ResourceIterator(
+            client=client,
+            list_method="list_jobs",
+            summaries_key="JobSummaries",
+            summary_name="JobSummary",
+            resource_cls=Job,
+            list_method_kwargs=operation_input_args,
+        )
+
+
 class LabelingJob(Base):
     """
     Class representing resource LabelingJob
@@ -20599,7 +18527,6 @@ class LabelingJob(Base):
         human_task_config: Configuration information required for human workers to complete a labeling task.
         failure_reason: If the job failed, the reason that it failed.
         label_attribute_name: The attribute used as the label in the output manifest file.
-        task_rendering_role_arn:
         label_category_config_s3_uri: The S3 location of the JSON file that defines the categories used to label data objects. Please note the following label-category limits:   Semantic segmentation labeling jobs using automated labeling: 20 labels   Box bounding labeling jobs (all): 10 labels   The file is a JSON structure in the following format:  {    "document-version": "2018-11-28"    "labels": [    {    "label": "label 1"    },    {    "label": "label 2"    },    ...    {    "label": "label n"    }    ]   }
         stopping_conditions: A set of conditions for stopping a labeling job. If any of the conditions are met, the job is automatically stopped.
         labeling_job_algorithms_config: Configuration information for automated data labeling.
@@ -20620,7 +18547,6 @@ class LabelingJob(Base):
     input_config: Optional[LabelingJobInputConfig] = Unassigned()
     output_config: Optional[LabelingJobOutputConfig] = Unassigned()
     role_arn: Optional[StrPipeVar] = Unassigned()
-    task_rendering_role_arn: Optional[StrPipeVar] = Unassigned()
     label_category_config_s3_uri: Optional[StrPipeVar] = Unassigned()
     stopping_conditions: Optional[LabelingJobStoppingConditions] = Unassigned()
     labeling_job_algorithms_config: Optional[LabelingJobAlgorithmsConfig] = Unassigned()
@@ -20689,7 +18615,6 @@ class LabelingJob(Base):
         output_config: LabelingJobOutputConfig,
         role_arn: StrPipeVar,
         human_task_config: HumanTaskConfig,
-        task_rendering_role_arn: Optional[StrPipeVar] = Unassigned(),
         label_category_config_s3_uri: Optional[StrPipeVar] = Unassigned(),
         stopping_conditions: Optional[LabelingJobStoppingConditions] = Unassigned(),
         labeling_job_algorithms_config: Optional[LabelingJobAlgorithmsConfig] = Unassigned(),
@@ -20707,7 +18632,6 @@ class LabelingJob(Base):
             output_config: The location of the output data and the Amazon Web Services Key Management Service key ID for the key used to encrypt the output data, if any.
             role_arn: The Amazon Resource Number (ARN) that Amazon SageMaker assumes to perform tasks on your behalf during data labeling. You must grant this role the necessary permissions so that Amazon SageMaker can successfully complete data labeling.
             human_task_config: Configures the labeling task and how it is presented to workers; including, but not limited to price, keywords, and batch size (task count).
-            task_rendering_role_arn:
             label_category_config_s3_uri: The S3 URI of the file, referred to as a label category configuration file, that defines the categories used to label the data objects. For 3D point cloud and video frame task types, you can add label category attributes and frame attributes to your label category configuration file. To learn how, see Create a Labeling Category Configuration File for 3D Point Cloud Labeling Jobs.  For named entity recognition jobs, in addition to "labels", you must provide worker instructions in the label category configuration file using the "instructions" parameter: "instructions": {"shortInstruction":"&lt;h1&gt;Add header&lt;/h1&gt;&lt;p&gt;Add Instructions&lt;/p&gt;", "fullInstruction":"&lt;p&gt;Add additional instructions.&lt;/p&gt;"}. For details and an example, see Create a Named Entity Recognition Labeling Job (API) . For all other built-in task types and custom tasks, your label category configuration file must be a JSON file in the following format. Identify the labels you want to use by replacing label_1, label_2,...,label_n with your label categories.  {    "document-version": "2018-11-28",   "labels": [{"label": "label_1"},{"label": "label_2"},...{"label": "label_n"}]   }  Note the following about the label category configuration file:   For image classification and text classification (single and multi-label) you must specify at least two label categories. For all other task types, the minimum number of label categories required is one.    Each label category must be unique, you cannot specify duplicate label categories.   If you create a 3D point cloud or video frame adjustment or verification labeling job, you must include auditLabelAttributeName in the label category configuration. Use this parameter to enter the  LabelAttributeName  of the labeling job you want to adjust or verify annotations of.
             stopping_conditions: A set of conditions for stopping the labeling job. If any of the conditions are met, the job is automatically stopped. You can use these conditions to control the cost of data labeling.
             labeling_job_algorithms_config: Configures the information required to perform automated data labeling.
@@ -20746,7 +18670,6 @@ class LabelingJob(Base):
             "InputConfig": input_config,
             "OutputConfig": output_config,
             "RoleArn": role_arn,
-            "TaskRenderingRoleArn": task_rendering_role_arn,
             "LabelCategoryConfigS3Uri": label_category_config_s3_uri,
             "StoppingConditions": stopping_conditions,
             "LabelingJobAlgorithmsConfig": labeling_job_algorithms_config,
@@ -20858,41 +18781,6 @@ class LabelingJob(Base):
         return self
 
     @Base.add_validate_call
-    def delete(
-        self,
-        name_reuse_enabled: Optional[bool] = Unassigned(),
-    ) -> None:
-        """
-        Delete a LabelingJob resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "LabelingJobName": self.labeling_job_name,
-            "NameReuseEnabled": name_reuse_enabled,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_labeling_job(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
     def stop(self) -> None:
         """
         Stop a LabelingJob resource
@@ -20910,7 +18798,7 @@ class LabelingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "LabelingJobName": self.labeling_job_name,
@@ -20979,7 +18867,11 @@ class LabelingJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="LabelingJob", status=current_status)
+                    raise TimeoutExceededError(
+                        resource_type="LabelingJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
+                    )
                 time.sleep(poll)
 
     @classmethod
@@ -21101,74 +18993,6 @@ class LineageGroup(Base):
 
     @classmethod
     @Base.add_validate_call
-    def create(
-        cls,
-        lineage_group_name: StrPipeVar,
-        display_name: Optional[StrPipeVar] = Unassigned(),
-        description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["LineageGroup"]:
-        """
-        Create a LineageGroup resource
-
-        Parameters:
-            lineage_group_name:
-            display_name:
-            description:
-            tags:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The LineageGroup resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating lineage_group resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "LineageGroupName": lineage_group_name,
-            "DisplayName": display_name,
-            "Description": description,
-            "Tags": tags,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="LineageGroup", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_lineage_group(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(lineage_group_name=lineage_group_name, session=session, region=region)
-
-    @classmethod
-    @Base.add_validate_call
     def get(
         cls,
         lineage_group_name: StrPipeVar,
@@ -21254,39 +19078,6 @@ class LineageGroup(Base):
         # deserialize response and update self
         transform(response, "DescribeLineageGroupResponse", self)
         return self
-
-    @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a LineageGroup resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "LineageGroupName": self.lineage_group_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_lineage_group(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
 
     @classmethod
     @Base.add_validate_call
@@ -21399,135 +19190,26 @@ class LineageGroup(Base):
         return GetLineageGroupPolicyResponse(**transformed_response)
 
 
-class LineageGroupInternal(Base):
-    """
-    Class representing resource LineageGroupInternal
-
-    Attributes:
-        lineage_group_name:
-        customer_details:
-        display_name:
-        description:
-        creation_time:
-        tags:
-        lineage_group_arn:
-
-    """
-
-    lineage_group_name: Union[StrPipeVar, object]
-    customer_details: CustomerDetails
-    display_name: Optional[StrPipeVar] = Unassigned()
-    description: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    lineage_group_arn: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "lineage_group_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object lineage_group_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        lineage_group_name: Union[StrPipeVar, object],
-        customer_details: CustomerDetails,
-        display_name: Optional[StrPipeVar] = Unassigned(),
-        description: Optional[StrPipeVar] = Unassigned(),
-        creation_time: Optional[datetime.datetime] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["LineageGroupInternal"]:
-        """
-        Create a LineageGroupInternal resource
-
-        Parameters:
-            lineage_group_name:
-            customer_details:
-            display_name:
-            description:
-            creation_time:
-            tags:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The LineageGroupInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "LineageGroupName": lineage_group_name,
-            "DisplayName": display_name,
-            "Description": description,
-            "CreationTime": creation_time,
-            "Tags": tags,
-            "CustomerDetails": customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_lineage_group_internal API")
-        response = client.create_lineage_group_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateLineageGroupInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-
 class MlflowApp(Base):
     """
     Class representing resource MlflowApp
 
     Attributes:
-        arn:
-        name:
-        artifact_store_uri:
-        mlflow_version:
-        role_arn:
-        status:
-        url:
-        model_registration_mode:
-        account_default_status:
-        default_domain_id_list:
-        creation_time:
+        arn: The ARN of the MLflow App.
+        name: The name of the MLflow App.
+        artifact_store_uri: The S3 URI of the general purpose bucket used as the MLflow App artifact store.
+        mlflow_version: The MLflow version used.
+        role_arn: The Amazon Resource Name (ARN) for an IAM role in your account that the MLflow App uses to access the artifact store in Amazon S3.
+        status: The current creation status of the described MLflow App.
+        model_registration_mode: Whether automatic registration of new MLflow models to the SageMaker Model Registry is enabled.
+        account_default_status: Indicates whether this MLflow app is the default for the entire account.
+        default_domain_id_list: List of SageMaker Domain IDs for which this MLflow App is the default.
+        creation_time: The timestamp when the MLflow App was created.
         created_by:
-        last_modified_time:
+        last_modified_time: The timestamp when the MLflow App was last modified.
         last_modified_by:
-        weekly_maintenance_window_start:
-        maintenance_status:
+        weekly_maintenance_window_start: The day and time of the week when weekly maintenance occurs.
+        maintenance_status: Current maintenance status of the MLflow App.
 
     """
 
@@ -21537,7 +19219,6 @@ class MlflowApp(Base):
     mlflow_version: Optional[StrPipeVar] = Unassigned()
     role_arn: Optional[StrPipeVar] = Unassigned()
     status: Optional[StrPipeVar] = Unassigned()
-    url: Optional[StrPipeVar] = Unassigned()
     model_registration_mode: Optional[StrPipeVar] = Unassigned()
     account_default_status: Optional[StrPipeVar] = Unassigned()
     default_domain_id_list: Optional[List[StrPipeVar]] = Unassigned()
@@ -21564,7 +19245,21 @@ class MlflowApp(Base):
         logger.error("Name attribute not found for object mlflow_app")
         return None
 
+    def populate_inputs_decorator(create_func):
+        @functools.wraps(create_func)
+        def wrapper(*args, **kwargs):
+            config_schema_for_resource = {"role_arn": {"type": "string"}}
+            return create_func(
+                *args,
+                **Base.get_updated_kwargs_with_configured_attributes(
+                    config_schema_for_resource, "MlflowApp", **kwargs
+                ),
+            )
+
+        return wrapper
+
     @classmethod
+    @populate_inputs_decorator
     @Base.add_validate_call
     def create(
         cls,
@@ -21583,14 +19278,14 @@ class MlflowApp(Base):
         Create a MlflowApp resource
 
         Parameters:
-            name:
-            artifact_store_uri:
-            role_arn:
-            model_registration_mode:
-            weekly_maintenance_window_start:
-            account_default_status:
-            default_domain_id_list:
-            tags:
+            name: A string identifying the MLflow app name. This string is not part of the tracking server ARN.
+            artifact_store_uri: The S3 URI for a general purpose bucket to use as the MLflow App artifact store.
+            role_arn: The Amazon Resource Name (ARN) for an IAM role in your account that the MLflow App uses to access the artifact store in Amazon S3. The role should have the AmazonS3FullAccess permission.
+            model_registration_mode: Whether to enable or disable automatic registration of new MLflow models to the SageMaker Model Registry. To enable automatic model registration, set this value to AutoModelRegistrationEnabled. To disable automatic model registration, set this value to AutoModelRegistrationDisabled. If not specified, AutomaticModelRegistration defaults to AutoModelRegistrationDisabled.
+            weekly_maintenance_window_start: The day and time of the week in Coordinated Universal Time (UTC) 24-hour standard time that weekly maintenance updates are scheduled. For example: TUE:03:30.
+            account_default_status: Indicates whether this MLflow app is the default for the entire account.
+            default_domain_id_list: List of SageMaker domain IDs for which this MLflow App is used as the default.
+            tags: Tags consisting of key-value pairs used to manage metadata for the MLflow App.
             session: Boto3 session.
             region: Region name.
 
@@ -21656,7 +19351,7 @@ class MlflowApp(Base):
         Get a MlflowApp resource
 
         Parameters:
-            arn:
+            arn: The ARN of the MLflow App for which to get information.
             session: Boto3 session.
             region: Region name.
 
@@ -21732,6 +19427,7 @@ class MlflowApp(Base):
         transform(response, "DescribeMlflowAppResponse", self)
         return self
 
+    @populate_inputs_decorator
     @Base.add_validate_call
     def update(
         self,
@@ -21882,7 +19578,7 @@ class MlflowApp(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="MlflowApp", status=current_status)
+                    raise TimeoutExceededError(resource_type="MlflowApp", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -21940,7 +19636,7 @@ class MlflowApp(Base):
                         return
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="MlflowApp", status=current_status)
+                        raise TimeoutExceededError(resource_type="MlflowApp", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -21969,16 +19665,16 @@ class MlflowApp(Base):
         Get all MlflowApp resources
 
         Parameters:
-            created_after:
-            created_before:
-            status:
-            mlflow_version:
-            default_for_domain_id:
-            account_default_status:
-            sort_by:
-            sort_order:
-            next_token:
-            max_results:
+            created_after: Use the CreatedAfter filter to only list MLflow Apps created after a specific date and time. Listed MLflow Apps are shown with a date and time such as "2024-03-16T01:46:56+00:00". The CreatedAfter parameter takes in a Unix timestamp.
+            created_before: Use the CreatedBefore filter to only list MLflow Apps created before a specific date and time. Listed MLflow Apps are shown with a date and time such as "2024-03-16T01:46:56+00:00". The CreatedAfter parameter takes in a Unix timestamp.
+            status: Filter for Mlflow apps with a specific creation status.
+            mlflow_version: Filter for Mlflow Apps with the specified version.
+            default_for_domain_id: Filter for MLflow Apps with the specified default SageMaker Domain ID.
+            account_default_status: Filter for MLflow Apps with the specified AccountDefaultStatus.
+            sort_by: Filter for MLflow Apps sorting by name, creation time, or creation status.
+            sort_order: Change the order of the listed MLflow Apps. By default, MLflow Apps are listed in Descending order by creation time. To change the list order, specify SortOrder to be Ascending.
+            next_token: If the previous response was truncated, use this token in your next request to receive the next set of results.
+            max_results: The maximum number of MLflow Apps to list.
             session: Boto3 session.
             region: Region name.
 
@@ -22047,7 +19743,8 @@ class MlflowTrackingServer(Base):
         created_by:
         last_modified_time: The timestamp of when the described MLflow Tracking Server was last modified.
         last_modified_by:
-        upgrade_rollback_version_details:
+        s3_bucket_owner_account_id: Expected Amazon Web Services account ID that owns the Amazon S3 bucket for artifact storage.
+        s3_bucket_owner_verification: Whether Amazon S3 Bucket Ownership checks are enabled whenever the tracking server interacts with Amazon Amazon S3.
 
     """
 
@@ -22067,7 +19764,8 @@ class MlflowTrackingServer(Base):
     created_by: Optional[UserContext] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_modified_by: Optional[UserContext] = Unassigned()
-    upgrade_rollback_version_details: Optional[UpgradeRollbackVersionDetails] = Unassigned()
+    s3_bucket_owner_account_id: Optional[StrPipeVar] = Unassigned()
+    s3_bucket_owner_verification: Optional[bool] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -22088,7 +19786,11 @@ class MlflowTrackingServer(Base):
     def populate_inputs_decorator(create_func):
         @functools.wraps(create_func)
         def wrapper(*args, **kwargs):
-            config_schema_for_resource = {"role_arn": {"type": "string"}}
+            config_schema_for_resource = {
+                "role_arn": {"type": "string"},
+                "s3_bucket_owner_account_id": {"type": "string"},
+                "s3_bucket_owner_verification": {"type": "boolean"},
+            }
             return create_func(
                 *args,
                 **Base.get_updated_kwargs_with_configured_attributes(
@@ -22111,6 +19813,8 @@ class MlflowTrackingServer(Base):
         automatic_model_registration: Optional[bool] = Unassigned(),
         weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
+        s3_bucket_owner_account_id: Optional[StrPipeVar] = Unassigned(),
+        s3_bucket_owner_verification: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["MlflowTrackingServer"]:
@@ -22126,6 +19830,8 @@ class MlflowTrackingServer(Base):
             automatic_model_registration: Whether to enable or disable automatic registration of new MLflow models to the SageMaker Model Registry. To enable automatic model registration, set this value to True. To disable automatic model registration, set this value to False. If not specified, AutomaticModelRegistration defaults to False.
             weekly_maintenance_window_start: The day and time of the week in Coordinated Universal Time (UTC) 24-hour standard time that weekly maintenance updates are scheduled. For example: TUE:03:30.
             tags: Tags consisting of key-value pairs used to manage metadata for the tracking server.
+            s3_bucket_owner_account_id: Expected Amazon Web Services account ID that owns the Amazon S3 bucket for artifact storage. Defaults to caller's account ID if not provided.
+            s3_bucket_owner_verification: Enable Amazon S3 Ownership checks when interacting with Amazon S3 buckets from a SageMaker Managed MLflow Tracking Server. Defaults to True if not provided.
             session: Boto3 session.
             region: Region name.
 
@@ -22162,6 +19868,8 @@ class MlflowTrackingServer(Base):
             "AutomaticModelRegistration": automatic_model_registration,
             "WeeklyMaintenanceWindowStart": weekly_maintenance_window_start,
             "Tags": tags,
+            "S3BucketOwnerAccountId": s3_bucket_owner_account_id,
+            "S3BucketOwnerVerification": s3_bucket_owner_verification,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -22275,6 +19983,8 @@ class MlflowTrackingServer(Base):
         tracking_server_size: Optional[StrPipeVar] = Unassigned(),
         automatic_model_registration: Optional[bool] = Unassigned(),
         weekly_maintenance_window_start: Optional[StrPipeVar] = Unassigned(),
+        s3_bucket_owner_account_id: Optional[StrPipeVar] = Unassigned(),
+        s3_bucket_owner_verification: Optional[bool] = Unassigned(),
     ) -> Optional["MlflowTrackingServer"]:
         """
         Update a MlflowTrackingServer resource
@@ -22306,6 +20016,8 @@ class MlflowTrackingServer(Base):
             "TrackingServerSize": tracking_server_size,
             "AutomaticModelRegistration": automatic_model_registration,
             "WeeklyMaintenanceWindowStart": weekly_maintenance_window_start,
+            "S3BucketOwnerAccountId": s3_bucket_owner_account_id,
+            "S3BucketOwnerVerification": s3_bucket_owner_verification,
         }
         logger.debug(f"Input request: {operation_input_args}")
         # serialize the input request
@@ -22413,7 +20125,7 @@ class MlflowTrackingServer(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "TrackingServerName": self.tracking_server_name,
@@ -22447,12 +20159,6 @@ class MlflowTrackingServer(Base):
             "MaintenanceInProgress",
             "MaintenanceComplete",
             "MaintenanceFailed",
-            "Upgrading",
-            "Upgraded",
-            "UpgradeFailed",
-            "RollingBack",
-            "RolledBack",
-            "RollbackFailed",
         ],
         poll: int = 5,
         timeout: Optional[int] = None,
@@ -22508,7 +20214,7 @@ class MlflowTrackingServer(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="MlflowTrackingServer", status=current_status
+                        resource_type="MlflowTrackingServer", status=current_status
                     )
                 time.sleep(poll)
 
@@ -22564,7 +20270,7 @@ class MlflowTrackingServer(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="MlflowTrackingServer", status=current_status
+                            resource_type="MlflowTrackingServer", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -22697,8 +20403,8 @@ class Model(Base):
                 "primary_container": {
                     "model_data_source": {
                         "s3_data_source": {
-                            "s3_uri": {"type": "string"},
                             "s3_data_type": {"type": "string"},
+                            "s3_uri": {"type": "string"},
                             "manifest_s3_uri": {"type": "string"},
                         }
                     }
@@ -23759,7 +21465,7 @@ class ModelCard(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ModelCard", status=current_status)
+                    raise TimeoutExceededError(resource_type="ModelCard", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -24177,7 +21883,9 @@ class ModelCardExportJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="ModelCardExportJob", status=current_status
+                        resource_type="ModelCardExportJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
                     )
                 time.sleep(poll)
 
@@ -24630,133 +22338,7 @@ class ModelExplainabilityJobDefinition(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
-class ModelInternal(Base):
-    """
-    Class representing resource ModelInternal
 
-    Attributes:
-        model_input:
-        account_id:
-        auto_ml_job_arn:
-        model_output:
-
-    """
-
-    model_input: CreateModelInput
-    account_id: Optional[StrPipeVar] = Unassigned()
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    model_output: Optional[CreateModelOutput] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "model_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object model_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        model_input: CreateModelInput,
-        account_id: Optional[StrPipeVar] = Unassigned(),
-        auto_ml_job_arn: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["ModelInternal"]:
-        """
-        Create a ModelInternal resource
-
-        Parameters:
-            model_input:
-            account_id:
-            auto_ml_job_arn:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The ModelInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "ModelInput": model_input,
-            "AccountId": account_id,
-            "AutoMLJobArn": auto_ml_job_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_model_internal API")
-        response = client.create_model_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateModelInternalOutput")
-        return cls(**operation_input_args, **transformed_response)
-
-    @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a ModelInternal resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "ModelInput": self.model_input,
-            "AccountId": self.account_id,
-            "AutoMLJobArn": self.auto_ml_job_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_model_internal(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-'''
 class ModelPackage(Base):
     """
     Class representing resource ModelPackage
@@ -24769,7 +22351,7 @@ class ModelPackage(Base):
         model_package_status_details: Details about the current status of the model package.
         model_package_group_name: If the model is a versioned model, the name of the model group that the versioned model belongs to.
         model_package_version: The version of the model package.
-        model_package_registration_type:
+        model_package_registration_type:  The package registration type of the model package output.
         model_package_description: A brief summary of the model package.
         inference_specification: Details about inference jobs that you can run with models based on this model package.
         source_algorithm_specification: Details about the algorithm that was used to create the model package.
@@ -24779,14 +22361,12 @@ class ModelPackage(Base):
         created_by:
         metadata_properties:
         model_metrics: Metrics for the model.
-        deployment_specification:
         last_modified_time: The last time that the model package was modified.
         last_modified_by:
         approval_description: A description provided for the model approval.
         domain: The machine learning domain of the model package you specified. Common machine learning domains include computer vision and natural language processing.
         task: The machine learning task you specified that your model package accomplishes. Common machine learning tasks include object detection and image classification.
         sample_payload_url: The Amazon Simple Storage Service (Amazon S3) path where the sample payload are stored. This path points to a single gzip compressed tar archive (.tar.gz suffix).
-        sample_payload_content_type:
         customer_metadata_properties: The metadata properties associated with the model package versions.
         drift_check_baselines: Represents the drift check baselines that can be used when the model monitor is set using the model package. For more information, see the topic on Drift Detection against Previous Baselines in SageMaker Pipelines in the Amazon SageMaker Developer Guide.
         additional_inference_specifications: An array of additional Inference Specification objects. Each additional Inference Specification specifies artifacts based on this model package that can be used on inference endpoints. Generally used with SageMaker Neo to store the compiled artifacts.
@@ -24795,10 +22375,11 @@ class ModelPackage(Base):
         security_config: The KMS Key ID (KMSKeyId) used for encryption of model package information.
         model_card: The model card associated with the model package. Since ModelPackageModelCard is tied to a model package, it is a specific usage of a model card and its schema is simplified compared to the schema of ModelCard. The ModelPackageModelCard schema does not include model_package_details, and model_overview is composed of the model_creator and model_artifact properties. For more information about the model package model card schema, see Model package model card schema. For more information about the model card associated with the model package, see View the Details of a Model Version.
         model_life_cycle:  A structure describing the current state of the model in its life cycle.
+        managed_storage_type: The storage type of the model package.
 
     """
 
-    model_package_name: Optional[str] = Unassigned()
+    model_package_name: Optional[StrPipeVar] = Unassigned()
     model_package_group_name: Optional[StrPipeVar] = Unassigned()
     model_package_version: Optional[int] = Unassigned()
     model_package_registration_type: Optional[StrPipeVar] = Unassigned()
@@ -24815,14 +22396,12 @@ class ModelPackage(Base):
     created_by: Optional[UserContext] = Unassigned()
     metadata_properties: Optional[MetadataProperties] = Unassigned()
     model_metrics: Optional[ModelMetrics] = Unassigned()
-    deployment_specification: Optional[DeploymentSpecification] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     last_modified_by: Optional[UserContext] = Unassigned()
     approval_description: Optional[StrPipeVar] = Unassigned()
     domain: Optional[StrPipeVar] = Unassigned()
     task: Optional[StrPipeVar] = Unassigned()
     sample_payload_url: Optional[StrPipeVar] = Unassigned()
-    sample_payload_content_type: Optional[StrPipeVar] = Unassigned()
     customer_metadata_properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     drift_check_baselines: Optional[DriftCheckBaselines] = Unassigned()
     additional_inference_specifications: Optional[
@@ -24833,6 +22412,7 @@ class ModelPackage(Base):
     security_config: Optional[ModelPackageSecurityConfig] = Unassigned()
     model_card: Optional[ModelPackageModelCard] = Unassigned()
     model_life_cycle: Optional[ModelLifeCycle] = Unassigned()
+    managed_storage_type: Optional[StrPipeVar] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -24914,18 +22494,14 @@ class ModelPackage(Base):
         validation_specification: Optional[ModelPackageValidationSpecification] = Unassigned(),
         source_algorithm_specification: Optional[SourceAlgorithmSpecification] = Unassigned(),
         certify_for_marketplace: Optional[bool] = Unassigned(),
-        require_image_scan: Optional[bool] = Unassigned(),
-        workflow_disabled: Optional[bool] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         model_approval_status: Optional[StrPipeVar] = Unassigned(),
         metadata_properties: Optional[MetadataProperties] = Unassigned(),
         model_metrics: Optional[ModelMetrics] = Unassigned(),
-        deployment_specification: Optional[DeploymentSpecification] = Unassigned(),
         client_token: Optional[StrPipeVar] = Unassigned(),
         domain: Optional[StrPipeVar] = Unassigned(),
         task: Optional[StrPipeVar] = Unassigned(),
         sample_payload_url: Optional[StrPipeVar] = Unassigned(),
-        sample_payload_content_type: Optional[StrPipeVar] = Unassigned(),
         customer_metadata_properties: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         drift_check_baselines: Optional[DriftCheckBaselines] = Unassigned(),
         additional_inference_specifications: Optional[
@@ -24936,6 +22512,7 @@ class ModelPackage(Base):
         security_config: Optional[ModelPackageSecurityConfig] = Unassigned(),
         model_card: Optional[ModelPackageModelCard] = Unassigned(),
         model_life_cycle: Optional[ModelLifeCycle] = Unassigned(),
+        managed_storage_type: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelPackage"]:
@@ -24946,23 +22523,19 @@ class ModelPackage(Base):
             model_package_name: The name of the model package. The name must have 1 to 63 characters. Valid characters are a-z, A-Z, 0-9, and - (hyphen). This parameter is required for unversioned models. It is not applicable to versioned models.
             model_package_group_name: The name or Amazon Resource Name (ARN) of the model package group that this model version belongs to. This parameter is required for versioned models, and does not apply to unversioned models.
             model_package_description: A description of the model package.
-            model_package_registration_type:
+            model_package_registration_type:  The package registration type of the model package input.
             inference_specification: Specifies details about inference jobs that you can run with models based on this model package, including the following information:   The Amazon ECR paths of containers that contain the inference code and model artifacts.   The instance types that the model package supports for transform jobs and real-time endpoints used for inference.   The input and output content formats that the model package supports for inference.
             validation_specification: Specifies configurations for one or more transform jobs that SageMaker runs to test the model package.
             source_algorithm_specification: Details about the algorithm that was used to create the model package.
             certify_for_marketplace: Whether to certify the model package for listing on Amazon Web Services Marketplace. This parameter is optional for unversioned models, and does not apply to versioned models.
-            require_image_scan:
-            workflow_disabled:
             tags: A list of key value pairs associated with the model. For more information, see Tagging Amazon Web Services resources in the Amazon Web Services General Reference Guide. If you supply ModelPackageGroupName, your model package belongs to the model group you specify and uses the tags associated with the model group. In this case, you cannot supply a tag argument.
             model_approval_status: Whether the model is approved for deployment. This parameter is optional for versioned models, and does not apply to unversioned models. For versioned models, the value of this parameter must be set to Approved to deploy the model.
             metadata_properties:
             model_metrics: A structure that contains model metrics reports.
-            deployment_specification:
             client_token: A unique token that guarantees that the call to this API is idempotent.
             domain: The machine learning domain of your model package and its components. Common machine learning domains include computer vision and natural language processing.
             task: The machine learning task your model package accomplishes. Common machine learning tasks include object detection and image classification. The following tasks are supported by Inference Recommender: "IMAGE_CLASSIFICATION" \| "OBJECT_DETECTION" \| "TEXT_GENERATION" \|"IMAGE_SEGMENTATION" \| "FILL_MASK" \| "CLASSIFICATION" \| "REGRESSION" \| "OTHER". Specify "OTHER" if none of the tasks listed fit your use case.
             sample_payload_url: The Amazon Simple Storage Service (Amazon S3) path where the sample payload is stored. This path must point to a single gzip compressed tar archive (.tar.gz suffix). This archive can hold multiple files that are all equally used in the load test. Each file in the archive must satisfy the size constraints of the InvokeEndpoint call.
-            sample_payload_content_type:
             customer_metadata_properties: The metadata properties associated with the model package versions.
             drift_check_baselines: Represents the drift check baselines that can be used when the model monitor is set using the model package. For more information, see the topic on Drift Detection against Previous Baselines in SageMaker Pipelines in the Amazon SageMaker Developer Guide.
             additional_inference_specifications: An array of additional Inference Specification objects. Each additional Inference Specification specifies artifacts based on this model package that can be used on inference endpoints. Generally used with SageMaker Neo to store the compiled artifacts.
@@ -24971,6 +22544,7 @@ class ModelPackage(Base):
             security_config: The KMS Key ID (KMSKeyId) used for encryption of model package information.
             model_card: The model card associated with the model package. Since ModelPackageModelCard is tied to a model package, it is a specific usage of a model card and its schema is simplified compared to the schema of ModelCard. The ModelPackageModelCard schema does not include model_package_details, and model_overview is composed of the model_creator and model_artifact properties. For more information about the model package model card schema, see Model package model card schema. For more information about the model card associated with the model package, see View the Details of a Model Version.
             model_life_cycle:  A structure describing the current state of the model in its life cycle.
+            managed_storage_type: The storage type of the model package.
             session: Boto3 session.
             region: Region name.
 
@@ -25008,18 +22582,14 @@ class ModelPackage(Base):
             "ValidationSpecification": validation_specification,
             "SourceAlgorithmSpecification": source_algorithm_specification,
             "CertifyForMarketplace": certify_for_marketplace,
-            "RequireImageScan": require_image_scan,
-            "WorkflowDisabled": workflow_disabled,
             "Tags": tags,
             "ModelApprovalStatus": model_approval_status,
             "MetadataProperties": metadata_properties,
             "ModelMetrics": model_metrics,
-            "DeploymentSpecification": deployment_specification,
             "ClientToken": client_token,
             "Domain": domain,
             "Task": task,
             "SamplePayloadUrl": sample_payload_url,
-            "SamplePayloadContentType": sample_payload_content_type,
             "CustomerMetadataProperties": customer_metadata_properties,
             "DriftCheckBaselines": drift_check_baselines,
             "AdditionalInferenceSpecifications": additional_inference_specifications,
@@ -25028,6 +22598,7 @@ class ModelPackage(Base):
             "SecurityConfig": security_config,
             "ModelCard": model_card,
             "ModelLifeCycle": model_life_cycle,
+            "ManagedStorageType": managed_storage_type,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -25290,7 +22861,7 @@ class ModelPackage(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ModelPackage", status=current_status)
+                    raise TimeoutExceededError(resource_type="ModelPackage", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -25345,7 +22916,7 @@ class ModelPackage(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ModelPackage", status=current_status
+                            resource_type="ModelPackage", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -25491,6 +23062,7 @@ class ModelPackageGroup(Base):
         created_by:
         model_package_group_status: The status of the model group.
         model_package_group_description: A description of the model group.
+        managed_configuration: The managed configuration of the model package group.
 
     """
 
@@ -25500,6 +23072,7 @@ class ModelPackageGroup(Base):
     creation_time: Optional[datetime.datetime] = Unassigned()
     created_by: Optional[UserContext] = Unassigned()
     model_package_group_status: Optional[StrPipeVar] = Unassigned()
+    managed_configuration: Optional[ManagedConfiguration] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -25524,6 +23097,7 @@ class ModelPackageGroup(Base):
         model_package_group_name: StrPipeVar,
         model_package_group_description: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
+        managed_configuration: Optional[ManagedConfiguration] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["ModelPackageGroup"]:
@@ -25534,6 +23108,7 @@ class ModelPackageGroup(Base):
             model_package_group_name: The name of the model group.
             model_package_group_description: A description for the model group.
             tags: A list of key value pairs associated with the model group. For more information, see Tagging Amazon Web Services resources in the Amazon Web Services General Reference Guide.
+            managed_configuration: The managed configuration of the model package group.
             session: Boto3 session.
             region: Region name.
 
@@ -25565,6 +23140,7 @@ class ModelPackageGroup(Base):
             "ModelPackageGroupName": model_package_group_name,
             "ModelPackageGroupDescription": model_package_group_description,
             "Tags": tags,
+            "ManagedConfiguration": managed_configuration,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -25759,7 +23335,7 @@ class ModelPackageGroup(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="ModelPackageGroup", status=current_status
+                        resource_type="ModelPackageGroup", status=current_status
                     )
                 time.sleep(poll)
 
@@ -25815,7 +23391,7 @@ class ModelPackageGroup(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="ModelPackageGroup", status=current_status
+                            resource_type="ModelPackageGroup", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -25925,7 +23501,6 @@ class ModelPackageGroup(Base):
 
         operation_input_args = {
             "ModelPackageGroupName": self.model_package_group_name,
-            "ModelPackageGroupArn": self.model_package_group_arn,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -25968,7 +23543,6 @@ class ModelPackageGroup(Base):
 
         operation_input_args = {
             "ModelPackageGroupName": self.model_package_group_name,
-            "ModelPackageGroupArn": self.model_package_group_arn,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -26013,7 +23587,6 @@ class ModelPackageGroup(Base):
         operation_input_args = {
             "ModelPackageGroupName": self.model_package_group_name,
             "ResourcePolicy": resource_policy,
-            "ModelPackageGroupArn": self.model_package_group_arn,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -26332,7 +23905,6 @@ class ModelQualityJobDefinition(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         creation_time_before: Optional[datetime.datetime] = Unassigned(),
         creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        variant_name: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["ModelQualityJobDefinition"]:
@@ -26348,7 +23920,6 @@ class ModelQualityJobDefinition(Base):
             name_contains: A string in the transform job name. This filter returns only model quality monitoring job definitions whose name contains the specified string.
             creation_time_before: A filter that returns only model quality monitoring job definitions created before the specified time.
             creation_time_after: A filter that returns only model quality monitoring job definitions created after the specified time.
-            variant_name:
             session: Boto3 session.
             region: Region name.
 
@@ -26378,7 +23949,6 @@ class ModelQualityJobDefinition(Base):
             "NameContains": name_contains,
             "CreationTimeBefore": creation_time_before,
             "CreationTimeAfter": creation_time_after,
-            "VariantName": variant_name,
         }
         custom_key_mapping = {
             "monitoring_job_definition_name": "job_definition_name",
@@ -26621,31 +24191,29 @@ class MonitoringExecution(Base):
     Class representing resource MonitoringExecution
 
     Attributes:
-        monitoring_execution_id:
-        monitoring_schedule_name:
-        scheduled_time:
-        creation_time:
-        last_modified_time:
-        monitoring_execution_status:
-        processing_job_arn:
-        endpoint_name:
-        monitoring_job_definition_name:
-        monitoring_type:
-        failure_reason:
+        monitoring_schedule_name: The name of the monitoring schedule.
+        scheduled_time: The time the monitoring job was scheduled.
+        creation_time: The time at which the monitoring job was created.
+        last_modified_time: A timestamp that indicates the last time the monitoring job was modified.
+        monitoring_execution_status: The status of the monitoring job.
+        processing_job_arn: The Amazon Resource Name (ARN) of the monitoring job.
+        endpoint_name: The name of the endpoint used to run the monitoring job.
+        failure_reason: Contains the reason a monitoring job failed, if it failed.
+        monitoring_job_definition_name: The name of the monitoring job.
+        monitoring_type: The type of the monitoring job.
 
     """
 
-    monitoring_execution_id: StrPipeVar
-    monitoring_schedule_name: Optional[StrPipeVar] = Unassigned()
-    scheduled_time: Optional[datetime.datetime] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    monitoring_execution_status: Optional[StrPipeVar] = Unassigned()
+    monitoring_schedule_name: StrPipeVar
+    scheduled_time: datetime.datetime
+    creation_time: datetime.datetime
+    last_modified_time: datetime.datetime
+    monitoring_execution_status: StrPipeVar
     processing_job_arn: Optional[StrPipeVar] = Unassigned()
     endpoint_name: Optional[StrPipeVar] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
     monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned()
     monitoring_type: Optional[StrPipeVar] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -26665,164 +24233,6 @@ class MonitoringExecution(Base):
 
     @classmethod
     @Base.add_validate_call
-    def get(
-        cls,
-        monitoring_execution_id: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["MonitoringExecution"]:
-        """
-        Get a MonitoringExecution resource
-
-        Parameters:
-            monitoring_execution_id:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The MonitoringExecution resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "MonitoringExecutionId": monitoring_execution_id,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_monitoring_execution(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeMonitoringExecutionResponse")
-        monitoring_execution = cls(**transformed_response)
-        return monitoring_execution
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-    ) -> Optional["MonitoringExecution"]:
-        """
-        Refresh a MonitoringExecution resource
-
-        Returns:
-            The MonitoringExecution resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "MonitoringExecutionId": self.monitoring_execution_id,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_monitoring_execution(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeMonitoringExecutionResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def wait_for_status(
-        self,
-        target_status: Literal[
-            "Pending",
-            "Completed",
-            "CompletedWithViolations",
-            "InProgress",
-            "Failed",
-            "Stopping",
-            "Stopped",
-        ],
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a MonitoringExecution resource to reach certain status.
-
-        Parameters:
-            target_status: The status to wait for.
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-        """
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task(
-            f"Waiting for MonitoringExecution to reach [bold]{target_status} status..."
-        )
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            ),
-            transient=True,
-        ):
-            while True:
-                self.refresh()
-                current_status = self.monitoring_execution_status
-                status.update(f"Current status: [bold]{current_status}")
-
-                if target_status == current_status:
-                    logger.info(f"Final Resource Status: [bold]{current_status}")
-                    return
-
-                if "failed" in current_status.lower():
-                    raise FailedStatusError(
-                        resource_type="MonitoringExecution",
-                        status=current_status,
-                        reason=self.failure_reason,
-                    )
-
-                if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(
-                        resouce_type="MonitoringExecution", status=current_status
-                    )
-                time.sleep(poll)
-
-    @classmethod
-    @Base.add_validate_call
     def get_all(
         cls,
         monitoring_schedule_name: Optional[StrPipeVar] = Unassigned(),
@@ -26838,7 +24248,6 @@ class MonitoringExecution(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned(),
         monitoring_type_equals: Optional[StrPipeVar] = Unassigned(),
-        variant_name: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["MonitoringExecution"]:
@@ -26861,7 +24270,6 @@ class MonitoringExecution(Base):
             status_equals: A filter that retrieves only jobs with a specific status.
             monitoring_job_definition_name: Gets a list of the monitoring job runs of the specified monitoring job definitions.
             monitoring_type_equals: A filter that returns only the monitoring job runs of the specified monitoring type.
-            variant_name:
             session: Boto3 session.
             region: Region name.
 
@@ -26898,7 +24306,6 @@ class MonitoringExecution(Base):
             "StatusEquals": status_equals,
             "MonitoringJobDefinitionName": monitoring_job_definition_name,
             "MonitoringTypeEquals": monitoring_type_equals,
-            "VariantName": variant_name,
         }
 
         # serialize the input request
@@ -26930,12 +24337,6 @@ class MonitoringSchedule(Base):
         failure_reason: A string, up to one KB in size, that contains the reason a monitoring job failed, if it failed.
         endpoint_name:  The name of the endpoint for the monitoring job.
         last_monitoring_execution_summary: Describes metadata on the last execution to run, if there was one.
-        custom_monitoring_job_definition:
-        data_quality_job_definition:
-        model_quality_job_definition:
-        model_bias_job_definition:
-        model_explainability_job_definition:
-        variant_name:
 
     """
 
@@ -26949,12 +24350,6 @@ class MonitoringSchedule(Base):
     monitoring_schedule_config: Optional[MonitoringScheduleConfig] = Unassigned()
     endpoint_name: Optional[StrPipeVar] = Unassigned()
     last_monitoring_execution_summary: Optional[MonitoringExecutionSummary] = Unassigned()
-    custom_monitoring_job_definition: Optional[CustomMonitoringJobDefinition] = Unassigned()
-    data_quality_job_definition: Optional[DataQualityJobDefinition] = Unassigned()
-    model_quality_job_definition: Optional[ModelQualityJobDefinition] = Unassigned()
-    model_bias_job_definition: Optional[ModelBiasJobDefinition] = Unassigned()
-    model_explainability_job_definition: Optional[ModelExplainabilityJobDefinition] = Unassigned()
-    variant_name: Optional[StrPipeVar] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -27302,7 +24697,7 @@ class MonitoringSchedule(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "MonitoringScheduleName": self.monitoring_schedule_name,
@@ -27373,7 +24768,7 @@ class MonitoringSchedule(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="MonitoringSchedule", status=current_status
+                        resource_type="MonitoringSchedule", status=current_status
                     )
                 time.sleep(poll)
 
@@ -27392,7 +24787,6 @@ class MonitoringSchedule(Base):
         status_equals: Optional[StrPipeVar] = Unassigned(),
         monitoring_job_definition_name: Optional[StrPipeVar] = Unassigned(),
         monitoring_type_equals: Optional[StrPipeVar] = Unassigned(),
-        variant_name: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["MonitoringSchedule"]:
@@ -27413,7 +24807,6 @@ class MonitoringSchedule(Base):
             status_equals: A filter that returns only monitoring schedules modified before a specified time.
             monitoring_job_definition_name: Gets a list of the monitoring schedules for the specified monitoring job definition.
             monitoring_type_equals: A filter that returns only the monitoring schedules for the specified monitoring type.
-            variant_name:
             session: Boto3 session.
             region: Region name.
 
@@ -27448,7 +24841,6 @@ class MonitoringSchedule(Base):
             "StatusEquals": status_equals,
             "MonitoringJobDefinitionName": monitoring_job_definition_name,
             "MonitoringTypeEquals": monitoring_type_equals,
-            "VariantName": variant_name,
         }
 
         # serialize the input request
@@ -27602,7 +24994,7 @@ class NotebookInstance(Base):
             default_code_repository: A Git repository to associate with the notebook instance as its default code repository. This can be either the name of a Git repository stored as a resource in your account, or the URL of a Git repository in Amazon Web Services CodeCommit or in any other Git repository. When you open a notebook instance, it opens in the directory that contains this repository. For more information, see Associating Git Repositories with SageMaker AI Notebook Instances.
             additional_code_repositories: An array of up to three Git repositories to associate with the notebook instance. These can be either the names of Git repositories stored as resources in your account, or the URL of Git repositories in Amazon Web Services CodeCommit or in any other Git repository. These repositories are cloned at the same level as the default repository of your notebook instance. For more information, see Associating Git Repositories with SageMaker AI Notebook Instances.
             root_access: Whether root access is enabled or disabled for users of the notebook instance. The default value is Enabled.  Lifecycle configurations need root access to be able to set up a notebook instance. Because of this, lifecycle configurations associated with a notebook instance always run with root access even if you disable root access for users.
-            platform_identifier: The platform identifier of the notebook instance runtime environment. The default value is notebook-al2-v2.
+            platform_identifier: The platform identifier of the notebook instance runtime environment. The default value is notebook-al2023-v1.
             instance_metadata_service_configuration: Information on the IMDS configuration of the notebook instance
             session: Boto3 session.
             region: Region name.
@@ -27925,7 +25317,7 @@ class NotebookInstance(Base):
                 ```
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "NotebookInstanceName": self.notebook_instance_name,
@@ -27996,7 +25388,7 @@ class NotebookInstance(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="NotebookInstance", status=current_status
+                        resource_type="NotebookInstance", status=current_status
                     )
                 time.sleep(poll)
 
@@ -28052,7 +25444,7 @@ class NotebookInstance(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="NotebookInstance", status=current_status
+                            resource_type="NotebookInstance", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -28514,7 +25906,7 @@ class OptimizationJob(Base):
         optimization_end_time: The time when the optimization job finished processing.
         failure_reason: If the optimization job status is FAILED, the reason for the failure.
         optimization_environment: The environment variables to set in the model container.
-        max_instance_count:
+        max_instance_count: The maximum number of instances to use for the optimization job.
         optimization_output: Output values produced by an optimization job.
         vpc_config: A VPC in Amazon VPC that your optimized model has access to.
 
@@ -28609,7 +26001,7 @@ class OptimizationJob(Base):
             optimization_configs: Settings for each of the optimization techniques that the job applies.
             output_config: Details for where to store the optimized model that you create with the optimization job.
             stopping_condition:
-            max_instance_count:
+            max_instance_count: The maximum number of instances to use for the optimization job.
             optimization_environment: The environment variables to set in the model container.
             tags: A list of key-value pairs associated with the optimization job. For more information, see Tagging Amazon Web Services resources in the Amazon Web Services General Reference Guide.
             vpc_config: A VPC in Amazon VPC that your optimized model has access to.
@@ -28809,7 +26201,7 @@ class OptimizationJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "OptimizationJobName": self.optimization_job_name,
@@ -28879,7 +26271,9 @@ class OptimizationJob(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="OptimizationJob", status=current_status
+                        resource_type="OptimizationJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
                     )
                 time.sleep(poll)
 
@@ -28975,7 +26369,6 @@ class PartnerApp(Base):
         last_modified_time: The time that the SageMaker Partner AI App was last modified.
         execution_role_arn: The ARN of the IAM role associated with the SageMaker Partner AI App.
         kms_key_id: The Amazon Web Services KMS customer managed key used to encrypt the data at rest associated with SageMaker Partner AI Apps.
-        sdk_url:
         base_url: The URL of the SageMaker Partner AI App that the Application SDK uses to support in-app calls for the user.
         maintenance_config: Maintenance configuration settings for the SageMaker Partner AI App.
         tier: The instance type and size of the cluster attached to the SageMaker Partner AI App.
@@ -28998,7 +26391,6 @@ class PartnerApp(Base):
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     execution_role_arn: Optional[StrPipeVar] = Unassigned()
     kms_key_id: Optional[StrPipeVar] = Unassigned()
-    sdk_url: Optional[StrPipeVar] = Unassigned()
     base_url: Optional[StrPipeVar] = Unassigned()
     maintenance_config: Optional[PartnerAppMaintenanceConfig] = Unassigned()
     tier: Optional[StrPipeVar] = Unassigned()
@@ -29030,7 +26422,10 @@ class PartnerApp(Base):
     def populate_inputs_decorator(create_func):
         @functools.wraps(create_func)
         def wrapper(*args, **kwargs):
-            config_schema_for_resource = {"execution_role_arn": {"type": "string"}}
+            config_schema_for_resource = {
+                "execution_role_arn": {"type": "string"},
+                "kms_key_id": {"type": "string"},
+            }
             return create_func(
                 *args,
                 **Base.get_updated_kwargs_with_configured_attributes(
@@ -29052,7 +26447,6 @@ class PartnerApp(Base):
         auth_type: StrPipeVar,
         kms_key_id: Optional[StrPipeVar] = Unassigned(),
         maintenance_config: Optional[PartnerAppMaintenanceConfig] = Unassigned(),
-        version: Optional[StrPipeVar] = Unassigned(),
         application_config: Optional[PartnerAppConfig] = Unassigned(),
         enable_iam_session_based_identity: Optional[bool] = Unassigned(),
         enable_auto_minor_version_upgrade: Optional[bool] = Unassigned(),
@@ -29072,7 +26466,6 @@ class PartnerApp(Base):
             auth_type: The authorization type that users use to access the SageMaker Partner AI App.
             kms_key_id: SageMaker Partner AI Apps uses Amazon Web Services KMS to encrypt data at rest using an Amazon Web Services managed key by default. For more control, specify a customer managed key.
             maintenance_config: Maintenance configuration settings for the SageMaker Partner AI App.
-            version:
             application_config: Configuration settings for the SageMaker Partner AI App.
             enable_iam_session_based_identity: When set to TRUE, the SageMaker Partner AI App sets the Amazon Web Services IAM session name or the authenticated IAM user as the identity of the SageMaker Partner AI App user.
             enable_auto_minor_version_upgrade: When set to TRUE, the SageMaker Partner AI App is automatically upgraded to the latest minor version during the next scheduled maintenance window, if one is available. Default is FALSE.
@@ -29113,7 +26506,6 @@ class PartnerApp(Base):
             "KmsKeyId": kms_key_id,
             "MaintenanceConfig": maintenance_config,
             "Tier": tier,
-            "Version": version,
             "ApplicationConfig": application_config,
             "AuthType": auth_type,
             "EnableIamSessionBasedIdentity": enable_iam_session_based_identity,
@@ -29331,79 +26723,6 @@ class PartnerApp(Base):
         logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
 
     @Base.add_validate_call
-    def start(
-        self,
-        partner_app_arn: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> None:
-        """
-        Start a PartnerApp resource
-
-        Parameters:
-            session: Boto3 session.
-            region: Region name.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "PartnerAppArn": partner_app_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling start_partner_app API")
-        response = client.start_partner_app(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-    @Base.add_validate_call
-    def stop(self) -> None:
-        """
-        Stop a PartnerApp resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = SageMakerClient().client
-
-        operation_input_args = {
-            "PartnerAppArn": self.partner_app_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.stop_partner_app(**operation_input_args)
-
-        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
     def wait_for_status(
         self,
         target_status: Literal[
@@ -29458,7 +26777,7 @@ class PartnerApp(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="PartnerApp", status=current_status)
+                    raise TimeoutExceededError(resource_type="PartnerApp", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -29516,7 +26835,9 @@ class PartnerApp(Base):
                         return
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="PartnerApp", status=current_status)
+                        raise TimeoutExceededError(
+                            resource_type="PartnerApp", status=current_status
+                        )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -29623,7 +26944,6 @@ class PartnerAppPresignedUrl(Base):
                     error_message = e.response['Error']['Message']
                     error_code = e.response['Error']['Code']
                 ```
-            AccessDeniedException
             ResourceNotFound: Resource being access is not found.
             ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
             LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
@@ -29649,377 +26969,6 @@ class PartnerAppPresignedUrl(Base):
 
         transformed_response = transform(response, "CreatePartnerAppPresignedUrlResponse")
         return cls(**operation_input_args, **transformed_response)
-
-
-class PersistentVolume(Base):
-    """
-    Class representing resource PersistentVolume
-
-    Attributes:
-        persistent_volume_arn:
-        persistent_volume_name:
-        domain_id:
-        status:
-        persistent_volume_configuration:
-        owning_entity_arn:
-        creation_time:
-        last_modified_time:
-        failure_reason:
-
-    """
-
-    persistent_volume_name: StrPipeVar
-    domain_id: StrPipeVar
-    persistent_volume_arn: Optional[StrPipeVar] = Unassigned()
-    status: Optional[StrPipeVar] = Unassigned()
-    persistent_volume_configuration: Optional[PersistentVolumeConfiguration] = Unassigned()
-    owning_entity_arn: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "persistent_volume_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object persistent_volume")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        persistent_volume_name: StrPipeVar,
-        domain_id: StrPipeVar,
-        persistent_volume_configuration: PersistentVolumeConfiguration,
-        tags: Optional[List[Tag]] = Unassigned(),
-        owning_entity_arn: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["PersistentVolume"]:
-        """
-        Create a PersistentVolume resource
-
-        Parameters:
-            persistent_volume_name:
-            domain_id:
-            persistent_volume_configuration:
-            tags:
-            owning_entity_arn:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The PersistentVolume resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating persistent_volume resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "PersistentVolumeName": persistent_volume_name,
-            "DomainId": domain_id,
-            "PersistentVolumeConfiguration": persistent_volume_configuration,
-            "Tags": tags,
-            "OwningEntityArn": owning_entity_arn,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="PersistentVolume", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_persistent_volume(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(
-            persistent_volume_name=persistent_volume_name,
-            domain_id=domain_id,
-            session=session,
-            region=region,
-        )
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        persistent_volume_name: StrPipeVar,
-        domain_id: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["PersistentVolume"]:
-        """
-        Get a PersistentVolume resource
-
-        Parameters:
-            persistent_volume_name:
-            domain_id:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The PersistentVolume resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "PersistentVolumeName": persistent_volume_name,
-            "DomainId": domain_id,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_persistent_volume(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribePersistentVolumeResponse")
-        persistent_volume = cls(**transformed_response)
-        return persistent_volume
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-    ) -> Optional["PersistentVolume"]:
-        """
-        Refresh a PersistentVolume resource
-
-        Returns:
-            The PersistentVolume resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "PersistentVolumeName": self.persistent_volume_name,
-            "DomainId": self.domain_id,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_persistent_volume(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribePersistentVolumeResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a PersistentVolume resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "PersistentVolumeName": self.persistent_volume_name,
-            "DomainId": self.domain_id,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_persistent_volume(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
-    def wait_for_status(
-        self,
-        target_status: Literal["Creating", "Available", "Attaching", "InUse", "Deleting", "Failed"],
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a PersistentVolume resource to reach certain status.
-
-        Parameters:
-            target_status: The status to wait for.
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-        """
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task(f"Waiting for PersistentVolume to reach [bold]{target_status} status...")
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            ),
-            transient=True,
-        ):
-            while True:
-                self.refresh()
-                current_status = self.status
-                status.update(f"Current status: [bold]{current_status}")
-
-                if target_status == current_status:
-                    logger.info(f"Final Resource Status: [bold]{current_status}")
-                    return
-
-                if "failed" in current_status.lower():
-                    raise FailedStatusError(
-                        resource_type="PersistentVolume",
-                        status=current_status,
-                        reason=self.failure_reason,
-                    )
-
-                if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(
-                        resouce_type="PersistentVolume", status=current_status
-                    )
-                time.sleep(poll)
-
-    @Base.add_validate_call
-    def wait_for_delete(
-        self,
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a PersistentVolume resource to be deleted.
-
-        Parameters:
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            DeleteFailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-        """
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task("Waiting for PersistentVolume to be deleted...")
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            )
-        ):
-            while True:
-                try:
-                    self.refresh()
-                    current_status = self.status
-                    status.update(f"Current status: [bold]{current_status}")
-
-                    if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(
-                            resouce_type="PersistentVolume", status=current_status
-                        )
-                except botocore.exceptions.ClientError as e:
-                    error_code = e.response["Error"]["Code"]
-
-                    if "ResourceNotFound" in error_code or "ValidationException" in error_code:
-                        logger.info("Resource was not found. It may have been deleted.")
-                        return
-                    raise e
-                time.sleep(poll)
 
 
 class Pipeline(Base):
@@ -30411,7 +27360,7 @@ class Pipeline(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Pipeline", status=current_status)
+                    raise TimeoutExceededError(resource_type="Pipeline", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -30465,7 +27414,7 @@ class Pipeline(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Pipeline", status=current_status)
+                        raise TimeoutExceededError(resource_type="Pipeline", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -30561,7 +27510,7 @@ class PipelineExecution(Base):
         parallelism_configuration: The parallelism configuration applied to the pipeline.
         selective_execution_config: The selective execution configuration applied to the pipeline run.
         pipeline_version_id: The ID of the pipeline version.
-        m_lflow_config:
+        m_lflow_config:  The MLflow configuration of the pipeline execution.
 
     """
 
@@ -30807,7 +27756,7 @@ class PipelineExecution(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "PipelineExecutionArn": self.pipeline_execution_arn,
@@ -30877,7 +27826,7 @@ class PipelineExecution(Base):
 
                 if timeout is not None and time.time() - start_time >= timeout:
                     raise TimeoutExceededError(
-                        resouce_type="PipelineExecution", status=current_status
+                        resource_type="PipelineExecution", status=current_status
                     )
                 time.sleep(poll)
 
@@ -31257,11 +28206,8 @@ class PresignedDomainUrl(Base):
         user_profile_name: The name of the UserProfile to sign-in as.
         session_expiration_duration_in_seconds: The session expiration duration in seconds. This value defaults to 43200.
         expires_in_seconds: The number of seconds until the pre-signed URL expires. This value defaults to 300.
-        app_type:
-        app_redirection_relative_path:
         space_name: The name of the space.
         landing_uri: The landing page that the user is directed to when accessing the presigned URL. Using this value, users can access Studio or Studio Classic, even if it is not the default experience for the domain. The supported values are:    studio::relative/path: Directs users to the relative path in Studio.    app:JupyterServer:relative/path: Directs users to the relative path in the Studio Classic application.    app:JupyterLab:relative/path: Directs users to the relative path in the JupyterLab application.    app:RStudioServerPro:relative/path: Directs users to the relative path in the RStudio application.    app:CodeEditor:relative/path: Directs users to the relative path in the Code Editor, based on Code-OSS, Visual Studio Code - Open Source application.    app:Canvas:relative/path: Directs users to the relative path in the Canvas application.
-        is_dual_stack_endpoint:
         authorized_url: The presigned URL.
 
     """
@@ -31270,11 +28216,8 @@ class PresignedDomainUrl(Base):
     user_profile_name: Union[StrPipeVar, object]
     session_expiration_duration_in_seconds: Optional[int] = Unassigned()
     expires_in_seconds: Optional[int] = Unassigned()
-    app_type: Optional[StrPipeVar] = Unassigned()
-    app_redirection_relative_path: Optional[StrPipeVar] = Unassigned()
     space_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     landing_uri: Optional[StrPipeVar] = Unassigned()
-    is_dual_stack_endpoint: Optional[bool] = Unassigned()
     authorized_url: Optional[StrPipeVar] = Unassigned()
 
     def get_name(self) -> str:
@@ -31301,11 +28244,8 @@ class PresignedDomainUrl(Base):
         user_profile_name: Union[StrPipeVar, object],
         session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
         expires_in_seconds: Optional[int] = Unassigned(),
-        app_type: Optional[StrPipeVar] = Unassigned(),
-        app_redirection_relative_path: Optional[StrPipeVar] = Unassigned(),
         space_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
         landing_uri: Optional[StrPipeVar] = Unassigned(),
-        is_dual_stack_endpoint: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> Optional["PresignedDomainUrl"]:
@@ -31317,11 +28257,8 @@ class PresignedDomainUrl(Base):
             user_profile_name: The name of the UserProfile to sign-in as.
             session_expiration_duration_in_seconds: The session expiration duration in seconds. This value defaults to 43200.
             expires_in_seconds: The number of seconds until the pre-signed URL expires. This value defaults to 300.
-            app_type:
-            app_redirection_relative_path:
             space_name: The name of the space.
             landing_uri: The landing page that the user is directed to when accessing the presigned URL. Using this value, users can access Studio or Studio Classic, even if it is not the default experience for the domain. The supported values are:    studio::relative/path: Directs users to the relative path in Studio.    app:JupyterServer:relative/path: Directs users to the relative path in the Studio Classic application.    app:JupyterLab:relative/path: Directs users to the relative path in the JupyterLab application.    app:RStudioServerPro:relative/path: Directs users to the relative path in the RStudio application.    app:CodeEditor:relative/path: Directs users to the relative path in the Code Editor, based on Code-OSS, Visual Studio Code - Open Source application.    app:Canvas:relative/path: Directs users to the relative path in the Canvas application.
-            is_dual_stack_endpoint:
             session: Boto3 session.
             region: Region name.
 
@@ -31349,11 +28286,8 @@ class PresignedDomainUrl(Base):
             "UserProfileName": user_profile_name,
             "SessionExpirationDurationInSeconds": session_expiration_duration_in_seconds,
             "ExpiresInSeconds": expires_in_seconds,
-            "AppType": app_type,
-            "AppRedirectionRelativePath": app_redirection_relative_path,
             "SpaceName": space_name,
             "LandingUri": landing_uri,
-            "isDualStackEndpoint": is_dual_stack_endpoint,
         }
         # serialize the input request
         operation_input_args = serialize(operation_input_args)
@@ -31371,120 +28305,15 @@ class PresignedDomainUrl(Base):
         return cls(**operation_input_args, **transformed_response)
 
 
-class PresignedDomainUrlWithPrincipalTag(Base):
-    """
-    Class representing resource PresignedDomainUrlWithPrincipalTag
-
-    Attributes:
-        domain_id:
-        session_expiration_duration_in_seconds:
-        expires_in_seconds:
-        landing_uri:
-        is_dual_stack_endpoint:
-        authorized_url:
-
-    """
-
-    domain_id: Optional[StrPipeVar] = Unassigned()
-    session_expiration_duration_in_seconds: Optional[int] = Unassigned()
-    expires_in_seconds: Optional[int] = Unassigned()
-    landing_uri: Optional[StrPipeVar] = Unassigned()
-    is_dual_stack_endpoint: Optional[bool] = Unassigned()
-    authorized_url: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "presigned_domain_url_with_principal_tag_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object presigned_domain_url_with_principal_tag")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        domain_id: Optional[StrPipeVar] = Unassigned(),
-        session_expiration_duration_in_seconds: Optional[int] = Unassigned(),
-        expires_in_seconds: Optional[int] = Unassigned(),
-        landing_uri: Optional[StrPipeVar] = Unassigned(),
-        is_dual_stack_endpoint: Optional[bool] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["PresignedDomainUrlWithPrincipalTag"]:
-        """
-        Create a PresignedDomainUrlWithPrincipalTag resource
-
-        Parameters:
-            domain_id:
-            session_expiration_duration_in_seconds:
-            expires_in_seconds:
-            landing_uri:
-            is_dual_stack_endpoint:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The PresignedDomainUrlWithPrincipalTag resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "DomainId": domain_id,
-            "SessionExpirationDurationInSeconds": session_expiration_duration_in_seconds,
-            "ExpiresInSeconds": expires_in_seconds,
-            "LandingUri": landing_uri,
-            "isDualStackEndpoint": is_dual_stack_endpoint,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_presigned_domain_url_with_principal_tag API")
-        response = client.create_presigned_domain_url_with_principal_tag(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(
-            response, "CreatePresignedDomainUrlWithPrincipalTagResponse"
-        )
-        return cls(**operation_input_args, **transformed_response)
-
-
 class PresignedMlflowAppUrl(Base):
     """
     Class representing resource PresignedMlflowAppUrl
 
     Attributes:
-        arn:
-        expires_in_seconds:
-        session_expiration_duration_in_seconds:
-        authorized_url:
+        arn: The ARN of the MLflow App to connect to your MLflow UI.
+        expires_in_seconds: The duration in seconds that your presigned URL is valid. The presigned URL can be used only once.
+        session_expiration_duration_in_seconds: The duration in seconds that your presigned URL is valid. The presigned URL can be used only once.
+        authorized_url: A presigned URL with an authorization token.
 
     """
 
@@ -31523,9 +28352,9 @@ class PresignedMlflowAppUrl(Base):
         Create a PresignedMlflowAppUrl resource
 
         Parameters:
-            arn:
-            expires_in_seconds:
-            session_expiration_duration_in_seconds:
+            arn: The ARN of the MLflow App to connect to your MLflow UI.
+            expires_in_seconds: The duration in seconds that your presigned URL is valid. The presigned URL can be used only once.
+            session_expiration_duration_in_seconds: The duration in seconds that your presigned URL is valid. The presigned URL can be used only once.
             session: Boto3 session.
             region: Region name.
 
@@ -31772,8 +28601,6 @@ class ProcessingJob(Base):
         processing_end_time: The time at which the processing job completed.
         processing_start_time: The time at which the processing job started.
         last_modified_time: The time at which the processing job was last modified.
-        last_modified_by:
-        created_by:
         monitoring_schedule_arn: The ARN of a monitoring schedule for an endpoint associated with this processing job.
         auto_ml_job_arn: The ARN of an AutoML job associated with this processing job.
         training_job_arn: The ARN of a training job associated with this processing job.
@@ -31798,8 +28625,6 @@ class ProcessingJob(Base):
     processing_start_time: Optional[datetime.datetime] = Unassigned()
     last_modified_time: Optional[datetime.datetime] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_by: Optional[UserContext] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
     monitoring_schedule_arn: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
     training_job_arn: Optional[StrPipeVar] = Unassigned()
@@ -31860,7 +28685,6 @@ class ProcessingJob(Base):
         environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         network_config: Optional[NetworkConfig] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        workflow_type: Optional[StrPipeVar] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -31879,7 +28703,6 @@ class ProcessingJob(Base):
             environment: The environment variables to set in the Docker container. Up to 100 key and values entries in the map are supported.  Do not include any security-sensitive information including account access IDs, secrets, or tokens in any environment fields. As part of the shared responsibility model, you are responsible for any potential exposure, unauthorized access, or compromise of your sensitive data if caused by security-sensitive information included in the request environment variable or plain text fields.
             network_config: Networking options for a processing job, such as whether to allow inbound and outbound network calls to and from processing containers, and the VPC subnets and security groups to use for VPC-enabled processing jobs.
             tags: (Optional) An array of key-value pairs. For more information, see Using Cost Allocation Tags in the Amazon Web Services Billing and Cost Management User Guide.  Do not include any security-sensitive information including account access IDs, secrets, or tokens in any tags. As part of the shared responsibility model, you are responsible for any potential exposure, unauthorized access, or compromise of your sensitive data if caused by security-sensitive information included in the request tag variable or plain text fields.
-            workflow_type:
             experiment_config:
             session: Boto3 session.
             region: Region name.
@@ -31921,7 +28744,6 @@ class ProcessingJob(Base):
             "NetworkConfig": network_config,
             "RoleArn": role_arn,
             "Tags": tags,
-            "WorkflowType": workflow_type,
             "ExperimentConfig": experiment_config,
         }
 
@@ -32080,7 +28902,7 @@ class ProcessingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "ProcessingJobName": self.processing_job_name,
@@ -32164,7 +28986,11 @@ class ProcessingJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="ProcessingJob", status=current_status)
+                    raise TimeoutExceededError(
+                        resource_type="ProcessingJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
+                    )
                 time.sleep(poll)
 
     @classmethod
@@ -32242,308 +29068,7 @@ class ProcessingJob(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
-class ProcessingJobInternal(Base):
-    """
-    Class representing resource ProcessingJobInternal
 
-    Attributes:
-        processing_job_name:
-        processing_resources:
-        app_specification:
-        role_arn:
-        customer_details:
-        processing_inputs:
-        processing_output_config:
-        stopping_condition:
-        environment:
-        network_config:
-        tags:
-        billing_option:
-        billing_mode:
-        upstream_processing_output_config:
-        monitoring_schedule_arn:
-        auto_ml_job_arn:
-        training_job_arn:
-        state_machine_arn_provider_lambda_arn:
-        fas_credentials:
-        platform_credential_token:
-        customer_credential_token:
-        credential_provider_function:
-        credential_provider_encryption_key:
-        workflow_type:
-        session_tags:
-        source_identity:
-        fas_source_arn:
-        fas_source_account:
-        experiment_config:
-        identity_center_user_token:
-        processing_job_response:
-
-    """
-
-    processing_job_name: Union[StrPipeVar, object]
-    processing_resources: ProcessingResources
-    app_specification: AppSpecification
-    role_arn: StrPipeVar
-    customer_details: CustomerDetails
-    processing_inputs: Optional[List[ProcessingInputInternal]] = Unassigned()
-    processing_output_config: Optional[ProcessingOutputConfig] = Unassigned()
-    stopping_condition: Optional[ProcessingStoppingCondition] = Unassigned()
-    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    network_config: Optional[NetworkConfig] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    billing_option: Optional[StrPipeVar] = Unassigned()
-    billing_mode: Optional[StrPipeVar] = Unassigned()
-    upstream_processing_output_config: Optional[UpstreamProcessingOutputConfig] = Unassigned()
-    monitoring_schedule_arn: Optional[StrPipeVar] = Unassigned()
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    training_job_arn: Optional[StrPipeVar] = Unassigned()
-    state_machine_arn_provider_lambda_arn: Optional[StrPipeVar] = Unassigned()
-    fas_credentials: Optional[StrPipeVar] = Unassigned()
-    platform_credential_token: Optional[StrPipeVar] = Unassigned()
-    customer_credential_token: Optional[StrPipeVar] = Unassigned()
-    credential_provider_function: Optional[StrPipeVar] = Unassigned()
-    credential_provider_encryption_key: Optional[StrPipeVar] = Unassigned()
-    workflow_type: Optional[StrPipeVar] = Unassigned()
-    session_tags: Optional[List[Tag]] = Unassigned()
-    source_identity: Optional[StrPipeVar] = Unassigned()
-    fas_source_arn: Optional[StrPipeVar] = Unassigned()
-    fas_source_account: Optional[StrPipeVar] = Unassigned()
-    experiment_config: Optional[ExperimentConfig] = Unassigned()
-    identity_center_user_token: Optional[IdentityCenterUserToken] = Unassigned()
-    processing_job_response: Optional[CreateProcessingJobResponse] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "processing_job_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object processing_job_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        processing_job_name: Union[StrPipeVar, object],
-        processing_resources: ProcessingResources,
-        app_specification: AppSpecification,
-        role_arn: StrPipeVar,
-        customer_details: CustomerDetails,
-        processing_inputs: Optional[List[ProcessingInputInternal]] = Unassigned(),
-        processing_output_config: Optional[ProcessingOutputConfig] = Unassigned(),
-        stopping_condition: Optional[ProcessingStoppingCondition] = Unassigned(),
-        environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        network_config: Optional[NetworkConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        billing_option: Optional[StrPipeVar] = Unassigned(),
-        billing_mode: Optional[StrPipeVar] = Unassigned(),
-        upstream_processing_output_config: Optional[UpstreamProcessingOutputConfig] = Unassigned(),
-        monitoring_schedule_arn: Optional[StrPipeVar] = Unassigned(),
-        auto_ml_job_arn: Optional[StrPipeVar] = Unassigned(),
-        training_job_arn: Optional[StrPipeVar] = Unassigned(),
-        state_machine_arn_provider_lambda_arn: Optional[StrPipeVar] = Unassigned(),
-        fas_credentials: Optional[StrPipeVar] = Unassigned(),
-        platform_credential_token: Optional[StrPipeVar] = Unassigned(),
-        customer_credential_token: Optional[StrPipeVar] = Unassigned(),
-        credential_provider_function: Optional[StrPipeVar] = Unassigned(),
-        credential_provider_encryption_key: Optional[StrPipeVar] = Unassigned(),
-        workflow_type: Optional[StrPipeVar] = Unassigned(),
-        session_tags: Optional[List[Tag]] = Unassigned(),
-        source_identity: Optional[StrPipeVar] = Unassigned(),
-        fas_source_arn: Optional[StrPipeVar] = Unassigned(),
-        fas_source_account: Optional[StrPipeVar] = Unassigned(),
-        experiment_config: Optional[ExperimentConfig] = Unassigned(),
-        identity_center_user_token: Optional[IdentityCenterUserToken] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["ProcessingJobInternal"]:
-        """
-        Create a ProcessingJobInternal resource
-
-        Parameters:
-            processing_job_name:
-            processing_resources:
-            app_specification:
-            role_arn:
-            customer_details:
-            processing_inputs:
-            processing_output_config:
-            stopping_condition:
-            environment:
-            network_config:
-            tags:
-            billing_option:
-            billing_mode:
-            upstream_processing_output_config:
-            monitoring_schedule_arn:
-            auto_ml_job_arn:
-            training_job_arn:
-            state_machine_arn_provider_lambda_arn:
-            fas_credentials:
-            platform_credential_token:
-            customer_credential_token:
-            credential_provider_function:
-            credential_provider_encryption_key:
-            workflow_type:
-            session_tags:
-            source_identity:
-            fas_source_arn:
-            fas_source_account:
-            experiment_config:
-            identity_center_user_token:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The ProcessingJobInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "ProcessingInputs": processing_inputs,
-            "ProcessingOutputConfig": processing_output_config,
-            "ProcessingJobName": processing_job_name,
-            "ProcessingResources": processing_resources,
-            "StoppingCondition": stopping_condition,
-            "AppSpecification": app_specification,
-            "Environment": environment,
-            "NetworkConfig": network_config,
-            "RoleArn": role_arn,
-            "Tags": tags,
-            "BillingOption": billing_option,
-            "BillingMode": billing_mode,
-            "CustomerDetails": customer_details,
-            "UpstreamProcessingOutputConfig": upstream_processing_output_config,
-            "MonitoringScheduleArn": monitoring_schedule_arn,
-            "AutoMLJobArn": auto_ml_job_arn,
-            "TrainingJobArn": training_job_arn,
-            "StateMachineArnProviderLambdaArn": state_machine_arn_provider_lambda_arn,
-            "FasCredentials": fas_credentials,
-            "PlatformCredentialToken": platform_credential_token,
-            "CustomerCredentialToken": customer_credential_token,
-            "CredentialProviderFunction": credential_provider_function,
-            "CredentialProviderEncryptionKey": credential_provider_encryption_key,
-            "WorkflowType": workflow_type,
-            "SessionTags": session_tags,
-            "SourceIdentity": source_identity,
-            "FasSourceArn": fas_source_arn,
-            "FasSourceAccount": fas_source_account,
-            "ExperimentConfig": experiment_config,
-            "IdentityCenterUserToken": identity_center_user_token,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_processing_job_internal API")
-        response = client.create_processing_job_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateProcessingJobInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-    @Base.add_validate_call
-    def delete(
-        self,
-        processing_job_arn: Optional[StrPipeVar] = Unassigned(),
-        associated_parent_job_arn: Optional[StrPipeVar] = Unassigned(),
-    ) -> None:
-        """
-        Delete a ProcessingJobInternal resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "ProcessingJobName": self.processing_job_name,
-            "CustomerDetails": self.customer_details,
-            "ProcessingJobArn": processing_job_arn,
-            "AssociatedParentJobArn": associated_parent_job_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_processing_job_internal(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
-    def stop(self) -> None:
-        """
-        Stop a ProcessingJobInternal resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = SageMakerClient().client
-
-        operation_input_args = {
-            "ProcessingJobName": self.processing_job_name,
-            "CustomerDetails": self.customer_details,
-            "Payer": self.payer,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.stop_processing_job_internal(**operation_input_args)
-
-        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
-
-'''
 class Project(Base):
     """
     Class representing resource Project
@@ -32606,7 +29131,6 @@ class Project(Base):
         ] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         template_providers: Optional[List[CreateTemplateProvider]] = Unassigned(),
-        workflow_disabled: Optional[bool] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> Optional["Project"]:
@@ -32619,7 +29143,6 @@ class Project(Base):
             service_catalog_provisioning_details: The product ID and provisioning artifact ID to provision a service catalog. The provisioning artifact ID will default to the latest provisioning artifact ID of the product, if you don't provide the provisioning artifact ID. For more information, see What is Amazon Web Services Service Catalog.
             tags: An array of key-value pairs that you want to use to organize and track your Amazon Web Services resource costs. For more information, see Tagging Amazon Web Services resources in the Amazon Web Services General Reference Guide.
             template_providers:  An array of template provider configurations for creating infrastructure resources for the project.
-            workflow_disabled:
             session: Boto3 session.
             region: Region name.
 
@@ -32653,7 +29176,6 @@ class Project(Base):
             "ServiceCatalogProvisioningDetails": service_catalog_provisioning_details,
             "Tags": tags,
             "TemplateProviders": template_providers,
-            "WorkflowDisabled": workflow_disabled,
         }
 
         operation_input_args = Base.populate_chained_attributes(
@@ -32766,7 +29288,6 @@ class Project(Base):
         ] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
         template_providers_to_update: Optional[List[UpdateTemplateProvider]] = Unassigned(),
-        workflow_disabled: Optional[bool] = Unassigned(),
     ) -> Optional["Project"]:
         """
         Update a Project resource
@@ -32775,7 +29296,6 @@ class Project(Base):
             service_catalog_provisioning_update_details: The product ID and provisioning artifact ID to provision a service catalog. The provisioning artifact ID will default to the latest provisioning artifact ID of the product, if you don't provide the provisioning artifact ID. For more information, see What is Amazon Web Services Service Catalog.
             tags: An array of key-value pairs. You can use tags to categorize your Amazon Web Services resources in different ways, for example, by purpose, owner, or environment. For more information, see Tagging Amazon Web Services Resources. In addition, the project must have tag update constraints set in order to include this parameter in the request. For more information, see Amazon Web Services Service Catalog Tag Update Constraints.
             template_providers_to_update:  The template providers to update in the project.
-            workflow_disabled:
 
         Returns:
             The Project resource.
@@ -32802,7 +29322,6 @@ class Project(Base):
             "ServiceCatalogProvisioningUpdateDetails": service_catalog_provisioning_update_details,
             "Tags": tags,
             "TemplateProvidersToUpdate": template_providers_to_update,
-            "WorkflowDisabled": workflow_disabled,
         }
         logger.debug(f"Input request: {operation_input_args}")
         # serialize the input request
@@ -32913,7 +29432,7 @@ class Project(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Project", status=current_status)
+                    raise TimeoutExceededError(resource_type="Project", status=current_status)
                 time.sleep(poll)
 
     @classmethod
@@ -32925,7 +29444,6 @@ class Project(Base):
         name_contains: Optional[StrPipeVar] = Unassigned(),
         sort_by: Optional[StrPipeVar] = Unassigned(),
         sort_order: Optional[StrPipeVar] = Unassigned(),
-        project_status: Optional[StrPipeVar] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
     ) -> ResourceIterator["Project"]:
@@ -32940,7 +29458,6 @@ class Project(Base):
             next_token: If the result of the previous ListProjects request was truncated, the response includes a NextToken. To retrieve the next set of projects, use the token in the next request.
             sort_by: The field by which to sort results. The default is CreationTime.
             sort_order: The sort order for results. The default is Ascending.
-            project_status:
             session: Boto3 session.
             region: Region name.
 
@@ -32969,7 +29486,6 @@ class Project(Base):
             "NameContains": name_contains,
             "SortBy": sort_by,
             "SortOrder": sort_order,
-            "ProjectStatus": project_status,
         }
 
         # serialize the input request
@@ -32982,546 +29498,6 @@ class Project(Base):
             summaries_key="ProjectSummaryList",
             summary_name="ProjectSummary",
             resource_cls=Project,
-            list_method_kwargs=operation_input_args,
-        )
-
-
-class QuotaAllocation(Base):
-    """
-    Class representing resource QuotaAllocation
-
-    Attributes:
-        quota_allocation_arn:
-        quota_id:
-        quota_allocation_name:
-        quota_allocation_version:
-        quota_allocation_status:
-        cluster_arn:
-        quota_resources:
-        over_quota:
-        preemption_config:
-        activation_state:
-        quota_allocation_target:
-        creation_time:
-        created_by:
-        failure_reason:
-        quota_allocation_description:
-        last_modified_time:
-        last_modified_by:
-
-    """
-
-    quota_allocation_arn: StrPipeVar
-    quota_id: Optional[StrPipeVar] = Unassigned()
-    quota_allocation_name: Optional[StrPipeVar] = Unassigned()
-    quota_allocation_version: Optional[int] = Unassigned()
-    quota_allocation_status: Optional[StrPipeVar] = Unassigned()
-    failure_reason: Optional[StrPipeVar] = Unassigned()
-    cluster_arn: Optional[StrPipeVar] = Unassigned()
-    quota_resources: Optional[List[QuotaResourceConfig]] = Unassigned()
-    over_quota: Optional[OverQuota] = Unassigned()
-    preemption_config: Optional[PreemptionConfig] = Unassigned()
-    activation_state: Optional[ActivationStateV1] = Unassigned()
-    quota_allocation_target: Optional[QuotaAllocationTarget] = Unassigned()
-    quota_allocation_description: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
-    last_modified_time: Optional[datetime.datetime] = Unassigned()
-    last_modified_by: Optional[UserContext] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "quota_allocation_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object quota_allocation")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        quota_allocation_name: StrPipeVar,
-        cluster_arn: StrPipeVar,
-        quota_resources: List[QuotaResourceConfig],
-        quota_allocation_target: QuotaAllocationTarget,
-        over_quota: Optional[OverQuota] = Unassigned(),
-        preemption_config: Optional[PreemptionConfig] = Unassigned(),
-        activation_state: Optional[ActivationStateV1] = Unassigned(),
-        quota_allocation_description: Optional[StrPipeVar] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["QuotaAllocation"]:
-        """
-        Create a QuotaAllocation resource
-
-        Parameters:
-            quota_allocation_name:
-            cluster_arn:
-            quota_resources:
-            quota_allocation_target:
-            over_quota:
-            preemption_config:
-            activation_state:
-            quota_allocation_description:
-            tags:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The QuotaAllocation resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating quota_allocation resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "QuotaAllocationName": quota_allocation_name,
-            "ClusterArn": cluster_arn,
-            "QuotaResources": quota_resources,
-            "OverQuota": over_quota,
-            "QuotaAllocationTarget": quota_allocation_target,
-            "PreemptionConfig": preemption_config,
-            "ActivationState": activation_state,
-            "QuotaAllocationDescription": quota_allocation_description,
-            "Tags": tags,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="QuotaAllocation", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_quota_allocation(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(
-            quota_allocation_arn=response["QuotaAllocationArn"], session=session, region=region
-        )
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        quota_allocation_arn: StrPipeVar,
-        quota_allocation_version: Optional[int] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["QuotaAllocation"]:
-        """
-        Get a QuotaAllocation resource
-
-        Parameters:
-            quota_allocation_arn:
-            quota_allocation_version:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The QuotaAllocation resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "QuotaAllocationArn": quota_allocation_arn,
-            "QuotaAllocationVersion": quota_allocation_version,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_quota_allocation(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeQuotaAllocationResponse")
-        quota_allocation = cls(**transformed_response)
-        return quota_allocation
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-    ) -> Optional["QuotaAllocation"]:
-        """
-        Refresh a QuotaAllocation resource
-
-        Returns:
-            The QuotaAllocation resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        operation_input_args = {
-            "QuotaAllocationArn": self.quota_allocation_arn,
-            "QuotaAllocationVersion": self.quota_allocation_version,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_quota_allocation(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeQuotaAllocationResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def update(
-        self,
-        quota_allocation_version: Optional[int] = Unassigned(),
-        quota_resources: Optional[List[QuotaResourceConfig]] = Unassigned(),
-        over_quota: Optional[OverQuota] = Unassigned(),
-        preemption_config: Optional[PreemptionConfig] = Unassigned(),
-        activation_state: Optional[ActivationStateV1] = Unassigned(),
-        quota_allocation_target: Optional[QuotaAllocationTarget] = Unassigned(),
-        quota_allocation_description: Optional[StrPipeVar] = Unassigned(),
-    ) -> Optional["QuotaAllocation"]:
-        """
-        Update a QuotaAllocation resource
-
-        Returns:
-            The QuotaAllocation resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        logger.info("Updating quota_allocation resource.")
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "QuotaAllocationArn": self.quota_allocation_arn,
-            "QuotaAllocationVersion": quota_allocation_version,
-            "QuotaResources": quota_resources,
-            "OverQuota": over_quota,
-            "PreemptionConfig": preemption_config,
-            "ActivationState": activation_state,
-            "QuotaAllocationTarget": quota_allocation_target,
-            "QuotaAllocationDescription": quota_allocation_description,
-        }
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.update_quota_allocation(**operation_input_args)
-        logger.debug(f"Response: {response}")
-        self.refresh()
-
-        return self
-
-    @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a QuotaAllocation resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "QuotaAllocationArn": self.quota_allocation_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_quota_allocation(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
-    def wait_for_status(
-        self,
-        target_status: Literal[
-            "Creating",
-            "CreateFailed",
-            "CreateRollbackFailed",
-            "Created",
-            "Updating",
-            "UpdateFailed",
-            "UpdateRollbackFailed",
-            "Updated",
-            "Deleting",
-            "DeleteFailed",
-            "DeleteRollbackFailed",
-            "Deleted",
-        ],
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a QuotaAllocation resource to reach certain status.
-
-        Parameters:
-            target_status: The status to wait for.
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            FailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-        """
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task(f"Waiting for QuotaAllocation to reach [bold]{target_status} status...")
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            ),
-            transient=True,
-        ):
-            while True:
-                self.refresh()
-                current_status = self.quota_allocation_status
-                status.update(f"Current status: [bold]{current_status}")
-
-                if target_status == current_status:
-                    logger.info(f"Final Resource Status: [bold]{current_status}")
-                    return
-
-                if "failed" in current_status.lower():
-                    raise FailedStatusError(
-                        resource_type="QuotaAllocation",
-                        status=current_status,
-                        reason=self.failure_reason,
-                    )
-
-                if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(
-                        resouce_type="QuotaAllocation", status=current_status
-                    )
-                time.sleep(poll)
-
-    @Base.add_validate_call
-    def wait_for_delete(
-        self,
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a QuotaAllocation resource to be deleted.
-
-        Parameters:
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            DeleteFailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-        """
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task("Waiting for QuotaAllocation to be deleted...")
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            )
-        ):
-            while True:
-                try:
-                    self.refresh()
-                    current_status = self.quota_allocation_status
-                    status.update(f"Current status: [bold]{current_status}")
-
-                    if current_status.lower() == "deleted":
-                        logger.info("Resource was deleted.")
-                        return
-
-                    if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(
-                            resouce_type="QuotaAllocation", status=current_status
-                        )
-                except botocore.exceptions.ClientError as e:
-                    error_code = e.response["Error"]["Code"]
-
-                    if "ResourceNotFound" in error_code or "ValidationException" in error_code:
-                        logger.info("Resource was not found. It may have been deleted.")
-                        return
-                    raise e
-                time.sleep(poll)
-
-    @classmethod
-    @Base.add_validate_call
-    def get_all(
-        cls,
-        created_after: Optional[datetime.datetime] = Unassigned(),
-        created_before: Optional[datetime.datetime] = Unassigned(),
-        name_contains: Optional[StrPipeVar] = Unassigned(),
-        quota_allocation_status: Optional[StrPipeVar] = Unassigned(),
-        cluster_arn: Optional[StrPipeVar] = Unassigned(),
-        sort_by: Optional[StrPipeVar] = Unassigned(),
-        sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> ResourceIterator["QuotaAllocation"]:
-        """
-        Get all QuotaAllocation resources
-
-        Parameters:
-            created_after:
-            created_before:
-            name_contains:
-            quota_allocation_status:
-            cluster_arn:
-            sort_by:
-            sort_order:
-            next_token:
-            max_results:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            Iterator for listed QuotaAllocation resources.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "CreatedAfter": created_after,
-            "CreatedBefore": created_before,
-            "NameContains": name_contains,
-            "QuotaAllocationStatus": quota_allocation_status,
-            "ClusterArn": cluster_arn,
-            "SortBy": sort_by,
-            "SortOrder": sort_order,
-        }
-
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        return ResourceIterator(
-            client=client,
-            list_method="list_quota_allocations",
-            summaries_key="QuotaAllocationSummaries",
-            summary_name="QuotaAllocationSummary",
-            resource_cls=QuotaAllocation,
             list_method_kwargs=operation_input_args,
         )
 
@@ -33735,367 +29711,6 @@ class SagemakerServicecatalogPortfolio(Base):
         logger.debug(f"Response: {response}")
 
         return list(response.values())[0]
-
-
-class SharedModel(Base):
-    """
-    Class representing resource SharedModel
-
-    Attributes:
-        shared_model_id:
-        shared_model_version:
-        owner:
-        creator:
-        model_artifacts:
-        comments:
-        model_name:
-        origin:
-
-    """
-
-    shared_model_id: StrPipeVar
-    shared_model_version: StrPipeVar
-    owner: Optional[StrPipeVar] = Unassigned()
-    creator: Optional[StrPipeVar] = Unassigned()
-    model_artifacts: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    comments: Optional[List[CommentEntity]] = Unassigned()
-    model_name: Optional[StrPipeVar] = Unassigned()
-    origin: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "shared_model_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object shared_model")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        reviewer_user_profiles: List[StrPipeVar],
-        model_artifacts: Dict[StrPipeVar, StrPipeVar],
-        comment: Optional[StrPipeVar] = Unassigned(),
-        model_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
-        origin: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["SharedModel"]:
-        """
-        Create a SharedModel resource
-
-        Parameters:
-            reviewer_user_profiles:
-            model_artifacts:
-            comment:
-            model_name:
-            origin:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The SharedModel resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        logger.info("Creating shared_model resource.")
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "ReviewerUserProfiles": reviewer_user_profiles,
-            "ModelArtifacts": model_artifacts,
-            "Comment": comment,
-            "ModelName": model_name,
-            "Origin": origin,
-        }
-
-        operation_input_args = Base.populate_chained_attributes(
-            resource_name="SharedModel", operation_input_args=operation_input_args
-        )
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.create_shared_model(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(
-            shared_model_id=response["SharedModelId"],
-            shared_model_version=response["SharedModelVersion"],
-            session=session,
-            region=region,
-        )
-
-    @classmethod
-    @Base.add_validate_call
-    def get(
-        cls,
-        shared_model_id: StrPipeVar,
-        shared_model_version: StrPipeVar,
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["SharedModel"]:
-        """
-        Get a SharedModel resource
-
-        Parameters:
-            shared_model_id:
-            shared_model_version:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The SharedModel resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        operation_input_args = {
-            "SharedModelId": shared_model_id,
-            "SharedModelVersion": shared_model_version,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-        response = client.describe_shared_model(**operation_input_args)
-
-        logger.debug(response)
-
-        # deserialize the response
-        transformed_response = transform(response, "DescribeSharedModelResponse")
-        shared_model = cls(**transformed_response)
-        return shared_model
-
-    @Base.add_validate_call
-    def refresh(
-        self,
-    ) -> Optional["SharedModel"]:
-        """
-        Refresh a SharedModel resource
-
-        Returns:
-            The SharedModel resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        operation_input_args = {
-            "SharedModelId": self.shared_model_id,
-            "SharedModelVersion": self.shared_model_version,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client()
-        response = client.describe_shared_model(**operation_input_args)
-
-        # deserialize response and update self
-        transform(response, "DescribeSharedModelResponse", self)
-        return self
-
-    @Base.add_validate_call
-    def update(
-        self,
-        shared_model_version: Optional[StrPipeVar] = Unassigned(),
-        comment: Optional[StrPipeVar] = Unassigned(),
-        model_artifacts: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        origin: Optional[StrPipeVar] = Unassigned(),
-    ) -> Optional["SharedModel"]:
-        """
-        Update a SharedModel resource
-
-        Parameters:
-            comment:
-
-        Returns:
-            The SharedModel resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        logger.info("Updating shared_model resource.")
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "SharedModelId": self.shared_model_id,
-            "SharedModelVersion": shared_model_version,
-            "Comment": comment,
-            "ModelArtifacts": model_artifacts,
-            "Origin": origin,
-        }
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.update_shared_model(**operation_input_args)
-        logger.debug(f"Response: {response}")
-        self.refresh()
-
-        return self
-
-    @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a SharedModel resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "SharedModelId": self.shared_model_id,
-            "SharedModelVersion": self.shared_model_version,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_shared_model(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @classmethod
-    @Base.add_validate_call
-    def get_all(
-        cls,
-        creation_time_before: Optional[datetime.datetime] = Unassigned(),
-        creation_time_after: Optional[datetime.datetime] = Unassigned(),
-        sort_by: Optional[StrPipeVar] = Unassigned(),
-        sort_order: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> ResourceIterator["SharedModel"]:
-        """
-        Get all SharedModel resources
-
-        Parameters:
-            creation_time_before:
-            creation_time_after:
-            sort_by:
-            sort_order:
-            next_token:
-            max_results:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            Iterator for listed SharedModel resources.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-        """
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        operation_input_args = {
-            "CreationTimeBefore": creation_time_before,
-            "CreationTimeAfter": creation_time_after,
-            "SortBy": sort_by,
-            "SortOrder": sort_order,
-        }
-
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        return ResourceIterator(
-            client=client,
-            list_method="list_shared_models",
-            summaries_key="SharedModels",
-            summary_name="SharedModelListEntity",
-            resource_cls=SharedModel,
-            list_method_kwargs=operation_input_args,
-        )
-
-
-class SharedModelReviewers(Base):
-    """
-    Class representing resource SharedModelReviewers
-
-    """
 
 
 class Space(Base):
@@ -34463,7 +30078,7 @@ class Space(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Space", status=current_status)
+                    raise TimeoutExceededError(resource_type="Space", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -34525,7 +30140,7 @@ class Space(Base):
                         )
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Space", status=current_status)
+                        raise TimeoutExceededError(resource_type="Space", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -35261,14 +30876,12 @@ class TrainingJob(Base):
         training_job_arn: The Amazon Resource Name (ARN) of the training job.
         model_artifacts: Information about the Amazon S3 location that is configured for storing model artifacts.
         training_job_status: The status of the training job. SageMaker provides the following training job statuses:    InProgress - The training is in progress.    Completed - The training job has completed.    Failed - The training job has failed. To see the reason for the failure, see the FailureReason field in the response to a DescribeTrainingJobResponse call.    Stopping - The training job is stopping.    Stopped - The training job has stopped.   For more detailed information, see SecondaryStatus.
-        secondary_status:  Provides detailed information about the state of the training job. For detailed information on the secondary status of the training job, see StatusMessage under SecondaryStatusTransition. SageMaker provides primary statuses and secondary statuses that apply to each of them:  InProgress     Starting - Starting the training job.    Downloading - An optional stage for algorithms that support File training input mode. It indicates that data is being downloaded to the ML storage volumes.    Training - Training is in progress.    Interrupted - The job stopped because the managed spot training instances were interrupted.     Uploading - Training is complete and the model artifacts are being uploaded to the S3 location.    Completed     Completed - The training job has completed.    Failed     Failed - The training job has failed. The reason for the failure is returned in the FailureReason field of DescribeTrainingJobResponse.    Stopped     MaxRuntimeExceeded - The job stopped because it exceeded the maximum allowed runtime.    MaxWaitTimeExceeded - The job stopped because it exceeded the maximum allowed wait time.    Stopped - The training job has stopped.    Stopping     Stopping - Stopping the training job.      Valid values for SecondaryStatus are subject to change.   We no longer support the following secondary statuses:    LaunchingMLInstances     PreparingTraining     DownloadingTrainingImage
+        secondary_status:  Provides detailed information about the state of the training job. For detailed information on the secondary status of the training job, see StatusMessage under SecondaryStatusTransition. SageMaker provides primary statuses and secondary statuses that apply to each of them:  InProgress     Starting - Starting the training job.    Pending - The training job is waiting for compute capacity or compute resource provision.    Downloading - An optional stage for algorithms that support File training input mode. It indicates that data is being downloaded to the ML storage volumes.    Training - Training is in progress.    Interrupted - The job stopped because the managed spot training instances were interrupted.     Uploading - Training is complete and the model artifacts are being uploaded to the S3 location.    Completed     Completed - The training job has completed.    Failed     Failed - The training job has failed. The reason for the failure is returned in the FailureReason field of DescribeTrainingJobResponse.    Stopped     MaxRuntimeExceeded - The job stopped because it exceeded the maximum allowed runtime.    MaxWaitTimeExceeded - The job stopped because it exceeded the maximum allowed wait time.    Stopped - The training job has stopped.    Stopping     Stopping - Stopping the training job.      Valid values for SecondaryStatus are subject to change.   We no longer support the following secondary statuses:    LaunchingMLInstances     PreparingTraining     DownloadingTrainingImage
         stopping_condition: Specifies a limit to how long a model training job can run. It also specifies how long a managed Spot training job has to complete. When the job reaches the time limit, SageMaker ends the training job. Use this API to cap model training costs. To stop a job, SageMaker sends the algorithm the SIGTERM signal, which delays job termination for 120 seconds. Algorithms can use this 120-second window to save the model artifacts, so the results of training are not lost.
         creation_time: A timestamp that indicates when the training job was created.
-        processing_job_arn:
         tuning_job_arn: The Amazon Resource Name (ARN) of the associated hyperparameter tuning job if the training job was launched by a hyperparameter tuning job.
         labeling_job_arn: The Amazon Resource Name (ARN) of the SageMaker Ground Truth labeling job that created the transform or training job.
         auto_ml_job_arn: The Amazon Resource Name (ARN) of an AutoML job.
-        training_job_output: Information about the S3 location that is configured for storing optional output.
         failure_reason: If the training job failed, the reason it failed.
         hyper_parameters: Algorithm-specific parameters.
         algorithm_specification: Information about the algorithm used for training, and algorithm metadata.
@@ -35289,44 +30902,35 @@ class TrainingJob(Base):
         checkpoint_config:
         training_time_in_seconds: The training time in seconds.
         billable_time_in_seconds: The billable time in seconds. Billable time refers to the absolute wall-clock time. Multiply BillableTimeInSeconds by the number of instances (InstanceCount) in your training cluster to get the total compute time SageMaker bills you if you run distributed training. The formula is as follows: BillableTimeInSeconds \* InstanceCount . You can calculate the savings from using managed spot training using the formula (1 - BillableTimeInSeconds / TrainingTimeInSeconds) \* 100. For example, if BillableTimeInSeconds is 100 and TrainingTimeInSeconds is 500, the savings is 80%.
-        billable_token_count:
+        billable_token_count:  The billable token count for eligible serverless training jobs.
         debug_hook_config:
         experiment_config:
         debug_rule_configurations: Configuration information for Amazon SageMaker Debugger rules for debugging output tensors.
         tensor_board_output_config:
         debug_rule_evaluation_statuses: Evaluation status of Amazon SageMaker Debugger rules for debugging on a training job.
-        upstream_platform_config:
         profiler_config:
         profiler_rule_configurations: Configuration information for Amazon SageMaker Debugger rules for profiling system and framework metrics.
         profiler_rule_evaluation_statuses: Evaluation status of Amazon SageMaker Debugger rules for profiling on a training job.
         profiling_status: Profiling status of a training job.
         environment: The environment variables to set in the Docker container.  Do not include any security-sensitive information including account access IDs, secrets, or tokens in any environment fields. As part of the shared responsibility model, you are responsible for any potential exposure, unauthorized access, or compromise of your sensitive data if caused by security-sensitive information included in the request environment variable or plain text fields.
         retry_strategy: The number of times to retry the job when the job fails due to an InternalServerError.
-        last_modified_by:
-        created_by:
-        disable_efa:
-        processing_job_config:
-        image_metadata:
         remote_debug_config: Configuration for remote debugging. To learn more about the remote debugging functionality of SageMaker, see Access a training container through Amazon Web Services Systems Manager (SSM) for remote debugging.
-        resource_tags:
         infra_check_config: Contains information about the infrastructure health check configuration for the training job.
-        serverless_job_config:
-        mlflow_config:
-        model_package_config:
-        mlflow_details:
-        progress_info:
-        output_model_package_arn:
+        serverless_job_config:  The configuration for serverless training jobs.
+        mlflow_config:  The MLflow configuration using SageMaker managed MLflow.
+        model_package_config:  The configuration for the model package.
+        mlflow_details:  The MLflow details of this job.
+        progress_info:  The Serverless training job progress information.
+        output_model_package_arn:  The Amazon Resource Name (ARN) of the output model package containing model weights or checkpoints.
 
     """
 
     training_job_name: StrPipeVar
     training_job_arn: Optional[StrPipeVar] = Unassigned()
-    processing_job_arn: Optional[StrPipeVar] = Unassigned()
     tuning_job_arn: Optional[StrPipeVar] = Unassigned()
     labeling_job_arn: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
     model_artifacts: Optional[ModelArtifacts] = Unassigned()
-    training_job_output: Optional[TrainingJobOutput] = Unassigned()
     training_job_status: Optional[StrPipeVar] = Unassigned()
     secondary_status: Optional[StrPipeVar] = Unassigned()
     failure_reason: Optional[StrPipeVar] = Unassigned()
@@ -35357,20 +30961,13 @@ class TrainingJob(Base):
     debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = Unassigned()
     tensor_board_output_config: Optional[TensorBoardOutputConfig] = Unassigned()
     debug_rule_evaluation_statuses: Optional[List[DebugRuleEvaluationStatus]] = Unassigned()
-    upstream_platform_config: Optional[UpstreamPlatformConfig] = Unassigned()
     profiler_config: Optional[ProfilerConfig] = Unassigned()
     profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = Unassigned()
     profiler_rule_evaluation_statuses: Optional[List[ProfilerRuleEvaluationStatus]] = Unassigned()
     profiling_status: Optional[StrPipeVar] = Unassigned()
     environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
     retry_strategy: Optional[RetryStrategy] = Unassigned()
-    last_modified_by: Optional[UserContext] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
-    disable_efa: Optional[bool] = Unassigned()
-    processing_job_config: Optional[ProcessingJobConfig] = Unassigned()
-    image_metadata: Optional[ImageMetadata] = Unassigned()
     remote_debug_config: Optional[RemoteDebugConfig] = Unassigned()
-    resource_tags: Optional[ResourceTags] = Unassigned()
     infra_check_config: Optional[InfraCheckConfig] = Unassigned()
     serverless_job_config: Optional[ServerlessJobConfig] = Unassigned()
     mlflow_config: Optional[MlflowConfig] = Unassigned()
@@ -35400,12 +30997,12 @@ class TrainingJob(Base):
         def wrapper(*args, **kwargs):
             config_schema_for_resource = {
                 "model_artifacts": {"s3_model_artifacts": {"type": "string"}},
-                "resource_config": {"volume_kms_key_id": {"type": "string"}},
                 "role_arn": {"type": "string"},
                 "output_data_config": {
                     "s3_output_path": {"type": "string"},
                     "kms_key_id": {"type": "string"},
                 },
+                "resource_config": {"volume_kms_key_id": {"type": "string"}},
                 "vpc_config": {
                     "security_group_ids": {"type": "array", "items": {"type": "string"}},
                     "subnets": {"type": "array", "items": {"type": "string"}},
@@ -35434,13 +31031,11 @@ class TrainingJob(Base):
         output_data_config: OutputDataConfig,
         hyper_parameters: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         algorithm_specification: Optional[AlgorithmSpecification] = Unassigned(),
-        chained_customer_role_arn: Optional[StrPipeVar] = Unassigned(),
         input_data_config: Optional[List[Channel]] = Unassigned(),
         resource_config: Optional[ResourceConfig] = Unassigned(),
         vpc_config: Optional[VpcConfig] = Unassigned(),
         stopping_condition: Optional[StoppingCondition] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        resource_tags: Optional[ResourceTags] = Unassigned(),
         enable_network_isolation: Optional[bool] = Unassigned(),
         enable_inter_container_traffic_encryption: Optional[bool] = Unassigned(),
         enable_managed_spot_training: Optional[bool] = Unassigned(),
@@ -35449,23 +31044,15 @@ class TrainingJob(Base):
         debug_rule_configurations: Optional[List[DebugRuleConfiguration]] = Unassigned(),
         tensor_board_output_config: Optional[TensorBoardOutputConfig] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
-        upstream_platform_config: Optional[UpstreamPlatformConfig] = Unassigned(),
         profiler_config: Optional[ProfilerConfig] = Unassigned(),
         profiler_rule_configurations: Optional[List[ProfilerRuleConfiguration]] = Unassigned(),
-        disable_efa: Optional[bool] = Unassigned(),
         environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
         retry_strategy: Optional[RetryStrategy] = Unassigned(),
-        upstream_assume_role_source_arn: Optional[StrPipeVar] = Unassigned(),
-        upstream_assume_role_source_account: Optional[StrPipeVar] = Unassigned(),
-        on_hold_cluster_id: Optional[StrPipeVar] = Unassigned(),
-        target_compute_cell_account_id: Optional[StrPipeVar] = Unassigned(),
-        training_job_arn: Optional[StrPipeVar] = Unassigned(),
         remote_debug_config: Optional[RemoteDebugConfig] = Unassigned(),
         infra_check_config: Optional[InfraCheckConfig] = Unassigned(),
         session_chaining_config: Optional[SessionChainingConfig] = Unassigned(),
         serverless_job_config: Optional[ServerlessJobConfig] = Unassigned(),
         mlflow_config: Optional[MlflowConfig] = Unassigned(),
-        with_warm_pool_validation_error: Optional[bool] = Unassigned(),
         model_package_config: Optional[ModelPackageConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -35479,13 +31066,11 @@ class TrainingJob(Base):
             output_data_config: Specifies the path to the S3 location where you want to store model artifacts. SageMaker creates subfolders for the artifacts.
             hyper_parameters: Algorithm-specific parameters that influence the quality of the model. You set hyperparameters before you start the learning process. For a list of hyperparameters for each training algorithm provided by SageMaker, see Algorithms.  You can specify a maximum of 100 hyperparameters. Each hyperparameter is a key-value pair. Each key and value is limited to 256 characters, as specified by the Length Constraint.   Do not include any security-sensitive information including account access IDs, secrets, or tokens in any hyperparameter fields. As part of the shared responsibility model, you are responsible for any potential exposure, unauthorized access, or compromise of your sensitive data if caused by any security-sensitive information included in the request hyperparameter variable or plain text fields.
             algorithm_specification: The registry path of the Docker image that contains the training algorithm and algorithm-specific metadata, including the input mode. For more information about algorithms provided by SageMaker, see Algorithms. For information about providing your own algorithms, see Using Your Own Algorithms with Amazon SageMaker.
-            chained_customer_role_arn:
             input_data_config: An array of Channel objects. Each channel is a named input source. InputDataConfig describes the input data and its location.  Algorithms can accept input data from one or more channels. For example, an algorithm might have two channels of input data, training_data and validation_data. The configuration for each channel provides the S3, EFS, or FSx location where the input data is stored. It also provides information about the stored data: the MIME type, compression method, and whether the data is wrapped in RecordIO format.  Depending on the input mode that the algorithm supports, SageMaker either copies input data files from an S3 bucket to a local directory in the Docker container, or makes it available as input streams. For example, if you specify an EFS location, input data files are available as input streams. They do not need to be downloaded. Your input must be in the same Amazon Web Services region as your training job.
             resource_config: The resources, including the ML compute instances and ML storage volumes, to use for model training.  ML storage volumes store model artifacts and incremental states. Training algorithms might also use ML storage volumes for scratch space. If you want SageMaker to use the ML storage volume to store the training data, choose File as the TrainingInputMode in the algorithm specification. For distributed training algorithms, specify an instance count greater than 1.
             vpc_config: A VpcConfig object that specifies the VPC that you want your training job to connect to. Control access to and from your training container by configuring the VPC. For more information, see Protect Training Jobs by Using an Amazon Virtual Private Cloud.
             stopping_condition: Specifies a limit to how long a model training job can run. It also specifies how long a managed Spot training job has to complete. When the job reaches the time limit, SageMaker ends the training job. Use this API to cap model training costs. To stop a job, SageMaker sends the algorithm the SIGTERM signal, which delays job termination for 120 seconds. Algorithms can use this 120-second window to save the model artifacts, so the results of training are not lost.
             tags: An array of key-value pairs. You can use tags to categorize your Amazon Web Services resources in different ways, for example, by purpose, owner, or environment. For more information, see Tagging Amazon Web Services Resources.  Do not include any security-sensitive information including account access IDs, secrets, or tokens in any tags. As part of the shared responsibility model, you are responsible for any potential exposure, unauthorized access, or compromise of your sensitive data if caused by any security-sensitive information included in the request tag variable or plain text fields.
-            resource_tags:
             enable_network_isolation: Isolates the training container. No inbound or outbound network calls can be made, except for calls between peers within a training cluster for distributed training. If you enable network isolation for training jobs that are configured to use a VPC, SageMaker downloads and uploads customer data and model artifacts through the specified VPC, but the training container does not have network access.
             enable_inter_container_traffic_encryption: To encrypt all communications between ML compute instances in distributed training, choose True. Encryption provides greater security for distributed training, but training might take longer. How long it takes depends on the amount of communication between compute instances, especially if you use a deep learning algorithm in distributed training. For more information, see Protect Communications Between ML Compute Instances in a Distributed Training Job.
             enable_managed_spot_training: To train models using managed spot training, choose True. Managed spot training provides a fully managed and scalable infrastructure for training machine learning models. this option is useful when training jobs can be interrupted and when there is flexibility when the training job is run.  The complete and intermediate results of jobs are stored in an Amazon S3 bucket, and can be used as a starting point to train models incrementally. Amazon SageMaker provides metrics and logs in CloudWatch. They can be used to see when managed spot training jobs are running, interrupted, resumed, or completed.
@@ -35494,24 +31079,16 @@ class TrainingJob(Base):
             debug_rule_configurations: Configuration information for Amazon SageMaker Debugger rules for debugging output tensors.
             tensor_board_output_config:
             experiment_config:
-            upstream_platform_config:
             profiler_config:
             profiler_rule_configurations: Configuration information for Amazon SageMaker Debugger rules for profiling system and framework metrics.
-            disable_efa:
             environment: The environment variables to set in the Docker container.  Do not include any security-sensitive information including account access IDs, secrets, or tokens in any environment fields. As part of the shared responsibility model, you are responsible for any potential exposure, unauthorized access, or compromise of your sensitive data if caused by security-sensitive information included in the request environment variable or plain text fields.
             retry_strategy: The number of times to retry the job when the job fails due to an InternalServerError.
-            upstream_assume_role_source_arn:
-            upstream_assume_role_source_account:
-            on_hold_cluster_id:
-            target_compute_cell_account_id:
-            training_job_arn:
             remote_debug_config: Configuration for remote debugging. To learn more about the remote debugging functionality of SageMaker, see Access a training container through Amazon Web Services Systems Manager (SSM) for remote debugging.
             infra_check_config: Contains information about the infrastructure health check configuration for the training job.
             session_chaining_config: Contains information about attribute-based access control (ABAC) for the training job.
-            serverless_job_config:
-            mlflow_config:
-            with_warm_pool_validation_error:
-            model_package_config:
+            serverless_job_config:  The configuration for serverless training jobs.
+            mlflow_config:  The MLflow configuration using SageMaker managed MLflow.
+            model_package_config:  The configuration for the model package.
             session: Boto3 session.
             region: Region name.
 
@@ -35546,14 +31123,12 @@ class TrainingJob(Base):
             "HyperParameters": hyper_parameters,
             "AlgorithmSpecification": algorithm_specification,
             "RoleArn": role_arn,
-            "ChainedCustomerRoleArn": chained_customer_role_arn,
             "InputDataConfig": input_data_config,
             "OutputDataConfig": output_data_config,
             "ResourceConfig": resource_config,
             "VpcConfig": vpc_config,
             "StoppingCondition": stopping_condition,
             "Tags": tags,
-            "ResourceTags": resource_tags,
             "EnableNetworkIsolation": enable_network_isolation,
             "EnableInterContainerTrafficEncryption": enable_inter_container_traffic_encryption,
             "EnableManagedSpotTraining": enable_managed_spot_training,
@@ -35562,23 +31137,15 @@ class TrainingJob(Base):
             "DebugRuleConfigurations": debug_rule_configurations,
             "TensorBoardOutputConfig": tensor_board_output_config,
             "ExperimentConfig": experiment_config,
-            "UpstreamPlatformConfig": upstream_platform_config,
             "ProfilerConfig": profiler_config,
             "ProfilerRuleConfigurations": profiler_rule_configurations,
-            "DisableEFA": disable_efa,
             "Environment": environment,
             "RetryStrategy": retry_strategy,
-            "UpstreamAssumeRoleSourceArn": upstream_assume_role_source_arn,
-            "UpstreamAssumeRoleSourceAccount": upstream_assume_role_source_account,
-            "OnHoldClusterId": on_hold_cluster_id,
-            "TargetComputeCellAccountId": target_compute_cell_account_id,
-            "TrainingJobArn": training_job_arn,
             "RemoteDebugConfig": remote_debug_config,
             "InfraCheckConfig": infra_check_config,
             "SessionChainingConfig": session_chaining_config,
             "ServerlessJobConfig": serverless_job_config,
             "MlflowConfig": mlflow_config,
-            "WithWarmPoolValidationError": with_warm_pool_validation_error,
             "ModelPackageConfig": model_package_config,
         }
 
@@ -35788,7 +31355,7 @@ class TrainingJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "TrainingJobName": self.training_job_name,
@@ -35833,16 +31400,19 @@ class TrainingJob(Base):
         progress.add_task("Waiting for TrainingJob...")
         status = Status("Current status:")
 
-        instance_count = (
-            sum(
-                instance_group.instance_count
-                for instance_group in self.resource_config.instance_groups
-            )
-            if self.resource_config.instance_groups
-            and not isinstance(self.resource_config.instance_groups, Unassigned)
-            else self.resource_config.instance_count
-        )
-
+        instance_count = 1  # Default
+        if not isinstance(self.resource_config, Unassigned):
+            if (
+                hasattr(self.resource_config, "instance_groups")
+                and self.resource_config.instance_groups
+                and not isinstance(self.resource_config.instance_groups, Unassigned)
+            ):
+                instance_count = sum(
+                    instance_group.instance_count
+                    for instance_group in self.resource_config.instance_groups
+                )
+            elif hasattr(self.resource_config, "instance_count"):
+                instance_count = self.resource_config.instance_count
         if logs:
             multi_stream_logger = MultiLogStreamHandler(
                 log_group_name=f"/aws/sagemaker/TrainingJobs",
@@ -35881,7 +31451,11 @@ class TrainingJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrainingJob", status=current_status)
+                    raise TimeoutExceededError(
+                        resource_type="TrainingJob",
+                        status=current_status,
+                        message="Your training job is still running. Call .refresh() to check its current status.",
+                    )
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -35936,7 +31510,7 @@ class TrainingJob(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="TrainingJob", status=current_status
+                            resource_type="TrainingJob", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -36028,337 +31602,7 @@ class TrainingJob(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
-class TrainingJobInternal(Base):
-    """
-    Class representing resource TrainingJobInternal
 
-    Attributes:
-        training_job_name:
-        algorithm_specification:
-        role_arn:
-        output_data_config:
-        resource_config:
-        stopping_condition:
-        hyper_parameters:
-        chained_customer_role_arn:
-        input_data_config:
-        vpc_config:
-        tags:
-        resource_tags:
-        enable_network_isolation:
-        enable_inter_container_traffic_encryption:
-        enable_managed_spot_training:
-        checkpoint_config:
-        environment:
-        retry_strategy:
-        processing_job_config:
-        customer_details:
-        processing_job_arn:
-        tuning_job_arn:
-        labeling_job_arn:
-        auto_ml_job_arn:
-        fas_credentials:
-        state_machine_arn:
-        experiment_config:
-        upstream_platform_config:
-        disable_efa:
-        billing_mode:
-        session_tags:
-        source_identity:
-        fas_source_arn:
-        fas_source_account:
-        sts_context_map:
-        identity_center_user_token:
-        training_job_response:
-
-    """
-
-    training_job_name: Union[StrPipeVar, object]
-    algorithm_specification: AlgorithmSpecification
-    role_arn: StrPipeVar
-    output_data_config: OutputDataConfig
-    resource_config: ResourceConfig
-    stopping_condition: StoppingCondition
-    hyper_parameters: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    chained_customer_role_arn: Optional[StrPipeVar] = Unassigned()
-    input_data_config: Optional[List[Channel]] = Unassigned()
-    vpc_config: Optional[VpcConfig] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    resource_tags: Optional[ResourceTags] = Unassigned()
-    enable_network_isolation: Optional[bool] = Unassigned()
-    enable_inter_container_traffic_encryption: Optional[bool] = Unassigned()
-    enable_managed_spot_training: Optional[bool] = Unassigned()
-    checkpoint_config: Optional[CheckpointConfig] = Unassigned()
-    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    retry_strategy: Optional[RetryStrategy] = Unassigned()
-    processing_job_config: Optional[ProcessingJobConfig] = Unassigned()
-    customer_details: Optional[CustomerDetails] = Unassigned()
-    processing_job_arn: Optional[StrPipeVar] = Unassigned()
-    tuning_job_arn: Optional[StrPipeVar] = Unassigned()
-    labeling_job_arn: Optional[StrPipeVar] = Unassigned()
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    fas_credentials: Optional[StrPipeVar] = Unassigned()
-    state_machine_arn: Optional[StrPipeVar] = Unassigned()
-    experiment_config: Optional[ExperimentConfig] = Unassigned()
-    upstream_platform_config: Optional[UpstreamPlatformConfig] = Unassigned()
-    disable_efa: Optional[bool] = Unassigned()
-    billing_mode: Optional[StrPipeVar] = Unassigned()
-    session_tags: Optional[List[Tag]] = Unassigned()
-    source_identity: Optional[StrPipeVar] = Unassigned()
-    fas_source_arn: Optional[StrPipeVar] = Unassigned()
-    fas_source_account: Optional[StrPipeVar] = Unassigned()
-    sts_context_map: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    identity_center_user_token: Optional[IdentityCenterUserToken] = Unassigned()
-    training_job_response: Optional[CreateTrainingJobResponse] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "training_job_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object training_job_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        training_job_name: Union[StrPipeVar, object],
-        algorithm_specification: AlgorithmSpecification,
-        role_arn: StrPipeVar,
-        output_data_config: OutputDataConfig,
-        resource_config: ResourceConfig,
-        stopping_condition: StoppingCondition,
-        hyper_parameters: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        chained_customer_role_arn: Optional[StrPipeVar] = Unassigned(),
-        input_data_config: Optional[List[Channel]] = Unassigned(),
-        vpc_config: Optional[VpcConfig] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        resource_tags: Optional[ResourceTags] = Unassigned(),
-        enable_network_isolation: Optional[bool] = Unassigned(),
-        enable_inter_container_traffic_encryption: Optional[bool] = Unassigned(),
-        enable_managed_spot_training: Optional[bool] = Unassigned(),
-        checkpoint_config: Optional[CheckpointConfig] = Unassigned(),
-        environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        retry_strategy: Optional[RetryStrategy] = Unassigned(),
-        processing_job_config: Optional[ProcessingJobConfig] = Unassigned(),
-        customer_details: Optional[CustomerDetails] = Unassigned(),
-        processing_job_arn: Optional[StrPipeVar] = Unassigned(),
-        tuning_job_arn: Optional[StrPipeVar] = Unassigned(),
-        labeling_job_arn: Optional[StrPipeVar] = Unassigned(),
-        auto_ml_job_arn: Optional[StrPipeVar] = Unassigned(),
-        fas_credentials: Optional[StrPipeVar] = Unassigned(),
-        state_machine_arn: Optional[StrPipeVar] = Unassigned(),
-        experiment_config: Optional[ExperimentConfig] = Unassigned(),
-        upstream_platform_config: Optional[UpstreamPlatformConfig] = Unassigned(),
-        disable_efa: Optional[bool] = Unassigned(),
-        billing_mode: Optional[StrPipeVar] = Unassigned(),
-        session_tags: Optional[List[Tag]] = Unassigned(),
-        source_identity: Optional[StrPipeVar] = Unassigned(),
-        fas_source_arn: Optional[StrPipeVar] = Unassigned(),
-        fas_source_account: Optional[StrPipeVar] = Unassigned(),
-        sts_context_map: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        identity_center_user_token: Optional[IdentityCenterUserToken] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["TrainingJobInternal"]:
-        """
-        Create a TrainingJobInternal resource
-
-        Parameters:
-            training_job_name:
-            algorithm_specification:
-            role_arn:
-            output_data_config:
-            resource_config:
-            stopping_condition:
-            hyper_parameters:
-            chained_customer_role_arn:
-            input_data_config:
-            vpc_config:
-            tags:
-            resource_tags:
-            enable_network_isolation:
-            enable_inter_container_traffic_encryption:
-            enable_managed_spot_training:
-            checkpoint_config:
-            environment:
-            retry_strategy:
-            processing_job_config:
-            customer_details:
-            processing_job_arn:
-            tuning_job_arn:
-            labeling_job_arn:
-            auto_ml_job_arn:
-            fas_credentials:
-            state_machine_arn:
-            experiment_config:
-            upstream_platform_config:
-            disable_efa:
-            billing_mode:
-            session_tags:
-            source_identity:
-            fas_source_arn:
-            fas_source_account:
-            sts_context_map:
-            identity_center_user_token:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The TrainingJobInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "TrainingJobName": training_job_name,
-            "HyperParameters": hyper_parameters,
-            "AlgorithmSpecification": algorithm_specification,
-            "RoleArn": role_arn,
-            "ChainedCustomerRoleArn": chained_customer_role_arn,
-            "InputDataConfig": input_data_config,
-            "OutputDataConfig": output_data_config,
-            "ResourceConfig": resource_config,
-            "VpcConfig": vpc_config,
-            "StoppingCondition": stopping_condition,
-            "Tags": tags,
-            "ResourceTags": resource_tags,
-            "EnableNetworkIsolation": enable_network_isolation,
-            "EnableInterContainerTrafficEncryption": enable_inter_container_traffic_encryption,
-            "EnableManagedSpotTraining": enable_managed_spot_training,
-            "CheckpointConfig": checkpoint_config,
-            "Environment": environment,
-            "RetryStrategy": retry_strategy,
-            "ProcessingJobConfig": processing_job_config,
-            "CustomerDetails": customer_details,
-            "ProcessingJobArn": processing_job_arn,
-            "TuningJobArn": tuning_job_arn,
-            "LabelingJobArn": labeling_job_arn,
-            "AutoMLJobArn": auto_ml_job_arn,
-            "FasCredentials": fas_credentials,
-            "StateMachineArn": state_machine_arn,
-            "ExperimentConfig": experiment_config,
-            "UpstreamPlatformConfig": upstream_platform_config,
-            "DisableEFA": disable_efa,
-            "BillingMode": billing_mode,
-            "SessionTags": session_tags,
-            "SourceIdentity": source_identity,
-            "FasSourceArn": fas_source_arn,
-            "FasSourceAccount": fas_source_account,
-            "StsContextMap": sts_context_map,
-            "IdentityCenterUserToken": identity_center_user_token,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_training_job_internal API")
-        response = client.create_training_job_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateTrainingJobInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-    @Base.add_validate_call
-    def delete(
-        self,
-        training_job_arn: Optional[StrPipeVar] = Unassigned(),
-        associated_parent_job_arn: Optional[StrPipeVar] = Unassigned(),
-    ) -> None:
-        """
-        Delete a TrainingJobInternal resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "TrainingJobName": self.training_job_name,
-            "CustomerDetails": self.customer_details,
-            "TrainingJobArn": training_job_arn,
-            "AssociatedParentJobArn": associated_parent_job_arn,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_training_job_internal(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
-    def stop(self) -> None:
-        """
-        Stop a TrainingJobInternal resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = SageMakerClient().client
-
-        operation_input_args = {
-            "TrainingJobName": self.training_job_name,
-            "CustomerDetails": self.customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.stop_training_job_internal(**operation_input_args)
-
-        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
-
-'''
 class TrainingPlan(Base):
     """
     Class representing resource TrainingPlan
@@ -36380,9 +31624,8 @@ class TrainingPlan(Base):
         unhealthy_instance_count: The number of instances in the training plan that are currently in an unhealthy state.
         available_spare_instance_count: The number of available spare instances in the training plan.
         total_ultra_server_count: The total number of UltraServers reserved to this training plan.
-        target_resources: The target resources (e.g., SageMaker Training Jobs, SageMaker HyperPod) that can use this training plan. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.
+        target_resources: The target resources (e.g., SageMaker Training Jobs, SageMaker HyperPod, SageMaker Endpoints, Studio apps) that can use this training plan. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.   A training plan for SageMaker endpoints can be used exclusively to provide compute resources to SageMaker endpoints for model deployment.   A training plan for Studio apps can be used to launch JupyterLab and Code Editor apps on reserved training plan capacity.
         reserved_capacity_summaries: The list of Reserved Capacity providing the underlying compute resources of the plan.
-        training_plan_status_transitions:
 
     """
 
@@ -36404,7 +31647,6 @@ class TrainingPlan(Base):
     total_ultra_server_count: Optional[int] = Unassigned()
     target_resources: Optional[List[StrPipeVar]] = Unassigned()
     reserved_capacity_summaries: Optional[List[ReservedCapacitySummary]] = Unassigned()
-    training_plan_status_transitions: Optional[List[TrainingPlanStatusTransition]] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -36581,93 +31823,6 @@ class TrainingPlan(Base):
         return self
 
     @Base.add_validate_call
-    def update(
-        self,
-        max_wait_time_in_seconds: Optional[int] = Unassigned(),
-        requested_start_time: Optional[datetime.datetime] = Unassigned(),
-        requested_end_time: Optional[datetime.datetime] = Unassigned(),
-        instance_count: Optional[int] = Unassigned(),
-    ) -> Optional["TrainingPlan"]:
-        """
-        Update a TrainingPlan resource
-
-        Parameters:
-            max_wait_time_in_seconds:
-            requested_start_time:
-            requested_end_time:
-            instance_count:
-
-        Returns:
-            The TrainingPlan resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        logger.info("Updating training_plan resource.")
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "TrainingPlanName": self.training_plan_name,
-            "MaxWaitTimeInSeconds": max_wait_time_in_seconds,
-            "RequestedStartTime": requested_start_time,
-            "RequestedEndTime": requested_end_time,
-            "InstanceCount": instance_count,
-        }
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.update_training_plan(**operation_input_args)
-        logger.debug(f"Response: {response}")
-        self.refresh()
-
-        return self
-
-    @Base.add_validate_call
-    def stop(self) -> None:
-        """
-        Stop a TrainingPlan resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = SageMakerClient().client
-
-        operation_input_args = {
-            "TrainingPlanName": self.training_plan_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.stop_training_plan(**operation_input_args)
-
-        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
     def wait_for_status(
         self,
         target_status: Literal["Pending", "Active", "Scheduled", "Expired", "Failed"],
@@ -36722,71 +31877,8 @@ class TrainingPlan(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrainingPlan", status=current_status)
+                    raise TimeoutExceededError(resource_type="TrainingPlan", status=current_status)
                 time.sleep(poll)
-
-    @classmethod
-    @Base.add_validate_call
-    def load(
-        cls,
-        training_plan_arn: StrPipeVar,
-        capacity_resource_arn: StrPipeVar,
-        target_resources: List[StrPipeVar],
-        session: Optional[Session] = None,
-        region: Optional[StrPipeVar] = None,
-    ) -> Optional["TrainingPlan"]:
-        """
-        Import a TrainingPlan resource
-
-        Parameters:
-            training_plan_arn:
-            capacity_resource_arn:
-            target_resources:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The TrainingPlan resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceAlreadyExists
-            ResourceInUse: Resource being accessed is in use.
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        logger.info(f"Importing training_plan resource.")
-        client = SageMakerClient(
-            session=session, region_name=region, service_name="sagemaker"
-        ).client
-
-        operation_input_args = {
-            "TrainingPlanArn": training_plan_arn,
-            "CapacityResourceArn": capacity_resource_arn,
-            "TargetResources": target_resources,
-        }
-
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # import the resource
-        response = client.import_training_plan(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        return cls.get(
-            training_plan_name=response["TrainingPlanName"], session=session, region=region
-        )
 
     @classmethod
     @Base.add_validate_call
@@ -36879,11 +31971,8 @@ class TransformJob(Base):
         transform_end_time: Indicates when the transform job has been completed, or has stopped or failed. You are billed for the time interval between this time and the value of TransformStartTime.
         labeling_job_arn: The Amazon Resource Name (ARN) of the Amazon SageMaker Ground Truth labeling job that created the transform or training job.
         auto_ml_job_arn: The Amazon Resource Name (ARN) of the AutoML transform job.
-        transform_job_progress:
         data_processing:
         experiment_config:
-        last_modified_by:
-        created_by:
 
     """
 
@@ -36906,11 +31995,8 @@ class TransformJob(Base):
     transform_end_time: Optional[datetime.datetime] = Unassigned()
     labeling_job_arn: Optional[StrPipeVar] = Unassigned()
     auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    transform_job_progress: Optional[TransformJobProgress] = Unassigned()
     data_processing: Optional[DataProcessing] = Unassigned()
     experiment_config: Optional[ExperimentConfig] = Unassigned()
-    last_modified_by: Optional[UserContext] = Unassigned()
-    created_by: Optional[UserContext] = Unassigned()
 
     def get_name(self) -> str:
         attributes = vars(self)
@@ -36977,12 +32063,6 @@ class TransformJob(Base):
         data_capture_config: Optional[BatchDataCaptureConfig] = Unassigned(),
         data_processing: Optional[DataProcessing] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        platform_credential_token: Optional[StrPipeVar] = Unassigned(),
-        customer_credential_token: Optional[StrPipeVar] = Unassigned(),
-        data_access_credential_token: Optional[StrPipeVar] = Unassigned(),
-        data_access_vpc_config: Optional[VpcConfig] = Unassigned(),
-        credential_provider_function: Optional[StrPipeVar] = Unassigned(),
-        credential_provider_encryption_key: Optional[StrPipeVar] = Unassigned(),
         experiment_config: Optional[ExperimentConfig] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -37004,12 +32084,6 @@ class TransformJob(Base):
             data_capture_config: Configuration to control how SageMaker captures inference data.
             data_processing: The data structure used to specify the data to be used for inference in a batch transform job and to associate the data that is relevant to the prediction results in the output. The input filter provided allows you to exclude input data that is not needed for inference in a batch transform job. The output filter provided allows you to include input data relevant to interpreting the predictions in the output from the job. For more information, see Associate Prediction Results with their Corresponding Input Records.
             tags: (Optional) An array of key-value pairs. For more information, see Using Cost Allocation Tags in the Amazon Web Services Billing and Cost Management User Guide.
-            platform_credential_token:
-            customer_credential_token:
-            data_access_credential_token:
-            data_access_vpc_config:
-            credential_provider_function:
-            credential_provider_encryption_key:
             experiment_config:
             session: Boto3 session.
             region: Region name.
@@ -37054,12 +32128,6 @@ class TransformJob(Base):
             "TransformResources": transform_resources,
             "DataProcessing": data_processing,
             "Tags": tags,
-            "PlatformCredentialToken": platform_credential_token,
-            "CustomerCredentialToken": customer_credential_token,
-            "DataAccessCredentialToken": data_access_credential_token,
-            "DataAccessVpcConfig": data_access_vpc_config,
-            "CredentialProviderFunction": credential_provider_function,
-            "CredentialProviderEncryptionKey": credential_provider_encryption_key,
             "ExperimentConfig": experiment_config,
         }
 
@@ -37167,40 +32235,6 @@ class TransformJob(Base):
         return self
 
     @Base.add_validate_call
-    def delete(
-        self,
-    ) -> None:
-        """
-        Delete a TransformJob resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "TransformJobName": self.transform_job_name,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.delete_transform_job(**operation_input_args)
-
-        logger.info(f"Deleting {self.__class__.__name__} - {self.get_name()}")
-
-    @Base.add_validate_call
     def stop(self) -> None:
         """
         Stop a TransformJob resource
@@ -37218,7 +32252,7 @@ class TransformJob(Base):
             ResourceNotFound: Resource being access is not found.
         """
 
-        client = SageMakerClient().client
+        client = SageMakerClient().sagemaker_client
 
         operation_input_args = {
             "TransformJobName": self.transform_job_name,
@@ -37302,7 +32336,11 @@ class TransformJob(Base):
                     return
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="TransformJob", status=current_status)
+                    raise TimeoutExceededError(
+                        resource_type="TransformJob",
+                        status=current_status,
+                        message="Increase the timeout and try again.",
+                    )
                 time.sleep(poll)
 
     @classmethod
@@ -37380,258 +32418,7 @@ class TransformJob(Base):
             list_method_kwargs=operation_input_args,
         )
 
-'''
-class TransformJobInternal(Base):
-    """
-    Class representing resource TransformJobInternal
 
-    Attributes:
-        transform_job_name:
-        model_name:
-        transform_input:
-        transform_output:
-        transform_resources:
-        customer_details:
-        max_concurrent_transforms:
-        max_payload_in_mb:
-        model_client_config:
-        batch_strategy:
-        environment:
-        data_capture_config:
-        data_processing:
-        tags:
-        experiment_config:
-        state_machine_arn_provider_lambda_arn:
-        fas_credentials:
-        labeling_job_arn:
-        auto_ml_job_arn:
-        platform_credential_token:
-        customer_credential_token:
-        data_access_credential_token:
-        data_access_vpc_config:
-        credential_provider_function:
-        credential_provider_encryption_key:
-        billing_mode:
-        fas_source_arn:
-        fas_source_account:
-        transform_job_response:
-
-    """
-
-    transform_job_name: Union[StrPipeVar, object]
-    model_name: Union[StrPipeVar, object]
-    transform_input: TransformInput
-    transform_output: TransformOutput
-    transform_resources: TransformResources
-    customer_details: CustomerDetails
-    max_concurrent_transforms: Optional[int] = Unassigned()
-    max_payload_in_mb: Optional[int] = Unassigned()
-    model_client_config: Optional[ModelClientConfig] = Unassigned()
-    batch_strategy: Optional[StrPipeVar] = Unassigned()
-    environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
-    data_capture_config: Optional[BatchDataCaptureConfig] = Unassigned()
-    data_processing: Optional[DataProcessing] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    experiment_config: Optional[ExperimentConfig] = Unassigned()
-    state_machine_arn_provider_lambda_arn: Optional[StrPipeVar] = Unassigned()
-    fas_credentials: Optional[StrPipeVar] = Unassigned()
-    labeling_job_arn: Optional[StrPipeVar] = Unassigned()
-    auto_ml_job_arn: Optional[StrPipeVar] = Unassigned()
-    platform_credential_token: Optional[StrPipeVar] = Unassigned()
-    customer_credential_token: Optional[StrPipeVar] = Unassigned()
-    data_access_credential_token: Optional[StrPipeVar] = Unassigned()
-    data_access_vpc_config: Optional[VpcConfig] = Unassigned()
-    credential_provider_function: Optional[StrPipeVar] = Unassigned()
-    credential_provider_encryption_key: Optional[StrPipeVar] = Unassigned()
-    billing_mode: Optional[StrPipeVar] = Unassigned()
-    fas_source_arn: Optional[StrPipeVar] = Unassigned()
-    fas_source_account: Optional[StrPipeVar] = Unassigned()
-    transform_job_response: Optional[CreateTransformJobResponse] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "transform_job_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object transform_job_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        transform_job_name: Union[StrPipeVar, object],
-        model_name: Union[StrPipeVar, object],
-        transform_input: TransformInput,
-        transform_output: TransformOutput,
-        transform_resources: TransformResources,
-        customer_details: CustomerDetails,
-        max_concurrent_transforms: Optional[int] = Unassigned(),
-        max_payload_in_mb: Optional[int] = Unassigned(),
-        model_client_config: Optional[ModelClientConfig] = Unassigned(),
-        batch_strategy: Optional[StrPipeVar] = Unassigned(),
-        environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned(),
-        data_capture_config: Optional[BatchDataCaptureConfig] = Unassigned(),
-        data_processing: Optional[DataProcessing] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        experiment_config: Optional[ExperimentConfig] = Unassigned(),
-        state_machine_arn_provider_lambda_arn: Optional[StrPipeVar] = Unassigned(),
-        fas_credentials: Optional[StrPipeVar] = Unassigned(),
-        labeling_job_arn: Optional[StrPipeVar] = Unassigned(),
-        auto_ml_job_arn: Optional[StrPipeVar] = Unassigned(),
-        platform_credential_token: Optional[StrPipeVar] = Unassigned(),
-        customer_credential_token: Optional[StrPipeVar] = Unassigned(),
-        data_access_credential_token: Optional[StrPipeVar] = Unassigned(),
-        data_access_vpc_config: Optional[VpcConfig] = Unassigned(),
-        credential_provider_function: Optional[StrPipeVar] = Unassigned(),
-        credential_provider_encryption_key: Optional[StrPipeVar] = Unassigned(),
-        billing_mode: Optional[StrPipeVar] = Unassigned(),
-        fas_source_arn: Optional[StrPipeVar] = Unassigned(),
-        fas_source_account: Optional[StrPipeVar] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["TransformJobInternal"]:
-        """
-        Create a TransformJobInternal resource
-
-        Parameters:
-            transform_job_name:
-            model_name:
-            transform_input:
-            transform_output:
-            transform_resources:
-            customer_details:
-            max_concurrent_transforms:
-            max_payload_in_mb:
-            model_client_config:
-            batch_strategy:
-            environment:
-            data_capture_config:
-            data_processing:
-            tags:
-            experiment_config:
-            state_machine_arn_provider_lambda_arn:
-            fas_credentials:
-            labeling_job_arn:
-            auto_ml_job_arn:
-            platform_credential_token:
-            customer_credential_token:
-            data_access_credential_token:
-            data_access_vpc_config:
-            credential_provider_function:
-            credential_provider_encryption_key:
-            billing_mode:
-            fas_source_arn:
-            fas_source_account:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The TransformJobInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceInUse: Resource being accessed is in use.
-            ResourceNotFound: Resource being access is not found.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "TransformJobName": transform_job_name,
-            "ModelName": model_name,
-            "MaxConcurrentTransforms": max_concurrent_transforms,
-            "MaxPayloadInMB": max_payload_in_mb,
-            "ModelClientConfig": model_client_config,
-            "BatchStrategy": batch_strategy,
-            "Environment": environment,
-            "TransformInput": transform_input,
-            "TransformOutput": transform_output,
-            "DataCaptureConfig": data_capture_config,
-            "TransformResources": transform_resources,
-            "DataProcessing": data_processing,
-            "Tags": tags,
-            "ExperimentConfig": experiment_config,
-            "StateMachineArnProviderLambdaArn": state_machine_arn_provider_lambda_arn,
-            "CustomerDetails": customer_details,
-            "FasCredentials": fas_credentials,
-            "LabelingJobArn": labeling_job_arn,
-            "AutoMLJobArn": auto_ml_job_arn,
-            "PlatformCredentialToken": platform_credential_token,
-            "CustomerCredentialToken": customer_credential_token,
-            "DataAccessCredentialToken": data_access_credential_token,
-            "DataAccessVpcConfig": data_access_vpc_config,
-            "CredentialProviderFunction": credential_provider_function,
-            "CredentialProviderEncryptionKey": credential_provider_encryption_key,
-            "BillingMode": billing_mode,
-            "FasSourceArn": fas_source_arn,
-            "FasSourceAccount": fas_source_account,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_transform_job_internal API")
-        response = client.create_transform_job_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateTransformJobInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-    @Base.add_validate_call
-    def stop(self) -> None:
-        """
-        Stop a TransformJobInternal resource
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        client = SageMakerClient().client
-
-        operation_input_args = {
-            "TransformJobName": self.transform_job_name,
-            "CustomerDetails": self.customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client.stop_transform_job_internal(**operation_input_args)
-
-        logger.info(f"Stopping {self.__class__.__name__} - {self.get_name()}")
-
-'''
 class Trial(Base):
     """
     Class representing resource Trial
@@ -38323,9 +33110,7 @@ class TrialComponent(Base):
     @Base.add_validate_call
     def wait_for_status(
         self,
-        target_status: Literal[
-            "InProgress", "Completed", "Failed", "Stopping", "Stopped", "Deleting", "DeleteFailed"
-        ],
+        target_status: Literal["InProgress", "Completed", "Failed", "Stopping", "Stopped"],
         poll: int = 5,
         timeout: Optional[int] = None,
     ) -> None:
@@ -38375,70 +33160,9 @@ class TrialComponent(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="TrialComponent", status=current_status)
-                time.sleep(poll)
-
-    @Base.add_validate_call
-    def wait_for_delete(
-        self,
-        poll: int = 5,
-        timeout: Optional[int] = None,
-    ) -> None:
-        """
-        Wait for a TrialComponent resource to be deleted.
-
-        Parameters:
-            poll: The number of seconds to wait between each poll.
-            timeout: The maximum number of seconds to wait before timing out.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            TimeoutExceededError:  If the resource does not reach a terminal state before the timeout.
-            DeleteFailedStatusError:   If the resource reaches a failed state.
-            WaiterError: Raised when an error occurs while waiting.
-        """
-        start_time = time.time()
-
-        progress = Progress(
-            SpinnerColumn("bouncingBar"),
-            TextColumn("{task.description}"),
-            TimeElapsedColumn(),
-        )
-        progress.add_task("Waiting for TrialComponent to be deleted...")
-        status = Status("Current status:")
-
-        with Live(
-            Panel(
-                Group(progress, status),
-                title="Wait Log Panel",
-                border_style=Style(color=Color.BLUE.value),
-            )
-        ):
-            while True:
-                try:
-                    self.refresh()
-                    current_status = self.status.primary_status
-                    status.update(f"Current status: [bold]{current_status}")
-
-                    if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(
-                            resouce_type="TrialComponent", status=current_status
-                        )
-                except botocore.exceptions.ClientError as e:
-                    error_code = e.response["Error"]["Code"]
-
-                    if "ResourceNotFound" in error_code or "ValidationException" in error_code:
-                        logger.info("Resource was not found. It may have been deleted.")
-                        return
-                    raise e
+                    raise TimeoutExceededError(
+                        resource_type="TrialComponent", status=current_status
+                    )
                 time.sleep(poll)
 
     @classmethod
@@ -38606,17 +33330,15 @@ class TrialComponent(Base):
     @Base.add_validate_call
     def batch_put_metrics(
         self,
-        resource_arn: StrPipeVar,
         metric_data: List[RawMetricData],
         session: Optional[Session] = None,
         region: Optional[str] = None,
     ) -> None:
         """
-        None
+        Used to ingest training metrics into SageMaker.
 
         Parameters:
-            resource_arn:
-            metric_data:
+            metric_data: A list of raw metric values to put.
             session: Boto3 session.
             region: Region name.
 
@@ -38633,7 +33355,7 @@ class TrialComponent(Base):
         """
 
         operation_input_args = {
-            "ResourceArn": resource_arn,
+            "TrialComponentName": self.trial_component_name,
             "MetricData": metric_data,
         }
         # serialize the input request
@@ -38657,10 +33379,10 @@ class TrialComponent(Base):
         region: Optional[str] = None,
     ) -> Optional[BatchGetMetricsResponse]:
         """
-        None
+        Used to retrieve training metrics from SageMaker.
 
         Parameters:
-            metric_queries:
+            metric_queries: Queries made to retrieve training metrics from SageMaker.
             session: Boto3 session.
             region: Region name.
 
@@ -38698,337 +33420,6 @@ class TrialComponent(Base):
         return BatchGetMetricsResponse(**transformed_response)
 
 
-class TrialComponentInternal(Base):
-    """
-    Class representing resource TrialComponentInternal
-
-    Attributes:
-        trial_component_name:
-        customer_details:
-        display_name:
-        creation_time:
-        source:
-        status:
-        start_time:
-        end_time:
-        parameters:
-        input_artifacts:
-        output_artifacts:
-        metadata_properties:
-        tags:
-        trial_component_arn:
-
-    """
-
-    trial_component_name: Union[StrPipeVar, object]
-    customer_details: CustomerDetails
-    display_name: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    source: Optional[InputTrialComponentSource] = Unassigned()
-    status: Optional[TrialComponentStatus] = Unassigned()
-    start_time: Optional[datetime.datetime] = Unassigned()
-    end_time: Optional[datetime.datetime] = Unassigned()
-    parameters: Optional[Dict[StrPipeVar, TrialComponentParameterValue]] = Unassigned()
-    input_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned()
-    output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned()
-    metadata_properties: Optional[MetadataProperties] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    trial_component_arn: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "trial_component_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object trial_component_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        trial_component_name: Union[StrPipeVar, object],
-        customer_details: CustomerDetails,
-        display_name: Optional[StrPipeVar] = Unassigned(),
-        creation_time: Optional[datetime.datetime] = Unassigned(),
-        source: Optional[InputTrialComponentSource] = Unassigned(),
-        status: Optional[TrialComponentStatus] = Unassigned(),
-        start_time: Optional[datetime.datetime] = Unassigned(),
-        end_time: Optional[datetime.datetime] = Unassigned(),
-        parameters: Optional[Dict[StrPipeVar, TrialComponentParameterValue]] = Unassigned(),
-        input_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
-        output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
-        metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["TrialComponentInternal"]:
-        """
-        Create a TrialComponentInternal resource
-
-        Parameters:
-            trial_component_name:
-            customer_details:
-            display_name:
-            creation_time:
-            source:
-            status:
-            start_time:
-            end_time:
-            parameters:
-            input_artifacts:
-            output_artifacts:
-            metadata_properties:
-            tags:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The TrialComponentInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "TrialComponentName": trial_component_name,
-            "DisplayName": display_name,
-            "CreationTime": creation_time,
-            "Source": source,
-            "Status": status,
-            "StartTime": start_time,
-            "EndTime": end_time,
-            "Parameters": parameters,
-            "InputArtifacts": input_artifacts,
-            "OutputArtifacts": output_artifacts,
-            "MetadataProperties": metadata_properties,
-            "Tags": tags,
-            "CustomerDetails": customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_trial_component_internal API")
-        response = client.create_trial_component_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateTrialComponentInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-    @Base.add_validate_call
-    def update(
-        self,
-        display_name: Optional[StrPipeVar] = Unassigned(),
-        status: Optional[TrialComponentStatus] = Unassigned(),
-        start_time: Optional[datetime.datetime] = Unassigned(),
-        end_time: Optional[datetime.datetime] = Unassigned(),
-        parameters: Optional[Dict[StrPipeVar, TrialComponentParameterValue]] = Unassigned(),
-        parameters_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
-        input_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
-        input_artifacts_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
-        output_artifacts: Optional[Dict[StrPipeVar, TrialComponentArtifact]] = Unassigned(),
-        output_artifacts_to_remove: Optional[List[StrPipeVar]] = Unassigned(),
-        customer_details: Optional[CustomerDetails] = Unassigned(),
-    ) -> Optional["TrialComponentInternal"]:
-        """
-        Update a TrialComponentInternal resource
-
-        Parameters:
-            parameters_to_remove:
-            input_artifacts_to_remove:
-            output_artifacts_to_remove:
-
-        Returns:
-            The TrialComponentInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ConflictException: There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-            ResourceNotFound: Resource being access is not found.
-        """
-
-        logger.info("Updating trial_component_internal resource.")
-        client = Base.get_sagemaker_client()
-
-        operation_input_args = {
-            "TrialComponentName": self.trial_component_name,
-            "DisplayName": display_name,
-            "Status": status,
-            "StartTime": start_time,
-            "EndTime": end_time,
-            "Parameters": parameters,
-            "ParametersToRemove": parameters_to_remove,
-            "InputArtifacts": input_artifacts,
-            "InputArtifactsToRemove": input_artifacts_to_remove,
-            "OutputArtifacts": output_artifacts,
-            "OutputArtifactsToRemove": output_artifacts_to_remove,
-            "CustomerDetails": customer_details,
-        }
-        logger.debug(f"Input request: {operation_input_args}")
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        # create the resource
-        response = client.update_trial_component_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-        self.refresh()
-
-        return self
-
-
-class TrialInternal(Base):
-    """
-    Class representing resource TrialInternal
-
-    Attributes:
-        trial_name:
-        experiment_name:
-        display_name:
-        creation_time:
-        tags:
-        metadata_properties:
-        source:
-        customer_details:
-        trial_arn:
-
-    """
-
-    trial_name: Union[StrPipeVar, object]
-    experiment_name: Union[StrPipeVar, object]
-    display_name: Optional[StrPipeVar] = Unassigned()
-    creation_time: Optional[datetime.datetime] = Unassigned()
-    tags: Optional[List[Tag]] = Unassigned()
-    metadata_properties: Optional[MetadataProperties] = Unassigned()
-    source: Optional[InputTrialSource] = Unassigned()
-    customer_details: Optional[CustomerDetails] = Unassigned()
-    trial_arn: Optional[StrPipeVar] = Unassigned()
-
-    def get_name(self) -> str:
-        attributes = vars(self)
-        resource_name = "trial_internal_name"
-        resource_name_split = resource_name.split("_")
-        attribute_name_candidates = []
-
-        l = len(resource_name_split)
-        for i in range(0, l):
-            attribute_name_candidates.append("_".join(resource_name_split[i:l]))
-
-        for attribute, value in attributes.items():
-            if attribute == "name" or attribute in attribute_name_candidates:
-                return value
-        logger.error("Name attribute not found for object trial_internal")
-        return None
-
-    @classmethod
-    @Base.add_validate_call
-    def create(
-        cls,
-        trial_name: Union[StrPipeVar, object],
-        experiment_name: Union[StrPipeVar, object],
-        display_name: Optional[StrPipeVar] = Unassigned(),
-        creation_time: Optional[datetime.datetime] = Unassigned(),
-        tags: Optional[List[Tag]] = Unassigned(),
-        metadata_properties: Optional[MetadataProperties] = Unassigned(),
-        source: Optional[InputTrialSource] = Unassigned(),
-        customer_details: Optional[CustomerDetails] = Unassigned(),
-        session: Optional[Session] = None,
-        region: Optional[str] = None,
-    ) -> Optional["TrialInternal"]:
-        """
-        Create a TrialInternal resource
-
-        Parameters:
-            trial_name:
-            experiment_name:
-            display_name:
-            creation_time:
-            tags:
-            metadata_properties:
-            source:
-            customer_details:
-            session: Boto3 session.
-            region: Region name.
-
-        Returns:
-            The TrialInternal resource.
-
-        Raises:
-            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
-                The error message and error code can be parsed from the exception as follows:
-                ```
-                try:
-                    # AWS service call here
-                except botocore.exceptions.ClientError as e:
-                    error_message = e.response['Error']['Message']
-                    error_code = e.response['Error']['Code']
-                ```
-            ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
-            ResourceNotFound: Resource being access is not found.
-            ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
-            LocalConfigNotFoundError: Raised when a configuration file is not found in local file system
-            S3ConfigNotFoundError: Raised when a configuration file is not found in S3
-        """
-
-        operation_input_args = {
-            "TrialName": trial_name,
-            "DisplayName": display_name,
-            "ExperimentName": experiment_name,
-            "CreationTime": creation_time,
-            "Tags": tags,
-            "MetadataProperties": metadata_properties,
-            "Source": source,
-            "CustomerDetails": customer_details,
-        }
-        # serialize the input request
-        operation_input_args = serialize(operation_input_args)
-        logger.debug(f"Serialized input request: {operation_input_args}")
-
-        client = Base.get_sagemaker_client(
-            session=session, region_name=region, service_name="sagemaker"
-        )
-
-        logger.debug(f"Calling create_trial_internal API")
-        response = client.create_trial_internal(**operation_input_args)
-        logger.debug(f"Response: {response}")
-
-        transformed_response = transform(response, "CreateTrialInternalResponse")
-        return cls(**operation_input_args, **transformed_response)
-
-
 class UserProfile(Base):
     """
     Class representing resource UserProfile
@@ -39044,7 +33435,6 @@ class UserProfile(Base):
         failure_reason: The failure reason.
         single_sign_on_user_identifier: The IAM Identity Center user identifier.
         single_sign_on_user_value: The IAM Identity Center user value.
-        user_policy:
         user_settings: A collection of settings.
 
     """
@@ -39059,7 +33449,6 @@ class UserProfile(Base):
     failure_reason: Optional[StrPipeVar] = Unassigned()
     single_sign_on_user_identifier: Optional[StrPipeVar] = Unassigned()
     single_sign_on_user_value: Optional[StrPipeVar] = Unassigned()
-    user_policy: Optional[StrPipeVar] = Unassigned()
     user_settings: Optional[UserSettings] = Unassigned()
 
     def get_name(self) -> str:
@@ -39109,6 +33498,9 @@ class UserProfile(Base):
                             "execution_role_arns": {"type": "array", "items": {"type": "string"}},
                         }
                     },
+                    "studio_web_portal_settings": {
+                        "execution_role_session_name_mode": {"type": "string"}
+                    },
                 }
             }
             return create_func(
@@ -39130,7 +33522,6 @@ class UserProfile(Base):
         single_sign_on_user_identifier: Optional[StrPipeVar] = Unassigned(),
         single_sign_on_user_value: Optional[StrPipeVar] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
-        user_policy: Optional[StrPipeVar] = Unassigned(),
         user_settings: Optional[UserSettings] = Unassigned(),
         session: Optional[Session] = None,
         region: Optional[StrPipeVar] = None,
@@ -39144,7 +33535,6 @@ class UserProfile(Base):
             single_sign_on_user_identifier: A specifier for the type of value specified in SingleSignOnUserValue. Currently, the only supported value is "UserName". If the Domain's AuthMode is IAM Identity Center, this field is required. If the Domain's AuthMode is not IAM Identity Center, this field cannot be specified.
             single_sign_on_user_value: The username of the associated Amazon Web Services Single Sign-On User for this UserProfile. If the Domain's AuthMode is IAM Identity Center, this field is required, and must match a valid username of a user in your directory. If the Domain's AuthMode is not IAM Identity Center, this field cannot be specified.
             tags: Each tag consists of a key and an optional value. Tag keys must be unique per resource. Tags that you specify for the User Profile are also added to all Apps that the User Profile launches.
-            user_policy:
             user_settings: A collection of settings.
             session: Boto3 session.
             region: Region name.
@@ -39162,7 +33552,6 @@ class UserProfile(Base):
                     error_message = e.response['Error']['Message']
                     error_code = e.response['Error']['Code']
                 ```
-            AccessDeniedException
             ResourceInUse: Resource being accessed is in use.
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
             ConfigSchemaValidationError: Raised when a configuration file does not adhere to the schema
@@ -39181,7 +33570,6 @@ class UserProfile(Base):
             "SingleSignOnUserIdentifier": single_sign_on_user_identifier,
             "SingleSignOnUserValue": single_sign_on_user_value,
             "Tags": tags,
-            "UserPolicy": user_policy,
             "UserSettings": user_settings,
         }
 
@@ -39233,7 +33621,6 @@ class UserProfile(Base):
                     error_message = e.response['Error']['Message']
                     error_code = e.response['Error']['Code']
                 ```
-            AccessDeniedException
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
             ResourceNotFound: Resource being access is not found.
         """
@@ -39278,7 +33665,6 @@ class UserProfile(Base):
                     error_message = e.response['Error']['Message']
                     error_code = e.response['Error']['Code']
                 ```
-            AccessDeniedException
             ResourceLimitExceeded: You have exceeded an SageMaker resource limit. For example, you might have too many training jobs created.
             ResourceNotFound: Resource being access is not found.
         """
@@ -39302,7 +33688,6 @@ class UserProfile(Base):
     @Base.add_validate_call
     def update(
         self,
-        user_policy: Optional[StrPipeVar] = Unassigned(),
         user_settings: Optional[UserSettings] = Unassigned(),
     ) -> Optional["UserProfile"]:
         """
@@ -39332,7 +33717,6 @@ class UserProfile(Base):
         operation_input_args = {
             "DomainId": self.domain_id,
             "UserProfileName": self.user_profile_name,
-            "UserPolicy": user_policy,
             "UserSettings": user_settings,
         }
         logger.debug(f"Input request: {operation_input_args}")
@@ -39445,7 +33829,7 @@ class UserProfile(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="UserProfile", status=current_status)
+                    raise TimeoutExceededError(resource_type="UserProfile", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -39508,7 +33892,7 @@ class UserProfile(Base):
 
                     if timeout is not None and time.time() - start_time >= timeout:
                         raise TimeoutExceededError(
-                            resouce_type="UserProfile", status=current_status
+                            resource_type="UserProfile", status=current_status
                         )
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
@@ -39935,7 +34319,7 @@ class Workforce(Base):
                     )
 
                 if timeout is not None and time.time() - start_time >= timeout:
-                    raise TimeoutExceededError(resouce_type="Workforce", status=current_status)
+                    raise TimeoutExceededError(resource_type="Workforce", status=current_status)
                 time.sleep(poll)
 
     @Base.add_validate_call
@@ -39989,7 +34373,7 @@ class Workforce(Base):
                     status.update(f"Current status: [bold]{current_status}")
 
                     if timeout is not None and time.time() - start_time >= timeout:
-                        raise TimeoutExceededError(resouce_type="Workforce", status=current_status)
+                        raise TimeoutExceededError(resource_type="Workforce", status=current_status)
                 except botocore.exceptions.ClientError as e:
                     error_code = e.response["Error"]["Code"]
 
@@ -40096,8 +34480,6 @@ class Workteam(Base):
         member_definitions: List[MemberDefinition],
         description: StrPipeVar,
         workforce_name: Optional[Union[StrPipeVar, object]] = Unassigned(),
-        membership_rule: Optional[MembershipRule] = Unassigned(),
-        membership_type: Optional[StrPipeVar] = Unassigned(),
         notification_configuration: Optional[NotificationConfiguration] = Unassigned(),
         worker_access_configuration: Optional[WorkerAccessConfiguration] = Unassigned(),
         tags: Optional[List[Tag]] = Unassigned(),
@@ -40112,8 +34494,6 @@ class Workteam(Base):
             member_definitions: A list of MemberDefinition objects that contains objects that identify the workers that make up the work team.  Workforces can be created using Amazon Cognito or your own OIDC Identity Provider (IdP). For private workforces created using Amazon Cognito use CognitoMemberDefinition. For workforces created using your own OIDC identity provider (IdP) use OidcMemberDefinition. Do not provide input for both of these parameters in a single request. For workforces created using Amazon Cognito, private work teams correspond to Amazon Cognito user groups within the user pool used to create a workforce. All of the CognitoMemberDefinition objects that make up the member definition must have the same ClientId and UserPool values. To add a Amazon Cognito user group to an existing worker pool, see Adding groups to a User Pool. For more information about user pools, see Amazon Cognito User Pools. For workforces created using your own OIDC IdP, specify the user groups that you want to include in your private work team in OidcMemberDefinition by listing those groups in Groups.
             description: A description of the work team.
             workforce_name: The name of the workforce.
-            membership_rule:
-            membership_type:
             notification_configuration: Configures notification of workers regarding available or expiring work items.
             worker_access_configuration: Use this optional parameter to constrain access to an Amazon S3 resource based on the IP address using supported IAM global condition keys. The Amazon S3 resource is accessed in the worker portal using a Amazon S3 presigned URL.
             tags: An array of key-value pairs. For more information, see Resource Tag and Using Cost Allocation Tags in the  Amazon Web Services Billing and Cost Management User Guide.
@@ -40149,8 +34529,6 @@ class Workteam(Base):
             "WorkteamName": workteam_name,
             "WorkforceName": workforce_name,
             "MemberDefinitions": member_definitions,
-            "MembershipRule": membership_rule,
-            "MembershipType": membership_type,
             "Description": description,
             "NotificationConfiguration": notification_configuration,
             "WorkerAccessConfiguration": worker_access_configuration,
@@ -40262,8 +34640,6 @@ class Workteam(Base):
     def update(
         self,
         member_definitions: Optional[List[MemberDefinition]] = Unassigned(),
-        membership_rule: Optional[MembershipRule] = Unassigned(),
-        membership_type: Optional[StrPipeVar] = Unassigned(),
         description: Optional[StrPipeVar] = Unassigned(),
         notification_configuration: Optional[NotificationConfiguration] = Unassigned(),
         worker_access_configuration: Optional[WorkerAccessConfiguration] = Unassigned(),
@@ -40273,8 +34649,6 @@ class Workteam(Base):
 
         Parameters:
             member_definitions: A list of MemberDefinition objects that contains objects that identify the workers that make up the work team.  Workforces can be created using Amazon Cognito or your own OIDC Identity Provider (IdP). For private workforces created using Amazon Cognito use CognitoMemberDefinition. For workforces created using your own OIDC identity provider (IdP) use OidcMemberDefinition. You should not provide input for both of these parameters in a single request. For workforces created using Amazon Cognito, private work teams correspond to Amazon Cognito user groups within the user pool used to create a workforce. All of the CognitoMemberDefinition objects that make up the member definition must have the same ClientId and UserPool values. To add a Amazon Cognito user group to an existing worker pool, see Adding groups to a User Pool. For more information about user pools, see Amazon Cognito User Pools. For workforces created using your own OIDC IdP, specify the user groups that you want to include in your private work team in OidcMemberDefinition by listing those groups in Groups. Be aware that user groups that are already in the work team must also be listed in Groups when you make this request to remain on the work team. If you do not include these user groups, they will no longer be associated with the work team you update.
-            membership_rule:
-            membership_type:
             description: An updated description for the work team.
             notification_configuration: Configures SNS topic notifications for available or expiring work items
             worker_access_configuration: Use this optional parameter to constrain access to an Amazon S3 resource based on the IP address using supported IAM global condition keys. The Amazon S3 resource is accessed in the worker portal using a Amazon S3 presigned URL.
@@ -40301,8 +34675,6 @@ class Workteam(Base):
         operation_input_args = {
             "WorkteamName": self.workteam_name,
             "MemberDefinitions": member_definitions,
-            "MembershipRule": membership_rule,
-            "MembershipType": membership_type,
             "Description": description,
             "NotificationConfiguration": notification_configuration,
             "WorkerAccessConfiguration": worker_access_configuration,

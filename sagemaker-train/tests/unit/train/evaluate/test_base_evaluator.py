@@ -105,73 +105,66 @@ class TestBaseEvaluatorInit:
         assert evaluator.model == DEFAULT_MODEL_PACKAGE_ARN
         assert evaluator._source_model_package_arn == DEFAULT_MODEL_PACKAGE_ARN
     
-    @patch("boto3.client")
+    @patch("boto3.Session")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_init_without_session_creates_default(self, mock_resolve, mock_boto_client, mock_model_info):
+    def test_init_without_session_creates_default(self, mock_resolve, mock_boto_session_cls, mock_model_info):
         """Test that default session is created if not provided."""
         mock_resolve.return_value = mock_model_info
-        mock_sm_client = MagicMock()
-        mock_boto_client.return_value = mock_sm_client
-        
+        mock_boto_session = MagicMock()
+        mock_boto_session.region_name = "us-west-2"
+        mock_boto_session_cls.return_value = mock_boto_session
+
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
         )
-        
+
         assert evaluator.sagemaker_session is not None
-        mock_boto_client.assert_called_once()
-    
+        mock_boto_session_cls.assert_called_once_with(region_name="us-west-2")
+
     @patch("os.environ.get")
-    @patch("boto3.client")
+    @patch("boto3.Session")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_init_respects_region_env_var(self, mock_resolve, mock_boto_client, mock_env_get, mock_model_info):
+    def test_init_respects_region_env_var(self, mock_resolve, mock_boto_session_cls, mock_env_get, mock_model_info):
         """Test that SAGEMAKER_REGION environment variable is respected."""
         mock_resolve.return_value = mock_model_info
         mock_env_get.side_effect = lambda key, default=None: "eu-west-1" if key == "SAGEMAKER_REGION" else None
-        mock_sm_client = MagicMock()
-        mock_boto_client.return_value = mock_sm_client
-        
+        mock_boto_session = MagicMock()
+        mock_boto_session.region_name = "eu-west-1"
+        mock_boto_session_cls.return_value = mock_boto_session
+
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
         )
-        
+
         assert evaluator.sagemaker_session is not None
-        # Verify boto3 client was called with correct region
-        call_args = mock_boto_client.call_args
-        assert call_args[1]['region_name'] == 'eu-west-1'
-    
-    @patch("os.environ.get")
-    @patch("boto3.client")
+        mock_boto_session_cls.assert_called_once_with(region_name="eu-west-1")
+
+    @patch("boto3.Session")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_init_respects_endpoint_env_var(self, mock_resolve, mock_boto_client, mock_env_get, mock_model_info):
-        """Test that SAGEMAKER_ENDPOINT environment variable is respected."""
+    def test_init_creates_session_without_endpoint(self, mock_resolve, mock_boto_session_cls, mock_model_info):
+        """Test that session is created without custom endpoint_url."""
         mock_resolve.return_value = mock_model_info
-        test_endpoint = "https://custom-endpoint.amazonaws.com"
-        
-        def env_side_effect(key, default=None):
-            if key == "SAGEMAKER_ENDPOINT":
-                return test_endpoint
-            return default
-        
-        mock_env_get.side_effect = env_side_effect
-        mock_sm_client = MagicMock()
-        mock_boto_client.return_value = mock_sm_client
-        
+        mock_boto_session = MagicMock()
+        mock_boto_session.region_name = "us-west-2"
+        mock_boto_session_cls.return_value = mock_boto_session
+
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
         )
-        
-        # Verify boto3 client was called with custom endpoint
-        call_args = mock_boto_client.call_args
-        assert call_args[1]['endpoint_url'] == test_endpoint
+
+        # Verify boto3.Session client was called without endpoint_url
+        call_args = mock_boto_session.client.call_args
+        assert call_args is not None
+        assert 'endpoint_url' not in (call_args[1] if call_args[1] else {})
 
 
 class TestMLFlowARNValidation:
@@ -222,7 +215,7 @@ class TestMLFlowARNValidation:
                 )
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_mlflow_arn_optional_with_resolution(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
         """Test that MLflow ARN is optional and gets resolved automatically."""
         mock_resolve.return_value = mock_model_info
@@ -240,7 +233,7 @@ class TestMLFlowARNValidation:
         mock_resolve_mlflow.assert_called_once_with(mock_session, None)
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_mlflow_arn_provided_skips_resolution(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
         """Test that provided MLflow ARN is used instead of resolution."""
         mock_resolve.return_value = mock_model_info
@@ -261,7 +254,7 @@ class TestMLFlowARNValidation:
         mock_resolve_mlflow.assert_called_once_with(mock_session, provided_arn)
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_mlflow_arn_resolution_returns_none(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
         """Test that MLflow resolution can return None (disabled tracking)."""
         mock_resolve.return_value = mock_model_info
@@ -278,7 +271,7 @@ class TestMLFlowARNValidation:
         mock_resolve_mlflow.assert_called_once_with(mock_session, None)
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    @patch("sagemaker.train.common_utils.finetune_utils._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
     def test_mlflow_arn_resolution_with_exception(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
         """Test that MLflow resolution exceptions are handled gracefully by returning None."""
         mock_resolve.return_value = mock_model_info
@@ -739,6 +732,27 @@ class TestAWSExecutionContext:
         assert context['account_id'] == '123456789012'
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
+    def test_get_aws_execution_context_with_explicit_role(self, mock_resolve, mock_session, mock_model_info):
+        """Test that an explicit role overrides the session-derived role."""
+        mock_resolve.return_value = mock_model_info
+        explicit_role = "arn:aws:iam::123456789012:role/service-role/AmazonSageMaker-ExecutionRole"
+
+        evaluator = BaseEvaluator(
+            model=DEFAULT_MODEL,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+            region=DEFAULT_REGION,
+            role=explicit_role,
+        )
+
+        context = evaluator._get_aws_execution_context()
+
+        assert context['role_arn'] == explicit_role
+        mock_session.get_caller_identity_arn.assert_not_called()
+
+    @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
     def test_get_aws_execution_context_without_region(self, mock_resolve, mock_session, mock_model_info):
         """Test getting AWS execution context without explicit region."""
         mock_resolve.return_value = mock_model_info
@@ -904,6 +918,37 @@ class TestBaseTemplateContext:
         assert context['dataset_artifact_arn'] == DEFAULT_ARTIFACT_ARN
         assert 'action_arn_prefix' in context
 
+    @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
+    @patch("sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn")
+    def test_get_base_template_context_deferred_mlflow_resolution(self, mock_resolve_mlflow, mock_resolve, mock_session, mock_model_info):
+        """Test that mlflow_resource_arn is resolved in _get_base_template_context when session was None at construction."""
+        mock_resolve.return_value = mock_model_info
+        # Validator returns None because session was None at construction time
+        mock_resolve_mlflow.return_value = None
+
+        evaluator = BaseEvaluator(
+            model=DEFAULT_MODEL,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+        # Simulate the case where ARN was not resolved at construction (session was None)
+        evaluator.mlflow_resource_arn = None
+
+        resolved_arn = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/deferred"
+        mock_resolve_mlflow.return_value = resolved_arn
+
+        context = evaluator._get_base_template_context(
+            role_arn=DEFAULT_ROLE_ARN,
+            region=DEFAULT_REGION,
+            account_id="123456789012",
+            model_package_group_arn=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            resolved_model_artifact_arn=DEFAULT_ARTIFACT_ARN,
+        )
+
+        assert context['mlflow_resource_arn'] == resolved_arn
+        mock_resolve_mlflow.assert_called_with(mock_session)
+
 
 class TestResolveModelArtifacts:
     """Tests for model artifacts resolution."""
@@ -1012,43 +1057,43 @@ class TestEvaluateMethod:
 
 
 class TestGPTOSSModelValidation:
-    """Tests for GPT OSS model validation."""
+    """Tests for GPT OSS model validation - models should be allowed for evaluation."""
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_gpt_oss_20b_model_blocked(self, mock_resolve, mock_session):
-        """Test that GPT OSS 20B model is blocked from evaluation."""
+    def test_gpt_oss_20b_model_allowed(self, mock_resolve, mock_session):
+        """Test that GPT OSS 20B model is allowed for evaluation."""
         mock_info = MagicMock()
         mock_info.base_model_name = "openai-reasoning-gpt-oss-20b"
         mock_info.base_model_arn = DEFAULT_HUB_CONTENT_ARN
         mock_info.source_model_package_arn = None
         mock_resolve.return_value = mock_info
         
-        with pytest.raises(ValidationError, match="Evaluation is currently not supported for models created from GPT OSS 20B base model"):
-            BaseEvaluator(
-                model="openai-reasoning-gpt-oss-20b",
-                s3_output_path=DEFAULT_S3_OUTPUT,
-                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
-                model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
-                sagemaker_session=mock_session,
-            )
+        evaluator = BaseEvaluator(
+            model="openai-reasoning-gpt-oss-20b",
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+        assert evaluator.model == "openai-reasoning-gpt-oss-20b"
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_gpt_oss_120b_model_blocked(self, mock_resolve, mock_session):
-        """Test that GPT OSS 120B model is blocked from evaluation."""
+    def test_gpt_oss_120b_model_allowed(self, mock_resolve, mock_session):
+        """Test that GPT OSS 120B model is allowed for evaluation."""
         mock_info = MagicMock()
         mock_info.base_model_name = "openai-reasoning-gpt-oss-120b"
         mock_info.base_model_arn = DEFAULT_HUB_CONTENT_ARN
         mock_info.source_model_package_arn = None
         mock_resolve.return_value = mock_info
         
-        with pytest.raises(ValidationError, match="Evaluation is currently not supported for models created from GPT OSS 20B base model"):
-            BaseEvaluator(
-                model="openai-reasoning-gpt-oss-120b",
-                s3_output_path=DEFAULT_S3_OUTPUT,
-                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
-                model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
-                sagemaker_session=mock_session,
-            )
+        evaluator = BaseEvaluator(
+            model="openai-reasoning-gpt-oss-120b",
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+        assert evaluator.model == "openai-reasoning-gpt-oss-120b"
     
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
     def test_non_gpt_oss_model_allowed(self, mock_resolve, mock_session, mock_model_info):

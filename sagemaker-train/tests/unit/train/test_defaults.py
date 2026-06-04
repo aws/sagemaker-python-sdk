@@ -25,6 +25,7 @@ from sagemaker.train.defaults import (
     DEFAULT_MAX_RUNTIME_IN_SECONDS,
 )
 from sagemaker.train.configs import Compute, StoppingCondition
+from sagemaker.core.shapes import InstanceGroup
 
 
 class TestDefaultConstants:
@@ -434,4 +435,173 @@ class TestJumpStartTrainDefaultsGetCompute:
             sagemaker_session=mock_session,
         )
 
+        assert result.volume_size_in_gb == DEFAULT_VOLUME_SIZE
+
+
+    def test_does_not_set_instance_type_when_instance_groups_configured(self):
+        """Test instance_type is not overwritten when instance_groups are set."""
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=30,
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+        assert result.instance_type is None
+
+    def test_does_not_set_instance_count_when_instance_groups_configured(self):
+        """Test instance_count is not overwritten when instance_groups are set."""
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=30,
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+        assert result.instance_count is None
+
+    def test_sets_volume_size_when_instance_groups_configured(self):
+        """Test volume_size_in_gb is still set when instance_groups are configured."""
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=None,
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+        assert result.volume_size_in_gb == DEFAULT_VOLUME_SIZE
+
+    def test_preserves_existing_volume_size_with_instance_groups(self):
+        """Test existing volume_size_in_gb is preserved when instance_groups are configured."""
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=100,
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+        assert result.volume_size_in_gb == 100
+
+
+class TestJumpStartTrainDefaultsGetComputeHeterogeneousCluster:
+    """Test JumpStartTrainDefaults.get_compute with heterogeneous cluster (instance_groups)."""
+
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_does_not_set_instance_type_when_instance_groups_configured(
+        self, mock_get_session, mock_get_hub_content
+    ):
+        """Test instance_type is not overwritten when instance_groups are set."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_document = MagicMock()
+        mock_document.DefaultTrainingInstanceType = "ml.p3.2xlarge"
+        mock_document.TrainingVolumeSize = 100
+        mock_get_hub_content.return_value = (None, mock_document)
+
+        mock_config = MagicMock()
+        mock_config.training_config_name = None
+
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=30,
+        )
+        result = JumpStartTrainDefaults.get_compute(
+            jumpstart_config=mock_config,
+            compute=compute,
+            sagemaker_session=mock_session,
+        )
+        assert result.instance_type is None
+
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_does_not_set_instance_count_when_instance_groups_configured(
+        self, mock_get_session, mock_get_hub_content
+    ):
+        """Test instance_count is not overwritten when instance_groups are set."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_document = MagicMock()
+        mock_document.DefaultTrainingInstanceType = "ml.p3.2xlarge"
+        mock_document.TrainingVolumeSize = 100
+        mock_get_hub_content.return_value = (None, mock_document)
+
+        mock_config = MagicMock()
+        mock_config.training_config_name = None
+
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=30,
+        )
+        result = JumpStartTrainDefaults.get_compute(
+            jumpstart_config=mock_config,
+            compute=compute,
+            sagemaker_session=mock_session,
+        )
+        assert result.instance_count is None
+
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_sets_volume_size_from_document_when_instance_groups_configured(
+        self, mock_get_session, mock_get_hub_content
+    ):
+        """Test volume_size_in_gb is set from document even when instance_groups are configured."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_document = MagicMock()
+        mock_document.DefaultTrainingInstanceType = "ml.p3.2xlarge"
+        mock_document.TrainingVolumeSize = 100
+        mock_get_hub_content.return_value = (None, mock_document)
+
+        mock_config = MagicMock()
+        mock_config.training_config_name = None
+
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=None,
+        )
+        result = JumpStartTrainDefaults.get_compute(
+            jumpstart_config=mock_config,
+            compute=compute,
+            sagemaker_session=mock_session,
+        )
+        assert result.volume_size_in_gb == 100
+
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_sets_default_volume_size_when_instance_groups_and_no_document_volume(
+        self, mock_get_session, mock_get_hub_content
+    ):
+        """Test DEFAULT_VOLUME_SIZE is used when instance_groups set and document has no volume."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_document = MagicMock()
+        mock_document.DefaultTrainingInstanceType = "ml.p3.2xlarge"
+        mock_document.TrainingVolumeSize = None
+        mock_get_hub_content.return_value = (None, mock_document)
+
+        mock_config = MagicMock()
+        mock_config.training_config_name = None
+
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=None,
+        )
+        result = JumpStartTrainDefaults.get_compute(
+            jumpstart_config=mock_config,
+            compute=compute,
+            sagemaker_session=mock_session,
+        )
         assert result.volume_size_in_gb == DEFAULT_VOLUME_SIZE

@@ -8,6 +8,7 @@ from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name, _get_studio_tags
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.evaluator import Evaluator
+from sagemaker.train.configs import StoppingCondition
 from sagemaker.train.common_utils.finetune_utils import (
     _get_fine_tuning_options_and_model_arn,
     _validate_and_resolve_model_package_group,
@@ -24,7 +25,7 @@ from sagemaker.train.common_utils.finetune_utils import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train.constants import HUB_NAME
+from sagemaker.train.constants import get_sagemaker_hub_name
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +103,9 @@ class RLVRTrainer(BaseTrainer):
             The KMS key ID for encrypting training job outputs.
         networking (Optional[VpcConfig]):
             The VPC configuration for the training job.
+        stopping_condition (Optional[StoppingCondition]):
+            The stopping condition to override training runtime limit.
+            If not specified, uses SageMaker service default (24 hours for serverless training).
     """
 
     def __init__(
@@ -121,6 +125,7 @@ class RLVRTrainer(BaseTrainer):
         # vpc config
         networking: Optional[VpcConfig] = None,
         accept_eula: bool = False,
+        stopping_condition: Optional[StoppingCondition] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -140,6 +145,7 @@ class RLVRTrainer(BaseTrainer):
         self.s3_output_path = s3_output_path
         self.kms_key_id = kms_key_id
         self.networking = networking
+        self.stopping_condition = stopping_condition
 
         # Initialize fine-tuning options with beta session fallback
         self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
@@ -165,6 +171,9 @@ class RLVRTrainer(BaseTrainer):
             if hasattr(self.hyperparameters, 'reward_lambda_arn'):
                 delattr(self.hyperparameters, 'reward_lambda_arn')
                 self.hyperparameters._specs.pop('reward_lambda_arn', None)
+            if hasattr(self.hyperparameters, 'preset_reward_function'):
+                delattr(self.hyperparameters, 'preset_reward_function')
+                self.hyperparameters._specs.pop('preset_reward_function', None)
             if hasattr(self.hyperparameters, 'data_path'):
                 delattr(self.hyperparameters, 'data_path')
                 self.hyperparameters._specs.pop('data_path', None)
@@ -177,7 +186,7 @@ class RLVRTrainer(BaseTrainer):
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLVRTrainer.train")
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None,
-              validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True):
+              validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
         """Execute the RLVR training job.
 
         Parameters:
@@ -189,6 +198,11 @@ class RLVRTrainer(BaseTrainer):
                 Can be an S3 URI, dataset ARN, or DataSet object.
             wait (bool):
                 Whether to wait for the training job to complete. Defaults to True.
+            wait_timeout (Optional[int]):
+                Maximum time in seconds to wait for the training job to complete. Only used when wait=True.
+                If None, uses the default timeout from the wait utility.
+            poll (int):
+                Polling interval in seconds for checking training job status. Defaults to 5.
 
         Returns:
             TrainingJob: The SageMaker training job object.
@@ -245,23 +259,30 @@ class RLVRTrainer(BaseTrainer):
         )
 
         vpc_config = self.networking if self.networking else None
-        tags = _get_studio_tags(self._model_name, HUB_NAME)
+        tags = _get_studio_tags(self._model_name, get_sagemaker_hub_name())
+
+        # Build TrainingJob.create() arguments
+        create_args = {
+            "training_job_name": current_training_job_name,
+            "role_arn": role,
+            "input_data_config": channels,
+            "output_data_config": output_config,
+            "serverless_job_config": serverless_config,
+            "mlflow_config": mlflow_config,
+            "hyper_parameters": final_hyperparameters,
+            "model_package_config": model_package_config,
+            "vpc_config": vpc_config,
+            "session": sagemaker_session.boto_session,
+            "region": sagemaker_session.boto_session.region_name,
+            "tags": tags,
+        }
+        
+        # Only pass stopping_condition if explicitly provided by user
+        if self.stopping_condition is not None:
+            create_args["stopping_condition"] = self.stopping_condition
 
         try:
-            training_job = TrainingJob.create(
-                training_job_name=current_training_job_name,
-                role_arn=role,
-                input_data_config=channels,
-                output_data_config=output_config,
-                serverless_job_config=serverless_config,
-                mlflow_config=mlflow_config,
-                hyper_parameters=final_hyperparameters,
-                model_package_config=model_package_config,
-                vpc_config=vpc_config,
-                session=sagemaker_session.boto_session,
-                region=sagemaker_session.boto_session.region_name,
-                tags=tags,
-            )
+            training_job = TrainingJob.create(**create_args)
         except Exception as e:
             logger.error("Error: %s", e)
             raise e
@@ -270,7 +291,11 @@ class RLVRTrainer(BaseTrainer):
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
             from sagemaker.core.utils.exceptions import TimeoutExceededError
             try:
-                _wait(training_job)
+                wait_kwargs = {}
+                if wait_timeout is not None:
+                    wait_kwargs['timeout'] = wait_timeout
+                wait_kwargs['poll'] = poll
+                _wait(training_job, **wait_kwargs)
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
 

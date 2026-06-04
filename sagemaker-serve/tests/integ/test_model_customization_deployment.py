@@ -13,8 +13,21 @@
 """Integration tests for ModelBuilder model customization deployment."""
 from __future__ import absolute_import
 
+import boto3
 import pytest
 import random
+
+from sagemaker.core.helper.session_helper import Session
+
+# This test relies on resources in a specific region
+AWS_REGION = "us-west-2"
+
+
+@pytest.fixture(scope="module")
+def sagemaker_session():
+    """Create a SageMaker session with explicit region."""
+    boto_session = boto3.Session(region_name=AWS_REGION)
+    return Session(boto_session=boto_session)
 
 
 @pytest.fixture(scope="module")
@@ -48,37 +61,6 @@ def endpoint_name():
     return f"e2e-{int(time.time())}-{random.randint(100, 10000)}"
 
 
-@pytest.fixture(scope="session", autouse=True)
-def cleanup_e2e_endpoints():
-    """Cleanup e2e endpoints before and after tests."""
-    from sagemaker.core.resources import Endpoint
-    from botocore.exceptions import ClientError
-
-    # Cleanup before tests
-    try:
-        for endpoint in Endpoint.get_all():
-            try:
-                if endpoint.endpoint_name.startswith('e2e-'):
-                    endpoint.delete()
-            except (ClientError, Exception):
-                pass
-    except (ClientError, Exception):
-        pass
-
-    yield
-
-    # Cleanup after tests
-    try:
-        for endpoint in Endpoint.get_all():
-            try:
-                if endpoint.endpoint_name.startswith('e2e-'):
-                    endpoint.delete()
-            except (ClientError, Exception):
-                pass
-    except (ClientError, Exception):
-        pass
-
-
 @pytest.fixture(scope="module")
 def cleanup_endpoints():
     """Track endpoints to cleanup after tests."""
@@ -88,7 +70,7 @@ def cleanup_endpoints():
     for ep_name in endpoints_to_cleanup:
         try:
             from sagemaker.core.resources import Endpoint
-            endpoint = Endpoint.get(endpoint_name=ep_name)
+            endpoint = Endpoint.get(endpoint_name=ep_name, region=AWS_REGION)
             endpoint.delete()
         except Exception:
             pass
@@ -97,31 +79,44 @@ def cleanup_endpoints():
 class TestModelCustomizationFromTrainingJob:
     """Test model customization deployment from TrainingJob."""
 
-    def test_build_from_training_job(self, training_job_name):
+    def test_build_from_training_job(self, training_job_name, sagemaker_session):
         """Test building model from training job."""
         from sagemaker.core.resources import TrainingJob
         from sagemaker.serve import ModelBuilder
         import time
 
-        training_job = TrainingJob.get(training_job_name=training_job_name)
-        model_builder = ModelBuilder(model=training_job)
-        model = model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}")
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
+        model_builder.accept_eula = True
+        model = model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}", region=AWS_REGION)
 
         assert model is not None
         assert model.model_arn is not None
         assert model_builder.image_uri is not None
         assert model_builder.instance_type is not None
 
-    def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints):
-        """Test deploying model from training job and adapter."""
-        from sagemaker.core.resources import TrainingJob
+    def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
+        """Test deploying model from training job.
+
+        For LORA models, this verifies the two-step deployment:
+        base IC + adapter IC are both created on the same endpoint.
+        """
+        from sagemaker.core.resources import TrainingJob, InferenceComponent
         from sagemaker.serve import ModelBuilder
         import time
 
-        training_job = TrainingJob.get(training_job_name=training_job_name)
-        model_builder = ModelBuilder(model=training_job)
-        model = model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}")
-        endpoint = model_builder.deploy(endpoint_name=endpoint_name)
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        model_builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
+        model_builder.accept_eula = True
+        model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}", region=AWS_REGION)
+
+        peft_type = model_builder._fetch_peft()
+        adapter_name = f"{endpoint_name}-adapter"
+
+        endpoint = model_builder.deploy(
+            endpoint_name=endpoint_name,
+            inference_component_name=adapter_name if peft_type == "LORA" else None,
+        )
 
         cleanup_endpoints.append(endpoint_name)
 
@@ -129,25 +124,24 @@ class TestModelCustomizationFromTrainingJob:
         assert endpoint.endpoint_arn is not None
         assert endpoint.endpoint_status == "InService"
 
-        # Deploy adapter to the same endpoint
-        adapter_name = f"{endpoint_name}-adapter-{int(time.time())}-{random.randint(100, 100000)}"
-        model_builder2 = ModelBuilder(model=training_job)
-        model_builder2.build()
-        endpoint2 = model_builder2.deploy(
-            endpoint_name=endpoint_name,
-            inference_component_name=adapter_name
-        )
+        if peft_type == "LORA":
+            # Verify base IC was created
+            base_ic_name = f"{endpoint_name}-inference-component"
+            base_ic = InferenceComponent.get(inference_component_name=base_ic_name, region=AWS_REGION)
+            assert base_ic is not None
+            assert base_ic.inference_component_status == "InService"
 
-        assert endpoint2 is not None
-        assert endpoint2.endpoint_name == endpoint_name
+            # Verify adapter IC was created
+            adapter_ic = InferenceComponent.get(inference_component_name=adapter_name, region=AWS_REGION)
+            assert adapter_ic is not None
 
-    def test_fetch_endpoint_names_for_base_model(self, training_job_name):
+    def test_fetch_endpoint_names_for_base_model(self, training_job_name, sagemaker_session):
         """Test fetching endpoint names for base model."""
         from sagemaker.core.resources import TrainingJob
         from sagemaker.serve import ModelBuilder
 
-        training_job = TrainingJob.get(training_job_name=training_job_name)
-        model_builder = ModelBuilder(model=training_job)
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
         endpoint_names = model_builder.fetch_endpoint_names_for_base_model()
 
         assert isinstance(endpoint_names, set)
@@ -155,28 +149,30 @@ class TestModelCustomizationFromTrainingJob:
 
 class TestModelCustomizationFromModelPackage:
 
-    def test_build_from_model_package(self, model_package_arn):
+    def test_build_from_model_package(self, model_package_arn, sagemaker_session):
         """Test building model from model package."""
         from sagemaker.core.resources import ModelPackage
         from sagemaker.serve import ModelBuilder
 
-        model_package = ModelPackage.get(model_package_name=model_package_arn)
-        model_builder = ModelBuilder(model=model_package)
-        model = model_builder.build()
+        model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
+        model_builder = ModelBuilder(model=model_package, sagemaker_session=sagemaker_session)
+        model_builder.accept_eula = True
+        model = model_builder.build(region=AWS_REGION)
 
         assert model is not None
         assert model.model_arn is not None
 
-    def test_deploy_from_model_package(self, model_package_arn, cleanup_endpoints):
+    def test_deploy_from_model_package(self, model_package_arn, cleanup_endpoints, sagemaker_session):
         """Test deploying model from model package."""
         from sagemaker.core.resources import ModelPackage
         from sagemaker.serve import ModelBuilder
         import time
 
-        model_package = ModelPackage.get(model_package_name=model_package_arn)
+        model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
         endpoint_name = f"e2e-{int(time.time())}-{random.randint(100, 10000)}"
-        model_builder = ModelBuilder(model=model_package)
-        model_builder.build()
+        model_builder = ModelBuilder(model=model_package, sagemaker_session=sagemaker_session)
+        model_builder.accept_eula = True
+        model_builder.build(region=AWS_REGION)
         endpoint = model_builder.deploy(endpoint_name=endpoint_name)
 
         cleanup_endpoints.append(endpoint_name)
@@ -188,14 +184,15 @@ class TestModelCustomizationFromModelPackage:
 class TestInstanceTypeAutoDetection:
     """Test automatic instance type detection."""
 
-    def test_instance_type_from_recipe(self, training_job_name):
+    def test_instance_type_from_recipe(self, training_job_name, sagemaker_session):
         """Test instance type auto-detection from recipe."""
         from sagemaker.core.resources import TrainingJob
         from sagemaker.serve import ModelBuilder
 
-        training_job = TrainingJob.get(training_job_name=training_job_name)
-        model_builder = ModelBuilder(model=training_job)
-        model_builder.build()
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
+        model_builder.accept_eula = True
+        model_builder.build(region=AWS_REGION)
 
         assert model_builder.instance_type is not None
         assert "ml." in model_builder.instance_type
@@ -204,33 +201,33 @@ class TestInstanceTypeAutoDetection:
 class TestModelCustomizationDetection:
     """Test model customization detection logic."""
 
-    def test_is_model_customization_training_job(self, training_job_name):
+    def test_is_model_customization_training_job(self, training_job_name, sagemaker_session):
         """Test detection from training job."""
         from sagemaker.core.resources import TrainingJob
         from sagemaker.serve import ModelBuilder
 
-        training_job = TrainingJob.get(training_job_name=training_job_name)
-        model_builder = ModelBuilder(model=training_job)
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
 
         assert model_builder._is_model_customization() is True
 
-    def test_is_model_customization_model_package(self, model_package_arn):
+    def test_is_model_customization_model_package(self, model_package_arn, sagemaker_session):
         """Test detection from model package."""
         from sagemaker.core.resources import ModelPackage
         from sagemaker.serve import ModelBuilder
 
-        model_package = ModelPackage.get(model_package_name=model_package_arn)
-        model_builder = ModelBuilder(model=model_package)
+        model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
+        model_builder = ModelBuilder(model=model_package, sagemaker_session=sagemaker_session)
 
         assert model_builder._is_model_customization() is True
 
-    def test_fetch_model_package_arn(self, training_job_name):
+    def test_fetch_model_package_arn(self, training_job_name, sagemaker_session):
         """Test fetching model package ARN."""
         from sagemaker.core.resources import TrainingJob
         from sagemaker.serve import ModelBuilder
 
-        training_job = TrainingJob.get(training_job_name=training_job_name)
-        model_builder = ModelBuilder(model=training_job)
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
 
         arn = model_builder._fetch_model_package_arn()
 
@@ -241,14 +238,14 @@ class TestModelCustomizationDetection:
 class TestTrainerIntegration:
     """Test ModelBuilder integration with SFTTrainer and DPOTrainer."""
 
-    def test_sft_trainer_build(self, training_job_name):
+    def test_sft_trainer_build(self, training_job_name, sagemaker_session):
         """Test building model from SFTTrainer."""
         from sagemaker.core.resources import TrainingJob
         from sagemaker.train.sft_trainer import SFTTrainer
         from sagemaker.serve import ModelBuilder
 
         training_job = TrainingJob.get(
-            training_job_name=training_job_name
+            training_job_name=training_job_name, region=AWS_REGION
         )
 
         trainer = SFTTrainer(
@@ -259,13 +256,13 @@ class TestTrainerIntegration:
         )
         trainer._latest_training_job = training_job
 
-        model_builder = ModelBuilder(model=trainer)
-        model = model_builder.build()
+        model_builder = ModelBuilder(model=trainer, sagemaker_session=sagemaker_session)
+        model = model_builder.build(region=AWS_REGION)
 
         assert model is not None
         assert model.model_arn is not None
 
-    def test_dpo_trainer_build(self, training_job_name):
+    def test_dpo_trainer_build(self, training_job_name, sagemaker_session):
         """Test building model from DPOTrainer."""
         from sagemaker.core.resources import TrainingJob
         from sagemaker.train.dpo_trainer import DPOTrainer
@@ -273,7 +270,7 @@ class TestTrainerIntegration:
         from unittest.mock import patch
 
         training_job = TrainingJob.get(
-            training_job_name=training_job_name
+            training_job_name=training_job_name, region=AWS_REGION
         )
 
         with patch('sagemaker.train.common_utils.finetune_utils._get_fine_tuning_options_and_model_arn',
@@ -286,8 +283,8 @@ class TestTrainerIntegration:
             )
         trainer._latest_training_job = training_job
 
-        model_builder = ModelBuilder(model=trainer)
-        model = model_builder.build()
+        model_builder = ModelBuilder(model=trainer, sagemaker_session=sagemaker_session)
+        model = model_builder.build(region=AWS_REGION)
 
         assert model is not None
         assert model.model_arn is not None
@@ -305,8 +302,6 @@ Updated for sagemaker-core integration:
 
 import json
 import time
-import random
-import boto3
 import pytest
 from sagemaker.core.resources import TrainingJob, ModelPackage
 from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
@@ -329,7 +324,10 @@ class TestModelCustomizationDeployment:
     @pytest.fixture(scope="class")
     def training_job(self, setup_config):
         """Get the training job."""
-        return TrainingJob.get(training_job_name=setup_config["training_job_name"])
+        return TrainingJob.get(
+            training_job_name=setup_config["training_job_name"],
+            region=setup_config["region"],
+        )
 
     @pytest.fixture(scope="class")
     def s3_client(self, setup_config):
@@ -400,7 +398,7 @@ class TestModelCustomizationDeployment:
                 base_s3_path = training_job.model_artifacts.s3_model_artifacts
             elif hasattr(training_job, 'output_model_package_arn'):
                 # If training job has model package ARN, get artifacts from model package
-                model_package = ModelPackage.get(training_job.output_model_package_arn)
+                model_package = ModelPackage.get(training_job.output_model_package_arn, region=AWS_REGION)
                 if hasattr(model_package,
                            'inference_specification') and model_package.inference_specification.containers:
                     container = model_package.inference_specification.containers[0]
@@ -527,7 +525,10 @@ class TestModelCustomizationDeployment:
 
 
 def test_model_customization_workflow(training_job_name):
-    """Standalone test function for pytest discovery."""
+    """Standalone test function for pytest discovery.
+
+    Uses explicit region parameter for all SDK calls.
+    """
     config = {
         "training_job_name": training_job_name,
         "region": "us-west-2",
@@ -536,7 +537,7 @@ def test_model_customization_workflow(training_job_name):
 
     try:
         s3_client = boto3.client('s3', region_name=config["region"])
-        training_job = TrainingJob.get(training_job_name=config["training_job_name"])
+        training_job = TrainingJob.get(training_job_name=config["training_job_name"], region=config["region"])
 
         test_class = TestModelCustomizationDeployment()
         test_class.test_training_job_exists(training_job)
@@ -551,51 +552,3 @@ def test_model_customization_workflow(training_job_name):
         raise
 
 
-class TestBedrockNovaDeployment:
-    """Test suite for deploying Nova models to Bedrock."""
-    NOVA_TRAINING_JOB_NAME = "nova-textgeneration-lite-v2-sft-20251202132123"
-
-    @pytest.fixture(scope="class", autouse=True)
-    def setup_region(self):
-        """Set region to us-east-1 for Nova tests."""
-        import os
-        original_region = os.environ.get('AWS_DEFAULT_REGION')
-        os.environ['AWS_DEFAULT_REGION'] = 'us-east-1'
-        yield
-        if original_region:
-            os.environ['AWS_DEFAULT_REGION'] = original_region
-        else:
-            os.environ.pop('AWS_DEFAULT_REGION', None)
-
-    @pytest.fixture(scope="class")
-    def training_job(self, setup_region):
-        """Get Nova training job."""
-        import boto3
-        session = boto3.Session(region_name="us-east-1")
-        return TrainingJob.get(
-            training_job_name=self.NOVA_TRAINING_JOB_NAME,
-            session=session,
-            region="us-east-1")
-
-    @pytest.mark.skip(reason="Bedrock Nova deployment test skipped per team decision")
-    def test_bedrock_model_builder_creation(self, training_job):
-        """Test BedrockModelBuilder creation with Nova model."""
-        bedrock_builder = BedrockModelBuilder(model=training_job)
-        assert bedrock_builder is not None
-        assert bedrock_builder.model == training_job
-        assert bedrock_builder.s3_model_artifacts is not None
-
-    @pytest.mark.skip(reason="Bedrock Nova deployment test skipped per team decision")
-    @pytest.mark.slow
-    def test_nova_model_deployment(self, training_job):
-        """Test Nova model deployment to Bedrock."""
-        from sagemaker.core.helper.session_helper import get_execution_role
-        bedrock_builder = BedrockModelBuilder(model=training_job)
-        rand = random.randint(1000, 9999)
-        response = bedrock_builder.deploy(
-            custom_model_name=f"test-nova-deployment-{rand}",
-            role_arn=get_execution_role()
-        )
-
-        assert response is not None
-        assert "modelArn" in response or "jobArn" in response

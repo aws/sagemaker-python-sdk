@@ -40,7 +40,13 @@ DEFAULT_CONTAINER_ARGUMENTS = [
     + f"&& {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT}",
 ]
 
-HUB_NAME = "SageMakerPublicHub"
+def get_sagemaker_hub_name() -> str:
+    """Return the SageMaker Hub name, honoring SAGEMAKER_HUB_NAME env var override.
+
+    Resolved at call time so tests and dev workflows can override the hub
+    without re-importing this module. Defaults to ``"SageMakerPublicHub"``.
+    """
+    return os.environ.get("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
 
 # Allowed reward model IDs for RLAIF trainer with region restrictions
 _ALLOWED_REWARD_MODEL_IDS = {

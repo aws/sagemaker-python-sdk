@@ -273,7 +273,7 @@ def pascal_to_snake(pascal_str):
 
 
 def is_not_primitive(obj):
-    return not isinstance(obj, (int, float, str, bool, datetime.datetime))
+    return not isinstance(obj, (int, float, str, bool, datetime.datetime, bytes))
 
 
 def is_not_str_dict(obj):
@@ -298,6 +298,22 @@ class Unassigned:
             cls._instance = super().__new__(cls)
         return cls._instance
 
+    def __repr__(self):
+        """Return clean representation for debugging."""
+        return "Unassigned()"
+
+    def __str__(self):
+        """Return empty string for clean printing."""
+        return ""
+
+    def __iter__(self):
+        """Return empty iterator to prevent iteration errors."""
+        return iter([])
+
+    def __bool__(self):
+        """Return False for truthiness checks."""
+        return False
+
 
 class SingletonMeta(type):
     """
@@ -321,6 +337,11 @@ class SageMakerClient(metaclass=SingletonMeta):
     """
     A singleton class for creating a SageMaker client.
     """
+
+    @classmethod
+    def reset(cls):
+        """Reset the singleton instance so the next call re-reads env vars."""
+        SingletonMeta._instances.pop(cls, None)
 
     def __init__(
         self,
@@ -353,15 +374,43 @@ class SageMakerClient(metaclass=SingletonMeta):
         env_stage = os.environ.get('SAGEMAKER_STAGE', 'prod')  # default to gamma
         logger.info(f"Runs on sagemaker {env_stage}, region:{env_region}")
 
+        endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
+        runtime_endpoint_url = os.environ.get('SAGEMAKER_RUNTIME_ENDPOINT')
 
-        self.sagemaker_client = session.client(
+        # TODO: Remove post-launch. This loads a custom botocore service model
+        # (from the 'sample/' directory) that includes pre-GA Job APIs
+        # (CreateJob, DescribeJob, ListJobs, etc.) not yet in the public
+        # botocore release. Once these APIs ship in the official botocore
+        # service-2.json, this custom loader is unnecessary and the standard
+        # session.client("sagemaker", endpoint_url=...) path will work.
+        import botocore.loaders
+        import botocore.session as bc_session_mod
+        import pathlib
+
+        # Look for bundled service model inside the package first,
+        # fall back to source-tree layout (sample/ as sibling of src/)
+        _bundled = pathlib.Path(__file__).resolve().parent.parent / "data" / "sample"
+        _source_tree = pathlib.Path(__file__).resolve().parent.parent.parent.parent.parent / "sample"
+        sample_model_dir = str(_bundled if _bundled.exists() else _source_tree)
+        bc_session = bc_session_mod.get_session()
+        loader = botocore.loaders.Loader(
+            extra_search_paths=[sample_model_dir],
+            include_default_search_paths=True,
+        )
+        bc_session.register_component('data_loader', loader)
+        custom_session = Session(botocore_session=bc_session, region_name=env_region)
+
+        self.sagemaker_client = custom_session.client(
             "sagemaker",
             region_name=env_region,
+            endpoint_url=endpoint_url,
             config=self.config,
         )
-        
+
         self.sagemaker_runtime_client = session.client(
-            "sagemaker-runtime", region_name, config=self.config
+            "sagemaker-runtime", region_name,
+            endpoint_url=runtime_endpoint_url,
+            config=self.config,
         )
         self.sagemaker_featurestore_runtime_client = session.client(
             "sagemaker-featurestore-runtime", region_name, config=self.config
@@ -522,9 +571,11 @@ def _serialize_dict(value: Dict) -> dict:
         dict: The serialized dict
     """
     serialized_dict = {}
+    # Drop only Unassigned/None; preserve valid falsy values like False, 0, "".
     for k, v in value.items():
-        if serialize_result := serialize(v):
-            serialized_dict.update({k: serialize_result})
+        serialize_result = serialize(v)
+        if serialize_result is not None:
+            serialized_dict[k] = serialize_result
     return serialized_dict
 
 
@@ -539,8 +590,10 @@ def _serialize_list(value: List) -> list:
         list: The serialized list
     """
     serialized_list = []
+    # Drop only Unassigned/None; preserve valid falsy values like False, 0, "".
     for v in value:
-        if serialize_result := serialize(v):
+        serialize_result = serialize(v)
+        if serialize_result is not None:
             serialized_list.append(serialize_result)
     return serialized_list
 

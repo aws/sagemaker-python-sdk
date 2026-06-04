@@ -8,19 +8,20 @@ import json
 from typing import Optional
 import time
 import boto3
-from sagemaker.core.resources import MlflowApp, ModelPackage, ModelPackageGroup
+from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE, FineTuningOptions
 from sagemaker.core.shapes import ServerlessJobConfig, Channel, DataSource, ModelPackageConfig, MlflowConfig
 from sagemaker.train.configs import InputData, OutputDataConfig
 from sagemaker.train.defaults import TrainDefaults
+from sagemaker.train.constants import get_sagemaker_hub_name
 
 logger = logging.getLogger(__name__)
 
 # Region mappings for model availability
 OPEN_WEIGHTS_REGIONS = ['us-east-1', 'us-west-2', 'ap-northeast-1', 'eu-west-1']  # IAD, PDX, NRT, DUB
-NOVA_REGIONS = ['us-east-1']  # IAD only
+NOVA_REGIONS = ['us-east-1', 'us-west-2']  # IAD, PDX
 # Constants
 DEFAULT_REGION = "us-west-2"
 
@@ -98,78 +99,192 @@ def _get_current_domain_id(sagemaker_session) -> Optional[str]:
     return None
 
 
-def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optional[str] = None) -> Optional[str]:
-    """Resolve MLflow resource ARN using default experience logic."""
+def _get_prod_sm_client(sagemaker_session) -> "boto3.client":
+    """Create a boto3 SageMaker client that always hits prod (no custom endpoint_url)."""
+    region = sagemaker_session.boto_session.region_name
+    return boto3.client("sagemaker", region_name=region)
+
+
+def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optional[str] = None, min_mlflow_version: Optional[str] = None) -> Optional[str]:
+    """Resolve MLflow resource ARN using default experience logic.
+
+    All MLflow API calls use a raw boto3 client against prod (no custom endpoint),
+    since MLflow apps are a prod-only resource.
+
+    Args:
+        sagemaker_session: SageMaker session.
+        mlflow_resource_arn: Explicit ARN to use (returned as-is if provided).
+        min_mlflow_version: Minimum required MLflow version (e.g. "3.10").
+            If the resolved app's version is below this, a new app is created.
+    """
     if mlflow_resource_arn:
         return mlflow_resource_arn
-    
+
     try:
-        mlflow_apps = MlflowApp.get_all(
-            session=sagemaker_session.boto_session,
-            region=sagemaker_session.boto_session.region_name
-        )
-        
-        mlflow_apps_list = list(mlflow_apps)
+        sm_client = _get_prod_sm_client(sagemaker_session)
+        mlflow_apps_list = []
+        paginator = sm_client.get_paginator("list_mlflow_apps")
+        for page in paginator.paginate():
+            mlflow_apps_list.extend(page.get("MlflowApps", []))
+
+        logger.info("Found %d MLflow apps: %s", len(mlflow_apps_list),
+                    [(a.get("Name", "?"), a.get("Status", "?"), a.get("MlflowVersion", "?")) for a in mlflow_apps_list])
         current_domain_id = _get_current_domain_id(sagemaker_session)
-        
+
         # Check for domain match
+        resolved_app = None
         if current_domain_id:
-            domain_match = next((app for app in mlflow_apps_list
-                               if isinstance(app.default_domain_id_list, list) 
-                               and current_domain_id in app.default_domain_id_list), None)
-            if domain_match:
-                logger.info("Using domain-matched MLflow app: %s", domain_match.arn)
-                return domain_match.arn
-        
+            resolved_app = next((app for app in mlflow_apps_list
+                               if current_domain_id in app.get("DefaultDomainIdList", [])), None)
+
         # Check for account default
-        account_default = next((app for app in mlflow_apps_list 
-                              if app.account_default_status == "ENABLED"), None)
-        if account_default:
-            logger.info("Using account default MLflow app: %s", account_default.arn)
-            return account_default.arn
-        
+        if not resolved_app:
+            resolved_app = next((app for app in mlflow_apps_list
+                              if app.get("AccountDefaultStatus") == "ENABLED"), None)
+
         # Use first available with ready status
-        if mlflow_apps_list:
-            ready_app = next((app for app in mlflow_apps_list 
-                            if app.status in ["Created", "Updated"]), None)
-            if ready_app:
-                logger.info("Using first available ready MLflow app: %s", ready_app.arn)
-                return ready_app.arn
-        
+        if not resolved_app and mlflow_apps_list:
+            resolved_app = next((app for app in mlflow_apps_list
+                            if app.get("Status") in ["Created", "Updated"]), None)
+
+        # Check resolved app status
+        if resolved_app:
+            resolved_arn = resolved_app["Arn"]
+            logger.info("Resolved MLflow app: %s (status: %s, version: %s)",
+                        resolved_arn, resolved_app.get("Status"),
+                        resolved_app.get("MlflowVersion", "unknown"))
+            if resolved_app.get("Status") in ["Failed", "CreateFailed", "DeleteFailed", "Stopped"]:
+                logger.warning("Resolved MLflow app %s is in failed state: %s. Skipping.",
+                               resolved_arn, resolved_app.get("Status"))
+                resolved_app = None
+
+        # Version check: if resolved app is below min version, create a new one as default
+        if resolved_app and min_mlflow_version and not _mlflow_version_meets_minimum_dict(resolved_app, min_mlflow_version):
+            resolved_arn = resolved_app["Arn"]
+            logger.info(
+                "Existing MLflow app %s has version below %s. Creating new app as default.",
+                resolved_arn, min_mlflow_version
+            )
+            new_arn = _create_mlflow_app_as_upgrade(sagemaker_session, resolved_app, current_domain_id)
+            if new_arn:
+                logger.info("Created new MLflow app as default: %s", new_arn)
+                return new_arn
+            logger.warning("Failed to create upgraded MLflow app. Using existing app.")
+            return resolved_arn
+
+        if resolved_app:
+            return resolved_app["Arn"]
+
         # Create new app
-        new_app = _create_mlflow_app(sagemaker_session)
-        if new_app:
-            logger.info("Created new MLflow app: %s", new_app.arn)
-            return new_app.arn
-        
+        new_arn = _create_mlflow_app(sagemaker_session)
+        if new_arn:
+            logger.info("Created new MLflow app: %s", new_arn)
+            return new_arn
+
         logger.warning("Failed to create MLflow app. MLflow tracking disabled.")
         return None
-        
+
     except Exception as e:
         logger.error("Error resolving MLflow resource ARN: %s", e)
         return None
 
 
-def _create_mlflow_app(sagemaker_session) -> Optional[MlflowApp]:
-    """Create a new MLflow app with minimal configuration."""
+def _mlflow_version_meets_minimum_dict(app: dict, min_version: str) -> bool:
+    """Check if an MLflow app dict's version meets the minimum requirement."""
+    app_version = app.get("MlflowVersion")
+    if not app_version:
+        return False
     try:
-        app_name = f"finetune-mlflow-{int(time.time())}"
-        account_id = sagemaker_session.boto_session.client('sts').get_caller_identity()['Account']
+        app_parts = [int(x) for x in str(app_version).split(".")]
+        min_parts = [int(x) for x in min_version.split(".")]
+        return app_parts >= min_parts
+    except (ValueError, AttributeError):
+        return False
+
+
+def _wait_for_mlflow_app_ready_boto(sm_client, arn: str, timeout: int = 600) -> Optional[str]:
+    """Poll until MLflow app reaches a ready or terminal state using boto3."""
+    logger.info("Waiting for MLflow app to be ready (timeout=%ds)...", timeout)
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        resp = sm_client.describe_mlflow_app(Arn=arn)
+        status = resp.get("Status")
+        logger.info("MLflow app status: %s (elapsed: %.0fs)", status, time.time() - start_time)
+        if status in ["Created", "Updated"]:
+            return arn
+        if status in ["Failed", "Stopped", "CreateFailed", "DeleteFailed"]:
+            logger.error("MLflow app failed with status: %s, reason: %s",
+                         status, resp.get("FailureReason"))
+            return None
+        time.sleep(60)
+    logger.warning("Timed out waiting for MLflow app to be ready.")
+    return None
+
+
+def _create_mlflow_app_as_upgrade(
+    sagemaker_session, old_app: dict, domain_id: Optional[str]
+) -> Optional[str]:
+    """Unset default from old app and create a new MLflow app as the default. Returns ARN or None."""
+    try:
+        sm_client = _get_prod_sm_client(sagemaker_session)
         region = sagemaker_session.boto_session.region_name
+        account_id = sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"]
+        old_arn = old_app["Arn"]
+
+        # Unset default from old app
+        if domain_id and domain_id in old_app.get("DefaultDomainIdList", []):
+            logger.info("Unsetting domain default from old MLflow app: %s", old_arn)
+            sm_client.update_mlflow_app(Arn=old_arn, DefaultDomainIdList=[])
+        elif not domain_id and old_app.get("AccountDefaultStatus") == "ENABLED":
+            logger.info("Unsetting account default from old MLflow app: %s", old_arn)
+            sm_client.update_mlflow_app(Arn=old_arn, AccountDefaultStatus="DISABLED")
+
+        artifact_store_uri = old_app.get("ArtifactStoreUri") or \
+            f"s3://sagemaker-{region}-{account_id}/mlflow-artifacts"
+        role_arn = old_app.get("RoleArn") or \
+            TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
+        old_name = old_app.get("Name", "mlflow-app")
+        app_name = f"{old_name}-upgraded-{int(time.time())}"
+
+        create_kwargs = {
+            "Name": app_name,
+            "ArtifactStoreUri": artifact_store_uri,
+            "RoleArn": role_arn,
+        }
+        if domain_id:
+            create_kwargs["DefaultDomainIdList"] = [domain_id]
+        else:
+            create_kwargs["AccountDefaultStatus"] = "ENABLED"
+
+        logger.info("Creating upgraded MLflow app: %s", create_kwargs)
+        resp = sm_client.create_mlflow_app(**create_kwargs)
+        new_arn = resp["Arn"]
+        return _wait_for_mlflow_app_ready_boto(sm_client, new_arn)
+
+    except Exception as e:
+        logger.error("Failed to create upgraded MLflow app: %s", e)
+        return None
+
+
+def _create_mlflow_app(sagemaker_session) -> Optional[str]:
+    """Create a new MLflow app with minimal configuration. Returns ARN or None."""
+    try:
+        sm_client = _get_prod_sm_client(sagemaker_session)
+        region = sagemaker_session.boto_session.region_name
+        account_id = sagemaker_session.boto_session.client('sts').get_caller_identity()['Account']
         artifact_store_uri = f"s3://sagemaker-{region}-{account_id}/mlflow-artifacts"
         role_arn = TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
-        
+        app_name = f"finetune-mlflow-{int(time.time())}"
+
         # Ensure S3 bucket and prefix exist
         s3_client = sagemaker_session.boto_session.client('s3')
         bucket_name = f"sagemaker-{region}-{account_id}"
-        
+
         try:
-            # Check if prefix exists
             response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix="mlflow-artifacts/", MaxKeys=1)
             if 'Contents' not in response:
                 s3_client.put_object(Bucket=bucket_name, Key="mlflow-artifacts/")
         except s3_client.exceptions.NoSuchBucket:
-            # Bucket doesn't exist, create bucket and prefix
             if region == 'us-east-1':
                 s3_client.create_bucket(Bucket=bucket_name)
             else:
@@ -178,40 +293,16 @@ def _create_mlflow_app(sagemaker_session) -> Optional[MlflowApp]:
                     CreateBucketConfiguration={'LocationConstraint': region}
                 )
             s3_client.put_object(Bucket=bucket_name, Key="mlflow-artifacts/")
-        
-        new_app = MlflowApp.create(
-            name=app_name,
-            artifact_store_uri=artifact_store_uri,
-            role_arn=role_arn,
-            account_default_status="DISABLED",
-            session=sagemaker_session.boto_session,
-            region=region
+
+        resp = sm_client.create_mlflow_app(
+            Name=app_name,
+            ArtifactStoreUri=artifact_store_uri,
+            RoleArn=role_arn,
+            AccountDefaultStatus="DISABLED",
         )
-        
-        # Wait for app to reach Created/Updated state
-        max_wait_time = 600  # 10 minutes
-        poll_interval = 10   # 10 seconds
-        start_time = time.time()
-        
-        while time.time() - start_time < max_wait_time:
-            new_app.refresh()
-            if new_app.status in ["Created", "Updated"]:
-                return new_app
-            elif new_app.status in ["Failed", "Stopped"]:
-                # Get detailed error from MLflow app
-                error_msg = f"MLflow app creation failed with status: {new_app.status}"
-                if hasattr(new_app, 'failure_reason') and new_app.failure_reason:
-                    error_msg += f". Reason: {new_app.failure_reason}"
-                raise RuntimeError(error_msg)
-            time.sleep(poll_interval)
-        
-        # Timeout case - get current status and any error details
-        new_app.refresh()
-        error_msg = f"MLflow app creation failed. Current status: {new_app.status}"
-        if hasattr(new_app, 'failure_reason') and new_app.failure_reason:
-            error_msg += f". Reason: {new_app.failure_reason}"
-        raise RuntimeError(error_msg)
-            
+        new_arn = resp["Arn"]
+        return _wait_for_mlflow_app_ready_boto(sm_client, new_arn)
+
     except Exception as e:
         logger.error("Failed to create MLflow app: %s", e)
         return None
@@ -317,13 +408,15 @@ def _resolve_model_package_arn(model_package) -> Optional[str]:
 
 
 def _get_fine_tuning_options_and_model_arn(model_name: str, customization_technique: str, training_type, sagemaker_session,
-                                         hub_name: str = "SageMakerPublicHub") -> tuple:
+                                         hub_name: Optional[str] = None) -> tuple:
     """Get fine-tuning options and model ARN for given customization technique.
     
     Returns:
         tuple: (FineTuningOptions, model_arn, is_gated_model)
     """
-    
+    if hub_name is None:
+        hub_name = get_sagemaker_hub_name()
+
     try:
 
         hub_content = _get_hub_content_metadata(
@@ -346,7 +439,7 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         matching_recipes = [r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique]
         
         if not matching_recipes:
-            raise ValueError(f"No recipes found for customization technique: {customization_technique}")
+            raise ValueError(f"No recipes found for model '{model_name}' with customization technique: {customization_technique}")
         
         # Filter recipes that have SmtjRecipeTemplateS3Uri key
         recipes_with_template = [r for r in matching_recipes if r.get("SmtjRecipeTemplateS3Uri")]
@@ -355,34 +448,71 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique}")
 
         # Select recipe based on training type
+        # Collect override_params from ALL matching recipes (standard + subscription)
         recipe = None
         if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-            recipe = next((r for r in recipes_with_template if r.get("Peft")), None)
+            recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
         elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-            recipe = next((r for r in recipes_with_template if not r.get("Peft")), None)
+            recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
 
         if not recipe:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}")
 
-        elif recipe and recipe.get("SmtjOverrideParamsS3Uri"):
+        # Start with the standard recipe's override_params
+        options_dict = {}
+        if recipe.get("SmtjOverrideParamsS3Uri"):
             s3_uri = recipe["SmtjOverrideParamsS3Uri"]
-            s3 = boto3.client("s3")
-            bucket, key = s3_uri.replace("s3://", "").split("/", 1)
+            s3 = sagemaker_session.boto_session.client("s3")
+            uri_path = s3_uri.replace("s3://", "")
+            bucket, key = uri_path.split("/", 1)
             obj = s3.get_object(Bucket=bucket, Key=key)
             options_dict = json.loads(obj["Body"].read())
+
+        # Auto-detect and merge subscription recipe's override_params if available
+        if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+            sub_recipe = next((r for r in recipes_with_template if r.get("Peft") and r.get("IsSubscriptionModel")), None)
+        else:
+            sub_recipe = next((r for r in recipes_with_template if not r.get("Peft") and r.get("IsSubscriptionModel")), None)
+
+        if sub_recipe and sub_recipe.get("SmtjOverrideParamsS3Uri"):
+            try:
+                sub_s3_uri = sub_recipe["SmtjOverrideParamsS3Uri"].replace("{customer_id}", sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"])
+                sub_uri_path = sub_s3_uri.replace("s3://", "")
+                # Handle access point ARN URIs
+                if sub_uri_path.startswith("arn:"):
+                    arn_parts = sub_uri_path.split("/", 2)
+                    sub_bucket = arn_parts[0] + "/" + arn_parts[1]
+                    sub_key = arn_parts[2] if len(arn_parts) > 2 else ""
+                else:
+                    sub_bucket, sub_key = sub_uri_path.split("/", 1)
+                s3_sub = sagemaker_session.boto_session.client("s3")
+                sub_obj = s3_sub.get_object(Bucket=sub_bucket, Key=sub_key)
+                sub_options = json.loads(sub_obj["Body"].read())
+                # Merge: subscription params into _specs only (don't set defaults)
+                # This makes them settable but not serialized unless user explicitly sets them
+                for k, v in sub_options.items():
+                    if k not in options_dict:
+                        v_copy = v.copy() if isinstance(v, dict) else v
+                        if isinstance(v_copy, dict):
+                            v_copy['default'] = None  # No default — won't appear in to_dict() unless set
+                        options_dict[k] = v_copy
+            except Exception as e:
+                logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
+
+        if options_dict:
             return FineTuningOptions(options_dict), model_arn, is_gated_model
         else:
             return FineTuningOptions({}), model_arn, is_gated_model
             
     except Exception as e:
         logger.error("Exception getting fine-tuning options: %s", e)
+        raise
 
 
 def _create_input_channels(dataset: str, content_type: Optional[str] = None, 
                          input_compression_type: Optional[str] = None,
                          record_wrapper_type: Optional[str] = None,
-                         input_mode: Optional[str] = None,
-                         enable_ffm: Optional[bool] = None):
+                         input_mode: Optional[str] = None):
     """Create input channels from dataset (S3 URI or dataset ARN).
     
     Args:
@@ -417,9 +547,8 @@ def _create_input_channels(dataset: str, content_type: Optional[str] = None,
         content_type=content_type,
         compression_type=input_compression_type,
         record_wrapper_type=record_wrapper_type,
-        input_mode=input_mode,
-        enable_ffm=enable_ffm,
-    )
+        input_mode=input_mode
+        )
     channels.append(channel)
     
     return channels

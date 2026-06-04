@@ -39,12 +39,14 @@ from sagemaker.core.shapes import (
 # ---------------------------------------------------------------------------
 
 
-def _create_mock_model_trainer(with_internal_channels=False):
+def _create_mock_model_trainer(with_internal_channels=False, with_spot_training=False):
     """Create a mock ModelTrainer with common attributes.
 
     Args:
         with_internal_channels: If True, adds internal channels (code, sm_drivers)
             to input_data_config for testing channel inclusion in tuning jobs.
+        with_spot_training: If True, sets spot parameters (enable_managed_spot_training,
+            max_wait_time_in_seconds)
     """
     trainer = MagicMock()
     trainer.sagemaker_session = MagicMock()
@@ -52,8 +54,9 @@ def _create_mock_model_trainer(with_internal_channels=False):
     trainer.training_image = "test-image:latest"
     trainer.training_input_mode = "File"
     trainer.role = "arn:aws:iam::123456789012:role/SageMakerRole"
-    trainer.output_data_config = MagicMock()
-    trainer.output_data_config.s3_output_path = "s3://bucket/output"
+    from sagemaker.core.shapes import OutputDataConfig
+
+    trainer.output_data_config = OutputDataConfig(s3_output_path="s3://bucket/output")
     trainer.compute = MagicMock()
     trainer.compute.instance_type = "ml.m5.xlarge"
     trainer.compute.instance_count = 1
@@ -67,6 +70,9 @@ def _create_mock_model_trainer(with_internal_channels=False):
             _create_channel("code", "s3://bucket/code"),
             _create_channel("sm_drivers", "s3://bucket/drivers"),
         ]
+    if with_spot_training:
+        trainer.compute.enable_managed_spot_training = True
+        trainer.stopping_condition.max_wait_time_in_seconds = 3600
     return trainer
 
 
@@ -574,3 +580,127 @@ class TestHyperparameterTunerStaticMethods:
         assert "train" in channel_names, "User 'train' channel should be included"
         assert "validation" in channel_names, "User 'validation' channel should be included"
         assert len(channel_names) == 4, "Should have exactly 4 channels"
+
+    def test_build_training_job_definition_includes_spot_params(self):
+        """Test that _build_training_job_definition includes spot parameters."""
+        tuner = HyperparameterTuner(
+            model_trainer=_create_mock_model_trainer(with_spot_training=True),
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        # Build training job definition
+        definition = tuner._build_training_job_definition(None)
+
+        # Verify managed spot training enabled
+        assert definition.enable_managed_spot_training is True, "Spot should be enabled"
+        assert isinstance(
+            definition.stopping_condition.max_wait_time_in_seconds, int
+        ), "Max wait time should be set"
+
+    def test_build_training_job_definition_includes_environment_variables(self):
+        """Test that _build_training_job_definition includes environment variables.
+
+        This test verifies the fix for GitHub issue #5613 where tuning jobs were
+        missing environment variables that were set on the ModelTrainer.
+        """
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = {
+            "FOO": "bar",
+            "RANDOM_STATE": "42",
+        }
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert definition.environment is not None, "Environment should not be None"
+        assert definition.environment == {
+            "FOO": "bar",
+            "RANDOM_STATE": "42",
+        }, "Environment variables should match those set on ModelTrainer"
+
+    def test_build_training_job_definition_with_none_environment(self):
+        """Test that _build_training_job_definition handles None environment gracefully.
+
+        When environment is None, it should not be passed to the Pydantic constructor,
+        so the field stays as Unassigned (excluded from serialization).
+        """
+        from sagemaker.core.utils.utils import Unassigned
+
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = None
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert isinstance(definition.environment, Unassigned), (
+            "Environment should be Unassigned when model_trainer.environment is None"
+        )
+
+    def test_build_training_job_definition_with_empty_environment(self):
+        """Test that _build_training_job_definition passes through empty environment.
+
+        An empty dict is valid for the SageMaker API, so we pass it through as-is
+        rather than silently converting it to None.
+        """
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.environment = {}
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert definition.environment == {}, (
+            "Empty dict environment should be passed through as-is"
+        )
+
+    def test_build_training_job_definition_passes_through_output_data_config(self):
+        """Test that _build_training_job_definition passes through the full OutputDataConfig.
+
+        This verifies that fields like kms_key_id and compression_type from
+        ModelTrainer.output_data_config are preserved in the tuning job definition,
+        rather than only copying s3_output_path.
+        """
+        from sagemaker.core.shapes import OutputDataConfig
+
+        mock_trainer = _create_mock_model_trainer()
+        mock_trainer.output_data_config = OutputDataConfig(
+            s3_output_path="s3://bucket/output",
+            kms_key_id="arn:aws:kms:us-west-2:123456789012:key/abc123",
+            compression_type="NONE",
+        )
+
+        tuner = HyperparameterTuner(
+            model_trainer=mock_trainer,
+            objective_metric_name="accuracy",
+            hyperparameter_ranges=_create_single_hp_range(),
+        )
+
+        definition = tuner._build_training_job_definition(None)
+
+        assert definition.output_data_config is mock_trainer.output_data_config, (
+            "output_data_config should be the same object from ModelTrainer"
+        )
+        assert definition.output_data_config.kms_key_id == (
+            "arn:aws:kms:us-west-2:123456789012:key/abc123"
+        ), "kms_key_id should be preserved"
+        assert definition.output_data_config.compression_type == "NONE", (
+            "compression_type should be preserved"
+        )
+        assert definition.output_data_config.s3_output_path == "s3://bucket/output", (
+            "s3_output_path should be preserved"
+        )

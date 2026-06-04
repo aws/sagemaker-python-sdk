@@ -28,6 +28,10 @@ class Feature(Enum):
     MODEL_TRAINER = 14
     MODEL_CUSTOMIZATION = 15
     MLOPS = 16
+    FEATURE_STORE = 17
+    PROCESSING = 18
+    MODEL_CUSTOMIZATION_NOVA = 19
+    MODEL_CUSTOMIZATION_OSS = 20
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""

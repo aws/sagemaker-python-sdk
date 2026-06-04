@@ -47,6 +47,85 @@ def test_filter_match(query, keywords, expected):
     assert f.match(keywords) == expected
 
 
+@pytest.mark.parametrize(
+    "malicious_query,keywords",
+    [
+        # Code injection attempts that would work with eval()
+        ("__import__('os').system('echo pwned')", ["test"]),
+        ("exec('import os; os.system(\"ls\")')", ["test"]),
+        ("eval('1+1')", ["test"]),
+        ("__builtins__.__import__('os').system('ls')", ["test"]),
+        # Attribute access attempts
+        ("keywords.__class__.__bases__[0].__subclasses__()", ["test"]),
+        # Lambda injection
+        ("(lambda: __import__('os').system('ls'))()", ["test"]),
+        # Dict/list comprehension injection
+        ("[x for x in ().__class__.__bases__[0].__subclasses__()]", ["test"]),
+        # Function call injection
+        ("open('/etc/passwd').read()", ["test"]),
+        # Module access
+        ("sys.exit()", ["test"]),
+        ("os.system('ls')", ["test"]),
+    ],
+)
+def test_filter_blocks_code_injection(malicious_query, keywords):
+    """Test that malicious code injection attempts are safely handled."""
+    f = _Filter(malicious_query)
+    # Should not execute code, just return False for non-matching patterns
+    result = f.match(keywords)
+    assert isinstance(result, bool)
+    # The filter should safely fail to match rather than execute code
+    assert result is False
+
+
+@pytest.mark.parametrize(
+    "injection_query",
+    [
+        # Various eval-based injection patterns
+        "'; __import__('os').system('ls'); '",
+        "\"; exec('import os'); \"",
+        "') or __import__('os').system('ls') or ('",
+        # Nested injection attempts
+        "test AND (__import__('os').system('ls'))",
+        "NOT (__import__('subprocess').call(['ls']))",
+        # String escape attempts
+        "test' + str(__import__('os').system('ls')) + '",
+    ],
+)
+def test_filter_injection_variants(injection_query):
+    """Test various code injection patterns are blocked."""
+    f = _Filter(injection_query)
+    result = f.match(["test", "keyword"])
+    assert isinstance(result, bool)
+    # Should not raise exceptions or execute code
+    assert result in [True, False]
+
+
+def test_filter_no_eval_execution():
+    """Verify that expressions are parsed safely without eval()."""
+    # This would execute code if eval() was used
+    dangerous_expr = "__import__('sys').exit(1)"
+    f = _Filter(dangerous_expr)
+    
+    # Should not crash the program or execute the exit
+    result = f.match(["test"])
+    assert result is False
+
+
+def test_filter_safe_ast_parsing():
+    """Test that the filter uses AST parsing instead of eval()."""
+    f = _Filter("test AND keyword")
+    
+    # Verify AST is created
+    assert f._ast is None  # Not parsed yet
+    f.match(["test", "keyword"])
+    assert f._ast is not None  # AST created after first match
+    
+    # Verify it's an AST node, not a string for eval
+    from sagemaker.core.jumpstart.search import _ExpressionNode
+    assert isinstance(f._ast, _ExpressionNode)
+
+
 def test_search_public_hub_models():
     mock_models = [
         HubContent(

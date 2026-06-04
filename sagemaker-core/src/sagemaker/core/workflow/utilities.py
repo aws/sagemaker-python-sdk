@@ -28,6 +28,7 @@ try:
     from _hashlib import HASH as Hash
 except ImportError:
     import typing
+
     Hash = typing.Any
 
 from sagemaker.core.common_utils import base_from_name
@@ -227,7 +228,9 @@ def get_processing_code_hash(code: str, source_dir: str, dependencies: List[str]
     return None
 
 
-def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List[str]) -> str:
+def get_training_code_hash(
+    entry_point: str, source_dir: str, dependencies: Optional[str] = None
+) -> str:
     """Get the hash of a training step's code artifact(s).
 
     Args:
@@ -236,9 +239,9 @@ def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List
                 training
         source_dir (str): Path to a directory with any other training source
                 code dependencies aside from the entry point file
-        dependencies (str): A list of paths to directories (absolute
-                or relative) with any additional libraries that will be exported
-                to the container
+        dependencies Optional[str]: The relative path within ``source_dir`` to a
+                ``requirements.txt`` file with any additional libraries that
+                will be exported to the container
     Returns:
         str: A hash string representing the unique code artifact(s) for the step
     """
@@ -248,11 +251,17 @@ def get_training_code_hash(entry_point: str, source_dir: str, dependencies: List
         if source_dir:
             source_dir_url = urlparse(source_dir)
             if source_dir_url.scheme == "" or source_dir_url.scheme == "file":
-                return hash_files_or_dirs([source_dir] + dependencies)
+                if dependencies:
+                    return hash_files_or_dirs([source_dir] + [dependencies])
+                else:
+                    return hash_files_or_dirs([source_dir])
         elif entry_point:
             entry_point_url = urlparse(entry_point)
             if entry_point_url.scheme == "" or entry_point_url.scheme == "file":
-                return hash_files_or_dirs([entry_point] + dependencies)
+                if dependencies:
+                    return hash_files_or_dirs([entry_point] + [dependencies])
+                else:
+                    return hash_files_or_dirs([entry_point])
     return None
 
 

@@ -28,6 +28,24 @@ def __getattr__(name):
     elif name == "ModelTrainer":
         from sagemaker.train.model_trainer import ModelTrainer
         return ModelTrainer
+    elif name == "SFTTrainer":
+        from sagemaker.train.sft_trainer import SFTTrainer
+        return SFTTrainer
+    elif name == "DPOTrainer":
+        from sagemaker.train.dpo_trainer import DPOTrainer
+        return DPOTrainer
+    elif name == "RLVRTrainer":
+        from sagemaker.train.rlvr_trainer import RLVRTrainer
+        return RLVRTrainer
+    elif name == "RLAIFTrainer":
+        from sagemaker.train.rlaif_trainer import RLAIFTrainer
+        return RLAIFTrainer
+    elif name == "TrainingType":
+        from sagemaker.train.common import TrainingType
+        return TrainingType
+    elif name == "CustomizationTechnique":
+        from sagemaker.train.common import CustomizationTechnique
+        return CustomizationTechnique
     elif name == "logger":
         from sagemaker.core.utils.utils import logger
         return logger
@@ -56,4 +74,37 @@ def __getattr__(name):
     elif name == "get_builtin_metrics":
         from sagemaker.train.evaluate import get_builtin_metrics
         return get_builtin_metrics
+    elif name == "MultiTurnRLTrainer":
+        from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+        return MultiTurnRLTrainer
+    elif name == "AgentRFTJob":
+        from sagemaker.train.agent_rft_job import AgentRFTJob
+        return AgentRFTJob
+    elif name == "CustomAgentLambda":
+        from sagemaker.train.custom_agent_lambda import CustomAgentLambda
+        return CustomAgentLambda
+    elif name == "plot_training_metrics":
+        from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
+        return plot_training_metrics
+    elif name == "get_available_metrics":
+        from sagemaker.train.common_utils.metrics_visualizer import get_available_metrics
+        return get_available_metrics
+    elif name == "get_studio_url":
+        from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
+        return get_studio_url
+    elif name == "get_mlflow_url":
+        from sagemaker.train.common_utils.trainer_wait import get_mlflow_url
+        return get_mlflow_url
+    elif name == "plot_training_metrics":
+        from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
+        return plot_training_metrics
+    elif name == "get_available_metrics":
+        from sagemaker.train.common_utils.metrics_visualizer import get_available_metrics
+        return get_available_metrics
+    elif name == "get_studio_url":
+        from sagemaker.train.common_utils.metrics_visualizer import get_studio_url
+        return get_studio_url
+    elif name == "get_mlflow_url":
+        from sagemaker.train.common_utils.trainer_wait import get_mlflow_url
+        return get_mlflow_url
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

@@ -16,7 +16,12 @@ import pprint
 from functools import lru_cache
 from typing import Optional, Any
 
-from sagemaker.core.tools.constants import BASIC_JSON_TYPES_TO_PYTHON_TYPES, SHAPE_DAG_FILE_PATH
+from sagemaker.core.tools.constants import (
+    BASIC_JSON_TYPES_TO_PYTHON_TYPES,
+    REQUIRED_TO_OPTIONAL_OVERRIDES,
+    PIPE_VAR_OVERRIDES,
+    SHAPE_DAG_FILE_PATH,
+)
 from sagemaker.core.utils.utils import (
     reformat_file_with_black,
     convert_to_snake_case,
@@ -216,6 +221,10 @@ class ShapesExtractor:
         shape_dict = self.combined_shapes[shape]
         members = shape_dict["members"]
         required_args = list(required_override) or shape_dict.get("required", [])
+        # Remove members that are known to be optional despite the service model
+        required_args = [
+            r for r in required_args if r not in REQUIRED_TO_OPTIONAL_OVERRIDES.get(shape, [])
+        ]
         init_data_body = {}
         # bring the required members in front
         ordered_members = {key: members[key] for key in required_args if key in members}
@@ -233,7 +242,9 @@ class ShapesExtractor:
                     member_type = self._evaluate_map_type(member_shape)
                 else:
                     # Shape is a simple type like string
-                    member_type = BASIC_JSON_TYPES_TO_PYTHON_TYPES[member_shape_type]
+                    member_type = PIPE_VAR_OVERRIDES.get(shape, {}).get(
+                        member_name, BASIC_JSON_TYPES_TO_PYTHON_TYPES[member_shape_type]
+                    )
             else:
                 raise Exception("The Shape definition mush exist. The Json Data might be corrupt")
             member_name_snake_case = convert_to_snake_case(member_name)

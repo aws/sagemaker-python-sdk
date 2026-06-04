@@ -1,4 +1,86 @@
 # Changelog
+## v1.13.0 (2026-06-02)
+
+### Features
+
+- **feat: Deployment** - Add MTRL support for BedrockModelBuilder and ModelBuilder.
+
+### Bug Fixes
+
+- fix: set sagemaker_config=None on mock session in test_from_jumpstart_config_applies_volume_size (#5882)
+
+## v1.12.0 (2026-05-19)
+
+### Bug Fixes
+
+- Fix `AttributeError` on `vpc_config` in networking and telemetry region fallback for classmethods (#5839)
+- Prevent code injection in `capture_dependencies` path interpolation via crafted directory names in `ModelBuilder` (#5792)
+- Fix `VolumeSizeInGB` not being passed through when deploying JumpStart models with `inference_volume_size` (#5847)
+
+## v1.11.0 (2026-05-12)
+
+### Other
+
+- Update module dependencies
+
+## v1.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix JumpStart network isolation in ModelBuilder
+- Fix handling of unrecognized JumpStart container images in ModelBuilder
+
+## v1.10.0 (2026-05-01)
+
+### Bug Fixes
+
+- Fix potential S3 path traversal
+
+## v1.9.0 (2026-04-23)
+
+### Bug Fixes
+
+- **ModelBuilder**: Stop overwriting user-provided `HF_MODEL_ID` for DJL Serving
+- **ModelBuilder**: Keep `/opt/ml/model` writable when using `source_code` with DJL LMI
+
+## v1.8.0 (2026-04-16)
+
+### Bug Fixes
+
+- **HuggingFace**: Improve SDK v3 Hugging Face support
+
+## v1.7.1 (2026-03-31)
+
+### Features
+
+- **Telemetry**: Added telemetry emitter to `ScriptProcessor` and `FrameworkProcessor`, enabling SDK usage tracking for processing jobs via the telemetry attribution module (new `PROCESSING` feature enum added to telemetry constants)
+
+### Bug Fixes
+
+- **ModelBuilder**: Fixed `accept_eula` handling in ModelBuilder's LoRA deployment path — previously hardcoded to `True`, now respects the user-provided value and raises a `ValueError` if not explicitly set to `True`
+- **Evaluate**: Fixed Lambda handler name derivation in the Evaluator — hardcoded the handler to `lambda_function.lambda_handler` instead of deriving it from the source filename, which caused invocation failures when the source file had a non-default name
+
+## v1.7.0 (2026-03-25)
+
+### Bug fixes and Other Changes
+
+- **Fix**: Sync Nova hosting configs with AGISageMakerInference (#5664)
+
+## v1.6.0 (2026-03-19)
+
+ - **ModelBuilder**: Fix the bug in deploy from LORA finetuning job
+   
+## v1.5.0 (2026-03-02)
+
+### Bug fixes and Other Changes
+
+- **Fix**: Resolve alt config resolution for jumpstart models (#5563)
+- **Fix**: Bug fixes for Model Customization (#5558)
+- **Feature**: Add license to sagemaker-serve (#5553)
+
+## v1.4.1 (2026-02-10)
+
+ - Update Module dependencies
 
 ## v1.4.0 (2026-01-22)
 

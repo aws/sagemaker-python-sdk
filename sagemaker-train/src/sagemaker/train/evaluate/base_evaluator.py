@@ -21,6 +21,8 @@ if TYPE_CHECKING:
     from sagemaker.core.helper.session_helper import Session
 
 from sagemaker.train.base_trainer import BaseTrainer
+from sagemaker.train.agent_rft_job import AgentRFTJob
+from sagemaker.train.common_utils.finetune_utils import _resolve_mlflow_resource_arn
 # Module-level logger
 _logger = logging.getLogger(__name__)
 
@@ -49,6 +51,10 @@ class BaseEvaluator(BaseModel):
     Attributes:
         region (Optional[str]): AWS region for evaluation jobs. If not provided, will use
             SAGEMAKER_REGION env var or default region.
+        role (Optional[str]): IAM execution role ARN for SageMaker pipeline and training jobs.
+            If not provided, will be derived from the session's caller identity. Use this when
+            running outside SageMaker-managed environments (e.g., local notebooks, CI/CD) where
+            the caller identity is not a SageMaker-assumable role.
         sagemaker_session (Optional[Any]): SageMaker session object. If not provided, a default
             session will be created automatically.
         model (Union[str, Any]): Model for evaluation. Can be:
@@ -88,8 +94,9 @@ class BaseEvaluator(BaseModel):
     """
     
     region: Optional[str] = None
+    role: Optional[str] = None
     sagemaker_session: Optional[Any] = None
-    model: Union[str, BaseTrainer, ModelPackage]
+    model: Union[str, BaseTrainer, AgentRFTJob, ModelPackage]
     base_eval_name: Optional[str] = None
     s3_output_path: str
     mlflow_resource_arn: Optional[str] = None
@@ -158,8 +165,6 @@ class BaseEvaluator(BaseModel):
     @validator('mlflow_resource_arn', pre=True, always=True)
     def _resolve_mlflow_arn(cls, v, values):
         """Resolve MLflow resource ARN using default experience logic if not provided."""
-        from ..common_utils.finetune_utils import _resolve_mlflow_resource_arn
-        
         # Get sagemaker_session from values
         sagemaker_session = values.get('sagemaker_session')
         if sagemaker_session is None:
@@ -314,12 +319,6 @@ class BaseEvaluator(BaseModel):
                 sagemaker_session=session
             )
             
-            # Check if model is GPT OSS (not supported for evaluation)
-            if model_info.base_model_name in ["openai-reasoning-gpt-oss-20b", "openai-reasoning-gpt-oss-120b"]:
-                raise ValueError(
-                    "Evaluation is currently not supported for models created from GPT OSS 20B base model"
-                )
-            
             # If model is a ModelPackage object or ARN (has source_model_package_arn),
             # validate that the resolved base_model_arn is a hub content ARN
             if model_info.source_model_package_arn:
@@ -344,13 +343,11 @@ class BaseEvaluator(BaseModel):
     @validator('sagemaker_session', always=True, pre=True)
     def _create_default_session(cls, v: Optional[Any], values: dict) -> Any:
         """Create a default SageMaker session if not provided.
-        
-        Respects SAGEMAKER_ENDPOINT and SAGEMAKER_REGION environment variables.
-        
+
         Args:
             v (Optional[Any]): The sagemaker_session if provided, None otherwise.
             values (dict): Dictionary of already-validated fields.
-            
+
         Returns:
             Any: SageMaker session object (provided or newly created).
         """
@@ -358,18 +355,12 @@ class BaseEvaluator(BaseModel):
             import os
             import boto3
             from sagemaker.core.helper.session_helper import Session
-            
-            # Get region from parameter or environment
+
             region = values.get('region') or os.environ.get('SAGEMAKER_REGION') or os.environ.get('AWS_REGION', 'us-west-2')
-            
-            # Check for beta endpoint in environment variable
-            endpoint = os.environ.get('SAGEMAKER_ENDPOINT')
-            sm_client = boto3.client(
-                'sagemaker',
-                endpoint_url=endpoint if endpoint else None,
-                region_name=region
-            )
-            return Session(sagemaker_client=sm_client)
+
+            boto_session = boto3.Session(region_name=region)
+            sm_client = boto_session.client('sagemaker')
+            return Session(boto_session=boto_session, sagemaker_client=sm_client)
         return v
     
     def __init__(self, **data: Any) -> None:
@@ -414,6 +405,12 @@ class BaseEvaluator(BaseModel):
         """Get the resolved source model package ARN (None for JumpStart models)."""
         info = self._get_resolved_model_info()
         return info.source_model_package_arn if info else None
+
+    def _is_nova_model_for_telemetry(self) -> bool:
+        """Check if the model is a Nova model for telemetry tracking."""
+        from ..common_utils.recipe_utils import _is_nova_model
+        base_model_name = self._base_model_name
+        return _is_nova_model(base_model_name) if base_model_name else False
 
     @property
     def _is_jumpstart_model(self) -> bool:
@@ -637,9 +634,12 @@ class BaseEvaluator(BaseModel):
                 - account_id (str): AWS account ID
         """
         # Get role ARN
-        role_arn = (self.sagemaker_session.get_caller_identity_arn() 
-                   if hasattr(self.sagemaker_session, 'get_caller_identity_arn') 
-                   else self.sagemaker_session.expand_role())
+        if self.role:
+            role_arn = self.role
+        else:
+            role_arn = (self.sagemaker_session.get_caller_identity_arn()
+                       if hasattr(self.sagemaker_session, 'get_caller_identity_arn')
+                       else self.sagemaker_session.expand_role())
         
         # Get region - prefer self.region if set, otherwise extract from session
         region = self.region or (self.sagemaker_session.boto_region_name 
@@ -701,10 +701,22 @@ class BaseEvaluator(BaseModel):
         Returns:
             dict: Base template context dictionary
         """
+        # Resolve MLflow ARN if not already resolved (e.g. session was None at construction time)
+        if not self.mlflow_resource_arn and self.sagemaker_session:
+            self.mlflow_resource_arn = _resolve_mlflow_resource_arn(self.sagemaker_session)
+
+        # Generate default mlflow_experiment_name if not provided
+        # This is required by AWS when ModelPackageGroupArn is not provided in training jobs
+        mlflow_experiment_name = self.mlflow_experiment_name
+        if not mlflow_experiment_name and self.mlflow_resource_arn:
+            # Use pipeline_name as default experiment name
+            mlflow_experiment_name = '{{ pipeline_name }}'
+            _logger.info("No mlflow_experiment_name provided, using pipeline_name as default")
+        
         return {
             'role_arn': role_arn,
             'mlflow_resource_arn': self.mlflow_resource_arn,
-            'mlflow_experiment_name': self.mlflow_experiment_name,
+            'mlflow_experiment_name': mlflow_experiment_name,
             'mlflow_run_name': self.mlflow_run_name,
             'model_package_group_arn': model_package_group_arn,
             'source_model_package_arn': self._source_model_package_arn,

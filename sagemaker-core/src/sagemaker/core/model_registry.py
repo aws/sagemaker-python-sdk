@@ -12,6 +12,7 @@ from sagemaker.core.config import (
     MODEL_PACKAGE_INFERENCE_SPECIFICATION_CONTAINERS_PATH,
     MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
 )
+from sagemaker.core.resources import ModelPackageModelCard
 from botocore.exceptions import ClientError
 import logging
 
@@ -100,12 +101,12 @@ def get_model_package_args(
     if model_life_cycle is not None:
         model_package_args["model_life_cycle"] = model_life_cycle._to_request_dict()
     if model_card is not None:
-        original_req = model_card._create_request_args()
-        if original_req.get("ModelCardName") is not None:
-            del original_req["ModelCardName"]
-        if original_req.get("Content") is not None:
-            original_req["ModelCardContent"] = original_req["Content"]
-            del original_req["Content"]
+        original_req = {}
+        if isinstance(model_card, ModelPackageModelCard):
+             original_req["ModelCardContent"] = model_card.model_card_content
+        else:
+             original_req["ModelCardContent"] = model_card.content
+        original_req["ModelCardStatus"] = model_card.model_card_status
         model_package_args["model_card"] = original_req
     return model_package_args
 

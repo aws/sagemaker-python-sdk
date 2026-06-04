@@ -6,7 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "sagemaker-mlops"
 dynamic = ["version"]
 description = "SageMaker MLOps package for workflow orchestration and model building"
-readme = "README.md" 
+readme = "README.md"
+license = {file = "LICENSE"}
 requires-python = ">=3.9"
 authors = [
     {name = "Amazon Web Services"},
@@ -22,18 +23,33 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.4.0",
-    "sagemaker-train>=1.4.0",
-    "sagemaker-serve>=1.4.0",
+    "sagemaker-core>=2.13.0",
+    "sagemaker-train>=1.13.0",
+    "sagemaker-serve>=1.13.0",
+    "cryptography>=46.0.0",
     "boto3>=1.42.2,<2.0",
     "botocore>=1.42.2,<2.0",
+    "pyiceberg[glue]>=0.8.0",
+    "pyarrow>=14.0.0",
+    "s3fs",
 ]
 
 [project.optional-dependencies]
+feature-processor = [
+    "pyspark==3.5.1",
+    "sagemaker-feature-store-pyspark==2.0.0",
+    "setuptools<82",
+]
+
 test = [
     "pytest",
     "pytest-cov",
     "mock",
+    "setuptools<82",
+    "pyspark==3.5.1",
+    "sagemaker-feature-store-pyspark==2.0.0",
+    "pandas<3.0",
+    "numpy<3.0",
 ]
 dev = [
     "pytest",

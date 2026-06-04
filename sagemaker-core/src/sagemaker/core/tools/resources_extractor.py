@@ -162,12 +162,18 @@ class ResourcesExtractor:
             [key[len("Import") :] for key in self.actions if key.startswith("Import")]
         )
 
+        # Resource names that collide with critical imports (e.g. boto3.session.Session)
+        EXCLUDED_RESOURCES = {"Session"}
+
         self.resources.update(
-            self.create_resources
-            | self.add_resources
-            | self.start_resources
-            | self.register_resources
-            | self.import_resources
+            (
+                self.create_resources
+                | self.add_resources
+                | self.start_resources
+                | self.register_resources
+                | self.import_resources
+            )
+            - EXCLUDED_RESOURCES
         )
 
         self._filter_actions_for_resources(self.resources)

@@ -33,7 +33,7 @@ warnings.warn(
     "  from sagemaker.core.inference_config import AsyncInferenceConfig\n"
     "This compatibility shim will be removed in a future version.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
-__all__ = ['AsyncInferenceConfig']
+__all__ = ["AsyncInferenceConfig"]

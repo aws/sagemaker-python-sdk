@@ -359,3 +359,165 @@ class TestSFTTrainer:
         
         # Should not raise an exception
         trainer._process_hyperparameters()
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def test_accepts_stopping_condition(self, mock_finetuning, mock_validate):
+        """Test SFTTrainer accepts stopping_condition parameter."""
+        from sagemaker.train.configs import StoppingCondition
+        
+        mock_validate.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning.return_value = (mock_hyperparams, "model-arn", False)
+        
+        stopping_condition = StoppingCondition(max_runtime_in_seconds=7200)
+        trainer = SFTTrainer(
+            model="test-model",
+            model_package_group="test-group",
+            stopping_condition=stopping_condition
+        )
+        
+        assert trainer.stopping_condition == stopping_condition
+        assert trainer.stopping_condition.max_runtime_in_seconds == 7200
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def test_default_stopping_condition_is_none(self, mock_finetuning, mock_validate):
+        """Test SFTTrainer defaults stopping_condition to None."""
+        mock_validate.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning.return_value = (mock_hyperparams, "model-arn", False)
+        
+        trainer = SFTTrainer(model="test-model", model_package_group="test-group")
+        assert trainer.stopping_condition is None
+
+    @patch('sagemaker.train.common_utils.trainer_wait.wait')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_passes_wait_timeout(self, mock_training_job_create, mock_model_package_config,
+                                       mock_mlflow_config, mock_output_config, mock_convert_channels,
+                                       mock_input_config, mock_validate_group, mock_unique_name,
+                                       mock_get_sagemaker_session, mock_get_role, mock_get_options,
+                                       mock_resolve_model, mock_get_session, mock_wait):
+        """Test that wait_timeout is passed to _wait as timeout kwarg."""
+        mock_validate_group.return_value = "test-group"
+        mock_resolve_model.return_value = ("test-model", "test-model")
+        mock_get_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock()
+        mock_fine_tuning_options = Mock()
+        mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
+        mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
+        mock_get_role.return_value = "test-role"
+        mock_unique_name.return_value = "test-job-name"
+        mock_input_config.return_value = [Mock()]
+        mock_convert_channels.return_value = [Mock()]
+        mock_output_config.return_value = Mock()
+        mock_mlflow_config.return_value = Mock()
+        mock_model_package_config.return_value = Mock()
+        mock_training_job = Mock()
+        mock_training_job.arn = "arn:aws:sagemaker:us-east-1:123456789012:training-job/test-job"
+        mock_training_job_create.return_value = mock_training_job
+
+        trainer = SFTTrainer(model="test-model", model_package_group="test-group", training_dataset="s3://bucket/train")
+        trainer.train(wait=True, wait_timeout=600)
+
+        mock_wait.assert_called_once_with(mock_training_job, timeout=600, poll=5)
+
+    @patch('sagemaker.train.common_utils.trainer_wait.wait')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_without_wait_timeout_uses_default(self, mock_training_job_create, mock_model_package_config,
+                                                      mock_mlflow_config, mock_output_config, mock_convert_channels,
+                                                      mock_input_config, mock_validate_group, mock_unique_name,
+                                                      mock_get_sagemaker_session, mock_get_role, mock_get_options,
+                                                      mock_resolve_model, mock_get_session, mock_wait):
+        """Test that _wait is called without timeout kwarg when wait_timeout is None."""
+        mock_validate_group.return_value = "test-group"
+        mock_resolve_model.return_value = ("test-model", "test-model")
+        mock_get_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock()
+        mock_fine_tuning_options = Mock()
+        mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
+        mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
+        mock_get_role.return_value = "test-role"
+        mock_unique_name.return_value = "test-job-name"
+        mock_input_config.return_value = [Mock()]
+        mock_convert_channels.return_value = [Mock()]
+        mock_output_config.return_value = Mock()
+        mock_mlflow_config.return_value = Mock()
+        mock_model_package_config.return_value = Mock()
+        mock_training_job = Mock()
+        mock_training_job.arn = "arn:aws:sagemaker:us-east-1:123456789012:training-job/test-job"
+        mock_training_job_create.return_value = mock_training_job
+
+        trainer = SFTTrainer(model="test-model", model_package_group="test-group", training_dataset="s3://bucket/train")
+        trainer.train(wait=True)
+
+        mock_wait.assert_called_once_with(mock_training_job, poll=5)
+
+    @patch('sagemaker.train.common_utils.trainer_wait.wait')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_wait_false_skips_wait(self, mock_training_job_create, mock_model_package_config,
+                                         mock_mlflow_config, mock_output_config, mock_convert_channels,
+                                         mock_input_config, mock_validate_group, mock_unique_name,
+                                         mock_get_sagemaker_session, mock_get_role, mock_get_options,
+                                         mock_resolve_model, mock_get_session, mock_wait):
+        """Test that _wait is not called when wait=False."""
+        mock_validate_group.return_value = "test-group"
+        mock_resolve_model.return_value = ("test-model", "test-model")
+        mock_get_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock()
+        mock_fine_tuning_options = Mock()
+        mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
+        mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
+        mock_get_role.return_value = "test-role"
+        mock_unique_name.return_value = "test-job-name"
+        mock_input_config.return_value = [Mock()]
+        mock_convert_channels.return_value = [Mock()]
+        mock_output_config.return_value = Mock()
+        mock_mlflow_config.return_value = Mock()
+        mock_model_package_config.return_value = Mock()
+        mock_training_job = Mock()
+        mock_training_job.arn = "arn:aws:sagemaker:us-east-1:123456789012:training-job/test-job"
+        mock_training_job_create.return_value = mock_training_job
+
+        trainer = SFTTrainer(model="test-model", model_package_group="test-group", training_dataset="s3://bucket/train")
+        trainer.train(wait=False, wait_timeout=600)
+
+        mock_wait.assert_not_called()

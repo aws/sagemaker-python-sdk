@@ -41,7 +41,6 @@ class LocalTritonServer:
         env_vars.update(
             {
                 "TRITON_MODEL_DIR": "/models/model",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "LOCAL_PYTHON": platform.python_version(),
             }
         )
@@ -133,7 +132,6 @@ class SageMakerTritonServer:
         env_vars = {
             "SAGEMAKER_TRITON_DEFAULT_MODEL_NAME": "model",
             "TRITON_MODEL_DIR": "/opt/ml/model/model",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars

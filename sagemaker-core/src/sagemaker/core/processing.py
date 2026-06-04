@@ -77,6 +77,8 @@ from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core.workflow.execution_variables import ExecutionVariables
 from sagemaker.core.workflow.functions import Join
 from sagemaker.core.workflow.pipeline_context import runnable_by_pipeline
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.constants import Feature
 
 from sagemaker.core._studio import _append_project_tags
 from sagemaker.core.config.config_utils import _append_sagemaker_config_tags
@@ -487,6 +489,9 @@ class Processor(object):
                 # If the output's s3_uri is not an s3_uri, create one.
                 parse_result = urlparse(output.s3_output.s3_uri)
                 if parse_result.scheme != "s3":
+                    if getattr(self.sagemaker_session, "local_mode", False) and parse_result.scheme == "file":
+                        normalized_outputs.append(output)
+                        continue
                     if _pipeline_config:
                         s3_uri = Join(
                             on="/",
@@ -768,6 +773,7 @@ class ScriptProcessor(Processor):
             network_config=network_config,
         )
 
+    @_telemetry_emitter(feature=Feature.PROCESSING, func_name="ScriptProcessor.run")
     @runnable_by_pipeline
     def run(
         self,
@@ -1113,6 +1119,16 @@ class FrameworkProcessor(ScriptProcessor):
             code_location[:-1] if (code_location and code_location.endswith("/")) else code_location
         )
 
+    def _s3_code_prefix(self):
+        """Return the S3 prefix for code uploads, respecting code_location if set."""
+        if self.code_location:
+            return self.code_location
+        return s3.s3_path_join(
+            "s3://",
+            self.sagemaker_session.default_bucket(),
+            self.sagemaker_session.default_bucket_prefix or "",
+        )
+
     def _package_code(
         self,
         entry_point,
@@ -1149,9 +1165,7 @@ class FrameworkProcessor(ScriptProcessor):
 
             # Upload to S3
             s3_uri = s3.s3_path_join(
-                "s3://",
-                self.sagemaker_session.default_bucket(),
-                self.sagemaker_session.default_bucket_prefix or "",
+                self._s3_code_prefix(),
                 job_name,
                 "source",
                 "sourcedir.tar.gz",
@@ -1168,6 +1182,7 @@ class FrameworkProcessor(ScriptProcessor):
             os.unlink(tmp.name)
             return s3_uri
 
+    @_telemetry_emitter(feature=Feature.PROCESSING, func_name="FrameworkProcessor.run")
     @runnable_by_pipeline
     def run(
         self,
@@ -1264,6 +1279,18 @@ class FrameworkProcessor(ScriptProcessor):
 
         entrypoint_s3_uri = s3_payload.replace("sourcedir.tar.gz", "runproc.sh")
 
+        # Upload the CodeArtifact-aware install_requirements script alongside the source code
+        import sagemaker.core.utils.install_requirements as _ir_mod
+
+        install_req_s3_uri = s3_payload.replace("sourcedir.tar.gz", "install_requirements.py")
+        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
+        s3.S3Uploader.upload_string_as_file_body(
+            body=open(_ir_mod.__file__, "r").read(),
+            desired_s3_uri=install_req_s3_uri,
+            kms_key=evaluated_kms_key,
+            sagemaker_session=self.sagemaker_session,
+        )
+
         script = os.path.basename(code)
         evaluated_kms_key = kms_key if kms_key else self.output_kms_key
         s3_runproc_sh = self._create_and_upload_runproc(
@@ -1313,9 +1340,7 @@ class FrameworkProcessor(ScriptProcessor):
             runproc_file_str = self._generate_framework_script(user_script)
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
-                "s3://",
-                self.sagemaker_session.default_bucket(),
-                self.sagemaker_session.default_bucket_prefix,
+                self._s3_code_prefix(),
                 _pipeline_config.pipeline_name,
                 "code",
                 runproc_file_hash,
@@ -1366,7 +1391,7 @@ class FrameworkProcessor(ScriptProcessor):
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 
-                pip install -r requirements.txt
+                python3 /opt/ml/processing/input/code/install_requirements.py requirements.txt
             fi
 
             {entry_point_command} {entry_point} "$@"

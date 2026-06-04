@@ -26,7 +26,7 @@ from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core import resources
 from sagemaker.core.resources import TrainingJob
 from sagemaker.core import shapes
-from sagemaker.core.shapes import AlgorithmSpecification
+from sagemaker.core.shapes import AlgorithmSpecification, ModelPackageConfig
 from sagemaker.core.utils.utils import serialize
 from sagemaker.core.apiutils._boto_functions import to_pascal_case
 
@@ -116,6 +116,7 @@ from sagemaker.core.jumpstart.document import get_hub_content_and_document
 from sagemaker.core.jumpstart.utils import get_eula_url
 from sagemaker.train.defaults import TrainDefaults, JumpStartTrainDefaults
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
+from sagemaker.core.helper.pipeline_variable import StrPipeVar
 
 from sagemaker.train.local.local_container import _LocalContainer
 
@@ -220,6 +221,10 @@ class ModelTrainer(BaseModel):
         local_container_root (Optional[str]):
             The local root directory to store artifacts from a training job launched in
             "LOCAL_CONTAINER" mode.
+        model_package_config (Optional[ModelPackageConfig]):
+            The model package configuration for the training job. Used for Nova RMP
+            (Restricted Model Package) jobs to specify SourceModelPackageArn and
+            ModelPackageGroupArn.
     """
 
     model_config = ConfigDict(
@@ -235,17 +240,18 @@ class ModelTrainer(BaseModel):
     compute: Optional[Compute] = None
     networking: Optional[Networking] = None
     stopping_condition: Optional[StoppingCondition] = None
-    training_image: Optional[str] = None
+    training_image: Optional[StrPipeVar] = None
     training_image_config: Optional[TrainingImageConfig] = None
-    algorithm_name: Optional[str] = None
+    algorithm_name: Optional[StrPipeVar] = None
     output_data_config: Optional[shapes.OutputDataConfig] = None
     input_data_config: Optional[List[Union[Channel, InputData]]] = None
     checkpoint_config: Optional[shapes.CheckpointConfig] = None
-    training_input_mode: Optional[str] = "File"
-    environment: Optional[Dict[str, str]] = {}
+    training_input_mode: Optional[StrPipeVar] = "File"
+    environment: Optional[Dict[str, StrPipeVar]] = {}
     hyperparameters: Optional[Union[Dict[str, Any], str]] = {}
     tags: Optional[List[Tag]] = None
     local_container_root: Optional[str] = os.getcwd()
+    model_package_config: Optional[ModelPackageConfig] = None
 
     # Created Artifacts
     _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
@@ -545,7 +551,11 @@ class ModelTrainer(BaseModel):
             )
 
         if self.training_image:
-            logger.info(f"Training image URI: {self.training_image}")
+            from sagemaker.core.helper.pipeline_variable import PipelineVariable
+            if isinstance(self.training_image, PipelineVariable):
+                logger.info("Training image URI: (PipelineVariable - resolved at pipeline execution)")
+            else:
+                logger.info(f"Training image URI: {self.training_image}")
     
 
     def _create_training_job_args(
@@ -631,6 +641,14 @@ class ModelTrainer(BaseModel):
                 self._temp_code_dir = TemporaryDirectory()
             # Copy everything under container_drivers/ to a temporary directory
             shutil.copytree(SM_DRIVERS_LOCAL_PATH, self._temp_code_dir.name, dirs_exist_ok=True)
+
+            # Copy the CodeArtifact-aware install_requirements script from sagemaker-core
+            # so it's available in the container at /opt/ml/input/data/sm_drivers/scripts/
+            import sagemaker.core.utils.install_requirements as _ir_mod
+            shutil.copy2(
+                _ir_mod.__file__,
+                os.path.join(self._temp_code_dir.name, "scripts", "install_requirements.py"),
+            )
 
             # If distributed is provided, overwrite code under <root>/drivers
             if self.distributed:
@@ -734,6 +752,9 @@ class ModelTrainer(BaseModel):
             "infra_check_config": self._infra_check_config,
             "session_chaining_config": self._session_chaining_config,
         }
+
+        if self.model_package_config:
+            training_request["model_package_config"] = self.model_package_config
 
         if boto3 or isinstance(self.sagemaker_session, PipelineSession):
             if isinstance(self.sagemaker_session, PipelineSession):
@@ -1072,6 +1093,7 @@ class ModelTrainer(BaseModel):
         sagemaker_session: Optional[Session] = None,
         role: Optional[str] = None,
         base_job_name: Optional[str] = None,
+        model_package_config: Optional[ModelPackageConfig] = None,
     ) -> "ModelTrainer":  # noqa: D412
         """Create a ModelTrainer from a training recipe.
 
@@ -1161,6 +1183,10 @@ class ModelTrainer(BaseModel):
                 The base name for the training job.
                 If not specified, a default name will be generated using the algorithm name
                 or training image.
+            model_package_config (Optional[ModelPackageConfig]):
+                The model package configuration. Used for Nova RMP jobs to specify
+                SourceModelPackageArn and ModelPackageGroupArn. If also specified in recipe,
+                direct param wins on conflict.
         """
         if compute.instance_type is None:
             raise ValueError("Must set ``instance_type`` in Compute when using training recipes.")
@@ -1214,6 +1240,9 @@ class ModelTrainer(BaseModel):
             elif hyperparameters and isinstance(hyperparameters, dict):
                 model_trainer_args["hyperparameters"].update(hyperparameters)
 
+        # Pop recipe model_package_config dict before unpacking into constructor
+        recipe_mpc_dict = model_trainer_args.pop("model_package_config", None) or {}
+
         model_trainer = cls(
             sagemaker_session=sagemaker_session,
             role=role,
@@ -1229,6 +1258,12 @@ class ModelTrainer(BaseModel):
             tags=tags,
             **model_trainer_args,
         )
+
+        # Merge ModelPackageConfig: recipe dict + direct Pydantic param (direct wins)
+        direct_mpc_dict = model_package_config.model_dump(exclude_unset=True) if model_package_config else {}
+        merged = {**recipe_mpc_dict, **direct_mpc_dict}
+        if merged:
+            model_trainer.model_package_config = ModelPackageConfig(**merged)
 
         model_trainer._is_nova_recipe = is_nova
         model_trainer._is_llmft_recipe = is_llmft
