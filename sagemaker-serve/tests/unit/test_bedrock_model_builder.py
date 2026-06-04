@@ -768,6 +768,43 @@ class TestCreateProvisionedThroughput:
                 model_id="arn:model", provisioned_model_name=""
             )
 
+    def test_uses_imported_model_id_from_deploy(self):
+        """model_id falls back to _imported_model_id set by deploy()."""
+        b = _builder()
+        b._imported_model_id = "my-deployed-model"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "InService"
+        }
+
+        result = b.create_provisioned_throughput(provisioned_model_name="my-pt")
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["modelId"] == "my-deployed-model"
+        assert result["provisionedModelArn"] == "arn:pt"
+
+    def test_explicit_model_id_overrides_stored(self):
+        """Explicit model_id takes precedence over _imported_model_id."""
+        b = _builder()
+        b._imported_model_id = "stored-model"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "InService"
+        }
+
+        b.create_provisioned_throughput(
+            model_id="explicit-model", provisioned_model_name="my-pt"
+        )
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["modelId"] == "explicit-model"
+
 
 # ── _wait_for_provisioned_throughput_in_service ─────────────────────────────
 

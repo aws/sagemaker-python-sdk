@@ -101,6 +101,7 @@ class BedrockModelBuilder:
         self.model = model
         self._bedrock_client = None
         self._sagemaker_client = None
+        self._imported_model_id = None
         self.boto_session = Session().boto_session
         self.model_package = self._fetch_model_package() if model else None
         self._is_rmp = is_restricted_model_package(self.model_package)
@@ -253,10 +254,11 @@ class BedrockModelBuilder:
             job_arn = import_response.get("jobArn")
             self._wait_for_import_job_complete(job_arn)
 
-            # Return the completed job details
+            # Return the completed job details and store imported model ID
             job_details = self._get_bedrock_client().get_model_import_job(
                 jobIdentifier=job_arn
             )
+            self._imported_model_id = job_details.get("importedModelName")
             return job_details
 
     def create_deployment(
@@ -316,8 +318,8 @@ class BedrockModelBuilder:
 
     def create_provisioned_throughput(
         self,
-        model_id: str,
-        provisioned_model_name: str,
+        model_id: Optional[str] = None,
+        provisioned_model_name: str = None,
         model_units: int = 1,
         commitment_duration: Optional[str] = None,
         tags: Optional[list] = None,
@@ -330,7 +332,8 @@ class BedrockModelBuilder:
         throughput reaches InService status.
 
         Args:
-            model_id: ARN or ID of the imported model.
+            model_id: ARN or name of the model. If not provided, uses the model
+                ID from the most recent deploy() call.
             provisioned_model_name: Name for the provisioned throughput resource.
             model_units: Number of model units to provision. Defaults to 1.
             commitment_duration: Commitment duration. Valid values: 'OneMonth',
@@ -344,17 +347,22 @@ class BedrockModelBuilder:
 
         Raises:
             RuntimeError: If the provisioned throughput fails or times out.
-            ValueError: If model_id or provisioned_model_name is not provided.
+            ValueError: If model_id cannot be determined or provisioned_model_name
+                is not provided.
         """
-        if not model_id:
-            raise ValueError("model_id is required for create_provisioned_throughput.")
+        resolved_model_id = model_id or self._imported_model_id
+        if not resolved_model_id:
+            raise ValueError(
+                "model_id is required for create_provisioned_throughput. "
+                "Either pass it explicitly or call deploy() first."
+            )
         if not provisioned_model_name:
             raise ValueError(
                 "provisioned_model_name is required for create_provisioned_throughput."
             )
 
         params = {
-            "modelId": model_id,
+            "modelId": resolved_model_id,
             "provisionedModelName": provisioned_model_name,
             "modelUnits": model_units,
         }
@@ -366,7 +374,7 @@ class BedrockModelBuilder:
         logger.info(
             "Creating provisioned throughput '%s' for model %s with %d model units",
             provisioned_model_name,
-            model_id,
+            resolved_model_id,
             model_units,
         )
         response = self._get_bedrock_client().create_provisioned_model_throughput(**params)
