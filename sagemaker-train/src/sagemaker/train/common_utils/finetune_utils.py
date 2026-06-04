@@ -125,7 +125,7 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
         mlflow_apps_list = []
         paginator = sm_client.get_paginator("list_mlflow_apps")
         for page in paginator.paginate():
-            mlflow_apps_list.extend(page.get("MlflowApps", []))
+            mlflow_apps_list.extend(page.get("Summaries", []))
 
         logger.info("Found %d MLflow apps: %s", len(mlflow_apps_list),
                     [(a.get("Name", "?"), a.get("Status", "?"), a.get("MlflowVersion", "?")) for a in mlflow_apps_list])
