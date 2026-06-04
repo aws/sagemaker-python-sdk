@@ -71,7 +71,7 @@ TEST_CONFIG = {
     "builtin_metrics": ["Completeness", "Faithfulness"],
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
     "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/base-model-fix-test/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-W7FOBBXZANVX",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
     "evaluate_base_model": True,  # This is the key difference - testing base model evaluation
     "region": "us-west-2",
 }
