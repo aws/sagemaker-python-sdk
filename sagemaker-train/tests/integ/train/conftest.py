@@ -71,7 +71,7 @@ def mlflow_resource_arn():
     try:
         paginator = sm_client.get_paginator("list_mlflow_apps")
         for page in paginator.paginate():
-            for app in page.get("MlflowApps", []):
+            for app in page.get("Summaries", []):
                 if app.get("Status") in ("Created", "Updated"):
                     logger.info(f"Using existing MLflow app: {app['Arn']}")
                     yield app["Arn"]
