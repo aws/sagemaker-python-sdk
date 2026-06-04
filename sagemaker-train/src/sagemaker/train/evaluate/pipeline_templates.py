@@ -8,11 +8,11 @@ from .constants import EvalType
 
 DETERMINISTIC_TEMPLATE = """{
     "Version": "2020-12-01",
-    "Metadata": {},
+    "Metadata": {},{% if mlflow_resource_arn %}
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
         "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
-    },
+    },{% endif %}
     "Parameters": [],
     "Steps": [
         {
@@ -325,11 +325,11 @@ DETERMINISTIC_TEMPLATE = """{
 # LLM-as-a-Judge Template for Base Model Only - 2-Phase Evaluation with optional ModelPackageConfig
 LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
-    "Metadata": {},
+    "Metadata": {},{% if mlflow_resource_arn %}
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
         "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
-    },
+    },{% endif %}
     "Parameters": [],
     "Steps": [
         {
@@ -460,11 +460,11 @@ LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
 # Deterministic Template for Base Model Only - Single step evaluation with optional ModelPackageConfig
 DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
-    "Metadata": {},
+    "Metadata": {},{% if mlflow_resource_arn %}
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
         "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
-    },
+    },{% endif %}
     "Parameters": [],
     "Steps": [
         {
@@ -531,11 +531,11 @@ DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY = """{
 # Custom Scorer Template with Jinja2 Placeholders - Similar to Deterministic but uses CustomScorerEvaluation
 CUSTOM_SCORER_TEMPLATE = """{
     "Version": "2020-12-01",
-    "Metadata": {},
+    "Metadata": {},{% if mlflow_resource_arn %}
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
         "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
-    },
+    },{% endif %}
     "Parameters": [],
     "Steps": [
         {
@@ -850,11 +850,11 @@ CUSTOM_SCORER_TEMPLATE = """{
 # Custom Scorer Template for Base Model Only - Single step evaluation with optional ModelPackageConfig
 CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
-    "Metadata": {},
+    "Metadata": {},{% if mlflow_resource_arn %}
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
         "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
-    },
+    },{% endif %}
     "Parameters": [],
     "Steps": [
         {
@@ -924,11 +924,11 @@ CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
 # Phase 2: Use judge model to evaluate responses with built-in and custom metrics
 LLMAJ_TEMPLATE = """{
     "Version": "2020-12-01",
-    "Metadata": {},
+    "Metadata": {},{% if mlflow_resource_arn %}
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
         "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
-    },
+    },{% endif %}
     "Parameters": [],
     "Steps": [
         {
