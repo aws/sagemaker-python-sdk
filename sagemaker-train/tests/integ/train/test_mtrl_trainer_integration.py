@@ -60,7 +60,7 @@ ACCOUNT_CONFIGS = {
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
-        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-ZG6FYITNGMMU",
+        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-O4ZGQYBYHMRH",
         "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
         "role": "arn:aws:iam::729646638167:role/Admin",
     },

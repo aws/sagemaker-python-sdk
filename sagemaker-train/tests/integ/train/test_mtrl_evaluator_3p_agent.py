@@ -161,7 +161,7 @@ TEST_CONFIG = {
     ),
     "mlflow_resource_arn": os.environ.get(
         "MTRL_3P_MLFLOW_ARN",
-        f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/app-ZG6FYITNGMMU",
+        f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/app-O4ZGQYBYHMRH",
     ),
     "role": os.environ.get(
         "MTRL_3P_ROLE",
