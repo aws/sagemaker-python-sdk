@@ -39,6 +39,7 @@ dependencies = [
     "tblib>=1.7.0",
     "cryptography>=46.0.0",
     "pycparser>=3.0,<3.0.1",
+    "pycparser>=3.0,<3.0.1",
 ]
 requires-python = ">=3.9"
 classifiers = [
