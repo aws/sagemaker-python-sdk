@@ -295,7 +295,6 @@ def _construct_url(
 
 def _requests_helper(url, timeout):
     """Make a GET request to the given URL"""
-
     response = None
     try:
         response = requests.get(url, timeout)

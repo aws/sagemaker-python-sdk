@@ -3,6 +3,8 @@ on:
   pull_request_target:
     branches:
       - "master"
+      - "master-mtrl-trainer"
+      - "master-mtrl-release"
     paths:
       - 'sagemaker-train/**'
       - 'sagemaker-serve/**'

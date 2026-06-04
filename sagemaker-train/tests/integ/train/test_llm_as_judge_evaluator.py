@@ -59,7 +59,7 @@ CUSTOM_METRIC_DICT = {
 
 # Test configuration values from llm_as_judge_demo.ipynb
 # TEST_CONFIG = {
-#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models-gamma/28",
+#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models/28",
 #     "evaluator_model": "anthropic.claude-3-5-haiku-20241022-v1:0",
 #     "dataset_s3_uri": "s3://my-sagemaker-sherpa-dataset/dataset/gen-qa-formatted-dataset/gen_qa.jsonl",
 #     "builtin_metrics": ["Completeness", "Faithfulness"],

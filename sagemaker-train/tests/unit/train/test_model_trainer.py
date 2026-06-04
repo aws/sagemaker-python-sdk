@@ -1442,6 +1442,179 @@ def test_nova_recipe_with_distillation(modules_session):
         os.unlink(recipe.name)
 
 
+def test_nova_recipe_with_model_package_arn(modules_session):
+    """Test that MP ARN in model_name_or_path routes to ModelPackageConfig."""
+    mp_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-mpg/1"
+    mpg_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/my-mpg"
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": mp_arn,
+            "model_package_group": mpg_arn,
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+        )
+
+        from sagemaker.core.shapes import ModelPackageConfig
+        assert isinstance(trainer.model_package_config, ModelPackageConfig)
+        assert trainer.model_package_config.source_model_package_arn == mp_arn
+        assert trainer.model_package_config.model_package_group_arn == mpg_arn
+        assert "base_model" not in trainer.hyperparameters
+        assert "base_model_location" not in trainer.hyperparameters
+
+        os.unlink(recipe.name)
+
+
+def test_nova_recipe_mp_arn_with_mpg_creates_model_package_config(modules_session):
+    """Test that MP ARN with model_package_group creates ModelPackageConfig."""
+    mp_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-mpg/1"
+    mpg_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/my-mpg"
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": mp_arn,
+            "model_package_group": mpg_arn,
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+        )
+
+        from sagemaker.core.shapes import ModelPackageConfig
+        assert isinstance(trainer.model_package_config, ModelPackageConfig)
+        assert trainer.model_package_config.source_model_package_arn == mp_arn
+        assert trainer.model_package_config.model_package_group_arn == mpg_arn
+        assert "base_model" not in trainer.hyperparameters
+        assert "base_model_location" not in trainer.hyperparameters
+
+        os.unlink(recipe.name)
+
+
+def test_nova_recipe_model_package_config_direct_overrides_recipe(modules_session):
+    """Test that direct model_package_config param overrides recipe on conflict."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1",
+            "model_package_group": "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg",
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        direct_mpg = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/direct-mpg"
+        from sagemaker.core.shapes import ModelPackageConfig
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+            model_package_config=ModelPackageConfig(
+                model_package_group_arn=direct_mpg,
+            ),
+        )
+
+        assert trainer.model_package_config.model_package_group_arn == direct_mpg
+        assert trainer.model_package_config.source_model_package_arn == \
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1"
+
+        os.unlink(recipe.name)
+
+
+
+def test_nova_recipe_model_package_config_direct_source_mp_overrides_recipe(modules_session):
+    """Test that direct source_model_package_arn overrides recipe MP ARN."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1",
+            "model_package_group": "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg",
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        direct_source_mp = "arn:aws:sagemaker:us-east-1:123456789012:model-package/direct-mp/2"
+        from sagemaker.core.shapes import ModelPackageConfig
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+            model_package_config=ModelPackageConfig(
+                model_package_group_arn="arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg",
+                source_model_package_arn=direct_source_mp,
+            ),
+        )
+
+        assert trainer.model_package_config.source_model_package_arn == direct_source_mp
+        assert trainer.model_package_config.model_package_group_arn == \
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg"
+
+        os.unlink(recipe.name)
+
+def test_nova_recipe_model_package_config_only_mpg_from_recipe(modules_session):
+    """Test recipe with base model name + MPG (no MP ARN)."""
+    mpg_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/my-mpg"
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "nova-pro",
+            "model_package_group": mpg_arn,
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+        )
+
+        assert trainer.hyperparameters["base_model"] == "nova-pro"
+        from sagemaker.core.shapes import ModelPackageConfig
+        assert isinstance(trainer.model_package_config, ModelPackageConfig)
+        assert trainer.model_package_config.model_package_group_arn == mpg_arn
+
+        os.unlink(recipe.name)
+
+
 @patch("sagemaker.train.model_trainer._get_unique_name")
 @patch("sagemaker.train.model_trainer.TrainingJob")
 def test_llmft_recipe(mock_training_job, mock_unique_name, modules_session):

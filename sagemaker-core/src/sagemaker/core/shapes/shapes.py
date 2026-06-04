@@ -1113,9 +1113,9 @@ class S3ModelDataSource(Base):
     manifest_etag: The ETag associated with Manifest S3 URI.
     """
 
-    s3_uri: StrPipeVar
     s3_data_type: StrPipeVar
     compression_type: StrPipeVar
+    s3_uri: Optional[StrPipeVar] = Unassigned()
     model_access_config: Optional[ModelAccessConfig] = Unassigned()
     hub_access_config: Optional[InferenceHubAccessConfig] = Unassigned()
     manifest_s3_uri: Optional[StrPipeVar] = Unassigned()
@@ -1870,6 +1870,7 @@ class ResourceSpec(Base):
     sage_maker_image_version_alias: The SageMakerImageVersionAlias of the image to launch with. This value is in SemVer 2.0.0 versioning format.
     instance_type: The instance type that the image version runs on.   JupyterServer apps only support the system value. For KernelGateway apps, the system value is translated to ml.t3.medium. KernelGateway apps also support all other values for available instance types.
     lifecycle_config_arn:  The Amazon Resource Name (ARN) of the Lifecycle Configuration attached to the Resource.
+    training_plan_arn: The ARN of the SageMaker AI Training Plan to use for this app. When you specify a training plan, the app launches on reserved GPU capacity. This field is supported for JupyterLab and CodeEditor app types. For more information about how to reserve GPU capacity with SageMaker AI Training Plans, see Using training plans in Studio applications.
     """
 
     sage_maker_image_arn: Optional[StrPipeVar] = Unassigned()
@@ -1877,6 +1878,7 @@ class ResourceSpec(Base):
     sage_maker_image_version_alias: Optional[StrPipeVar] = Unassigned()
     instance_type: Optional[StrPipeVar] = Unassigned()
     lifecycle_config_arn: Optional[StrPipeVar] = Unassigned()
+    training_plan_arn: Optional[StrPipeVar] = Unassigned()
 
 
 class AppDetails(Base):
@@ -4269,6 +4271,21 @@ class InstanceGroupScalingMetadata(Base):
     failure_message: Optional[StrPipeVar] = Unassigned()
 
 
+class InstanceRequirementsEniConfiguration(Base):
+    """
+    InstanceRequirementsEniConfiguration
+      The customer ENI and additional ENIs associated with a network interface category.
+
+    Attributes
+    ----------------------
+    customer_eni: The ID of the customer-managed Elastic Network Interface (ENI) associated with the instance type category.
+    additional_enis: Information about additional Elastic Network Interfaces (ENIs) associated with the instance type category.
+    """
+
+    customer_eni: Optional[StrPipeVar] = Unassigned()
+    additional_enis: Optional[AdditionalEnis] = Unassigned()
+
+
 class InstanceMetadata(Base):
     """
     InstanceMetadata
@@ -4278,6 +4295,7 @@ class InstanceMetadata(Base):
     ----------------------
     customer_eni: The ID of the customer-managed Elastic Network Interface (ENI) associated with the instance.
     additional_enis: Information about additional Elastic Network Interfaces (ENIs) associated with the instance.
+    instance_requirements_eni_configurations: The ENI configurations for the instance types in the instance requirements, grouped by network interface category (for example, ENI-only or EFA with ENIs). At most one configuration per category.
     capacity_reservation: Information about the Capacity Reservation used by the instance.
     failure_message: An error message describing why the instance creation or update failed, if applicable.
     lcs_execution_state: The execution state of the Lifecycle Script (LCS) for the instance.
@@ -4286,6 +4304,9 @@ class InstanceMetadata(Base):
 
     customer_eni: Optional[StrPipeVar] = Unassigned()
     additional_enis: Optional[AdditionalEnis] = Unassigned()
+    instance_requirements_eni_configurations: Optional[
+        List[InstanceRequirementsEniConfiguration]
+    ] = Unassigned()
     capacity_reservation: Optional[CapacityReservation] = Unassigned()
     failure_message: Optional[StrPipeVar] = Unassigned()
     lcs_execution_state: Optional[StrPipeVar] = Unassigned()
@@ -4340,6 +4361,7 @@ class ClusterEventDetail(Base):
     event_time: The timestamp when the event occurred.
     event_details: Additional details about the event, including event-specific metadata.
     description: A human-readable description of the event.
+    event_level: The severity level of the event. Valid values are Info, Warn, and Error.
     """
 
     event_id: StrPipeVar
@@ -4351,6 +4373,7 @@ class ClusterEventDetail(Base):
     instance_id: Optional[StrPipeVar] = Unassigned()
     event_details: Optional[EventDetails] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
+    event_level: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterEventSummary(Base):
@@ -4368,6 +4391,7 @@ class ClusterEventSummary(Base):
     resource_type: The type of resource associated with the event. Valid values are Cluster, InstanceGroup, or Instance.
     event_time: The timestamp when the event occurred.
     description: A brief, human-readable description of the event.
+    event_level: The severity level of the event. Valid values are Info, Warn, and Error.
     """
 
     event_id: StrPipeVar
@@ -4378,6 +4402,7 @@ class ClusterEventSummary(Base):
     instance_group_name: Optional[StrPipeVar] = Unassigned()
     instance_id: Optional[StrPipeVar] = Unassigned()
     description: Optional[StrPipeVar] = Unassigned()
+    event_level: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterFsxLustreConfig(Base):
@@ -4615,6 +4640,7 @@ class ClusterInstanceGroupDetails(Base):
     scheduled_update_config: The configuration object of the schedule that SageMaker follows when updating the AMI.
     current_image_id: The ID of the Amazon Machine Image (AMI) currently in use by the instance group.
     desired_image_id: The ID of the Amazon Machine Image (AMI) desired for the instance group.
+    image_version_status: The status of the image version for the instance group. Indicates whether the instance group is running the latest image version or if an update is available.
     active_operations: A map indicating active operations currently in progress for the instance group of a SageMaker HyperPod cluster. When there is a scaling operation in progress, this map contains a key Scaling with value 1.
     kubernetes_config: The Kubernetes configuration for the instance group that contains labels and taints to be applied for the nodes in this instance group.
     capacity_requirements: The instance capacity requirements for the instance group.
@@ -4644,6 +4670,7 @@ class ClusterInstanceGroupDetails(Base):
     scheduled_update_config: Optional[ScheduledUpdateConfig] = Unassigned()
     current_image_id: Optional[StrPipeVar] = Unassigned()
     desired_image_id: Optional[StrPipeVar] = Unassigned()
+    image_version_status: Optional[StrPipeVar] = Unassigned()
     active_operations: Optional[Dict[StrPipeVar, int]] = Unassigned()
     kubernetes_config: Optional[ClusterKubernetesConfigDetails] = Unassigned()
     capacity_requirements: Optional[ClusterCapacityRequirements] = Unassigned()
@@ -4845,6 +4872,7 @@ class ClusterNodeDetails(Base):
     placement: The placement details of the SageMaker HyperPod cluster node.
     current_image_id: The ID of the Amazon Machine Image (AMI) currently in use by the node.
     desired_image_id: The ID of the Amazon Machine Image (AMI) desired for the node.
+    image_version_status: The status of the image version for the cluster node.
     ultra_server_info: Contains information about the UltraServer.
     kubernetes_config: The Kubernetes configuration applied to this node, showing both the current and desired state of labels and taints. The cluster works to reconcile the actual state with the declared state.
     capacity_type: The capacity type of the node. Valid values are OnDemand and Spot. When set to OnDemand, the node is launched as an On-Demand instance. When set to Spot, the node is launched as a Spot instance.
@@ -4868,6 +4896,7 @@ class ClusterNodeDetails(Base):
     placement: Optional[ClusterInstancePlacement] = Unassigned()
     current_image_id: Optional[StrPipeVar] = Unassigned()
     desired_image_id: Optional[StrPipeVar] = Unassigned()
+    image_version_status: Optional[StrPipeVar] = Unassigned()
     ultra_server_info: Optional[UltraServerInfo] = Unassigned()
     kubernetes_config: Optional[ClusterKubernetesConfigNodeDetails] = Unassigned()
     capacity_type: Optional[StrPipeVar] = Unassigned()
@@ -4890,6 +4919,7 @@ class ClusterNodeSummary(Base):
     instance_status: The status of the instance.
     ultra_server_info: Contains information about the UltraServer.
     private_dns_hostname: The private DNS hostname of the SageMaker HyperPod cluster node.
+    image_version_status: The status of the image version for the cluster node.
     """
 
     instance_group_name: StrPipeVar
@@ -4901,6 +4931,7 @@ class ClusterNodeSummary(Base):
     last_software_update_time: Optional[datetime.datetime] = Unassigned()
     ultra_server_info: Optional[UltraServerInfo] = Unassigned()
     private_dns_hostname: Optional[StrPipeVar] = Unassigned()
+    image_version_status: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterOrchestratorEksConfig(Base):
@@ -5050,13 +5081,73 @@ class ClusterRestrictedInstanceGroupSpecification(Base):
     instance_group_name: StrPipeVar
     instance_type: StrPipeVar
     execution_role: StrPipeVar
-    environment_config: EnvironmentConfig
     threads_per_core: Optional[int] = Unassigned()
     instance_storage_configs: Optional[List[ClusterInstanceStorageConfig]] = Unassigned()
     on_start_deep_health_checks: Optional[List[StrPipeVar]] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
     override_vpc_config: Optional[VpcConfig] = Unassigned()
     scheduled_update_config: Optional[ScheduledUpdateConfig] = Unassigned()
+    environment_config: Optional[EnvironmentConfig] = Unassigned()
+
+
+class ClusterSharedEnvironmentConfig(Base):
+    """
+    ClusterSharedEnvironmentConfig
+      The shared environment configuration for the restricted instance groups (RIG).
+
+    Attributes
+    ----------------------
+    f_sx_lustre_deletion_policy: The deletion policy for the Amazon FSx for Lustre file system in the shared environment.
+    f_sx_lustre_config: Configuration settings for an Amazon FSx for Lustre file system in the shared environment.
+    """
+
+    f_sx_lustre_deletion_policy: StrPipeVar
+    f_sx_lustre_config: FSxLustreConfig
+
+
+class ClusterRestrictedInstanceGroupsConfig(Base):
+    """
+    ClusterRestrictedInstanceGroupsConfig
+      The configuration for the restricted instance groups (RIG) in the SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    shared_environment_config: The shared environment configuration for the restricted instance groups (RIG).
+    """
+
+    shared_environment_config: ClusterSharedEnvironmentConfig
+
+
+class ClusterSharedEnvironmentConfigDetails(Base):
+    """
+    ClusterSharedEnvironmentConfigDetails
+      The shared environment configuration details for the restricted instance groups (RIG).
+
+    Attributes
+    ----------------------
+    current_f_sx_lustre_config: The current Amazon FSx for Lustre file system configuration in the shared environment.
+    desired_f_sx_lustre_config: The desired Amazon FSx for Lustre file system configuration in the shared environment.
+    current_f_sx_lustre_deletion_policy: The current deletion policy for the Amazon FSx for Lustre file system in the shared environment.
+    desired_f_sx_lustre_deletion_policy: The desired deletion policy for the Amazon FSx for Lustre file system in the shared environment.
+    """
+
+    current_f_sx_lustre_config: Optional[FSxLustreConfig] = Unassigned()
+    desired_f_sx_lustre_config: Optional[FSxLustreConfig] = Unassigned()
+    current_f_sx_lustre_deletion_policy: Optional[StrPipeVar] = Unassigned()
+    desired_f_sx_lustre_deletion_policy: Optional[StrPipeVar] = Unassigned()
+
+
+class ClusterRestrictedInstanceGroupsConfigOutput(Base):
+    """
+    ClusterRestrictedInstanceGroupsConfigOutput
+      The output configuration for the restricted instance groups (RIG) in the SageMaker HyperPod cluster.
+
+    Attributes
+    ----------------------
+    shared_environment_config: The shared environment configuration details for the restricted instance groups (RIG).
+    """
+
+    shared_environment_config: ClusterSharedEnvironmentConfigDetails
 
 
 class ClusterSchedulerConfigSummary(Base):
@@ -6361,12 +6452,14 @@ class StudioWebPortalSettings(Base):
     hidden_app_types: The Applications supported in Studio that are hidden from the Studio left navigation pane.
     hidden_instance_types:  The instance types you are hiding from the Studio user interface.
     hidden_sage_maker_image_version_aliases:  The version aliases you are hiding from the Studio user interface.
+    execution_role_session_name_mode: The execution role session name mode. If this value is set to USER_IDENTITY, the session name of the execution role corresponds to the user's identity. For IAM domains, the session name is the IAM session name used to generate the presigned URL. For IAM Identity Center domains, the session name is the username of the associated IAM Identity Center user. If this value is set to STATIC or is not set, the session name defaults to SageMaker.
     """
 
     hidden_ml_tools: Optional[List[StrPipeVar]] = Unassigned()
     hidden_app_types: Optional[List[StrPipeVar]] = Unassigned()
     hidden_instance_types: Optional[List[StrPipeVar]] = Unassigned()
     hidden_sage_maker_image_version_aliases: Optional[List[HiddenSageMakerImage]] = Unassigned()
+    execution_role_session_name_mode: Optional[StrPipeVar] = Unassigned()
 
 
 class UserSettings(Base):
@@ -6612,6 +6705,23 @@ class DeploymentStage(Base):
     deployment_config: Optional[EdgeDeploymentConfig] = Unassigned()
 
 
+class InstancePool(Base):
+    """
+    InstancePool
+      Specifies an instance type and its priority for a heterogeneous endpoint. Use instance pools to configure a production variant with multiple instance types, enabling the endpoint to provision instances across different types based on priority.
+
+    Attributes
+    ----------------------
+    instance_type: The ML compute instance type for the instance pool.
+    model_name_override: The name of a SageMaker model to use for this instance pool instead of the model specified for the production variant. Use this to deploy a different model optimized for the instance type in this pool.
+    priority: The priority for the instance pool. SageMaker attempts to provision instances in order of priority, starting with the lowest value. If instances for a higher-priority pool are unavailable, SageMaker attempts to provision from the next pool. Valid values: 1 to 5, where 1 is the highest priority.
+    """
+
+    instance_type: StrPipeVar
+    priority: int
+    model_name_override: Optional[StrPipeVar] = Unassigned()
+
+
 class ProductionVariantCoreDumpConfig(Base):
     """
     ProductionVariantCoreDumpConfig
@@ -6719,6 +6829,8 @@ class ProductionVariant(Base):
     model_name: The name of the model that you want to host. This is the name that you specified when creating the model.
     initial_instance_count: Number of instances to launch initially.
     instance_type: The ML compute instance type.
+    instance_pools: A list of instance pools for the production variant. Each instance pool specifies an instance type and its priority for provisioning. Use instance pools to configure heterogeneous endpoints that deploy models across multiple instance types.
+    variant_instance_provision_timeout_in_seconds: The timeout value, in seconds, for provisioning instances for the production variant. When SageMaker encounters an insufficient capacity error while provisioning instances, it retries with the next instance pool (if configured) or waits until the timeout expires. This timeout applies only to capacity provisioning and does not include the time for model download or container startup. Valid values: 300 to 3600.
     initial_variant_weight: Determines initial traffic distribution among all of the models that you specify in the endpoint configuration. The traffic to a production variant is determined by the ratio of the VariantWeight to the sum of all VariantWeight values across all ProductionVariants. If unspecified, it defaults to 1.0.
     accelerator_type: This parameter is no longer supported. Elastic Inference (EI) is no longer available. This parameter was used to specify the size of the EI instance to use for the production variant.
     core_dump_config: Specifies configuration for a core dump from the model container when the process crashes.
@@ -6737,6 +6849,8 @@ class ProductionVariant(Base):
     model_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     initial_instance_count: Optional[int] = Unassigned()
     instance_type: Optional[StrPipeVar] = Unassigned()
+    instance_pools: Optional[List[InstancePool]] = Unassigned()
+    variant_instance_provision_timeout_in_seconds: Optional[int] = Unassigned()
     initial_variant_weight: Optional[float] = Unassigned()
     accelerator_type: Optional[StrPipeVar] = Unassigned()
     core_dump_config: Optional[ProductionVariantCoreDumpConfig] = Unassigned()
@@ -7490,6 +7604,7 @@ class InferenceComponentSpecification(Base):
 
     Attributes
     ----------------------
+    instance_type: The ML compute instance type for the inference component specification. Specifies which instance type this specification applies to. Required when using the Specifications parameter with multiple entries.
     model_name: The name of an existing SageMaker AI model object in your account that you want to deploy with the inference component.
     container: Defines a container that provides the runtime environment for a model that you deploy with an inference component.
     startup_parameters: Settings that take effect while the model container starts up.
@@ -7499,6 +7614,7 @@ class InferenceComponentSpecification(Base):
     scheduling_config: The scheduling configuration that determines how inference component copies are placed across available instances when copies are added or removed.
     """
 
+    instance_type: Optional[StrPipeVar] = Unassigned()
     model_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     container: Optional[InferenceComponentContainerSpecification] = Unassigned()
     startup_parameters: Optional[InferenceComponentStartupParameters] = Unassigned()
@@ -8224,6 +8340,19 @@ class InferenceExecutionConfig(Base):
     """
 
     mode: StrPipeVar
+
+
+class ManagedConfiguration(Base):
+    """
+    ManagedConfiguration
+      The managed configuration of a model package group.
+
+    Attributes
+    ----------------------
+    managed_storage_type: The storage type of the model package.
+    """
+
+    managed_storage_type: Optional[StrPipeVar] = Unassigned()
 
 
 class ModelPackageValidationProfile(Base):
@@ -10123,6 +10252,21 @@ class EdgePresetDeploymentOutput(Base):
     status_message: Optional[StrPipeVar] = Unassigned()
 
 
+class InstancePoolSummary(Base):
+    """
+    InstancePoolSummary
+      A summary of an instance pool for a production variant, including the instance type and the current number of instances.
+
+    Attributes
+    ----------------------
+    instance_type: The ML compute instance type for the instance pool.
+    current_instance_count: The current number of instances of this type in the instance pool.
+    """
+
+    instance_type: StrPipeVar
+    current_instance_count: int
+
+
 class ProductionVariantStatus(Base):
     """
     ProductionVariantStatus
@@ -10195,6 +10339,7 @@ class ProductionVariantSummary(Base):
     desired_weight: The requested weight, as specified in the UpdateEndpointWeightsAndCapacities request.
     current_instance_count: The number of instances associated with the variant.
     desired_instance_count: The number of instances requested in the UpdateEndpointWeightsAndCapacities request.
+    instance_pools: A list of instance pools for the production variant. Each pool indicates the instance type and the current number of instances of that type.
     variant_status: The endpoint variant status which describes the current deployment stage status or operational status.
     current_serverless_config: The serverless configuration for the endpoint.
     desired_serverless_config: The serverless configuration requested for the endpoint update.
@@ -10209,6 +10354,7 @@ class ProductionVariantSummary(Base):
     desired_weight: Optional[float] = Unassigned()
     current_instance_count: Optional[int] = Unassigned()
     desired_instance_count: Optional[int] = Unassigned()
+    instance_pools: Optional[List[InstancePoolSummary]] = Unassigned()
     variant_status: Optional[List[ProductionVariantStatus]] = Unassigned()
     current_serverless_config: Optional[ProductionVariantServerlessConfig] = Unassigned()
     desired_serverless_config: Optional[ProductionVariantServerlessConfig] = Unassigned()
@@ -10233,6 +10379,7 @@ class PendingProductionVariantSummary(Base):
     current_instance_count: The number of instances associated with the variant.
     desired_instance_count: The number of instances requested in this deployment, as specified in the endpoint configuration for the endpoint. The value is taken from the request to the CreateEndpointConfig operation.
     instance_type: The type of instances associated with the variant.
+    instance_pools: A list of instance pools for the production variant. Each pool indicates the instance type and the current number of instances of that type.
     accelerator_type: This parameter is no longer supported. Elastic Inference (EI) is no longer available. This parameter was used to specify the size of the EI instance to use for the production variant.
     variant_status: The endpoint variant status which describes the current deployment stage status or operational status.
     current_serverless_config: The serverless configuration for the endpoint.
@@ -10248,6 +10395,7 @@ class PendingProductionVariantSummary(Base):
     current_instance_count: Optional[int] = Unassigned()
     desired_instance_count: Optional[int] = Unassigned()
     instance_type: Optional[StrPipeVar] = Unassigned()
+    instance_pools: Optional[List[InstancePoolSummary]] = Unassigned()
     accelerator_type: Optional[StrPipeVar] = Unassigned()
     variant_status: Optional[List[ProductionVariantStatus]] = Unassigned()
     current_serverless_config: Optional[ProductionVariantServerlessConfig] = Unassigned()
@@ -10539,6 +10687,7 @@ class InferenceComponentSpecificationSummary(Base):
 
     Attributes
     ----------------------
+    instance_type: The ML compute instance type associated with this inference component specification.
     model_name: The name of the SageMaker AI model object that is deployed with the inference component.
     container: Details about the container that provides the runtime environment for the model that is deployed with the inference component.
     startup_parameters: Settings that take effect while the model container starts up.
@@ -10548,6 +10697,7 @@ class InferenceComponentSpecificationSummary(Base):
     scheduling_config: The scheduling configuration that determines how inference component copies are placed across available instances when copies are added or removed.
     """
 
+    instance_type: Optional[StrPipeVar] = Unassigned()
     model_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     container: Optional[InferenceComponentContainerSpecificationSummary] = Unassigned()
     startup_parameters: Optional[InferenceComponentStartupParameters] = Unassigned()
@@ -10559,6 +10709,21 @@ class InferenceComponentSpecificationSummary(Base):
     scheduling_config: Optional[InferenceComponentSchedulingConfig] = Unassigned()
 
 
+class InferenceComponentPlacementStatus(Base):
+    """
+    InferenceComponentPlacementStatus
+      The placement status of an inference component on a specific instance type. Shows the number of inference component copies currently placed on instances of a given type.
+
+    Attributes
+    ----------------------
+    instance_type: The ML compute instance type where the inference component copies are placed.
+    current_copy_count: The number of inference component copies currently placed on instances of this type.
+    """
+
+    instance_type: StrPipeVar
+    current_copy_count: int
+
+
 class InferenceComponentRuntimeConfigSummary(Base):
     """
     InferenceComponentRuntimeConfigSummary
@@ -10568,10 +10733,12 @@ class InferenceComponentRuntimeConfigSummary(Base):
     ----------------------
     desired_copy_count: The number of runtime copies of the model container that you requested to deploy with the inference component.
     current_copy_count: The number of runtime copies of the model container that are currently deployed.
+    placement_status: The placement status of the inference component across instance types. Shows how the inference component copies are distributed across instance types.
     """
 
     desired_copy_count: Optional[int] = Unassigned()
     current_copy_count: Optional[int] = Unassigned()
+    placement_status: Optional[List[InferenceComponentPlacementStatus]] = Unassigned()
 
 
 class InferenceComponentCapacitySize(Base):
@@ -10792,6 +10959,25 @@ class EndpointPerformance(Base):
 
     metrics: InferenceMetrics
     endpoint_info: EndpointInfo
+
+
+class JobSecondaryStatusTransition(Base):
+    """
+    JobSecondaryStatusTransition
+      Represents a secondary status transition for a job. Jobs progress through multiple secondary statuses during execution. Each transition records the status, start time, optional end time, and an optional message with additional details.
+
+    Attributes
+    ----------------------
+    status: The secondary status of the job at this transition point.
+    start_time: The date and time that the status transition started.
+    end_time: The date and time that the status transition ended.
+    status_message: A detailed message about the status transition.
+    """
+
+    status: StrPipeVar
+    start_time: datetime.datetime
+    end_time: Optional[datetime.datetime] = Unassigned()
+    status_message: Optional[StrPipeVar] = Unassigned()
 
 
 class LabelCounters(Base):
@@ -11232,6 +11418,7 @@ class ReservedCapacitySummary(Base):
     total_instance_count: The total number of instances in the reserved capacity.
     status: The current status of the reserved capacity.
     availability_zone: The availability zone for the reserved capacity.
+    availability_zone_id: The Availability Zone ID of the reserved capacity.
     duration_hours: The number of whole hours in the total duration for this reserved capacity.
     duration_minutes: The additional minutes beyond whole hours in the total duration for this reserved capacity.
     start_time: The start time of the reserved capacity.
@@ -11246,6 +11433,7 @@ class ReservedCapacitySummary(Base):
     ultra_server_type: Optional[StrPipeVar] = Unassigned()
     ultra_server_count: Optional[int] = Unassigned()
     availability_zone: Optional[StrPipeVar] = Unassigned()
+    availability_zone_id: Optional[StrPipeVar] = Unassigned()
     duration_hours: Optional[int] = Unassigned()
     duration_minutes: Optional[int] = Unassigned()
     start_time: Optional[datetime.datetime] = Unassigned()
@@ -12608,7 +12796,7 @@ class InferenceRecommendationsJob(Base):
     model_package_version_arn: The Amazon Resource Name (ARN) of a versioned model package.
     """
 
-    job_name: StrPipeVar
+    job_name: Union[StrPipeVar, object]
     job_description: StrPipeVar
     job_type: StrPipeVar
     job_arn: StrPipeVar
@@ -12662,7 +12850,7 @@ class InferenceRecommendationsJobStep(Base):
     """
 
     step_type: StrPipeVar
-    job_name: StrPipeVar
+    job_name: Union[StrPipeVar, object]
     status: StrPipeVar
     inference_benchmark: Optional[RecommendationJobInferenceBenchmark] = Unassigned()
 
@@ -12682,6 +12870,59 @@ class InstanceGroupHealthCheckConfiguration(Base):
     instance_group_name: StrPipeVar
     deep_health_checks: List[StrPipeVar]
     instance_ids: Optional[List[StrPipeVar]] = Unassigned()
+
+
+class JobConfigSchemaVersionSummary(Base):
+    """
+    JobConfigSchemaVersionSummary
+      Provides summary information about a job configuration schema version.
+
+    Attributes
+    ----------------------
+    job_config_schema_version: The version of the job configuration schema.
+    """
+
+    job_config_schema_version: StrPipeVar
+
+
+class JobStepMetadata(Base):
+    """
+    JobStepMetadata
+      Metadata for a SageMaker job step.
+
+    Attributes
+    ----------------------
+    arn: The Amazon Resource Name (ARN) of the SageMaker job that was run by this step execution.
+    """
+
+    arn: Optional[StrPipeVar] = Unassigned()
+
+
+class JobSummary(Base):
+    """
+    JobSummary
+      Provides summary information about a job, returned by the ListJobs operation. Use DescribeJob to get full details for a specific job.
+
+    Attributes
+    ----------------------
+    job_arn: The Amazon Resource Name (ARN) of the job.
+    job_name: The name of the job.
+    job_category: The category of the job.
+    job_status: The current status of the job.
+    job_secondary_status: The secondary status of the job, providing more granular information about the job's progress. Secondary statuses may change between releases.
+    creation_time: The date and time that the job was created.
+    last_modified_time: The date and time that the job was last modified.
+    end_time: The date and time that the job ended.
+    """
+
+    job_arn: StrPipeVar
+    job_name: Union[StrPipeVar, object]
+    job_category: StrPipeVar
+    job_status: StrPipeVar
+    job_secondary_status: StrPipeVar
+    creation_time: datetime.datetime
+    last_modified_time: datetime.datetime
+    end_time: Optional[datetime.datetime] = Unassigned()
 
 
 class LabelCountersForWorkteam(Base):
@@ -13011,6 +13252,7 @@ class ModelPackageGroupSummary(Base):
     model_package_group_description: A description of the model group.
     creation_time: The time that the model group was created.
     model_package_group_status: The status of the model group.
+    managed_configuration: The managed configuration of the model package group.
     """
 
     model_package_group_name: Union[StrPipeVar, object]
@@ -13018,6 +13260,7 @@ class ModelPackageGroupSummary(Base):
     creation_time: datetime.datetime
     model_package_group_status: StrPipeVar
     model_package_group_description: Optional[StrPipeVar] = Unassigned()
+    managed_configuration: Optional[ManagedConfiguration] = Unassigned()
 
 
 class ModelPackageSummary(Base):
@@ -13405,6 +13648,7 @@ class PipelineExecutionStepMetadata(Base):
     bedrock_model_import:  The metadata of Amazon Bedrock model import used in pipeline execution step.
     inference_component:  The metadata of the inference component used in pipeline execution step.
     lineage:  The metadata of the lineage used in pipeline execution step.
+    job: The metadata for a SageMaker job used in a pipeline execution step.
     """
 
     training_job: Optional[TrainingJobStepMetadata] = Unassigned()
@@ -13431,6 +13675,7 @@ class PipelineExecutionStepMetadata(Base):
     bedrock_model_import: Optional[BedrockModelImportMetadata] = Unassigned()
     inference_component: Optional[InferenceComponentMetadata] = Unassigned()
     lineage: Optional[LineageMetadata] = Unassigned()
+    job: Optional[JobStepMetadata] = Unassigned()
 
 
 class SelectiveExecutionResult(Base):
@@ -13794,7 +14039,7 @@ class TrainingPlanSummary(Base):
     available_instance_count: The number of instances currently available for use in this training plan.
     in_use_instance_count: The number of instances currently in use from this training plan.
     total_ultra_server_count: The total number of UltraServers allocated to this training plan.
-    target_resources: The target resources (e.g., training jobs, HyperPod clusters, Endpoints) that can use this training plan. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.   A training plan for SageMaker endpoints can be used exclusively to provide compute resources to SageMaker endpoints for model deployment.
+    target_resources: The target resources (e.g., training jobs, HyperPod clusters, Endpoints, Studio apps) that can use this training plan. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.   A training plan for SageMaker endpoints can be used exclusively to provide compute resources to SageMaker endpoints for model deployment.   A training plan for Studio apps can be used to launch JupyterLab and Code Editor apps on reserved training plan capacity.
     reserved_capacity_summaries: A list of reserved capacities associated with this training plan, including details such as instance types, counts, and availability zones.
     """
 
@@ -14759,6 +15004,7 @@ class TrainingJob(Base):
     input_data_config: An array of Channel objects that describes each data input channel. Your input must be in the same Amazon Web Services region as your training job.
     output_data_config: The S3 path where model artifacts that you configured when creating the job are stored. SageMaker creates subfolders for model artifacts.
     resource_config: Resources, including ML compute instances and ML storage volumes, that are configured for model training.
+    warm_pool_status: The status of the warm pool associated with the training job.
     vpc_config: A VpcConfig object that specifies the VPC that this training job has access to. For more information, see Protect Training Jobs by Using an Amazon Virtual Private Cloud.
     stopping_condition: Specifies a limit to how long a model training job can run. It also specifies how long a managed Spot training job has to complete. When the job reaches the time limit, SageMaker ends the training job. Use this API to cap model training costs. To stop a job, SageMaker sends the algorithm the SIGTERM signal, which delays job termination for 120 seconds. Algorithms can use this 120-second window to save the model artifacts, so the results of training are not lost.
     creation_time: A timestamp that indicates when the training job was created.
@@ -14801,6 +15047,7 @@ class TrainingJob(Base):
     input_data_config: Optional[List[Channel]] = Unassigned()
     output_data_config: Optional[OutputDataConfig] = Unassigned()
     resource_config: Optional[ResourceConfig] = Unassigned()
+    warm_pool_status: Optional[WarmPoolStatus] = Unassigned()
     vpc_config: Optional[VpcConfig] = Unassigned()
     stopping_condition: Optional[StoppingCondition] = Unassigned()
     creation_time: Optional[datetime.datetime] = Unassigned()
@@ -15037,7 +15284,7 @@ class TrainingPlanOffering(Base):
     Attributes
     ----------------------
     training_plan_offering_id: The unique identifier for this training plan offering.
-    target_resources: The target resources (e.g., SageMaker Training Jobs, SageMaker HyperPod, SageMaker Endpoints) for this training plan offering. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.   A training plan for SageMaker endpoints can be used exclusively to provide compute resources to SageMaker endpoints for model deployment.
+    target_resources: The target resources (e.g., SageMaker Training Jobs, SageMaker HyperPod, SageMaker Endpoints, Studio apps) for this training plan offering. Training plans are specific to their target resource.   A training plan designed for SageMaker training jobs can only be used to schedule and run training jobs.   A training plan for HyperPod clusters can be used exclusively to provide compute resources to a cluster's instance group.   A training plan for SageMaker endpoints can be used exclusively to provide compute resources to SageMaker endpoints for model deployment.   A training plan for Studio apps can be used to launch JupyterLab and Code Editor apps on reserved training plan capacity.
     requested_start_time_after: The requested start time that the user specified when searching for the training plan offering.
     requested_end_time_before: The requested end time that the user specified when searching for the training plan offering.
     duration_hours: The number of whole hours in the total duration for this training plan offering.

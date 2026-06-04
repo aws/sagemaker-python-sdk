@@ -14,8 +14,12 @@
 from __future__ import absolute_import
 
 import json
+import os
 import time
 import logging
+from datetime import datetime, timezone
+
+from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
 from typing import Optional, Dict, Any, Union
 from urllib.parse import urlparse
 
@@ -23,11 +27,12 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.resources import TrainingJob, ModelPackage
 
 from sagemaker.train.model_trainer import ModelTrainer
+from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
-
 
 def _is_nova_model(container) -> bool:
     """Determine whether a model package container represents a Nova model.
@@ -50,6 +55,28 @@ def _is_nova_model(container) -> bool:
     return "nova" in recipe_name.lower() or "nova" in hub_content_name.lower()
 
 
+_BEDROCK_API_LOG_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "..", "bedrock_api_logs")
+
+
+def _log_bedrock_api_call(api_name: str, params: Dict[str, Any], response: Dict[str, Any]):
+    """Log a Bedrock API call to a JSON file in bedrock_api_logs/."""
+    log_dir = os.path.normpath(_BEDROCK_API_LOG_DIR)
+    os.makedirs(log_dir, exist_ok=True)
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    filename = f"{api_name}_{timestamp}.json"
+    filepath = os.path.join(log_dir, filename)
+    log_entry = {
+        "timestamp": timestamp,
+        "api": api_name,
+        "request": params,
+        "response": {k: v for k, v in response.items() if k != "ResponseMetadata"},
+    }
+    with open(filepath, "w") as f:
+        json.dump(log_entry, f, indent=2, default=str)
+    logger.info("Bedrock API call logged to %s", filepath)
+    print(f"[BedrockModelBuilder] API call logged to: {filepath}")
+
+
 class BedrockModelBuilder:
     """Builder class for deploying models to Amazon Bedrock.
 
@@ -58,21 +85,25 @@ class BedrockModelBuilder:
     the model type (Nova models vs. other models).
 
     Args:
-        model: The model to deploy. Can be a ModelTrainer, TrainingJob, or ModelPackage instance.
+        model: The model to deploy. Can be a ModelTrainer, MultiTurnRLTrainer,
+            TrainingJob, or ModelPackage instance.
     """
 
-    def __init__(self, model: Optional[Union[ModelTrainer, TrainingJob, ModelPackage]]):
+    def __init__(
+        self, model: Optional[Union[ModelTrainer, MultiTurnRLTrainer, AgentRFTJob, TrainingJob, ModelPackage]]
+    ):
         """Initialize BedrockModelBuilder with a model instance.
 
         Args:
-            model: The model to deploy. Can be a ModelTrainer, TrainingJob,
-                or ModelPackage instance.
+            model: The model to deploy. Can be a ModelTrainer, MultiTurnRLTrainer,
+                AgentRFTJob, TrainingJob, or ModelPackage instance.
         """
         self.model = model
         self._bedrock_client = None
         self._sagemaker_client = None
         self.boto_session = Session().boto_session
         self.model_package = self._fetch_model_package() if model else None
+        self._is_rmp = is_restricted_model_package(self.model_package)
         self.s3_model_artifacts = self._get_s3_artifacts() if model else None
 
     def _get_bedrock_client(self):
@@ -151,32 +182,50 @@ class BedrockModelBuilder:
                 "model_package is not set. Provide a valid model during initialization."
             )
 
-        container = self.model_package.inference_specification.containers[0]
-        is_nova = _is_nova_model(container)
+        spec = getattr(self.model_package, "inference_specification", None)
+        containers = getattr(spec, "containers", None) if spec else None
+        container = containers[0] if containers else None
+        is_nova = _is_nova_model(container) if container else False
 
-        if is_nova:
+        if self._is_rmp or is_nova:
             if not custom_model_name:
                 raise ValueError("custom_model_name is required for Nova model deployment.")
             if not role_arn:
                 raise ValueError("role_arn is required for Nova model deployment.")
 
-            params = {
-                "modelName": custom_model_name,
-                "modelSourceConfig": {"s3DataSource": {"s3Uri": self.s3_model_artifacts}},
-                "roleArn": role_arn,
-            }
+            if self._is_rmp:
+                params = {
+                    "modelName": custom_model_name,
+                    "customModelDataSource": {
+                        "modelPackageArnDataSource": {
+                            "modelPackageArn": self.model_package.model_package_arn
+                        }
+                    },
+                    "roleArn": role_arn,
+                }
+            else:
+                params = {
+                    "modelName": custom_model_name,
+                    "modelSourceConfig": {"s3DataSource": {"s3Uri": self.s3_model_artifacts}},
+                    "roleArn": role_arn,
+                }
             if model_tags:
                 params["modelTags"] = model_tags
             params = {k: v for k, v in params.items() if v is not None}
 
             logger.info("Creating custom model %s for Nova deployment", custom_model_name)
             create_response = self._get_bedrock_client().create_custom_model(**params)
+            _log_bedrock_api_call("create_custom_model", params, create_response)
 
             model_arn = create_response.get("modelArn")
             deploy_name = deployment_name or f"{custom_model_name}-deployment"
             return self.create_deployment(model_arn=model_arn, deployment_name=deploy_name)
         else:
             model_data_source = {"s3DataSource": {"s3Uri": self.s3_model_artifacts}}
+            # Auto-generate job_name if not provided
+            if not job_name:
+                import time
+                job_name = f"{imported_model_name or 'import'}-{int(time.time())}"
             params = {
                 "jobName": job_name,
                 "importedModelName": imported_model_name,
@@ -190,7 +239,14 @@ class BedrockModelBuilder:
             params = {k: v for k, v in params.items() if v is not None}
 
             logger.info("Creating model import job for non-Nova deployment")
-            return self._get_bedrock_client().create_model_import_job(**params)
+            print(f"[BedrockModelBuilder] Resolved S3 artifacts path: {self.s3_model_artifacts}")
+            print(f"[BedrockModelBuilder] create_model_import_job params: {params}")
+            response = self._get_bedrock_client().create_model_import_job(**params)
+            logger.warning(
+                "Bedrock create_model_import_job request: %s, response: %s", params, response
+            )
+            _log_bedrock_api_call("create_model_import_job", params, response)
+            return response
 
     def create_deployment(
         self,
@@ -234,6 +290,10 @@ class BedrockModelBuilder:
 
         logger.info("Creating deployment %s for model %s", deployment_name, model_arn)
         response = self._get_bedrock_client().create_custom_model_deployment(**params)
+        logger.warning(
+            "Bedrock create_custom_model_deployment request: %s, response: %s", params, response
+        )
+        _log_bedrock_api_call("create_custom_model_deployment", params, response)
 
         deployment_arn = response.get("customModelDeploymentArn")
         if deployment_arn:
@@ -312,8 +372,8 @@ class BedrockModelBuilder:
     def _fetch_model_package(self) -> Optional[ModelPackage]:
         """Fetch the ModelPackage from the provided model.
 
-        Extracts ModelPackage from ModelTrainer, TrainingJob, or returns
-        the ModelPackage directly if that's what was provided.
+        Extracts ModelPackage from ModelTrainer, MultiTurnRLTrainer, TrainingJob,
+        or returns the ModelPackage directly if that's what was provided.
 
         Returns:
             ModelPackage instance or None if no model was provided.
@@ -322,6 +382,27 @@ class BedrockModelBuilder:
             return self.model
         if isinstance(self.model, TrainingJob):
             return ModelPackage.get(self.model.output_model_package_arn)
+        if isinstance(self.model, (MultiTurnRLTrainer, AgentRFTJob)):
+            arn = self.model.output_model_package_arn
+            if not arn:
+                job_name = None
+                if isinstance(self.model, AgentRFTJob):
+                    job_name = self.model.job_name
+                elif hasattr(self.model, "_latest_job") and self.model._latest_job:
+                    job_name = self.model._latest_job.job_name
+                if job_name:
+                    from sagemaker.core.resources import Job
+                    job = Job.get(
+                        job_name=job_name, job_category="AgentRFT"
+                    )
+                    config = json.loads(job.job_config_document) if job.job_config_document else {}
+                    arn = config.get("ServiceOutput", {}).get("OutputModelPackageArn")
+            if not arn:
+                raise ValueError(
+                    "Model has no output_model_package_arn. "
+                    "Ensure training has completed successfully."
+                )
+            return ModelPackage.get(arn)
         if isinstance(self.model, ModelTrainer):
             return ModelPackage.get(
                 self.model._latest_training_job.output_model_package_arn
@@ -332,12 +413,16 @@ class BedrockModelBuilder:
         """Extract S3 URI of model artifacts from the model package.
 
         For Nova models, fetches checkpoint URI from manifest.json in training job output.
-        For other models, returns the model data source S3 URI.
+        For other models, returns the model data source S3 URI, resolving to the
+        hf_merged checkpoint directory if it exists (required for Bedrock import).
 
         Returns:
             S3 URI string of the model artifacts, or None if not available.
         """
         if not self.model_package:
+            return None
+
+        if self._is_rmp:
             return None
 
         container = self.model_package.inference_specification.containers[0]
@@ -349,8 +434,59 @@ class BedrockModelBuilder:
         if hasattr(container, "model_data_source") and container.model_data_source:
             data_source = container.model_data_source
             if hasattr(data_source, "s3_data_source") and data_source.s3_data_source:
-                return data_source.s3_data_source.s3_uri
+                s3_uri = data_source.s3_data_source.s3_uri
+                if s3_uri:
+                    return self._resolve_hf_model_path(s3_uri)
         return None
+
+    def _resolve_hf_model_path(self, s3_uri: str) -> str:
+        """Resolve the HuggingFace model directory within model artifacts.
+
+        MTRL training jobs produce checkpoints under checkpoints/:
+        - hf_merged/ contains full merged weights (config.json + model shards)
+        - hf/ contains LoRA adapter only (adapter_config.json + adapter_model.safetensors)
+
+        The s3_uri from the model package already includes the trailing model/ prefix,
+        so this method appends checkpoints/hf_merged/ or checkpoints/hf/ directly.
+
+        This method checks for hf_merged first (preferred for Bedrock import),
+        then falls back to hf (LoRA adapter), then the original URI.
+
+        Args:
+            s3_uri: Base S3 URI from the model package container (typically ends with model/).
+
+        Returns:
+            S3 URI pointing to the resolved model directory.
+        """
+        s3_uri = s3_uri.rstrip("/") + "/"
+        parsed_base = urlparse(s3_uri)
+        bucket = parsed_base.netloc
+        s3_client = self.boto_session.client("s3")
+
+        print(f"[BedrockModelBuilder] Base s3_uri from model package: {s3_uri}")
+
+        hf_merged_uri = s3_uri + "checkpoints/hf_merged/"
+        merged_config_key = urlparse(hf_merged_uri).path.lstrip("/") + "config.json"
+        print(f"[BedrockModelBuilder] Probing for hf_merged: s3://{bucket}/{merged_config_key}")
+        try:
+            s3_client.head_object(Bucket=bucket, Key=merged_config_key)
+            logger.info("Found merged HF model at %s", hf_merged_uri)
+            print(f"[BedrockModelBuilder] Found hf_merged checkpoint, using: {hf_merged_uri}")
+            return hf_merged_uri
+        except Exception as e:
+            print(f"[BedrockModelBuilder] hf_merged not found: {e}")
+
+        hf_lora_uri = s3_uri + "checkpoints/hf/"
+        lora_config_key = urlparse(hf_lora_uri).path.lstrip("/") + "adapter_config.json"
+        try:
+            s3_client.head_object(Bucket=bucket, Key=lora_config_key)
+            logger.info("Found LoRA adapter at %s", hf_lora_uri)
+            return hf_lora_uri
+        except Exception:
+            pass
+
+        logger.info("No hf_merged or hf checkpoint found, using base path: %s", s3_uri)
+        return s3_uri.rstrip("/")
 
     def _get_checkpoint_uri_from_manifest(self) -> Optional[str]:
         """Get checkpoint URI from manifest.json for Nova models.

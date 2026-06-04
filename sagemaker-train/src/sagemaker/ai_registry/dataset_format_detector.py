@@ -37,14 +37,26 @@ class DatasetFormatDetector:
         Validate if the dataset adheres to any known format.
         
         Args:
-            file_path: Path to the JSONL file
+            file_path: Path to the JSONL, Parquet, JSON, or CSV file
             
         Returns:
             True if dataset is valid according to any known format, False otherwise
         """
+        # Parquet files are binary — validate by reading the header
+        if file_path.endswith(".parquet"):
+            return DatasetFormatDetector._validate_parquet(file_path)
+
+        # CSV files — validate by checking header row exists
+        if file_path.endswith(".csv"):
+            return DatasetFormatDetector._validate_csv(file_path)
+
+        # JSON array files
+        if file_path.endswith(".json"):
+            return DatasetFormatDetector._validate_json(file_path)
+
         import jsonschema
         
-        # Schema-based formats
+        # Schema-based formats (JSONL)
         schema_formats = [
             "dpo", "converse", "hf_preference", "hf_prompt_completion",
             "verl", "openai_chat", "genqa"
@@ -75,6 +87,39 @@ class DatasetFormatDetector:
         except (json.JSONDecodeError, FileNotFoundError, IOError):
             return False
     
+    @staticmethod
+    def _validate_parquet(file_path: str) -> bool:
+        """Validate that a file is a valid Parquet file by checking its magic bytes."""
+        try:
+            with open(file_path, "rb") as f:
+                magic = f.read(4)
+                return magic == b"PAR1"
+        except (FileNotFoundError, IOError):
+            return False
+
+    @staticmethod
+    def _validate_csv(file_path: str) -> bool:
+        """Validate that a file is a valid CSV with a header row."""
+        import csv
+
+        try:
+            with open(file_path, "r", newline="") as f:
+                reader = csv.reader(f)
+                header = next(reader, None)
+                return header is not None and len(header) > 0
+        except (FileNotFoundError, IOError):
+            return False
+
+    @staticmethod
+    def _validate_json(file_path: str) -> bool:
+        """Validate that a file is a valid JSON array of objects."""
+        try:
+            with open(file_path, "r") as f:
+                data = json.load(f)
+                return isinstance(data, list) and len(data) > 0
+        except (json.JSONDecodeError, FileNotFoundError, IOError):
+            return False
+
     @staticmethod
     def _is_rft_format(data: Dict[str, Any]) -> bool:
         """Check if data matches RFT format pattern."""
