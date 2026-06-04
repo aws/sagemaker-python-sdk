@@ -290,22 +290,20 @@ class _ModelResolver:
             # Validate ARN format
             self._validate_model_package_arn(model_package_arn)
             
+            # Use sagemaker.core ModelPackage.get() to retrieve model package information
             from sagemaker.core.resources import ModelPackage
-            from sagemaker.core.utils.code_injection.codec import transform
             
             import logging
             logger = logging.getLogger(__name__)
             
-            # Use the session's sagemaker_client which respects the session's region
-            # (avoids SageMakerClient singleton which may cache a different region).
-            sm_client = session.sagemaker_client
-            response = sm_client.describe_model_package(ModelPackageName=model_package_arn)
+            # Get the model package using sagemaker.core
+            model_package = ModelPackage.get(
+                model_package_name=model_package_arn,
+                session=session.boto_session,
+                region=session.boto_session.region_name
+            )
             
             logger.info(f"Retrieved ModelPackage in region: {session.boto_session.region_name}")
-            
-            # Deserialize and create ModelPackage object
-            transformed_response = transform(response, "DescribeModelPackageOutput")
-            model_package = ModelPackage(**transformed_response)
             
             # Now use the existing _resolve_model_package_object method to extract base model info
             return self._resolve_model_package_object(model_package)

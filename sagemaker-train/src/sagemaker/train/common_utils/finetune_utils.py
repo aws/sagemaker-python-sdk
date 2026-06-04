@@ -338,14 +338,13 @@ def _resolve_model_package_group_arn(model_package_group_name_or_arn, sagemaker_
             # It's already an ARN
             return model_package_group_name_or_arn
         else:
-            # It's a name, resolve to ARN using the session's sagemaker_client
-            # which respects the session's region (avoids SageMakerClient singleton
-            # which may cache a different region).
-            sm_client = sagemaker_session.sagemaker_client
-            response = sm_client.describe_model_package_group(
-                ModelPackageGroupName=model_package_group_name_or_arn
+            # It's a name, resolve to ARN
+            model_package_group = ModelPackageGroup.get(
+                model_package_group_name=model_package_group_name_or_arn,
+                session=sagemaker_session.boto_session,
+                region=sagemaker_session.boto_session.region_name
             )
-            return response["ModelPackageGroupArn"]
+            return model_package_group.model_package_group_arn
     else:
         # It's a ModelPackageGroup object
         return model_package_group_name_or_arn.model_package_group_arn
@@ -582,14 +581,12 @@ def _resolve_model_and_name(model, sagemaker_session=None):
     if isinstance(model, str):
         # Check if it's a model package ARN
         if model.startswith("arn:aws:sagemaker:") and ":model-package/" in model:
-            # Get ModelPackage object from ARN using the session's sagemaker_client
-            # which respects the session's region (avoids SageMakerClient singleton
-            # which may cache a different region).
-            from sagemaker.core.utils.code_injection.codec import transform
-            sm_client = sagemaker_session.sagemaker_client
-            response = sm_client.describe_model_package(ModelPackageName=model)
-            transformed_response = transform(response, "DescribeModelPackageOutput")
-            model_package = ModelPackage(**transformed_response)
+            # Get ModelPackage object from ARN
+            model_package = ModelPackage.get(
+                model_package_name=model,
+                session=sagemaker_session.boto_session if sagemaker_session else None,
+                region=sagemaker_session.boto_session.region_name if sagemaker_session else None
+            )
             model_name = _resolve_model_name(model_package)
             # Validate region availability
             if region_name:
