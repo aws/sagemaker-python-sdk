@@ -7,7 +7,6 @@
 
 ### Bug Fixes
 
-- fix: bypass SageMakerClient singleton for cross-region model package resolution
 - fix: Address MTRL Eval Hyperparameters issue
 
 ## v3.13.0 (2026-06-02)
