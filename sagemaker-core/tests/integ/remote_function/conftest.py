@@ -155,7 +155,7 @@ def auto_capture_test_container(sagemaker_session, sagemaker_sdk_tar_path, tmp_p
 
     return build_container_once(
         "auto_capture_test_container",
-        sagemaker_session, "3.10",
+        sagemaker_session, "3.11",
         AUTO_CAPTURE_CLIENT_DOCKER_TEMPLATE, sagemaker_sdk_tar_path, tmp_path_factory,
         is_auto_capture=True,
         extra_files_hook=_copy_auto_capture_test_file,
