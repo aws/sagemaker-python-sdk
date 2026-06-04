@@ -296,13 +296,12 @@ class _ModelResolver:
             import logging
             logger = logging.getLogger(__name__)
             
-            # Use the session's boto client directly to avoid SageMakerClient singleton
-            # which may cache a different region.
-            region = session.boto_session.region_name
-            sm_client = session.boto_session.client("sagemaker", region_name=region)
+            # Use the session's sagemaker_client which respects the session's region
+            # (avoids SageMakerClient singleton which may cache a different region).
+            sm_client = session.sagemaker_client
             response = sm_client.describe_model_package(ModelPackageName=model_package_arn)
             
-            logger.info(f"Retrieved ModelPackage in region: {region}")
+            logger.info(f"Retrieved ModelPackage in region: {session.boto_session.region_name}")
             
             # Deserialize and create ModelPackage object
             transformed_response = transform(response, "DescribeModelPackageOutput")

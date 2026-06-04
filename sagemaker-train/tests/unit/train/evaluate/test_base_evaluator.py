@@ -320,7 +320,7 @@ class TestModelPackageGroupValidation:
         mock_sm_client.describe_model_package_group.return_value = {
             "ModelPackageGroupArn": DEFAULT_MODEL_PACKAGE_GROUP_ARN
         }
-        mock_session.boto_session.client.return_value = mock_sm_client
+        mock_session.sagemaker_client = mock_sm_client
         
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
@@ -362,7 +362,7 @@ class TestModelPackageGroupValidation:
         # Mock the boto client to raise an exception
         mock_sm_client = MagicMock()
         mock_sm_client.describe_model_package_group.side_effect = Exception("Model package group not found")
-        mock_session.boto_session.client.return_value = mock_sm_client
+        mock_session.sagemaker_client = mock_sm_client
         
         with pytest.raises(ValidationError, match="Failed to resolve model package group name"):
             BaseEvaluator(

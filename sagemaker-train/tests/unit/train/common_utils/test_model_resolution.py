@@ -320,7 +320,7 @@ class TestResolveModelPackageArn:
         
         # Mock boto client
         mock_sm_client = MagicMock()
-        mock_session.boto_session.client.return_value = mock_sm_client
+        mock_session.sagemaker_client = mock_sm_client
         mock_sm_client.describe_model_package.return_value = {
             "ModelPackageArn": arn,
             "InferenceSpecification": {
@@ -374,7 +374,7 @@ class TestResolveModelPackageArn:
         
         # Mock boto client
         mock_sm_client = MagicMock()
-        mock_session.boto_session.client.return_value = mock_sm_client
+        mock_session.sagemaker_client = mock_sm_client
         mock_sm_client.describe_model_package.return_value = {"ModelPackageArn": arn}
         
         with patch('sagemaker.core.utils.code_injection.codec.transform') as mock_transform:
@@ -414,7 +414,7 @@ class TestResolveModelPackageArn:
         
         # Mock boto client
         mock_sm_client = MagicMock()
-        mock_session.boto_session.client.return_value = mock_sm_client
+        mock_session.sagemaker_client = mock_sm_client
         mock_sm_client.describe_model_package.return_value = {"ModelPackageArn": arn}
         
         with patch('sagemaker.core.utils.code_injection.codec.transform') as mock_transform:
@@ -444,7 +444,7 @@ class TestResolveModelPackageArn:
         
         # Mock boto client
         mock_sm_client = MagicMock()
-        mock_session.boto_session.client.return_value = mock_sm_client
+        mock_session.sagemaker_client = mock_sm_client
         mock_sm_client.describe_model_package.return_value = {"ModelPackageArn": arn}
         
         with patch('sagemaker.core.utils.code_injection.codec.transform') as mock_transform:

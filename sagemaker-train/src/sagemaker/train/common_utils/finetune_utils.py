@@ -338,13 +338,10 @@ def _resolve_model_package_group_arn(model_package_group_name_or_arn, sagemaker_
             # It's already an ARN
             return model_package_group_name_or_arn
         else:
-            # It's a name, resolve to ARN using the session's client directly
-            # to respect the session's region (avoids SageMakerClient singleton
+            # It's a name, resolve to ARN using the session's sagemaker_client
+            # which respects the session's region (avoids SageMakerClient singleton
             # which may cache a different region).
-            sm_client = sagemaker_session.boto_session.client(
-                "sagemaker",
-                region_name=sagemaker_session.boto_session.region_name
-            )
+            sm_client = sagemaker_session.sagemaker_client
             response = sm_client.describe_model_package_group(
                 ModelPackageGroupName=model_package_group_name_or_arn
             )
@@ -585,13 +582,11 @@ def _resolve_model_and_name(model, sagemaker_session=None):
     if isinstance(model, str):
         # Check if it's a model package ARN
         if model.startswith("arn:aws:sagemaker:") and ":model-package/" in model:
-            # Get ModelPackage object from ARN using the session's boto client directly
-            # to avoid SageMakerClient singleton which may cache a different region.
+            # Get ModelPackage object from ARN using the session's sagemaker_client
+            # which respects the session's region (avoids SageMakerClient singleton
+            # which may cache a different region).
             from sagemaker.core.utils.code_injection.codec import transform
-            sm_client = sagemaker_session.boto_session.client(
-                "sagemaker",
-                region_name=sagemaker_session.boto_session.region_name
-            )
+            sm_client = sagemaker_session.sagemaker_client
             response = sm_client.describe_model_package(ModelPackageName=model)
             transformed_response = transform(response, "DescribeModelPackageOutput")
             model_package = ModelPackage(**transformed_response)

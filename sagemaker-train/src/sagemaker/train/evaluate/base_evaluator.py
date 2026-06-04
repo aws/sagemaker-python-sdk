@@ -222,12 +222,13 @@ class BaseEvaluator(BaseModel):
                              if hasattr(session, 'boto_region_name') 
                              else 'us-west-2')
                 
-                # Resolve directly via boto3 client to avoid SageMakerClient singleton
-                # which may cache a different region.
-                import boto3 as _boto3
-                if session and hasattr(session, 'boto_session'):
-                    sm_client = session.boto_session.client("sagemaker", region_name=region)
+                # Resolve using the session's sagemaker_client which respects
+                # the session's region (avoids SageMakerClient singleton
+                # which may cache a different region).
+                if session and hasattr(session, 'sagemaker_client'):
+                    sm_client = session.sagemaker_client
                 else:
+                    import boto3 as _boto3
                     sm_client = _boto3.client("sagemaker", region_name=region)
                 response = sm_client.describe_model_package_group(ModelPackageGroupName=v)
                 arn = response["ModelPackageGroupArn"]

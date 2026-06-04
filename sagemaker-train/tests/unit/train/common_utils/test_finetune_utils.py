@@ -175,7 +175,7 @@ class TestFinetuneUtils:
         mock_sm_client.describe_model_package_group.return_value = {
             "ModelPackageGroupArn": "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/test-group"
         }
-        mock_session.boto_session.client.return_value = mock_sm_client
+        mock_session.sagemaker_client = mock_sm_client
         
         result = _resolve_model_package_group_arn("test-group", mock_session)
         
@@ -371,7 +371,7 @@ class TestFinetuneUtils:
         mock_session.boto_region_name = "us-east-1"  # Set valid region
         mock_session.boto_session.region_name = "us-east-1"
         mock_sm_client = Mock()
-        mock_session.boto_session.client.return_value = mock_sm_client
+        mock_session.sagemaker_client = mock_sm_client
         
         # Mock describe_model_package response
         mock_sm_client.describe_model_package.return_value = {
