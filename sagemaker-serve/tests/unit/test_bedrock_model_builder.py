@@ -95,7 +95,8 @@ class TestInit:
     def test_with_model(self):
         m = Mock()
         with patch.object(BedrockModelBuilder, "_fetch_model_package", return_value=Mock()), \
-             patch.object(BedrockModelBuilder, "_get_s3_artifacts", return_value="s3://b/k"):
+             patch.object(BedrockModelBuilder, "_get_s3_artifacts", return_value="s3://b/k"), \
+             patch(f"{MODULE}.is_restricted_model_package", return_value=False):
             b = BedrockModelBuilder(model=m)
         assert b.model is m
         assert b.s3_model_artifacts == "s3://b/k"
@@ -583,3 +584,105 @@ class TestDeploy:
         kw = b._bedrock_client.create_model_import_job.call_args[1]
         assert "importedModelKmsKeyId" not in kw
         assert "clientRequestToken" not in kw
+
+    def test_nova_rmp_uses_model_package_arn_data_source(self):
+        """When model package is RMP, use customModelDataSource."""
+        c = _make_container(recipe_name="nova-lite")
+        b = _builder()
+        pkg = _make_model_package(c)
+        pkg.model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-rmp/1"
+        pkg.managed_storage_type = "Restricted"
+        b.model_package = pkg
+        b._is_rmp = True
+        b.s3_model_artifacts = None
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:m"}
+        b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
+        b._bedrock_client.create_custom_model_deployment.return_value = {
+            "customModelDeploymentArn": "arn:dep"
+        }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
+        b.deploy(custom_model_name="rmp-test", role_arn="r")
+        kw = b._bedrock_client.create_custom_model.call_args[1]
+        assert "customModelDataSource" in kw
+        assert kw["customModelDataSource"]["modelPackageArnDataSource"]["modelPackageArn"] == (
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-rmp/1"
+        )
+        assert "modelSourceConfig" not in kw
+
+    def test_nova_s3_uri_uses_model_source_config(self):
+        """When model package is not RMP, use modelSourceConfig (existing path)."""
+        c = _make_container(recipe_name="nova-lite", s3_uri="s3://bucket/checkpoint/step_10/")
+        b = _builder()
+        pkg = _make_model_package(c)
+        pkg.managed_storage_type = None
+        b.model_package = pkg
+        b.s3_model_artifacts = "s3://bucket/checkpoint/step_10/"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:m"}
+        b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
+        b._bedrock_client.create_custom_model_deployment.return_value = {
+            "customModelDeploymentArn": "arn:dep"
+        }
+        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+
+        b.deploy(custom_model_name="s3-test", role_arn="r")
+        kw = b._bedrock_client.create_custom_model.call_args[1]
+        assert "modelSourceConfig" in kw
+        assert kw["modelSourceConfig"]["s3DataSource"]["s3Uri"] == "s3://bucket/checkpoint/step_10/"
+        assert "customModelDataSource" not in kw
+
+
+# ── _get_s3_artifacts RMP detection ───────────────────────────────────────
+
+
+class TestGetS3ArtifactsRMP:
+    def test_nova_rmp_returns_none(self):
+        """When model package is RMP (s3_uri is None), return None."""
+        c = _make_container(recipe_name="nova-lite")
+        s3_data = Mock()
+        s3_data.s3_uri = None
+        data_source = Mock()
+        data_source.s3_data_source = s3_data
+        c.model_data_source = data_source
+
+        pkg = _make_model_package(c)
+        pkg.model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp/1"
+        pkg.managed_storage_type = "Restricted"
+
+        b = _builder()
+        b.model = "not-a-training-job"
+        b.model_package = pkg
+        result = b._get_s3_artifacts()
+        assert result is None
+
+    def test_nova_rmp_no_data_source_returns_none(self):
+        """When model_data_source is None and managed_storage_type is Restricted, return None."""
+        c = _make_container(recipe_name="nova-lite")
+        c.model_data_source = None
+
+        pkg = _make_model_package(c)
+        pkg.model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp/2"
+        pkg.managed_storage_type = "Restricted"
+
+        b = _builder()
+        b.model = "not-a-training-job"
+        b.model_package = pkg
+        result = b._get_s3_artifacts()
+        assert result is None
+
+    def test_non_nova_rmp_returns_none(self):
+        """Non-Nova RMP models should also return None."""
+        c = _make_container(recipe_name="llama", hub_content_name="llama")
+        c.model_data_source = None
+
+        pkg = _make_model_package(c)
+        pkg.model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp/1"
+        pkg.managed_storage_type = "Restricted"
+
+        b = _builder()
+        b.model = "not-a-training-job"
+        b.model_package = pkg
+        result = b._get_s3_artifacts()
+        assert result is None

@@ -44,7 +44,8 @@ EVALUATOR_DEFAULT_S3_PREFIX = "evaluators"
 
 # Dataset file validation constants
 DATASET_MAX_FILE_SIZE_BYTES = 1024 * 1024 * 1024  # 1GB in bytes
-DATASET_SUPPORTED_EXTENSIONS = ['.jsonl']
+# new MTRL supports '.parquet', '.json', '.csv'
+DATASET_SUPPORTED_EXTENSIONS = ['.jsonl', '.parquet', '.json', '.csv']
 
 # Evaluator types
 REWARD_FUNCTION = "RewardFunction"

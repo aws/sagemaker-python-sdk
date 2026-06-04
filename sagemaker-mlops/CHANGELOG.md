@@ -1,4 +1,8 @@
 # Changelog
+## v1.13.0 (2026-06-02)
+
+- Update module dependencies
+
 ## v1.12.0 (2026-05-19)
 
 ### New Features

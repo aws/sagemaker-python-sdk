@@ -17,6 +17,7 @@ from __future__ import absolute_import
 # String-based keys avoid cross-package imports and circular dependencies.
 _RESOURCE_ARN_ATTRIBUTES = {
     "TrainingJob": "training_job_arn",
+    "AgentRFTJob": "job_arn",
 }
 
 
