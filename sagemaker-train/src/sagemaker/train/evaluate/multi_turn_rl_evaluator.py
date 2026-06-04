@@ -317,7 +317,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         override_params = _get_evaluation_override_params(
             hub_content_name=hub_content_name,
             hub_name="SageMakerPublicHub",
-            evaluation_type="AgentRFTEvaluation",
+            evaluation_type="MTRLEvaluation",
             region=self.region,
             session=boto_session,
         )
@@ -328,7 +328,9 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 f"JumpStart hub."
             )
 
-        spec = _extract_eval_override_options(override_params, return_full_spec=True)
+        spec = _extract_eval_override_options(
+            override_params, param_names=list(override_params.keys()), return_full_spec=True
+        )
         self._hyperparameters = FineTuningOptions(spec)
         return self._hyperparameters
 
