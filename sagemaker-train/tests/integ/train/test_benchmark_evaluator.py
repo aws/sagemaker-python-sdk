@@ -47,7 +47,7 @@ TEST_CONFIG = {
     "model_package_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
     "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl",
     "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-W7FOBBXZANVX",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
     "model_package_group_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
     "region": "us-west-2",
 }
@@ -57,7 +57,7 @@ BASE_MODEL_ONLY_CONFIG = {
     "base_model_id": "meta-textgeneration-llama-3-2-1b-instruct",
     "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl",
     "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-W7FOBBXZANVX",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
     "region": "us-west-2",
 }
 
@@ -124,7 +124,7 @@ class TestBenchmarkEvaluatorIntegration:
             benchmark=Benchmark.MMLU,
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             model_package_group=TEST_CONFIG["model_package_group_arn"],
             base_eval_name="integ-test-gen-qa-eval",
         )
@@ -242,7 +242,7 @@ class TestBenchmarkEvaluatorIntegration:
                 benchmark="invalid_benchmark",
                 model=TEST_CONFIG["model_package_arn"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
-                # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+                mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             )
         
         # Test invalid MLflow ARN format
@@ -265,7 +265,7 @@ class TestBenchmarkEvaluatorIntegration:
             benchmark=Benchmark.MMLU,
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             subtasks="abstract_algebra",
             model_package_group="arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test",
         )
@@ -277,7 +277,7 @@ class TestBenchmarkEvaluatorIntegration:
                 benchmark=Benchmark.MMLU,
                 model=TEST_CONFIG["model_package_arn"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
-                # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+                mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
                 subtasks=["invalid"],
                 model_package_group="arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test",
             )
