@@ -1,4 +1,10 @@
 # Changelog
+## v1.13.1 (2026-06-04)
+
+### Bug Fixes
+
+- fix: bypass SageMakerClient singleton for cross-region model package resolution
+- fix: Address MTRL Eval Hyperparameters issue
 
 ## v1.13.0 (2026-06-02)
 
