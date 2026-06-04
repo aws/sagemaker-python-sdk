@@ -69,7 +69,7 @@ class TestIsNovaModel:
     def test_nova_via_hub_content_name(self):
         assert _is_nova_model(_make_container(hub_content_name="amazon-nova-lite")) is True
 
-    def test_non_nova(self):
+    def test_oss(self):
         assert _is_nova_model(_make_container(recipe_name="llama-3-8b", hub_content_name="llama")) is False
 
     def test_no_base_model(self):
@@ -95,8 +95,7 @@ class TestInit:
     def test_with_model(self):
         m = Mock()
         with patch.object(BedrockModelBuilder, "_fetch_model_package", return_value=Mock()), \
-             patch.object(BedrockModelBuilder, "_get_s3_artifacts", return_value="s3://b/k"), \
-             patch(f"{MODULE}.is_restricted_model_package", return_value=False):
+             patch.object(BedrockModelBuilder, "_get_s3_artifacts", return_value="s3://b/k"):
             b = BedrockModelBuilder(model=m)
         assert b.model is m
         assert b.s3_model_artifacts == "s3://b/k"
@@ -210,13 +209,13 @@ class TestGetS3Artifacts:
         b.model_package = None
         assert b._get_s3_artifacts() is None
 
-    def test_non_nova_returns_s3_uri(self):
+    def test_oss_returns_s3_uri(self):
         c = _make_container(recipe_name="llama", hub_content_name="llama", s3_uri="s3://b/m.tar.gz")
         b = _builder()
         b.model_package = _make_model_package(c)
         assert b._get_s3_artifacts() == "s3://b/m.tar.gz"
 
-    def test_non_nova_no_data_source(self):
+    def test_oss_no_data_source(self):
         c = _make_container(recipe_name="llama", hub_content_name="llama")
         b = _builder()
         b.model_package = _make_model_package(c)
@@ -470,15 +469,48 @@ class TestWaitForDeploymentActive:
 
 
 class TestDeploy:
-    def test_non_nova(self):
+    def test_oss_waits_for_import_and_returns_job_details(self):
+        """OSS deploy: import job → wait → return job details."""
         c = _make_container(s3_uri="s3://b/m.tar.gz")
         b = _builder()
         b.model_package = _make_model_package(c)
         b.s3_model_artifacts = "s3://b/m.tar.gz"
         b._bedrock_client = Mock()
         b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
-        result = b.deploy(job_name="j", imported_model_name="m", role_arn="r")
-        assert result == {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "my-imported-model",
+            "importedModelArn": "arn:aws:bedrock:us-west-2:123:imported-model/abc",
+        }
+
+        with patch(f"{MODULE}.time.sleep"):
+            result = b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+
+        b._bedrock_client.create_model_import_job.assert_called_once()
+        b._bedrock_client.get_model_import_job.assert_called()
+        # Should NOT call create_provisioned_model_throughput
+        b._bedrock_client.create_provisioned_model_throughput.assert_not_called()
+        assert result["status"] == "Completed"
+        assert result["importedModelName"] == "my-imported-model"
+
+    def test_oss_does_not_create_provisioned_throughput(self):
+        """deploy() for OSS models should never call CreateProvisionedModelThroughput."""
+        c = _make_container(s3_uri="s3://b/m.tar.gz")
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.s3_model_artifacts = "s3://b/m.tar.gz"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(f"{MODULE}.time.sleep"):
+            b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+
+        b._bedrock_client.create_provisioned_model_throughput.assert_not_called()
+        b._bedrock_client.get_provisioned_model_throughput.assert_not_called()
 
     def test_nova_full_chain(self):
         c = _make_container(recipe_name="nova-micro", hub_content_name="nova")
@@ -573,116 +605,263 @@ class TestDeploy:
         with pytest.raises(ValueError, match="role_arn is required"):
             b.deploy(custom_model_name="m")
 
-    def test_non_nova_strips_none_params(self):
+    def test_oss_strips_none_params(self):
         c = _make_container()
         b = _builder()
         b.model_package = _make_model_package(c)
         b.s3_model_artifacts = "s3://b/k"
         b._bedrock_client = Mock()
         b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn"}
-        b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(f"{MODULE}.time.sleep"):
+            b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+
         kw = b._bedrock_client.create_model_import_job.call_args[1]
         assert "importedModelKmsKeyId" not in kw
         assert "clientRequestToken" not in kw
 
-    def test_nova_rmp_uses_model_package_arn_data_source(self):
-        """When model package is RMP, use customModelDataSource."""
-        c = _make_container(recipe_name="nova-lite")
-        b = _builder()
-        pkg = _make_model_package(c)
-        pkg.model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-rmp/1"
-        pkg.managed_storage_type = "Restricted"
-        b.model_package = pkg
-        b._is_rmp = True
-        b.s3_model_artifacts = None
-        b._bedrock_client = Mock()
-        b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:m"}
-        b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
-        b._bedrock_client.create_custom_model_deployment.return_value = {
-            "customModelDeploymentArn": "arn:dep"
-        }
-        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
 
-        b.deploy(custom_model_name="rmp-test", role_arn="r")
-        kw = b._bedrock_client.create_custom_model.call_args[1]
-        assert "customModelDataSource" in kw
-        assert kw["customModelDataSource"]["modelPackageArnDataSource"]["modelPackageArn"] == (
-            "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-rmp/1"
+# ── _wait_for_import_job_complete ───────────────────────────────────────────
+
+
+class TestWaitForImportJobComplete:
+    def test_immediate_completed(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_model_import_job.return_value = {"status": "Completed"}
+        b._wait_for_import_job_complete("arn:job")
+        b._bedrock_client.get_model_import_job.assert_called_once_with(
+            jobIdentifier="arn:job"
         )
-        assert "modelSourceConfig" not in kw
 
-    def test_nova_s3_uri_uses_model_source_config(self):
-        """When model package is not RMP, use modelSourceConfig (existing path)."""
-        c = _make_container(recipe_name="nova-lite", s3_uri="s3://bucket/checkpoint/step_10/")
+    def test_polls_then_completed(self):
         b = _builder()
-        pkg = _make_model_package(c)
-        pkg.managed_storage_type = None
-        b.model_package = pkg
-        b.s3_model_artifacts = "s3://bucket/checkpoint/step_10/"
         b._bedrock_client = Mock()
-        b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:m"}
-        b._bedrock_client.get_custom_model.return_value = {"modelStatus": "Active"}
-        b._bedrock_client.create_custom_model_deployment.return_value = {
-            "customModelDeploymentArn": "arn:dep"
+        b._bedrock_client.get_model_import_job.side_effect = [
+            {"status": "InProgress"},
+            {"status": "InProgress"},
+            {"status": "Completed"},
+        ]
+        with patch(f"{MODULE}.time.sleep"):
+            b._wait_for_import_job_complete("arn:job", poll_interval=1, max_wait=10)
+        assert b._bedrock_client.get_model_import_job.call_count == 3
+
+    def test_failed_raises(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Failed",
+            "failureMessage": "Invalid model format",
         }
-        b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
+        with pytest.raises(RuntimeError, match="Invalid model format"):
+            b._wait_for_import_job_complete("arn:job")
 
-        b.deploy(custom_model_name="s3-test", role_arn="r")
-        kw = b._bedrock_client.create_custom_model.call_args[1]
-        assert "modelSourceConfig" in kw
-        assert kw["modelSourceConfig"]["s3DataSource"]["s3Uri"] == "s3://bucket/checkpoint/step_10/"
-        assert "customModelDataSource" not in kw
-
-
-# ── _get_s3_artifacts RMP detection ───────────────────────────────────────
-
-
-class TestGetS3ArtifactsRMP:
-    def test_nova_rmp_returns_none(self):
-        """When model package is RMP (s3_uri is None), return None."""
-        c = _make_container(recipe_name="nova-lite")
-        s3_data = Mock()
-        s3_data.s3_uri = None
-        data_source = Mock()
-        data_source.s3_data_source = s3_data
-        c.model_data_source = data_source
-
-        pkg = _make_model_package(c)
-        pkg.model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp/1"
-        pkg.managed_storage_type = "Restricted"
-
+    def test_failed_unknown_reason(self):
         b = _builder()
-        b.model = "not-a-training-job"
-        b.model_package = pkg
-        result = b._get_s3_artifacts()
-        assert result is None
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_model_import_job.return_value = {"status": "Failed"}
+        with pytest.raises(RuntimeError, match="Unknown"):
+            b._wait_for_import_job_complete("arn:job")
 
-    def test_nova_rmp_no_data_source_returns_none(self):
-        """When model_data_source is None and managed_storage_type is Restricted, return None."""
-        c = _make_container(recipe_name="nova-lite")
-        c.model_data_source = None
-
-        pkg = _make_model_package(c)
-        pkg.model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp/2"
-        pkg.managed_storage_type = "Restricted"
-
+    def test_timeout_raises(self):
         b = _builder()
-        b.model = "not-a-training-job"
-        b.model_package = pkg
-        result = b._get_s3_artifacts()
-        assert result is None
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_model_import_job.return_value = {"status": "InProgress"}
+        with patch(f"{MODULE}.time.sleep"):
+            with pytest.raises(RuntimeError, match="Timed out"):
+                b._wait_for_import_job_complete("arn:job", poll_interval=1, max_wait=2)
 
-    def test_non_nova_rmp_returns_none(self):
-        """Non-Nova RMP models should also return None."""
-        c = _make_container(recipe_name="llama", hub_content_name="llama")
-        c.model_data_source = None
 
-        pkg = _make_model_package(c)
-        pkg.model_package_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/rmp/1"
-        pkg.managed_storage_type = "Restricted"
+# ── create_provisioned_throughput ───────────────────────────────────────────
 
+
+class TestCreateProvisionedThroughput:
+    def test_creates_and_polls(self):
         b = _builder()
-        b.model = "not-a-training-job"
-        b.model_package = pkg
-        result = b._get_s3_artifacts()
-        assert result is None
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "InService"
+        }
+
+        result = b.create_provisioned_throughput(
+            model_id="arn:model", provisioned_model_name="my-pt"
+        )
+
+        b._bedrock_client.create_provisioned_model_throughput.assert_called_once_with(
+            modelId="arn:model",
+            provisionedModelName="my-pt",
+            modelUnits=1,
+        )
+        b._bedrock_client.get_provisioned_model_throughput.assert_called_once()
+        assert result["provisionedModelArn"] == "arn:pt"
+
+    def test_passes_commitment_duration(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "InService"
+        }
+
+        b.create_provisioned_throughput(
+            model_id="arn:model",
+            provisioned_model_name="pt",
+            model_units=5,
+            commitment_duration="OneMonth",
+        )
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["modelUnits"] == 5
+        assert kw["commitmentDuration"] == "OneMonth"
+
+    def test_passes_tags(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "InService"
+        }
+
+        tags = [{"Key": "team", "Value": "ml"}]
+        b.create_provisioned_throughput(
+            model_id="arn:model", provisioned_model_name="pt", tags=tags
+        )
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["tags"] == tags
+
+    def test_skips_polling_when_no_arn_in_response(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {}
+
+        b.create_provisioned_throughput(
+            model_id="arn:model", provisioned_model_name="pt"
+        )
+        b._bedrock_client.get_provisioned_model_throughput.assert_not_called()
+
+    def test_empty_model_id_raises(self):
+        b = _builder()
+        with pytest.raises(ValueError, match="model_id is required"):
+            b.create_provisioned_throughput(model_id="", provisioned_model_name="pt")
+
+    def test_none_model_id_raises(self):
+        b = _builder()
+        with pytest.raises(ValueError, match="model_id is required"):
+            b.create_provisioned_throughput(model_id=None, provisioned_model_name="pt")
+
+    def test_empty_provisioned_model_name_raises(self):
+        b = _builder()
+        with pytest.raises(ValueError, match="provisioned_model_name is required"):
+            b.create_provisioned_throughput(
+                model_id="arn:model", provisioned_model_name=""
+            )
+
+    def test_uses_imported_model_id_from_deploy(self):
+        """model_id falls back to _imported_model_id set by deploy()."""
+        b = _builder()
+        b._imported_model_id = "my-deployed-model"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "InService"
+        }
+
+        result = b.create_provisioned_throughput(provisioned_model_name="my-pt")
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["modelId"] == "my-deployed-model"
+        assert result["provisionedModelArn"] == "arn:pt"
+
+    def test_explicit_model_id_overrides_stored(self):
+        """Explicit model_id takes precedence over _imported_model_id."""
+        b = _builder()
+        b._imported_model_id = "stored-model"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_provisioned_model_throughput.return_value = {
+            "provisionedModelArn": "arn:pt"
+        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "InService"
+        }
+
+        b.create_provisioned_throughput(
+            model_id="explicit-model", provisioned_model_name="my-pt"
+        )
+
+        kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
+        assert kw["modelId"] == "explicit-model"
+
+
+# ── _wait_for_provisioned_throughput_in_service ─────────────────────────────
+
+
+class TestWaitForProvisionedThroughputInService:
+    def test_immediate_in_service(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "InService"
+        }
+        b._wait_for_provisioned_throughput_in_service("arn:pt")
+        b._bedrock_client.get_provisioned_model_throughput.assert_called_once_with(
+            provisionedModelId="arn:pt"
+        )
+
+    def test_polls_then_in_service(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.side_effect = [
+            {"status": "Creating"},
+            {"status": "Creating"},
+            {"status": "InService"},
+        ]
+        with patch(f"{MODULE}.time.sleep"):
+            b._wait_for_provisioned_throughput_in_service(
+                "arn:pt", poll_interval=1, max_wait=10
+            )
+        assert b._bedrock_client.get_provisioned_model_throughput.call_count == 3
+
+    def test_failed_raises(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "Failed",
+            "failureMessage": "Insufficient capacity",
+        }
+        with pytest.raises(RuntimeError, match="Insufficient capacity"):
+            b._wait_for_provisioned_throughput_in_service("arn:pt")
+
+    def test_failed_unknown_reason(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "Failed"
+        }
+        with pytest.raises(RuntimeError, match="Unknown"):
+            b._wait_for_provisioned_throughput_in_service("arn:pt")
+
+    def test_timeout_raises(self):
+        b = _builder()
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {
+            "status": "Creating"
+        }
+        with patch(f"{MODULE}.time.sleep"):
+            with pytest.raises(RuntimeError, match="Timed out"):
+                b._wait_for_provisioned_throughput_in_service(
+                    "arn:pt", poll_interval=1, max_wait=2
+                )
