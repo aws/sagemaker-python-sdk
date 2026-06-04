@@ -3,6 +3,12 @@
 
 ### Features
 
+- feat: add import job polling and provisioned throughput for Bedrock OSS deployments
+
+## v1.13.0 (2026-06-02)
+
+### Features
+
 - **feat: Deployment** - Add MTRL support for BedrockModelBuilder and ModelBuilder.
 
 ### Bug Fixes
