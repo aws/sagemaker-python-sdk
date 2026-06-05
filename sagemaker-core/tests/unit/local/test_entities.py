@@ -612,6 +612,47 @@ class TestLocalEndpoint:
         mock_container.serve.assert_called_once()
 
     @patch("sagemaker.core.local.local_session.LocalSession")
+    @patch("sagemaker.core.local.entities._wait_for_serving_container")
+    @patch("sagemaker.core.local.entities._SageMakerContainer")
+    def test_endpoint_serve_custom_health_check_timeout(
+        self, mock_container_class, mock_wait, mock_session_class
+    ):
+        """Test that health_check_timeout from session config is passed to _wait_for_serving_container"""
+        mock_session = Mock()
+        mock_client = Mock()
+
+        mock_client.describe_endpoint_config.return_value = {
+            "EndpointConfigName": "test-config",
+            "ProductionVariants": [
+                {
+                    "VariantName": "AllTraffic",
+                    "ModelName": "test-model",
+                    "InitialInstanceCount": 1,
+                    "InstanceType": "local",
+                }
+            ],
+        }
+
+        mock_client.describe_model.return_value = {
+            "PrimaryContainer": {
+                "Image": "test-image:latest",
+                "ModelDataUrl": "s3://bucket/model.tar.gz",
+                "Environment": {},
+            }
+        }
+
+        mock_session.sagemaker_client = mock_client
+        mock_session.config = {"local": {"health_check_timeout": 600}}
+
+        mock_container = Mock()
+        mock_container_class.return_value = mock_container
+
+        endpoint = _LocalEndpoint("test-endpoint", "test-config", None, mock_session)
+        endpoint.serve()
+
+        mock_wait.assert_called_once_with(8080, timeout=600)
+
+    @patch("sagemaker.core.local.local_session.LocalSession")
     def test_endpoint_stop(self, mock_session_class):
         """Test stopping an endpoint"""
         mock_session = Mock()
@@ -704,6 +745,33 @@ class TestWaitForServingContainer:
 
         with pytest.raises(RuntimeError, match="Giving up"):
             _wait_for_serving_container(8080)
+
+    @patch("sagemaker.core.local.entities._perform_request")
+    @patch("sagemaker.core.local.entities.get_docker_host")
+    @patch("time.sleep")
+    def test_wait_custom_timeout(self, mock_sleep, mock_get_host, mock_perform_request):
+        """Test that custom timeout is respected"""
+        mock_get_host.return_value = "localhost"
+        mock_perform_request.return_value = (None, 500)
+
+        with pytest.raises(RuntimeError, match="Giving up"):
+            _wait_for_serving_container(8080, timeout=10)
+
+        # With timeout=10 and step=5, only 2 iterations before i(=10) >= timeout(=10)
+        assert mock_perform_request.call_count == 1
+
+    @patch("sagemaker.core.local.entities._perform_request")
+    @patch("sagemaker.core.local.entities.get_docker_host")
+    @patch("time.sleep")
+    def test_wait_uses_default_timeout_constant(self, mock_sleep, mock_get_host, mock_perform_request):
+        """Test that _wait_for_serving_container defaults to HEALTH_CHECK_TIMEOUT_LIMIT"""
+        mock_get_host.return_value = "localhost"
+        # Succeed on first attempt so we can verify it was called
+        mock_perform_request.return_value = (Mock(), 200)
+
+        _wait_for_serving_container(8080)
+
+        mock_perform_request.assert_called_once()
 
 
 class TestPerformRequest:
