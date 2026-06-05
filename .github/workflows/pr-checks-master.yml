@@ -5,6 +5,7 @@ on:
       - "master"
       - "master-mtrl-trainer"
       - "master-mtrl-release"
+      - "master-nova-reconcillation"
     paths:
       - 'sagemaker-train/**'
       - 'sagemaker-serve/**'
