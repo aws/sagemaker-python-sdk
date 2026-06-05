@@ -83,7 +83,7 @@ class TestFinetuneUtils:
         mock_get_domain.return_value = "d-123456789"
         mock_sm_client = Mock()
         mock_paginator = Mock()
-        mock_paginator.paginate.return_value = [{"MlflowApps": []}]
+        mock_paginator.paginate.return_value = [{"Summaries": []}]
         mock_sm_client.get_paginator.return_value = mock_paginator
         mock_get_client.return_value = mock_sm_client
         expected_arn = "arn:aws:mlflow:us-east-1:123456789012:tracking-server/new-app"
@@ -633,7 +633,7 @@ class TestResolveMlflowWithVersionCheck:
         }
         mock_sm_client = Mock()
         mock_paginator = Mock()
-        mock_paginator.paginate.return_value = [{"MlflowApps": [old_app]}]
+        mock_paginator.paginate.return_value = [{"Summaries": [old_app]}]
         mock_sm_client.get_paginator.return_value = mock_paginator
         mock_get_client.return_value = mock_sm_client
 
@@ -659,7 +659,7 @@ class TestResolveMlflowWithVersionCheck:
         }
         mock_sm_client = Mock()
         mock_paginator = Mock()
-        mock_paginator.paginate.return_value = [{"MlflowApps": [app]}]
+        mock_paginator.paginate.return_value = [{"Summaries": [app]}]
         mock_sm_client.get_paginator.return_value = mock_paginator
         mock_get_client.return_value = mock_sm_client
 

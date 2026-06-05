@@ -1,4 +1,10 @@
 # Changelog
+## v1.13.1 (2026-06-04)
+
+### Features
+
+- feat: add import job polling and provisioned throughput for Bedrock OSS deployments
+
 ## v1.13.0 (2026-06-02)
 
 ### Features

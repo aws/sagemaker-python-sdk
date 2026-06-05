@@ -307,6 +307,7 @@ from sagemaker.core.resources import TrainingJob, ModelPackage
 from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 
 
+@pytest.mark.serial
 class TestModelCustomizationDeployment:
     """Test suite for deploying fine-tuned models to Bedrock."""
 

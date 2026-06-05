@@ -71,7 +71,7 @@ TEST_CONFIG = {
     "builtin_metrics": ["Completeness", "Faithfulness"],
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
     "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/base-model-fix-test/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-W7FOBBXZANVX",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
     "evaluate_base_model": True,  # This is the key difference - testing base model evaluation
     "region": "us-west-2",
 }
@@ -81,7 +81,7 @@ TEST_CONFIG = {
 class TestLLMAsJudgeBaseModelFix:
     """Integration test for base model fix in LLMAsJudgeEvaluator"""
 
-    def test_base_model_evaluation_uses_correct_weights(self):
+    def test_base_model_evaluation_uses_correct_weights(self, mlflow_resource_arn):
         """
         Test that base model evaluation uses original base model weights.
         
@@ -115,6 +115,7 @@ class TestLLMAsJudgeBaseModelFix:
             custom_metrics=TEST_CONFIG["custom_metrics_json"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
+            mlflow_resource_arn=mlflow_resource_arn,
         )
         
         # Verify evaluator configuration
@@ -250,7 +251,7 @@ class TestLLMAsJudgeBaseModelFix:
             # Re-raise to fail the test
             raise
 
-    def test_base_model_false_still_works(self):
+    def test_base_model_false_still_works(self, mlflow_resource_arn):
         """
         Test that evaluate_base_model=False still works correctly (backward compatibility).
         
@@ -271,6 +272,7 @@ class TestLLMAsJudgeBaseModelFix:
             builtin_metrics=TEST_CONFIG["builtin_metrics"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
             evaluate_base_model=False,  # Only evaluate custom model
+            mlflow_resource_arn=mlflow_resource_arn,
         )
         
         # Verify evaluator configuration

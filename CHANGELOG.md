@@ -1,4 +1,14 @@
 # Changelog
+## v3.13.1 (2026-06-04)
+
+### New Features
+
+- feat: add import job polling and provisioned throughput for Bedrock OSS deployments
+
+### Bug Fixes
+
+- fix: Address MTRL Eval Hyperparameters issue
+
 ## v3.13.0 (2026-06-02)
 ### New Features
 

@@ -55,12 +55,12 @@ ACCOUNT_CONFIGS = {
     # PROD — Main account (729646638167)
     "729646638167": {
         "env_name": "PROD",
-        "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260602150414",
+        "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260602215955",
         "base_model": "openai-reasoning-gpt-oss-20b",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
-        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-ZG6FYITNGMMU",
+        "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
         "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
         "role": "arn:aws:iam::729646638167:role/Admin",
     },
@@ -187,6 +187,7 @@ class TestMTRLEvalIntegration:
             f"reason: {execution.status.failure_reason}"
         )
 
+    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_base_model(self, config):
         """Evaluate the base model only — submit and wait for completion."""
         evaluator = MultiTurnRLEvaluator(
@@ -245,5 +246,37 @@ class TestMTRLEvalIntegration:
 
         assert status == "Succeeded", (
             f"[{config['env_name']}] Comparison eval failed with status: {status}, "
+            f"reason: {execution.status.failure_reason}"
+        )
+
+    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
+    def test_evaluate_with_hyperparam_override(self, attached_trainer, config):
+        """Test that hyperparameter overrides are passed through to the eval job."""
+        evaluator = MultiTurnRLEvaluator(
+            model=attached_trainer,
+            dataset=config["dataset"],
+            s3_output_path=f'{config["s3_output_path"]}hyperparam-override/',
+            mlflow_resource_arn=config["mlflow_resource_arn"],
+            role=config["role"],
+            region=_REGION,
+        )
+
+        # Override MTRL-specific hyperparams
+        evaluator.hyperparameters.sampling_max_tokens = 1024
+        evaluator.hyperparameters.eval_group_size = 4
+
+        execution = evaluator.evaluate()
+
+        assert execution is not None
+        assert execution.arn is not None
+        logger.info(f"[{config['env_name']}] Started hyperparam override eval: {execution.arn}")
+
+        execution.wait(timeout=EVAL_TIMEOUT)
+
+        status = execution.status.overall_status
+        logger.info(f"[{config['env_name']}] Hyperparam override eval completed: {status}")
+
+        assert status == "Succeeded", (
+            f"[{config['env_name']}] Hyperparam override eval failed with status: {status}, "
             f"reason: {execution.status.failure_reason}"
         )

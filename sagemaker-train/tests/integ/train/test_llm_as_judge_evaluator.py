@@ -77,7 +77,7 @@ TEST_CONFIG = {
     "builtin_metrics": ["Completeness", "Faithfulness"],
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
     "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-W7FOBBXZANVX",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
     # "model_package_group_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
     "evaluate_base_model": False,
     "region": "us-west-2",
@@ -113,7 +113,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
             dataset=TEST_CONFIG["dataset_s3_uri"],
             builtin_metrics=TEST_CONFIG["builtin_metrics"],
             custom_metrics=TEST_CONFIG["custom_metrics_json"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
         )
@@ -236,7 +236,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
             evaluator_model=TEST_CONFIG["evaluator_model"],
             dataset=TEST_CONFIG["dataset_s3_uri"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             builtin_metrics=["Builtin.Correctness", "Builtin.Helpfulness"],
         )
         assert evaluator_with_prefix.builtin_metrics == ["Builtin.Correctness", "Builtin.Helpfulness"]
@@ -247,7 +247,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
             evaluator_model=TEST_CONFIG["evaluator_model"],
             dataset=TEST_CONFIG["dataset_s3_uri"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             builtin_metrics=["Correctness", "Helpfulness"],
         )
         assert evaluator_without_prefix.builtin_metrics == ["Correctness", "Helpfulness"]
