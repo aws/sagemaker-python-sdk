@@ -70,11 +70,10 @@ class TestModelResolver:
         resolver = _ModelResolver(sagemaker_session=mock_session)
         assert resolver.sagemaker_session == mock_session
     
-    @patch.dict(os.environ, {'SAGEMAKER_ENDPOINT': 'https://beta.endpoint'})
-    def test_resolver_with_beta_endpoint(self):
-        """Test ModelResolver detects beta endpoint."""
+    def test_resolver_without_session(self):
+        """Test ModelResolver initializes without session."""
         resolver = _ModelResolver()
-        assert resolver._endpoint == 'https://beta.endpoint'
+        assert resolver.sagemaker_session is None
 
 
 class TestResolveModelInfo:
@@ -125,7 +124,7 @@ class TestResolveModelInfo:
     def test_resolve_model_package_object(self, mock_resolve_obj):
         """Test resolving ModelPackage object."""
         resolver = _ModelResolver()
-        mock_package = MagicMock()
+        mock_package = MagicMock(spec=['model_package_arn', 'inference_specification'])
         mock_package.model_package_arn = "arn:test"
         mock_info = _ModelInfo(
             base_model_name="base-model",
@@ -490,25 +489,17 @@ class TestGetSession:
         assert result == mock_session
         mock_session_class.assert_called_once()
     
-    @patch.dict(os.environ, {'SAGEMAKER_ENDPOINT': 'https://beta.endpoint'})
-    @patch('boto3.client')
     @patch('sagemaker.core.helper.session_helper.Session')
-    def test_get_session_with_beta_endpoint(self, mock_session_class, mock_boto_client):
-        """Test creating session with beta endpoint."""
-        mock_sm_client = MagicMock()
-        mock_boto_client.return_value = mock_sm_client
-        
+    def test_get_session_creates_default(self, mock_session_class):
+        """Test creating default session when none provided."""
         mock_session = MagicMock()
         mock_session_class.return_value = mock_session
-        
+
         resolver = _ModelResolver()
         result = resolver._get_session()
-        
-        mock_boto_client.assert_called_once_with(
-            'sagemaker',
-            endpoint_url='https://beta.endpoint'
-        )
-        mock_session_class.assert_called_once_with(sagemaker_client=mock_sm_client)
+
+        mock_session_class.assert_called_once()
+        assert result == mock_session
 
 
 class TestResolveBaseModel:

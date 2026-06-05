@@ -423,7 +423,7 @@ class TestRLVRTrainer:
         trainer = RLVRTrainer(model="test-model", model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=True, wait_timeout=600)
 
-        mock_wait.assert_called_once_with(mock_training_job, timeout=600)
+        mock_wait.assert_called_once_with(mock_training_job, timeout=600, poll=5)
 
     @patch('sagemaker.train.common_utils.trainer_wait.wait')
     @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
@@ -466,7 +466,7 @@ class TestRLVRTrainer:
         trainer = RLVRTrainer(model="test-model", model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=True)
 
-        mock_wait.assert_called_once_with(mock_training_job)
+        mock_wait.assert_called_once_with(mock_training_job, poll=5)
 
     @patch('sagemaker.train.common_utils.trainer_wait.wait')
     @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')

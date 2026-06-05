@@ -15,6 +15,8 @@ from __future__ import absolute_import
 from typing import Callable, Dict, Optional, Tuple, List, Union
 
 import attr
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization as crypto_serialization
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.mlops.feature_store.feature_processor._constants import (
@@ -52,13 +54,13 @@ class ConfigUploader:
 
     def prepare_step_input_channel_for_spark_mode(
         self, func: Callable, s3_base_uri: str, sagemaker_session: Session
-    ) -> Tuple[List[Channel], Dict]:
+    ) -> Tuple[List[Channel], Dict, str]:
         """Prepares input channels for SageMaker Pipeline Step.
         
         Returns:
-            Tuple of (List[Channel], spark_dependency_paths dict)
+            Tuple of (List[Channel], spark_dependency_paths dict, public_key_pem str)
         """
-        self._prepare_and_upload_callable(func, s3_base_uri, sagemaker_session)
+        public_key_pem = self._prepare_and_upload_callable(func, s3_base_uri, sagemaker_session)
         bootstrap_scripts_s3uri = self._prepare_and_upload_runtime_scripts(
             self.remote_decorator_config.spark_config,
             s3_base_uri,
@@ -139,18 +141,33 @@ class ConfigUploader:
             SPARK_JAR_FILES_PATH: submit_jars_s3_paths,
             SPARK_PY_FILES_PATH: submit_py_files_s3_paths,
             SPARK_FILES_PATH: submit_files_s3_path,
-        }
+        }, public_key_pem
 
     def _prepare_and_upload_callable(
         self, func: Callable, s3_base_uri: str, sagemaker_session: Session
-    ) -> None:
-        """Prepares and uploads callable to S3"""
+    ) -> str:
+        """Prepares and uploads callable to S3.
+
+        Returns:
+            str: The public key PEM string for signature verification on the remote side.
+        """
+        private_key = ec.generate_private_key(ec.SECP256R1())
+        public_key_pem = (
+            private_key.public_key()
+            .public_bytes(
+                crypto_serialization.Encoding.PEM,
+                crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
+            )
+            .decode("utf-8")
+        )
         stored_function = StoredFunction(
             sagemaker_session=sagemaker_session,
             s3_base_uri=s3_base_uri,
+            signing_key=private_key,
             s3_kms_key=self.remote_decorator_config.s3_kms_key,
         )
         stored_function.save(func)
+        return public_key_pem
 
     def _prepare_and_upload_workspace(
         self,

@@ -1,4 +1,28 @@
 # Changelog
+## v1.13.1 (2026-06-04)
+
+### Features
+
+- feat: add import job polling and provisioned throughput for Bedrock OSS deployments
+
+## v1.13.0 (2026-06-02)
+
+### Features
+
+- **feat: Deployment** - Add MTRL support for BedrockModelBuilder and ModelBuilder.
+
+### Bug Fixes
+
+- fix: set sagemaker_config=None on mock session in test_from_jumpstart_config_applies_volume_size (#5882)
+
+## v1.12.0 (2026-05-19)
+
+### Bug Fixes
+
+- Fix `AttributeError` on `vpc_config` in networking and telemetry region fallback for classmethods (#5839)
+- Prevent code injection in `capture_dependencies` path interpolation via crafted directory names in `ModelBuilder` (#5792)
+- Fix `VolumeSizeInGB` not being passed through when deploying JumpStart models with `inference_volume_size` (#5847)
+
 ## v1.11.0 (2026-05-12)
 
 ### Other

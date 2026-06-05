@@ -383,8 +383,7 @@ class TestStartPipelineExecution:
         assert result == DEFAULT_EXECUTION_ARN
         mock_boto3_client.assert_called_once_with(
             'sagemaker',
-            region_name=DEFAULT_REGION,
-            endpoint_url=None
+            region_name=DEFAULT_REGION
         )
         mock_client.start_pipeline_execution.assert_called_once()
 
@@ -818,12 +817,13 @@ class TestEvaluationPipelineExecutionGetAll:
         mock_pipeline.pipeline_name = DEFAULT_PIPELINE_NAME
         mock_pipeline.pipeline_arn = DEFAULT_PIPELINE_ARN
         
-        # Pipeline.get_all called 3 times (once per eval type)
+        # Pipeline.get_all called 4 times (once per eval type)
         # Return pipeline for BENCHMARK, empty for others
         mock_pipeline_class.get_all.side_effect = [
             iter([mock_pipeline]),  # BENCHMARK - found
             iter([]),              # CUSTOM_SCORER - not found
-            iter([])               # LLM_AS_JUDGE - not found
+            iter([]),              # LLM_AS_JUDGE - not found
+            iter([]),              # MTRL - not found
         ]
         
         # Mock tags with required tag (only called for BENCHMARK since others have no pipelines)
@@ -848,7 +848,7 @@ class TestEvaluationPipelineExecutionGetAll:
         ))
         
         assert len(executions) == 1
-        assert mock_pipeline_class.get_all.call_count == 3  # Called for each eval type
+        assert mock_pipeline_class.get_all.call_count == 4  # Called for each eval type
 
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
     def test_get_all_pipeline_not_found(self, mock_pe_class, mock_session):
@@ -1114,7 +1114,7 @@ class TestEvaluationPipelineExecutionWait:
         with pytest.raises(FailedStatusError):
             execution.wait(target_status="Succeeded", poll=1)
 
-    @patch("time.time")
+    @patch("sagemaker.train.evaluate.execution.time")
     def test_wait_timeout_exceeded(self, mock_time):
         """Test wait raises exception on timeout."""
         execution = EvaluationPipelineExecution(
@@ -1130,8 +1130,16 @@ class TestEvaluationPipelineExecutionWait:
         
         execution._pipeline_execution = mock_pe
         
-        # Mock time to simulate timeout
-        mock_time.side_effect = [0, 10, 20, 30, 40, 50, 60]  # Exceeds timeout
+        # Mock time.time() to simulate timeout - use a counter that always exceeds timeout
+        # First call sets start_time=0, second call returns value >= timeout (5)
+        call_count = {"n": 0}
+        def time_side_effect():
+            val = call_count["n"] * 10
+            call_count["n"] += 1
+            return val
+        
+        mock_time.time.side_effect = time_side_effect
+        mock_time.sleep = MagicMock()  # no-op sleep
         
         with pytest.raises(TimeoutExceededError, match="EvaluationJob") as exc_info:
             execution.wait(target_status="Succeeded", poll=1, timeout=5)
@@ -1490,16 +1498,18 @@ class TestGetMlflowExperimentUrl:
         }
         mock_sm_client_cls.return_value = mock_client
 
-        mock_experiment = MagicMock()
-        mock_experiment.experiment_id = "42"
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"experiment": {"experiment_id": "42"}}
 
-        with patch("mlflow.set_tracking_uri"), \
-             patch("mlflow.tracking.MlflowClient") as mock_mlflow_client:
-            mock_mlflow_client.return_value.get_experiment_by_name.return_value = mock_experiment
+        with patch("requests.Session") as mock_session_cls:
+            mock_session = MagicMock()
+            mock_session.get.return_value = mock_response
+            mock_session_cls.return_value = mock_session
 
             result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
 
-        assert result == f"{MOCK_PRESIGNED_URL}#/experiments/42"
+        assert result == f"https://mlflow.example.com/auth?authToken=abc123#/experiments/42?workspace=default"
 
     @patch("sagemaker.core.utils.utils.SageMakerClient")
     def test_returns_base_url_when_no_experiment_name(self, mock_sm_client_cls):

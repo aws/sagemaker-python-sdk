@@ -56,13 +56,12 @@ class _ModelResolver:
     def __init__(self, sagemaker_session=None):
         """
         Initialize the resolver.
-        
+
         Args:
             sagemaker_session: SageMaker session to use for API calls.
-                             If None, will be created with endpoint if configured.
+                             If None, will be created using default configuration.
         """
         self.sagemaker_session = sagemaker_session
-        self._endpoint = os.environ.get('SAGEMAKER_ENDPOINT')
     
     def resolve_model_info(
         self, 
@@ -89,8 +88,37 @@ class _ModelResolver:
                 return self._resolve_model_package_arn(base_model)
             else:
                 return self._resolve_jumpstart_model(base_model, hub_name or get_sagemaker_hub_name())
+        # Handle AgentRFTJob type
+        elif hasattr(base_model, 'output_model_package_arn') and hasattr(base_model, 'job_name'):
+            arn = base_model.output_model_package_arn
+            if arn and not isinstance(arn, Unassigned):
+                return self._resolve_model_package_arn(arn)
+            else:
+                raise ValueError("AgentRFTJob must have completed training to be used for evaluation")
         # Handle BaseTrainer type
         elif isinstance(base_model, BaseTrainer):
+            # If the trainer already has resolved model info, use it directly
+            # to avoid redundant DescribeModelPackage calls.
+            trainer_model_arn = getattr(base_model, '_model_arn', None)
+            trainer_model_name = getattr(base_model, '_model_name', None)
+            if trainer_model_arn and trainer_model_name:
+                job = getattr(base_model, '_latest_job', None)
+                source_mp_arn = getattr(job, 'output_model_package_arn', None) if job else None
+                return _ModelInfo(
+                    base_model_name=trainer_model_name,
+                    base_model_arn=trainer_model_arn,
+                    source_model_package_arn=source_mp_arn,
+                    model_type=_ModelType.FINE_TUNED if source_mp_arn else _ModelType.JUMPSTART,
+                    hub_content_name=trainer_model_name,
+                    additional_metadata={},
+                )
+            # Check for AgentRFT Job (MultiTurnRLTrainer uses _latest_job, not _latest_training_job)
+            if hasattr(base_model, '_latest_job') and base_model._latest_job is not None:
+                job = base_model._latest_job
+                arn = getattr(job, 'output_model_package_arn', None)
+                if arn and not isinstance(arn, Unassigned):
+                    return self._resolve_model_package_arn(arn)
+            # Fall back to standard training job path
             if hasattr(base_model, '_latest_training_job') and hasattr(base_model._latest_training_job,
                                                               'output_model_package_arn'):
                 arn = base_model._latest_training_job.output_model_package_arn
@@ -311,25 +339,16 @@ class _ModelResolver:
     
     def _get_session(self):
         """
-        Get or create SageMaker session with endpoint support.
-        
+        Get or create SageMaker session.
+
         Returns:
             SageMaker session
         """
         if self.sagemaker_session:
             return self.sagemaker_session
-        
+
         from sagemaker.core.helper.session_helper import Session
-        
-        # Check for endpoint in environment variable
-        if self._endpoint:
-            sm_client = boto3.client(
-                'sagemaker',
-                endpoint_url=self._endpoint
-            )
-            return Session(sagemaker_client=sm_client)
-        
-        # Default session
+
         return Session()
 
 

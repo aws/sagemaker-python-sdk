@@ -65,3 +65,53 @@ def test_jumpstart_build_enables_network_isolation():
     finally:
         core_model.delete()
         logger.info("Model deleted.")
+
+
+VOLUME_SIZE_MODEL_ID = "meta-textgenerationneuron-llama-2-7b"
+VOLUME_SIZE_INSTANCE_TYPE = "ml.inf2.xlarge"
+
+
+@pytest.mark.slow_test
+def test_jumpstart_build_sets_volume_size():
+    """Integration test verifying volume_size from model specs is propagated.
+
+    JumpStart model specs define inference_volume_size for models that need
+    large EBS volumes for model weights. This test validates that ModelBuilder
+    propagates volume_size through both from_jumpstart_config() and build() paths,
+    matching v2 behavior where VolumeSizeInGB appears in CreateEndpointConfig.
+    """
+    logger.info("Starting JumpStart volume_size integration test...")
+
+    # Test from_jumpstart_config path
+    compute = Compute(instance_type=VOLUME_SIZE_INSTANCE_TYPE)
+    jumpstart_config = JumpStartConfig(model_id=VOLUME_SIZE_MODEL_ID, accept_eula=True)
+    model_builder = ModelBuilder.from_jumpstart_config(
+        jumpstart_config=jumpstart_config, compute=compute
+    )
+
+    assert getattr(model_builder, "volume_size", None) is not None, (
+        f"ModelBuilder.volume_size should be set after from_jumpstart_config() "
+        f"for model {VOLUME_SIZE_MODEL_ID} on {VOLUME_SIZE_INSTANCE_TYPE}, got None"
+    )
+    logger.info(f"from_jumpstart_config set volume_size={model_builder.volume_size}")
+
+    # Test build path (also sets volume_size via _build_for_jumpstart)
+    unique_id = str(uuid.uuid4())[:8]
+    core_model = model_builder.build(model_name=f"js-volsize-test-{unique_id}")
+    logger.info(f"Model created: {core_model.model_name}")
+
+    try:
+        assert getattr(model_builder, "volume_size", None) is not None, (
+            f"ModelBuilder.volume_size should persist after build() "
+            f"for model {VOLUME_SIZE_MODEL_ID}, got None"
+        )
+        assert model_builder.volume_size >= 256, (
+            f"volume_size should be >= 256, "
+            f"got {model_builder.volume_size}"
+        )
+        logger.info(
+            f"✅ volume_size={model_builder.volume_size} correctly set"
+        )
+    finally:
+        core_model.delete()
+        logger.info("Model deleted.")

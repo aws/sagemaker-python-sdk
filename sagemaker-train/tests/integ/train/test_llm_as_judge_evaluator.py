@@ -59,7 +59,7 @@ CUSTOM_METRIC_DICT = {
 
 # Test configuration values from llm_as_judge_demo.ipynb
 # TEST_CONFIG = {
-#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models-gamma/28",
+#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models/28",
 #     "evaluator_model": "anthropic.claude-3-5-haiku-20241022-v1:0",
 #     "dataset_s3_uri": "s3://my-sagemaker-sherpa-dataset/dataset/gen-qa-formatted-dataset/gen_qa.jsonl",
 #     "builtin_metrics": ["Completeness", "Faithfulness"],
@@ -77,14 +77,14 @@ TEST_CONFIG = {
     "builtin_metrics": ["Completeness", "Faithfulness"],
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
     "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-W7FOBBXZANVX",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
     # "model_package_group_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
     "evaluate_base_model": False,
     "region": "us-west-2",
 }
 
 
-@pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
+# @pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
 class TestLLMAsJudgeEvaluatorIntegration:
     """Integration tests for LLMAsJudgeEvaluator"""
 
@@ -113,7 +113,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
             dataset=TEST_CONFIG["dataset_s3_uri"],
             builtin_metrics=TEST_CONFIG["builtin_metrics"],
             custom_metrics=TEST_CONFIG["custom_metrics_json"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
         )
@@ -236,7 +236,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
             evaluator_model=TEST_CONFIG["evaluator_model"],
             dataset=TEST_CONFIG["dataset_s3_uri"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             builtin_metrics=["Builtin.Correctness", "Builtin.Helpfulness"],
         )
         assert evaluator_with_prefix.builtin_metrics == ["Builtin.Correctness", "Builtin.Helpfulness"]
@@ -247,105 +247,11 @@ class TestLLMAsJudgeEvaluatorIntegration:
             evaluator_model=TEST_CONFIG["evaluator_model"],
             dataset=TEST_CONFIG["dataset_s3_uri"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             builtin_metrics=["Correctness", "Helpfulness"],
         )
         assert evaluator_without_prefix.builtin_metrics == ["Correctness", "Helpfulness"]
         
         logger.info("Built-in metrics prefix handling tests passed")
 
-    @pytest.mark.skip(reason="Built-in metrics only test - to be enabled when needed")
-    def test_llm_as_judge_builtin_metrics_only(self):
-        """
-        Test LLM-as-Judge evaluation with only built-in metrics (no custom metrics).
-        
-        This test uses only built-in metrics without custom metrics.
-        
-        Note: This test is currently skipped. Remove the @pytest.mark.skip decorator
-        when you want to enable it.
-        """
-        logger.info("Creating LLMAsJudgeEvaluator with built-in metrics only")
-        
-        # Create evaluator with only built-in metrics
-        evaluator = LLMAsJudgeEvaluator(
-            model=TEST_CONFIG["model_package_arn"],
-            evaluator_model=TEST_CONFIG["evaluator_model"],
-            dataset=TEST_CONFIG["dataset_s3_uri"],
-            builtin_metrics=["Completeness", "Faithfulness", "Helpfulness"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
-            s3_output_path=TEST_CONFIG["s3_output_path"],
-            evaluate_base_model=False,
-        )
-        
-        # Verify evaluator was created
-        assert evaluator is not None
-        assert evaluator.builtin_metrics == ["Completeness", "Faithfulness", "Helpfulness"]
-        assert evaluator.custom_metrics is None
-        
-        logger.info("Created evaluator with built-in metrics only")
-        
-        # Start evaluation
-        logger.info("Starting evaluation execution")
-        execution = evaluator.evaluate()
-        
-        # Verify execution was created
-        assert execution is not None
-        assert execution.arn is not None
-        
-        logger.info(f"Pipeline Execution ARN: {execution.arn}")
-        
-        # Wait for completion
-        logger.info(f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)")
-        execution.wait(target_status="Succeeded", poll=30, timeout=EVALUATION_TIMEOUT_SECONDS)
-        
-        # Verify completion
-        assert execution.status.overall_status == "Succeeded"
-        logger.info("Built-in metrics only evaluation completed successfully")
 
-    @pytest.mark.skip(reason="Custom metrics only test - to be enabled when needed")
-    def test_llm_as_judge_custom_metrics_only(self):
-        """
-        Test LLM-as-Judge evaluation with only custom metrics (no built-in metrics).
-        
-        This test uses only custom metrics without built-in metrics.
-        
-        Note: This test is currently skipped. Remove the @pytest.mark.skip decorator
-        when you want to enable it.
-        """
-        logger.info("Creating LLMAsJudgeEvaluator with custom metrics only")
-        
-        # Create evaluator with only custom metrics
-        evaluator = LLMAsJudgeEvaluator(
-            model=TEST_CONFIG["model_package_arn"],
-            evaluator_model=TEST_CONFIG["evaluator_model"],
-            dataset=TEST_CONFIG["dataset_s3_uri"],
-            custom_metrics=TEST_CONFIG["custom_metrics_json"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
-            s3_output_path=TEST_CONFIG["s3_output_path"],
-            evaluate_base_model=False,
-        )
-        
-        # Verify evaluator was created
-        assert evaluator is not None
-        assert evaluator.custom_metrics == TEST_CONFIG["custom_metrics_json"]
-        assert evaluator.builtin_metrics is None
-        
-        logger.info("Created evaluator with custom metrics only")
-        
-        # Start evaluation
-        logger.info("Starting evaluation execution")
-        execution = evaluator.evaluate()
-        
-        # Verify execution was created
-        assert execution is not None
-        assert execution.arn is not None
-        
-        logger.info(f"Pipeline Execution ARN: {execution.arn}")
-        
-        # Wait for completion
-        logger.info(f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)")
-        execution.wait(target_status="Succeeded", poll=30, timeout=EVALUATION_TIMEOUT_SECONDS)
-        
-        # Verify completion
-        assert execution.status.overall_status == "Succeeded"
-        logger.info("Custom metrics only evaluation completed successfully")

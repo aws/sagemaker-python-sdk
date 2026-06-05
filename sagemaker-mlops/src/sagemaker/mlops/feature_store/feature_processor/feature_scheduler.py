@@ -98,6 +98,7 @@ from sagemaker.mlops.feature_store.feature_processor.lineage._feature_processor_
     FeatureProcessorLineageHandler,
     TransformationCode,
 )
+from sagemaker.mlops.feature_store.feature_processor._image_resolver import _get_spark_image_uri
 
 from sagemaker.core.remote_function.job import (
     _JobSettings,
@@ -174,6 +175,7 @@ def to_pipeline(
     (
         input_data_config,
         spark_dependency_paths,
+        public_key_pem,
     ) = config_uploader.prepare_step_input_channel_for_spark_mode(
         func=getattr(step, "wrapped_func", step),
         s3_base_uri=s3_base_uri,
@@ -194,6 +196,7 @@ def to_pipeline(
         spark_dependency_paths=spark_dependency_paths,
         pipeline_session=pipeline_session,
         role=_role,
+        public_key_pem=public_key_pem,
     )
 
     step_args = model_trainer.train(input_data_config=input_data_config)
@@ -846,6 +849,7 @@ def _prepare_model_trainer_from_remote_decorator_config(
     spark_dependency_paths: Dict[str, Optional[str]],
     pipeline_session: PipelineSession,
     role: str,
+    public_key_pem: str = None,
 ) -> ModelTrainer:
     """Prepares a ModelTrainer instance from remote decorator configuration.
 
@@ -866,6 +870,10 @@ def _prepare_model_trainer_from_remote_decorator_config(
 
     # Build environment dict from remote_decorator_config
     environment = dict(remote_decorator_config.environment_variables or {})
+    if public_key_pem:
+        # Legacy env var name — value is the ECDSA public key used by the container
+        # (invoke_function.py) for asymmetric signature verification, not a secret.
+        environment["REMOTE_FUNCTION_SECRET_KEY"] = public_key_pem
 
     # Build command from container entry point and arguments
     entry_point_and_args = _get_container_entry_point_and_arguments(
@@ -1039,7 +1047,8 @@ def _get_remote_decorator_config_from_input(
     # TODO: This needs to be removed when new mode is introduced.
     if remote_decorator_config.spark_config is None:
         remote_decorator_config.spark_config = SparkConfig()
-    remote_decorator_config.image_uri = _JobSettings._get_default_spark_image(sagemaker_session)
+    if not remote_decorator_config.image_uri:
+        remote_decorator_config.image_uri = _get_spark_image_uri(sagemaker_session)
 
     return remote_decorator_config
 

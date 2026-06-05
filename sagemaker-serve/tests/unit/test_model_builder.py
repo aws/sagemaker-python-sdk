@@ -535,6 +535,8 @@ class ModelCustomizationTest(unittest.TestCase):
             min_memory_required_in_mb=1024,
             number_of_cpu_cores_required=1
         )
+        builder.built_model = Mock()
+        builder.built_model.model_name = "test-model"
         
         with patch.object(builder, '_fetch_model_package', return_value=mock_model_package):
             with patch.object(builder, '_fetch_peft', return_value=None):
@@ -591,6 +593,8 @@ class ModelCustomizationTest(unittest.TestCase):
             number_of_cpu_cores_required=1,
             number_of_accelerator_devices_required=1
         )
+        builder.built_model = Mock()
+        builder.built_model.model_name = "test-model"
         
         # Create inference_config with different values
         inference_config = ResourceRequirements(
@@ -676,6 +680,8 @@ class ModelCustomizationTest(unittest.TestCase):
             number_of_accelerator_devices_required=1
         )
         builder._cached_compute_requirements = cached_reqs
+        builder.built_model = Mock()
+        builder.built_model.model_name = "test-model"
         
         # Track the InferenceComponent.create call to verify compute requirements
         created_ic_spec = None

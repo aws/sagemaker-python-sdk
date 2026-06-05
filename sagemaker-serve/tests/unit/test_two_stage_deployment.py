@@ -93,6 +93,7 @@ class TestTwoStageDeployment:
         )
 
         # Deploy with mocked lineage tracking
+        model_builder.built_model = Mock(model_name="test-model")
         with patch("sagemaker.core.resources.Action"), patch(
             "sagemaker.core.resources.Association"
         ), patch("sagemaker.core.resources.Artifact"):
@@ -182,6 +183,7 @@ class TestTwoStageDeployment:
         )
 
         # Deploy with mocked lineage tracking
+        model_builder.built_model = Mock(model_name="test-model")
         with patch("sagemaker.core.resources.Action"), patch(
             "sagemaker.core.resources.Association"
         ), patch("sagemaker.core.resources.Artifact"):
@@ -267,6 +269,7 @@ class TestTwoStageDeployment:
         )
 
         # Deploy
+        model_builder.built_model = Mock(model_name="test-model")
         model_builder._deploy_model_customization(endpoint_name="test-endpoint")
 
         # Verify: InferenceComponent.create was called with base_inference_component_name
@@ -356,18 +359,19 @@ class TestTwoStageDeployment:
         )
 
         # Deploy with mocked lineage tracking
+        model_builder.built_model = Mock(model_name="test-model")
         with patch("sagemaker.core.resources.Action"), patch(
             "sagemaker.core.resources.Association"
         ), patch("sagemaker.core.resources.Artifact"):
             model_builder._deploy_model_customization(endpoint_name="test-endpoint")
 
-        # Verify: InferenceComponent.create was called with HostingArtifactUri
+        # Verify: InferenceComponent.create was called with model_name (non-LORA path)
         assert mock_ic_create.called
         create_call = mock_ic_create.call_args
         spec = create_call[1].get("specification")
 
-        # Should use HostingArtifactUri
-        assert spec.container.artifact_url == expected_artifact_uri
+        # Non-LORA deployments now use model_name instead of container.artifact_url
+        assert spec.model_name == "test-model"
 
     @patch("sagemaker.core.resources.InferenceComponent.get")
     @patch("sagemaker.core.resources.InferenceComponent.get_all")
@@ -455,6 +459,7 @@ class TestTwoStageDeployment:
         )
 
         # Deploy base model with mocked lineage tracking
+        model_builder.built_model = Mock(model_name="test-model")
         with patch("sagemaker.core.resources.Action"), patch(
             "sagemaker.core.resources.Association"
         ), patch("sagemaker.core.resources.Artifact"):
@@ -516,6 +521,7 @@ class TestTwoStageDeployment:
         )
 
         # Deploy adapter (no lineage tracking for existing endpoint)
+        adapter_builder.built_model = Mock(model_name="test-model")
         adapter_builder._deploy_model_customization(endpoint_name="test-endpoint")
 
         # Verify adapter was deployed

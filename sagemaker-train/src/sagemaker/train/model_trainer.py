@@ -26,7 +26,7 @@ from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core import resources
 from sagemaker.core.resources import TrainingJob
 from sagemaker.core import shapes
-from sagemaker.core.shapes import AlgorithmSpecification
+from sagemaker.core.shapes import AlgorithmSpecification, ModelPackageConfig
 from sagemaker.core.utils.utils import serialize
 from sagemaker.core.apiutils._boto_functions import to_pascal_case
 
@@ -221,6 +221,10 @@ class ModelTrainer(BaseModel):
         local_container_root (Optional[str]):
             The local root directory to store artifacts from a training job launched in
             "LOCAL_CONTAINER" mode.
+        model_package_config (Optional[ModelPackageConfig]):
+            The model package configuration for the training job. Used for Nova RMP
+            (Restricted Model Package) jobs to specify SourceModelPackageArn and
+            ModelPackageGroupArn.
     """
 
     model_config = ConfigDict(
@@ -247,6 +251,7 @@ class ModelTrainer(BaseModel):
     hyperparameters: Optional[Union[Dict[str, Any], str]] = {}
     tags: Optional[List[Tag]] = None
     local_container_root: Optional[str] = os.getcwd()
+    model_package_config: Optional[ModelPackageConfig] = None
 
     # Created Artifacts
     _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
@@ -748,6 +753,9 @@ class ModelTrainer(BaseModel):
             "session_chaining_config": self._session_chaining_config,
         }
 
+        if self.model_package_config:
+            training_request["model_package_config"] = self.model_package_config
+
         if boto3 or isinstance(self.sagemaker_session, PipelineSession):
             if isinstance(self.sagemaker_session, PipelineSession):
                 training_request.pop("training_job_name", None)
@@ -1085,6 +1093,7 @@ class ModelTrainer(BaseModel):
         sagemaker_session: Optional[Session] = None,
         role: Optional[str] = None,
         base_job_name: Optional[str] = None,
+        model_package_config: Optional[ModelPackageConfig] = None,
     ) -> "ModelTrainer":  # noqa: D412
         """Create a ModelTrainer from a training recipe.
 
@@ -1174,6 +1183,10 @@ class ModelTrainer(BaseModel):
                 The base name for the training job.
                 If not specified, a default name will be generated using the algorithm name
                 or training image.
+            model_package_config (Optional[ModelPackageConfig]):
+                The model package configuration. Used for Nova RMP jobs to specify
+                SourceModelPackageArn and ModelPackageGroupArn. If also specified in recipe,
+                direct param wins on conflict.
         """
         if compute.instance_type is None:
             raise ValueError("Must set ``instance_type`` in Compute when using training recipes.")
@@ -1227,6 +1240,9 @@ class ModelTrainer(BaseModel):
             elif hyperparameters and isinstance(hyperparameters, dict):
                 model_trainer_args["hyperparameters"].update(hyperparameters)
 
+        # Pop recipe model_package_config dict before unpacking into constructor
+        recipe_mpc_dict = model_trainer_args.pop("model_package_config", None) or {}
+
         model_trainer = cls(
             sagemaker_session=sagemaker_session,
             role=role,
@@ -1242,6 +1258,12 @@ class ModelTrainer(BaseModel):
             tags=tags,
             **model_trainer_args,
         )
+
+        # Merge ModelPackageConfig: recipe dict + direct Pydantic param (direct wins)
+        direct_mpc_dict = model_package_config.model_dump(exclude_unset=True) if model_package_config else {}
+        merged = {**recipe_mpc_dict, **direct_mpc_dict}
+        if merged:
+            model_trainer.model_package_config = ModelPackageConfig(**merged)
 
         model_trainer._is_nova_recipe = is_nova
         model_trainer._is_llmft_recipe = is_llmft

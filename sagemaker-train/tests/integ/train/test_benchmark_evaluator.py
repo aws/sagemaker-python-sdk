@@ -35,7 +35,7 @@ EVALUATION_TIMEOUT_SECONDS = 14400  # 4 hours
 
 # Test configuration values from benchmark_demo.ipynb
 # TEST_CONFIG = {
-#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models-gamma/28",
+#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models/28",
 #     "dataset_s3_uri": "s3://sagemaker-us-west-2-052150106756/studio-users/d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
 #     "s3_output_path": "s3://mufi-test-serverless-smtj/eval/",
 #     "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
@@ -47,32 +47,30 @@ TEST_CONFIG = {
     "model_package_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
     "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl",
     "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-W7FOBBXZANVX",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
     "model_package_group_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
     "region": "us-west-2",
 }
 
-# Base model only evaluation configuration (from commented section in notebook)
+# Base model only evaluation configuration
 BASE_MODEL_ONLY_CONFIG = {
     "base_model_id": "meta-textgeneration-llama-3-2-1b-instruct",
-    "dataset_s3_uri": "s3://sagemaker-us-west-2-052150106756/studio-users/d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
-    "s3_output_path": "s3://mufi-test-serverless-smtj/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
+    "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl",
+    "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
     "region": "us-west-2",
 }
 
-# Nova model evaluation configuration (from commented section in notebook)
+# Nova model evaluation configuration (uses dedicated test account in us-east-1)
 NOVA_CONFIG = {
-    "model_package_arn": "arn:aws:sagemaker:us-east-1:052150106756:model-package/test-nova-finetuned-models/3",
-    "dataset_s3_uri": "s3://sagemaker-us-east-1-052150106756/studio-users/d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
-    "s3_output_path": "s3://mufi-test-serverless-iad/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-east-1:052150106756:mlflow-tracking-server/mlflow-prod-server",
-    "model_package_group_arn": "arn:aws:sagemaker:us-east-1:052150106756:model-package-group/test-nova-finetuned-models",
+    "dataset_s3_uri": "s3://sagemaker-us-east-1-784379639078/model-customization/eval/zc_test.jsonl",
+    "s3_output_path": "s3://sagemaker-us-east-1-784379639078/model-customization/eval/",
+    "model_package_group_arn": "arn:aws:sagemaker:us-east-1:784379639078:model-package-group/sdk-test-finetuned-models",
     "region": "us-east-1",
 }
 
 
-@pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
+# @pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
 class TestBenchmarkEvaluatorIntegration:
     """Integration tests for BenchmarkEvaluator with fine-tuned model package"""
 
@@ -126,7 +124,7 @@ class TestBenchmarkEvaluatorIntegration:
             benchmark=Benchmark.MMLU,
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             model_package_group=TEST_CONFIG["model_package_group_arn"],
             base_eval_name="integ-test-gen-qa-eval",
         )
@@ -244,7 +242,7 @@ class TestBenchmarkEvaluatorIntegration:
                 benchmark="invalid_benchmark",
                 model=TEST_CONFIG["model_package_arn"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
-                # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+                mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             )
         
         # Test invalid MLflow ARN format
@@ -267,7 +265,7 @@ class TestBenchmarkEvaluatorIntegration:
             benchmark=Benchmark.MMLU,
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             subtasks="abstract_algebra",
             model_package_group="arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test",
         )
@@ -279,14 +277,15 @@ class TestBenchmarkEvaluatorIntegration:
                 benchmark=Benchmark.MMLU,
                 model=TEST_CONFIG["model_package_arn"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
-                # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+                mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
                 subtasks=["invalid"],
                 model_package_group="arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test",
             )
         
         logger.info("Subtask validation tests passed")
 
-    @pytest.mark.skip(reason="Base model only evaluation - to be enabled when needed")
+    # @pytest.mark.skip(reason="Pipeline creation fails - under investigation")
+    @pytest.mark.gpu_intensive
     def test_benchmark_evaluation_base_model_only(self):
         """
         Test benchmark evaluation with base model only (no fine-tuned model).
@@ -307,7 +306,7 @@ class TestBenchmarkEvaluatorIntegration:
             benchmark=Benchmark.MMLU,
             model=BASE_MODEL_ONLY_CONFIG["base_model_id"],
             s3_output_path=BASE_MODEL_ONLY_CONFIG["s3_output_path"],
-            mlflow_resource_arn=BASE_MODEL_ONLY_CONFIG["mlflow_tracking_server_arn"],
+            # mlflow_resource_arn=BASE_MODEL_ONLY_CONFIG["mlflow_tracking_server_arn"],
             base_eval_name="integ-test-base-model-only",
             # Note: model_package_group not needed for JumpStart models
         )
@@ -339,7 +338,8 @@ class TestBenchmarkEvaluatorIntegration:
         assert execution.status.overall_status == "Succeeded"
         logger.info("Base model only evaluation completed successfully")
 
-    @pytest.mark.skip(reason="Nova model evaluation - to be enabled when needed")
+    @pytest.mark.gpu_intensive
+    @pytest.mark.us_east_1
     def test_benchmark_evaluation_nova_model(self):
         """
         Test benchmark evaluation with Nova model.
@@ -347,20 +347,36 @@ class TestBenchmarkEvaluatorIntegration:
         This test uses a Nova fine-tuned model package in us-east-1 region.
         Configuration from commented section in benchmark_demo.ipynb.
         
-        Note: This test is currently skipped. Remove the @pytest.mark.skip decorator
-        when you want to enable it.
+        Note: This test requires a model package to exist in the model package group.
+        It should be run after a successful SFT or RLVR training job has produced one.
         """
+        import boto3
+        
         # Get benchmarks
         Benchmark = get_benchmarks()
+        
+        # Dynamically find the latest model package in the group
+        sm_client = boto3.client("sagemaker", region_name=NOVA_CONFIG["region"])
+        packages = sm_client.list_model_packages(
+            ModelPackageGroupName="sdk-test-finetuned-models",
+            SortBy="CreationTime",
+            SortOrder="Descending",
+            MaxResults=1,
+        )
+        
+        if not packages["ModelPackageSummaryList"]:
+            pytest.skip("No model packages available in sdk-test-finetuned-models group. Run SFT/RLVR training first.")
+        
+        model_package_arn = packages["ModelPackageSummaryList"][0]["ModelPackageArn"]
+        logger.info(f"Using model package: {model_package_arn}")
         
         logger.info("Creating BenchmarkEvaluator with Nova model")
         
         # Create evaluator with Nova model package
         evaluator = BenchMarkEvaluator(
             benchmark=Benchmark.MMLU,
-            model=NOVA_CONFIG["model_package_arn"],
+            model=model_package_arn,
             s3_output_path=NOVA_CONFIG["s3_output_path"],
-            mlflow_resource_arn=NOVA_CONFIG["mlflow_tracking_server_arn"],
             model_package_group=NOVA_CONFIG["model_package_group_arn"],
             base_eval_name="integ-test-nova-eval",
             region=NOVA_CONFIG["region"],
@@ -369,7 +385,7 @@ class TestBenchmarkEvaluatorIntegration:
         # Verify evaluator was created
         assert evaluator is not None
         assert evaluator.benchmark == Benchmark.MMLU
-        assert evaluator.model == NOVA_CONFIG["model_package_arn"]
+        assert evaluator.model == model_package_arn
         assert evaluator.region == NOVA_CONFIG["region"]
         
         logger.info(f"Created evaluator: {evaluator.base_eval_name}")
@@ -399,8 +415,8 @@ class TestBenchmarkEvaluatorIntegration:
         logger.info(f"Status after refresh: {execution.status.overall_status}")
         
         # Wait for completion
-        logger.info("Waiting for evaluation to complete (timeout: 1 hour)")
-        execution.wait(target_status="Succeeded", poll=30, timeout=3600)
+        logger.info("Waiting for evaluation to complete (timeout: 3 hours)")
+        execution.wait(target_status="Succeeded", poll=30, timeout=10800)
         
         # Verify completion
         assert execution.status.overall_status == "Succeeded"

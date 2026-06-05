@@ -43,3 +43,5 @@ sagemaker_train/src/**/container_drivers/distributed.json
 .kiro
 docs/api/generated/
 .hypothesis
+.kiro
+bedrock_api_logs/

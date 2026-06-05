@@ -133,7 +133,7 @@ class TestJobSettings:
         with patch.object(sys, "version_info", (3, 8, 0)):
             with pytest.raises(
                 ValueError,
-                match="SageMaker Spark image for remote job only supports Python version 3.9",
+                match="SageMaker Spark image for remote job only supports Python versions 3.9 and 3.12",
             ):
                 _JobSettings._get_default_spark_image(mock_session)
 

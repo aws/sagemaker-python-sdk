@@ -28,6 +28,7 @@ from .execution import (
     StepDetail,
 )
 from .llm_as_judge_evaluator import LLMAsJudgeEvaluator
+from .multi_turn_rl_evaluator import MultiTurnRLEvaluator
 
 __all__ = [
     # Evaluator classes
@@ -35,6 +36,7 @@ __all__ = [
     "BenchMarkEvaluator", 
     "CustomScorerEvaluator",
     "LLMAsJudgeEvaluator",
+    "MultiTurnRLEvaluator",
     
     # Benchmark utility functions
     "get_benchmarks",
