@@ -12,9 +12,13 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import json
 import os
+from datetime import datetime, timedelta, timezone
+
 import boto3
 import pytest
+from filelock import FileLock
 from botocore.config import Config
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
 from sagemaker.jumpstart.hub.hub import Hub
@@ -39,19 +43,23 @@ from tests.integ.sagemaker.jumpstart.utils import (
 )
 
 
-def _setup():
+# Only delete leftover hubs from previous test runs that are older than this many
+# hours. This guards against deleting a hub that another concurrent test run (or
+# xdist worker) is actively using.
+STALE_HUB_AGE_HOURS = 3
+
+
+def _setup(test_suite_id=None, test_hub_name=None):
     print("Setting up...")
-    test_suite_id = get_test_suite_id()
-    test_hub_name = f"{HUB_NAME_PREFIX}{test_suite_id}"
+    test_suite_id = test_suite_id or get_test_suite_id()
+    test_hub_name = test_hub_name or f"{HUB_NAME_PREFIX}{test_suite_id}"
     test_hub_description = "PySDK Integ Test Private Hub"
 
     os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID: test_suite_id})
     os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME: test_hub_name})
 
     # Create a private hub to use for the test session
-    hub = Hub(
-        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session()
-    )
+    hub = Hub(hub_name=test_hub_name, sagemaker_session=get_sm_session())
 
     # Check if hub already exists before creating
     try:
@@ -73,14 +81,14 @@ def _setup():
                 raise
 
 
-def _teardown():
+def _teardown(test_suite_id=None, test_hub_name=None):
     print("Tearing down...")
 
     test_cache_bucket = get_test_artifact_bucket()
 
-    test_suite_id = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
+    test_suite_id = test_suite_id or os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]
 
-    test_hub_name = os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
+    test_hub_name = test_hub_name or os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME]
 
     boto3_session = boto3.Session(region_name=JUMPSTART_DEFAULT_REGION_NAME)
 
@@ -156,30 +164,41 @@ def _teardown():
     _delete_hubs(sagemaker_session, test_hub_name)
 
 
-def _cleanup_old_hubs(sagemaker_session):
-    """Clean up old test hubs to free up resources."""
+def _cleanup_old_hubs(sagemaker_session, active_hub_name=None):
+    """Clean up stale test hubs from previous runs to free up resources.
+
+    Only deletes hubs that are clearly stale (older than ``STALE_HUB_AGE_HOURS``)
+    so that hubs actively in use by the current test run or by concurrent xdist
+    workers are never removed. The hub for the current run (``active_hub_name``)
+    is always preserved.
+    """
     try:
+        active_hub_name = active_hub_name or os.environ.get(ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME)
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=STALE_HUB_AGE_HOURS)
+
         response = sagemaker_session.list_hubs()
-        test_hubs = [
-            hub
-            for hub in response.get("HubSummaries", [])
-            if hub["HubName"].startswith(HUB_NAME_PREFIX)
-        ]
+        for hub in response.get("HubSummaries", []):
+            hub_name = hub["HubName"]
+            if not hub_name.startswith(HUB_NAME_PREFIX):
+                continue
+            if hub_name == active_hub_name:
+                continue
 
-        # Sort by creation time and delete oldest hubs
-        test_hubs.sort(key=lambda x: x.get("CreationTime", ""))
+            creation_time = hub.get("CreationTime")
+            # Only delete hubs we can confirm are older than the cutoff. If the
+            # creation time is unavailable, err on the side of keeping the hub.
+            if creation_time is None:
+                continue
+            if creation_time.tzinfo is None:
+                creation_time = creation_time.replace(tzinfo=timezone.utc)
+            if creation_time >= cutoff:
+                continue
 
-        # Delete oldest hubs (keep only the most recent 10)
-        hubs_to_delete = (
-            test_hubs[:-10] if len(test_hubs) > 10 else test_hubs[: max(0, len(test_hubs) - 40)]
-        )
-
-        for hub in hubs_to_delete:
             try:
-                print(f"Deleting old hub: {hub['HubName']}")
-                _delete_hubs(sagemaker_session, hub["HubName"])
+                print(f"Deleting stale hub: {hub_name}")
+                _delete_hubs(sagemaker_session, hub_name)
             except Exception as e:
-                print(f"Failed to delete hub {hub['HubName']}: {e}")
+                print(f"Failed to delete hub {hub_name}: {e}")
     except Exception as e:
         print(f"Failed to cleanup old hubs: {e}")
 
@@ -211,7 +230,60 @@ def _delete_hub_contents(sagemaker_session, hub_name, model):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def setup(request):
-    _setup()
+def setup(request, worker_id, tmp_path_factory):
+    """Create a single shared private hub for the whole test run.
 
-    request.addfinalizer(_teardown)
+    Under pytest-xdist every worker is a separate process, so a naive
+    ``scope="session"`` fixture would create one hub per worker. With high
+    parallelism (e.g. ``-n 120``) that quickly exhausts the per-account private
+    hub limit (100) and triggers destructive cross-worker cleanup. To avoid
+    this, all workers coordinate through a lock file and a shared JSON state
+    file: the first worker creates the hub, the rest reuse it, and only the last
+    worker to finish tears it down (reference counting).
+    """
+    # Non-xdist run: single process owns the full lifecycle.
+    if worker_id == "master":
+        _setup()
+        request.addfinalizer(_teardown)
+        return
+
+    # xdist run: coordinate hub creation/teardown across workers.
+    root_tmp_dir = tmp_path_factory.getbasetemp().parent
+    state_file = root_tmp_dir / "jumpstart_hub_state.json"
+    lock_file = root_tmp_dir / "jumpstart_hub_state.json.lock"
+
+    with FileLock(str(lock_file)):
+        if state_file.is_file():
+            state = json.loads(state_file.read_text())
+            state["ref_count"] += 1
+        else:
+            test_suite_id = get_test_suite_id()
+            test_hub_name = f"{HUB_NAME_PREFIX}{test_suite_id}"
+            _setup(test_suite_id=test_suite_id, test_hub_name=test_hub_name)
+            state = {
+                "test_suite_id": test_suite_id,
+                "test_hub_name": test_hub_name,
+                "ref_count": 1,
+            }
+        state_file.write_text(json.dumps(state))
+
+    # Ensure this worker's environment points at the shared hub.
+    os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID: state["test_suite_id"]})
+    os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME: state["test_hub_name"]})
+
+    def _finalize():
+        with FileLock(str(lock_file)):
+            if not state_file.is_file():
+                return
+            current = json.loads(state_file.read_text())
+            current["ref_count"] -= 1
+            if current["ref_count"] <= 0:
+                _teardown(
+                    test_suite_id=current["test_suite_id"],
+                    test_hub_name=current["test_hub_name"],
+                )
+                state_file.unlink()
+            else:
+                state_file.write_text(json.dumps(current))
+
+    request.addfinalizer(_finalize)
