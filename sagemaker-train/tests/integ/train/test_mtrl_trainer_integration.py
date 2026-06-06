@@ -28,10 +28,6 @@ import logging
 
 import boto3
 
-os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
-os.environ.setdefault("SAGEMAKER_REGION", "us-west-2")
-os.environ.setdefault("AWS_REGION", "us-west-2")
-
 from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.evaluate import MultiTurnRLEvaluator
 
@@ -45,7 +41,8 @@ EVAL_TIMEOUT = 14400  # 4 hours
 
 def _get_account_id():
     """Get current AWS account ID via STS."""
-    return boto3.client("sts", region_name=_REGION).get_caller_identity()["Account"]
+    boto_session = boto3.Session(region_name=_REGION)
+    return boto_session.client("sts").get_caller_identity()["Account"]
 
 # ============================================================
 # Per-account resource configuration

@@ -20,10 +20,6 @@ from __future__ import annotations
 import os
 import time
 
-os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
-os.environ.setdefault("SAGEMAKER_REGION", "us-west-2")
-os.environ.setdefault("AWS_REGION", "us-west-2")
-
 import boto3
 import pytest
 from sagemaker.core.helper.session_helper import Session
@@ -31,40 +27,55 @@ from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.agent_rft_job import AgentRFTJob
 
 _REGION = "us-west-2"
-_ACCOUNT_ID = boto3.client("sts", region_name=_REGION).get_caller_identity()["Account"]
+_ACCOUNT_ID = None  # Resolved lazily in fixtures
+
+
+def _get_account_id():
+    """Resolve account ID lazily."""
+    global _ACCOUNT_ID
+    if _ACCOUNT_ID is None:
+        boto_session = boto3.Session(region_name=_REGION)
+        _ACCOUNT_ID = boto_session.client("sts").get_caller_identity()["Account"]
+    return _ACCOUNT_ID
 
 AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS"
-ROLE_ARN = f"arn:aws:iam::{_ACCOUNT_ID}:role/Admin"
-MLFLOW_ARN = f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/app-TTAUWUNMUHH6"
-S3_INPUT_PATH = f"s3://sagemaker-rft-{_ACCOUNT_ID}/prompts/gsm8k_small/prompts.parquet"
-S3_OUTPUT_PATH = f"s3://sagemaker-{_REGION}-{_ACCOUNT_ID}/model-evaluation/mtrl-trainer-integ/"
-LAMBDA_ARN = f"arn:aws:lambda:{_REGION}:{_ACCOUNT_ID}:function:SageMaker-AgentConnector-Lambda-MTRL-integ-test"
 BASE_MODEL = "openai-reasoning-gpt-oss-20b"
-EXISTING_JOB_NAME="openai-reasoning-gpt-oss-20b-mtrl-20260602005937"
+EXISTING_JOB_NAME = "openai-reasoning-gpt-oss-20b-mtrl-20260602005937"
 
 
 @pytest.fixture(scope="module")
 def sagemaker_session():
-    os.environ.setdefault("AWS_DEFAULT_REGION", _REGION)
-    os.environ["SAGEMAKER_MLFLOW_CUSTOM_ENDPOINT"] = f"https://mlflow.sagemaker.{_REGION}.app.aws"
     boto_session = boto3.Session(region_name=_REGION)
     session = Session(boto_session=boto_session)
     yield session
+
+
+@pytest.fixture(scope="module")
+def test_resources():
+    """Resolve account-specific resource ARNs lazily."""
+    account_id = _get_account_id()
+    return {
+        "role_arn": f"arn:aws:iam::{account_id}:role/Admin",
+        "mlflow_arn": f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
+        "s3_input_path": f"s3://sagemaker-rft-{account_id}/prompts/gsm8k_small/prompts.parquet",
+        "s3_output_path": f"s3://sagemaker-{_REGION}-{account_id}/model-evaluation/mtrl-trainer-integ/",
+        "lambda_arn": f"arn:aws:lambda:{_REGION}:{account_id}:function:SageMaker-AgentConnector-Lambda-MTRL-integ-test",
+    }
 
 
 @pytest.mark.skip(reason="GPU resource intensive — run manually")
 class TestMultiTurnRLTrainerBedrockAgent:
     """Test MTRL training with Bedrock AgentCore runtime."""
 
-    def test_train_and_wait(self, sagemaker_session):
+    def test_train_and_wait(self, sagemaker_session, test_resources):
         """Test complete MTRL workflow with Bedrock AgentCore agent."""
         trainer = MultiTurnRLTrainer(
             model=BASE_MODEL,
             agent_env=AGENT_RUNTIME_ID,
-            training_dataset=S3_INPUT_PATH,
-            mlflow_app_arn=MLFLOW_ARN,
-            s3_output_path=S3_OUTPUT_PATH,
-            role=ROLE_ARN,
+            training_dataset=test_resources["s3_input_path"],
+            mlflow_app_arn=test_resources["mlflow_arn"],
+            s3_output_path=test_resources["s3_output_path"],
+            role=test_resources["role_arn"],
             accept_eula=True,
             sagemaker_session=sagemaker_session,
         )
@@ -81,14 +92,14 @@ class TestMultiTurnRLTrainerBedrockAgent:
         assert job.output_model_package_arn is not None
         assert job.s3_output_path is not None
 
-    def test_train_and_stop(self, sagemaker_session):
+    def test_train_and_stop(self, sagemaker_session, test_resources):
         """Test creating and stopping an MTRL job."""
         trainer = MultiTurnRLTrainer(
             model=BASE_MODEL,
             agent_env=AGENT_RUNTIME_ID,
-            training_dataset=S3_INPUT_PATH,
-            mlflow_app_arn=MLFLOW_ARN,
-            role=ROLE_ARN,
+            training_dataset=test_resources["s3_input_path"],
+            mlflow_app_arn=test_resources["mlflow_arn"],
+            role=test_resources["role_arn"],
             accept_eula=True,
             sagemaker_session=sagemaker_session,
         )
@@ -109,16 +120,16 @@ class TestMultiTurnRLTrainerBedrockAgent:
 class TestMultiTurnRLTrainerLambdaAgent:
     """Test MTRL training with Lambda agent."""
 
-    def test_train_with_lambda_arn(self, sagemaker_session):
+    def test_train_with_lambda_arn(self, sagemaker_session, test_resources):
         """Test MTRL workflow using an existing Lambda ARN as agent."""
         trainer = MultiTurnRLTrainer(
             model=BASE_MODEL,
-            agent_env=LAMBDA_ARN,
-            training_dataset=S3_INPUT_PATH,
-            mlflow_app_arn=MLFLOW_ARN,
-            s3_output_path=S3_OUTPUT_PATH,
+            agent_env=test_resources["lambda_arn"],
+            training_dataset=test_resources["s3_input_path"],
+            mlflow_app_arn=test_resources["mlflow_arn"],
+            s3_output_path=test_resources["s3_output_path"],
             accept_eula=True,
-            role=ROLE_ARN,
+            role=test_resources["role_arn"],
             sagemaker_session=sagemaker_session,
         )
         trainer.hyperparameters.global_batch_size = 32
