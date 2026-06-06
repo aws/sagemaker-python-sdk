@@ -14,6 +14,7 @@ from __future__ import absolute_import
 
 import json
 import os
+import pathlib
 from datetime import datetime, timedelta, timezone
 
 import boto3
@@ -229,33 +230,52 @@ def _delete_hub_contents(sagemaker_session, hub_name, model):
     )
 
 
+def _hub_state_root(config):
+    """Return the run-level tmp dir shared by the xdist controller and workers.
+
+    The controller's basetemp is the run root (e.g. ``.../pytest-N``) while each
+    worker's basetemp is a ``popen-gw*`` subdir of it. Normalizing to the run
+    root gives every process the same location for the shared state file.
+
+    Works across pytest versions: prefers the ``TempPathFactory`` attached as
+    ``config._tmp_path_factory`` and falls back to the legacy ``_tmpdirhandler``.
+    """
+    factory = getattr(config, "_tmp_path_factory", None)
+    if factory is not None:
+        basetemp = pathlib.Path(str(factory.getbasetemp()))
+    else:
+        basetemp = pathlib.Path(str(config._tmpdirhandler.getbasetemp()))
+
+    if basetemp.name.startswith("popen-gw"):
+        return basetemp.parent
+    return basetemp
+
+
 @pytest.fixture(scope="session", autouse=True)
-def setup(request, worker_id, tmp_path_factory):
-    """Create a single shared private hub for the whole test run.
+def setup(request):
+    """Ensure a single shared private hub exists for the whole test run.
 
     Under pytest-xdist every worker is a separate process, so a naive
     ``scope="session"`` fixture would create one hub per worker. With high
     parallelism (e.g. ``-n 120``) that quickly exhausts the per-account private
-    hub limit (100) and triggers destructive cross-worker cleanup. To avoid
-    this, all workers coordinate through a lock file and a shared JSON state
-    file: the first worker creates the hub, the rest reuse it, and only the last
-    worker to finish tears it down (reference counting).
-    """
-    # Non-xdist run: single process owns the full lifecycle.
-    if worker_id == "master":
-        _setup()
-        request.addfinalizer(_teardown)
-        return
+    hub limit (100). All workers therefore coordinate through a lock file and a
+    shared JSON state file: the first worker creates the hub, the rest reuse it.
 
-    # xdist run: coordinate hub creation/teardown across workers.
-    root_tmp_dir = tmp_path_factory.getbasetemp().parent
+    The hub is intentionally NOT deleted from a worker finalizer. xdist
+    distributes tests dynamically, so a worker can finish its whole session (and
+    run its finalizers) before another worker even reaches its first hub test;
+    reference counting in that finalizer would delete the hub out from under
+    workers still using it ("Hub ... does not exist" failures). Teardown instead
+    runs exactly once, after all workers finish, in ``pytest_sessionfinish`` on
+    the controller process.
+    """
+    root_tmp_dir = _hub_state_root(request.config)
     state_file = root_tmp_dir / "jumpstart_hub_state.json"
     lock_file = root_tmp_dir / "jumpstart_hub_state.json.lock"
 
     with FileLock(str(lock_file)):
         if state_file.is_file():
             state = json.loads(state_file.read_text())
-            state["ref_count"] += 1
         else:
             test_suite_id = get_test_suite_id()
             test_hub_name = f"{HUB_NAME_PREFIX}{test_suite_id}"
@@ -263,27 +283,36 @@ def setup(request, worker_id, tmp_path_factory):
             state = {
                 "test_suite_id": test_suite_id,
                 "test_hub_name": test_hub_name,
-                "ref_count": 1,
             }
-        state_file.write_text(json.dumps(state))
+            state_file.write_text(json.dumps(state))
 
     # Ensure this worker's environment points at the shared hub.
     os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID: state["test_suite_id"]})
     os.environ.update({ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME: state["test_hub_name"]})
 
-    def _finalize():
-        with FileLock(str(lock_file)):
-            if not state_file.is_file():
-                return
-            current = json.loads(state_file.read_text())
-            current["ref_count"] -= 1
-            if current["ref_count"] <= 0:
-                _teardown(
-                    test_suite_id=current["test_suite_id"],
-                    test_hub_name=current["test_hub_name"],
-                )
-                state_file.unlink()
-            else:
-                state_file.write_text(json.dumps(current))
 
-    request.addfinalizer(_finalize)
+def pytest_sessionfinish(session, exitstatus):
+    """Tear down the shared hub once, after all xdist workers have finished.
+
+    xdist workers carry a ``workerinput`` attribute on their config; only the
+    controller (or a non-xdist run, which has no workerinput) performs teardown.
+    Running here guarantees no worker is still using the hub.
+    """
+    if hasattr(session.config, "workerinput"):
+        return  # xdist worker: the controller handles teardown.
+
+    root_tmp_dir = _hub_state_root(session.config)
+    state_file = root_tmp_dir / "jumpstart_hub_state.json"
+    lock_file = root_tmp_dir / "jumpstart_hub_state.json.lock"
+
+    with FileLock(str(lock_file)):
+        if not state_file.is_file():
+            return
+        state = json.loads(state_file.read_text())
+        try:
+            _teardown(
+                test_suite_id=state["test_suite_id"],
+                test_hub_name=state["test_hub_name"],
+            )
+        finally:
+            state_file.unlink()
