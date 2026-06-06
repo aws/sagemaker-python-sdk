@@ -24,7 +24,7 @@ from sagemaker.compute_resource_requirements.resource_requirements import Resour
 from sagemaker.utils import unique_name_from_base
 
 from tests.integ.sagemaker.serve.constants import (
-    SERVE_SAGEMAKER_ENDPOINT_TIMEOUT,
+    SERVE_SAGEMAKER_IC_ENDPOINT_TIMEOUT,
 )
 from tests.integ.timeout import timeout
 import logging
@@ -88,7 +88,7 @@ def test_model_builder_ic_sagemaker_endpoint(
 
     chain.build()
 
-    with timeout(minutes=SERVE_SAGEMAKER_ENDPOINT_TIMEOUT):
+    with timeout(minutes=SERVE_SAGEMAKER_IC_ENDPOINT_TIMEOUT):
         try:
             logger.info("Deploying and predicting in SAGEMAKER_ENDPOINT mode...")
             endpoint_name = f"llama-ic-endpoint-name-{uuid.uuid1().hex}"
