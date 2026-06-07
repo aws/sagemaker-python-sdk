@@ -41,7 +41,11 @@ sample_output = [
 
 LLAMA_2_7B_JS_ID = "meta-textgeneration-llama-2-7b"
 LLAMA_IC_NAME = "llama2-mb-ic"
-INSTANCE_TYPE = "ml.g5.24xlarge"
+# ml.g5.24xlarge (4x A10G) is chronically capacity-constrained in us-west-2 and
+# made this test flaky with InsufficientInstanceCapacity / deploy timeouts. This
+# test exercises ModelBuilder's inference-component orchestration, not large-GPU
+# hosting, so a single-accelerator instance with ample capacity is sufficient.
+INSTANCE_TYPE = "ml.g5.2xlarge"
 
 
 @pytest.fixture
@@ -52,7 +56,7 @@ def model_builder_llama_inference_component():
         model_version="4.*",
         schema_builder=SchemaBuilder(sample_input, sample_output),
         resource_requirements=ResourceRequirements(
-            requests={"memory": 98304, "num_accelerators": 4, "copies": 1, "num_cpus": 40}
+            requests={"memory": 24576, "num_accelerators": 1, "copies": 1, "num_cpus": 8}
         ),
     )
 

@@ -80,7 +80,12 @@ def x_fail_if_ice(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            if "CapacityError" in str(e):
+            # Insufficient capacity is a transient, region-level AWS condition
+            # (no instances available right now), not a SDK defect. SageMaker
+            # surfaces it either as a "CapacityError" or as an endpoint failure
+            # whose reason contains "InsufficientInstanceCapacity"; treat both as
+            # an expected failure so canaries don't go red on capacity shortages.
+            if "CapacityError" in str(e) or "InsufficientInstanceCapacity" in str(e):
                 pytest.xfail(str(e))
             raise
 
