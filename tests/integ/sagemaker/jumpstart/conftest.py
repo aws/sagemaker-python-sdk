@@ -62,6 +62,11 @@ def _setup(test_suite_id=None, test_hub_name=None):
     # Create a private hub to use for the test session
     hub = Hub(hub_name=test_hub_name, sagemaker_session=get_sm_session())
 
+    # Proactively reclaim stale hubs from prior runs so we don't accumulate
+    # toward the per-account private hub limit. This only deletes hubs older
+    # than STALE_HUB_AGE_HOURS and never the hub we are about to use.
+    _cleanup_old_hubs(get_sm_session(), active_hub_name=test_hub_name)
+
     # Check if hub already exists before creating
     try:
         hub.describe()
@@ -82,7 +87,7 @@ def _setup(test_suite_id=None, test_hub_name=None):
                 raise
 
 
-def _teardown(test_suite_id=None, test_hub_name=None):
+def _teardown(test_suite_id=None, test_hub_name=None, delete_hub=False):
     print("Tearing down...")
 
     test_cache_bucket = get_test_artifact_bucket()
@@ -161,8 +166,12 @@ def _teardown(test_suite_id=None, test_hub_name=None):
     bucket = s3_resource.Bucket(test_cache_bucket)
     bucket.objects.filter(Prefix=test_suite_id + "/").delete()
 
-    # delete private hubs
-    _delete_hubs(sagemaker_session, test_hub_name)
+    # delete private hubs (only when explicitly requested). During an xdist run
+    # we never delete the active hub, because a straggler worker may still be
+    # running a hub test when another process reaches teardown; stale hubs from
+    # prior runs are reclaimed by the age-based _cleanup_old_hubs instead.
+    if delete_hub:
+        _delete_hubs(sagemaker_session, test_hub_name)
 
 
 def _cleanup_old_hubs(sagemaker_session, active_hub_name=None):
@@ -261,13 +270,13 @@ def setup(request):
     hub limit (100). All workers therefore coordinate through a lock file and a
     shared JSON state file: the first worker creates the hub, the rest reuse it.
 
-    The hub is intentionally NOT deleted from a worker finalizer. xdist
-    distributes tests dynamically, so a worker can finish its whole session (and
-    run its finalizers) before another worker even reaches its first hub test;
-    reference counting in that finalizer would delete the hub out from under
-    workers still using it ("Hub ... does not exist" failures). Teardown instead
-    runs exactly once, after all workers finish, in ``pytest_sessionfinish`` on
-    the controller process.
+    The hub is intentionally NOT deleted at the end of the run. xdist
+    distributes tests dynamically and hub tests deploy long-lived endpoints, so
+    a straggler worker can still be running a hub test (at ~100%) while another
+    process reaches teardown. Deleting the hub there pulls it out from under the
+    straggler ("Hub ... does not exist" failures). Instead, leaked endpoints and
+    artifacts are cleaned at run end, and the hub itself is reclaimed on a later
+    run by the age-based ``_cleanup_old_hubs`` (older than STALE_HUB_AGE_HOURS).
     """
     root_tmp_dir = _hub_state_root(request.config)
     state_file = root_tmp_dir / "jumpstart_hub_state.json"
@@ -292,14 +301,16 @@ def setup(request):
 
 
 def pytest_sessionfinish(session, exitstatus):
-    """Tear down the shared hub once, after all xdist workers have finished.
+    """Clean up leaked test resources once, after all xdist workers finish.
 
-    xdist workers carry a ``workerinput`` attribute on their config; only the
-    controller (or a non-xdist run, which has no workerinput) performs teardown.
-    Running here guarantees no worker is still using the hub.
+    Runs only on the controller (xdist workers carry a ``workerinput`` attribute
+    on their config; a non-xdist run has none). Deletes endpoints/models/configs
+    and S3 artifacts tagged for this run, but deliberately does NOT delete the
+    shared hub (see ``setup``); stale hubs are reclaimed by ``_cleanup_old_hubs``
+    on a subsequent run.
     """
     if hasattr(session.config, "workerinput"):
-        return  # xdist worker: the controller handles teardown.
+        return  # xdist worker: the controller handles cleanup.
 
     root_tmp_dir = _hub_state_root(session.config)
     state_file = root_tmp_dir / "jumpstart_hub_state.json"
@@ -313,6 +324,7 @@ def pytest_sessionfinish(session, exitstatus):
             _teardown(
                 test_suite_id=state["test_suite_id"],
                 test_hub_name=state["test_hub_name"],
+                delete_hub=False,
             )
         finally:
             state_file.unlink()
