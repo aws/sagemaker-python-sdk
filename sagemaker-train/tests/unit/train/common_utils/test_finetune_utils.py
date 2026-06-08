@@ -249,6 +249,164 @@ class TestFinetuneUtils:
         
         assert result == mock_evaluator.arn
 
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.get')
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.create')
+    def test_extract_evaluator_arn_lambda_arn_creates_evaluator(self, mock_evaluator_create, mock_evaluator_get):
+        """Test that a Lambda ARN triggers auto-creation of an Evaluator and returns its ARN."""
+        lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-fn"
+        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/1.0"
+
+        # Simulate evaluator not found
+        mock_evaluator_get.side_effect = Exception("Not found")
+
+        mock_evaluator_obj = Mock()
+        mock_evaluator_obj.arn = expected_evaluator_arn
+        mock_evaluator_create.return_value = mock_evaluator_obj
+
+        result = _extract_evaluator_arn(lambda_arn, "custom_reward_function")
+
+        assert result == expected_evaluator_arn
+        mock_evaluator_create.assert_called_once_with(
+            name="my-reward-fn",
+            type="RewardFunction",
+            source=lambda_arn,
+            wait=True,
+        )
+
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.get')
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.create')
+    def test_extract_evaluator_arn_lambda_arn_sanitizes_name(self, mock_evaluator_create, mock_evaluator_get):
+        """Test that special characters in Lambda function name are sanitized to hyphens."""
+        lambda_arn = "arn:aws:lambda:us-west-2:123456789012:function:my_reward-fn_v2"
+        expected_evaluator_arn = "arn:aws:sagemaker:us-west-2:123456789012:hub-content/hub/JsonDoc/my-reward-fn-v2/1.0"
+
+        # Simulate evaluator not found
+        mock_evaluator_get.side_effect = Exception("Not found")
+
+        mock_evaluator_obj = Mock()
+        mock_evaluator_obj.arn = expected_evaluator_arn
+        mock_evaluator_create.return_value = mock_evaluator_obj
+
+        result = _extract_evaluator_arn(lambda_arn)
+
+        assert result == expected_evaluator_arn
+        # Verify the name was sanitized: underscores replaced with hyphens
+        mock_evaluator_create.assert_called_once_with(
+            name="my-reward-fn-v2",
+            type="RewardFunction",
+            source=lambda_arn,
+            wait=True,
+        )
+
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.get')
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.create')
+    def test_extract_evaluator_arn_lambda_arn_truncates_long_name(self, mock_evaluator_create, mock_evaluator_get):
+        """Test that evaluator name derived from Lambda is truncated to 63 characters."""
+        long_function_name = "a" * 100
+        lambda_arn = f"arn:aws:lambda:us-east-1:123456789012:function:{long_function_name}"
+        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/hub/JsonDoc/truncated/1.0"
+
+        # Simulate evaluator not found
+        mock_evaluator_get.side_effect = Exception("Not found")
+
+        mock_evaluator_obj = Mock()
+        mock_evaluator_obj.arn = expected_evaluator_arn
+        mock_evaluator_create.return_value = mock_evaluator_obj
+
+        result = _extract_evaluator_arn(lambda_arn)
+
+        assert result == expected_evaluator_arn
+        # Verify the name was truncated to 63 chars
+        call_args = mock_evaluator_create.call_args
+        assert len(call_args[1]["name"]) == 63
+
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.get')
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.create')
+    def test_extract_evaluator_arn_lambda_reuses_existing_evaluator(self, mock_evaluator_create, mock_evaluator_get):
+        """Test that an existing evaluator pointing to the same Lambda ARN is reused without creating a new version."""
+        lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-fn"
+        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/1.0"
+
+        # Simulate existing evaluator with the same Lambda reference
+        mock_existing = Mock()
+        mock_existing.arn = expected_evaluator_arn
+        mock_existing.reference = lambda_arn
+        mock_evaluator_get.return_value = mock_existing
+
+        result = _extract_evaluator_arn(lambda_arn)
+
+        assert result == expected_evaluator_arn
+        # Evaluator.create should NOT be called since we reuse the existing one
+        mock_evaluator_create.assert_not_called()
+
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.get')
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.create')
+    def test_extract_evaluator_arn_lambda_creates_new_version_if_reference_differs(self, mock_evaluator_create, mock_evaluator_get):
+        """Test that a new version is created if existing evaluator points to a different Lambda."""
+        lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-fn"
+        old_lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:old-reward-fn"
+        expected_evaluator_arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/2.0"
+
+        # Simulate existing evaluator with a different Lambda reference
+        mock_existing = Mock()
+        mock_existing.arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/my-reward-fn/1.0"
+        mock_existing.reference = old_lambda_arn
+        mock_evaluator_get.return_value = mock_existing
+
+        mock_evaluator_obj = Mock()
+        mock_evaluator_obj.arn = expected_evaluator_arn
+        mock_evaluator_create.return_value = mock_evaluator_obj
+
+        result = _extract_evaluator_arn(lambda_arn)
+
+        assert result == expected_evaluator_arn
+        mock_evaluator_create.assert_called_once_with(
+            name="my-reward-fn",
+            type="RewardFunction",
+            source=lambda_arn,
+            wait=True,
+        )
+
+    @patch('sagemaker.train.common_utils.finetune_utils._validate_evaluator_arn')
+    def test_extract_evaluator_arn_uses_default_param_name(self, mock_validate):
+        """Test that default param_name is 'custom_reward_function'."""
+        arn = "arn:aws:sagemaker:us-east-1:123456789012:hub-content/SageMakerPublicHub/JsonDoc/test/1.0"
+
+        _extract_evaluator_arn(arn)
+
+        mock_validate.assert_called_once_with(arn, "custom_reward_function")
+
+    @patch('sagemaker.train.common_utils.finetune_utils._validate_evaluator_arn')
+    def test_extract_evaluator_arn_invalid_string_raises_error(self, mock_validate):
+        """Test that an invalid ARN string raises ValueError via _validate_evaluator_arn."""
+        invalid_arn = "not-a-valid-arn"
+        mock_validate.side_effect = ValueError("custom_reward_function must be a valid SageMaker hub-content evaluator ARN")
+
+        with pytest.raises(ValueError, match="must be a valid SageMaker hub-content evaluator ARN"):
+            _extract_evaluator_arn(invalid_arn)
+
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.get')
+    @patch('sagemaker.ai_registry.evaluator.Evaluator.create')
+    def test_extract_evaluator_arn_lambda_create_failure_propagates(self, mock_evaluator_create, mock_evaluator_get):
+        """Test that exceptions from Evaluator.create propagate to the caller."""
+        lambda_arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-fn"
+
+        # Simulate evaluator not found so we fall through to create
+        mock_evaluator_get.side_effect = Exception("Not found")
+        mock_evaluator_create.side_effect = RuntimeError("Failed to create evaluator")
+
+        with pytest.raises(RuntimeError, match="Failed to create evaluator"):
+            _extract_evaluator_arn(lambda_arn)
+
+    def test_extract_evaluator_arn_evaluator_object_with_custom_param_name(self):
+        """Test that Evaluator object extraction works regardless of param_name."""
+        mock_evaluator = Mock()
+        mock_evaluator.arn = "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/JsonDoc/eval/2.0"
+
+        result = _extract_evaluator_arn(mock_evaluator, "my_custom_param")
+
+        assert result == mock_evaluator.arn
+
     def test__resolve_model_name_with_model_package(self):
         mock_model_package = Mock()
         mock_container = Mock()

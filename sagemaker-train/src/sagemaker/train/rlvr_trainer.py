@@ -50,6 +50,17 @@ class RLVRTrainer(BaseTrainer):
 
         trainer.train()
 
+        # Using a Lambda ARN directly (Evaluator is auto-created):
+        trainer = RLVRTrainer(
+            model="meta-llama/Llama-2-7b-hf",
+            training_type=TrainingType.LORA,
+            model_package_group="my-model-group",
+            custom_reward_function="arn:aws:lambda:us-east-1:123456789012:function:my-reward-fn",
+            training_dataset="s3://bucket/rlvr_data.jsonl"
+        )
+
+        trainer.train()
+
         # Complete workflow: create -> wait -> get model package ARN
         trainer = RLVRTrainer(
             model="meta-llama/Llama-2-7b-hf",
@@ -83,7 +94,10 @@ class RLVRTrainer(BaseTrainer):
             The model package group for storing the fine-tuned model. Can be a group name,
             ARN, or ModelPackageGroup object. Required when model is not a ModelPackage.
         custom_reward_function (Optional[Union[str, Evaluator]]):
-            The custom reward function evaluator. Can be an evaluator ARN string or Evaluator object.
+            The custom reward function evaluator. Can be an evaluator ARN string, a Lambda
+            function ARN string, or an Evaluator object. If a Lambda ARN is provided
+            (e.g., "arn:aws:lambda:us-east-1:123456789012:function:my-reward"), an Evaluator
+            will be automatically created in the AI Registry and used for training.
             Required for RLVR training to provide reward signals.
         mlflow_resource_arn (Optional[Union[str, MlflowTrackingServer]]):
             The MLflow tracking server ARN for experiment tracking.

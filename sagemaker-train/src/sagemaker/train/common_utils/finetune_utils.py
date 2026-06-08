@@ -8,7 +8,9 @@ import json
 from typing import Optional
 import time
 import boto3
-from sagemaker.core.resources import ModelPackage, ModelPackageGroup
+from botocore.exceptions import ClientError
+
+from sagemaker.core.resources import MlflowApp, ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE, FineTuningOptions
@@ -24,6 +26,8 @@ OPEN_WEIGHTS_REGIONS = ['us-east-1', 'us-west-2', 'ap-northeast-1', 'eu-west-1']
 NOVA_REGIONS = ['us-east-1', 'us-west-2']  # IAD, PDX
 # Constants
 DEFAULT_REGION = "us-west-2"
+LAMBDA_ARN_REGEX = re.compile(r"^arn:aws:lambda:[a-z0-9-]+:\d{12}:function:[A-Za-z0-9-_]+$")
+
 
 def _validate_model_region_availability(model_name: str, region_name: str):
     """Validate if the model is available in the specified region."""
@@ -369,11 +373,68 @@ def _extract_dataset_source(dataset, param_name: str = "dataset"):
         return dataset.arn
 
 
+def _is_lambda_arn(arn: str) -> bool:
+    """Check if the given string is a valid AWS Lambda function ARN."""
+    return bool(LAMBDA_ARN_REGEX.match(arn))
+
+
 def _extract_evaluator_arn(evaluator, param_name: str = "custom_reward_function"):
-    """Extract and validate evaluator ARN from string or Evaluator object."""
+    """Extract and validate evaluator ARN from string, Lambda ARN, or Evaluator object.
+
+    If the provided string is a Lambda ARN, checks whether an Evaluator with the
+    same name already exists and points to the same Lambda. If so, returns its ARN
+    without creating a new version. Otherwise, creates a new Evaluator in the
+    AI Registry and returns its hub-content ARN.
+    """
     if isinstance(evaluator, str):
-        _validate_evaluator_arn(evaluator, param_name)
-        return evaluator
+        if _is_lambda_arn(evaluator):
+            from sagemaker.ai_registry.evaluator import Evaluator
+            from sagemaker.ai_registry.air_constants import REWARD_FUNCTION
+
+            # Derive evaluator name from the Lambda function name
+            function_name = evaluator.split(":")[-1]
+            evaluator_name = re.sub(r"[^a-zA-Z0-9-]", "-", function_name)[:63]
+
+            # Check if an evaluator with this name already exists and points to the same Lambda
+            try:
+                existing = Evaluator.get(evaluator_name)
+                if existing and existing.reference == evaluator:
+                    logger.debug(
+                        f"Evaluator '{evaluator_name}' already exists and points to "
+                        f"the same Lambda ARN. {existing.reference} Reusing existing evaluator."
+                    )
+                    return existing.arn
+                else:
+                    logger.debug(
+                        f"Evaluator '{evaluator_name}' exists but points to a different "
+                        f"source. Creating a new version with Lambda: {evaluator}"
+                    )
+            except ClientError as e:
+                error_code = e.response["Error"]["Code"]
+                if error_code == "ResourceNotFound":
+                    logger.debug(
+                        f"Lambda ARN detected for {param_name}. "
+                        f"Creating Evaluator from Lambda: {evaluator}"
+                    )
+                else:
+                    raise
+
+            evaluator_obj = Evaluator.create(
+                name=evaluator_name,
+                type=REWARD_FUNCTION,
+                source=evaluator,
+                wait=True,
+            )
+
+            logger.debug(
+                f"Created Evaluator from Lambda ARN. "
+                f"Lambda ARN: {evaluator}, Evaluator ARN: {evaluator_obj.arn}"
+            )
+
+            return evaluator_obj.arn
+        else:
+            _validate_evaluator_arn(evaluator, param_name)
+            return evaluator
     else:
         # It's an Evaluator object, extract ARN (already valid)
         return evaluator.arn

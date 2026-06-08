@@ -17,9 +17,61 @@ import time
 import random
 import pytest
 import boto3
+import logging
+
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
+from sagemaker.ai_registry.evaluator import Evaluator
+from sagemaker.ai_registry.air_constants import REWARD_FUNCTION
+
+logger = logging.getLogger(__name__)
+
+EVALUATOR_NAME = "test-integ-rlvr-trainer"
+LAMBDA_OSS_REWARD_FUNCTION_NAME = "rlvr-oss-reward-function"
+
+
+@pytest.fixture(scope="module")
+def account_id(sagemaker_session):
+    """Resolve the AWS account ID from the current session."""
+    return sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="module")
+def region(sagemaker_session):
+    """Resolve the AWS region from the current session."""
+    return sagemaker_session.boto_session.region_name
+
+
+@pytest.fixture(scope="module")
+def lambda_arn(account_id, region):
+    """Return the Lambda ARN for the OSS reward function."""
+    return f"arn:aws:lambda:{region}:{account_id}:function:{LAMBDA_OSS_REWARD_FUNCTION_NAME}"
+
+# TODO: Add test cleanup to remove evaluator versions older than 24h
+@pytest.fixture(scope="module")
+def evaluator(sagemaker_session, lambda_arn):
+    """Ensure the evaluator exists in the AI Registry and return its ARN."""
+    try:
+        evaluator = Evaluator.get(EVALUATOR_NAME, sagemaker_session=sagemaker_session)
+    except Exception as e:
+        logger.info(
+            f"Evaluator '{EVALUATOR_NAME}' not found ({e}). Creating a new one from Lambda: {lambda_arn}"
+        )
+        evaluator = Evaluator.create(
+            name=EVALUATOR_NAME,
+            type=REWARD_FUNCTION,
+            source=lambda_arn,
+            wait=True,
+            sagemaker_session=sagemaker_session,
+        )
+    return evaluator
+
+
+@pytest.fixture(scope="module")
+def lambda_arn(region, account_id):
+    """Construct the Lambda function ARN from account and region."""
+    return f"arn:aws:lambda:{region}:{account_id}:function:{LAMBDA_OSS_REWARD_FUNCTION_NAME}"
 
 @pytest.mark.gpu_intensive
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
@@ -141,3 +193,80 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     assert training_job.training_job_status == "Completed"
     assert hasattr(training_job, 'output_model_package_arn')
     assert training_job.output_model_package_arn is not None
+
+
+@pytest.mark.gpu_intensive
+def test_rlvr_trainer_with_lambda_arn_auto_creates_evaluator(sagemaker_session, lambda_arn):
+    """Test RLVR trainer with a Lambda ARN that auto-creates an Evaluator in AI Registry."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    rlvr_trainer = RLVRTrainer(
+        model="meta-textgeneration-llama-3-2-1b-instruct",
+        training_type=TrainingType.LORA,
+        model_package_group="sdk-test-finetuned-models",
+        mlflow_experiment_name="test-rlvr-lambda-evaluator-exp",
+        mlflow_run_name="test-rlvr-lambda-evaluator-run",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        custom_reward_function=lambda_arn,
+        accept_eula=True,
+        base_job_name=f"rlvr-rf-integ-{unique_id}",
+    )
+
+    training_job = rlvr_trainer.train(wait=False)
+
+    # Manual wait loop
+    max_wait_time = 3600
+    poll_interval = 30
+    start_time = time.time()
+
+    while time.time() - start_time < max_wait_time:
+        training_job.refresh()
+        status = training_job.training_job_status
+
+        if status in ["Completed", "Failed", "Stopped"]:
+            break
+
+        time.sleep(poll_interval)
+
+    # Verify job completed successfully
+    assert training_job.training_job_status == "Completed"
+    assert hasattr(training_job, 'output_model_package_arn')
+    assert training_job.output_model_package_arn is not None
+
+
+@pytest.mark.gpu_intensive
+def test_rlvr_trainer_with_evaluator_object(sagemaker_session, evaluator):
+    """Test RLVR trainer with a pre-created Evaluator object."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    rlvr_trainer = RLVRTrainer(
+        model="meta-textgeneration-llama-3-2-1b-instruct",
+        training_type=TrainingType.LORA,
+        model_package_group="sdk-test-finetuned-models",
+        mlflow_experiment_name="test-rlvr-evaluator-obj-exp",
+        mlflow_run_name="test-rlvr-evaluator-obj-run",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        custom_reward_function=evaluator,
+        accept_eula=True,
+        base_job_name=f"rlvr-rf-integ-{unique_id}",
+    )
+
+    training_job = rlvr_trainer.train(wait=False)
+    # Manual wait loop
+    max_wait_time = 3600
+    poll_interval = 30
+    start_time = time.time()
+
+    while time.time() - start_time < max_wait_time:
+        training_job.refresh()
+        status = training_job.training_job_status
+        if status in ["Completed", "Failed", "Stopped"]:
+            break
+        time.sleep(poll_interval)
+    # Verify job completed successfully
+    assert training_job.training_job_status == "Completed"
+    assert hasattr(training_job, 'output_model_package_arn')
+    assert training_job.output_model_package_arn is not None
+    
