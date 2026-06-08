@@ -10,12 +10,17 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Integration tests for ModelBuilder Nova model customization deployment.
+"""Integration tests for Nova model customization deployment.
 
-These tests are the Nova counterpart of test_model_customization_deployment.py.
+These tests are the Nova counterpart of test_model_customization_deployment.py
+and cover two deployment targets for a fine-tuned Nova model:
+- SageMaker endpoints via ModelBuilder (TestModelCustomization* classes).
+- Amazon Bedrock custom models via BedrockModelBuilder (TestNovaBedrockDeployment).
+
 They run against the dedicated Nova test account in us-east-1 (784379639078)
-and are marked with ``us_east_1`` so the scheduled GPU integ workflow picks
-them up in the us-east-1 job only.
+and are marked with ``us_east_1`` so the PR check integ-tests-us-east-1 job
+picks them up (they are intentionally not marked ``gpu_intensive``, so they do
+not run in the scheduled GPU workflow).
 """
 from __future__ import absolute_import
 
@@ -345,314 +350,126 @@ class TestTrainerIntegration:
         assert model is not None
         assert model.model_arn is not None
 
+@pytest.mark.us_east_1
+class TestNovaBedrockDeployment:
+    """Test deploying a fine-tuned Nova model to Amazon Bedrock.
 
-# -----------------------------------------------------------------------------
-# Bedrock deployment tests are intentionally left commented out for Nova.
-#
-# Bedrock Custom Model Import (CMI) only supports open-weight architectures
-# (e.g. Llama, Mistral). Nova is an Amazon proprietary model and cannot be
-# imported into Bedrock via CMI, so the Bedrock deployment suite below from the
-# open-weights tests has no meaningful Nova equivalent. It is preserved here
-# (commented) for parity/reference only.
-# -----------------------------------------------------------------------------
+    Unlike open-weight (OSS) models, which Bedrock serves via a Custom Model
+    Import job (create_model_import_job), Nova models are deployed through
+    Bedrock custom models: BedrockModelBuilder.deploy() detects the Nova model
+    and calls create_custom_model + create_custom_model_deployment, polling each
+    resource to Active before returning.
 
-# """Integration tests for model customization deployment to Bedrock.
-#
-# Updated for sagemaker-core integration:
-# - Added ModelPackage import for new model handling
-# - Enhanced error handling for sagemaker-core compatibility issues
-# - Updated model artifacts access to handle both old and new patterns
-# - Added fallback logic for different model artifact locations
-# - Improved test assertions to work with new object structures
-# """
-#
-# from sagemaker.core.resources import TrainingJob, ModelPackage
-# from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
-#
-#
-# class TestModelCustomizationDeployment:
-#     """Test suite for deploying fine-tuned models to Bedrock."""
-#
-#     @pytest.fixture(scope="class")
-#     def setup_config(self, training_job_name):
-#         """Setup test configuration."""
-#         from sagemaker.core.helper.session_helper import get_execution_role
-#         return {
-#             "training_job_name": training_job_name,
-#             "region": AWS_REGION,
-#             "bucket": "models-sdk-testing-pdx",
-#             "role_arn": get_execution_role()
-#         }
-#
-#     @pytest.fixture(scope="class")
-#     def training_job(self, setup_config):
-#         """Get the training job."""
-#         return TrainingJob.get(
-#             training_job_name=setup_config["training_job_name"],
-#             region=setup_config["region"],
-#         )
-#
-#     @pytest.fixture(scope="class")
-#     def s3_client(self, setup_config):
-#         """Create S3 client."""
-#         return boto3.client('s3', region_name=setup_config["region"])
-#
-#     @pytest.fixture(scope="class")
-#     def bedrock_client(self, setup_config):
-#         """Create Bedrock client."""
-#         client = boto3.client('bedrock', region_name=setup_config["region"])
-#         # Cleanup existing import jobs
-#         try:
-#             jobs = client.list_model_import_jobs()
-#             for job in jobs.get('modelImportJobSummaries', []):
-#                 if job['jobName'].startswith('test-bedrock-'):
-#                     try:
-#                         client.stop_model_import_job(jobIdentifier=job['jobArn'])
-#                     except Exception:
-#                         pass
-#         except Exception:
-#             pass
-#         return client
-#
-#     @pytest.fixture(scope="class")
-#     def bedrock_runtime(self, setup_config):
-#         """Create Bedrock runtime client."""
-#         return boto3.client('bedrock-runtime', region_name=setup_config["region"])
-#
-#     @pytest.fixture(scope="class")
-#     def deployed_model_arn(self, training_job, bedrock_client, s3_client, setup_config):
-#         """Deploy model and return ARN."""
-#         self._setup_model_files(training_job, s3_client, setup_config)
-#
-#         job_name = f"test-bedrock-{random.randint(1000, 9999)}-{int(time.time())}"
-#         bedrock_builder = BedrockModelBuilder(model=training_job)
-#
-#         try:
-#             deployment_result = bedrock_builder.deploy(
-#                 job_name=job_name,
-#                 imported_model_name=job_name,
-#                 role_arn=setup_config["role_arn"]
-#             )
-#
-#             job_arn = deployment_result['jobArn']
-#
-#             # Wait for completion
-#             while True:
-#                 response = bedrock_client.get_model_import_job(jobIdentifier=job_arn)
-#                 status = response['status']
-#                 if status in ['Completed', 'Failed']:
-#                     break
-#                 time.sleep(30)
-#
-#             model_arn = response['importedModelArn']
-#             return model_arn
-#
-#         except Exception as e:
-#             # If there's an issue with the new sagemaker-core integration, provide helpful error info
-#             pytest.fail(
-#                 f"Deployment failed with error: {str(e)}.")
-#
-#     def _setup_model_files(self, training_job, s3_client, setup_config):
-#         """Setup required model files for Bedrock deployment."""
-#         # Get S3 model artifacts path from training job
-#         try:
-#             # Try to access model artifacts from training job
-#             if hasattr(training_job, 'model_artifacts') and hasattr(training_job.model_artifacts, 's3_model_artifacts'):
-#                 base_s3_path = training_job.model_artifacts.s3_model_artifacts
-#             elif hasattr(training_job, 'output_model_package_arn'):
-#                 # If training job has model package ARN, get artifacts from model package
-#                 model_package = ModelPackage.get(training_job.output_model_package_arn, region=AWS_REGION)
-#                 if hasattr(model_package,
-#                            'inference_specification') and model_package.inference_specification.containers:
-#                     container = model_package.inference_specification.containers[0]
-#                     if hasattr(container, 'model_data_source') and container.model_data_source:
-#                         # Access s3_uri from the s3_data_source attribute
-#                         if hasattr(container.model_data_source,
-#                                    's3_data_source') and container.model_data_source.s3_data_source:
-#                             base_s3_path = container.model_data_source.s3_data_source.s3_uri
-#                         else:
-#                             # Fallback to model_data_url if available
-#                             base_s3_path = getattr(container, 'model_data_url', None)
-#                     else:
-#                         # Fallback to model_data_url if available
-#                         base_s3_path = getattr(container, 'model_data_url', None)
-#                 else:
-#                     raise AttributeError("Cannot find model artifacts in model package")
-#             else:
-#                 raise AttributeError("Cannot find model artifacts in training job")
-#
-#             if not base_s3_path:
-#                 raise ValueError("Model artifacts S3 path is empty")
-#
-#         except Exception as e:
-#             pytest.fail(
-#                 f"Failed to get model artifacts path: {str(e)}. This might be due to sagemaker-core integration changes.")
-#
-#         bucket = setup_config["bucket"]
-#
-#         # Create bucket if it doesn't exist
-#         try:
-#             s3_client.head_bucket(Bucket=bucket)
-#         except Exception:
-#             try:
-#                 s3_client.create_bucket(
-#                     Bucket=bucket,
-#                     CreateBucketConfiguration={'LocationConstraint': setup_config["region"]}
-#                 )
-#             except Exception:
-#                 pass
-#
-#         # Copy files from hf_merged to root
-#         hf_merged_prefix = base_s3_path.replace(f's3://{bucket}/', '') + 'checkpoints/hf_merged/'
-#         root_prefix = base_s3_path.replace(f's3://{bucket}/', '') + '/'
-#
-#         files_to_copy = ['config.json', 'tokenizer.json', 'tokenizer_config.json', 'model.safetensors']
-#
-#         for file in files_to_copy:
-#             try:
-#                 s3_client.head_object(Bucket=bucket, Key=root_prefix + file)
-#             except Exception:
-#                 try:
-#                     s3_client.copy_object(
-#                         Bucket=bucket,
-#                         CopySource={'Bucket': bucket, 'Key': hf_merged_prefix + file},
-#                         Key=root_prefix + file
-#                     )
-#                 except Exception as e:
-#                     print(f"Warning: Could not copy {file}: {str(e)}")
-#
-#         # Create added_tokens.json if missing
-#         try:
-#             s3_client.head_object(Bucket=bucket, Key=root_prefix + 'added_tokens.json')
-#         except Exception:
-#             try:
-#                 s3_client.put_object(
-#                     Bucket=bucket,
-#                     Key=root_prefix + 'added_tokens.json',
-#                     Body=json.dumps({}),
-#                     ContentType='application/json'
-#                 )
-#             except Exception as e:
-#                 print(f"Warning: Could not create added_tokens.json: {str(e)}")
-#
-#     def test_training_job_exists(self, training_job):
-#         """Test that the training job exists and is completed."""
-#         assert training_job is not None
-#         assert training_job.training_job_status == "Completed"
-#         # Check for model artifacts in different possible locations due to sagemaker-core changes
-#         has_artifacts = (
-#                 hasattr(training_job, 'model_artifacts') or
-#                 hasattr(training_job, 'output_model_package_arn')
-#         )
-#         assert has_artifacts, "Training job should have model artifacts or model package ARN"
-#
-#     def test_bedrock_model_builder_creation(self, training_job):
-#         """Test BedrockModelBuilder creation."""
-#         try:
-#             bedrock_builder = BedrockModelBuilder(model=training_job)
-#             assert bedrock_builder is not None
-#             assert bedrock_builder.model == training_job
-#
-#             # Test that the builder can fetch model package if needed
-#             if hasattr(bedrock_builder, 'model_package'):
-#                 # This tests the new sagemaker-core integration
-#                 assert bedrock_builder.model_package is not None or bedrock_builder.model_package is None
-#
-#         except Exception as e:
-#             pytest.fail(
-#                 f"BedrockModelBuilder creation failed: {str(e)}. This might be due to sagemaker-core integration issues.")
-#
-#     @pytest.mark.slow
-#     def test_bedrock_job_created(self, deployed_model_arn):
-#         """Test that Bedrock import job was created successfully."""
-#         assert deployed_model_arn is not None
-#
-#     @pytest.mark.slow
-#     def test_bedrock_model_invoke(self, deployed_model_arn, bedrock_runtime):
-#         """Test invoking the imported Bedrock model to ensure it works end-to-end.
-#
-#         Retries on failure since models can take several minutes
-#         to become ready after import.
-#         """
-#         max_retries = 5
-#         base_delay = 10
-#
-#         for attempt in range(max_retries):
-#             try:
-#                 response = bedrock_runtime.invoke_model(
-#                     modelId=deployed_model_arn,
-#                     body=json.dumps({
-#                         "prompt": "What is the capital of France?",
-#                         "max_gen_len": 100,
-#                         "temperature": 0.7,
-#                         "top_p": 0.9
-#                     })
-#                 )
-#
-#                 result = json.loads(response['body'].read().decode())
-#
-#                 # Validate response structure
-#                 assert "generation" in result, "Response missing 'generation' field"
-#                 assert isinstance(result["generation"], str), "'generation' should be a string"
-#                 assert len(result["generation"]) > 0, "'generation' should not be empty"
-#                 return  # Success
-#
-#             except Exception as e:
-#                 if attempt < max_retries - 1:
-#                     logger.info(
-#                         f"Invoke failed (attempt {attempt + 1}/{max_retries}): {e}. "
-#                         f"Retrying in {base_delay}s..."
-#                     )
-#                     time.sleep(base_delay)
-#                 else:
-#                     pytest.fail(
-#                         f"Invoke failed after {max_retries} attempts. "
-#                         f"Last error: {e}"
-#                     )
-#
-#     def test_zzz_cleanup_deployed_model(self, bedrock_client):
-#         """Cleanup deployed model and import jobs (runs last due to zzz prefix)."""
-#         if hasattr(self, 'model_arn_for_cleanup'):
-#             try:
-#                 bedrock_client.delete_imported_model(modelIdentifier=self.model_arn_for_cleanup)
-#             except Exception:
-#                 pass
-#         # Cleanup all test import jobs
-#         try:
-#             jobs = bedrock_client.list_model_import_jobs()
-#             for job in jobs.get('modelImportJobSummaries', []):
-#                 if job['jobName'].startswith('test-bedrock-'):
-#                     try:
-#                         bedrock_client.stop_model_import_job(jobIdentifier=job['jobArn'])
-#                     except Exception:
-#                         pass
-#         except Exception:
-#             pass
-#
-#
-# def test_model_customization_workflow(training_job_name):
-#     """Standalone test function for pytest discovery.
-#
-#     Uses explicit region parameter for all SDK calls.
-#     """
-#     config = {
-#         "training_job_name": training_job_name,
-#         "region": AWS_REGION,
-#         "bucket": "open-models-testing-pdx"
-#     }
-#
-#     try:
-#         s3_client = boto3.client('s3', region_name=config["region"])
-#         training_job = TrainingJob.get(training_job_name=config["training_job_name"], region=config["region"])
-#
-#         test_class = TestModelCustomizationDeployment()
-#         test_class.test_training_job_exists(training_job)
-#         test_class.test_bedrock_model_builder_creation(training_job)
-#
-#     except Exception as e:
-#         print(f"Standalone test failed: {str(e)}")
-#         print("This might be due to sagemaker-core integration issues. Please check:")
-#         print("1. TrainingJob.get() method compatibility")
-#         print("2. Model artifacts access patterns")
-#         print("3. BedrockModelBuilder initialization with new sagemaker-core objects")
-#         raise
+    These tests run against the Nova test account in us-east-1 (784379639078).
+    """
+
+    @pytest.fixture(scope="class")
+    def role_arn(self):
+        """Execution role ARN with Bedrock permissions."""
+        from sagemaker.core.helper.session_helper import get_execution_role
+        return get_execution_role()
+
+    @pytest.fixture(scope="class")
+    def bedrock_client(self):
+        """Create a Bedrock control-plane client."""
+        return boto3.client("bedrock", region_name=AWS_REGION)
+
+    @pytest.fixture(scope="class")
+    def bedrock_runtime(self):
+        """Create a Bedrock runtime client with retries for cold custom models."""
+        from botocore.config import Config
+        config = Config(retries={"total_max_attempts": 10, "mode": "standard"})
+        return boto3.client("bedrock-runtime", region_name=AWS_REGION, config=config)
+
+    @pytest.fixture(scope="class")
+    def deployed_nova_model(self, model_package_arn, role_arn, bedrock_client):
+        """Deploy a Nova model package to Bedrock and yield deployment details.
+
+        Cleans up the custom model and its deployment after the class completes.
+        """
+        from sagemaker.core.resources import ModelPackage
+        from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
+
+        unique = f"{int(time.time())}-{random.randint(1000, 9999)}"
+        custom_model_name = f"nova-integ-{unique}"
+        deployment_name = f"nova-integ-{unique}-deployment"
+
+        model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
+        bedrock_builder = BedrockModelBuilder(model=model_package)
+
+        deployment_arn = None
+        model_arn = None
+        try:
+            response = bedrock_builder.deploy(
+                custom_model_name=custom_model_name,
+                deployment_name=deployment_name,
+                role_arn=role_arn,
+            )
+
+            assert response is not None
+            deployment_arn = response.get("customModelDeploymentArn")
+            assert deployment_arn is not None, f"No deployment ARN in response: {response}"
+
+            # Resolve the underlying custom model ARN for cleanup.
+            deployment = bedrock_client.get_custom_model_deployment(
+                customModelDeploymentIdentifier=deployment_arn
+            )
+            model_arn = deployment.get("modelArn")
+
+            yield {
+                "deployment_arn": deployment_arn,
+                "model_arn": model_arn,
+                "custom_model_name": custom_model_name,
+            }
+        except Exception as e:
+            pytest.fail(f"Nova Bedrock deployment failed: {e}")
+        finally:
+            # Cleanup deployment first, then the custom model.
+            if deployment_arn:
+                try:
+                    bedrock_client.delete_custom_model_deployment(
+                        customModelDeploymentIdentifier=deployment_arn
+                    )
+                    logger.info("Deleted custom model deployment: %s", deployment_arn)
+                except Exception as e:
+                    logger.warning("Failed to delete deployment %s: %s", deployment_arn, e)
+            if model_arn:
+                try:
+                    bedrock_client.delete_custom_model(modelIdentifier=model_arn)
+                    logger.info("Deleted custom model: %s", model_arn)
+                except Exception as e:
+                    logger.warning("Failed to delete custom model %s: %s", model_arn, e)
+
+    def test_nova_bedrock_deployment_active(self, deployed_nova_model, bedrock_client):
+        """The Nova custom model deployment should be Active after deploy()."""
+        deployment_arn = deployed_nova_model["deployment_arn"]
+        deployment = bedrock_client.get_custom_model_deployment(
+            customModelDeploymentIdentifier=deployment_arn
+        )
+        assert deployment.get("status") == "Active"
+
+    @pytest.mark.slow
+    def test_nova_bedrock_invoke(self, deployed_nova_model, bedrock_runtime):
+        """Invoke the deployed Nova model on Bedrock end-to-end.
+
+        The runtime client is configured with retries to tolerate the brief
+        window where a freshly-deployed custom model is not yet servable.
+        """
+        deployment_arn = deployed_nova_model["deployment_arn"]
+
+        response = bedrock_runtime.invoke_model(
+            modelId=deployment_arn,
+            body=json.dumps({
+                "messages": [
+                    {"role": "user", "content": [{"type": "text", "text": "What is 7+7?"}]}
+                ]
+            }),
+            contentType="application/json",
+            accept="application/json",
+        )
+
+        result = json.loads(response["body"].read().decode())
+
+        # Validate response structure (Nova returns a structured message payload).
+        assert result is not None, "Empty response from Bedrock invoke"
+        assert isinstance(result, dict)
