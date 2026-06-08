@@ -53,6 +53,23 @@ NOVA_MODEL_ID = "nova-textgeneration-lite-v2"
 NOVA_INSTANCE_TYPE = "ml.g6.48xlarge"
 
 
+def _deploy_or_skip_on_capacity(model_builder, **deploy_kwargs):
+    """Deploy via ModelBuilder, skipping the test on transient capacity errors.
+
+    GPU instance types like ml.g6.48xlarge can hit InsufficientInstanceCapacity
+    (a transient, region-wide availability issue, not a quota or code problem),
+    which would otherwise fail the deploy with a FailedStatusError. Skip rather
+    than fail in that case so CI stays green on capacity fluctuations.
+    """
+    try:
+        return model_builder.deploy(**deploy_kwargs)
+    except Exception as e:
+        msg = str(e)
+        if "InsufficientInstanceCapacity" in msg or "InsufficientInstance" in msg:
+            pytest.skip(f"Skipping due to transient instance capacity shortage: {msg}")
+        raise
+
+
 def _latest_model_package_arn(region=AWS_REGION):
     """Return the ARN of the most recently created Completed model package in
     the Nova model package group, or None if the group has no usable package.
@@ -207,7 +224,8 @@ class TestModelCustomizationFromTrainingJob:
             region=AWS_REGION,
         )
 
-        endpoint = model_builder.deploy(
+        endpoint = _deploy_or_skip_on_capacity(
+            model_builder,
             endpoint_name=endpoint_name,
         )
 
@@ -283,7 +301,7 @@ class TestModelCustomizationFromModelPackage:
         )
         model_builder.accept_eula = True
         model_builder.build(region=AWS_REGION)
-        endpoint = model_builder.deploy(endpoint_name=endpoint_name)
+        endpoint = _deploy_or_skip_on_capacity(model_builder, endpoint_name=endpoint_name)
 
         cleanup_endpoints.append(endpoint_name)
 

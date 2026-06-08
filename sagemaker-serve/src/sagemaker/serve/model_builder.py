@@ -4699,6 +4699,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             training_job = self.model
         elif isinstance(self.model, ModelTrainer):
             training_job = self.model._latest_training_job
+        elif isinstance(self.model, BaseTrainer) and hasattr(self.model, "_latest_training_job"):
+            # SFTTrainer / RLVRTrainer / DPOTrainer etc. expose the underlying
+            # TrainingJob via _latest_training_job, like _is_model_customization
+            # and _fetch_model_package_arn handle them.
+            training_job = self.model._latest_training_job
         else:
             raise ValueError("Nova escrow URI resolution requires a TrainingJob or ModelTrainer")
 
