@@ -293,16 +293,20 @@ class TestModelCustomizationFromModelPackage:
 
 @pytest.mark.us_east_1
 class TestInstanceTypeAutoDetection:
-    """Test automatic instance type detection for Nova models."""
+    """Test instance type handling for Nova models."""
 
     def test_instance_type_from_recipe(self, training_job_name, sagemaker_session):
-        """Test instance type auto-detection from a Nova recipe."""
+        """Nova requires an explicit supported instance type (no auto-detection)."""
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
-        model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
+        model_builder = ModelBuilder(
+            model=training_job,
+            instance_type=NOVA_INSTANCE_TYPE,
+            sagemaker_session=sagemaker_session,
+        )
         model_builder.accept_eula = True
         model_builder.build(region=AWS_REGION)
 
-        assert model_builder.instance_type is not None
+        assert model_builder.instance_type == NOVA_INSTANCE_TYPE
         assert "ml." in model_builder.instance_type
 
 
@@ -362,7 +366,11 @@ class TestTrainerIntegration:
         )
         trainer._latest_training_job = training_job
 
-        model_builder = ModelBuilder(model=trainer, sagemaker_session=sagemaker_session)
+        model_builder = ModelBuilder(
+            model=trainer,
+            instance_type=NOVA_INSTANCE_TYPE,
+            sagemaker_session=sagemaker_session,
+        )
         model = model_builder.build(region=AWS_REGION)
 
         assert model is not None
@@ -385,11 +393,16 @@ class TestTrainerIntegration:
         )
         trainer._latest_training_job = training_job
 
-        model_builder = ModelBuilder(model=trainer, sagemaker_session=sagemaker_session)
+        model_builder = ModelBuilder(
+            model=trainer,
+            instance_type=NOVA_INSTANCE_TYPE,
+            sagemaker_session=sagemaker_session,
+        )
         model = model_builder.build(region=AWS_REGION)
 
         assert model is not None
         assert model.model_arn is not None
+
 
 @pytest.mark.us_east_1
 class TestNovaBedrockDeployment:
