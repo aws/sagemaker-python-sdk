@@ -221,7 +221,7 @@ jobs:
   integ-tests-us-east-1:
     runs-on: ubuntu-latest
     needs: [detect-changes]
-    if: contains(fromJson(needs.detect-changes.outputs.submodules), 'sagemaker-train')
+    if: needs.detect-changes.outputs.submodules != '[]'
     steps:
       - name: Configure AWS Credentials (us-east-1)
         uses: aws-actions/configure-aws-credentials@v4
@@ -230,8 +230,8 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 10800
 
-      - name: Run us-east-1 Integ Tests for sagemaker-train
+      - name: Run us-east-1 Integ Tests (all submodules)
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: ${{ github.event.repository.name }}-ci-sagemaker-train-integ-tests
+          project-name: ${{ github.event.repository.name }}-ci-integ-tests-us-east-1
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
