@@ -43,6 +43,7 @@ from sagemaker.core.processing import (
     ProcessingS3Input,
     ScriptProcessor,
 )
+from sagemaker.core.shapes import ProcessingS3Output
 from sagemaker.core.s3 import S3Uploader
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.network import NetworkConfig
@@ -92,6 +93,7 @@ class _SparkProcessorBase(ScriptProcessor):
     _history_server_port = "15050"
     _history_server_url_suffix = f"/proxy/{_history_server_port}"
     _spark_event_log_default_local_path = "/opt/ml/processing/spark-events/"
+    _spark_event_logs_output_name = "spark-event-logs"
 
     def __init__(
         self,
@@ -308,9 +310,12 @@ class _SparkProcessorBase(ScriptProcessor):
             )
 
             output = ProcessingOutput(
-                source=_SparkProcessorBase._spark_event_log_default_local_path,
-                destination=spark_event_logs_s3_uri,
-                s3_upload_mode="Continuous",
+                output_name=self._spark_event_logs_output_name,
+                s3_output=ProcessingS3Output(
+                    local_path=_SparkProcessorBase._spark_event_log_default_local_path,
+                    s3_uri=spark_event_logs_s3_uri,
+                    s3_upload_mode="Continuous",
+                ),
             )
 
             extended_outputs.append(output)

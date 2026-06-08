@@ -306,6 +306,31 @@ class TestModelMonitor:
             job_name = monitor._generate_baselining_job_name(job_name="custom-job")
             assert job_name == "custom-job"
 
+    def test_normalize_processing_output_string_builds_v3_processing_output(
+        self, mock_session, test_role
+    ):
+        with (
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_value_from_config",
+                side_effect=lambda x, *args, **kwargs: x,
+            ),
+            patch(
+                "sagemaker.core.model_monitor.model_monitoring.resolve_class_attribute_from_config",
+                return_value=None,
+            ),
+        ):
+            monitor = ModelMonitor(
+                role=test_role, image_uri="test-image", sagemaker_session=mock_session
+            )
+            monitor.latest_baselining_job_name = "baseline-job"
+
+            output = monitor._normalize_processing_output("/opt/ml/processing/output")
+
+            assert output.output_name == "monitoring_output"
+            assert output.s3_output.local_path == "/opt/ml/processing/output"
+            assert output.s3_output.s3_uri == "s3://test-bucket/test-prefix/baseline-job/output"
+            assert output.s3_output.s3_upload_mode == "EndOfJob"
+
     def test_start_monitoring_schedule(self, mock_session, test_role):
         with (
             patch(

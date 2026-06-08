@@ -14,6 +14,7 @@
 from unittest.mock import Mock, patch
 
 import pytest
+import tempfile
 
 from sagemaker.core.spark.processing import PySparkProcessor
 
@@ -45,6 +46,24 @@ def _make_processor(mock_session):
 
 
 class TestPySparkProcessorV3ProcessingInputs:
+    def test_extend_processing_args_builds_v3_processing_output_for_spark_event_logs(
+        self, mock_session
+    ):
+        processor = _make_processor(mock_session)
+
+        _, extended_outputs = processor._extend_processing_args(
+            inputs=None,
+            outputs=None,
+            spark_event_logs_s3_uri="s3://bucket/spark-logs",
+        )
+
+        assert len(extended_outputs) == 1
+        output = extended_outputs[0]
+        assert output.output_name == "spark-event-logs"
+        assert output.s3_output.local_path == "/opt/ml/processing/spark-events/"
+        assert output.s3_output.s3_uri == "s3://bucket/spark-logs"
+        assert output.s3_output.s3_upload_mode == "Continuous"
+
     @patch("sagemaker.core.spark.processing.S3Uploader.upload_string_as_file_body")
     def test_stage_configuration_builds_v3_processing_input(self, mock_upload, mock_session):
         processor = _make_processor(mock_session)
@@ -59,6 +78,7 @@ class TestPySparkProcessorV3ProcessingInputs:
             "s3://test-bucket/sagemaker/test-job/input/conf/configuration.json"
         )
         assert config_input.s3_input.local_path == "/opt/ml/processing/input/conf"
+        assert config_input.s3_input.s3_data_type == "S3Prefix"
 
     @patch("sagemaker.core.spark.processing.S3Uploader.upload")
     def test_stage_submit_deps_builds_v3_processing_input_for_local_dependencies(
