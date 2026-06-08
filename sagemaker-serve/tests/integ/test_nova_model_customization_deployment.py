@@ -212,15 +212,21 @@ class TestModelCustomizationFromTrainingJob:
 
 @pytest.mark.us_east_1
 class TestModelCustomizationFromModelPackage:
-    """Test Nova model customization deployment from a registered ModelPackage."""
+    """Test Nova model customization deployment via the registered model package.
 
-    def test_build_from_model_package(self, model_package_arn, sagemaker_session):
-        """Test building a Nova model from a model package."""
-        from sagemaker.core.resources import ModelPackage
+    Nova model artifacts live in an escrow bucket whose location is only
+    resolvable from the training job's manifest.json (see
+    ModelBuilder._resolve_nova_escrow_uri, which requires a TrainingJob or
+    ModelTrainer). Deploying a Nova model directly from a ModelPackage is
+    therefore not supported, so these tests drive the supported path: build /
+    deploy from the TrainingJob and validate the model package it registered.
+    """
 
-        model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
+    def test_build_from_model_package(self, training_job_name, sagemaker_session):
+        """Build a Nova model from the training job and validate its model package."""
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(
-            model=model_package,
+            model=training_job,
             instance_type=NOVA_INSTANCE_TYPE,
             sagemaker_session=sagemaker_session,
         )
@@ -229,14 +235,14 @@ class TestModelCustomizationFromModelPackage:
 
         assert model is not None
         assert model.model_arn is not None
+        # The training job should have registered a model package.
+        assert model_builder._fetch_model_package_arn() is not None
 
-    def test_deploy_from_model_package(self, model_package_arn, endpoint_name, cleanup_endpoints, sagemaker_session):
-        """Test deploying a Nova model from a model package."""
-        from sagemaker.core.resources import ModelPackage
-
-        model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
+    def test_deploy_from_model_package(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
+        """Deploy a Nova model via the training-job path and validate the endpoint."""
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(
-            model=model_package,
+            model=training_job,
             instance_type=NOVA_INSTANCE_TYPE,
             sagemaker_session=sagemaker_session,
         )
@@ -382,20 +388,23 @@ class TestNovaBedrockDeployment:
         return boto3.client("bedrock-runtime", region_name=AWS_REGION, config=config)
 
     @pytest.fixture(scope="class")
-    def deployed_nova_model(self, model_package_arn, role_arn, bedrock_client):
-        """Deploy a Nova model package to Bedrock and yield deployment details.
+    def deployed_nova_model(self, training_job_name, role_arn, bedrock_client):
+        """Deploy a Nova model to Bedrock and yield deployment details.
 
+        Nova artifacts live in an escrow bucket resolved from the training job's
+        manifest.json, so BedrockModelBuilder is driven from the TrainingJob
+        (deploying from a ModelPackage is not supported for non-RMP Nova models).
         Cleans up the custom model and its deployment after the class completes.
         """
-        from sagemaker.core.resources import ModelPackage
+        from sagemaker.core.resources import TrainingJob
         from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 
         unique = f"{int(time.time())}-{random.randint(1000, 9999)}"
         custom_model_name = f"nova-integ-{unique}"
         deployment_name = f"nova-integ-{unique}-deployment"
 
-        model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
-        bedrock_builder = BedrockModelBuilder(model=model_package)
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        bedrock_builder = BedrockModelBuilder(model=training_job)
 
         deployment_arn = None
         model_arn = None
