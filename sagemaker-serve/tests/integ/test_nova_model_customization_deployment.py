@@ -94,8 +94,43 @@ def sagemaker_session():
 
 @pytest.fixture(scope="module")
 def training_job_name():
-    """Reusable Nova fine-tuned training job name for testing."""
-    return "nova-textgeneration-lite-sft-integ-test-reusable-model-20260531"
+    """Most recent completed Nova SFT training job whose output model package
+    still exists.
+
+    The gpu-integ-tests-us-east-1 scheduled workflow runs
+    test_sft_trainer_nova_workflow every few hours, each producing a fresh
+    sft-nova-integ-* training job whose output is registered to
+    sdk-test-finetuned-models. We discover the latest usable one at runtime
+    rather than hardcoding a name: hardcoded jobs eventually get cleaned up and
+    their output model package is deleted, leaving a dangling ARN (the previous
+    reusable job pointed at the now-deleted sdk-test-nova-finetuned-models).
+    """
+    sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+    jobs = sm_client.list_training_jobs(
+        NameContains="sft-nova-integ",
+        StatusEquals="Completed",
+        SortBy="CreationTime",
+        SortOrder="Descending",
+        MaxResults=20,
+    ).get("TrainingJobSummaries", [])
+
+    for job in jobs:
+        name = job["TrainingJobName"]
+        detail = sm_client.describe_training_job(TrainingJobName=name)
+        mp_arn = detail.get("OutputModelPackageArn")
+        if not mp_arn:
+            continue
+        try:
+            # Confirm the registered model package still exists.
+            sm_client.describe_model_package(ModelPackageName=mp_arn)
+            return name
+        except sm_client.exceptions.ClientError:
+            continue
+
+    pytest.skip(
+        "No completed Nova SFT training job with an existing output model "
+        "package was found. Ensure the scheduled Nova SFT workflow has run."
+    )
 
 
 @pytest.fixture(scope="module")
