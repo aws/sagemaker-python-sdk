@@ -155,10 +155,26 @@ def test_delete_feature_group(feature_group_name, sample_dataframe, bucket, role
     fg.wait_for_status("Created")
     
     fg.delete()
-    time.sleep(2)
-    
-    with pytest.raises(Exception):
-        FeatureGroup.get(feature_group_name=feature_group_name)
+
+    # FeatureGroup deletion is asynchronous: after delete() returns the group
+    # stays in "Deleting" status and is still describable for a while, so a
+    # fixed short sleep + single get() is racy. Poll until get() raises (the
+    # group is fully gone) or we hit the timeout.
+    deadline = time.time() + 120
+    last_exc = None
+    while time.time() < deadline:
+        try:
+            FeatureGroup.get(feature_group_name=feature_group_name)
+        except Exception as e:  # noqa: BLE001 - any error means it's no longer retrievable
+            last_exc = e
+            break
+        time.sleep(5)
+    else:
+        pytest.fail(
+            f"FeatureGroup {feature_group_name} was still retrievable 120s after delete()"
+        )
+
+    assert last_exc is not None
 
 
 # Test 7: Ingest to both OnlineStore and OfflineStore
