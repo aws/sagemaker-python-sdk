@@ -714,6 +714,59 @@ class TestLocalContainer:
         with pytest.raises(ImportError, match="Docker Compose is not installed"):
             container._get_compose_cmd_prefix()
 
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    @patch("sagemaker.core.modules.local_core.local_container.shutil.which")
+    def test_get_compose_cmd_prefix_docker_binary_not_found_falls_back_to_standalone(
+        self, mock_which, mock_check_output, mock_session, basic_channel
+    ):
+        """Test _get_compose_cmd_prefix falls back to standalone when docker binary not found"""
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.side_effect = FileNotFoundError("No such file or directory: 'docker'")
+        mock_which.return_value = "/usr/local/bin/docker-compose"
+
+        result = container._get_compose_cmd_prefix()
+
+        assert result == ["docker-compose"]
+
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    @patch("sagemaker.core.modules.local_core.local_container.shutil.which")
+    def test_get_compose_cmd_prefix_docker_binary_not_found_no_standalone_raises(
+        self, mock_which, mock_check_output, mock_session, basic_channel
+    ):
+        """Test _get_compose_cmd_prefix raises when docker binary not found and no standalone"""
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.side_effect = FileNotFoundError("No such file or directory: 'docker'")
+        mock_which.return_value = None
+
+        with pytest.raises(ImportError, match="Docker Compose is not installed"):
+            container._get_compose_cmd_prefix()
+
     def test_init_with_container_entrypoint(self, mock_session, basic_channel):
         """Test initialization with container entrypoint"""
         container = _LocalContainer(

@@ -191,3 +191,27 @@ class TestGetComposeCmdPrefix:
         mock_which.return_value = "/usr/local/bin/docker-compose"
         result = container._get_compose_cmd_prefix()
         assert result == ["docker-compose"]
+
+    @patch("sagemaker.train.local.local_container.shutil.which")
+    @patch("sagemaker.train.local.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_docker_binary_not_found_falls_back_to_standalone(
+        self, mock_check_output, mock_which, _basic_channel
+    ):
+        """When docker binary is not found (FileNotFoundError), falls back to docker-compose standalone."""
+        container = _make_container(_basic_channel)
+        mock_check_output.side_effect = FileNotFoundError("No such file or directory: 'docker'")
+        mock_which.return_value = "/usr/local/bin/docker-compose"
+        result = container._get_compose_cmd_prefix()
+        assert result == ["docker-compose"]
+
+    @patch("sagemaker.train.local.local_container.shutil.which")
+    @patch("sagemaker.train.local.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_docker_binary_not_found_no_standalone_raises(
+        self, mock_check_output, mock_which, _basic_channel
+    ):
+        """When docker binary is not found and no standalone docker-compose, raises ImportError."""
+        container = _make_container(_basic_channel)
+        mock_check_output.side_effect = FileNotFoundError("No such file or directory: 'docker'")
+        mock_which.return_value = None
+        with pytest.raises(ImportError, match="Docker Compose is not installed"):
+            container._get_compose_cmd_prefix()
