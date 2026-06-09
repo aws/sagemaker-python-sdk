@@ -1,7 +1,8 @@
 name: GPU Integ Tests
 on:
   schedule:
-    - cron: "0 */8 * * *"
+    # 10:00 PM US Pacific (PST, UTC-8) = 06:00 UTC next day
+    - cron: "0 6 * * *"
   workflow_dispatch:
 
 permissions:
