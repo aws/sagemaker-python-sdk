@@ -535,9 +535,11 @@ class TestNovaBedrockDeployment:
         response = bedrock_runtime.invoke_model(
             modelId=deployment_arn,
             body=json.dumps({
+                "schemaVersion": "messages-v1",
                 "messages": [
-                    {"role": "user", "content": [{"type": "text", "text": "What is 7+7?"}]}
-                ]
+                    {"role": "user", "content": [{"text": "What is 7+7?"}]}
+                ],
+                "inferenceConfig": {"maxTokens": 100, "temperature": 0.0, "topP": 0.9},
             }),
             contentType="application/json",
             accept="application/json",
@@ -545,6 +547,8 @@ class TestNovaBedrockDeployment:
 
         result = json.loads(response["body"].read().decode())
 
-        # Validate response structure (Nova returns a structured message payload).
+        # Validate response structure (Nova returns output.message.content[].text).
         assert result is not None, "Empty response from Bedrock invoke"
         assert isinstance(result, dict)
+        text = result["output"]["message"]["content"][0]["text"]
+        assert isinstance(text, str) and len(text) > 0
