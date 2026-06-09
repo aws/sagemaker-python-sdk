@@ -139,6 +139,8 @@ def attached_trainer(config):
     return trainer
 
 
+@pytest.mark.gpu_intensive
+@pytest.mark.serial
 class TestMTRLEvalIntegration:
     """Integration tests for MTRL evaluation: attach → evaluate → wait for success."""
 
@@ -156,7 +158,10 @@ class TestMTRLEvalIntegration:
         logger.info(f"[{config['env_name']}] Output model package: {job.output_model_package_arn}")
 
     def test_evaluate_finetuned_model(self, attached_trainer, config):
-        """Evaluate a fine-tuned model from attached trainer — submit and wait for completion."""
+        """Evaluate a fine-tuned model from attached trainer — submit and wait for completion.
+
+        Also validates hyperparameter overrides are passed through to the eval job.
+        """
         evaluator = MultiTurnRLEvaluator(
             model=attached_trainer,
             dataset=config["dataset"],
@@ -165,6 +170,10 @@ class TestMTRLEvalIntegration:
             role=config["role"],
             region=_REGION,
         )
+
+        # Override MTRL-specific hyperparams
+        evaluator.hyperparameters.sampling_max_tokens = 1024
+        evaluator.hyperparameters.eval_group_size = 4
 
         execution = evaluator.evaluate()
 
@@ -184,7 +193,6 @@ class TestMTRLEvalIntegration:
             f"reason: {execution.status.failure_reason}"
         )
 
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_base_model(self, config):
         """Evaluate the base model only — submit and wait for completion."""
         evaluator = MultiTurnRLEvaluator(
@@ -243,37 +251,5 @@ class TestMTRLEvalIntegration:
 
         assert status == "Succeeded", (
             f"[{config['env_name']}] Comparison eval failed with status: {status}, "
-            f"reason: {execution.status.failure_reason}"
-        )
-
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
-    def test_evaluate_with_hyperparam_override(self, attached_trainer, config):
-        """Test that hyperparameter overrides are passed through to the eval job."""
-        evaluator = MultiTurnRLEvaluator(
-            model=attached_trainer,
-            dataset=config["dataset"],
-            s3_output_path=f'{config["s3_output_path"]}hyperparam-override/',
-            mlflow_resource_arn=config["mlflow_resource_arn"],
-            role=config["role"],
-            region=_REGION,
-        )
-
-        # Override MTRL-specific hyperparams
-        evaluator.hyperparameters.sampling_max_tokens = 1024
-        evaluator.hyperparameters.eval_group_size = 4
-
-        execution = evaluator.evaluate()
-
-        assert execution is not None
-        assert execution.arn is not None
-        logger.info(f"[{config['env_name']}] Started hyperparam override eval: {execution.arn}")
-
-        execution.wait(timeout=EVAL_TIMEOUT)
-
-        status = execution.status.overall_status
-        logger.info(f"[{config['env_name']}] Hyperparam override eval completed: {status}")
-
-        assert status == "Succeeded", (
-            f"[{config['env_name']}] Hyperparam override eval failed with status: {status}, "
             f"reason: {execution.status.failure_reason}"
         )
