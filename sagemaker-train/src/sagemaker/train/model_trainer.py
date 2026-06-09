@@ -1268,7 +1268,60 @@ class ModelTrainer(BaseModel):
         model_trainer._is_nova_recipe = is_nova
         model_trainer._is_llmft_recipe = is_llmft
         model_trainer._temp_recipe_train_dir = tmp_dir
+        model_trainer._resolved_recipe_cache = None
+        model_trainer._training_recipe = training_recipe
+        model_trainer._recipe_overrides = recipe_overrides
         return model_trainer
+
+    def get_resolved_recipe(self) -> Dict[str, Any]:
+        """Return the fully resolved recipe configuration.
+
+        Shows the final merged result of base recipe + recipe_overrides after
+        OmegaConf interpolation resolution. Callable before or after train().
+        Works for all recipe types (Nova, LLMFT, general).
+
+        Returns:
+            Dict[str, Any]: Deep copy of the resolved recipe configuration.
+
+        Raises:
+            ValueError: If recipe resolution fails.
+            AttributeError: If called on a ModelTrainer not created via from_recipe().
+        """
+        if not hasattr(self, '_training_recipe'):
+            raise AttributeError(
+                "get_resolved_recipe() is only available on ModelTrainer instances "
+                "created via ModelTrainer.from_recipe()."
+            )
+
+        if self._resolved_recipe_cache is not None:
+            import copy
+            return copy.deepcopy(self._resolved_recipe_cache)
+
+        from omegaconf import OmegaConf
+        from sagemaker.train.sm_recipes.utils import (
+            _load_base_recipe,
+            _register_custom_resolvers,
+        )
+        import copy
+
+        recipe = _load_base_recipe(
+            training_recipe=self._training_recipe,
+            recipe_overrides=self._recipe_overrides,
+        )
+
+        _register_custom_resolvers()
+
+        try:
+            OmegaConf.resolve(recipe)
+        except Exception as e:
+            logger.warning(
+                f"Could not fully resolve recipe interpolations: {e}. "
+                f"Returning partially resolved recipe."
+            )
+
+        resolved = OmegaConf.to_container(recipe, resolve=True)
+        self._resolved_recipe_cache = resolved
+        return copy.deepcopy(resolved)
 
     @classmethod
     def from_jumpstart_config(

@@ -138,12 +138,12 @@ class RLVRTrainer(BaseTrainer):
         training_dataset: Optional[Union[str, DataSet]] = None,
         validation_dataset: Optional[Union[str, DataSet]] = None,
         s3_output_path: Optional[str] = None,
-        # Additional OutputDataConfig parameters
         kms_key_id: Optional[str] = None,
-        # vpc config
         networking: Optional[VpcConfig] = None,
         accept_eula: bool = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        recipe: Optional[str] = None,
+        overrides: Optional[dict] = None,
         is_multimodal: Optional[bool] = None,
         **kwargs,
     ):
@@ -165,6 +165,10 @@ class RLVRTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self._recipe_path = recipe
+        self._overrides = overrides
+        self._recipe_resolver = None
+        self._resolved_recipe_cache = None
         self.is_multimodal = is_multimodal
 
         # Initialize fine-tuning options with beta session fallback
@@ -174,10 +178,10 @@ class RLVRTrainer(BaseTrainer):
                                                                      self.sagemaker_session or TrainDefaults.get_sagemaker_session(
                                                                      sagemaker_session=self.sagemaker_session
                                                                     ))
-        
+
         # Remove constructor-handled hyperparameters
         self._process_hyperparameters()
-        
+
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
 
@@ -269,6 +273,8 @@ class RLVRTrainer(BaseTrainer):
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
+        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
+        final_hyperparameters = self._apply_recipe_to_hyperparameters(final_hyperparameters)
         # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
         if self.is_multimodal is None:
             effective_training_dataset = training_dataset or self.training_dataset

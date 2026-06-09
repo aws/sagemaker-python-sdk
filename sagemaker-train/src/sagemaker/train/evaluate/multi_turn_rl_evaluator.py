@@ -399,7 +399,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
 
         hparams: Dict[str, Any] = {}
         try:
-            hparams = self.hyperparameters.to_dict() if self._base_model_name_cache else {}
+            hparams = self._get_effective_hyperparameters()
         except Exception as e:  # hub fetch can fail in offline envs
             _logger.info(f"Skipping hub-sourced hyperparameters: {e}")
 

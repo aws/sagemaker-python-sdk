@@ -23,7 +23,9 @@ if TYPE_CHECKING:
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.train.common_utils.finetune_utils import _resolve_mlflow_resource_arn
-# Module-level logger
+from sagemaker.train.common_utils.recipe_utils import resolve_recipe
+from sagemaker.train.recipe_resolver import flatten_resolved_recipe
+
 _logger = logging.getLogger(__name__)
 
 # Regex patterns for ARN validation
@@ -105,6 +107,8 @@ class BaseEvaluator(BaseModel):
     networking: Optional[VpcConfig] = None
     kms_key_id: Optional[str] = None
     model_package_group: Optional[Union[str, ModelPackageGroup]] = None
+    recipe: Optional[str] = None
+    overrides: Optional[Dict[str, Any]] = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -837,19 +841,88 @@ class BaseEvaluator(BaseModel):
         
         return execution
     
+    def _get_effective_hyperparameters(self) -> Dict[str, Any]:
+        """Return the effective hyperparameters for this evaluation job.
+
+        If recipe/overrides are provided, returns the leaf values from the
+        resolved recipe (flattened). Otherwise returns hyperparameters.to_dict().
+
+        This is the method that evaluate() implementations should call to get
+        the final inference parameters for the pipeline template.
+        """
+        if self.recipe or self.overrides:
+            resolved = self.get_resolved_recipe()
+            return flatten_resolved_recipe(resolved)
+
+        hp = getattr(self, '_hyperparameters', None)
+        if hp and hasattr(hp, 'to_dict'):
+            return hp.to_dict()
+
+        try:
+            return self.hyperparameters.to_dict()
+        except Exception:
+            return {}
+
+    def get_resolved_recipe(self) -> Dict[str, Any]:
+        """Return the fully resolved evaluation recipe configuration.
+
+        Merges base defaults (from Hub hyperparameters spec) + user recipe YAML
+        + overrides dict and returns the result. Callable before or after evaluate().
+
+        Returns:
+            Dict[str, Any]: Deep copy of the resolved recipe configuration.
+
+        Raises:
+            ValueError: If no recipe or overrides were provided at construction time.
+        """
+        import copy
+
+        resolved_cache = getattr(self, '_resolved_recipe_cache', None)
+        if resolved_cache is not None:
+            return copy.deepcopy(resolved_cache)
+
+        if not self.recipe and not self.overrides:
+            raise ValueError(
+                "get_resolved_recipe() requires a 'recipe' or 'overrides' to be provided "
+                "at construction time."
+            )
+
+        override_spec = {}
+        hp = getattr(self, '_hyperparameters', None)
+        if hp and hasattr(hp, '_specs'):
+            override_spec = hp._specs
+        else:
+            try:
+                hp = self.hyperparameters
+                if hasattr(hp, '_specs'):
+                    override_spec = hp._specs
+            except Exception:
+                pass
+
+        resolved = resolve_recipe(
+            recipe_path=self.recipe,
+            overrides=self.overrides,
+            override_spec=override_spec,
+            template_section="inference",
+            protected_keys={"task", "strategy", "metric"},
+        )
+
+        object.__setattr__(self, '_resolved_recipe_cache', resolved)
+        return copy.deepcopy(resolved)
+
     def evaluate(self) -> Any:
         """Create and start an evaluation execution.
-        
+
         This method must be implemented by subclasses to define the specific
         evaluation logic for different evaluation types (benchmark, custom scorer,
         LLM-as-judge, etc.).
-        
+
         Returns:
             EvaluationPipelineExecution: The created evaluation execution object.
-            
+
         Raises:
             NotImplementedError: This is an abstract method that must be implemented by subclasses.
-            
+
         Example:
             >>> # In a subclass implementation
             >>> class CustomEvaluator(BaseEvaluator):

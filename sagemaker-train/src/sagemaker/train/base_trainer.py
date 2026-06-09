@@ -1,9 +1,13 @@
+import copy
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, Union
+
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel
 from sagemaker.core.shapes import shapes
 from sagemaker.core.resources import TrainingJob
+from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe
+from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 
 
 class BaseTrainer(ABC):
@@ -71,9 +75,79 @@ class BaseTrainer(ABC):
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
-        from sagemaker.train.common_utils.recipe_utils import _is_nova_model
         model_name = getattr(self, "_model_name", None)
         return _is_nova_model(model_name) if model_name else False
+
+    def get_resolved_recipe(self) -> Dict[str, Any]:
+        """Return the fully resolved recipe configuration.
+
+        Shows the final merged result of base defaults + user recipe + overrides
+        after interpolation resolution and validation. Callable before or after train().
+
+        Returns:
+            dict: Deep copy of the resolved recipe configuration.
+
+        Raises:
+            ValueError: If no recipe or overrides were provided at construction time.
+        """
+        if getattr(self, '_resolved_recipe_cache', None) is not None:
+            return copy.deepcopy(self._resolved_recipe_cache)
+
+        recipe_path = getattr(self, '_recipe_path', None)
+        overrides = getattr(self, '_overrides', None)
+
+        if not recipe_path and not overrides:
+            raise ValueError(
+                "get_resolved_recipe() requires a 'recipe' or 'overrides' to be provided "
+                "at construction time."
+            )
+
+        override_spec = {}
+        full_recipe_template = None
+        if hasattr(self, 'hyperparameters') and hasattr(self.hyperparameters, '_specs'):
+            override_spec = self.hyperparameters._specs
+        frt = getattr(self.hyperparameters, '_full_recipe_template', None) if hasattr(self, 'hyperparameters') else None
+        if isinstance(frt, dict):
+            full_recipe_template = frt
+
+        resolved = resolve_recipe(
+            recipe_path=recipe_path,
+            overrides=overrides,
+            override_spec=override_spec,
+            template_section="training_config",
+            protected_keys={"model_type", "model_name_or_path"},
+            full_recipe_template=full_recipe_template,
+        )
+
+        self._resolved_recipe_cache = resolved
+        return copy.deepcopy(resolved)
+
+    def _apply_recipe_to_hyperparameters(self, final_hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
+        """Apply resolved recipe values to final_hyperparameters dict.
+
+        If recipe/overrides were provided, merges resolved values into the
+        hyperparameters dict. All leaf values from the resolved recipe are
+        applied — including keys not in the Hub spec subset — enabling
+        power users to override any parameter in the full recipe.
+        Values are converted to strings (matching the SageMaker API
+        expectation for hyperparameter values).
+
+        Args:
+            final_hyperparameters: The hyperparameters dict from to_dict().
+
+        Returns:
+            The updated hyperparameters dict with recipe values applied.
+        """
+        if not getattr(self, '_recipe_path', None) and not getattr(self, '_overrides', None):
+            return final_hyperparameters
+
+        resolved = self.get_resolved_recipe()
+        flat = flatten_resolved_recipe(resolved)
+        for k, v in flat.items():
+            if v is not None:
+                final_hyperparameters[k] = str(v) if not isinstance(v, str) else v
+
+        return final_hyperparameters
 
     @abstractmethod
     def train(self, input_data_config: List[InputData], wait: bool = True, logs: bool = True, wait_timeout: Optional[int] = None):

@@ -245,11 +245,11 @@ def get_benchmark_properties(benchmark: _Benchmark) -> Dict[str, Any]:
 
 class BenchMarkEvaluator(BaseEvaluator):
     """Benchmark evaluator for standard model evaluation tasks.
-    
+
     This evaluator accepts a benchmark enum and automatically deduces the appropriate
     metrics, strategy, and subtask availability based on the benchmark configuration.
     Supports various standard benchmarks like MMLU, BBH, MATH, MMMU, and others.
-    
+
     Attributes:
         benchmark (_Benchmark): Benchmark type from the Benchmark enum obtained via ``get_benchmarks()``.
             Required. Use get_benchmarks() to access available benchmark types.
@@ -264,6 +264,10 @@ class BenchMarkEvaluator(BaseEvaluator):
         evaluate_base_model (bool): Whether to evaluate the base model in addition to the custom
             model. Set to False to skip base model evaluation and only evaluate the custom model.
             Defaults to True (evaluates both models).
+        recipe (Optional[str]): Path to a user recipe YAML file (local or S3 URI) for evaluation
+            configuration. Optional. When provided, values are merged with overrides.
+        overrides (Optional[Dict[str, Any]]): Programmatic overrides dict (nested structure).
+            These take highest precedence over recipe file and base defaults.
         region (Optional[str]): AWS region. Inherited from BaseEvaluator.
         sagemaker_session (Optional[Any]): SageMaker session object. Inherited from BaseEvaluator.
         model (Union[str, Any]): Model for evaluation. Inherited from BaseEvaluator.
@@ -275,14 +279,14 @@ class BenchMarkEvaluator(BaseEvaluator):
         kms_key_id (Optional[str]): KMS key ID for encryption. Inherited from BaseEvaluator.
         model_package_group (Optional[Union[str, ModelPackageGroup]]): Model package group.
             Inherited from BaseEvaluator.
-    
+
     Example:
-    
+
         .. code:: python
-        
+
             # Get available benchmarks
             Benchmark = get_benchmarks()
-            
+
             # Create evaluator with benchmark and subtasks
             evaluator = BenchMarkEvaluator(
                 benchmark=Benchmark.MMLU,
@@ -291,15 +295,25 @@ class BenchMarkEvaluator(BaseEvaluator):
                 s3_output_path="s3://bucket/outputs/",
                 mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server"
             )
-            
+
             # Run evaluation with configured subtasks
             execution = evaluator.evaluate()
             execution.wait()
-            
+
             # Or override subtasks at evaluation time
             execution = evaluator.evaluate(subtask="abstract_algebra")
+
+            # With recipe file for evaluation config
+            evaluator = BenchMarkEvaluator(
+                benchmark=Benchmark.MMLU,
+                model="amazon-nova-pro-v2",
+                s3_output_path="s3://bucket/outputs/",
+                recipe="./eval-recipes/nova-pro-mmlu.yaml",
+                overrides={"inference": {"max_new_tokens": 4096, "temperature": 0}},
+            )
+            resolved = evaluator.get_resolved_recipe()
     """
-    
+
     benchmark: _Benchmark
     subtasks: Optional[Union[str, List[str]]] = None
     evaluate_base_model: bool = False
@@ -538,9 +552,9 @@ class BenchMarkEvaluator(BaseEvaluator):
             dict: Benchmark-specific template context fields
         """
         from ..common_utils.recipe_utils import _is_nova_model
-        
-        # Get configured hyperparameters (triggers lazy load from hub with Nova model logic)
-        configured_params = self.hyperparameters.to_dict()
+
+        # Get effective hyperparameters (recipe/overrides take precedence if provided)
+        configured_params = self._get_effective_hyperparameters()
         _logger.info(f"Using configured hyperparameters: {configured_params}")
         
         # Determine if this is a Nova model

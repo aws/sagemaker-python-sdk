@@ -1,4 +1,3 @@
-from logging import exception
 from typing import Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
@@ -103,6 +102,15 @@ class SFTTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
             If not specified, uses SageMaker service default (24 hours for serverless training).
+        recipe (Optional[str]):
+            Path to a user recipe YAML file (local path or S3 URI). When provided,
+            enables 3-level recipe resolution: Hub defaults < recipe file < overrides dict.
+            The recipe file can contain any training parameters in nested YAML format.
+        overrides (Optional[dict]):
+            Programmatic overrides dict with nested structure matching the recipe layout
+            (e.g., ``{"training_config": {"learning_rate": 2e-5}}``). Takes highest precedence.
+            When provided, resolved recipe values override matching hyperparameters at
+            train() time. Use ``get_resolved_recipe()`` to inspect the final merged config.
         is_multimodal (Optional[bool]):
             Whether the training dataset contains multimodal data. If None (default),
             auto-detected from the training dataset at train time.
@@ -123,6 +131,8 @@ class SFTTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         accept_eula: Optional[bool] = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        recipe: Optional[str] = None,
+        overrides: Optional[dict] = None,
         is_multimodal: Optional[bool] = None,
         **kwargs,
     ):
@@ -143,6 +153,10 @@ class SFTTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self._recipe_path = recipe
+        self._overrides = overrides
+        self._recipe_resolver = None
+        self._resolved_recipe_cache = None
         self.is_multimodal = is_multimodal
 
         # Initialize fine-tuning options with beta session fallback
@@ -246,6 +260,8 @@ class SFTTrainer(BaseTrainer):
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
+        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
+        final_hyperparameters = self._apply_recipe_to_hyperparameters(final_hyperparameters)
         # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
         if self.is_multimodal is None:
             effective_training_dataset = training_dataset or self.training_dataset

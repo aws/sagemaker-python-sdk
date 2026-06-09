@@ -14,6 +14,7 @@ import boto3
 
 from sagemaker.core.resources import HubContent
 from sagemaker.train.constants import get_sagemaker_hub_name
+from sagemaker.train.recipe_resolver import RecipeResolver
 
 logger = logging.getLogger(__name__)
 
@@ -319,6 +320,61 @@ def _extract_eval_override_options(
             )
     
     return extracted_params
+
+
+def resolve_recipe(
+    recipe_path: Optional[str],
+    overrides: Optional[Dict[str, Any]],
+    override_spec: Dict[str, Any],
+    template_section: str,
+    protected_keys: Optional[set] = None,
+    full_recipe_template: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Resolve a recipe configuration through the 3-level merge pipeline.
+
+    Shared logic used by both BaseTrainer.get_resolved_recipe() and
+    BaseEvaluator.get_resolved_recipe().
+
+    Args:
+        recipe_path: Path to user recipe YAML (local or S3), or None.
+        overrides: Programmatic override dict, or None.
+        override_spec: Flat dict of parameter specs (type/min/max/enum/default)
+            typically from hyperparameters._specs.
+        template_section: Top-level key for the recipe template
+            (e.g. "training_config" for trainers, "inference" for evaluators).
+        protected_keys: Set of keys that cannot be overridden by user recipe
+            or overrides.
+        full_recipe_template: Optional full recipe dict from Hub
+            (SmtjRecipeTemplateS3Uri). When provided, used as the base layer
+            instead of the synthetic template — enables overriding any key in
+            the full recipe, not just the spec-exposed subset.
+
+    Returns:
+        Fully resolved recipe dict.
+
+    Raises:
+        ValueError: If neither recipe_path nor overrides are provided, or
+            if validation fails.
+    """
+    if not recipe_path and not overrides:
+        raise ValueError(
+            "resolve_recipe() requires a 'recipe' or 'overrides' to be provided."
+        )
+
+    recipe_template: Dict[str, Any] = {template_section: {}}
+    for key in override_spec:
+        recipe_template[template_section][key] = "{{" + key + "}}"
+
+    resolver = RecipeResolver(
+        recipe_template=recipe_template,
+        override_spec=override_spec,
+        user_recipe_path=recipe_path,
+        overrides=overrides,
+        protected_keys=protected_keys or set(),
+        full_recipe_template=full_recipe_template,
+    )
+
+    return resolver.resolve()
 
 
 def _build_recipe_keyword(recipe_type: str, technique: str) -> str:

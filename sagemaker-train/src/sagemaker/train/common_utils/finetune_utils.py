@@ -560,10 +560,28 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             except Exception as e:
                 logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
 
+        # Fetch the full recipe template from SmtjRecipeTemplateS3Uri
+        full_recipe_template = None
+        if recipe.get("SmtjRecipeTemplateS3Uri"):
+            try:
+                template_s3_uri = recipe["SmtjRecipeTemplateS3Uri"]
+                s3_template = sagemaker_session.boto_session.client("s3")
+                template_uri_path = template_s3_uri.replace("s3://", "")
+                template_bucket, template_key = template_uri_path.split("/", 1)
+                template_obj = s3_template.get_object(Bucket=template_bucket, Key=template_key)
+                import yaml as _yaml
+                full_recipe_template = _yaml.safe_load(template_obj["Body"].read())
+            except Exception as e:
+                logger.debug(f"Could not fetch full recipe template: {type(e).__name__}: {e}")
+
         if options_dict:
-            return FineTuningOptions(options_dict), model_arn, is_gated_model
+            ft_options = FineTuningOptions(options_dict)
+            ft_options._full_recipe_template = full_recipe_template
+            return ft_options, model_arn, is_gated_model
         else:
-            return FineTuningOptions({}), model_arn, is_gated_model
+            ft_options = FineTuningOptions({})
+            ft_options._full_recipe_template = full_recipe_template
+            return ft_options, model_arn, is_gated_model
             
     except Exception as e:
         logger.error("Exception getting fine-tuning options: %s", e)

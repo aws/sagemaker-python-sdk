@@ -291,9 +291,9 @@ class CustomScorerEvaluator(BaseEvaluator):
             dict: Custom scorer specific template context fields
         """
         from ..common_utils.recipe_utils import _is_nova_model
-        
-        # Get configured hyperparameters
-        configured_params = self.hyperparameters.to_dict()
+
+        # Get effective hyperparameters (recipe/overrides take precedence if provided)
+        configured_params = self._get_effective_hyperparameters()
         _logger.info(f"Using configured hyperparameters: {configured_params}")
         
         # Determine if this is a Nova model
