@@ -21,6 +21,7 @@ import boto3
 import json
 import logging
 import os
+import re
 import time
 import pytest
 import random
@@ -90,28 +91,54 @@ def sagemaker_session():
 
 @pytest.fixture(scope="module")
 def training_job_name():
-    """Most recent completed Nova SFT training job.
+    """A completed Nova SFT training job whose output model package still exists.
 
-    Discovered at runtime rather than hardcoded so the test does not depend on a
-    job name that may be cleaned up. Build/deploy resolve artifacts from the
-    job's manifest (output_data_config), so a registered output model package is
-    not required.
+    The training job's output model package must exist because ModelBuilder.build
+    fetches it. Instead of picking a job and hoping its package survived resource
+    cleanup, we go the other way: start from a model package that currently exists
+    in the group and resolve the training job that produced it (encoded in the
+    package's escrow S3 URI). The cleaner always retains the oldest package, so
+    this reliably yields a usable job.
     """
     sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
-    jobs = sm_client.list_training_jobs(
-        NameContains="sft-nova-integ",
-        StatusEquals="Completed",
+    packages = sm_client.list_model_packages(
+        ModelPackageGroupName=MODEL_PACKAGE_GROUP,
         SortBy="CreationTime",
         SortOrder="Descending",
         MaxResults=20,
-    ).get("TrainingJobSummaries", [])
+    ).get("ModelPackageSummaryList", [])
 
-    if not jobs:
-        pytest.skip(
-            "No completed Nova SFT training job found. "
-            "Ensure the scheduled Nova SFT workflow has run."
-        )
-    return jobs[0]["TrainingJobName"]
+    sft_fallback = None
+    for pkg in packages:
+        if pkg.get("ModelPackageStatus") != "Completed":
+            continue
+        detail = sm_client.describe_model_package(ModelPackageName=pkg["ModelPackageArn"])
+        containers = detail.get("InferenceSpecification", {}).get("Containers", [])
+        if not containers:
+            continue
+        s3_uri = containers[0].get("ModelDataSource", {}).get("S3DataSource", {}).get("S3Uri", "")
+        # Escrow URI looks like s3://.../<training-job-name>/step_N/
+        match = re.search(r"/((?:sft|rlvr)-nova-integ-[^/]+)/", s3_uri)
+        if not match:
+            continue
+        job_name = match.group(1)
+        try:
+            job = sm_client.describe_training_job(TrainingJobName=job_name)
+        except sm_client.exceptions.ClientError:
+            continue
+        if job.get("TrainingJobStatus") != "Completed":
+            continue
+        if job_name.startswith("sft-nova-integ"):
+            return job_name
+        sft_fallback = sft_fallback or job_name
+
+    if sft_fallback:
+        return sft_fallback
+
+    pytest.skip(
+        "No existing Nova model package with a resolvable completed training job "
+        "was found. Ensure the scheduled Nova SFT/RLVR workflow has run."
+    )
 
 
 @pytest.fixture(scope="module")
