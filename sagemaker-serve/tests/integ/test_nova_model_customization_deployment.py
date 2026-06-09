@@ -12,15 +12,8 @@
 # language governing permissions and limitations under the License.
 """Integration tests for Nova model customization deployment.
 
-These tests are the Nova counterpart of test_model_customization_deployment.py
-and cover two deployment targets for a fine-tuned Nova model:
-- SageMaker endpoints via ModelBuilder (TestModelCustomization* classes).
-- Amazon Bedrock custom models via BedrockModelBuilder (TestNovaBedrockDeployment).
-
-They run against the dedicated Nova test account in us-east-1 (784379639078)
-and are marked with ``us_east_1`` so the PR check integ-tests-us-east-1 job
-picks them up (they are intentionally not marked ``gpu_intensive``, so they do
-not run in the scheduled GPU workflow).
+Covers deploying a fine-tuned Nova model to SageMaker endpoints (via
+ModelBuilder) and to Amazon Bedrock custom models (via BedrockModelBuilder).
 """
 from __future__ import absolute_import
 
@@ -38,29 +31,19 @@ logger = logging.getLogger(__name__)
 
 from sagemaker.core.helper.session_helper import Session
 
-# This test relies on resources in a specific region (Nova test account)
+# This test relies on resources in a specific region
 AWS_REGION = "us-east-1"
 os.environ.setdefault("AWS_DEFAULT_REGION", AWS_REGION)
 
 # Model package group shared with the Nova SFT/RLVR trainer integ tests.
-# Training jobs in those tests register their output here.
 MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
 
-# Nova base model id (matches the existing Nova trainer/evaluator integ tests).
 NOVA_MODEL_ID = "nova-textgeneration-lite-v2"
-
-# Nova deployment instance type (matches test_sft_trainer_nova_workflow setup).
 NOVA_INSTANCE_TYPE = "ml.g6.48xlarge"
 
 
 def _deploy_or_skip_on_capacity(model_builder, **deploy_kwargs):
-    """Deploy via ModelBuilder, skipping the test on transient capacity errors.
-
-    GPU instance types like ml.g6.48xlarge can hit InsufficientInstanceCapacity
-    (a transient, region-wide availability issue, not a quota or code problem),
-    which would otherwise fail the deploy with a FailedStatusError. Skip rather
-    than fail in that case so CI stays green on capacity fluctuations.
-    """
+    """Deploy via ModelBuilder, skipping on transient InsufficientInstanceCapacity."""
     try:
         return model_builder.deploy(**deploy_kwargs)
     except Exception as e:
@@ -73,9 +56,6 @@ def _deploy_or_skip_on_capacity(model_builder, **deploy_kwargs):
 def _latest_model_package_arn(region=AWS_REGION):
     """Return the ARN of the most recently created Completed model package in
     the Nova model package group, or None if the group has no usable package.
-
-    Mirrors the dynamic lookup used by test_benchmark_evaluation_nova_model so
-    these tests stay decoupled from any specific model package version.
     """
     sm_client = boto3.client("sagemaker", region_name=region)
     packages = sm_client.list_model_packages(
@@ -87,7 +67,6 @@ def _latest_model_package_arn(region=AWS_REGION):
     )
     summaries = packages.get("ModelPackageSummaryList", [])
     if not summaries:
-        # Fall back to any status if no Approved packages exist.
         packages = sm_client.list_model_packages(
             ModelPackageGroupName=MODEL_PACKAGE_GROUP,
             SortBy="CreationTime",
@@ -114,13 +93,8 @@ def training_job_name():
     """Most recent completed Nova SFT training job whose output model package
     still exists.
 
-    The gpu-integ-tests-us-east-1 scheduled workflow runs
-    test_sft_trainer_nova_workflow every few hours, each producing a fresh
-    sft-nova-integ-* training job whose output is registered to
-    sdk-test-finetuned-models. We discover the latest usable one at runtime
-    rather than hardcoding a name: hardcoded jobs eventually get cleaned up and
-    their output model package is deleted, leaving a dangling ARN (the previous
-    reusable job pointed at the now-deleted sdk-test-nova-finetuned-models).
+    Discovered at runtime rather than hardcoded so the test does not depend on a
+    job name that may be cleaned up.
     """
     sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
     jobs = sm_client.list_training_jobs(
@@ -138,7 +112,6 @@ def training_job_name():
         if not mp_arn:
             continue
         try:
-            # Confirm the registered model package still exists.
             sm_client.describe_model_package(ModelPackageName=mp_arn)
             return name
         except sm_client.exceptions.ClientError:
@@ -235,8 +208,7 @@ class TestModelCustomizationFromTrainingJob:
         assert endpoint.endpoint_arn is not None
         assert endpoint.endpoint_status == "InService"
 
-        # Invoke verification
-        time.sleep(10)  # brief buffer for IC readiness
+        time.sleep(10)  # brief buffer for inference component readiness
 
         invoke_response = endpoint.invoke(
             body=json.dumps({
@@ -250,7 +222,6 @@ class TestModelCustomizationFromTrainingJob:
 
         response_body = json.loads(invoke_response.body.read())
 
-        # Validate response structure
         assert response_body is not None, f"Empty response from invoke on {endpoint_name}"
         assert isinstance(response_body, dict)
 
@@ -267,12 +238,8 @@ class TestModelCustomizationFromTrainingJob:
 class TestModelCustomizationFromModelPackage:
     """Test Nova model customization deployment via the registered model package.
 
-    Nova model artifacts live in an escrow bucket whose location is only
-    resolvable from the training job's manifest.json (see
-    ModelBuilder._resolve_nova_escrow_uri, which requires a TrainingJob or
-    ModelTrainer). Deploying a Nova model directly from a ModelPackage is
-    therefore not supported, so these tests drive the supported path: build /
-    deploy from the TrainingJob and validate the model package it registered.
+    A fine-tuned Nova model is built and deployed from its TrainingJob; the
+    registered model package is validated along the way.
     """
 
     def test_build_from_model_package(self, training_job_name, sagemaker_session):
@@ -288,7 +255,6 @@ class TestModelCustomizationFromModelPackage:
 
         assert model is not None
         assert model.model_arn is not None
-        # The training job should have registered a model package.
         assert model_builder._fetch_model_package_arn() is not None
 
     def test_deploy_from_model_package(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
@@ -363,8 +329,7 @@ class TestModelCustomizationDetection:
 class TestTrainerIntegration:
     """Test ModelBuilder integration with Nova SFTTrainer and RLVRTrainer.
 
-    Nova does not have a DPO recipe in SageMakerPublicHub (only SFT/RLVR/CPT/MTRL),
-    so the DPO build test from the open-weights suite is replaced with RLVR here.
+    Nova has no DPO recipe, so RLVR is used in place of the open-weights DPO test.
     """
 
     def test_sft_trainer_build(self, training_job_name, sagemaker_session):
@@ -424,16 +389,7 @@ class TestTrainerIntegration:
 
 @pytest.mark.us_east_1
 class TestNovaBedrockDeployment:
-    """Test deploying a fine-tuned Nova model to Amazon Bedrock.
-
-    Unlike open-weight (OSS) models, which Bedrock serves via a Custom Model
-    Import job (create_model_import_job), Nova models are deployed through
-    Bedrock custom models: BedrockModelBuilder.deploy() detects the Nova model
-    and calls create_custom_model + create_custom_model_deployment, polling each
-    resource to Active before returning.
-
-    These tests run against the Nova test account in us-east-1 (784379639078).
-    """
+    """Test deploying a fine-tuned Nova model to Amazon Bedrock as a custom model."""
 
     @pytest.fixture(scope="class")
     def role_arn(self):
@@ -448,19 +404,15 @@ class TestNovaBedrockDeployment:
 
     @pytest.fixture(scope="class")
     def bedrock_runtime(self):
-        """Create a Bedrock runtime client with retries for cold custom models."""
+        """Bedrock runtime client with retries for not-yet-ready custom models."""
         from botocore.config import Config
         config = Config(retries={"total_max_attempts": 10, "mode": "standard"})
         return boto3.client("bedrock-runtime", region_name=AWS_REGION, config=config)
 
     @pytest.fixture(scope="class")
     def deployed_nova_model(self, training_job_name, role_arn, bedrock_client):
-        """Deploy a Nova model to Bedrock and yield deployment details.
-
-        Nova artifacts live in an escrow bucket resolved from the training job's
-        manifest.json, so BedrockModelBuilder is driven from the TrainingJob
-        (deploying from a ModelPackage is not supported for non-RMP Nova models).
-        Cleans up the custom model and its deployment after the class completes.
+        """Deploy a Nova model to Bedrock from its TrainingJob and yield the
+        deployment details, cleaning up the custom model and deployment after.
         """
         from sagemaker.core.resources import TrainingJob
         from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
@@ -485,7 +437,6 @@ class TestNovaBedrockDeployment:
             deployment_arn = response.get("customModelDeploymentArn")
             assert deployment_arn is not None, f"No deployment ARN in response: {response}"
 
-            # Resolve the underlying custom model ARN for cleanup.
             deployment = bedrock_client.get_custom_model_deployment(
                 customModelDeploymentIdentifier=deployment_arn
             )
@@ -499,7 +450,6 @@ class TestNovaBedrockDeployment:
         except Exception as e:
             pytest.fail(f"Nova Bedrock deployment failed: {e}")
         finally:
-            # Cleanup deployment first, then the custom model.
             if deployment_arn:
                 try:
                     bedrock_client.delete_custom_model_deployment(
@@ -525,11 +475,7 @@ class TestNovaBedrockDeployment:
 
     @pytest.mark.slow
     def test_nova_bedrock_invoke(self, deployed_nova_model, bedrock_runtime):
-        """Invoke the deployed Nova model on Bedrock end-to-end.
-
-        The runtime client is configured with retries to tolerate the brief
-        window where a freshly-deployed custom model is not yet servable.
-        """
+        """Invoke the deployed Nova model on Bedrock end-to-end."""
         deployment_arn = deployed_nova_model["deployment_arn"]
 
         response = bedrock_runtime.invoke_model(
@@ -547,7 +493,6 @@ class TestNovaBedrockDeployment:
 
         result = json.loads(response["body"].read().decode())
 
-        # Validate response structure (Nova returns output.message.content[].text).
         assert result is not None, "Empty response from Bedrock invoke"
         assert isinstance(result, dict)
         text = result["output"]["message"]["content"][0]["text"]

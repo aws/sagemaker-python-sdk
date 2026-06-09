@@ -659,11 +659,8 @@ class BedrockModelBuilder:
         if not isinstance(self.model, TrainingJob):
             raise ValueError("Model must be a TrainingJob instance for Nova models")
 
-        # Nova serverless training jobs (SFTTrainer/RLVRTrainer/DPOTrainer) do
-        # not populate model_artifacts (there is no model.tar.gz); the manifest
-        # lives under the job's output_data_config path. This mirrors how
-        # ModelBuilder._resolve_nova_escrow_uri and the official Nova Studio
-        # notebook (sm-studio-nova-training-job-sample-notebook.ipynb) locate it.
+        # Nova serverless training jobs have no model_artifacts; the manifest
+        # lives under the job's output_data_config path.
         output_data_config = getattr(self.model, "output_data_config", None)
         s3_output_path = getattr(output_data_config, "s3_output_path", None)
         if not s3_output_path:
