@@ -23,6 +23,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_eula_for_gated_model,
     _validate_hyperparameter_values
 )
+from sagemaker.train.common_utils.data_utils import is_multimodal_data
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
@@ -120,6 +121,9 @@ class RLVRTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
             If not specified, uses SageMaker service default (24 hours for serverless training).
+        is_multimodal (Optional[bool]):
+            Whether the training dataset contains multimodal data. If None (default),
+            auto-detected from the training dataset at train time.
     """
 
     def __init__(
@@ -140,6 +144,7 @@ class RLVRTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         accept_eula: bool = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        is_multimodal: Optional[bool] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -160,6 +165,7 @@ class RLVRTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self.is_multimodal = is_multimodal
 
         # Initialize fine-tuning options with beta session fallback
         self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
@@ -262,7 +268,13 @@ class RLVRTrainer(BaseTrainer):
         )
 
         final_hyperparameters = self.hyperparameters.to_dict()
-        
+
+        # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
+        if self.is_multimodal is None:
+            effective_training_dataset = training_dataset or self.training_dataset
+            if effective_training_dataset is not None:
+                self.is_multimodal = is_multimodal_data(effective_training_dataset)
+
         # Validate hyperparameter values
         _validate_hyperparameter_values(final_hyperparameters)
 
