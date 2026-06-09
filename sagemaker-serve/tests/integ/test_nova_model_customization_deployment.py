@@ -90,11 +90,12 @@ def sagemaker_session():
 
 @pytest.fixture(scope="module")
 def training_job_name():
-    """Most recent completed Nova SFT training job whose output model package
-    still exists.
+    """Most recent completed Nova SFT training job.
 
     Discovered at runtime rather than hardcoded so the test does not depend on a
-    job name that may be cleaned up.
+    job name that may be cleaned up. Build/deploy resolve artifacts from the
+    job's manifest (output_data_config), so a registered output model package is
+    not required.
     """
     sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
     jobs = sm_client.list_training_jobs(
@@ -105,22 +106,12 @@ def training_job_name():
         MaxResults=20,
     ).get("TrainingJobSummaries", [])
 
-    for job in jobs:
-        name = job["TrainingJobName"]
-        detail = sm_client.describe_training_job(TrainingJobName=name)
-        mp_arn = detail.get("OutputModelPackageArn")
-        if not mp_arn:
-            continue
-        try:
-            sm_client.describe_model_package(ModelPackageName=mp_arn)
-            return name
-        except sm_client.exceptions.ClientError:
-            continue
-
-    pytest.skip(
-        "No completed Nova SFT training job with an existing output model "
-        "package was found. Ensure the scheduled Nova SFT workflow has run."
-    )
+    if not jobs:
+        pytest.skip(
+            "No completed Nova SFT training job found. "
+            "Ensure the scheduled Nova SFT workflow has run."
+        )
+    return jobs[0]["TrainingJobName"]
 
 
 @pytest.fixture(scope="module")
