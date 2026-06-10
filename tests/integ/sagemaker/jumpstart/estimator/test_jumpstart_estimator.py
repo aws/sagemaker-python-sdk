@@ -199,6 +199,7 @@ def test_gated_model_training_v2(setup):
 
 
 @x_fail_if_ice
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() not in TRN2_SUPPORTED_REGIONS,
     reason=f"TRN2 instances unavailable in {tests.integ.test_region()}.",
