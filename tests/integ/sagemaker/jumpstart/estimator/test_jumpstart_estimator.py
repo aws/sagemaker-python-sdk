@@ -61,6 +61,9 @@ def test_jumpstart_estimator(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         max_run=259200,  # avoid exceeding resource limits
         instance_type="ml.g4dn.xlarge",
+        # Canary only needs to exercise the train/deploy flow, so cap training
+        # to a single epoch to keep fit() fast.
+        hyperparameters={"epochs": "1"},
     )
 
     # uses ml.g4dn.xlarge instance
@@ -111,6 +114,9 @@ def test_gated_model_training_v1(setup):
         environment={"accept_eula": "true"},
         max_run=259200,  # avoid exceeding resource limits
         tolerate_vulnerable_model=True,
+        # Canary only verifies the train/deploy flow, so cap training to a
+        # single step to keep fit() fast (sec_amazon has no tiny variant).
+        hyperparameters={"max_steps": "1"},
     )
 
     # uses ml.g5.12xlarge instance
@@ -153,6 +159,9 @@ def test_gated_model_training_v2(setup):
         environment={"accept_eula": "true"},
         max_run=259200,  # avoid exceeding resource limits
         tolerate_vulnerable_model=True,  # tolerate old version of model
+        # Canary only verifies the train/deploy flow, so cap training to a
+        # single step to keep fit() fast (sec_amazon has no tiny variant).
+        hyperparameters={"max_steps": "1"},
     )
 
     # uses ml.g5.12xlarge instance

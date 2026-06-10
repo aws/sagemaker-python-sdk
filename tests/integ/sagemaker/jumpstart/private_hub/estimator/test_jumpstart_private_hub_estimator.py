@@ -58,6 +58,9 @@ def test_jumpstart_hub_estimator(setup, add_model_references):
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         instance_type="ml.g4dn.xlarge",
+        # Canary only needs to exercise the train/deploy flow, so cap training
+        # to a single epoch to keep fit() fast.
+        hyperparameters={"epochs": "1"},
     )
 
     estimator.fit(
@@ -98,6 +101,9 @@ def test_jumpstart_hub_estimator_with_session(setup, add_model_references):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
         instance_type="ml.g4dn.xlarge",
+        # Canary only needs to exercise the train/deploy flow, so cap training
+        # to a single epoch to keep fit() fast.
+        hyperparameters={"epochs": "1"},
     )
 
     estimator.fit(
@@ -137,6 +143,9 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         instance_type="ml.g5.2xlarge",
+        # Canary only verifies the train/deploy flow, so cap training to a
+        # single step to keep fit() fast (sec_amazon has no tiny variant).
+        hyperparameters={"max_steps": "1"},
     )
 
     estimator.fit(
