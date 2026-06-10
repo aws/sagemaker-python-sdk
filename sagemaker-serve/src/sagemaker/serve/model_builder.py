@@ -999,11 +999,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if not self.image_uri:
                 self.image_uri = nova_config["image_uri"]
             if self.env_vars:
-                self.env_vars.update(nova_config["env_vars"])
+                user_overrides = dict(self.env_vars)
+                self.env_vars = dict(nova_config["env_vars"])
+                self.env_vars.update(user_overrides)
             else:
                 self.env_vars = nova_config["env_vars"]
             if not self.instance_type:
                 self.instance_type = nova_config["instance_type"]
+            self._validate_nova_smi_config()
             return
 
         raise ValueError(
@@ -1021,36 +1024,33 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     }
 
     # Nova hosting configs per model (from Rhinestone modelDeployment.ts)
-    # NOTE: The nova-inference container (:SM-Inference-latest) enforces per-tier
-    # MAX_CONCURRENCY limits based on CONTEXT_LENGTH. These values were updated
-    # ~2026-03-23 synced with AGISageMakerInference ALLOWLISTED_CONFIGURATIONS.
-    # Uses the highest tier's CONTEXT_LENGTH and its MAX_CONCURRENCY per instance.
-    # If deployments fail with "MAX_CONCURRENCY N exceeds tier limit M", the
-    # container has likely tightened limits — check CloudWatch logs for the cap.
+    # Environment: default env vars for deployment (highest tier context/concurrency).
+    # Tiers: all (max_context_length, max_concurrency) bounds enforced by the container,
+    #   sorted by context length. Source: AGISageMakerInference ALLOWLISTED_CONFIGURATIONS.
     _NOVA_HOSTING_CONFIGS = {
         "nova-textgeneration-micro": [
-            {"InstanceType": "ml.g5.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}},
-            {"InstanceType": "ml.g5.24xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
-            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}},
-            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
-            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "12"}},
-            {"InstanceType": "ml.g6e.xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}},
-            {"InstanceType": "ml.g6e.2xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}},
-            {"InstanceType": "ml.g6e.4xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}},
-            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.g5.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}, "Tiers": [(4000, 12), (8000, 6)]},
+            {"InstanceType": "ml.g5.24xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(8000, 8)]},
+            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}, "Tiers": [(4000, 12), (8000, 6)]},
+            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(8000, 8)]},
+            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "12"}, "Tiers": [(8000, 12)]},
+            {"InstanceType": "ml.g6e.xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}, "Tiers": [(8000, 2)]},
+            {"InstanceType": "ml.g6e.2xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}, "Tiers": [(8000, 2)]},
+            {"InstanceType": "ml.g6e.4xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}, "Tiers": [(8000, 4)]},
+            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}, "Tiers": [(16000, 128), (64000, 32), (128000, 8)]},
         ],
         "nova-textgeneration-lite": [
-            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}},
-            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}},
-            {"InstanceType": "ml.g6.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
-            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}, "Tiers": [(8000, 2)]},
+            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}, "Tiers": [(8000, 4)]},
+            {"InstanceType": "ml.g6.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(4000, 16), (8000, 8)]},
+            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}, "Tiers": [(16000, 128), (60000, 8)]},
         ],
         "nova-textgeneration-pro": [
-            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "24000", "MAX_CONCURRENCY": "1"}},
+            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "24000", "MAX_CONCURRENCY": "1"}, "Tiers": [(8000, 8), (16000, 2), (24000, 1)]},
         ],
         "nova-textgeneration-lite-v2": [
-            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
-            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(8000, 8)]},
+            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "256000", "MAX_CONCURRENCY": "2"}, "Tiers": [(16000, 128), (64000, 32), (128000, 8), (256000, 2)]},
         ],
     }
 
@@ -1118,6 +1118,71 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             "env_vars": config["Environment"],
             "instance_type": config["InstanceType"],
         }
+
+    def _validate_nova_smi_config(self) -> None:
+        """Validate CONTEXT_LENGTH and MAX_CONCURRENCY against per-tier bounds.
+
+        Uses the Tiers field in _NOVA_HOSTING_CONFIGS to validate that the user's
+        requested (context_length, max_concurrency) pair falls within the allowed
+        bounds for the applicable tier. Only validates when both values are present.
+        """
+        if not self.env_vars:
+            return
+
+        context_length_str = self.env_vars.get("CONTEXT_LENGTH")
+        max_concurrency_str = self.env_vars.get("MAX_CONCURRENCY")
+        if context_length_str is None or max_concurrency_str is None:
+            return
+
+        model_package = self._fetch_model_package()
+        if not model_package:
+            return
+        containers = getattr(model_package.inference_specification, "containers", None)
+        if not containers:
+            return
+        base_model = getattr(containers[0], "base_model", None)
+        if not base_model:
+            return
+        hub_content_name = getattr(base_model, "hub_content_name", None)
+        if not hub_content_name:
+            return
+
+        configs = self._NOVA_HOSTING_CONFIGS.get(hub_content_name)
+        if not configs:
+            return
+
+        instance_type = self.instance_type
+        instance_config = next(
+            (c for c in configs if c["InstanceType"] == instance_type), None
+        )
+        if not instance_config:
+            return
+
+        tiers = instance_config.get("Tiers")
+        if not tiers:
+            return
+
+        context_length = int(context_length_str)
+        max_concurrency = int(max_concurrency_str)
+
+        sorted_tiers = sorted(tiers, key=lambda t: t[0])
+        max_supported_context = sorted_tiers[-1][0]
+
+        if context_length > max_supported_context:
+            raise ValueError(
+                f"CONTEXT_LENGTH={context_length} exceeds maximum supported value "
+                f"of {max_supported_context} for '{hub_content_name}' on {instance_type}."
+            )
+
+        for tier_context, tier_concurrency in sorted_tiers:
+            if context_length <= tier_context:
+                if max_concurrency > tier_concurrency:
+                    raise ValueError(
+                        f"MAX_CONCURRENCY={max_concurrency} exceeds maximum supported value "
+                        f"of {tier_concurrency} for '{hub_content_name}' on {instance_type} "
+                        f"at CONTEXT_LENGTH<={tier_context}."
+                    )
+                return
 
     def _initialize_jumpstart_config(self) -> None:
         """Initialize JumpStart-specific configuration."""
@@ -2376,9 +2441,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     nova_config = self._get_nova_hosting_config(instance_type=self.instance_type)
                     if not self.image_uri:
                         container_kwargs["image"] = nova_config["image_uri"]
-                    container_kwargs["environment"] = nova_config["env_vars"]
+                    env = dict(nova_config["env_vars"])
+                    if self.env_vars:
+                        env.update(self.env_vars)
+                    container_kwargs["environment"] = env
+                    self.env_vars = env
                     if not self.instance_type:
                         self.instance_type = nova_config["instance_type"]
+                    self._validate_nova_smi_config()
                 container_def = ContainerDefinition(**container_kwargs)
                 create_kwargs = {
                     "execution_role_arn": self.role_arn,
