@@ -58,3 +58,4 @@ def extract_files_from_s3(s3_url, tmpdir, sagemaker_session):
 
     with tarfile.open(model, "r") as tar_file:
         custom_extractall_tarfile(tar_file, tmpdir)
+# Test-only change to verify PR-check submodule selection (no behavior change).

@@ -32,3 +32,4 @@ class Compute:
     """Compute configuration for model deployment."""
     instance_type: Optional[str]
     instance_count: Optional[int] = 1
+# Source change to verify PR-check submodule selection (no behavior change).
