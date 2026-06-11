@@ -86,7 +86,14 @@ jobs:
   # short-circuited today's run (an earlier run already succeeded).
   report-result:
     needs: [check-prior-success, gpu-integ-tests, gpu-integ-tests-us-east-1]
-    if: always() && needs.check-prior-success.outputs.already_succeeded != 'true'
+    # Only emit the daily alarm metric for scheduled runs that actually executed
+    # the test jobs:
+    #   - check-prior-success.result == 'success': if the gate job itself failed,
+    #     the test jobs are skipped; without this guard always() would still run
+    #     report-result and read those skips as a (false) failure -> emit 1.
+    #   - already_succeeded != 'true': an earlier run today already passed, so the
+    #     gate short-circuited this run; nothing to report.
+    if: always() && needs.check-prior-success.result == 'success' && needs.check-prior-success.outputs.already_succeeded != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
@@ -96,6 +103,13 @@ jobs:
           aws-region: us-west-2
       - name: Emit run-level pass/fail metric
         run: |
+          # Manual (workflow_dispatch) runs must not contribute to the daily
+          # GpuIntegRunFailure count that drives GpuIntegRunAlarm; only scheduled
+          # runs count toward the "all of today's scheduled runs failed" alarm.
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Not a scheduled run (${{ github.event_name }}); skipping metric emission."
+            exit 0
+          fi
           if [ "${{ needs.gpu-integ-tests.result }}" == "success" ] && \
              [ "${{ needs.gpu-integ-tests-us-east-1.result }}" == "success" ]; then
             value=0
