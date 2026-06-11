@@ -38,6 +38,8 @@ SPARK_PATH = os.path.join(DATA_DIR, "spark")
 @pytest.fixture(scope="module", autouse=True)
 def build_jar():
     jar_file_path = os.path.join(SPARK_PATH, "code", "java", "hello-java-spark")
+    jar_file = os.path.join(jar_file_path, "hello-spark-java.jar")
+
     # compile java file
     java_version = subprocess.check_output(["java", "-version"], stderr=subprocess.STDOUT).decode(
         "utf-8"
@@ -45,30 +47,39 @@ def build_jar():
     java_version = re.search(JAVA_VERSION_PATTERN, java_version).groups()[0]
 
     if float(java_version) > 1.8:
-        subprocess.run(
-            [
-                "javac",
-                "--release",
-                "8",
-                os.path.join(jar_file_path, JAVA_FILE_PATH, "HelloJavaSparkApp.java"),
-            ]
-        )
-    else:
-        subprocess.run(
-            ["javac", os.path.join(jar_file_path, JAVA_FILE_PATH, "HelloJavaSparkApp.java")]
-        )
-
-    subprocess.run(
-        [
-            "jar",
-            "cfm",
-            os.path.join(jar_file_path, "hello-spark-java.jar"),
-            os.path.join(jar_file_path, "manifest.txt"),
-            "-C",
-            jar_file_path,
-            ".",
+        javac_cmd = [
+            "javac",
+            "--release",
+            "8",
+            os.path.join(jar_file_path, JAVA_FILE_PATH, "HelloJavaSparkApp.java"),
         ]
-    )
+    else:
+        javac_cmd = ["javac", os.path.join(jar_file_path, JAVA_FILE_PATH, "HelloJavaSparkApp.java")]
+
+    jar_cmd = [
+        "jar",
+        "cfm",
+        jar_file,
+        os.path.join(jar_file_path, "manifest.txt"),
+        "-C",
+        jar_file_path,
+        ".",
+    ]
+
+    # Build with check=True so a failing javac/jar surfaces immediately instead
+    # of being swallowed. The jar (re)build truncates the committed
+    # hello-spark-java.jar, so a silent failure here would leave the test with a
+    # missing/corrupt jar and a confusing "code ... wasn't found" error at run
+    # time (especially under xdist, where this runs per worker).
+    for cmd in (javac_cmd, jar_cmd):
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"Failed to build Spark test jar (command: {' '.join(cmd)}).\n"
+                f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+            )
+
+    assert os.path.isfile(jar_file), f"Spark test jar was not produced at {jar_file}"
 
 
 @pytest.fixture(scope="module")

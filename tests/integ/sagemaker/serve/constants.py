@@ -21,6 +21,10 @@ SERVE_IN_PROCESS_TIMEOUT = 5
 SERVE_MODEL_PACKAGE_TIMEOUT = 10
 SERVE_LOCAL_CONTAINER_TIMEOUT = 10
 SERVE_SAGEMAKER_ENDPOINT_TIMEOUT = 15
+# Inference-component deployments of large (7B) JumpStart models pull a big image
+# and load the model before the endpoint reaches InService, which routinely takes
+# longer than the standard endpoint timeout. Give that flow more headroom.
+SERVE_SAGEMAKER_IC_ENDPOINT_TIMEOUT = 30
 SERVE_SAVE_TIMEOUT = 2
 
 PYTHON_VERSION_IS_NOT_38 = platform.python_version_tuple()[1] != "8"

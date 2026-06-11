@@ -47,7 +47,10 @@ TRAINING_DATASET_MODEL_DICT = {
     ("huggingface-spc-bert-base-cased", "1.0.0"): ("training-datasets/QNLI-tiny/"),
     ("huggingface-spc-bert-base-cased", "1.2.3"): ("training-datasets/QNLI-tiny/"),
     ("huggingface-spc-bert-base-cased", "2.0.3"): ("training-datasets/QNLI-tiny/"),
-    ("huggingface-spc-bert-base-cased", "*"): ("training-datasets/QNLI/"),
+    # Use the tiny dataset for the floating "*" version too: these are canary
+    # tests that only need to exercise the train/deploy flow, not produce a
+    # well-trained model. The full QNLI dataset made fit() dramatically slower.
+    ("huggingface-spc-bert-base-cased", "*"): ("training-datasets/QNLI-tiny/"),
     ("js-trainable-model", "*"): ("training-datasets/QNLI-tiny/"),
     ("meta-textgeneration-llama-2-7b", "*"): ("training-datasets/sec_amazon/"),
     ("meta-textgeneration-llama-2-7b", "2.*"): ("training-datasets/sec_amazon/"),

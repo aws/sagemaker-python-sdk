@@ -17,7 +17,6 @@ import time
 
 import pytest
 from sagemaker.jumpstart.constants import JUMPSTART_DEFAULT_REGION_NAME
-from sagemaker.jumpstart.hub.hub import Hub
 
 from sagemaker.jumpstart.estimator import JumpStartEstimator
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
@@ -28,10 +27,9 @@ from tests.integ.sagemaker.jumpstart.constants import (
     JUMPSTART_TAG,
 )
 from tests.integ.sagemaker.jumpstart.utils import (
-    get_public_hub_model_arn,
     get_sm_session,
-    with_exponential_backoff,
     get_training_dataset_for_model_and_version,
+    add_model_references_to_hub,
 )
 
 MAX_INIT_TIME_SECONDS = 5
@@ -43,23 +41,13 @@ TEST_MODEL_IDS = {
 }
 
 
-@with_exponential_backoff()
-def create_model_reference(hub_instance, model_arn):
-    try:
-        hub_instance.create_model_reference(model_arn=model_arn)
-    except Exception:
-        pass
-
-
 @pytest.fixture(scope="session")
 def add_model_references():
-    # Create Model References to test in Hub
-    hub_instance = Hub(
-        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME], sagemaker_session=get_sm_session()
+    # Create Model References to test in Hub (idempotent + waits for readiness)
+    add_model_references_to_hub(
+        hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
+        model_ids=TEST_MODEL_IDS,
     )
-    for model in TEST_MODEL_IDS:
-        model_arn = get_public_hub_model_arn(hub_instance, model)
-        create_model_reference(hub_instance, model_arn)
 
 
 def test_jumpstart_hub_estimator(setup, add_model_references):
@@ -70,6 +58,9 @@ def test_jumpstart_hub_estimator(setup, add_model_references):
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         instance_type="ml.g4dn.xlarge",
+        # Canary only needs to exercise the train/deploy flow, so cap training
+        # to a single epoch to keep fit() fast.
+        hyperparameters={"epochs": "1"},
     )
 
     estimator.fit(
@@ -110,6 +101,9 @@ def test_jumpstart_hub_estimator_with_session(setup, add_model_references):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
         instance_type="ml.g4dn.xlarge",
+        # Canary only needs to exercise the train/deploy flow, so cap training
+        # to a single epoch to keep fit() fast.
+        hyperparameters={"epochs": "1"},
     )
 
     estimator.fit(
@@ -149,6 +143,9 @@ def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
         hub_name=os.environ[ENV_VAR_JUMPSTART_SDK_TEST_HUB_NAME],
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         instance_type="ml.g5.2xlarge",
+        # Canary only verifies the train/deploy flow, so cap training to a
+        # single step to keep fit() fast (sec_amazon has no tiny variant).
+        hyperparameters={"max_steps": "1"},
     )
 
     estimator.fit(
