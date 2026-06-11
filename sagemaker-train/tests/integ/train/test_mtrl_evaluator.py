@@ -60,18 +60,37 @@ def test_config():
 
 
 def _ensure_model_package_group_exists(sm_client, group_name):
-    """Create the model package group if it doesn't already exist."""
+    """Create the model package group if it doesn't already exist.
+
+    Race-safe: with pytest-xdist (`-n auto`) multiple workers run this
+    concurrently, so a plain check-then-create races. If another worker wins
+    the create, CreateModelPackageGroup raises "already exists"; treat that as
+    success rather than letting the fixture error out.
+    """
     try:
         sm_client.describe_model_package_group(ModelPackageGroupName=group_name)
+        return
     except Exception:
+        pass
+
+    try:
         sm_client.create_model_package_group(
             ModelPackageGroupName=group_name,
             ModelPackageGroupDescription="Auto-created for MTRL evaluator integ tests",
         )
+    except Exception as e:
+        # Another concurrent worker created it between our describe and create.
+        if "already exists" in str(e):
+            return
+        raise
 
 
 def _ensure_model_package_exists(sm_client, group_name, base_model_name):
-    """Create a model package in the group if none exists, for test purposes."""
+    """Create a model package in the group if none exists, for test purposes.
+
+    Race-safe: if a concurrent worker creates one between our list and create,
+    fall back to listing again and reusing whatever package now exists.
+    """
     resp = sm_client.list_model_packages(
         ModelPackageGroupName=group_name,
         MaxResults=1,
@@ -80,12 +99,22 @@ def _ensure_model_package_exists(sm_client, group_name, base_model_name):
         return resp["ModelPackageSummaryList"][0]["ModelPackageArn"]
 
     # Create a minimal unversioned model package (no InferenceSpecification needed)
-    resp = sm_client.create_model_package(
-        ModelPackageGroupName=group_name,
-        ModelPackageDescription="Test model package for MTRL evaluator integ tests",
-        ModelApprovalStatus="Approved",
-    )
-    return resp["ModelPackageArn"]
+    try:
+        resp = sm_client.create_model_package(
+            ModelPackageGroupName=group_name,
+            ModelPackageDescription="Test model package for MTRL evaluator integ tests",
+            ModelApprovalStatus="Approved",
+        )
+        return resp["ModelPackageArn"]
+    except Exception:
+        # A concurrent worker may have created one; reuse the existing package.
+        resp = sm_client.list_model_packages(
+            ModelPackageGroupName=group_name,
+            MaxResults=1,
+        )
+        if resp.get("ModelPackageSummaryList"):
+            return resp["ModelPackageSummaryList"][0]["ModelPackageArn"]
+        raise
 
 
 @pytest.fixture(scope="module")
