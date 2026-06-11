@@ -4,7 +4,7 @@ This module contains Jinja2 template strings for generating SageMaker Pipeline
 definitions for different evaluation types (benchmark, custom scorer, LLM-as-judge).
 """
 
-from .constants import EvalType
+from .constants import EvalType  # noqa: F401
 
 DETERMINISTIC_TEMPLATE = """{
     "Version": "2020-12-01",
@@ -920,7 +920,7 @@ CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
 }"""
 
 # LLM-as-a-Judge Template with Jinja2 Placeholders - 2-Phase Evaluation Pipeline (Type 2)
-# Phase 1: Generate inference responses from base and custom models  
+# Phase 1: Generate inference responses from base and custom models
 # Phase 2: Use judge model to evaluate responses with built-in and custom metrics
 LLMAJ_TEMPLATE = """{
     "Version": "2020-12-01",
@@ -1469,6 +1469,68 @@ LLMAJ_TEMPLATE = """{
                         "AssociationType": "ContributedTo"
                     }
                 ]
+            }
+        }
+    ]
+}"""
+
+# InspectAI Evaluation Template - Single Training step with config input channel
+INSPECT_AI_TEMPLATE = """{
+    "Version": "2020-12-01",
+    "Metadata": {},
+    "Parameters": [],
+    "Steps": [
+        {
+            "Name": "InspectAIEvaluation",
+            "Type": "Training",
+            "Arguments": {
+                "TrainingJobName": {
+                    "Std:Join": {
+                        "On": "-",
+                        "Values": [
+                            "{{ job_name_prefix }}",
+                            {
+                                "Get": "Execution.PipelineExecutionId"
+                            }
+                        ]
+                    }
+                },
+                "AlgorithmSpecification": {
+                    "TrainingImage": "{{ image_uri }}",
+                    "TrainingInputMode": "File"
+                },
+                "RoleArn": "{{ role_arn }}",
+                "ResourceConfig": {
+                    "InstanceType": "{{ instance_type }}",
+                    "InstanceCount": 1,
+                    "VolumeSizeInGB": 30
+                },
+                "StoppingCondition": {
+                    "MaxRuntimeInSeconds": {{ max_runtime_seconds }}
+                },
+                "InputDataConfig": [
+                    {
+                        "ChannelName": "config",
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "{{ config_s3_uri }}"
+                            }
+                        }
+                    }
+                ],
+                "OutputDataConfig": {
+                    "S3OutputPath": "{{ s3_output_path }}",
+                    "CompressionType": "NONE"
+                {% if kms_key_id %},
+                "KmsKeyId": "{{ kms_key_id }}"
+                {% endif %}
+                }{% if environment %},
+                "Environment": {{ environment | tojson }}{% endif %}{% if vpc_config %},
+                "VpcConfig": {
+                    "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
+                    "Subnets": {{ vpc_subnets | tojson }}
+                }{% endif %}
             }
         }
     ]

@@ -27,24 +27,23 @@ from .execution import (
     PipelineExecutionStatus,
     StepDetail,
 )
+from .inspect_ai_evaluator import InspectAIEvaluator
 from .llm_as_judge_evaluator import LLMAsJudgeEvaluator
 from .multi_turn_rl_evaluator import MultiTurnRLEvaluator
 
 __all__ = [
     # Evaluator classes
     "BaseEvaluator",
-    "BenchMarkEvaluator", 
+    "BenchMarkEvaluator",
     "CustomScorerEvaluator",
+    "InspectAIEvaluator",
     "LLMAsJudgeEvaluator",
     "MultiTurnRLEvaluator",
-    
     # Benchmark utility functions
     "get_benchmarks",
     "get_benchmark_properties",
-    
     # Custom scorer utility functions
     "get_builtin_metrics",
-    
     # Execution classes
     "EvaluationPipelineExecution",
     "PipelineExecutionStatus",
