@@ -525,7 +525,7 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
                                 v_copy['default'] = None  # No default — won't appear in to_dict() unless set
                             options_dict[k] = v_copy
                 except Exception as e:
-                    logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
+                    logger.warning(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
 
         if options_dict:
             return FineTuningOptions(options_dict), model_arn, is_gated_model
