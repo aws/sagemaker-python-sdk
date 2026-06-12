@@ -864,3 +864,222 @@ class TestResolveIntermediateCheckpointMpg:
         # Should still have standard params, just not datamix ones
         assert "max_steps" in options._specs
         assert "customer_data_percent" not in options._specs
+
+
+class TestSubscriptionOnlyModelFallback:
+    """Tests for models that only have subscription recipes (e.g., Nova Micro v2)."""
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_fallback_to_subscription_recipe_lora(self, mock_get_hub_content):
+        """When no non-subscription LORA recipe exists, falls back to subscription recipe."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        # Only subscription recipes (like Nova Micro v2)
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
+                        "Peft": True,
+                        "IsSubscriptionModel": True,
+                        "Name": "nova_micro_v2_sft_lora"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/full_params.json",
+                        "Peft": False,
+                        "IsSubscriptionModel": True,
+                        "Name": "nova_micro_v2_sft_full"
+                    }
+                ]
+            }
+        }
+
+        sub_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=sub_params.encode()))}
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "nova-textgeneration-micro-v2", "SFT", "LORA", mock_session,
+        )
+
+        assert model_arn == "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2"
+        assert "max_steps" in options._specs
+        assert is_gated is False
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_fallback_to_subscription_recipe_full(self, mock_get_hub_content):
+        """When no non-subscription FULL recipe exists, falls back to subscription recipe."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/full_params.json",
+                        "Peft": False,
+                        "IsSubscriptionModel": True,
+                        "Name": "nova_micro_v2_sft_full"
+                    }
+                ]
+            }
+        }
+
+        sub_params = json.dumps({"learning_rate": {"type": "float", "required": True, "default": 5e-6}})
+        mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=sub_params.encode()))}
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "nova-textgeneration-micro-v2", "SFT", "FULL", mock_session,
+        )
+
+        assert "learning_rate" in options._specs
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_subscription_only_model_access_denied_raises_clear_error(self, mock_get_hub_content):
+        """When subscription recipe download fails (AccessDenied), raises actionable ValueError."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "999999999999"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
+                        "Peft": True,
+                        "IsSubscriptionModel": True,
+                        "Name": "nova_micro_v2_sft_lora"
+                    }
+                ]
+            }
+        }
+
+        # Simulate AccessDenied from S3 access point
+        from botocore.exceptions import ClientError
+        mock_s3.get_object.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "Could not access through this access point"}},
+            "GetObject"
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            _get_fine_tuning_options_and_model_arn(
+                "nova-textgeneration-micro-v2", "SFT", "LORA", mock_session,
+            )
+
+        error_msg = str(exc_info.value)
+        assert "subscription" in error_msg.lower()
+        assert "nova-textgeneration-micro-v2" in error_msg
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_non_subscription_recipe_preferred_over_subscription(self, mock_get_hub_content):
+        """When both standard and subscription recipes exist, standard is selected as primary."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-lite-v2",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/standard_template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/standard_params.json",
+                        "Peft": True,
+                        "Name": "nova_lite_v2_sft_lora"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
+                        "Peft": True,
+                        "IsSubscriptionModel": True,
+                        "Name": "nova_lite_v2_sft_lora_datamix"
+                    }
+                ]
+            }
+        }
+
+        standard_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        datamix_params = json.dumps({"customer_data_percent": {"type": "integer", "required": False, "default": 50}})
+        mock_s3.get_object.side_effect = [
+            {"Body": Mock(read=Mock(return_value=standard_params.encode()))},
+            {"Body": Mock(read=Mock(return_value=datamix_params.encode()))},
+        ]
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "nova-textgeneration-lite-v2", "SFT", "LORA", mock_session,
+        )
+
+        # Standard recipe's params should be loaded as primary
+        assert "max_steps" in options._specs
+        assert options._specs["max_steps"]["default"] == 100
+        # Subscription params merged with None defaults
+        assert "customer_data_percent" in options._specs
+        assert options._specs["customer_data_percent"]["default"] is None
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_subscription_only_skips_overlay_merge(self, mock_get_hub_content):
+        """When primary recipe IS a subscription recipe, overlay merge is skipped."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
+                        "Peft": True,
+                        "IsSubscriptionModel": True,
+                        "Name": "nova_micro_v2_sft_lora"
+                    }
+                ]
+            }
+        }
+
+        sub_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=sub_params.encode()))}
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "nova-textgeneration-micro-v2", "SFT", "LORA", mock_session,
+        )
+
+        # S3 get_object should only be called once (primary recipe), not twice (no overlay merge)
+        assert mock_s3.get_object.call_count == 1
