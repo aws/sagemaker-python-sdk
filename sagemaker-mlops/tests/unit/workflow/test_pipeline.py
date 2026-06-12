@@ -50,12 +50,23 @@ def test_pipeline_init(mock_session, mock_step):
     assert pipeline.sagemaker_session == mock_session
 
 
-def test_pipeline_create_without_role_raises_error(mock_session, mock_step):
+def test_pipeline_create_without_role_auto_resolves(mock_session, mock_step):
+    """When no role is provided, create() auto-resolves a pipeline role instead of raising."""
+    mock_session.local_mode = True
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
-    
+
+    auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Pipeline"
     with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value=None):
-        with pytest.raises(ValueError, match="AWS IAM role is required"):
+        with patch(
+            "sagemaker.mlops.workflow.pipeline.resolve_or_create_role", return_value=auto_arn
+        ) as mock_resolve:
             pipeline.create()
+            mock_resolve.assert_called_once_with(
+                provided_role=None,
+                role_type="pipeline",
+                sagemaker_session=mock_session,
+            )
+            mock_session.sagemaker_client.create_pipeline.assert_called_once()
 
 
 def test_format_start_parameters():
@@ -103,12 +114,23 @@ def test_pipeline_create_large_definition(mock_session, mock_step):
                     mock_session.sagemaker_client.create_pipeline.assert_called_once()
 
 
-def test_pipeline_update_without_role_raises_error(mock_session, mock_step):
+def test_pipeline_update_without_role_auto_resolves(mock_session, mock_step):
+    """When no role is provided, update() auto-resolves a pipeline role instead of raising."""
+    mock_session.local_mode = True
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
-    
+
+    auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Pipeline"
     with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value=None):
-        with pytest.raises(ValueError, match="AWS IAM role is required"):
+        with patch(
+            "sagemaker.mlops.workflow.pipeline.resolve_or_create_role", return_value=auto_arn
+        ) as mock_resolve:
             pipeline.update()
+            mock_resolve.assert_called_once_with(
+                provided_role=None,
+                role_type="pipeline",
+                sagemaker_session=mock_session,
+            )
+            mock_session.sagemaker_client.update_pipeline.assert_called_once()
 
 
 def test_pipeline_update_local_mode(mock_session, mock_step):
@@ -120,12 +142,27 @@ def test_pipeline_update_local_mode(mock_session, mock_step):
         mock_session.sagemaker_client.update_pipeline.assert_called_once()
 
 
-def test_pipeline_upsert_without_role_raises_error(mock_session, mock_step):
+def test_pipeline_upsert_without_role_auto_resolves(mock_session, mock_step):
+    """When no role is provided, upsert() auto-resolves a pipeline role instead of raising."""
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
-    
+
+    auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Pipeline"
     with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value=None):
-        with pytest.raises(ValueError, match="AWS IAM role is required"):
-            pipeline.upsert()
+        with patch("sagemaker.mlops.workflow.pipeline.format_tags", return_value=None):
+            with patch(
+                "sagemaker.mlops.workflow.pipeline.resolve_or_create_role",
+                return_value=auto_arn,
+            ) as mock_resolve:
+                with patch.object(pipeline, "create", return_value={"PipelineArn": "arn"}) as mock_create:
+                    pipeline.upsert()
+                    mock_resolve.assert_called_once_with(
+                        provided_role=None,
+                        role_type="pipeline",
+                        sagemaker_session=mock_session,
+                    )
+                    # The auto-resolved role flows into create().
+                    mock_create.assert_called_once()
+                    assert mock_create.call_args.args[0] == auto_arn
 
 
 def test_pipeline_upsert_existing_pipeline(mock_session, mock_step):
@@ -193,12 +230,26 @@ def test_pipeline_validate_parameter_overrides_invalid():
         Pipeline._validate_parameter_overrides("arn", {"param1": "value1"}, {"param2": "value2"})
 
 
-def test_pipeline_put_triggers_without_role_raises_error(mock_session, mock_step):
+def test_pipeline_put_triggers_without_role_auto_resolves(mock_session, mock_step):
+    """When no role is provided, put_triggers() auto-resolves a pipeline role instead of raising.
+
+    With an empty trigger list it still reaches the (later) "no triggers" TypeError,
+    which proves role resolution succeeded rather than raising the old ValueError.
+    """
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
-    
+
+    auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Pipeline"
     with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value=None):
-        with pytest.raises(ValueError, match="AWS IAM role is required"):
-            pipeline.put_triggers([])
+        with patch(
+            "sagemaker.mlops.workflow.pipeline.resolve_or_create_role", return_value=auto_arn
+        ) as mock_resolve:
+            with pytest.raises(TypeError, match="No Triggers provided"):
+                pipeline.put_triggers([])
+            mock_resolve.assert_called_once_with(
+                provided_role=None,
+                role_type="pipeline",
+                sagemaker_session=mock_session,
+            )
 
 
 def test_pipeline_put_triggers_empty_list_raises_error(mock_session, mock_step):

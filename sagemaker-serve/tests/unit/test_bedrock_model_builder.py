@@ -597,13 +597,51 @@ class TestDeploy:
         with pytest.raises(ValueError, match="custom_model_name is required"):
             b.deploy(role_arn="r")
 
-    def test_nova_missing_role_arn_raises(self):
+    def test_nova_missing_role_arn_auto_resolves(self):
+        """When no role_arn is given, a least-privilege Bedrock role is auto-resolved."""
         c = _make_container(recipe_name="nova-micro")
         b = _builder()
         b.model_package = _make_model_package(c)
         b.s3_model_artifacts = "s3://b/k"
-        with pytest.raises(ValueError, match="role_arn is required"):
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_custom_model.return_value = {"modelArn": "model-arn"}
+
+        with patch(f"{MODULE}.resolve_or_create_role", return_value="auto-role") as mock_resolve, \
+             patch.object(b, "create_deployment", return_value={"ok": True}) as mock_create_deploy:
             b.deploy(custom_model_name="m")
+
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="bedrock",
+            sagemaker_session=b.sagemaker_session,
+        )
+        # The auto-resolved role is threaded into the Bedrock create call.
+        assert b._bedrock_client.create_custom_model.call_args[1]["roleArn"] == "auto-role"
+        mock_create_deploy.assert_called_once()
+
+    def test_oss_missing_role_arn_auto_resolves(self):
+        """OSS import path also auto-resolves a Bedrock role when none is provided."""
+        c = _make_container()
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.s3_model_artifacts = "s3://b/k"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(f"{MODULE}.resolve_or_create_role", return_value="auto-role") as mock_resolve, \
+             patch(f"{MODULE}.time.sleep"):
+            b.deploy(job_name="j", imported_model_name="m")
+
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="bedrock",
+            sagemaker_session=b.sagemaker_session,
+        )
+        assert b._bedrock_client.create_model_import_job.call_args[1]["roleArn"] == "auto-role"
 
     def test_oss_strips_none_params(self):
         c = _make_container()

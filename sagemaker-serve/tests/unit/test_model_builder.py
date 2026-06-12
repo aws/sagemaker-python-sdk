@@ -104,6 +104,40 @@ class TestModelBuilderV3(unittest.TestCase):
         
         self.assertEqual(builder.env_vars["CUSTOM_VAR"], "custom_value")
 
+    @patch("sagemaker.serve.model_builder.resolve_or_create_role")
+    def test_auto_resolves_serving_role_when_none(self, mock_resolve):
+        """When no role_arn is provided, the constructor auto-resolves a serving role."""
+        auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Serving"
+        mock_resolve.return_value = auto_arn
+
+        builder = ModelBuilder(
+            model=self.mock_model,
+            model_server=ModelServer.TORCHSERVE,
+            sagemaker_session=self.mock_session,
+        )
+
+        self.assertEqual(builder.role_arn, auto_arn)
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="serving",
+            sagemaker_session=self.mock_session,
+        )
+
+    @patch("sagemaker.serve.model_builder.resolve_or_create_role")
+    def test_explicit_role_skips_auto_resolution(self, mock_resolve):
+        """An explicitly provided role_arn is used and the resolver is not invoked at init."""
+        explicit = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
+
+        builder = ModelBuilder(
+            model=self.mock_model,
+            model_server=ModelServer.TORCHSERVE,
+            role_arn=explicit,
+            sagemaker_session=self.mock_session,
+        )
+
+        self.assertEqual(builder.role_arn, explicit)
+        mock_resolve.assert_not_called()
+
     def test_model_path_temp_creation_local_mode(self):
         """Test that temp model_path is created for local modes."""
         builder = ModelBuilder(

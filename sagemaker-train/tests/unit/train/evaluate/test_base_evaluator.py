@@ -711,11 +711,13 @@ class TestArtifactManagement:
 class TestAWSExecutionContext:
     """Tests for AWS execution context retrieval."""
     
+    @patch("sagemaker.train.evaluate.base_evaluator.resolve_or_create_role")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_get_aws_execution_context(self, mock_resolve, mock_session, mock_model_info):
-        """Test getting AWS execution context."""
+    def test_get_aws_execution_context(self, mock_resolve, mock_role, mock_session, mock_model_info):
+        """Test getting AWS execution context resolves the role via the resolver."""
         mock_resolve.return_value = mock_model_info
-        
+        mock_role.return_value = DEFAULT_ROLE_ARN
+
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
             s3_output_path=DEFAULT_S3_OUTPUT,
@@ -724,18 +726,25 @@ class TestAWSExecutionContext:
             sagemaker_session=mock_session,
             region=DEFAULT_REGION,
         )
-        
+
         context = evaluator._get_aws_execution_context()
-        
+
         assert context['role_arn'] == DEFAULT_ROLE_ARN
         assert context['region'] == DEFAULT_REGION
         assert context['account_id'] == '123456789012'
-    
+        mock_role.assert_called_once_with(
+            provided_role=None,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
+
+    @patch("sagemaker.train.evaluate.base_evaluator.resolve_or_create_role")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_get_aws_execution_context_with_explicit_role(self, mock_resolve, mock_session, mock_model_info):
-        """Test that an explicit role overrides the session-derived role."""
+    def test_get_aws_execution_context_with_explicit_role(self, mock_resolve, mock_role, mock_session, mock_model_info):
+        """Test that an explicit role is passed through the resolver."""
         mock_resolve.return_value = mock_model_info
         explicit_role = "arn:aws:iam::123456789012:role/service-role/AmazonSageMaker-ExecutionRole"
+        mock_role.return_value = explicit_role
 
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
@@ -750,13 +759,19 @@ class TestAWSExecutionContext:
         context = evaluator._get_aws_execution_context()
 
         assert context['role_arn'] == explicit_role
-        mock_session.get_caller_identity_arn.assert_not_called()
+        mock_role.assert_called_once_with(
+            provided_role=explicit_role,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
 
+    @patch("sagemaker.train.evaluate.base_evaluator.resolve_or_create_role")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_get_aws_execution_context_without_region(self, mock_resolve, mock_session, mock_model_info):
+    def test_get_aws_execution_context_without_region(self, mock_resolve, mock_role, mock_session, mock_model_info):
         """Test getting AWS execution context without explicit region."""
         mock_resolve.return_value = mock_model_info
-        
+        mock_role.return_value = DEFAULT_ROLE_ARN
+
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
             s3_output_path=DEFAULT_S3_OUTPUT,
@@ -764,9 +779,9 @@ class TestAWSExecutionContext:
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
             sagemaker_session=mock_session,
         )
-        
+
         context = evaluator._get_aws_execution_context()
-        
+
         assert context['role_arn'] == DEFAULT_ROLE_ARN
         assert context['region'] == DEFAULT_REGION  # From mock_session
         assert context['account_id'] == '123456789012'

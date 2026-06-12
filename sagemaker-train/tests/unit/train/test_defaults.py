@@ -72,36 +72,56 @@ class TestTrainDefaultsGetSagemakerSession:
 class TestTrainDefaultsGetRole:
     """Test TrainDefaults.get_role method."""
 
-    def test_returns_provided_role(self):
-        """Test returns the provided role."""
-        role = "arn:aws:iam::123456789012:role/MyRole"
-        result = TrainDefaults.get_role(role=role)
-        assert result == role
-
-    @patch("sagemaker.train.defaults.get_execution_role")
+    @patch("sagemaker.train.defaults.resolve_or_create_role")
     @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
-    def test_gets_execution_role_when_none(self, mock_get_session, mock_get_role):
-        """Test gets execution role when none provided."""
+    def test_returns_provided_role(self, mock_get_session, mock_resolve):
+        """Test returns the provided role (passed through the resolver)."""
+        role = "arn:aws:iam::123456789012:role/MyRole"
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
-        expected_role = "arn:aws:iam::123456789012:role/ExecutionRole"
-        mock_get_role.return_value = expected_role
+        mock_resolve.return_value = role
+
+        result = TrainDefaults.get_role(role=role)
+
+        assert result == role
+        mock_resolve.assert_called_once_with(
+            provided_role=role,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
+
+    @patch("sagemaker.train.defaults.resolve_or_create_role")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_auto_resolves_role_when_none(self, mock_get_session, mock_resolve):
+        """Test auto-resolves a training role when none is provided."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        expected_role = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"
+        mock_resolve.return_value = expected_role
 
         result = TrainDefaults.get_role(role=None)
 
-        mock_get_role.assert_called_once_with(mock_session)
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
         assert result == expected_role
 
-    @patch("sagemaker.train.defaults.get_execution_role")
-    def test_uses_provided_session_for_role(self, mock_get_role):
-        """Test uses provided session when getting role."""
+    @patch("sagemaker.train.defaults.resolve_or_create_role")
+    def test_uses_provided_session_for_role(self, mock_resolve):
+        """Test uses provided session when resolving the role."""
         mock_session = MagicMock()
-        expected_role = "arn:aws:iam::123456789012:role/ExecutionRole"
-        mock_get_role.return_value = expected_role
+        expected_role = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"
+        mock_resolve.return_value = expected_role
 
         result = TrainDefaults.get_role(role=None, sagemaker_session=mock_session)
 
-        mock_get_role.assert_called_once_with(mock_session)
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
         assert result == expected_role
 
 

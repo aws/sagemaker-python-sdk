@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, validator
 
 from sagemaker.core.common_utils import TagsDict
+from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
 from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 
@@ -637,13 +638,15 @@ class BaseEvaluator(BaseModel):
                 - region (str): AWS region
                 - account_id (str): AWS account ID
         """
-        # Get role ARN
-        if self.role:
-            role_arn = self.role
-        else:
-            role_arn = (self.sagemaker_session.get_caller_identity_arn()
-                       if hasattr(self.sagemaker_session, 'get_caller_identity_arn')
-                       else self.sagemaker_session.expand_role())
+        # Get role ARN. Resolution order (see resolve_or_create_role):
+        #   1. self.role, if explicitly provided.
+        #   2. The caller's session role, if it already has sufficient permissions.
+        #   3. A dedicated least-privilege training role, created on demand otherwise.
+        role_arn = resolve_or_create_role(
+            provided_role=self.role,
+            role_type="training",
+            sagemaker_session=self.sagemaker_session,
+        )
         
         # Get region - prefer self.region if set, otherwise extract from session
         region = self.region or (self.sagemaker_session.boto_region_name 

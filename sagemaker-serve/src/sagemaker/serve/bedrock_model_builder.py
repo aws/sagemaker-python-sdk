@@ -24,6 +24,7 @@ from typing import Optional, Dict, Any, Union
 from urllib.parse import urlparse
 
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
 from sagemaker.core.resources import TrainingJob, ModelPackage
 
 from sagemaker.train.model_trainer import ModelTrainer
@@ -102,7 +103,8 @@ class BedrockModelBuilder:
         self._bedrock_client = None
         self._sagemaker_client = None
         self._imported_model_id = None
-        self.boto_session = Session().boto_session
+        self.sagemaker_session = Session()
+        self.boto_session = self.sagemaker_session.boto_session
         self.model_package = self._fetch_model_package() if model else None
         self._is_rmp = is_restricted_model_package(self.model_package)
         self.s3_model_artifacts = self._get_s3_artifacts() if model else None
@@ -195,7 +197,13 @@ class BedrockModelBuilder:
             if not custom_model_name:
                 raise ValueError("custom_model_name is required for Nova model deployment.")
             if not role_arn:
-                raise ValueError("role_arn is required for Nova model deployment.")
+                # Auto-resolve (or create) a least-privilege Bedrock service role
+                # when the caller does not provide one.
+                role_arn = resolve_or_create_role(
+                    provided_role=None,
+                    role_type="bedrock",
+                    sagemaker_session=self.sagemaker_session,
+                )
 
             if self._is_rmp:
                 params = {
@@ -225,6 +233,14 @@ class BedrockModelBuilder:
             deploy_name = deployment_name or f"{custom_model_name}-deployment"
             return self.create_deployment(model_arn=model_arn, deployment_name=deploy_name)
         else:
+            if not role_arn:
+                # Auto-resolve (or create) a least-privilege Bedrock service role
+                # when the caller does not provide one.
+                role_arn = resolve_or_create_role(
+                    provided_role=None,
+                    role_type="bedrock",
+                    sagemaker_session=self.sagemaker_session,
+                )
             model_data_source = {"s3DataSource": {"s3Uri": self.s3_model_artifacts}}
             # Auto-generate job_name if not provided
             if not job_name:

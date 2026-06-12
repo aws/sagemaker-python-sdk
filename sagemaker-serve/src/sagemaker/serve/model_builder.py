@@ -54,9 +54,9 @@ from sagemaker.core.resources import (
 )
 from sagemaker.core.utils.utils import logger
 from sagemaker.core.helper import session_helper
+from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
 from sagemaker.core.helper.session_helper import (
     Session,
-    get_execution_role,
     _wait_until,
     _deploy_done,
 )
@@ -509,9 +509,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 except Exception:
                     self.region = None  # Default fallback
 
-        # Set role_arn with priority: user input > execution role detection
+        # Resolve role_arn in priority order (see resolve_or_create_role):
+        #   1. self.role_arn, if the user supplied one (handled by the guard below).
+        #   2. The caller's session role, if it already has sufficient permissions.
+        #   3. A dedicated least-privilege serving role, created on demand otherwise.
         if not self.role_arn:
-            self.role_arn = get_execution_role(self.sagemaker_session, use_default=True)
+            self.role_arn = resolve_or_create_role(
+                provided_role=None,
+                role_type="serving",
+                sagemaker_session=self.sagemaker_session,
+            )
 
         self._metadata_configs = None
         self.s3_upload_path = None
@@ -2281,9 +2288,17 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self._optimizing:
             return None
 
+        # Resolution order (see resolve_or_create_role):
+        #   1. self.role_arn, if already set.
+        #   2. The caller's session role, if it has sufficient permissions.
+        #   3. A dedicated least-privilege serving role, created on demand otherwise.
         execution_role = self.role_arn
         if not execution_role:
-            execution_role = get_execution_role(self.sagemaker_session, use_default=True)
+            execution_role = resolve_or_create_role(
+                provided_role=None,
+                role_type="serving",
+                sagemaker_session=self.sagemaker_session,
+            )
             self.role_arn = execution_role
 
         if self.mode == Mode.LOCAL_CONTAINER:
@@ -2319,8 +2334,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         elif self.mode == Mode.SAGEMAKER_ENDPOINT:
             self._init_sagemaker_session_if_does_not_exist(self.instance_type)
+            # Resolution order (see resolve_or_create_role): explicit role_arn >
+            # caller session role with sufficient permissions > on-demand
+            # least-privilege serving role.
             if not self.role_arn:
-                self.role_arn = get_execution_role(self.sagemaker_session, use_default=True)
+                self.role_arn = resolve_or_create_role(
+                    provided_role=None,
+                    role_type="serving",
+                    sagemaker_session=self.sagemaker_session,
+                )
 
             self.role_arn = resolve_value_from_config(
                 self.role_arn,

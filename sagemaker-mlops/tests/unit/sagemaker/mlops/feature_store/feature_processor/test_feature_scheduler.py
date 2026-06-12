@@ -683,7 +683,11 @@ def test_to_pipeline_used_reserved_tags(get_execution_role, mock_spark_image, se
     "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.FeatureProcessorLineageHandler",
     return_value=mock_feature_processor_lineage(),
 )
-def test_schedule(lineage, helper, validation, get_tags):
+@patch(
+    "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.resolve_or_create_role",
+    return_value=SCHEDULE_ROLE_ARN,
+)
+def test_schedule(mock_resolve, lineage, helper, validation, get_tags):
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
     session.sagemaker_client.describe_pipeline = Mock(
         return_value={"PipelineArn": "my:arn", "CreationTime": NOW}
@@ -699,6 +703,12 @@ def test_schedule(lineage, helper, validation, get_tags):
     )
 
     assert schedule_arn == SCHEDULE_ARN
+    # The role flows through the IAM resolver with the feature_store role type.
+    mock_resolve.assert_called_once_with(
+        provided_role=SCHEDULE_ROLE_ARN,
+        role_type="feature_store",
+        sagemaker_session=session,
+    )
 
 
 @patch(

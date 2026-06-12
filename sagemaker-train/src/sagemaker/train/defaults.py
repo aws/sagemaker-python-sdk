@@ -15,7 +15,8 @@ from __future__ import absolute_import
 
 from typing import Optional, Dict, Any, Union, List
 
-from sagemaker.core.helper.session_helper import Session, get_execution_role
+from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
 from sagemaker.core import shapes
 
 from sagemaker.core.jumpstart.document import get_hub_content_and_document
@@ -66,14 +67,25 @@ class TrainDefaults:
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
     ) -> str:
-        """Get the default execution role."""
+        """Get the default execution role.
+
+        Roles are resolved in this order (see ``resolve_or_create_role``):
+            1. The explicitly provided ``role`` (returned as-is once validated).
+            2. The caller's session role, if it already has sufficient permissions.
+            3. A dedicated least-privilege training role, created on demand if neither
+               of the above applies.
+        """
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=sagemaker_session
+        )
+        resolved = resolve_or_create_role(
+            provided_role=role,
+            role_type="training",
+            sagemaker_session=sagemaker_session,
+        )
         if role is None:
-            sagemaker_session = TrainDefaults.get_sagemaker_session(
-                sagemaker_session=sagemaker_session
-            )
-            role = get_execution_role(sagemaker_session)
-            logger.info(f"Role not provided. Using default role:\n{role}")
-        return role
+            logger.info(f"Role not provided. Using auto-resolved role:\n{resolved}")
+        return resolved
 
     @staticmethod
     def get_base_job_name(
