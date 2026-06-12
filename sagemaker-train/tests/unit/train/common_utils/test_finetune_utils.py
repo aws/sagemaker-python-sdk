@@ -867,7 +867,7 @@ class TestResolveIntermediateCheckpointMpg:
 
 
 class TestSubscriptionOnlyModelFallback:
-    """Tests for models that only have subscription recipes (e.g., Nova Micro v2)."""
+    """Tests for models that only have subscription recipes."""
 
     @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
     def test_fallback_to_subscription_recipe_lora(self, mock_get_hub_content):
@@ -879,9 +879,9 @@ class TestSubscriptionOnlyModelFallback:
         mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
 
-        # Only subscription recipes (like Nova Micro v2)
+        # Only subscription recipes exist for this model
         mock_get_hub_content.return_value = {
-            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2",
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model",
             'hub_content_document': {
                 "GatedBucket": False,
                 "RecipeCollection": [
@@ -891,7 +891,7 @@ class TestSubscriptionOnlyModelFallback:
                         "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
                         "Peft": True,
                         "IsSubscriptionModel": True,
-                        "Name": "nova_micro_v2_sft_lora"
+                        "Name": "subscription_model_sft_lora"
                     },
                     {
                         "CustomizationTechnique": "SFT",
@@ -899,7 +899,7 @@ class TestSubscriptionOnlyModelFallback:
                         "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/full_params.json",
                         "Peft": False,
                         "IsSubscriptionModel": True,
-                        "Name": "nova_micro_v2_sft_full"
+                        "Name": "subscription_model_sft_full"
                     }
                 ]
             }
@@ -909,10 +909,10 @@ class TestSubscriptionOnlyModelFallback:
         mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=sub_params.encode()))}
 
         options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
-            "nova-textgeneration-micro-v2", "SFT", "LORA", mock_session,
+            "subscription-only-model", "SFT", "LORA", mock_session,
         )
 
-        assert model_arn == "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2"
+        assert model_arn == "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model"
         assert "max_steps" in options._specs
         assert is_gated is False
 
@@ -927,7 +927,7 @@ class TestSubscriptionOnlyModelFallback:
         mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
 
         mock_get_hub_content.return_value = {
-            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2",
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model",
             'hub_content_document': {
                 "GatedBucket": False,
                 "RecipeCollection": [
@@ -937,7 +937,7 @@ class TestSubscriptionOnlyModelFallback:
                         "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/full_params.json",
                         "Peft": False,
                         "IsSubscriptionModel": True,
-                        "Name": "nova_micro_v2_sft_full"
+                        "Name": "subscription_model_sft_full"
                     }
                 ]
             }
@@ -947,7 +947,7 @@ class TestSubscriptionOnlyModelFallback:
         mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=sub_params.encode()))}
 
         options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
-            "nova-textgeneration-micro-v2", "SFT", "FULL", mock_session,
+            "subscription-only-model", "SFT", "FULL", mock_session,
         )
 
         assert "learning_rate" in options._specs
@@ -963,7 +963,7 @@ class TestSubscriptionOnlyModelFallback:
         mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
 
         mock_get_hub_content.return_value = {
-            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2",
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model",
             'hub_content_document': {
                 "GatedBucket": False,
                 "RecipeCollection": [
@@ -973,7 +973,7 @@ class TestSubscriptionOnlyModelFallback:
                         "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
                         "Peft": True,
                         "IsSubscriptionModel": True,
-                        "Name": "nova_micro_v2_sft_lora"
+                        "Name": "subscription_model_sft_lora"
                     }
                 ]
             }
@@ -988,12 +988,12 @@ class TestSubscriptionOnlyModelFallback:
 
         with pytest.raises(ValueError) as exc_info:
             _get_fine_tuning_options_and_model_arn(
-                "nova-textgeneration-micro-v2", "SFT", "LORA", mock_session,
+                "subscription-only-model", "SFT", "LORA", mock_session,
             )
 
         error_msg = str(exc_info.value)
         assert "subscription" in error_msg.lower()
-        assert "nova-textgeneration-micro-v2" in error_msg
+        assert "subscription-only-model" in error_msg
 
     @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
     def test_non_subscription_recipe_preferred_over_subscription(self, mock_get_hub_content):
@@ -1058,7 +1058,7 @@ class TestSubscriptionOnlyModelFallback:
         mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
 
         mock_get_hub_content.return_value = {
-            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-micro-v2",
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model",
             'hub_content_document': {
                 "GatedBucket": False,
                 "RecipeCollection": [
@@ -1068,7 +1068,7 @@ class TestSubscriptionOnlyModelFallback:
                         "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
                         "Peft": True,
                         "IsSubscriptionModel": True,
-                        "Name": "nova_micro_v2_sft_lora"
+                        "Name": "subscription_model_sft_lora"
                     }
                 ]
             }
@@ -1078,7 +1078,7 @@ class TestSubscriptionOnlyModelFallback:
         mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=sub_params.encode()))}
 
         options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
-            "nova-textgeneration-micro-v2", "SFT", "LORA", mock_session,
+            "subscription-only-model", "SFT", "LORA", mock_session,
         )
 
         # S3 get_object should only be called once (primary recipe), not twice (no overlay merge)

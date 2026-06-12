@@ -449,7 +449,7 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
 
         # Select recipe based on training type
         # Prefer non-subscription (standard) recipes first, fall back to subscription recipes
-        # if no standard recipe exists (e.g., Nova Micro v2 only has subscription recipes).
+        # if no standard recipe exists (some models only have subscription recipes).
         recipe = None
         if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
             recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
