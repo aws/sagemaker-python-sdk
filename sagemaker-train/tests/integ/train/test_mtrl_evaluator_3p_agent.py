@@ -240,21 +240,23 @@ def lambda_agent_arn(test_config):
     return _ensure_lambda_exists(test_config["account_id"])
 
 
+@pytest.mark.gpu_intensive
+@pytest.mark.serial
 class TestMTRLEvaluator3PAgentIntegration:
     """Integration tests for MultiTurnRLEvaluator with Lambda-based 3P agent."""
 
-    def test_evaluate_base_model_with_lambda_agent(self, lambda_agent_arn, test_config):
-        """Test evaluating a base model using a Lambda ARN as agent_config.
+    def test_evaluate_with_lambda_agent_wait_for_completion(self, lambda_agent_arn, test_config):
+        """Test full end-to-end: start evaluation, wait for completion, and verify discoverability.
 
-        This is the primary 3P integration pattern: customer provides a
-        Lambda function that wraps their agent (LangChain, Strands, etc.)
-        and the evaluator runs rollouts against it.
+        This test validates the complete lifecycle including wait() using
+        the standard sagemaker-core pipeline execution path, and verifies
+        the evaluation is discoverable via get_all().
         """
         evaluator = MultiTurnRLEvaluator(
             model=test_config["base_model"],
             dataset=test_config["dataset"],
             agent_config=lambda_agent_arn,
-            s3_output_path=f'{test_config["s3_output_path"]}lambda-base-model/',
+            s3_output_path=f'{test_config["s3_output_path"]}lambda-e2e/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
             role=test_config["role"],
             region=test_config["region"],
@@ -267,9 +269,27 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution.arn is not None
         assert "pipeline" in execution.arn.lower()
         logger.info(f"Started 3P agent base model evaluation: {execution.arn}")
-        logger.info(f"Status: {execution.status.overall_status}")
 
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
+        execution.wait()
+        assert execution.status.overall_status in ("Succeeded", "Failed", "Stopped")
+        logger.info(f"Execution completed: {execution.status.overall_status}")
+
+        if execution.status.overall_status == "Failed":
+            logger.error(f"Failure reason: {execution.status.failure_reason}")
+
+        # Verify it's discoverable via get_all
+        found = False
+        for ex in MultiTurnRLEvaluator.get_all(region=test_config["region"]):
+            if ex.arn == execution.arn:
+                found = True
+                break
+
+        assert found, (
+            f"Evaluation {execution.arn} not found via get_all(). "
+            "Pipeline tagging may not be working correctly."
+        )
+        logger.info(f"Successfully discovered evaluation via get_all: {execution.arn}")
+
     def test_evaluate_base_model_with_agent_lambda_object(self, lambda_agent_arn, test_config):
         """Test evaluating using an CustomAgentLambda object as agent_config.
 
@@ -295,77 +315,6 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution.arn is not None
         logger.info(f"Started CustomAgentLambda object evaluation: {execution.arn}")
 
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
-    def test_evaluate_with_lambda_agent_wait_for_completion(self, lambda_agent_arn, test_config):
-        """Test full end-to-end: start evaluation and wait for completion.
-
-        This test validates the complete lifecycle including wait() using
-        the standard sagemaker-core pipeline execution path.
-        """
-        evaluator = MultiTurnRLEvaluator(
-            model=test_config["base_model"],
-            dataset=test_config["dataset"],
-            agent_config=lambda_agent_arn,
-            s3_output_path=f'{test_config["s3_output_path"]}lambda-e2e/',
-            mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
-            region=test_config["region"],
-            accept_eula=True,
-        )
-
-        execution = evaluator.evaluate()
-        assert execution is not None
-
-        logger.info(f"Waiting for execution: {execution.arn}")
-        execution.wait()
-
-        assert execution.status.overall_status in ("Succeeded", "Failed", "Stopped")
-        logger.info(f"Execution completed: {execution.status.overall_status}")
-
-        if execution.status.overall_status == "Failed":
-            logger.error(f"Failure reason: {execution.status.failure_reason}")
-
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
-    def test_evaluate_lambda_agent_discoverable_via_get_all(self, lambda_agent_arn, test_config):
-        """Test that 3P agent evaluations are discoverable via get_all.
-
-        Validates that evaluations started with Lambda agents show up in
-        the standard get_all() discovery path (pipeline tagging works).
-        """
-        evaluator = MultiTurnRLEvaluator(
-            model=test_config["base_model"],
-            dataset=test_config["dataset"],
-            agent_config=lambda_agent_arn,
-            s3_output_path=f'{test_config["s3_output_path"]}lambda-discovery/',
-            mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
-            region=test_config["region"],
-            accept_eula=True,
-        )
-
-        execution = evaluator.evaluate()
-        assert execution is not None
-        started_arn = execution.arn
-
-        # Give pipeline time to register
-        time.sleep(10)
-
-        # Verify it's discoverable via get_all
-        found = False
-        for ex in MultiTurnRLEvaluator.get_all(region=test_config["region"]):
-            if ex.arn == started_arn:
-                found = True
-                break
-
-        assert found, (
-            f"Evaluation {started_arn} not found via get_all(). "
-            "Pipeline tagging may not be working correctly."
-        )
-        logger.info(f"Successfully discovered evaluation via get_all: {started_arn}")
-
-
-
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_with_attached_trainer(self, lambda_agent_arn, test_config):
         """Test evaluating a fine-tuned model by attaching to an existing training job."""
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer

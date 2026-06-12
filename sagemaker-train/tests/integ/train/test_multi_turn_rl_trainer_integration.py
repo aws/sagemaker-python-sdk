@@ -40,7 +40,7 @@ def _get_account_id():
 
 AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS"
 BASE_MODEL = "openai-reasoning-gpt-oss-20b"
-EXISTING_JOB_NAME = "openai-reasoning-gpt-oss-20b-mtrl-20260602005937"
+EXISTING_JOB_NAME = "openai-reasoning-gpt-oss-20b-mtrl-20260602215955"
 
 
 @pytest.fixture(scope="module")
@@ -63,7 +63,8 @@ def test_resources():
     }
 
 
-@pytest.mark.skip(reason="GPU resource intensive — run manually")
+@pytest.mark.gpu_intensive
+@pytest.mark.serial
 class TestMultiTurnRLTrainerBedrockAgent:
     """Test MTRL training with Bedrock AgentCore runtime."""
 
@@ -116,7 +117,8 @@ class TestMultiTurnRLTrainerBedrockAgent:
         assert job.job_status in ("Stopping", "Stopped")
 
 
-@pytest.mark.skip(reason="GPU resource intensive — run manually")
+@pytest.mark.gpu_intensive
+@pytest.mark.serial
 class TestMultiTurnRLTrainerLambdaAgent:
     """Test MTRL training with Lambda agent."""
 
@@ -145,7 +147,7 @@ class TestMultiTurnRLTrainerLambdaAgent:
         assert job.output_model_package_arn is not None
 
 
-@pytest.mark.skip(reason="GPU resource intensive — run manually")
+
 class TestMultiTurnRLTrainerAttach:
     """Test attaching to existing MTRL jobs."""
 
@@ -162,6 +164,7 @@ class TestMultiTurnRLTrainerAttach:
         assert attached_job.output_model_package_arn is not None
         assert attached_job.s3_output_path is not None
 
+    @pytest.mark.skip(reason="GPU resource intensive — run manually")
     def test_get_all_jobs(self, sagemaker_session):
         """Test listing all MTRL jobs."""
         jobs = list(AgentRFTJob.get_all(
@@ -172,7 +175,6 @@ class TestMultiTurnRLTrainerAttach:
         assert all(j.job_status == "Completed" for j in jobs)
 
 
-@pytest.mark.skip(reason="GPU resource intensive — run manually")
 class TestMultiTurnRLTrainerListModels:
     """Test listing supported models (requires API access)."""
 
