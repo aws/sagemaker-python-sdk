@@ -28,6 +28,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     get_training_dataset_for_model_and_version,
     x_fail_if_ice,
+    fit_estimator_with_capacity_xfail,
 )
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
@@ -221,11 +222,12 @@ def test_gated_model_training_v2_neuron(setup):
     )
 
     # uses ml.trn1.32xlarge instance
-    estimator.fit(
+    fit_estimator_with_capacity_xfail(
+        estimator,
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, '*')}",
-        }
+        },
     )
 
     # uses ml.inf2.xlarge instance
