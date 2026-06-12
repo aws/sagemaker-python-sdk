@@ -639,3 +639,22 @@ class TestTransformer:
         assert "resource_config" in config
         assert config["output_config"]["s3_output_path"] == "s3://bucket/output"
         assert config["resource_config"]["instance_count"] == 2
+
+    def test_transform_removes_tags_from_transform_job(self, mock_session):
+        """Test that tags are removed from transformed dict before TransformJob creation"""
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            tags=[{"Key": "test", "Value": "value"}],
+        )
+
+        with patch("sagemaker.core.transformer.TransformJob") as mock_job_class:
+            transformer.transform(
+                data="s3://bucket/input",
+                job_name="test-job",
+            )
+            mock_job_class.assert_called_once()
+            call_kwargs = mock_job_class.call_args[1]
+            assert "tags" not in call_kwargs
