@@ -14,6 +14,7 @@
 from __future__ import absolute_import
 
 import pytest
+import io
 import time
 import tempfile
 import os
@@ -1226,6 +1227,46 @@ class TestCustomExtractallTarfile:
             custom_extractall_tarfile(tar, str(extract_path))
 
         assert (extract_path / "file.txt").exists()
+
+    def test_custom_extractall_tarfile_blocks_sibling_prefix_escape(self, tmp_path, monkeypatch):
+        """Test fallback extraction blocks sibling paths with the same directory prefix."""
+        from sagemaker.core.common_utils import custom_extractall_tarfile
+
+        monkeypatch.delattr(tarfile, "data_filter", raising=False)
+        extract_path = tmp_path / "src"
+        extract_path.mkdir()
+        escaped_path = tmp_path / "src_evil" / "escaped.txt"
+        stream = io.BytesIO()
+        with tarfile.open(fileobj=stream, mode="w") as tar:
+            data = b"outside"
+            file_info = tarfile.TarInfo(name="../src_evil/escaped.txt")
+            file_info.size = len(data)
+            tar.addfile(file_info, io.BytesIO(data))
+        stream.seek(0)
+
+        with tarfile.open(fileobj=stream, mode="r") as tar:
+            custom_extractall_tarfile(tar, str(extract_path))
+
+        assert not escaped_path.exists()
+
+    def test_custom_extractall_tarfile_blocks_special_files(self, tmp_path, monkeypatch):
+        """Test fallback extraction blocks special files like the data filter."""
+        from sagemaker.core.common_utils import custom_extractall_tarfile
+
+        monkeypatch.delattr(tarfile, "data_filter", raising=False)
+        extract_path = tmp_path / "extract"
+        extract_path.mkdir()
+        stream = io.BytesIO()
+        with tarfile.open(fileobj=stream, mode="w") as tar:
+            fifo_info = tarfile.TarInfo(name="blocked_fifo")
+            fifo_info.type = tarfile.FIFOTYPE
+            tar.addfile(fifo_info)
+        stream.seek(0)
+
+        with tarfile.open(fileobj=stream, mode="r") as tar:
+            custom_extractall_tarfile(tar, str(extract_path))
+
+        assert not (extract_path / "blocked_fifo").exists()
 
 
 class TestCanModelPackageSourceUriAutopopulate:
