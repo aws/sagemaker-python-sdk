@@ -28,6 +28,7 @@ from tests.integ.sagemaker.jumpstart.utils import (
     get_sm_session,
     get_training_dataset_for_model_and_version,
     x_fail_if_ice,
+    fit_estimator_with_capacity_xfail,
 )
 
 from sagemaker.jumpstart.utils import get_jumpstart_content_bucket
@@ -215,14 +216,18 @@ def test_gated_model_training_v2_neuron(setup):
         tags=[{"Key": JUMPSTART_TAG, "Value": os.environ[ENV_VAR_JUMPSTART_SDK_TEST_SUITE_ID]}],
         environment={"accept_eula": "true"},
         max_run=259200,  # avoid exceeding resource limits
+        # Canary only verifies the train/deploy flow, so cap training to a
+        # single epoch to keep fit() fast.
+        hyperparameters={"epochs": "1"},
     )
 
     # uses ml.trn1.32xlarge instance
-    estimator.fit(
+    fit_estimator_with_capacity_xfail(
+        estimator,
         {
             "training": f"s3://{get_jumpstart_content_bucket(JUMPSTART_DEFAULT_REGION_NAME)}/"
             f"{get_training_dataset_for_model_and_version(model_id, '*')}",
-        }
+        },
     )
 
     # uses ml.inf2.xlarge instance

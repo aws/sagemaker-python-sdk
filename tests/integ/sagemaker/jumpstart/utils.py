@@ -92,6 +92,82 @@ def x_fail_if_ice(func):
     return wrapper
 
 
+# Default time (in seconds) we allow a training job to sit in
+# "Pending - waiting for capacity" before treating it as a capacity shortage.
+# Scarce accelerators (e.g. Trainium ml.trn1.32xlarge) can queue for hours
+# without ever failing, which would otherwise exhaust the build timeout.
+DEFAULT_CAPACITY_WAIT_TIMEOUT_SECONDS = 30 * 60
+_CAPACITY_POLL_INTERVAL_SECONDS = 60
+
+
+def fit_estimator_with_capacity_xfail(
+    estimator,
+    inputs,
+    capacity_wait_timeout_seconds: int = DEFAULT_CAPACITY_WAIT_TIMEOUT_SECONDS,
+):
+    """Submit a training job and wait for it, but fail fast on capacity queueing.
+
+    Unlike ``estimator.fit()`` (which blocks until the job reaches a terminal
+    state), this submits the job non-blocking and then polls its secondary
+    status. Insufficient capacity for scarce instances (e.g. Trainium) does not
+    surface as an exception; SageMaker simply parks the job in
+    ``Pending`` / "waiting for capacity" indefinitely. If the job stays in that
+    state longer than ``capacity_wait_timeout_seconds`` before training starts,
+    we raise a ``RuntimeError`` whose message contains ``"CapacityError"`` so the
+    ``x_fail_if_ice`` decorator marks the test as xfail instead of letting it hang
+    until the build times out.
+
+    Args:
+        estimator: A SageMaker estimator (e.g. ``JumpStartEstimator``).
+        inputs: The training inputs passed through to ``estimator.fit()``.
+        capacity_wait_timeout_seconds: Max time to allow the job to remain in
+            "waiting for capacity" before declaring a capacity shortage.
+    """
+    estimator.fit(inputs, wait=False)
+
+    training_job_name = estimator.latest_training_job.name
+    sagemaker_client = estimator.sagemaker_session.sagemaker_client
+
+    capacity_wait_deadline = time.time() + capacity_wait_timeout_seconds
+    training_started = False
+
+    while True:
+        desc = sagemaker_client.describe_training_job(TrainingJobName=training_job_name)
+        status = desc["TrainingJobStatus"]
+        secondary_status = desc.get("SecondaryStatus", "")
+        secondary_message = desc.get("SecondaryStatusMessage", "")
+
+        # Once the job leaves the pre-capacity phases, capacity has been granted
+        # and normal training-time limits (MaxRuntimeInSeconds) take over.
+        if secondary_status not in ("Starting", "Pending"):
+            training_started = True
+
+        if status in ("Completed", "Failed", "Stopped"):
+            if status != "Completed":
+                raise RuntimeError(
+                    f"Training job {training_job_name} ended with status {status}: "
+                    f"{desc.get('FailureReason', secondary_message)}"
+                )
+            return desc
+
+        if not training_started and time.time() > capacity_wait_deadline:
+            # Stop the queued job so it does not keep holding the request, then
+            # raise a CapacityError so x_fail_if_ice converts this to an xfail.
+            try:
+                sagemaker_client.stop_training_job(TrainingJobName=training_job_name)
+            except ClientError:
+                pass
+            raise RuntimeError(
+                "CapacityError: training job "
+                f"{training_job_name} stayed in '{secondary_status}' "
+                f"({secondary_message!r}) for over "
+                f"{capacity_wait_timeout_seconds}s without acquiring "
+                f"{estimator.instance_type} capacity."
+            )
+
+        time.sleep(_CAPACITY_POLL_INTERVAL_SECONDS)
+
+
 def download_inference_assets():
 
     if not os.path.exists(TMP_DIRECTORY_PATH):
