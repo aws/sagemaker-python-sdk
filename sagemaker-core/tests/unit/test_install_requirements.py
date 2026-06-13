@@ -12,6 +12,7 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import logging
 import subprocess
 import sys
 from unittest import mock
@@ -21,6 +22,7 @@ import pytest
 from sagemaker.core.utils.install_requirements import (
     CA_REPOSITORY_ARN_ENV,
     CodeArtifactAuthMethod,
+    _format_pip_cmd_for_log,
     _parse_arn,
     configure_pip,
     install_requirements,
@@ -191,6 +193,31 @@ class TestInstallRequirements:
             with mock.patch("subprocess.check_call") as mock_call:
                 install_requirements("reqs.txt")
         mock_call.assert_called_once_with(_pip_cmd("-i", EXPECTED_INDEX))
+
+    def test_codeartifact_index_token_is_redacted_from_logs(self, caplog):
+        caplog.set_level(logging.INFO, logger=_MODULE)
+        with mock.patch(f"{_MODULE}.configure_pip", return_value=EXPECTED_INDEX):
+            with mock.patch("subprocess.check_call") as mock_call:
+                install_requirements("reqs.txt")
+
+        mock_call.assert_called_once_with(_pip_cmd("-i", EXPECTED_INDEX))
+        assert FAKE_TOKEN not in caplog.text
+        assert "https://****@" in caplog.text
+
+    def test_url_username_is_redacted_from_logged_command(self):
+        logged_cmd = _format_pip_cmd_for_log(
+            [
+                sys.executable,
+                "-m",
+                "pip",
+                "install",
+                "-i",
+                "https://username-only-token@example.com/simple/",
+            ]
+        )
+
+        assert "username-only-token" not in logged_cmd
+        assert "https://****@example.com/simple/" in logged_cmd
 
     def test_with_cli_fallback_no_index_flag(self):
         with mock.patch(f"{_MODULE}.configure_pip", return_value=None):
