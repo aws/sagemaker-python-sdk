@@ -500,16 +500,59 @@ def create_tar_file(source_files, target=None):
     Returns:
         (str): path to created tar file
     """
+    for sf in source_files:
+        _validate_tar_source_path(sf)
+
     if target:
         filename = target
     else:
-        _, filename = tempfile.mkstemp()
+        file_descriptor, filename = tempfile.mkstemp()
+        os.close(file_descriptor)
 
     with tarfile.open(filename, mode="w:gz", dereference=True) as t:
         for sf in source_files:
             # Add all files from the directory into the root of the directory structure of the tar
             t.add(sf, arcname=os.path.basename(sf))
     return filename
+
+
+def _validate_tar_source_path(source_path):
+    """Validate that tar source symlinks do not escape their source root."""
+    source_root = os.path.realpath(source_path)
+
+    if _is_link_or_junction(source_path):
+        _validate_link_target_within_root(source_path, os.path.dirname(source_path))
+        return
+
+    if not os.path.isdir(source_path):
+        return
+
+    for root, dirs, files in os.walk(source_path, followlinks=False):
+        for name in dirs + files:
+            path = os.path.join(root, name)
+            if _is_link_or_junction(path):
+                _validate_link_target_within_root(path, source_root)
+
+
+def _is_link_or_junction(path):
+    is_junction = getattr(os.path, "isjunction", lambda _: False)
+    return os.path.islink(path) or is_junction(path)
+
+
+def _validate_link_target_within_root(link_path, source_root):
+    link_real = os.path.realpath(link_path)
+    root_real = os.path.realpath(source_root)
+    try:
+        common_path = os.path.commonpath([link_real, root_real])
+    except ValueError as e:
+        raise ValueError(
+            f"Source file link '{link_path}' resolves outside the source directory"
+        ) from e
+
+    if common_path != root_real:
+        raise ValueError(
+            f"Source file link '{link_path}' resolves outside the source directory"
+        )
 
 
 @contextlib.contextmanager
