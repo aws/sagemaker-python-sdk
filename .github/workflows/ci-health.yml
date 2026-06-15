@@ -36,7 +36,7 @@ jobs:
         with:
           project-name: sagemaker-python-sdk-ci-health-canaries-v2
           source-version: refs/heads/master-v2
-  unit-tests:
+  unit-tests-v2:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
@@ -50,7 +50,7 @@ jobs:
         with:
           project-name: sagemaker-python-sdk-ci-health-unit-tests
           source-version: refs/heads/master-v2
-  slow-tests:
+  slow-tests-v2:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
@@ -64,7 +64,7 @@ jobs:
         with:
           project-name: sagemaker-python-sdk-ci-health-slow-tests
           source-version: refs/heads/master-v2
-  localmode-tests:
+  localmode-tests-v2:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
