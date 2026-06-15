@@ -53,7 +53,7 @@ ACCOUNT_CONFIGS = {
     "729646638167": {
         "env_name": "PROD",
         "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260602215955",
-        "base_model": "openai-reasoning-gpt-oss-20b",
+        "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
@@ -65,7 +65,7 @@ ACCOUNT_CONFIGS = {
     "391266019386": {
         "env_name": "PREPROD",
         "existing_job_name": "mtrl-integ-gpt-oss-agentcore-1779143704358",
-        "base_model": "openai-reasoning-gpt-oss-20b",
+        "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:391266019386:runtime/mtrl_integ_gsm8k_streaming-bIz4H5Echk",
         "dataset": "s3://sagemaker-rft-beta-391266019386/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-391266019386/mtrl-integ/eval-output/",
@@ -77,7 +77,7 @@ ACCOUNT_CONFIGS = {
     "742774200982": {
         "env_name": "BETA",
         "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260601114439",
-        "base_model": "openai-reasoning-gpt-oss-20b",
+        "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:742774200982:runtime/sagemaker_rft_prod_gsm8k_streaming-UwSB6LEfEq",
         "dataset": "s3://sagemaker-rft-beta-742774200982/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-742774200982/mtrl-integ/eval-output/",

@@ -148,7 +148,7 @@ def _get_3p_test_config():
     boto_session = boto3.Session(region_name=_REGION)
     account_id = boto_session.client("sts").get_caller_identity()["Account"]
     return {
-        "base_model": "openai-reasoning-gpt-oss-20b",
+        "base_model": "mock-oss-test",
         "dataset": os.environ.get(
             "MTRL_3P_DATASET",
             f"s3://sagemaker-rft-{account_id}/prompts/gsm8k_small/prompts.parquet",

@@ -39,7 +39,8 @@ def _get_account_id():
     return _ACCOUNT_ID
 
 AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS"
-BASE_MODEL = "openai-reasoning-gpt-oss-20b"
+#BASE_MODEL = "openai-reasoning-gpt-oss-20b"
+BASE_MODEL = "mock-oss-test"
 EXISTING_JOB_NAME = "openai-reasoning-gpt-oss-20b-mtrl-20260602215955"
 
 
@@ -192,3 +193,6 @@ class TestMultiTurnRLTrainerListModels:
             session=sagemaker_session.boto_session
         )
         assert isinstance(runtimes, list)
+
+
+
