@@ -80,6 +80,10 @@ jobs:
           source-version: refs/heads/master-v2
   unit-test-v3:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        submodule: [sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops]
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -87,8 +91,8 @@ jobs:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
           aws-region: us-west-2
           role-duration-seconds: 10800
-      - name: Run Unit Tests V3
+      - name: Run Unit Tests V3 for ${{ matrix.submodule }}
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: sagemaker-python-sdk-ci-health-unit-test-v3
+          project-name: sagemaker-python-sdk-ci-health-unit-test-v3-${{ matrix.submodule }}
           source-version: refs/heads/master
