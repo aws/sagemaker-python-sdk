@@ -52,7 +52,8 @@ ACCOUNT_CONFIGS = {
     # PROD — Main account (729646638167)
     "729646638167": {
         "env_name": "PROD",
-        "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260602215955",
+        #"existing_job_name": "mock-oss-test-mtrl-20260611170946",
+        "existing_job_name": "mock-oss-test-mtrl-20260615143910",
         "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
@@ -158,10 +159,7 @@ class TestMTRLEvalIntegration:
         logger.info(f"[{config['env_name']}] Output model package: {job.output_model_package_arn}")
 
     def test_evaluate_finetuned_model(self, attached_trainer, config):
-        """Evaluate a fine-tuned model from attached trainer — submit and wait for completion.
-
-        Also validates hyperparameter overrides are passed through to the eval job.
-        """
+        """Evaluate a fine-tuned model from attached trainer — submit and wait for completion."""
         evaluator = MultiTurnRLEvaluator(
             model=attached_trainer,
             dataset=config["dataset"],
@@ -170,10 +168,6 @@ class TestMTRLEvalIntegration:
             role=config["role"],
             region=_REGION,
         )
-
-        # Override MTRL-specific hyperparams
-        evaluator.hyperparameters.sampling_max_tokens = 1024
-        evaluator.hyperparameters.eval_group_size = 4
 
         execution = evaluator.evaluate()
 

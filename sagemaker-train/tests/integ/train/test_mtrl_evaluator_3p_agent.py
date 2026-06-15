@@ -270,7 +270,7 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert "pipeline" in execution.arn.lower()
         logger.info(f"Started 3P agent base model evaluation: {execution.arn}")
 
-        execution.wait()
+        execution.wait(EVALUATION_TIMEOUT_SECONDS)
         assert execution.status.overall_status in ("Succeeded", "Failed", "Stopped")
         logger.info(f"Execution completed: {execution.status.overall_status}")
 
@@ -315,12 +315,15 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution.arn is not None
         logger.info(f"Started CustomAgentLambda object evaluation: {execution.arn}")
 
+        execution.wait(EVALUATION_TIMEOUT_SECONDS)
+        assert execution.status.overall_status == "Succeeded"
+
     def test_evaluate_with_attached_trainer(self, lambda_agent_arn, test_config):
         """Test evaluating a fine-tuned model by attaching to an existing training job."""
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
         attached_job = MultiTurnRLTrainer.attach(
-            "openai-reasoning-gpt-oss-20b-mtrl-20260602164546", session=boto3.Session(region_name=_REGION)
+            "mock-oss-test-mtrl-20260615143910", session=boto3.Session(region_name=_REGION)
         )
 
         evaluator = MultiTurnRLEvaluator(
@@ -339,3 +342,6 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution is not None
         assert execution.arn is not None
         logger.info(f"Started attached trainer evaluation: {execution.arn}")
+
+        execution.wait(EVALUATION_TIMEOUT_SECONDS)
+        assert execution.status.overall_status == "Succeeded"
