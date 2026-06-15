@@ -270,7 +270,7 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert "pipeline" in execution.arn.lower()
         logger.info(f"Started 3P agent base model evaluation: {execution.arn}")
 
-        execution.wait(EVALUATION_TIMEOUT_SECONDS)
+        execution.wait(timeout=EVALUATION_TIMEOUT_SECONDS)
         assert execution.status.overall_status in ("Succeeded", "Failed", "Stopped")
         logger.info(f"Execution completed: {execution.status.overall_status}")
 
@@ -315,7 +315,7 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution.arn is not None
         logger.info(f"Started CustomAgentLambda object evaluation: {execution.arn}")
 
-        execution.wait(EVALUATION_TIMEOUT_SECONDS)
+        execution.wait(timeout=EVALUATION_TIMEOUT_SECONDS)
         assert execution.status.overall_status == "Succeeded"
 
     def test_evaluate_with_attached_trainer(self, lambda_agent_arn, test_config):
@@ -343,5 +343,5 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution.arn is not None
         logger.info(f"Started attached trainer evaluation: {execution.arn}")
 
-        execution.wait(EVALUATION_TIMEOUT_SECONDS)
+        execution.wait(timeout=EVALUATION_TIMEOUT_SECONDS)
         assert execution.status.overall_status == "Succeeded"
