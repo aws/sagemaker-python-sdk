@@ -448,31 +448,50 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique}")
 
         # Select recipe based on training type
-        # Collect override_params from ALL matching recipes (standard + subscription)
+        # Prefer non-subscription (standard) recipe as primary; fallback to subscription
+        # recipe if model only has subscription recipes (e.g., nova-textgeneration-micro-v2)
         recipe = None
         if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
             recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+            if not recipe:
+                recipe = next((r for r in recipes_with_template if r.get("Peft") and r.get("IsSubscriptionModel")), None)
         elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
             recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+            if not recipe:
+                recipe = next((r for r in recipes_with_template if not r.get("Peft") and r.get("IsSubscriptionModel")), None)
 
         if not recipe:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}")
 
-        # Start with the standard recipe's override_params
+        # Start with the primary recipe's override_params
         options_dict = {}
         if recipe.get("SmtjOverrideParamsS3Uri"):
             s3_uri = recipe["SmtjOverrideParamsS3Uri"]
+            if "{customer_id}" in s3_uri:
+                s3_uri = s3_uri.replace("{customer_id}", sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"])
             s3 = sagemaker_session.boto_session.client("s3")
             uri_path = s3_uri.replace("s3://", "")
-            bucket, key = uri_path.split("/", 1)
+            # Handle access point ARN URIs (subscription-only models)
+            if uri_path.startswith("arn:"):
+                arn_parts = uri_path.split("/", 2)
+                bucket = arn_parts[0] + "/" + arn_parts[1]
+                key = arn_parts[2] if len(arn_parts) > 2 else ""
+            else:
+                bucket, key = uri_path.split("/", 1)
             obj = s3.get_object(Bucket=bucket, Key=key)
             options_dict = json.loads(obj["Body"].read())
 
         # Auto-detect and merge subscription recipe's override_params if available
+        # Skip if primary recipe is already the subscription recipe (subscription-only model)
+        sub_recipe = None
         if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
             sub_recipe = next((r for r in recipes_with_template if r.get("Peft") and r.get("IsSubscriptionModel")), None)
         else:
             sub_recipe = next((r for r in recipes_with_template if not r.get("Peft") and r.get("IsSubscriptionModel")), None)
+
+        # Guard: don't merge subscription override_params into itself
+        if sub_recipe and sub_recipe is recipe:
+            sub_recipe = None
 
         if sub_recipe and sub_recipe.get("SmtjOverrideParamsS3Uri"):
             try:
