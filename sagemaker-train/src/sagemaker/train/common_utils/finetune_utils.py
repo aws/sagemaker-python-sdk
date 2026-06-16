@@ -372,6 +372,23 @@ def _extract_dataset_source(dataset, param_name: str = "dataset"):
         return dataset.arn
 
 
+def _is_lambda_arn(arn: str) -> bool:
+    """Check if the given string is a valid AWS Lambda function ARN."""
+    return bool(LAMBDA_ARN_REGEX.match(arn))
+
+
+def _is_nova_model(model_name: str) -> bool:
+    """Check if the model is a Nova model based on model name.
+
+    Args:
+        model_name: The model name string.
+
+    Returns:
+        True if the model name contains 'nova' (case-insensitive).
+    """
+    return "nova" in model_name.lower()
+
+
 def _extract_evaluator_arn(evaluator, param_name: str = "custom_reward_function"):
     """Extract and validate evaluator ARN from string or Evaluator object."""
     if isinstance(evaluator, str):
