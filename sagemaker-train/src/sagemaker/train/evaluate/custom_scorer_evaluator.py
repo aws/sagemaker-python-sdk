@@ -415,7 +415,7 @@ class CustomScorerEvaluator(BaseEvaluator):
 
         # Dispatch based on compute type
         if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
-            return self._evaluate_smtj()
+            return self._evaluate_serverful_smtj()
         elif isinstance(self.compute, HyperPodCompute):
             return self._evaluate_hyperpod()
 
@@ -515,13 +515,13 @@ class CustomScorerEvaluator(BaseEvaluator):
             region=region
         )
 
-    def _evaluate_smtj(self):
+    def _evaluate_serverful_smtj(self):
         """Execute custom scorer evaluation on SMTJ compute via ModelTrainer.
 
         Fetches the evaluation recipe template from SageMaker Hub (filtered by
         Type=Evaluation), injects custom scorer-specific parameters, and launches
         via ModelTrainer.from_recipe(). Follows the same Hub lookup pattern as
-        BenchMarkEvaluator._evaluate_smtj().
+        BenchMarkEvaluator._evaluate_serverful_smtj().
         """
         from sagemaker.train.utils import _get_unique_name
 

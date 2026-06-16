@@ -59,8 +59,8 @@ class CPTTrainer(BaseTrainer):
                 cluster_name="my-cluster",
                 instance_type="ml.p5.48xlarge",
                 node_count=4,
-                recipe="training/nova/nova_2_0/nova_lite/CPT/nova_lite_2_0_p5x8_gpu_pretrain",
             ),
+            recipe="training/nova/nova_2_0/nova_lite/CPT/nova_lite_2_0_p5x8_gpu_pretrain",
             overrides={"recipes.training_config.trainer.max_steps": 100},
         )
 
@@ -92,7 +92,8 @@ class CPTTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             Stopping condition to override training runtime limit.
         recipe (Optional[str]):
-            Path to a user recipe YAML file (local or S3 URI).
+            Path to a user recipe YAML file or HyperPod recipe name. If not provided,
+            the recipe is auto-resolved from SageMaker Hub based on model and training type.
         overrides (Optional[dict]):
             Programmatic overrides dict.
         training_image (Optional[str]):
@@ -151,9 +152,9 @@ class CPTTrainer(BaseTrainer):
         self._recipe_resolver = None
         self._resolved_recipe_cache = None
 
-        # CPT is HyperPod-only and the recipe is provided by the user via
-        # compute.recipe. No Hub lookup is needed — hyperparameters are managed
-        # entirely by the HyperPod recipe and overrides.
+        # CPT is HyperPod-only and the recipe is auto-resolved from Hub if not
+        # provided by the user. No Hub lookup for hyperparameters is needed —
+        # they are managed entirely by the HyperPod recipe and overrides.
         self.hyperparameters = None
         self._model_arn = None
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, False)

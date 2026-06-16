@@ -69,8 +69,6 @@ class TestHyperPodComputeClass:
         assert config.namespace == "kubeflow"
         assert config.instance_type is None
         assert config.node_count == 1
-        assert config.training_image is None
-        assert config.recipe is None
 
     def test_full_construction(self):
         config = HyperPodCompute(
@@ -78,15 +76,11 @@ class TestHyperPodComputeClass:
             namespace="training",
             instance_type="ml.p5.48xlarge",
             node_count=8,
-            training_image="image:v2",
-            recipe="fine-tuning/nova/nova_2_0/nova_lite/SFT/recipe",
         )
         assert config.cluster_name == "prod-cluster"
         assert config.namespace == "training"
         assert config.instance_type == "ml.p5.48xlarge"
         assert config.node_count == 8
-        assert config.training_image == "image:v2"
-        assert config.recipe == "fine-tuning/nova/nova_2_0/nova_lite/SFT/recipe"
 
     def test_is_not_compute_instance(self):
         """HyperPodCompute is not an instance of Compute (separate class hierarchies)."""

@@ -1217,12 +1217,21 @@ class BaseEvaluator(BaseModel):
             capture_output=True, text=True, check=True,
         )
 
-        # Resolve recipe
-        recipe_name = compute.recipe
+        # Resolve recipe: use user-provided recipe or auto-resolve from Hub
+        recipe_name = self.recipe
         if not recipe_name:
-            raise ValueError(
-                "Must set 'recipe' in HyperPodCompute for evaluation on HyperPod."
+            from sagemaker.train.common_utils.finetune_utils import get_hyperpod_recipe_path
+
+            job_base = base_job_name or self.base_eval_name or "eval"
+            model_name = self._resolve_model_name_for_recipe()
+            recipe_name = get_hyperpod_recipe_path(
+                model_name=model_name,
+                customization_technique="Evaluation",
+                training_type="FULL",
+                sagemaker_session=self.sagemaker_session,
+                job_name=job_base,
             )
+            _logger.info(f"Auto-resolved HyperPod eval recipe from Hub: {recipe_name}")
 
         # Build base override parameters
         base_overrides = {}

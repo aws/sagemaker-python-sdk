@@ -467,15 +467,18 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         if not recipes_with_template:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique}")
 
-        # Select recipe based on training type
-        # Collect override_params from ALL matching recipes (standard + subscription)
+        # Select recipe based on training type.
+        # Hub recipes have a "Peft" field (e.g. "LORA") for parameter-efficient recipes,
+        # or None/absent for full-rank recipes. We match this to the user's TrainingType.
         recipe = None
         if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+            # Peft is set (e.g. "LORA") → this is a LoRA recipe
             recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
             # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
             if not recipe:
                 recipe = next((r for r in recipes_with_template if r.get("Peft")), None)
         elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
+            # Peft is absent/None → this is a full-rank recipe
             recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
             # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
             if not recipe:
@@ -995,6 +998,155 @@ def get_recipe_s3_uri(model_name: str, customization_technique: str, training_ty
         )
 
     return recipe["SmtjRecipeTemplateS3Uri"]
+
+
+def get_hyperpod_recipe_path(model_name: str, customization_technique: str, training_type,
+                             sagemaker_session, job_name: str,
+                             hub_name: Optional[str] = None) -> str:
+    """Resolve and write the HyperPod recipe for a model from SageMaker Hub.
+
+    Downloads the recipe template from Hub (HpEksPayloadTemplateS3Uri), writes it
+    to the HyperPod CLI's local recipe directory, and returns the relative recipe
+    path that ``hyperpod start-job --recipe`` expects.
+
+    This mirrors the Nova Forge SDK approach: the recipe YAML is fetched from Hub,
+    placed in the CLI's recipes_collection directory, and the CLI resolves it by
+    relative name.
+
+    Args:
+        model_name: Hub content name (e.g. "nova-textgeneration-lite-v2")
+        customization_technique: e.g. "RLVR", "SFT", "DPO", "CPT"
+        training_type: TrainingType enum or string ("LORA", "FULL")
+        sagemaker_session: SageMaker session for API calls
+        job_name: Unique job name used as recipe filename
+        hub_name: Optional hub name override
+
+    Returns:
+        str: Relative recipe path for the HyperPod CLI (without .yaml extension)
+
+    Raises:
+        ValueError: If no matching HyperPod recipe is found in Hub metadata
+        RuntimeError: If the HyperPod CLI is not installed
+    """
+    import uuid
+    import yaml
+
+    model_name = _normalize_model_name(model_name)
+
+    if hub_name is None:
+        hub_name = get_sagemaker_hub_name()
+
+    hub_content = _get_hub_content_metadata(
+        hub_name=hub_name,
+        hub_content_type="Model",
+        hub_content_name=model_name,
+        session=sagemaker_session.boto_session,
+        region=sagemaker_session.boto_session.region_name
+    )
+
+    document = hub_content.get('hub_content_document')
+    recipe_collection = document.get("RecipeCollection", [])
+
+    # Filter recipes by customization technique
+    matching_recipes = [r for r in recipe_collection
+                        if r.get("CustomizationTechnique") == customization_technique]
+
+    if not matching_recipes:
+        raise ValueError(
+            f"No recipes found for model '{model_name}' with customization technique: "
+            f"{customization_technique}"
+        )
+
+    # Filter for HyperPod recipes (must have HpEksPayloadTemplateS3Uri)
+    hp_recipes = [r for r in matching_recipes if r.get("HpEksPayloadTemplateS3Uri")]
+
+    if not hp_recipes:
+        raise ValueError(
+            f"No HyperPod recipes found for model '{model_name}' with technique: "
+            f"{customization_technique}. Available recipes only have SMTJ templates."
+        )
+
+    # Select recipe based on training type.
+    # Hub recipes have a "Peft" field (e.g. "LORA") for parameter-efficient recipes,
+    # or None/absent for full-rank recipes. We match this to the user's TrainingType.
+    recipe = None
+    if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+        # Peft is set (e.g. "LORA") → this is a LoRA recipe
+        recipe = next((r for r in hp_recipes if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+        # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
+        if not recipe:
+            recipe = next((r for r in hp_recipes if r.get("Peft")), None)
+    elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
+        # Peft is absent/None → this is a full-rank recipe
+        recipe = next((r for r in hp_recipes if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+        # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
+        if not recipe:
+            recipe = next((r for r in hp_recipes if not r.get("Peft")), None)
+
+    if not recipe:
+        raise ValueError(
+            f"No HyperPod recipe found for model '{model_name}' with technique: "
+            f"{customization_technique}, training_type: {training_type}"
+        )
+
+    hp_template_s3_uri = recipe["HpEksPayloadTemplateS3Uri"]
+    logger.info(f"HyperPod recipe template S3 URI: {hp_template_s3_uri}")
+
+    # Download recipe template from S3
+    s3_client = sagemaker_session.boto_session.client("s3")
+    uri_path = hp_template_s3_uri.replace("s3://", "")
+    bucket, key = uri_path.split("/", 1)
+    response = s3_client.get_object(Bucket=bucket, Key=key)
+    recipe_content = response["Body"].read().decode("utf-8")
+
+    # Resolve the HyperPod CLI's recipe directory
+    try:
+        import hyperpod_cli
+    except ModuleNotFoundError as e:
+        raise RuntimeError(
+            "The HyperPod CLI is a required dependency for running HyperPod jobs. "
+            "Install it with: pip install hyperpod"
+        ) from e
+
+    HYPERPOD_RECIPE_PATH = os.path.join(
+        "sagemaker_hyperpod_recipes", "recipes_collection", "recipes"
+    )
+    hp_cli_recipes_dir = os.path.join(
+        os.path.dirname(hyperpod_cli.__file__), HYPERPOD_RECIPE_PATH
+    )
+
+    # Build recipe subdirectory based on technique
+    technique_lower = customization_technique.lower()
+    if technique_lower in ("sft", "dpo", "rlvr", "rft"):
+        subdir = "fine-tuning"
+    elif technique_lower == "cpt":
+        subdir = "training"
+    elif technique_lower == "evaluation":
+        subdir = "evaluation"
+    else:
+        subdir = "fine-tuning"
+
+    # Construct a unique filename
+    recipe_filename = f"{job_name}-{str(uuid.uuid4())[:4]}.yaml"
+    recipe_dir = os.path.join(hp_cli_recipes_dir, subdir, "nova")
+    os.makedirs(recipe_dir, exist_ok=True)
+
+    recipe_path = os.path.join(recipe_dir, recipe_filename)
+
+    # Write recipe to the HyperPod CLI directory
+    with open(recipe_path, "w") as f:
+        f.write(recipe_content)
+
+    logger.info(f"HyperPod recipe written to: {recipe_path}")
+
+    # Return relative path (strip prefix + .yaml extension) as expected by CLI
+    relative_path = (
+        recipe_path.split(HYPERPOD_RECIPE_PATH, 1)[1]
+        .lstrip("/").lstrip("\\")
+        .removesuffix(".yaml")
+    )
+
+    return relative_path
 
 
 def get_training_image(model_name: str, customization_technique: str, training_type,

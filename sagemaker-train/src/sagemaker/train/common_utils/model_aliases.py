@@ -42,8 +42,6 @@ MAINTENANCE:
 MODEL_NAME_ALIASES = {
     # Nova v2 models
     "amazon.nova-lite-v2": "nova-textgeneration-lite-v2",
-    "amazon.nova-pro-v2": "nova-textgeneration-pro-v2",
-    "amazon.nova-micro-v2": "nova-textgeneration-micro-v2",
     # Nova v1 models
     "amazon.nova-lite-v1": "nova-textgeneration-lite",
     "amazon.nova-pro-v1": "nova-textgeneration-pro",

@@ -219,16 +219,12 @@ class HyperPodCompute(BaseConfig):
             The Kubernetes namespace for job scheduling. Defaults to ``"kubeflow"``.
         node_count (int):
             Number of nodes (replicas) to use. Default: 1.
-        recipe (Optional[str]):
-            Optional recipe name to override the default. If not provided, the
-            recipe is resolved from SageMaker Hub based on model and training type.
     """
 
     cluster_name: str = ""
     instance_type: Optional[str] = None
     namespace: str = "kubeflow"
     node_count: int = 1
-    recipe: Optional[str] = None
 
 
 class Networking(shapes.VpcConfig):

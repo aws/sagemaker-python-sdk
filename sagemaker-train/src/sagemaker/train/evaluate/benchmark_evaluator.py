@@ -629,7 +629,7 @@ class BenchMarkEvaluator(BaseEvaluator):
 
         # Dispatch based on compute type
         if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
-            return self._evaluate_smtj(subtask=subtask)
+            return self._evaluate_serverful_smtj(subtask=subtask)
         elif isinstance(self.compute, HyperPodCompute):
             return self._evaluate_hyperpod(subtask=subtask)
 
@@ -735,7 +735,7 @@ class BenchMarkEvaluator(BaseEvaluator):
             region=region
         )
 
-    def _evaluate_smtj(self, subtask=None):
+    def _evaluate_serverful_smtj(self, subtask=None):
         """Execute benchmark evaluation on SMTJ compute via ModelTrainer.
 
         Fetches the evaluation recipe template from SageMaker Hub (filtered by

@@ -1,6 +1,10 @@
 import copy
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, Union
+import json
+import logging
+import re
+import subprocess
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel
@@ -8,7 +12,13 @@ from sagemaker.core.shapes import shapes
 from sagemaker.core.resources import TrainingJob
 from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
-
+from sagemaker.train.common_utils.finetune_utils import (
+    get_training_image,
+    get_hyperpod_recipe_path,
+    _validate_hyperparameter_values,
+)
+from sagemaker.train.defaults import TrainDefaults
+from sagemaker.train.utils import _get_unique_name
 
 class BaseTrainer(ABC):
     """Abstract base class for all SageMaker training workflows.
@@ -329,19 +339,6 @@ class BaseTrainer(ABC):
         using a recipe-based approach. Shared across trainers that support HyperPod
         (SFT, DPO, RLVR).
         """
-        import json
-        import logging
-        import re
-        import subprocess
-
-        from sagemaker.train.common_utils.finetune_utils import (
-            get_training_image,
-            _is_nova_model,
-            _validate_hyperparameter_values,
-        )
-        from sagemaker.train.common_utils.validator import validate_hyperpod_compute
-        from sagemaker.train.defaults import TrainDefaults
-        from sagemaker.train.utils import _get_unique_name
 
         logger = logging.getLogger(__name__)
 
@@ -382,13 +379,18 @@ class BaseTrainer(ABC):
                 "Install it with: pip install hyperpod"
             )
 
-        # Resolve recipe name from compute config or trainer-level recipe field
-        recipe_name = compute.recipe or getattr(self, '_recipe_path', None)
+        # Resolve recipe: use user-provided recipe or auto-resolve from Hub
+        recipe_name = getattr(self, '_recipe_path', None)
         if not recipe_name:
-            raise ValueError(
-                "Must set 'recipe' in HyperPodCompute for HyperPod training, "
-                "or use Compute for SMTJ path."
+            job_base_name = self.base_job_name or f"{self._model_name}-{self._customization_technique}"
+            recipe_name = get_hyperpod_recipe_path(
+                model_name=self._model_name,
+                customization_technique=self._customization_technique,
+                training_type=self.training_type,
+                sagemaker_session=sagemaker_session,
+                job_name=job_base_name,
             )
+            logger.info(f"Auto-resolved HyperPod recipe from Hub: {recipe_name}")
 
         # Resolve training image
         training_image = self.training_image
