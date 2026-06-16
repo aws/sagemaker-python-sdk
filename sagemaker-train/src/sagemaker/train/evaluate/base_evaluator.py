@@ -17,6 +17,7 @@ from sagemaker.core.common_utils import TagsDict
 from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
 from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
+from sagemaker.core.training.configs import Compute, HyperPodCompute
 
 if TYPE_CHECKING:
     from sagemaker.core.helper.session_helper import Session
@@ -108,6 +109,7 @@ class BaseEvaluator(BaseModel):
     networking: Optional[VpcConfig] = None
     kms_key_id: Optional[str] = None
     model_package_group: Optional[Union[str, ModelPackageGroup]] = None
+    compute: Optional[Union[Compute, HyperPodCompute]] = None
     recipe: Optional[str] = None
     overrides: Optional[Dict[str, Any]] = None
     
@@ -315,8 +317,25 @@ class BaseEvaluator(BaseModel):
         import os
         
         try:
-            # Get the session for resolution (may not be created yet due to validator order)
+            # Get the session for resolution. Due to pydantic v2 compat layer issues
+            # with v1-style @validator, the session may be None or scoped to wrong region
+            # (e.g., region="us-east-1" passed by user but session created with us-west-2).
+            # TODO: Migrate from v1-style @validator to pydantic v2 @model_validator to
+            # guarantee field ordering and eliminate the ARN-region fallback below.
             session = values.get('sagemaker_session')
+            
+            # If the model is an ARN, ensure the session region matches the ARN region
+            if isinstance(v, str) and v.startswith("arn:aws:sagemaker:"):
+                import boto3
+                from sagemaker.core.helper.session_helper import Session
+                arn_parts = v.split(":")
+                if len(arn_parts) >= 4:
+                    arn_region = arn_parts[3]
+                    # Create/override session if it's None or scoped to wrong region
+                    if session is None or session.boto_session.region_name != arn_region:
+                        boto_session = boto3.Session(region_name=arn_region)
+                        sm_client = boto_session.client('sagemaker')
+                        session = Session(boto_session=boto_session, sagemaker_client=sm_client)
             
             # Resolve model information
             model_info = _resolve_base_model(
@@ -416,6 +435,27 @@ class BaseEvaluator(BaseModel):
         from ..common_utils.recipe_utils import _is_nova_model
         base_model_name = self._base_model_name
         return _is_nova_model(base_model_name) if base_model_name else False
+
+    def _resolve_model_name_for_recipe(self) -> str:
+        """Resolve the model name for recipe lookup in SageMaker Hub.
+
+        Uses the already-resolved base model name from model info. This name
+        is used to find the appropriate evaluation recipe via get_recipe_s3_uri.
+
+        Returns:
+            str: The base model name (e.g., 'amazon-nova-lite-v2')
+
+        Raises:
+            ValueError: If the model name cannot be resolved.
+        """
+        model_name = self._base_model_name
+        if not model_name:
+            raise ValueError(
+                "Could not resolve model name for recipe lookup. "
+                "Ensure the 'model' parameter is a valid JumpStart model ID, "
+                "ModelPackage ARN, or a completed BaseTrainer."
+            )
+        return model_name
 
     @property
     def _is_jumpstart_model(self) -> bool:
@@ -936,3 +976,273 @@ class BaseEvaluator(BaseModel):
             ...         return EvaluationPipelineExecution.start(...)
         """
         raise NotImplementedError("Subclasses must implement evaluate method")
+
+    # ─── Shared SMTJ evaluation helpers ─────────────────────────────────────────
+
+    def _get_smtj_session_and_role(self):
+        """Resolve SageMaker session, role, and region for SMTJ evaluation.
+
+        Returns:
+            tuple: (sagemaker_session, role, region)
+        """
+        from sagemaker.train.defaults import TrainDefaults
+
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+        role = TrainDefaults.get_role(role=self.role, sagemaker_session=sagemaker_session)
+        region = sagemaker_session.boto_session.region_name
+        return sagemaker_session, role, region
+
+    def _get_smtj_eval_recipes(self, sagemaker_session, region):
+        """Fetch and filter SMTJ evaluation recipes from Hub.
+
+        Queries the SageMaker Hub for the model's recipes, filters by
+        Type=Evaluation and SmtjRecipeTemplateS3Uri presence.
+
+        Args:
+            sagemaker_session: SageMaker session with boto3 access.
+            region: AWS region string.
+
+        Returns:
+            list: SMTJ evaluation recipe metadata dicts.
+
+        Raises:
+            ValueError: If no evaluation or SMTJ recipes are found.
+        """
+        from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
+        from sagemaker.train.common_utils.finetune_utils import _normalize_model_name
+        from sagemaker.train.constants import get_sagemaker_hub_name
+
+        model_name = self._resolve_model_name_for_recipe()
+        normalized_model_name = _normalize_model_name(model_name)
+
+        hub_name = get_sagemaker_hub_name()
+        hub_content = _get_hub_content_metadata(
+            hub_name=hub_name,
+            hub_content_type="Model",
+            hub_content_name=normalized_model_name,
+            session=sagemaker_session.boto_session,
+            region=region,
+        )
+
+        document = hub_content.get('hub_content_document', {})
+        recipe_collection = document.get("RecipeCollection", [])
+
+        # Filter by Type=Evaluation
+        eval_recipes = [r for r in recipe_collection if r.get("Type") == "Evaluation"]
+        if not eval_recipes:
+            raise ValueError(
+                f"No evaluation recipes found for model '{normalized_model_name}' in Hub. "
+                f"Ensure the model has evaluation recipes registered in SageMakerPublicHub."
+            )
+
+        # Filter for SMTJ recipes (must have SmtjRecipeTemplateS3Uri)
+        smtj_eval_recipes = [r for r in eval_recipes if r.get("SmtjRecipeTemplateS3Uri")]
+        if not smtj_eval_recipes:
+            raise ValueError(
+                f"No SMTJ evaluation recipes found for model '{normalized_model_name}'."
+            )
+
+        return smtj_eval_recipes
+
+    def _download_and_load_recipe(self, recipe_s3_uri, sagemaker_session):
+        """Download a recipe YAML from S3 and load it as a dict.
+
+        Args:
+            recipe_s3_uri: S3 URI of the recipe template.
+            sagemaker_session: SageMaker session with boto3 access.
+
+        Returns:
+            tuple: (recipe_dict, tmp_file_path)
+        """
+        import tempfile
+        import yaml
+
+        s3_client = sagemaker_session.boto_session.client("s3")
+        bucket, key = recipe_s3_uri.replace("s3://", "").split("/", 1)
+        recipe_tmp = tempfile.NamedTemporaryFile(prefix="eval_recipe_", suffix=".yaml", delete=False)
+        s3_client.download_file(bucket, key, recipe_tmp.name)
+
+        with open(recipe_tmp.name, "r") as f:
+            recipe_dict = yaml.safe_load(f) or {}
+
+        return recipe_dict, recipe_tmp.name
+
+    def _resolve_model_s3_path(self, sagemaker_session, region):
+        """Resolve S3 model artifacts path from model package.
+
+        SMTJ evaluation requires the S3 checkpoint path (not a model package ARN).
+
+        Args:
+            sagemaker_session: SageMaker session with boto3 access.
+            region: AWS region string.
+
+        Returns:
+            Optional[str]: S3 path to model artifacts, or None if not resolvable.
+        """
+        if not self._source_model_package_arn:
+            return None
+
+        model_pkg = ModelPackage.get(
+            model_package_name=self._source_model_package_arn,
+            session=sagemaker_session.boto_session,
+            region=region,
+        )
+        model_path = None
+        if (model_pkg.inference_specification and
+            model_pkg.inference_specification.containers):
+            container = model_pkg.inference_specification.containers[0]
+            if hasattr(container, 'model_data_source') and container.model_data_source:
+                src = container.model_data_source
+                if hasattr(src, 's3_data_source') and src.s3_data_source:
+                    model_path = src.s3_data_source.s3_uri
+            elif hasattr(container, 'model_data_url') and container.model_data_url:
+                model_path = container.model_data_url
+
+        return model_path
+
+    @staticmethod
+    def _resolve_inference_placeholders(recipe_dict):
+        """Fill in sensible defaults for unresolved inference placeholder values.
+
+        Args:
+            recipe_dict: The recipe dictionary to modify in-place.
+        """
+        if "inference" not in recipe_dict:
+            return
+
+        def _is_placeholder(value):
+            return isinstance(value, str) and "{{" in value and "}}" in value
+
+        inf = recipe_dict["inference"]
+        if _is_placeholder(inf.get("max_new_tokens")):
+            inf["max_new_tokens"] = 512
+        if _is_placeholder(inf.get("top_k")):
+            inf["top_k"] = 1
+        if _is_placeholder(inf.get("top_p")):
+            inf["top_p"] = 1.0
+        if _is_placeholder(inf.get("temperature")):
+            inf["temperature"] = 0.0
+
+    def _write_and_submit_smtj_recipe(
+        self, recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name
+    ):
+        """Write the modified recipe and submit via ModelTrainer.
+
+        Args:
+            recipe_dict: The fully resolved recipe dictionary.
+            recipe_tmp_path: Path to the temporary recipe file.
+            training_image: Container image URI for the training job.
+            sagemaker_session: SageMaker session.
+            role: IAM execution role ARN.
+            base_job_name: Base name for the training job.
+
+        Returns:
+            The latest training job object from ModelTrainer.
+        """
+        import yaml
+        from sagemaker.train.model_trainer import ModelTrainer
+        from sagemaker.core.training.configs import Compute as TrainingJobCompute
+
+        with open(recipe_tmp_path, "w") as f:
+            yaml.dump(recipe_dict, f, default_flow_style=False, sort_keys=False)
+
+        compute = TrainingJobCompute(
+            instance_type=self.compute.instance_type,
+            instance_count=self.compute.instance_count,
+            volume_size_in_gb=self.compute.volume_size_in_gb,
+            keep_alive_period_in_seconds=self.compute.keep_alive_period_in_seconds,
+        )
+
+        model_trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe_tmp_path,
+            compute=compute,
+            training_image=training_image,
+            sagemaker_session=sagemaker_session,
+            role=role,
+            base_job_name=base_job_name,
+        )
+
+        model_trainer.train(wait=False, logs=False)
+
+        return model_trainer._latest_training_job
+
+    def _submit_hyperpod_eval_job(self, override_parameters=None, base_job_name=None):
+        """Submit an evaluation job to a HyperPod cluster.
+
+        Handles the common HyperPod workflow: validate cluster config, connect,
+        resolve recipe, build base override parameters, submit job, and parse
+        the job name from CLI output.
+
+        Subclasses call this with their evaluator-specific override parameters.
+
+        Args:
+            override_parameters: Optional dict of evaluator-specific override
+                parameters to merge with the base parameters.
+            base_job_name: Optional base name for the job. If not provided,
+                uses self.base_eval_name or "eval".
+
+        Returns:
+            str: The HyperPod job name.
+
+        Raises:
+            ValueError: If cluster_name or recipe is not set.
+        """
+        import json
+        import re
+        import subprocess
+        from sagemaker.train.utils import _get_unique_name
+
+        compute = self.compute
+        if not compute.cluster_name:
+            raise ValueError("cluster_name is required in HyperPodCompute for evaluation.")
+
+        namespace = compute.namespace or "kubeflow"
+
+        # Connect to cluster
+        subprocess.run(
+            ["hyperpod", "connect-cluster", "--cluster-name", compute.cluster_name, "--namespace", namespace],
+            capture_output=True, text=True, check=True,
+        )
+
+        # Resolve recipe
+        recipe_name = compute.recipe
+        if not recipe_name:
+            raise ValueError(
+                "Must set 'recipe' in HyperPodCompute for evaluation on HyperPod."
+            )
+
+        # Build base override parameters
+        base_overrides = {}
+        if compute.instance_type:
+            base_overrides["instance_type"] = compute.instance_type
+        if getattr(compute, 'training_image', None):
+            base_overrides["container"] = compute.training_image
+        if compute.node_count:
+            base_overrides["recipes.run.replicas"] = compute.node_count
+
+        job_name = _get_unique_name(base_job_name or self.base_eval_name or "eval")
+        base_overrides["recipes.run.name"] = job_name
+
+        # Merge evaluator-specific overrides
+        if override_parameters:
+            base_overrides.update(override_parameters)
+
+        # Submit job
+        start_job_cmd = [
+            "hyperpod", "start-job", "--namespace", namespace, "--recipe", recipe_name,
+            "--override-parameters", json.dumps(base_overrides),
+        ]
+
+        try:
+            start_result = subprocess.run(start_job_cmd, capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as e:
+            _logger.error(f"HyperPod job submission failed.\nstdout: {e.stdout}\nstderr: {e.stderr}")
+            raise
+
+        matched = re.search(r"NAME: (\S+)", start_result.stdout)
+        if not matched:
+            raise ValueError(f"Could not find job name in output: {start_result.stdout}")
+
+        return matched.group(1)

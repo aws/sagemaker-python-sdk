@@ -507,3 +507,62 @@ class TestDPOTrainer:
         trainer.train(wait=False, wait_timeout=600)
 
         mock_wait.assert_not_called()
+
+
+class TestDPOTrainerComputeDispatch:
+    """Tests for compute dispatch in DPOTrainer."""
+
+    @patch('sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.dpo_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn')
+    def _make_trainer(self, mock_opts, mock_resolve, mock_validate, compute=None):
+        from sagemaker.core.training.configs import Compute, HyperPodCompute
+        mock_resolve.return_value = ("model", "nova-textgeneration-lite-v2")
+        mock_validate.return_value = "group"
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_opts.return_value = (mock_hp, "arn", False)
+        return DPOTrainer(model="amazon.nova-lite-v2", compute=compute, model_package_group="grp")
+
+    def test_rejects_invalid_compute_type(self):
+        from sagemaker.core.training.configs import Compute, HyperPodCompute
+        with pytest.raises(TypeError, match="Compute or HyperPodCompute"):
+            self._make_trainer(compute="invalid")
+
+    def test_accepts_none_compute(self):
+        trainer = self._make_trainer(compute=None)
+        assert trainer.compute is None
+
+    def test_accepts_compute_instance(self):
+        from sagemaker.core.training.configs import Compute
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=4)
+        trainer = self._make_trainer(compute=compute)
+        assert trainer.compute is compute
+
+    def test_accepts_hyperpod_compute(self):
+        from sagemaker.core.training.configs import HyperPodCompute
+        compute = HyperPodCompute(cluster_name="my-cluster", instance_type="ml.p5.48xlarge")
+        trainer = self._make_trainer(compute=compute)
+        assert trainer.compute is compute
+
+    def test_none_routes_to_serverless(self):
+        trainer = self._make_trainer(compute=None)
+        with patch.object(trainer, '_train_serverless', return_value=Mock()) as mock_sl:
+            trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
+            mock_sl.assert_called_once()
+
+    def test_compute_routes_to_smtj(self):
+        from sagemaker.core.training.configs import Compute
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=4)
+        trainer = self._make_trainer(compute=compute)
+        with patch.object(trainer, '_train_smtj', return_value=Mock()) as mock_smtj:
+            trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
+            mock_smtj.assert_called_once()
+
+    def test_hyperpod_routes_to_hyperpod(self):
+        from sagemaker.core.training.configs import HyperPodCompute
+        compute = HyperPodCompute(cluster_name="my-cluster", instance_type="ml.p5.48xlarge")
+        trainer = self._make_trainer(compute=compute)
+        with patch.object(trainer, '_train_hyperpod', return_value="job-name") as mock_hp:
+            trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
+            mock_hp.assert_called_once()

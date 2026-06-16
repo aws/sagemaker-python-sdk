@@ -45,3 +45,4 @@ docs/api/generated/
 .hypothesis
 .kiro
 bedrock_api_logs/
+v3-examples/results/*

@@ -389,6 +389,12 @@ class CustomScorerEvaluator(BaseEvaluator):
     def evaluate(self) -> EvaluationPipelineExecution:
         """Create and start a custom scorer evaluation job.
         
+        Supports multiple compute backends via the ``compute`` parameter set at
+        construction time:
+        - **Serverless** (default): Runs via SageMaker Pipelines.
+        - **SMTJ**: Runs on user-managed instances via ModelTrainer.
+        - **HyperPod**: Submits to a HyperPod cluster via the HyperPod CLI.
+        
         Returns:
             EvaluationPipelineExecution: The created custom scorer evaluation execution
         
@@ -405,6 +411,15 @@ class CustomScorerEvaluator(BaseEvaluator):
                 execution = evaluator.evaluate()
                 execution.wait()
         """
+        from sagemaker.core.training.configs import Compute, HyperPodCompute
+
+        # Dispatch based on compute type
+        if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
+            return self._evaluate_smtj()
+        elif isinstance(self.compute, HyperPodCompute):
+            return self._evaluate_hyperpod()
+
+        # Default: serverless compute via SageMaker Pipelines
         from .pipeline_templates import CUSTOM_SCORER_TEMPLATE, CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY
         
         # Get AWS execution context (role ARN, region, account ID)
@@ -498,4 +513,91 @@ class CustomScorerEvaluator(BaseEvaluator):
             eval_type=EvalType.CUSTOM_SCORER,
             session=session,
             region=region
+        )
+
+    def _evaluate_smtj(self):
+        """Execute custom scorer evaluation on SMTJ compute via ModelTrainer.
+
+        Fetches the evaluation recipe template from SageMaker Hub (filtered by
+        Type=Evaluation), injects custom scorer-specific parameters, and launches
+        via ModelTrainer.from_recipe(). Follows the same Hub lookup pattern as
+        BenchMarkEvaluator._evaluate_smtj().
+        """
+        from sagemaker.train.utils import _get_unique_name
+
+        # --- Common setup ---
+        sagemaker_session, role, region = self._get_smtj_session_and_role()
+
+        # --- Find SMTJ evaluation recipe ---
+        smtj_eval_recipes = self._get_smtj_eval_recipes(sagemaker_session, region)
+
+        # Prefer "custom scorer" recipes if available, otherwise fall back to first
+        custom_scorer_recipes = [
+            r for r in smtj_eval_recipes
+            if "custom" in r.get("DisplayName", "").lower()
+            or "scorer" in r.get("DisplayName", "").lower()
+        ]
+        recipe_metadata = custom_scorer_recipes[0] if custom_scorer_recipes else smtj_eval_recipes[0]
+
+        # Resolve training image
+        training_image = getattr(self.compute, 'training_image', None)
+        if not training_image:
+            training_image = recipe_metadata.get("SmtjImageUri")
+
+        # --- Download and load recipe ---
+        recipe_dict, recipe_tmp_path = self._download_and_load_recipe(
+            recipe_metadata["SmtjRecipeTemplateS3Uri"], sagemaker_session
+        )
+
+        # --- Inject custom scorer-specific fields ---
+        base_job_name = self.base_eval_name or "custom-eval"
+        recipe_dict.setdefault("run", {})
+        recipe_dict["run"]["name"] = _get_unique_name(base_job_name)
+
+        if self.evaluator:
+            evaluator_config = self._resolve_evaluator_config()
+            if evaluator_config.get('evaluator_arn'):
+                recipe_dict["run"]["eval_lambda_arn"] = evaluator_config['evaluator_arn']
+            elif evaluator_config.get('preset_reward_function'):
+                recipe_dict["run"]["preset_reward_function"] = evaluator_config['preset_reward_function']
+
+        if self.dataset:
+            recipe_dict["run"]["data_s3_path"] = str(self.dataset)
+
+        if self.s3_output_path:
+            recipe_dict["run"]["output_s3_path"] = self.s3_output_path
+
+        # --- Common: resolve model path ---
+        model_path = self._resolve_model_s3_path(sagemaker_session, region)
+        if model_path:
+            recipe_dict["run"]["model_name_or_path"] = model_path
+
+        # --- Common: resolve inference placeholders ---
+        self._resolve_inference_placeholders(recipe_dict)
+
+        # --- Common: write recipe and submit ---
+        return self._write_and_submit_smtj_recipe(
+            recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name
+        )
+
+    def _evaluate_hyperpod(self):
+        """Execute custom scorer evaluation on HyperPod cluster.
+
+        Builds evaluator-specific override parameters (processor config, dataset)
+        and delegates to BaseEvaluator._submit_hyperpod_eval_job().
+        """
+        override_parameters = {}
+
+        if hasattr(self, 'evaluator') and self.evaluator:
+            evaluator_config = self._resolve_evaluator_config()
+            if evaluator_config.get('evaluator_arn'):
+                override_parameters["recipes.processor.lambda_arn"] = evaluator_config['evaluator_arn']
+            elif evaluator_config.get('preset_reward_function'):
+                override_parameters["recipes.processor.preset_reward_function"] = evaluator_config['preset_reward_function']
+        if hasattr(self, 'dataset') and self.dataset:
+            override_parameters["recipes.run.data_s3_path"] = str(self.dataset)
+
+        return self._submit_hyperpod_eval_job(
+            override_parameters=override_parameters,
+            base_job_name="custom-eval",
         )

@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
@@ -9,6 +9,7 @@ from sagemaker.train.utils import _get_unique_name, _get_studio_tags
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.evaluator import Evaluator
 from sagemaker.train.configs import StoppingCondition
+from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 from sagemaker.train.common_utils.finetune_utils import (
     _get_fine_tuning_options_and_model_arn,
     _validate_and_resolve_model_package_group,
@@ -126,12 +127,15 @@ class RLVRTrainer(BaseTrainer):
             auto-detected from the training dataset at train time.
     """
 
+    _customization_technique = CustomizationTechnique.RLVR.value
+
     def __init__(
         self,
         model: Union[str, ModelPackage],
         training_type: Union[TrainingType, str] = TrainingType.LORA,
         model_package_group: Optional[Union[str, ModelPackageGroup]] = None,
         custom_reward_function: Optional[Union[str, Evaluator]] = None,
+        compute: Optional[Union[TrainingJobCompute, HyperPodCompute]] = None,
         mlflow_resource_arn: Optional[Union[str, MlflowTrackingServer]] = None,
         mlflow_experiment_name: Optional[str] = None,
         mlflow_run_name: Optional[str] = None,
@@ -154,8 +158,14 @@ class RLVRTrainer(BaseTrainer):
 
         self.training_type = training_type
         self.model_package_group = _validate_and_resolve_model_package_group(model,
-                                                                                 model_package_group)
+                                                                                 model_package_group,
+                                                                                 compute)
         self.custom_reward_function = custom_reward_function
+        self.compute = compute
+        if compute is not None and not isinstance(compute, (TrainingJobCompute, HyperPodCompute)):
+            raise TypeError(
+                f"compute must be a TrainingJobCompute or HyperPodCompute instance, got {type(compute).__name__}"
+            )
         self.mlflow_resource_arn = mlflow_resource_arn
         self.mlflow_experiment_name = mlflow_experiment_name
         self.mlflow_run_name = mlflow_run_name
@@ -231,7 +241,25 @@ class RLVRTrainer(BaseTrainer):
         Returns:
             TrainingJob: The SageMaker training job object.
         """
+        # Dispatch based on compute type
+        if isinstance(self.compute, HyperPodCompute):
+            return self._train_hyperpod(
+                training_dataset=training_dataset,
+                validation_dataset=validation_dataset,
+                wait=wait,
+                wait_timeout=wait_timeout,
+                poll=poll,
+            )
+        elif isinstance(self.compute, TrainingJobCompute):
+            return self._train_serverful_smtj(
+                training_dataset=training_dataset,
+                validation_dataset=validation_dataset,
+                wait=wait,
+                wait_timeout=wait_timeout,
+                poll=poll,
+            )
 
+        # Default: serverless compute (None)
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
         )
@@ -333,3 +361,15 @@ class RLVRTrainer(BaseTrainer):
 
         self._latest_training_job = training_job
         return training_job
+
+    def _get_extra_smtj_hyperparameters(self) -> Dict[str, Any]:
+        """Return RLVR-specific hyperparameters for SMTJ training.
+
+        Injects reward_lambda_arn from the custom_reward_function if set.
+        """
+        extra = {}
+        if self.custom_reward_function:
+            evaluator_arn = _extract_evaluator_arn(self.custom_reward_function)
+            if evaluator_arn:
+                extra["reward_lambda_arn"] = evaluator_arn
+        return extra

@@ -8,9 +8,7 @@ import json
 from typing import Optional
 import time
 import boto3
-from botocore.exceptions import ClientError
-
-from sagemaker.core.resources import MlflowApp, ModelPackage, ModelPackageGroup
+from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE, FineTuningOptions
@@ -26,8 +24,9 @@ OPEN_WEIGHTS_REGIONS = ['us-east-1', 'us-west-2', 'ap-northeast-1', 'eu-west-1']
 NOVA_REGIONS = ['us-east-1', 'us-west-2']  # IAD, PDX
 # Constants
 DEFAULT_REGION = "us-west-2"
-LAMBDA_ARN_REGEX = re.compile(r"^arn:aws:lambda:[a-z0-9-]+:\d{12}:function:[A-Za-z0-9-_]+$")
 
+
+from sagemaker.train.common_utils.model_aliases import normalize_model_name as _normalize_model_name
 
 def _validate_model_region_availability(model_name: str, region_name: str):
     """Validate if the model is available in the specified region."""
@@ -129,7 +128,7 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
         mlflow_apps_list = []
         paginator = sm_client.get_paginator("list_mlflow_apps")
         for page in paginator.paginate():
-            mlflow_apps_list.extend(page.get("Summaries", []))
+            mlflow_apps_list.extend(page.get("MlflowApps", []))
 
         logger.info("Found %d MLflow apps: %s", len(mlflow_apps_list),
                     [(a.get("Name", "?"), a.get("Status", "?"), a.get("MlflowVersion", "?")) for a in mlflow_apps_list])
@@ -373,68 +372,11 @@ def _extract_dataset_source(dataset, param_name: str = "dataset"):
         return dataset.arn
 
 
-def _is_lambda_arn(arn: str) -> bool:
-    """Check if the given string is a valid AWS Lambda function ARN."""
-    return bool(LAMBDA_ARN_REGEX.match(arn))
-
-
 def _extract_evaluator_arn(evaluator, param_name: str = "custom_reward_function"):
-    """Extract and validate evaluator ARN from string, Lambda ARN, or Evaluator object.
-
-    If the provided string is a Lambda ARN, checks whether an Evaluator with the
-    same name already exists and points to the same Lambda. If so, returns its ARN
-    without creating a new version. Otherwise, creates a new Evaluator in the
-    AI Registry and returns its hub-content ARN.
-    """
+    """Extract and validate evaluator ARN from string or Evaluator object."""
     if isinstance(evaluator, str):
-        if _is_lambda_arn(evaluator):
-            from sagemaker.ai_registry.evaluator import Evaluator
-            from sagemaker.ai_registry.air_constants import REWARD_FUNCTION
-
-            # Derive evaluator name from the Lambda function name
-            function_name = evaluator.split(":")[-1]
-            evaluator_name = re.sub(r"[^a-zA-Z0-9-]", "-", function_name)[:63]
-
-            # Check if an evaluator with this name already exists and points to the same Lambda
-            try:
-                existing = Evaluator.get(evaluator_name)
-                if existing and existing.reference == evaluator:
-                    logger.debug(
-                        f"Evaluator '{evaluator_name}' already exists and points to "
-                        f"the same Lambda ARN. {existing.reference} Reusing existing evaluator."
-                    )
-                    return existing.arn
-                else:
-                    logger.debug(
-                        f"Evaluator '{evaluator_name}' exists but points to a different "
-                        f"source. Creating a new version with Lambda: {evaluator}"
-                    )
-            except ClientError as e:
-                error_code = e.response["Error"]["Code"]
-                if error_code == "ResourceNotFound":
-                    logger.debug(
-                        f"Lambda ARN detected for {param_name}. "
-                        f"Creating Evaluator from Lambda: {evaluator}"
-                    )
-                else:
-                    raise
-
-            evaluator_obj = Evaluator.create(
-                name=evaluator_name,
-                type=REWARD_FUNCTION,
-                source=evaluator,
-                wait=True,
-            )
-
-            logger.debug(
-                f"Created Evaluator from Lambda ARN. "
-                f"Lambda ARN: {evaluator}, Evaluator ARN: {evaluator_obj.arn}"
-            )
-
-            return evaluator_obj.arn
-        else:
-            _validate_evaluator_arn(evaluator, param_name)
-            return evaluator
+        _validate_evaluator_arn(evaluator, param_name)
+        return evaluator
     else:
         # It's an Evaluator object, extract ARN (already valid)
         return evaluator.arn
@@ -513,8 +455,14 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         recipe = None
         if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
             recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+            # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
+            if not recipe:
+                recipe = next((r for r in recipes_with_template if r.get("Peft")), None)
         elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
             recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+            # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
+            if not recipe:
+                recipe = next((r for r in recipes_with_template if not r.get("Peft")), None)
 
         if not recipe:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}")
@@ -523,9 +471,20 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         options_dict = {}
         if recipe.get("SmtjOverrideParamsS3Uri"):
             s3_uri = recipe["SmtjOverrideParamsS3Uri"]
+            # Handle {customer_id} placeholder (subscription recipes use access point ARNs)
+            if "{customer_id}" in s3_uri:
+                s3_uri = s3_uri.replace("{customer_id}", sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"])
             s3 = sagemaker_session.boto_session.client("s3")
             uri_path = s3_uri.replace("s3://", "")
-            bucket, key = uri_path.split("/", 1)
+            # Handle access point ARN URIs (subscription recipes use S3 access points).
+            # Format: arn:aws:s3:<region>:<account>:accesspoint/<name>/<key>
+            # S3 GetObject expects Bucket=full_ARN_up_to_accesspoint_name, Key=remainder
+            if uri_path.startswith("arn:"):
+                arn_parts = uri_path.split("/", 2)
+                bucket = arn_parts[0] + "/" + arn_parts[1]  # arn:...:accesspoint/<name>
+                key = arn_parts[2] if len(arn_parts) > 2 else ""
+            else:
+                bucket, key = uri_path.split("/", 1)
             obj = s3.get_object(Bucket=bucket, Key=key)
             options_dict = json.loads(obj["Body"].read())
 
@@ -560,31 +519,13 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             except Exception as e:
                 logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
 
-        # Fetch the full recipe template from SmtjRecipeTemplateS3Uri
-        full_recipe_template = None
-        if recipe.get("SmtjRecipeTemplateS3Uri"):
-            try:
-                template_s3_uri = recipe["SmtjRecipeTemplateS3Uri"]
-                s3_template = sagemaker_session.boto_session.client("s3")
-                template_uri_path = template_s3_uri.replace("s3://", "")
-                template_bucket, template_key = template_uri_path.split("/", 1)
-                template_obj = s3_template.get_object(Bucket=template_bucket, Key=template_key)
-                import yaml as _yaml
-                full_recipe_template = _yaml.safe_load(template_obj["Body"].read())
-            except Exception as e:
-                logger.debug(f"Could not fetch full recipe template: {type(e).__name__}: {e}")
-
         if options_dict:
-            ft_options = FineTuningOptions(options_dict)
-            ft_options._full_recipe_template = full_recipe_template
-            return ft_options, model_arn, is_gated_model
+            return FineTuningOptions(options_dict), model_arn, is_gated_model
         else:
-            ft_options = FineTuningOptions({})
-            ft_options._full_recipe_template = full_recipe_template
-            return ft_options, model_arn, is_gated_model
+            return FineTuningOptions({}), model_arn, is_gated_model
             
     except Exception as e:
-        logger.error("Exception getting fine-tuning options: %s", e)
+        logger.debug("Exception getting fine-tuning options: %s", e)
         raise
 
 
@@ -673,10 +614,12 @@ def _resolve_model_and_name(model, sagemaker_session=None):
             return model_package, model_name
         else:
             # It's a regular model name string
+            # Normalize Bedrock-style model IDs to Hub content names
+            model_name = _normalize_model_name(model)
             # Validate region availability
             if region_name:
-                _validate_model_region_availability(model, region_name)
-            return model, model
+                _validate_model_region_availability(model_name, region_name)
+            return model_name, model_name
     else:
         # It's a ModelPackage object
         model_name = _resolve_model_name(model)
@@ -866,16 +809,22 @@ def _convert_input_data_to_channels(input_data_config ):
     return channels
 
 
-def _validate_and_resolve_model_package_group(model, model_package_group_name):
+def _validate_and_resolve_model_package_group(model, model_package_group_name, compute=None):
     """Validate and resolve model_package_group_name from ModelPackage if needed."""
+    from sagemaker.core.training.configs import HyperPodCompute
+
     # If model_package_group_name is already provided, return it as-is
     if model_package_group_name:
         return model_package_group_name
-    
+
     # Try to resolve from ModelPackage if available
     if isinstance(model, ModelPackage):
         return model.model_package_group_name
-    
+
+    # HyperPod compute does not require model_package_group_name
+    if isinstance(compute, HyperPodCompute):
+        return None
+
     # Only validate if model_package_group_name is None and model is not ModelPackage
     raise ValueError("model_package_group_name must be provided when model given is "
                      "not a ModelPackage artifact/not continued finetuning")
@@ -962,3 +911,114 @@ def _validate_hyperparameter_values(hyperparameters: dict):
                 f"Hyperparameter '{key}' value '{value}' contains invalid characters. "
                 f"Only a-z, A-Z, 0-9, /, _, ., :, \\, -, space, ', \", [, ] and , are allowed."
             )
+
+
+def get_recipe_s3_uri(model_name: str, customization_technique: str, training_type,
+                      sagemaker_session, hub_name: Optional[str] = None) -> str:
+    """Resolve the SmtjRecipeTemplateS3Uri for a model + technique + training_type.
+
+    This is used by the SMTJ compute path to download the recipe and pass it to
+    ModelTrainer.from_recipe().
+
+    Args:
+        model_name: Hub content name or Bedrock-style model ID (e.g. "amazon.nova-lite-v2")
+        customization_technique: e.g. "RLVR", "SFT", "DPO"
+        training_type: TrainingType enum or string ("LORA", "FULL")
+        sagemaker_session: SageMaker session for API calls
+        hub_name: Optional hub name override
+
+    Returns:
+        str: S3 URI of the recipe template YAML
+
+    Raises:
+        ValueError: If no matching recipe is found
+    """
+    model_name = _normalize_model_name(model_name)
+
+    if hub_name is None:
+        hub_name = get_sagemaker_hub_name()
+
+    hub_content = _get_hub_content_metadata(
+        hub_name=hub_name,
+        hub_content_type="Model",
+        hub_content_name=model_name,
+        session=sagemaker_session.boto_session,
+        region=sagemaker_session.boto_session.region_name
+    )
+
+    document = hub_content.get('hub_content_document')
+    recipe_collection = document.get("RecipeCollection", [])
+
+    # Filter recipes by customization technique
+    matching_recipes = [r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique]
+
+    if not matching_recipes:
+        raise ValueError(
+            f"No recipes found for model '{model_name}' with customization technique: {customization_technique}"
+        )
+
+    # Filter recipes that have SmtjRecipeTemplateS3Uri
+    recipes_with_template = [r for r in matching_recipes if r.get("SmtjRecipeTemplateS3Uri")]
+
+    if not recipes_with_template:
+        raise ValueError(
+            f"No SMTJ recipes found for model '{model_name}' with technique: {customization_technique}"
+        )
+
+    # Select recipe based on training type
+    recipe = None
+    if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+        recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+    elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
+        recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+
+    if not recipe:
+        raise ValueError(
+            f"No SMTJ recipe found for technique: {customization_technique}, training_type: {training_type}"
+        )
+
+    return recipe["SmtjRecipeTemplateS3Uri"]
+
+
+def get_training_image(model_name: str, customization_technique: str, training_type,
+                       sagemaker_session, hub_name: Optional[str] = None) -> Optional[str]:
+    """Resolve the training image URI for SMTJ from hub model metadata.
+
+    Args:
+        model_name: Hub content name or Bedrock-style model ID (e.g. "amazon.nova-lite-v2")
+        customization_technique: e.g. "RLVR", "SFT", "DPO"
+        training_type: TrainingType enum or string ("LORA", "FULL")
+        sagemaker_session: SageMaker session
+        hub_name: Optional hub name override
+
+    Returns:
+        str or None: Training image URI if specified in recipe metadata
+    """
+    model_name = _normalize_model_name(model_name)
+
+    if hub_name is None:
+        hub_name = get_sagemaker_hub_name()
+
+    hub_content = _get_hub_content_metadata(
+        hub_name=hub_name,
+        hub_content_type="Model",
+        hub_content_name=model_name,
+        session=sagemaker_session.boto_session,
+        region=sagemaker_session.boto_session.region_name
+    )
+
+    document = hub_content.get('hub_content_document')
+    recipe_collection = document.get("RecipeCollection", [])
+
+    matching_recipes = [r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique]
+    recipes_with_template = [r for r in matching_recipes if r.get("SmtjRecipeTemplateS3Uri")]
+
+    recipe = None
+    if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
+        recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+    elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
+        recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+
+    if recipe:
+        return recipe.get("SmtjImageUri")
+    return None

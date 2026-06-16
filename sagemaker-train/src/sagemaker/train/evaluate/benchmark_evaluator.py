@@ -26,6 +26,11 @@ from sagemaker.train.constants import get_sagemaker_hub_name
 _logger = logging.getLogger(__name__)
 
 
+def _is_placeholder(value) -> bool:
+    """Check if a value is an unresolved template placeholder like '{{key}}'."""
+    return isinstance(value, str) and "{{" in value and "}}" in value
+
+
 # Internal enums and classes - not meant for direct user access
 class _Benchmark(str, Enum):
     """Internal benchmark types for model evaluation"""
@@ -585,6 +590,12 @@ class BenchMarkEvaluator(BaseEvaluator):
     def evaluate(self, subtask: Optional[Union[str, List[str]]] = None) -> EvaluationPipelineExecution:
         """Create and start a benchmark evaluation job.
         
+        Supports multiple compute backends via the ``compute`` parameter set at
+        construction time:
+        - **Serverless** (default): Runs via SageMaker Pipelines.
+        - **SMTJ**: Runs on user-managed instances via ModelTrainer.
+        - **HyperPod**: Submits to a HyperPod cluster via the HyperPod CLI.
+        
         Args:
             subtask (Optional[Union[str, list[str]]]): Optional subtask(s) to evaluate. If not provided, 
                 uses the subtasks from constructor. Can be a single subtask string, a list of 
@@ -614,6 +625,15 @@ class BenchMarkEvaluator(BaseEvaluator):
                 # Evaluate all subtasks (uses constructor default)
                 execution = evaluator.evaluate()
         """
+        from sagemaker.core.training.configs import Compute, HyperPodCompute
+
+        # Dispatch based on compute type
+        if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
+            return self._evaluate_smtj(subtask=subtask)
+        elif isinstance(self.compute, HyperPodCompute):
+            return self._evaluate_hyperpod(subtask=subtask)
+
+        # Default: serverless compute via SageMaker Pipelines
         from .pipeline_templates import DETERMINISTIC_TEMPLATE, DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY
         
         # Resolve and validate subtask
@@ -713,4 +733,123 @@ class BenchMarkEvaluator(BaseEvaluator):
             eval_type=EvalType.BENCHMARK,
             session=session,
             region=region
+        )
+
+    def _evaluate_smtj(self, subtask=None):
+        """Execute benchmark evaluation on SMTJ compute via ModelTrainer.
+
+        Fetches the evaluation recipe template from SageMaker Hub (filtered by
+        Type=Evaluation), injects benchmark-specific parameters, and launches
+        via ModelTrainer.from_recipe(). Follows the same Hub lookup pattern as
+        the Nova Forge SDK.
+        """
+        from sagemaker.train.utils import _get_unique_name
+
+        # --- Common setup ---
+        sagemaker_session, role, region = self._get_smtj_session_and_role()
+
+        # --- Find SMTJ evaluation recipe ---
+        smtj_eval_recipes = self._get_smtj_eval_recipes(sagemaker_session, region)
+
+        # For standard benchmarks (MMLU, BBH, etc.), filter for "general text benchmark"
+        benchmark_recipes = [
+            r for r in smtj_eval_recipes
+            if "general text benchmark" in r.get("DisplayName", "").lower()
+        ]
+
+        # Fall back to first available SMTJ eval recipe if no benchmark match
+        recipe_metadata = benchmark_recipes[0] if benchmark_recipes else smtj_eval_recipes[0]
+
+        # Get recipe template S3 URI and image URI
+        training_image = recipe_metadata.get("SmtjImageUri")
+
+        # --- Download and load recipe ---
+        recipe_dict, recipe_tmp_path = self._download_and_load_recipe(
+            recipe_metadata["SmtjRecipeTemplateS3Uri"], sagemaker_session
+        )
+
+        # --- Inject benchmark-specific fields ---
+        config = _BENCHMARK_CONFIG.get(self.benchmark)
+
+        base_job_name = self.base_eval_name or f"eval-{self.benchmark.value}"
+        task_value = str(self.benchmark.value)
+        strategy_value = config["strategy"]
+        metric_value = config["metrics"][0] if config.get("metrics") else "accuracy"
+
+        # Resolve subtask value
+        eval_subtask = self._resolve_subtask_for_evaluation(subtask)
+        if eval_subtask:
+            subtask_value = ",".join(eval_subtask) if isinstance(eval_subtask, list) else eval_subtask
+        else:
+            subtask_value = ""
+
+        # --- Resolve run section ---
+        recipe_dict.setdefault("run", {})
+        recipe_dict["run"]["name"] = _get_unique_name(base_job_name)
+        recipe_dict["run"]["task"] = task_value
+        recipe_dict["run"]["strategy"] = strategy_value
+        recipe_dict["run"]["metric"] = metric_value
+        recipe_dict["run"]["subtask"] = subtask_value
+
+        # Resolve output_s3_path
+        if self.s3_output_path:
+            recipe_dict["run"]["output_s3_path"] = self.s3_output_path
+        else:
+            recipe_dict["run"]["output_s3_path"] = ""
+
+        # Resolve MLflow fields
+        if self.mlflow_resource_arn:
+            recipe_dict["run"]["mlflow_tracking_uri"] = self.mlflow_resource_arn
+        else:
+            recipe_dict["run"]["mlflow_tracking_uri"] = ""
+        recipe_dict["run"].setdefault("mlflow_experiment_name", "")
+        recipe_dict["run"].setdefault("mlflow_run_name", "")
+
+        # --- Resolve evaluation section ---
+        if "evaluation" in recipe_dict:
+            recipe_dict["evaluation"]["task"] = task_value
+            recipe_dict["evaluation"]["strategy"] = strategy_value
+            recipe_dict["evaluation"]["metric"] = metric_value
+            recipe_dict["evaluation"]["subtask"] = subtask_value
+
+        # --- Common: resolve inference placeholders ---
+        self._resolve_inference_placeholders(recipe_dict)
+
+        # --- Common: resolve model path ---
+        model_path = self._resolve_model_s3_path(sagemaker_session, region)
+        if model_path:
+            recipe_dict["run"]["model_name_or_path"] = model_path
+        elif self._source_model_package_arn:
+            raise ValueError(
+                f"Could not resolve S3 model artifacts path from model package "
+                f"'{self._source_model_package_arn}'. SMTJ evaluation requires an S3 "
+                f"checkpoint path. Ensure the model package was created from a SMTJ "
+                f"training job with accessible model artifacts."
+            )
+
+        # --- Common: write recipe and submit ---
+        return self._write_and_submit_smtj_recipe(
+            recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name
+        )
+
+    def _evaluate_hyperpod(self, subtask=None):
+        """Execute benchmark evaluation on HyperPod cluster.
+
+        Builds benchmark-specific override parameters (eval task, subtask)
+        and delegates to BaseEvaluator._submit_hyperpod_eval_job().
+        """
+        override_parameters = {}
+
+        # Eval task config
+        eval_subtask = self._resolve_subtask_for_evaluation(subtask)
+        override_parameters["recipes.evaluation.task"] = str(self.benchmark.value)
+        if eval_subtask:
+            if isinstance(eval_subtask, list):
+                override_parameters["recipes.evaluation.subtask"] = ",".join(eval_subtask)
+            else:
+                override_parameters["recipes.evaluation.subtask"] = eval_subtask
+
+        return self._submit_hyperpod_eval_job(
+            override_parameters=override_parameters,
+            base_job_name=f"eval-{self.benchmark.value}",
         )
