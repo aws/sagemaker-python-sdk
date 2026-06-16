@@ -137,7 +137,7 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.gpu_intensive
+# @pytest.mark.gpu_intensive
 def test_sft_trainer_lora_with_sequence_length(sagemaker_session):
     """Test SFT training workflow with LORA and sequence_length specified."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
