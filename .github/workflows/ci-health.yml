@@ -21,7 +21,7 @@ jobs:
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: sagemaker-python-sdk-ci-health-canaries-v3
-          source-version: refs/heads/master
+          source-version-override: refs/heads/master
   canaries-v2:
     runs-on: ubuntu-latest
     steps:
@@ -35,4 +35,76 @@ jobs:
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: sagemaker-python-sdk-ci-health-canaries-v2
-          source-version: refs/heads/master-v2
+          source-version-override: refs/heads/master-v2
+  unit-tests-v2:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["py39", "py310", "py311", "py312"]
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Unit Tests (${{ matrix.python-version }})
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-unit-tests
+          source-version-override: refs/heads/master-v2
+          env-vars-for-codebuild: |
+            PY_VERSION
+        env:
+          PY_VERSION: ${{ matrix.python-version }}
+  slow-tests-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Slow Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-slow-tests
+          source-version-override: refs/heads/master-v2
+  localmode-tests-v2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Local Mode Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-localmode-tests
+          source-version-override: refs/heads/master-v2
+  unit-test-v3:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        submodule: [sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops]
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Unit Tests V3 for ${{ matrix.submodule }}
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-unit-test-v3
+          source-version-override: refs/heads/master
+          env-vars-for-codebuild: |
+            SUBMODULE
+        env:
+          SUBMODULE: ${{ matrix.submodule }}

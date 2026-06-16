@@ -16,7 +16,7 @@ Prerequisites
 ---------------
 
 **Python Version**
-  SageMaker Python SDK V3 supports Python 3.9, 3.10, 3.11, and 3.12
+  SageMaker Python SDK V3 supports Python 3.10, 3.11, and 3.12
 
 **Operating Systems**
   - Linux

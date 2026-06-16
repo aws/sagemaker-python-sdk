@@ -22,6 +22,13 @@ from sagemaker.core.helper.session_helper import Session
 DEFAULT_REGION = "us-west-2"
 
 
+@pytest.fixture(autouse=True, scope="session")
+def use_private_hub():
+    os.environ["SAGEMAKER_HUB_NAME"] = "sdktest"
+    yield
+    del os.environ["SAGEMAKER_HUB_NAME"]
+
+
 @pytest.fixture(scope="module")
 def sagemaker_session():
     region = os.environ.get("AWS_DEFAULT_REGION")

@@ -244,10 +244,12 @@ class TestGetS3Artifacts:
 
 
 class TestGetCheckpointUri:
-    def _make_builder(self, s3_artifacts, manifest_body=None, s3_error=None):
+    def _make_builder(self, s3_output_path, manifest_body=None, s3_error=None,
+                      job_name="myjob"):
         mock_job = Mock()
-        mock_job.model_artifacts = Mock()
-        mock_job.model_artifacts.s3_model_artifacts = s3_artifacts
+        mock_job.output_data_config = Mock()
+        mock_job.output_data_config.s3_output_path = s3_output_path
+        mock_job.training_job_name = job_name
 
         mock_s3 = Mock()
         # Always set exceptions.NoSuchKey to a real exception class so
@@ -272,19 +274,20 @@ class TestGetCheckpointUri:
 
     def test_success(self):
         b, s3 = self._make_builder(
-            "s3://bucket/path/output/model.tar.gz",
+            "s3://bucket/path/",
             manifest_body={"checkpoint_s3_bucket": "s3://bucket/ckpt/step_4"},
+            job_name="myjob",
         )
         with patch(f"{MODULE}.TrainingJob", type(b.model)):
             result = b._get_checkpoint_uri_from_manifest()
         assert result == "s3://bucket/ckpt/step_4"
         s3.get_object.assert_called_once_with(
-            Bucket="bucket", Key="path/output/output/manifest.json"
+            Bucket="bucket", Key="path/myjob/output/output/manifest.json"
         )
 
     def test_missing_checkpoint_key(self):
         b, _ = self._make_builder(
-            "s3://bucket/path/output/model.tar.gz",
+            "s3://bucket/path/",
             manifest_body={"other_key": "value"},
         )
         with patch(f"{MODULE}.TrainingJob", type(b.model)):
@@ -293,7 +296,7 @@ class TestGetCheckpointUri:
 
     def test_manifest_not_found(self):
         err = ClientError({"Error": {"Code": "NoSuchKey"}}, "GetObject")
-        b, _ = self._make_builder("s3://bucket/path/output/model.tar.gz", s3_error=err)
+        b, _ = self._make_builder("s3://bucket/path/", s3_error=err)
         with patch(f"{MODULE}.TrainingJob", type(b.model)):
             with pytest.raises(ValueError, match="manifest.json not found"):
                 b._get_checkpoint_uri_from_manifest()
@@ -304,16 +307,17 @@ class TestGetCheckpointUri:
         with pytest.raises(ValueError, match="TrainingJob"):
             b._get_checkpoint_uri_from_manifest()
 
-    def test_no_s3_artifacts_raises(self):
+    def test_no_s3_output_path_raises(self):
         b, _ = self._make_builder(None)
         with patch(f"{MODULE}.TrainingJob", type(b.model)):
-            with pytest.raises(ValueError, match="No S3 model artifacts"):
+            with pytest.raises(ValueError, match="No S3 output path"):
                 b._get_checkpoint_uri_from_manifest()
 
     def test_invalid_json_raises(self):
         mock_job = Mock()
-        mock_job.model_artifacts = Mock()
-        mock_job.model_artifacts.s3_model_artifacts = "s3://bucket/path/output/m.tar.gz"
+        mock_job.output_data_config = Mock()
+        mock_job.output_data_config.s3_output_path = "s3://bucket/path/"
+        mock_job.training_job_name = "myjob"
 
         body = Mock()
         body.read.return_value = b"not-json"

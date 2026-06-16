@@ -41,7 +41,7 @@ def _get_test_config():
     boto_session = boto3.Session(region_name=_REGION)
     account_id = boto_session.client("sts").get_caller_identity()["Account"]
     return {
-        "base_model": "openai-reasoning-gpt-oss-20b",
+        "base_model": "mock-oss-test",
         "agent_arn": f"arn:aws:bedrock-agentcore:{_REGION}:{account_id}:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": f"s3://sagemaker-rft-{account_id}/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": f"s3://sagemaker-{_REGION}-{account_id}/model-evaluation/output-artifacts/",
@@ -60,18 +60,37 @@ def test_config():
 
 
 def _ensure_model_package_group_exists(sm_client, group_name):
-    """Create the model package group if it doesn't already exist."""
+    """Create the model package group if it doesn't already exist.
+
+    Race-safe: with pytest-xdist (`-n auto`) multiple workers run this
+    concurrently, so a plain check-then-create races. If another worker wins
+    the create, CreateModelPackageGroup raises "already exists"; treat that as
+    success rather than letting the fixture error out.
+    """
     try:
         sm_client.describe_model_package_group(ModelPackageGroupName=group_name)
+        return
     except Exception:
+        pass
+
+    try:
         sm_client.create_model_package_group(
             ModelPackageGroupName=group_name,
             ModelPackageGroupDescription="Auto-created for MTRL evaluator integ tests",
         )
+    except Exception as e:
+        # Another concurrent worker created it between our describe and create.
+        if "already exists" in str(e):
+            return
+        raise
 
 
 def _ensure_model_package_exists(sm_client, group_name, base_model_name):
-    """Create a model package in the group if none exists, for test purposes."""
+    """Create a model package in the group if none exists, for test purposes.
+
+    Race-safe: if a concurrent worker creates one between our list and create,
+    fall back to listing again and reusing whatever package now exists.
+    """
     resp = sm_client.list_model_packages(
         ModelPackageGroupName=group_name,
         MaxResults=1,
@@ -80,12 +99,22 @@ def _ensure_model_package_exists(sm_client, group_name, base_model_name):
         return resp["ModelPackageSummaryList"][0]["ModelPackageArn"]
 
     # Create a minimal unversioned model package (no InferenceSpecification needed)
-    resp = sm_client.create_model_package(
-        ModelPackageGroupName=group_name,
-        ModelPackageDescription="Test model package for MTRL evaluator integ tests",
-        ModelApprovalStatus="Approved",
-    )
-    return resp["ModelPackageArn"]
+    try:
+        resp = sm_client.create_model_package(
+            ModelPackageGroupName=group_name,
+            ModelPackageDescription="Test model package for MTRL evaluator integ tests",
+            ModelApprovalStatus="Approved",
+        )
+        return resp["ModelPackageArn"]
+    except Exception:
+        # A concurrent worker may have created one; reuse the existing package.
+        resp = sm_client.list_model_packages(
+            ModelPackageGroupName=group_name,
+            MaxResults=1,
+        )
+        if resp.get("ModelPackageSummaryList"):
+            return resp["ModelPackageSummaryList"][0]["ModelPackageArn"]
+        raise
 
 
 @pytest.fixture(scope="module")
@@ -113,7 +142,7 @@ def mtrl_trainer(sagemaker_session_mtrl, test_config):
 
     trainer = object.__new__(MultiTurnRLTrainer)
     trainer._model_name = test_config["base_model"]
-    trainer._model_arn = f"arn:aws:sagemaker:{_REGION}:aws:hub-content/SageMakerPublicHub/Model/{test_config['base_model']}/1.0.0"
+    trainer._model_arn = f"arn:aws:sagemaker:{_REGION}:{test_config['account_id']}:hub-content/sdktest/Model/{test_config['base_model']}/0.0.1"
     trainer.agent_env = test_config["agent_arn"]
     trainer.bedrock_agentcore_qualifier = "DEFAULT"
     trainer.output_model_package_group = test_config["model_package_group"]
