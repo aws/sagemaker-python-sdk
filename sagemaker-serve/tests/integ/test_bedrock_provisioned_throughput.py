@@ -170,6 +170,7 @@ def _setup_model_files(s3_artifacts_uri, s3_client):
 
 
 @pytest.mark.serial
+@pytest.mark.import_model
 class TestBedrockImportJobPolling:
     """Test import job polling for OSS models (Option C: deploy only waits for import)."""
 
@@ -236,6 +237,7 @@ class TestBedrockImportJobPolling:
 
 
 @pytest.mark.serial
+@pytest.mark.import_model
 class TestBedrockProvisionedThroughput:
     """Test create_provisioned_throughput as a standalone method.
 

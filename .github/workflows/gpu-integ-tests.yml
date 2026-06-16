@@ -79,13 +79,36 @@ jobs:
           project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests
           source-version: refs/heads/master
 
+  # Bedrock model-import integ tests. Run serially (concurrency 1) in their own
+  # CodeBuild project because the "Concurrent model import jobs" Bedrock quota is
+  # fixed at 1 and not raisable; running them in parallel (as PR checks did)
+  # makes them collide and flake. us-west-2 only (no us_east_1-marked tests).
+  # Folded into the same run-level pass/fail metric as the GPU jobs below, so it
+  # shares the GpuIntegRunAlarm rather than getting a separate alarm.
+  import-model-integ-tests:
+    needs: check-prior-success
+    if: needs.check-prior-success.outputs.already_succeeded != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Bedrock Model-Import Integ Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-import-model-integ-tests
+          source-version: refs/heads/master
+
   # Run-level result: a run is successful only if BOTH region jobs succeeded.
   # Emits GpuIntegRunFailure = 1 (failed) / 0 (succeeded) to CloudWatch in
   # us-west-2. The CDK alarm (GpuIntegRunAlarm) sums this over a UTC day and
   # cuts a daytime sev2 when all of the day's runs failed. Skipped when the gate
   # short-circuited today's run (an earlier run already succeeded).
   report-result:
-    needs: [check-prior-success, gpu-integ-tests, gpu-integ-tests-us-east-1]
+    needs: [check-prior-success, gpu-integ-tests, gpu-integ-tests-us-east-1, import-model-integ-tests]
     # Only emit the daily alarm metric for scheduled runs that actually executed
     # the test jobs:
     #   - check-prior-success.result == 'success': if the gate job itself failed,
@@ -111,12 +134,13 @@ jobs:
             exit 0
           fi
           if [ "${{ needs.gpu-integ-tests.result }}" == "success" ] && \
-             [ "${{ needs.gpu-integ-tests-us-east-1.result }}" == "success" ]; then
+             [ "${{ needs.gpu-integ-tests-us-east-1.result }}" == "success" ] && \
+             [ "${{ needs.import-model-integ-tests.result }}" == "success" ]; then
             value=0
-            echo "Both region jobs succeeded; emitting GpuIntegRunFailure=0"
+            echo "All region/import jobs succeeded; emitting GpuIntegRunFailure=0"
           else
             value=1
-            echo "At least one region job did not succeed; emitting GpuIntegRunFailure=1"
+            echo "At least one region/import job did not succeed; emitting GpuIntegRunFailure=1"
           fi
           aws cloudwatch put-metric-data \
             --namespace GpuIntegRunMetrics \
