@@ -1198,6 +1198,17 @@ class BaseEvaluator(BaseModel):
         if not compute.cluster_name:
             raise ValueError("cluster_name is required in HyperPodCompute for evaluation.")
 
+        # Validate HyperPod cluster capacity before proceeding
+        from sagemaker.train.common_utils.finetune_utils import _is_nova_model
+        from sagemaker.train.common_utils.validator import validate_hyperpod_compute
+
+        is_nova = _is_nova_model(self._base_model_name)
+        validate_hyperpod_compute(
+            compute=compute,
+            sagemaker_session=self.sagemaker_session,
+            is_nova=is_nova,
+        )
+
         namespace = compute.namespace or "kubeflow"
 
         # Connect to cluster

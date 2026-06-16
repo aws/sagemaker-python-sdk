@@ -336,8 +336,10 @@ class BaseTrainer(ABC):
 
         from sagemaker.train.common_utils.finetune_utils import (
             get_training_image,
+            _is_nova_model,
             _validate_hyperparameter_values,
         )
+        from sagemaker.train.common_utils.validator import validate_hyperpod_compute
         from sagemaker.train.defaults import TrainDefaults
         from sagemaker.train.utils import _get_unique_name
 
@@ -353,6 +355,14 @@ class BaseTrainer(ABC):
             raise ValueError(
                 "cluster_name is required in HyperPodCompute for HyperPod training."
             )
+
+        # Validate HyperPod cluster capacity before proceeding
+        is_nova = _is_nova_model(self._model_name)
+        validate_hyperpod_compute(
+            compute=compute,
+            sagemaker_session=sagemaker_session,
+            is_nova=is_nova,
+        )
 
         namespace = compute.namespace or "kubeflow"
 
