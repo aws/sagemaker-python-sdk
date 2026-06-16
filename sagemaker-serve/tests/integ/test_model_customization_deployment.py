@@ -575,6 +575,7 @@ class TestModelCustomizationDeployment:
                 f"BedrockModelBuilder creation failed: {str(e)}. This might be due to sagemaker-core integration issues.")
 
     @pytest.mark.slow
+    @pytest.mark.import_model
     def test_bedrock_job_created(self, deployed_model_arn):
         """Test that Bedrock import job was created successfully."""
         assert deployed_model_arn is not None
@@ -583,6 +584,7 @@ class TestModelCustomizationDeployment:
     # Documentation recommends retries: https://docs.aws.amazon.com/bedrock/latest/userguide/invoke-imported-model.html#handle-model-not-ready-exception.
     # TODO: Fix using provisioned throughput or better wait mechanism
     @pytest.mark.slow
+    @pytest.mark.import_model
     def test_bedrock_model_invoke(self, deployed_model_arn, bedrock_runtime):
         logger.warning(
             "This test is known to be flaky due to 'model not ready' exceptions from Bedrock. "
