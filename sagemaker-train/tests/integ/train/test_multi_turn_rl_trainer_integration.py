@@ -41,7 +41,7 @@ def _get_account_id():
 AGENT_RUNTIME_ID = "sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS"
 #BASE_MODEL = "openai-reasoning-gpt-oss-20b"
 BASE_MODEL = "mock-oss-test"
-EXISTING_JOB_NAME = "openai-reasoning-gpt-oss-20b-mtrl-20260602215955"
+EXISTING_JOB_NAME = "mock-oss-test-mtrl-20260616153024"
 
 
 @pytest.fixture(scope="module")
