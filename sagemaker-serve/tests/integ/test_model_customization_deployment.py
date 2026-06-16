@@ -115,6 +115,8 @@ class TestModelCustomizationFromTrainingJob:
         from sagemaker.serve import ModelBuilder
         import time
 
+        from sagemaker.core.utils.exceptions import FailedStatusError
+
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
         model_builder.accept_eula = True
@@ -123,10 +125,21 @@ class TestModelCustomizationFromTrainingJob:
         peft_type = model_builder._fetch_peft()
         adapter_name = f"{endpoint_name}-adapter"
 
-        endpoint = model_builder.deploy(
-            endpoint_name=endpoint_name,
-            inference_component_name=adapter_name if peft_type == "LORA" else None,
-        )
+        try:
+            endpoint = model_builder.deploy(
+                endpoint_name=endpoint_name,
+                inference_component_name=adapter_name if peft_type == "LORA" else None,
+            )
+        except FailedStatusError as e:
+            # Endpoint provisioning can fail when the region is temporarily out of
+            # capacity for the requested instance type. This is an environmental
+            # condition unrelated to the SDK, so xfail rather than fail the build.
+            if "InsufficientInstanceCapacity" in str(e):
+                cleanup_endpoints.append(endpoint_name)
+                pytest.xfail(
+                    f"InsufficientInstanceCapacity for ml.g5.4xlarge in {AWS_REGION}: {e}"
+                )
+            raise
 
         cleanup_endpoints.append(endpoint_name)
 
