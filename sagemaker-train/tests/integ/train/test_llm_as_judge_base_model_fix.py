@@ -82,11 +82,10 @@ TEST_CONFIG = {
 
 
 def _get_latest_model_package_arn():
-    """Return the ARN of the latest approved model package, or None."""
+    """Return the ARN of the latest model package, or None."""
     sm_client = boto3.client("sagemaker", region_name=REGION)
     packages = sm_client.list_model_packages(
         ModelPackageGroupName=MODEL_PACKAGE_GROUP,
-        ModelApprovalStatus="Approved",
         SortBy="CreationTime",
         SortOrder="Descending",
         MaxResults=1,
@@ -123,7 +122,7 @@ class TestLLMAsJudgeBaseModelFix:
         model_package_arn = _get_latest_model_package_arn()
         if not model_package_arn:
             pytest.skip(
-                f"No approved model packages in group '{MODEL_PACKAGE_GROUP}'. "
+                f"No model packages in group '{MODEL_PACKAGE_GROUP}'. "
                 "Run SFT/RLVR training first."
             )
 
@@ -289,7 +288,7 @@ class TestLLMAsJudgeBaseModelFix:
         model_package_arn = _get_latest_model_package_arn()
         if not model_package_arn:
             pytest.skip(
-                f"No approved model packages in group '{MODEL_PACKAGE_GROUP}'. "
+                f"No model packages in group '{MODEL_PACKAGE_GROUP}'. "
                 "Run SFT/RLVR training first."
             )
 
