@@ -134,6 +134,7 @@ class BaseTrainer(ABC):
             template_section="training_config",
             protected_keys={"model_type", "model_name_or_path"},
             full_recipe_template=full_recipe_template,
+            compute=getattr(self, 'compute', None),
         )
 
         self._resolved_recipe_cache = resolved

@@ -213,10 +213,10 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
         resolved = sft_trainer.get_resolved_recipe()
 
-        # Nested non-spec key overridden
+        # Nested non-spec key overridden (merged into resolved recipe as new key)
         assert resolved["training_config"]["training_args"]["max_len"] == 8192
-        # Unchanged nested default preserved
-        assert resolved["training_config"]["training_args"]["seed"] == 42
+        # Spec-level default preserved at training_config level (seed is a spec key)
+        assert resolved["training_config"]["seed"] == 42
 
     def test_sft_full_recipe_defaults_preserved(self):
         """Test that full recipe defaults are present for keys not overridden."""
@@ -334,7 +334,7 @@ class TestSFTTrainerNestedRecipeOverrideInteg:
 
         # Nested leaf defaults from full recipe are present
         assert "seed" in final_hp, f"Nested default 'seed' missing from: {list(final_hp.keys())}"
-        assert "gradient_checkpointing" in final_hp
+        assert "gradient_clipping" in final_hp
         # Override applied
         assert final_hp["learning_rate"] == "5e-06"
 

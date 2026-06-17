@@ -17,11 +17,12 @@ import copy
 import logging
 import os
 import tempfile
-from typing import Any, Dict, Optional, Set, Tuple
+from typing import Any, Dict, Optional, Set, Tuple, Union
 
 import yaml
 from omegaconf import OmegaConf
 
+from sagemaker.core.training.configs import HyperPodCompute
 from sagemaker.train.sm_recipes.utils import _register_custom_resolvers
 
 logger = logging.getLogger(__name__)
@@ -117,18 +118,41 @@ def _load_user_recipe(recipe_path: str) -> Dict[str, Any]:
         return content
 
 
-def _validate_value(key: str, value: Any, spec: Dict[str, Any], source: str) -> None:
+def _validate_value(
+    key: str,
+    value: Any,
+    spec: Dict[str, Any],
+    source: str,
+    resolved_recipe: Optional[Dict[str, Any]] = None,
+    dotpath: Optional[str] = None,
+) -> None:
     """Validate a single value against its spec entry.
+
+    Performs type checking, range validation, enum membership, and required
+    field presence checks.
 
     Args:
         key: The parameter name.
         value: The value to validate.
-        spec: The spec entry dict with 'type', 'min', 'max', 'enum' fields.
+        spec: The spec entry dict with 'type', 'min', 'max', 'enum', 'required' fields.
         source: Human-readable source label (e.g., "overrides dict", "user recipe").
+        resolved_recipe: Optional resolved recipe dict (used for required check context).
+        dotpath: Optional dotpath of the key in the recipe (used for required check context).
 
     Raises:
         ValueError: If validation fails.
     """
+    # --- Required field presence check ---
+    if spec.get("required", False):
+        if not dotpath:
+            raise ValueError(
+                f"'{key}' is required but was not found in the resolved recipe."
+            )
+        if value is None:
+            raise ValueError(
+                f"'{key}' is required but was not found in the resolved recipe."
+            )
+
     if value is None:
         return
 
@@ -173,6 +197,42 @@ def _validate_value(key: str, value: Any, spec: Dict[str, Any], source: str) -> 
             raise ValueError(
                 f"Invalid value for '{key}': {value} is not in allowed values {enum_values}. "
                 f"Source: {source}."
+            )
+
+
+def _validate_step_constraints(
+    resolved_recipe: Dict[str, Any],
+    key_path_map: Dict[str, str],
+) -> None:
+    """Perform cross-field validation on a resolved recipe.
+
+    Validates constraints that involve relationships between multiple
+    recipe parameters (e.g., save_steps must be <= max_steps).
+
+    Args:
+        resolved_recipe: The fully resolved recipe dict (nested structure).
+        key_path_map: Mapping of flat spec key names to their dotpath
+            location in the resolved recipe.
+
+    Raises:
+        ValueError: Immediately on the first validation failure.
+    """
+    # --- Cross-field validation: save_steps must be <= max_steps ---
+    save_steps_path = key_path_map.get("save_steps")
+    max_steps_path = key_path_map.get("max_steps")
+
+    if save_steps_path and max_steps_path:
+        save_steps = _get_nested_value(resolved_recipe, save_steps_path)
+        max_steps = _get_nested_value(resolved_recipe, max_steps_path)
+
+        if (
+            isinstance(save_steps, (int, float))
+            and isinstance(max_steps, (int, float))
+            and save_steps > max_steps
+        ):
+            raise ValueError(
+                f"'save_steps' ({save_steps}) must be less than or equal to "
+                f"'max_steps' ({max_steps})."
             )
 
 
@@ -292,6 +352,7 @@ class RecipeResolver:
         overrides: Optional[Dict[str, Any]] = None,
         protected_keys: Optional[Set[str]] = None,
         full_recipe_template: Optional[Dict[str, Any]] = None,
+        compute: Optional[Union["Compute", "HyperPodCompute"]] = None,
     ):
         """Initialize the resolver.
 
@@ -306,6 +367,10 @@ class RecipeResolver:
                 (SmtjRecipeTemplateS3Uri). When provided, used as the base layer
                 instead of the synthetic template — enables overriding any key in
                 the full recipe, not just the spec-exposed subset.
+            compute: Optional compute configuration. Union of
+                ``sagemaker.core.training.configs.Compute`` (TrainingJobCompute) or
+                ``sagemaker.core.training.configs.HyperPodCompute``.
+                None indicates SMTJ Serverless.
         """
         self._recipe_template = copy.deepcopy(recipe_template)
         self._override_spec = copy.deepcopy(override_spec)
@@ -313,6 +378,7 @@ class RecipeResolver:
         self._overrides = copy.deepcopy(overrides) if overrides else {}
         self._protected_keys = protected_keys or set()
         self._full_recipe_template = copy.deepcopy(full_recipe_template) if full_recipe_template else None
+        self._compute = compute
         self._resolved: Optional[Dict[str, Any]] = None
 
     def resolve(self) -> Dict[str, Any]:
@@ -385,7 +451,7 @@ class RecipeResolver:
         resolved_dict = OmegaConf.to_container(merged, resolve=True)
 
         # Phase 6: Validate against override spec using key_path_map
-        self._validate(resolved_dict, key_path_map)
+        self._validate(resolved_dict, key_path_map, compute=self._compute)
 
         self._resolved = resolved_dict
         return copy.deepcopy(self._resolved)
@@ -447,12 +513,55 @@ class RecipeResolver:
                     del current[parts[-1]]
 
     def _validate(
-        self, resolved: Dict[str, Any], key_path_map: Dict[str, str]
+        self,
+        resolved: Dict[str, Any],
+        key_path_map: Dict[str, str],
+        compute: Optional[Union["Compute", "HyperPodCompute"]] = None,
     ) -> None:
-        """Validate resolved values against the override spec."""
+        """Validate resolved values against the override spec.
+
+        Performs per-value validation (type, range, enum, required) and
+        compute-level checks (instance_type), then runs
+        steps validation.
+
+        Args:
+            resolved: The fully resolved recipe dict.
+            key_path_map: Mapping of spec keys to their dotpath in the recipe.
+            compute: Optional compute configuration. Union of
+                Compute (TrainingJobCompute) or HyperPodCompute.
+                None indicates SMTJ Serverless.
+        """
+
+        is_serverless = compute is None
+
         for spec_key, spec_entry in self._override_spec.items():
+            # --- Instance type: validated from compute, not from recipe ---
+            if spec_key == "instance_type":
+                if is_serverless:
+                    continue
+                instance_type = getattr(compute, "instance_type", None)
+                allowed_values = spec_entry.get("enum")
+                if instance_type is None:
+                    raise ValueError(
+                        "instance_type must be specified in Compute parameter. "
+                        f"Allowed types: {sorted(allowed_values) if allowed_values else 'unknown'}."
+                    )
+                if allowed_values and instance_type not in allowed_values:
+                    raise ValueError(
+                        f"Instance type '{instance_type}' is not supported. "
+                        f"Allowed types: {sorted(allowed_values)}."
+                    )
+                continue
+
+            # Skip keys not mapped into the recipe structure
             dotpath = key_path_map.get(spec_key)
             if not dotpath:
+                # Still check required even when not in key_path_map
+                if spec_entry.get("required", False):
+                    raise ValueError(
+                        f"'{spec_key}' is required but was not found in the "
+                        f"resolved recipe."
+                    )
                 continue
 
             value = _get_nested_value(resolved, dotpath)
@@ -469,4 +578,6 @@ class RecipeResolver:
             else:
                 source = "resolved recipe"
 
-            _validate_value(spec_key, value, spec_entry, source)
+            _validate_value(spec_key, value, spec_entry, source, resolved, dotpath)
+
+        _validate_step_constraints(resolved, key_path_map)

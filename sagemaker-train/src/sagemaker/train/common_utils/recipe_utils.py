@@ -329,6 +329,7 @@ def resolve_recipe(
     template_section: str,
     protected_keys: Optional[set] = None,
     full_recipe_template: Optional[Dict[str, Any]] = None,
+    compute = None,
 ) -> Dict[str, Any]:
     """Resolve a recipe configuration through the 3-level merge pipeline.
 
@@ -348,6 +349,8 @@ def resolve_recipe(
             (SmtjRecipeTemplateS3Uri). When provided, used as the base layer
             instead of the synthetic template — enables overriding any key in
             the full recipe, not just the spec-exposed subset.
+        compute: Optional compute configuration (Compute/TrainingJobCompute
+            or HyperPodCompute). None indicates SMTJServerless platform.
 
     Returns:
         Fully resolved recipe dict.
@@ -372,6 +375,7 @@ def resolve_recipe(
         overrides=overrides,
         protected_keys=protected_keys or set(),
         full_recipe_template=full_recipe_template,
+        compute=compute,
     )
 
     return resolver.resolve()
