@@ -8,6 +8,7 @@ from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name, _get_studio_tags
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.train.configs import StoppingCondition
+from sagemaker.train.data_mixing_config import DataMixingConfig
 from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 from sagemaker.train.common_utils.finetune_utils import (
     _get_fine_tuning_options_and_model_arn,
@@ -23,9 +24,18 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_hyperparameter_values
 )
 from sagemaker.train.common_utils.data_utils import is_multimodal_data
+from sagemaker.train.common_utils.data_mixing_utils import (
+    validate_data_mixing_model,
+    validate_data_mixing_categories,
+    validate_data_mixing_platform,
+    resolve_datamix_recipe,
+    resolve_hyperpod_datamix_context,
+    build_hyperpod_datamix_recipe_from_context,
+)
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
+from sagemaker.core.training.constants import TrainingPlatform
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -138,6 +148,7 @@ class SFTTrainer(BaseTrainer):
         recipe: Optional[str] = None,
         overrides: Optional[dict] = None,
         is_multimodal: Optional[bool] = None,
+        data_mixing_config: Optional[DataMixingConfig] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -172,6 +183,7 @@ class SFTTrainer(BaseTrainer):
         self._recipe_resolver = None
         self._resolved_recipe_cache = None
         self.is_multimodal = is_multimodal
+        self.data_mixing_config = data_mixing_config
 
         # Initialize fine-tuning options with beta session fallback
         self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
@@ -237,6 +249,33 @@ class SFTTrainer(BaseTrainer):
         """
         # Dispatch based on compute type
         if isinstance(self.compute, HyperPodCompute):
+            if self.data_mixing_config is not None:
+                from sagemaker.train.defaults import TrainDefaults as _TrainDefaults
+
+                validate_data_mixing_model(self._model_name)
+                _session = _TrainDefaults.get_sagemaker_session(
+                    sagemaker_session=self.sagemaker_session
+                )
+                is_multimodal = self.is_multimodal if self.is_multimodal is not None else False
+                training_type_str = "LORA" if self.training_type == TrainingType.LORA else "FULL"
+
+                context = resolve_hyperpod_datamix_context(
+                    model_name=self._model_name,
+                    is_multimodal=is_multimodal,
+                    sagemaker_session=_session,
+                    training_type=training_type_str,
+                    customization_technique="SFT",
+                )
+                validated_config = validate_data_mixing_categories(
+                    self.data_mixing_config, context.categories
+                )
+                recipe_path, hp_image_uri = build_hyperpod_datamix_recipe_from_context(
+                    context, validated_config
+                )
+                self._recipe_path = recipe_path
+                if hp_image_uri and not self.training_image:
+                    self.training_image = hp_image_uri
+
             return self._train_hyperpod(
                 training_dataset=training_dataset,
                 validation_dataset=validation_dataset,
@@ -245,6 +284,8 @@ class SFTTrainer(BaseTrainer):
                 poll=poll,
             )
         elif isinstance(self.compute, TrainingJobCompute):
+            if self.data_mixing_config is not None:
+                validate_data_mixing_platform(TrainingPlatform.SAGEMAKER_TRAINING_JOB_SERVERFUL)
             return self._train_serverful_smtj(
                 training_dataset=training_dataset,
                 validation_dataset=validation_dataset,
@@ -299,6 +340,19 @@ class SFTTrainer(BaseTrainer):
             effective_training_dataset = training_dataset or self.training_dataset
             if effective_training_dataset is not None:
                 self.is_multimodal = is_multimodal_data(effective_training_dataset)
+
+        if self.data_mixing_config is not None:
+            validate_data_mixing_platform(TrainingPlatform.SAGEMAKER_TRAINING_JOB_SERVERLESS)
+            validate_data_mixing_model(self._model_name)
+            recipe_categories = resolve_datamix_recipe(
+                self._model_name, self.is_multimodal, sagemaker_session
+            )
+            validated_config = validate_data_mixing_categories(
+                self.data_mixing_config, recipe_categories
+            )
+            data_mixing_params = validated_config.to_hyperparameters()
+            for param_name, param_value in data_mixing_params.items():
+                final_hyperparameters[param_name] = param_value
 
         # Validate hyperparameter values
         _validate_hyperparameter_values(final_hyperparameters)

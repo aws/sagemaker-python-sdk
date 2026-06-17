@@ -580,3 +580,531 @@ class TestSFTTrainerComputeDispatch:
         with patch.object(trainer, '_train_hyperpod', return_value="job-name") as mock_hp:
             trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
             mock_hp.assert_called_once()
+
+
+class TestSFTTrainerDataMixingIntegration:
+    """Unit tests for SFTTrainer data mixing integration."""
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def test_sft_trainer_accepts_data_mixing_config(self, mock_finetuning_options, mock_validate_group):
+        """Test SFTTrainer constructor accepts data_mixing_config parameter."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_validate_group.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+
+        config = DataMixingConfig(
+            customer_data_percent=50.0,
+            nova_data_percentages={"code": 60.0, "math": 40.0},
+        )
+        trainer = SFTTrainer(
+            model="nova-textgeneration-micro",
+            model_package_group="test-group",
+            data_mixing_config=config,
+        )
+        assert trainer.data_mixing_config is config
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def test_sft_trainer_data_mixing_config_defaults_to_none(self, mock_finetuning_options, mock_validate_group):
+        """Test SFTTrainer defaults data_mixing_config to None when not provided."""
+        mock_validate_group.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+
+        trainer = SFTTrainer(model="test-model", model_package_group="test-group")
+        assert trainer.data_mixing_config is None
+
+    @patch('sagemaker.train.sft_trainer._validate_hyperparameter_values')
+    @patch('sagemaker.train.sft_trainer.resolve_datamix_recipe')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_serverless_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_includes_serialized_data_mixing_config_in_hyperparameters(
+        self,
+        mock_training_job_create,
+        mock_model_package_config,
+        mock_mlflow_config,
+        mock_serverless_config,
+        mock_output_config,
+        mock_convert_channels,
+        mock_input_config,
+        mock_validate_group,
+        mock_unique_name,
+        mock_get_sagemaker_session,
+        mock_get_role,
+        mock_get_options,
+        mock_resolve_model,
+        mock_resolve_datamix_recipe,
+        mock_validate_hp_values,
+    ):
+        """Test train() includes serialized data mixing config in hyperparameters."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_validate_group.return_value = "test-group"
+        mock_resolve_model.return_value = ("nova-textgeneration-micro", "nova-textgeneration-micro")
+
+        mock_session = Mock()
+        mock_session.boto_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_get_sagemaker_session.return_value = mock_session
+
+        mock_fine_tuning_options = Mock()
+        mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
+        mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
+
+        mock_get_role.return_value = "test-role"
+        mock_unique_name.return_value = "test-job-name"
+        mock_input_config.return_value = [Mock()]
+        mock_convert_channels.return_value = [Mock()]
+        mock_output_config.return_value = Mock()
+        # serverless_config=None means platform is SMHP
+        mock_serverless_config.return_value = None
+        mock_mlflow_config.return_value = Mock()
+        mock_model_package_config.return_value = Mock()
+
+        # Mock resolve_datamix_recipe to return recipe categories
+        mock_resolve_datamix_recipe.return_value = {"code": 50.0, "math": 50.0}
+
+        mock_training_job = Mock()
+        mock_training_job.arn = "arn:aws:sagemaker:us-east-1:123456789012:training-job/test-job"
+        mock_training_job_create.return_value = mock_training_job
+
+        config = DataMixingConfig(
+            customer_data_percent=50.0,
+            nova_data_percentages={"code": 60.0, "math": 40.0},
+        )
+        trainer = SFTTrainer(
+            model="nova-textgeneration-micro",
+            model_package_group="test-group",
+            training_dataset="s3://bucket/train",
+            data_mixing_config=config,
+        )
+        trainer.train(wait=False)
+
+        mock_training_job_create.assert_called_once()
+        call_kwargs = mock_training_job_create.call_args[1]
+        hyper_params = call_kwargs["hyper_parameters"]
+        assert hyper_params["customer_data_percent"] == "50"
+        assert hyper_params["nova_code_percent"] == "60"
+        assert hyper_params["nova_math_percent"] == "40"
+
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_serverless_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    def test_train_raises_valueerror_for_non_nova_model(
+        self,
+        mock_model_package_config,
+        mock_mlflow_config,
+        mock_serverless_config,
+        mock_output_config,
+        mock_convert_channels,
+        mock_input_config,
+        mock_validate_group,
+        mock_unique_name,
+        mock_get_sagemaker_session,
+        mock_get_role,
+        mock_get_options,
+        mock_resolve_model,
+    ):
+        """Test train() raises ValueError when data_mixing_config is used with non-Nova model."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_validate_group.return_value = "test-group"
+        # Using a non-Nova model name
+        mock_resolve_model.return_value = ("meta-llama-3", "meta-llama-3")
+
+        mock_session = Mock()
+        mock_session.boto_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_get_sagemaker_session.return_value = mock_session
+
+        mock_fine_tuning_options = Mock()
+        mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
+        mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
+
+        mock_get_role.return_value = "test-role"
+        mock_unique_name.return_value = "test-job-name"
+        mock_input_config.return_value = [Mock()]
+        mock_convert_channels.return_value = [Mock()]
+        mock_output_config.return_value = Mock()
+        # serverless_config=None means platform is SMHP (passes platform check)
+        mock_serverless_config.return_value = None
+        mock_mlflow_config.return_value = Mock()
+        mock_model_package_config.return_value = Mock()
+
+        config = DataMixingConfig(
+            customer_data_percent=50.0,
+            nova_data_percentages={"code": 60.0, "math": 40.0},
+        )
+        trainer = SFTTrainer(
+            model="meta-llama-3",
+            model_package_group="test-group",
+            training_dataset="s3://bucket/train",
+            data_mixing_config=config,
+        )
+
+        with pytest.raises(ValueError, match="Data mixing is only supported for Nova models"):
+            trainer.train(wait=False)
+
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_serverless_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_without_data_mixing_config_omits_data_mixing_from_request(
+        self,
+        mock_training_job_create,
+        mock_model_package_config,
+        mock_mlflow_config,
+        mock_serverless_config,
+        mock_output_config,
+        mock_convert_channels,
+        mock_input_config,
+        mock_validate_group,
+        mock_unique_name,
+        mock_get_sagemaker_session,
+        mock_get_role,
+        mock_get_options,
+        mock_resolve_model,
+    ):
+        """Test train() without data_mixing_config does not include data mixing in hyperparameters."""
+        mock_validate_group.return_value = "test-group"
+        mock_resolve_model.return_value = ("test-model", "test-model")
+
+        mock_session = Mock()
+        mock_session.boto_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_get_sagemaker_session.return_value = mock_session
+
+        mock_fine_tuning_options = Mock()
+        mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
+        mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
+
+        mock_get_role.return_value = "test-role"
+        mock_unique_name.return_value = "test-job-name"
+        mock_input_config.return_value = [Mock()]
+        mock_convert_channels.return_value = [Mock()]
+        mock_output_config.return_value = Mock()
+        mock_serverless_config.return_value = None
+        mock_mlflow_config.return_value = Mock()
+        mock_model_package_config.return_value = Mock()
+
+        mock_training_job = Mock()
+        mock_training_job.arn = "arn:aws:sagemaker:us-east-1:123456789012:training-job/test-job"
+        mock_training_job_create.return_value = mock_training_job
+
+        trainer = SFTTrainer(
+            model="test-model",
+            model_package_group="test-group",
+            training_dataset="s3://bucket/train",
+        )
+        trainer.train(wait=False)
+
+        mock_training_job_create.assert_called_once()
+        call_kwargs = mock_training_job_create.call_args[1]
+        hyper_params = call_kwargs["hyper_parameters"]
+        assert "customer_data_percent" not in hyper_params
+
+
+class TestSFTTrainerHyperPodDatamixOrchestration:
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def _make_trainer(self, mock_opts, mock_resolve, mock_validate, training_type=TrainingType.LORA, data_mixing_config=None, training_image=None):
+        """Helper to construct an SFTTrainer with HyperPodCompute."""
+        from sagemaker.core.training.configs import HyperPodCompute
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_resolve.return_value = ("amazon.nova-lite-v2", "nova-textgeneration-lite-v2")
+        mock_validate.return_value = "test-group"
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_opts.return_value = (mock_hp, "model-arn", False)
+
+        compute = HyperPodCompute(cluster_name="my-cluster", instance_type="ml.p5.48xlarge")
+
+        if data_mixing_config is None:
+            data_mixing_config = DataMixingConfig(
+                customer_data_percent=50.0,
+                nova_data_percentages={"code": 60.0, "math": 40.0},
+            )
+
+        trainer = SFTTrainer(
+            model="amazon.nova-lite-v2",
+            training_type=training_type,
+            model_package_group="test-group",
+            compute=compute,
+            data_mixing_config=data_mixing_config,
+            training_dataset="s3://bucket/train",
+        )
+        if training_image is not None:
+            trainer.training_image = training_image
+        return trainer
+
+    @patch('sagemaker.train.sft_trainer.build_hyperpod_datamix_recipe_from_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_categories')
+    @patch('sagemaker.train.sft_trainer.resolve_hyperpod_datamix_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_model')
+    def test_full_orchestration_call_order(
+        self,
+        mock_validate_model,
+        mock_resolve,
+        mock_validate_categories,
+        mock_build,
+    ):
+        """Test that validate_data_mixing_model → resolve → validate_categories → build are called in order."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        # Setup mocks
+        mock_context = Mock()
+        mock_context.categories = {"code": 50.0, "math": 50.0}
+        mock_resolve.return_value = mock_context
+
+        mock_validated_config = Mock(spec=DataMixingConfig)
+        mock_validate_categories.return_value = mock_validated_config
+
+        mock_build.return_value = ("recipes/nova_sft_lora", "123456.dkr.ecr.us-east-1.amazonaws.com/image:latest")
+
+        trainer = self._make_trainer()
+
+        # Track call order
+        call_order = []
+        mock_validate_model.side_effect = lambda *args, **kwargs: call_order.append("validate_model")
+        mock_resolve.side_effect = lambda *args, **kwargs: (call_order.append("resolve"), mock_context)[1]
+        mock_validate_categories.side_effect = lambda *args, **kwargs: (call_order.append("validate_categories"), mock_validated_config)[1]
+        mock_build.side_effect = lambda *args, **kwargs: (call_order.append("build"), ("recipes/nova_sft_lora", "123456.dkr.ecr.us-east-1.amazonaws.com/image:latest"))[1]
+
+        with patch.object(trainer, '_train_hyperpod', return_value=Mock()):
+            trainer.train(wait=False)
+
+        assert call_order == ["validate_model", "resolve", "validate_categories", "build"]
+
+    @patch('sagemaker.train.sft_trainer.build_hyperpod_datamix_recipe_from_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_categories')
+    @patch('sagemaker.train.sft_trainer.resolve_hyperpod_datamix_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_model')
+    def test_customization_technique_sft_passed_to_resolve(
+        self,
+        mock_validate_model,
+        mock_resolve,
+        mock_validate_categories,
+        mock_build,
+    ):
+        """Test that customization_technique='SFT' is passed to resolve_hyperpod_datamix_context."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_context = Mock()
+        mock_context.categories = {"code": 50.0, "math": 50.0}
+        mock_resolve.return_value = mock_context
+        mock_validate_categories.return_value = Mock(spec=DataMixingConfig)
+        mock_build.return_value = ("recipes/nova_sft_lora", None)
+
+        trainer = self._make_trainer()
+
+        with patch.object(trainer, '_train_hyperpod', return_value=Mock()):
+            trainer.train(wait=False)
+
+        mock_resolve.assert_called_once()
+        call_kwargs = mock_resolve.call_args[1]
+        assert call_kwargs["customization_technique"] == "SFT"
+
+    @patch('sagemaker.train.sft_trainer.build_hyperpod_datamix_recipe_from_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_categories')
+    @patch('sagemaker.train.sft_trainer.resolve_hyperpod_datamix_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_model')
+    def test_training_type_lora_passed_to_resolve(
+        self,
+        mock_validate_model,
+        mock_resolve,
+        mock_validate_categories,
+        mock_build,
+    ):
+        """Test that training_type='LORA' is derived from self.training_type=TrainingType.LORA."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_context = Mock()
+        mock_context.categories = {"code": 50.0, "math": 50.0}
+        mock_resolve.return_value = mock_context
+        mock_validate_categories.return_value = Mock(spec=DataMixingConfig)
+        mock_build.return_value = ("recipes/nova_sft_lora", None)
+
+        trainer = self._make_trainer(training_type=TrainingType.LORA)
+
+        with patch.object(trainer, '_train_hyperpod', return_value=Mock()):
+            trainer.train(wait=False)
+
+        call_kwargs = mock_resolve.call_args[1]
+        assert call_kwargs["training_type"] == "LORA"
+
+    @patch('sagemaker.train.sft_trainer.build_hyperpod_datamix_recipe_from_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_categories')
+    @patch('sagemaker.train.sft_trainer.resolve_hyperpod_datamix_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_model')
+    def test_training_type_full_passed_to_resolve(
+        self,
+        mock_validate_model,
+        mock_resolve,
+        mock_validate_categories,
+        mock_build,
+    ):
+        """Test that training_type='FULL' is derived from self.training_type=TrainingType.FULL."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_context = Mock()
+        mock_context.categories = {"code": 50.0, "math": 50.0}
+        mock_resolve.return_value = mock_context
+        mock_validate_categories.return_value = Mock(spec=DataMixingConfig)
+        mock_build.return_value = ("recipes/nova_sft_full", None)
+
+        trainer = self._make_trainer(training_type=TrainingType.FULL)
+
+        with patch.object(trainer, '_train_hyperpod', return_value=Mock()):
+            trainer.train(wait=False)
+
+        call_kwargs = mock_resolve.call_args[1]
+        assert call_kwargs["training_type"] == "FULL"
+
+    @patch('sagemaker.train.sft_trainer.build_hyperpod_datamix_recipe_from_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_categories')
+    @patch('sagemaker.train.sft_trainer.resolve_hyperpod_datamix_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_model')
+    def test_recipe_path_set_from_build_result(
+        self,
+        mock_validate_model,
+        mock_resolve,
+        mock_validate_categories,
+        mock_build,
+    ):
+        """Test that self._recipe_path is set to the relative_recipe_path from build."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_context = Mock()
+        mock_context.categories = {"code": 50.0, "math": 50.0}
+        mock_resolve.return_value = mock_context
+        mock_validate_categories.return_value = Mock(spec=DataMixingConfig)
+        mock_build.return_value = ("recipes/nova_pro_sft_lora_datamix", "ecr-image:latest")
+
+        trainer = self._make_trainer()
+
+        with patch.object(trainer, '_train_hyperpod', return_value=Mock()):
+            trainer.train(wait=False)
+
+        assert trainer._recipe_path == "recipes/nova_pro_sft_lora_datamix"
+
+    @patch('sagemaker.train.sft_trainer.build_hyperpod_datamix_recipe_from_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_categories')
+    @patch('sagemaker.train.sft_trainer.resolve_hyperpod_datamix_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_model')
+    def test_training_image_set_when_image_uri_not_none_and_not_already_set(
+        self,
+        mock_validate_model,
+        mock_resolve,
+        mock_validate_categories,
+        mock_build,
+    ):
+        """Test that self.training_image is set when image_uri is not None and not already set."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_context = Mock()
+        mock_context.categories = {"code": 50.0, "math": 50.0}
+        mock_resolve.return_value = mock_context
+        mock_validate_categories.return_value = Mock(spec=DataMixingConfig)
+        expected_image = "123456.dkr.ecr.us-east-1.amazonaws.com/training:v1"
+        mock_build.return_value = ("recipes/nova_sft_lora", expected_image)
+
+        # training_image is None by default (not already set)
+        trainer = self._make_trainer(training_image=None)
+
+        with patch.object(trainer, '_train_hyperpod', return_value=Mock()):
+            trainer.train(wait=False)
+
+        assert trainer.training_image == expected_image
+
+    @patch('sagemaker.train.sft_trainer.build_hyperpod_datamix_recipe_from_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_categories')
+    @patch('sagemaker.train.sft_trainer.resolve_hyperpod_datamix_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_model')
+    def test_training_image_not_overwritten_when_already_set(
+        self,
+        mock_validate_model,
+        mock_resolve,
+        mock_validate_categories,
+        mock_build,
+    ):
+        """Test that self.training_image is not overwritten if already set."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_context = Mock()
+        mock_context.categories = {"code": 50.0, "math": 50.0}
+        mock_resolve.return_value = mock_context
+        mock_validate_categories.return_value = Mock(spec=DataMixingConfig)
+        mock_build.return_value = ("recipes/nova_sft_lora", "new-image-from-helm:latest")
+
+        existing_image = "user-provided-image:v1"
+        trainer = self._make_trainer(training_image=existing_image)
+
+        with patch.object(trainer, '_train_hyperpod', return_value=Mock()):
+            trainer.train(wait=False)
+
+        # Should retain the existing user-provided image, not overwrite
+        assert trainer.training_image == existing_image
+
+    @patch('sagemaker.train.sft_trainer.build_hyperpod_datamix_recipe_from_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_categories')
+    @patch('sagemaker.train.sft_trainer.resolve_hyperpod_datamix_context')
+    @patch('sagemaker.train.sft_trainer.validate_data_mixing_model')
+    def test_training_image_not_set_when_image_uri_is_none(
+        self,
+        mock_validate_model,
+        mock_resolve,
+        mock_validate_categories,
+        mock_build,
+    ):
+        """Test that self.training_image is not set when image_uri from build is None."""
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+
+        mock_context = Mock()
+        mock_context.categories = {"code": 50.0, "math": 50.0}
+        mock_resolve.return_value = mock_context
+        mock_validate_categories.return_value = Mock(spec=DataMixingConfig)
+        mock_build.return_value = ("recipes/nova_sft_lora", None)
+
+        trainer = self._make_trainer(training_image=None)
+
+        with patch.object(trainer, '_train_hyperpod', return_value=Mock()):
+            trainer.train(wait=False)
+
+        # training_image should remain None since image_uri from build was None
+        assert trainer.training_image is None

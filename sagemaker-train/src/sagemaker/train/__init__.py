@@ -43,6 +43,9 @@ def __getattr__(name):
     elif name == "CPTTrainer":
         from sagemaker.train.cpt_trainer import CPTTrainer
         return CPTTrainer
+    elif name == "DataMixingConfig":
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+        return DataMixingConfig
     elif name == "TrainingType":
         from sagemaker.train.common import TrainingType
         return TrainingType

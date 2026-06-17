@@ -62,7 +62,7 @@ NOVA_BEDROCK_MODEL_IDS = {
 def normalize_model_name(model_name: str) -> str:
     """Normalize a model name to its SageMaker Hub content name.
 
-    If the model name matches a known Bedrock-style ID (e.g. "amazon.nova-lite-v2"),
+    If the model name matches a known Bedrock-style ID (e.g. "amazon.nova-2-lite-v1"),
     returns the corresponding Hub content name (e.g. "nova-textgeneration-lite-v2").
 
     If the model name is not in the alias map, it is returned unchanged — assumed

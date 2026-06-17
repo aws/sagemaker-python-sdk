@@ -21,11 +21,18 @@ from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.train.configs import StoppingCondition
+from sagemaker.train.data_mixing_config import DataMixingConfig
 from sagemaker.core.training.configs import HyperPodCompute
 from sagemaker.train.common_utils.finetune_utils import (
     _validate_and_resolve_model_package_group,
     _resolve_model_and_name,
     _validate_eula_for_gated_model,
+)
+from sagemaker.train.common_utils.data_mixing_utils import (
+    validate_data_mixing_model,
+    validate_data_mixing_categories,
+    resolve_hyperpod_datamix_context,
+    build_hyperpod_datamix_recipe_from_context,
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
@@ -120,6 +127,7 @@ class CPTTrainer(BaseTrainer):
         recipe: Optional[str] = None,
         overrides: Optional[dict] = None,
         training_image: Optional[str] = None,
+        data_mixing_config: Optional[DataMixingConfig] = None,
         **kwargs,
     ):
         super().__init__(training_image=training_image, **kwargs)
@@ -128,7 +136,7 @@ class CPTTrainer(BaseTrainer):
         self.training_type = TrainingType.FULL
 
         self.model_package_group = _validate_and_resolve_model_package_group(
-            model, model_package_group
+            model, model_package_group, compute=compute
         )
 
         if compute is not None and not isinstance(compute, HyperPodCompute):
@@ -137,6 +145,7 @@ class CPTTrainer(BaseTrainer):
                 f"Pass a HyperPodCompute instance with cluster_name and recipe."
             )
         self.compute = compute
+        self.data_mixing_config = data_mixing_config
 
         self.mlflow_resource_arn = mlflow_resource_arn
         self.mlflow_experiment_name = mlflow_experiment_name
@@ -193,6 +202,39 @@ class CPTTrainer(BaseTrainer):
                 "CPT requires HyperPod compute. Pass compute=HyperPodCompute(...) "
                 "when creating the CPTTrainer."
             )
+
+        if self.data_mixing_config is not None:
+            if not isinstance(self.compute, HyperPodCompute):
+                raise ValueError(
+                    "Data mixing is only supported on HyperPod. "
+                    "Provide a HyperPodCompute instance as compute."
+                )
+
+            validate_data_mixing_model(self._model_name)
+            is_multimodal = getattr(self, "is_multimodal", False) or False
+
+            from sagemaker.train.defaults import TrainDefaults
+
+            sagemaker_session = TrainDefaults.get_sagemaker_session(
+                sagemaker_session=self.sagemaker_session
+            )
+
+            context = resolve_hyperpod_datamix_context(
+                model_name=self._model_name,
+                is_multimodal=is_multimodal,
+                sagemaker_session=sagemaker_session,
+                training_type="FULL",
+                customization_technique="CPT",
+            )
+            validated_config = validate_data_mixing_categories(
+                self.data_mixing_config, context.categories
+            )
+            recipe_path, hp_image_uri = build_hyperpod_datamix_recipe_from_context(
+                context, validated_config
+            )
+            self._recipe_path = recipe_path
+            if hp_image_uri and not self.training_image:
+                self.training_image = hp_image_uri
 
         return self._train_hyperpod(
             training_dataset=training_dataset,
