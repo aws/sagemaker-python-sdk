@@ -110,6 +110,7 @@ class BaseEvaluator(BaseModel):
     kms_key_id: Optional[str] = None
     model_package_group: Optional[Union[str, ModelPackageGroup]] = None
     compute: Optional[Union[Compute, HyperPodCompute]] = None
+    training_image: Optional[str] = None
     recipe: Optional[str] = None
     overrides: Optional[Dict[str, Any]] = None
     
@@ -1237,8 +1238,8 @@ class BaseEvaluator(BaseModel):
         base_overrides = {}
         if compute.instance_type:
             base_overrides["instance_type"] = compute.instance_type
-        if getattr(compute, 'training_image', None):
-            base_overrides["container"] = compute.training_image
+        if self.training_image:
+            base_overrides["container"] = self.training_image
         if compute.node_count:
             base_overrides["recipes.run.replicas"] = compute.node_count
 

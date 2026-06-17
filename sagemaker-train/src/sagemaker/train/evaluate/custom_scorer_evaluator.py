@@ -540,7 +540,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         recipe_metadata = custom_scorer_recipes[0] if custom_scorer_recipes else smtj_eval_recipes[0]
 
         # Resolve training image
-        training_image = getattr(self.compute, 'training_image', None)
+        training_image = self.training_image
         if not training_image:
             training_image = recipe_metadata.get("SmtjImageUri")
 

@@ -761,7 +761,7 @@ class BenchMarkEvaluator(BaseEvaluator):
         recipe_metadata = benchmark_recipes[0] if benchmark_recipes else smtj_eval_recipes[0]
 
         # Get recipe template S3 URI and image URI
-        training_image = recipe_metadata.get("SmtjImageUri")
+        training_image = self.training_image or recipe_metadata.get("SmtjImageUri")
 
         # --- Download and load recipe ---
         recipe_dict, recipe_tmp_path = self._download_and_load_recipe(

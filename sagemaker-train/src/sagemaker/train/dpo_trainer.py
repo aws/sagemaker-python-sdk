@@ -135,14 +135,18 @@ class DPOTrainer(BaseTrainer):
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
         self.training_type = training_type
 
-        self.model_package_group = _validate_and_resolve_model_package_group(model,
-                                                                                 model_package_group,
-                                                                                 compute)
         self.compute = compute
         if compute is not None and not isinstance(compute, (TrainingJobCompute, HyperPodCompute)):
             raise TypeError(
                 f"compute must be a TrainingJobCompute or HyperPodCompute instance, got {type(compute).__name__}"
             )
+
+        if compute is None:
+            self.model_package_group = _validate_and_resolve_model_package_group(
+                model, model_package_group
+            )
+        else:
+            self.model_package_group = model_package_group
         self.mlflow_resource_arn = mlflow_resource_arn
         self.mlflow_experiment_name = mlflow_experiment_name
         self.mlflow_run_name = mlflow_run_name

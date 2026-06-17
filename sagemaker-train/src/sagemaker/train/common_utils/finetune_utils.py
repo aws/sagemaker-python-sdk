@@ -28,6 +28,38 @@ DEFAULT_REGION = "us-west-2"
 
 from sagemaker.train.common_utils.model_aliases import normalize_model_name as _normalize_model_name
 
+
+def _select_recipe_by_training_type(recipes: list, training_type, with_fallback: bool = True):
+    """Select a recipe from a list based on training type (LORA/FULL).
+
+    Selects non-subscription recipes first, then falls back to subscription
+    recipes if with_fallback is True.
+
+    Args:
+        recipes: Filtered list of recipe entries from RecipeCollection.
+        training_type: TrainingType enum or string ("LORA", "FULL").
+        with_fallback: If True, falls back to subscription recipes when
+            no non-subscription recipe matches.
+
+    Returns:
+        The matching recipe dict, or None if no match found.
+    """
+    is_lora = (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA"
+    is_full = (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL"
+
+    if is_lora:
+        recipe = next((r for r in recipes if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+        if not recipe and with_fallback:
+            recipe = next((r for r in recipes if r.get("Peft")), None)
+    elif is_full:
+        recipe = next((r for r in recipes if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+        if not recipe and with_fallback:
+            recipe = next((r for r in recipes if not r.get("Peft")), None)
+    else:
+        recipe = None
+
+    return recipe
+
 def _validate_model_region_availability(model_name: str, region_name: str):
     """Validate if the model is available in the specified region."""
     if "nova" in model_name.lower():
@@ -49,9 +81,6 @@ Currently supported regions for this feature are: {', '.join(OPEN_WEIGHTS_REGION
 Please choose one of the supported regions or check our documentation for updates.
             """
             )
-
-
-
 
 def _get_beta_session():
     """Create a SageMaker session with beta endpoint for demo purposes."""
@@ -467,22 +496,8 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         if not recipes_with_template:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique}")
 
-        # Select recipe based on training type.
-        # Hub recipes have a "Peft" field (e.g. "LORA") for parameter-efficient recipes,
-        # or None/absent for full-rank recipes. We match this to the user's TrainingType.
-        recipe = None
-        if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-            # Peft is set (e.g. "LORA") → this is a LoRA recipe
-            recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-            # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
-            if not recipe:
-                recipe = next((r for r in recipes_with_template if r.get("Peft")), None)
-        elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-            # Peft is absent/None → this is a full-rank recipe
-            recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-            # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
-            if not recipe:
-                recipe = next((r for r in recipes_with_template if not r.get("Peft")), None)
+        # Select recipe based on training type
+        recipe = _select_recipe_by_training_type(recipes_with_template, training_type)
 
         if not recipe:
             raise ValueError(f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}")
@@ -829,10 +844,11 @@ def _convert_input_data_to_channels(input_data_config ):
     return channels
 
 
-def _validate_and_resolve_model_package_group(model, model_package_group_name, compute=None):
-    """Validate and resolve model_package_group_name from ModelPackage if needed."""
-    from sagemaker.core.training.configs import HyperPodCompute
-
+def _validate_and_resolve_model_package_group(model, model_package_group_name):
+    """Validate and resolve model_package_group_name from ModelPackage if needed.
+    
+    Only called for serverless compute paths where model_package_group is required.
+    """
     # If model_package_group_name is already provided, return it as-is
     if model_package_group_name:
         return model_package_group_name
@@ -841,11 +857,6 @@ def _validate_and_resolve_model_package_group(model, model_package_group_name, c
     if isinstance(model, ModelPackage):
         return model.model_package_group_name
 
-    # HyperPod compute does not require model_package_group_name
-    if isinstance(compute, HyperPodCompute):
-        return None
-
-    # Only validate if model_package_group_name is None and model is not ModelPackage
     raise ValueError("model_package_group_name must be provided when model given is "
                      "not a ModelPackage artifact/not continued finetuning")
 
@@ -986,11 +997,7 @@ def get_recipe_s3_uri(model_name: str, customization_technique: str, training_ty
         )
 
     # Select recipe based on training type
-    recipe = None
-    if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-        recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-    elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-        recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+    recipe = _select_recipe_by_training_type(recipes_with_template, training_type, with_fallback=False)
 
     if not recipe:
         raise ValueError(
@@ -998,6 +1005,218 @@ def get_recipe_s3_uri(model_name: str, customization_technique: str, training_ty
         )
 
     return recipe["SmtjRecipeTemplateS3Uri"]
+
+
+def _get_recipe_entry_and_override_spec(
+    model_name: str,
+    customization_technique: str,
+    training_type,
+    sagemaker_session,
+    platform: str = "smtj",
+    hub_name: Optional[str] = None,
+) -> tuple:
+    """Resolve the matching recipe entry and its override spec from SageMaker Hub.
+
+    Shared logic for both SMTJ and HyperPod paths. Fetches hub content,
+    filters the RecipeCollection by technique/platform/training_type, downloads
+    the override params JSON, and adds infrastructure field defaults.
+
+    Args:
+        model_name: Hub content name or Bedrock-style model ID
+        customization_technique: e.g. "SFT", "RLVR", "DPO", "CPT"
+        training_type: TrainingType enum or string ("LORA", "FULL")
+        sagemaker_session: SageMaker session for API calls
+        platform: "smtj" or "hyperpod" — determines which S3 URI keys to use
+        hub_name: Optional hub name override
+
+    Returns:
+        tuple: (recipe_entry dict, override_spec dict)
+
+    Raises:
+        ValueError: If no matching recipe is found
+    """
+    model_name = _normalize_model_name(model_name)
+
+    if hub_name is None:
+        hub_name = get_sagemaker_hub_name()
+
+    hub_content = _get_hub_content_metadata(
+        hub_name=hub_name,
+        hub_content_type="Model",
+        hub_content_name=model_name,
+        session=sagemaker_session.boto_session,
+        region=sagemaker_session.boto_session.region_name
+    )
+
+    document = hub_content.get('hub_content_document')
+    recipe_collection = document.get("RecipeCollection", [])
+
+    # Filter by customization technique
+    matching_recipes = [r for r in recipe_collection
+                        if r.get("CustomizationTechnique") == customization_technique]
+
+    if not matching_recipes:
+        raise ValueError(
+            f"No recipes found for model '{model_name}' with customization technique: "
+            f"{customization_technique}"
+        )
+
+    # Filter by platform
+    if platform == "hyperpod":
+        template_key = "HpEksPayloadTemplateS3Uri"
+        override_key = "HpEksOverrideParamsS3Uri"
+    else:
+        template_key = "SmtjRecipeTemplateS3Uri"
+        override_key = "SmtjOverrideParamsS3Uri"
+
+    platform_recipes = [r for r in matching_recipes if r.get(template_key)]
+
+    if not platform_recipes:
+        raise ValueError(
+            f"No {platform} recipes found for model '{model_name}' with technique: "
+            f"{customization_technique}"
+        )
+
+    # Select by training type
+    recipe = _select_recipe_by_training_type(platform_recipes, training_type)
+
+    if not recipe:
+        raise ValueError(
+            f"No {platform} recipe found for technique: {customization_technique}, "
+            f"training_type: {training_type}"
+        )
+
+    # Download override params spec from S3
+    override_spec = {}
+    override_s3_uri = recipe.get(override_key)
+    if override_s3_uri:
+        s3_client = sagemaker_session.boto_session.client("s3")
+        uri_path = override_s3_uri.replace("s3://", "")
+        bucket, key = uri_path.split("/", 1)
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        override_spec = json.loads(response["Body"].read())
+
+    # Add infrastructure fields not in the spec but present in recipe templates
+    for infra_key in ("name", "data_s3_path", "output_s3_path",
+                      "mlflow_tracking_uri", "mlflow_experiment_name", "mlflow_run_name"):
+        if infra_key not in override_spec:
+            override_spec[infra_key] = {"default": "", "type": "string"}
+
+    return recipe, override_spec
+
+
+def _get_smtj_override_spec(model_name: str, customization_technique: str, training_type,
+                            sagemaker_session, hub_name: Optional[str] = None) -> dict:
+    """Fetch the SMTJ override params spec JSON for a model recipe.
+
+    Returns the parsed override spec dict from SmtjOverrideParamsS3Uri,
+    with infrastructure fields added for rendering.
+
+    Args:
+        model_name: Hub content name (e.g. "amazon.nova-lite-v2")
+        customization_technique: e.g. "SFT", "RLVR", "DPO"
+        training_type: TrainingType enum or string ("LORA", "FULL")
+        sagemaker_session: SageMaker session for API calls
+        hub_name: Optional hub name override
+
+    Returns:
+        dict: Override spec mapping parameter names to their metadata.
+    """
+    _, override_spec = _get_recipe_entry_and_override_spec(
+        model_name=model_name,
+        customization_technique=customization_technique,
+        training_type=training_type,
+        sagemaker_session=sagemaker_session,
+        platform="smtj",
+        hub_name=hub_name,
+    )
+    return override_spec
+
+
+def _extract_recipe_from_helm_template(template_content: str) -> str:
+    """Extract the training config YAML from a HyperPod Helm chart template.
+
+    The HpEksPayloadTemplateS3Uri contains a full Helm chart (multi-document YAML
+    with ``---`` separators). The HyperPod CLI expects a single-document recipe YAML.
+    This function extracts just the ``config.yaml`` content section.
+
+    Args:
+        template_content: Raw Helm chart template string from S3.
+
+    Returns:
+        str: Single-document recipe YAML content.
+
+    Raises:
+        ValueError: If the training config section cannot be extracted.
+    """
+    import textwrap
+
+    if "training-config.yaml" not in template_content:
+        raise ValueError(
+            "Could not extract training config from HyperPod recipe template. "
+            "Expected 'training-config.yaml' section not found."
+        )
+
+    recipe_pattern = (
+        r"# Source: .*/training-config\.yaml.*?config\.yaml: \|-\n(.*?)(?=---|\Z)"
+    )
+    recipe_match = re.search(recipe_pattern, template_content, re.DOTALL)
+    if not recipe_match:
+        raise ValueError(
+            "Could not extract training config from HyperPod recipe template. "
+            "The template format may have changed."
+        )
+
+    return textwrap.dedent(recipe_match.group(1)).strip()
+
+
+def _render_recipe_placeholders(recipe_content: str, override_spec: dict) -> str:
+    """Replace {{placeholder}} tokens in a recipe with default values from the spec.
+
+    The extracted HyperPod recipe template contains ``{{key}}`` placeholders that
+    must be rendered with actual typed values before the training container can
+    validate the recipe.
+
+    Args:
+        recipe_content: Recipe YAML string with ``{{placeholder}}`` tokens.
+        override_spec: Dict mapping parameter names to their spec
+            (with ``default``, ``type``, etc.).
+
+    Returns:
+        str: Recipe YAML with all placeholders replaced by default values.
+    """
+    for key, spec in override_spec.items():
+        default_value = spec.get("default") if isinstance(spec, dict) else spec
+        placeholder = "{{" + key + "}}"
+        placeholder_single_quoted = "'" + placeholder + "'"
+        placeholder_double_quoted = '"' + placeholder + '"'
+
+        if default_value is None:
+            # For string-typed fields, use empty string instead of null
+            expected_type = spec.get("type", "") if isinstance(spec, dict) else ""
+            yaml_value = "''" if expected_type == "string" else "null"
+        elif isinstance(default_value, bool):
+            yaml_value = "true" if default_value else "false"
+        elif isinstance(default_value, str):
+            yaml_value = "''" if default_value == "" else default_value
+        else:
+            yaml_value = str(default_value)
+
+        recipe_content = recipe_content.replace(placeholder_single_quoted, yaml_value)
+        recipe_content = recipe_content.replace(placeholder_double_quoted, yaml_value)
+        recipe_content = recipe_content.replace(placeholder, yaml_value)
+
+    # Validate no unresolved {{...}} placeholders remain.
+    # All training config placeholders should have been resolved from the override spec.
+    # Infrastructure fields (mlflow, data paths) should also be in the spec or absent.
+    remaining = re.findall(r"[{][{]([^}]+)[}][}]", recipe_content)
+    if remaining:
+        raise ValueError(
+            f"Recipe template has unresolved placeholders not found in override spec: "
+            f"{remaining}. The HpEksOverrideParamsS3Uri JSON may be incomplete."
+        )
+
+    return recipe_content
 
 
 def get_hyperpod_recipe_path(model_name: str, customization_technique: str, training_type,
@@ -1031,63 +1250,14 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
     import uuid
     import yaml
 
-    model_name = _normalize_model_name(model_name)
-
-    if hub_name is None:
-        hub_name = get_sagemaker_hub_name()
-
-    hub_content = _get_hub_content_metadata(
+    recipe, override_spec = _get_recipe_entry_and_override_spec(
+        model_name=model_name,
+        customization_technique=customization_technique,
+        training_type=training_type,
+        sagemaker_session=sagemaker_session,
+        platform="hyperpod",
         hub_name=hub_name,
-        hub_content_type="Model",
-        hub_content_name=model_name,
-        session=sagemaker_session.boto_session,
-        region=sagemaker_session.boto_session.region_name
     )
-
-    document = hub_content.get('hub_content_document')
-    recipe_collection = document.get("RecipeCollection", [])
-
-    # Filter recipes by customization technique
-    matching_recipes = [r for r in recipe_collection
-                        if r.get("CustomizationTechnique") == customization_technique]
-
-    if not matching_recipes:
-        raise ValueError(
-            f"No recipes found for model '{model_name}' with customization technique: "
-            f"{customization_technique}"
-        )
-
-    # Filter for HyperPod recipes (must have HpEksPayloadTemplateS3Uri)
-    hp_recipes = [r for r in matching_recipes if r.get("HpEksPayloadTemplateS3Uri")]
-
-    if not hp_recipes:
-        raise ValueError(
-            f"No HyperPod recipes found for model '{model_name}' with technique: "
-            f"{customization_technique}. Available recipes only have SMTJ templates."
-        )
-
-    # Select recipe based on training type.
-    # Hub recipes have a "Peft" field (e.g. "LORA") for parameter-efficient recipes,
-    # or None/absent for full-rank recipes. We match this to the user's TrainingType.
-    recipe = None
-    if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-        # Peft is set (e.g. "LORA") → this is a LoRA recipe
-        recipe = next((r for r in hp_recipes if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-        # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
-        if not recipe:
-            recipe = next((r for r in hp_recipes if r.get("Peft")), None)
-    elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-        # Peft is absent/None → this is a full-rank recipe
-        recipe = next((r for r in hp_recipes if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-        # Fallback: some models (e.g. Nova v2 RLVR) only have subscription recipes
-        if not recipe:
-            recipe = next((r for r in hp_recipes if not r.get("Peft")), None)
-
-    if not recipe:
-        raise ValueError(
-            f"No HyperPod recipe found for model '{model_name}' with technique: "
-            f"{customization_technique}, training_type: {training_type}"
-        )
 
     hp_template_s3_uri = recipe["HpEksPayloadTemplateS3Uri"]
     logger.info(f"HyperPod recipe template S3 URI: {hp_template_s3_uri}")
@@ -1098,6 +1268,12 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
     bucket, key = uri_path.split("/", 1)
     response = s3_client.get_object(Bucket=bucket, Key=key)
     recipe_content = response["Body"].read().decode("utf-8")
+
+    # Extract the training config from the Helm chart template
+    recipe_content = _extract_recipe_from_helm_template(recipe_content)
+
+    # Render {{placeholder}} values with defaults from the override params spec.
+    recipe_content = _render_recipe_placeholders(recipe_content, override_spec)
 
     # Resolve the HyperPod CLI's recipe directory
     try:
@@ -1182,11 +1358,7 @@ def get_training_image(model_name: str, customization_technique: str, training_t
     matching_recipes = [r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique]
     recipes_with_template = [r for r in matching_recipes if r.get("SmtjRecipeTemplateS3Uri")]
 
-    recipe = None
-    if (isinstance(training_type, TrainingType) and training_type == TrainingType.LORA) or training_type == "LORA":
-        recipe = next((r for r in recipes_with_template if r.get("Peft") and not r.get("IsSubscriptionModel")), None)
-    elif (isinstance(training_type, TrainingType) and training_type == TrainingType.FULL) or training_type == "FULL":
-        recipe = next((r for r in recipes_with_template if not r.get("Peft") and not r.get("IsSubscriptionModel")), None)
+    recipe = _select_recipe_by_training_type(recipes_with_template, training_type, with_fallback=False)
 
     if recipe:
         return recipe.get("SmtjImageUri")

@@ -17,6 +17,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     get_hyperpod_recipe_path,
     _validate_hyperparameter_values,
 )
+from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name
 
@@ -234,7 +235,25 @@ class BaseTrainer(ABC):
         )
         s3_client.download_file(bucket, key, recipe_tmp.name)
         recipe_local_path = recipe_tmp.name
-        logger.info(f"Recipe downloaded to: {recipe_local_path}")
+
+        # Render {{placeholder}} values in the recipe template with defaults
+        from sagemaker.train.common_utils.finetune_utils import (
+            _render_recipe_placeholders,
+            _get_smtj_override_spec,
+        )
+        override_spec = _get_smtj_override_spec(
+            model_name=self._model_name,
+            customization_technique=customization_technique,
+            training_type=self.training_type,
+            sagemaker_session=sagemaker_session,
+        )
+        with open(recipe_local_path, "r") as f:
+            recipe_content = f.read()
+        recipe_content = _render_recipe_placeholders(recipe_content, override_spec)
+        with open(recipe_local_path, "w") as f:
+            f.write(recipe_content)
+
+        logger.info(f"Recipe downloaded and rendered to: {recipe_local_path}")
 
         # Resolve training image
         training_image = self.training_image
@@ -427,6 +446,14 @@ class BaseTrainer(ABC):
         # Output path
         if self.s3_output_path:
             override_parameters["recipes.run.output_s3_path"] = self.s3_output_path
+
+        # MLflow configuration
+        if getattr(self, 'mlflow_resource_arn', None):
+            override_parameters["recipes.run.mlflow_tracking_uri"] = self.mlflow_resource_arn
+        if getattr(self, 'mlflow_experiment_name', None):
+            override_parameters["recipes.run.mlflow_experiment_name"] = self.mlflow_experiment_name
+        if getattr(self, 'mlflow_run_name', None):
+            override_parameters["recipes.run.mlflow_run_name"] = self.mlflow_run_name
 
         # Hyperparameters — only pass user-explicitly-set values for HyperPod
         if self.hyperparameters:
