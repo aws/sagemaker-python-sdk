@@ -9,6 +9,10 @@ from __future__ import absolute_import
 # Maps each role type to its trust policy and the least-privilege policies
 # attached to the auto-created role. ``S3_PLACEHOLDER`` / ``KMS_PLACEHOLDER``
 # resource values are substituted at runtime with the caller's actual resources.
+# ``ACCOUNT_PLACEHOLDER`` in trust-policy ``aws:SourceAccount`` conditions is
+# substituted with the caller's account ID to prevent the cross-service
+# confused-deputy problem (the role can only be assumed on behalf of the
+# caller's own account).
 IAM_POLICY_CONFIG = {
     "training": {
         "role_name": "SageMaker-AutoRole-Training",
@@ -19,6 +23,9 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "sagemaker.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
+                    },
                 }
             ],
         },
@@ -119,6 +126,9 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "sagemaker.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
+                    },
                 }
             ],
         },
@@ -183,6 +193,9 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "sagemaker.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
+                    },
                 }
             ],
         },
@@ -272,6 +285,9 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "bedrock.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
+                    },
                 }
             ],
         },
@@ -326,6 +342,9 @@ IAM_POLICY_CONFIG = {
                         ]
                     },
                     "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
+                    },
                 }
             ],
         },
