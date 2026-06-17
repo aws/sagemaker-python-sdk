@@ -5,7 +5,7 @@ import re
 import time
 import logging
 import json
-from typing import Optional
+from typing import Optional, Union
 import time
 import boto3
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
@@ -13,6 +13,7 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE, FineTuningOptions
 from sagemaker.core.shapes import ServerlessJobConfig, Channel, DataSource, ModelPackageConfig, MlflowConfig
+from sagemaker.core.training.configs import HyperPodCompute, TrainingJobCompute
 from sagemaker.train.configs import InputData, OutputDataConfig
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.constants import get_sagemaker_hub_name
@@ -457,12 +458,14 @@ def _resolve_model_package_arn(model_package) -> Optional[str]:
 
 
 def _get_fine_tuning_options_and_model_arn(model_name: str, customization_technique: str, training_type, sagemaker_session,
-                                         hub_name: Optional[str] = None) -> tuple:
+                                         hub_name: Optional[str] = None, compute: Optional[Union[HyperPodCompute, TrainingJobCompute]] = None) -> tuple:
     """Get fine-tuning options and model ARN for given customization technique.
-    
     Returns:
         tuple: (FineTuningOptions, model_arn, is_gated_model)
     """
+
+    is_hyperpod = isinstance(compute, HyperPodCompute)
+
     if hub_name is None:
         hub_name = get_sagemaker_hub_name()
 
@@ -490,22 +493,33 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         if not matching_recipes:
             raise ValueError(f"No recipes found for model '{model_name}' with customization technique: {customization_technique}")
         
-        # Filter recipes that have SmtjRecipeTemplateS3Uri key
-        recipes_with_template = [r for r in matching_recipes if r.get("SmtjRecipeTemplateS3Uri")]
+        # Filter recipes based on compute type:
+        # - HyperPodCompute: filter by HpEksPayloadTemplateS3Uri
+        # - Default (serverless/SMTJ): filter by SmtjRecipeTemplateS3Uri
+        if is_hyperpod:
+            recipe_template_key = "HpEksPayloadTemplateS3Uri"
+            override_params_key = "HpEksOverrideParamsS3Uri"
+            platform_label = "HyperPod"
+        else:
+            recipe_template_key = "SmtjRecipeTemplateS3Uri"
+            override_params_key = "SmtjOverrideParamsS3Uri"
+            platform_label = "Smtj"
+
+        recipes_with_template = [r for r in matching_recipes if r.get(recipe_template_key)]
         
         if not recipes_with_template:
-            raise ValueError(f"No recipes found with Smtj for technique: {customization_technique}")
+            raise ValueError(f"No recipes found with {platform_label} for technique: {customization_technique}")
 
         # Select recipe based on training type
         recipe = _select_recipe_by_training_type(recipes_with_template, training_type)
 
         if not recipe:
-            raise ValueError(f"No recipes found with Smtj for technique: {customization_technique},training_type:{training_type}")
+            raise ValueError(f"No recipes found with {platform_label} for technique: {customization_technique},training_type:{training_type}")
 
-        # Start with the standard recipe's override_params
+        # Start with the recipe's override_params (platform-specific key)
         options_dict = {}
-        if recipe.get("SmtjOverrideParamsS3Uri"):
-            s3_uri = recipe["SmtjOverrideParamsS3Uri"]
+        if recipe.get(override_params_key):
+            s3_uri = recipe[override_params_key]
             # Handle {customer_id} placeholder (subscription recipes use access point ARNs)
             if "{customer_id}" in s3_uri:
                 s3_uri = s3_uri.replace("{customer_id}", sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"])
@@ -529,9 +543,9 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         else:
             sub_recipe = next((r for r in recipes_with_template if not r.get("Peft") and r.get("IsSubscriptionModel")), None)
 
-        if sub_recipe and sub_recipe.get("SmtjOverrideParamsS3Uri"):
+        if sub_recipe and sub_recipe.get(override_params_key):
             try:
-                sub_s3_uri = sub_recipe["SmtjOverrideParamsS3Uri"].replace("{customer_id}", sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"])
+                sub_s3_uri = sub_recipe[override_params_key].replace("{customer_id}", sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"])
                 sub_uri_path = sub_s3_uri.replace("s3://", "")
                 # Handle access point ARN URIs
                 if sub_uri_path.startswith("arn:"):

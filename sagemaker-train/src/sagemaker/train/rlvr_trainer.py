@@ -197,7 +197,8 @@ class RLVRTrainer(BaseTrainer):
                                                                      self.training_type,
                                                                      self.sagemaker_session or TrainDefaults.get_sagemaker_session(
                                                                      sagemaker_session=self.sagemaker_session
-                                                                    ))
+                                                                    ),
+                                                                     compute=self.compute)
 
         # Remove constructor-handled hyperparameters
         self._process_hyperparameters()
