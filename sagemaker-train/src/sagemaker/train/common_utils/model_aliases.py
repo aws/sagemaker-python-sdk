@@ -41,11 +41,21 @@ MAINTENANCE:
 # Bedrock-style model ID → SageMaker Hub content name
 MODEL_NAME_ALIASES = {
     # Nova v2 models
-    "amazon.nova-lite-v2": "nova-textgeneration-lite-v2",
+    "amazon.nova-2-lite-v1": "nova-textgeneration-lite-v2",
     # Nova v1 models
     "amazon.nova-lite-v1": "nova-textgeneration-lite",
     "amazon.nova-pro-v1": "nova-textgeneration-pro",
     "amazon.nova-micro-v1": "nova-textgeneration-micro",
+}
+
+# SageMaker Hub content name → Bedrock cross-region inference model ID (region-agnostic).
+# The geographic prefix (e.g., "us.") is prepended at runtime based on session region.
+# Derived from MODEL_NAME_ALIASES — each Bedrock model ID is the alias key + ":0".
+# Only includes models that support Bedrock cross-region inference for LLMAJ.
+NOVA_BEDROCK_MODEL_IDS = {
+    hub_name: f"{bedrock_id}:0"
+    for bedrock_id, hub_name in MODEL_NAME_ALIASES.items()
+    if "nova" in hub_name.lower()
 }
 
 

@@ -6,16 +6,52 @@ to evaluate LLM responses based on quality and responsible AI metrics.
 
 import json
 import logging
-from typing import Any, List, Optional, Union
+import uuid
+from typing import Any, Dict, List, Optional, Union
 
-from pydantic import validator
+from pydantic import root_validator, validator
 
 from .base_evaluator import BaseEvaluator
+from .constants import (
+    EvalType,
+    _get_inspect_ai_default_image_uri,
+    _NOVA_ESCROW_ACCOUNTS,
+    _REGION_TO_BEDROCK_PREFIX,
+)
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.train.common_utils.model_aliases import NOVA_BEDROCK_MODEL_IDS
+from sagemaker.train.common_utils.recipe_utils import _is_nova_model
 from sagemaker.train.constants import _ALLOWED_EVALUATOR_MODELS
 
 _logger = logging.getLogger(__name__)
+
+
+def _resolve_bedrock_model_id(base_model_name: str, region: str) -> Optional[str]:
+    """Derive Bedrock inference profile ID from JumpStart model name + region.
+
+    Returns None if the model isn't in the Nova→Bedrock mapping (i.e., it's not
+    a Nova model or isn't supported for Bedrock routing).
+
+    Args:
+        base_model_name: Resolved JumpStart model name (e.g., "nova-textgeneration-lite")
+        region: AWS region from session (e.g., "us-east-1")
+
+    Returns:
+        Full Bedrock model ID (e.g., "us.amazon.nova-lite-v1:0") or None
+    """
+    if not base_model_name:
+        return None
+
+    base_id = NOVA_BEDROCK_MODEL_IDS.get(base_model_name)
+    if not base_id:
+        return None
+
+    prefix = _REGION_TO_BEDROCK_PREFIX.get(region)
+    if not prefix:
+        return None
+
+    return f"{prefix}.{base_id}"
 
 
 class LLMAsJudgeEvaluator(BaseEvaluator):
@@ -121,7 +157,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
     dataset: Union[str, Any]
     builtin_metrics: Optional[List[str]] = None
     custom_metrics: Optional[str] = None
-    
+
     # Template-required fields
     evaluate_base_model: bool = False
     
@@ -133,10 +169,14 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         """
         return BaseEvaluator._validate_and_resolve_dataset(v)
     
-    @validator('model')
-    def _validate_model_compatibility(cls, v, values):
-        """Validate that Nova models are not used with LLM-as-judge evaluator"""
-        from ..common_utils.recipe_utils import _is_nova_model
+    @root_validator(skip_on_failure=True)
+    def _validate_model_compatibility(cls, values):
+        """Validate Nova model region compatibility for LLM-as-Judge.
+
+        Nova JumpStart models are automatically routed to the InspectAI+Bedrock
+        inference path. This validator ensures the session region supports
+        Bedrock cross-region inference for Nova models.
+        """
         
         # Get resolved model info if available
         resolved_info = values.get('_resolved_model_info')
@@ -144,14 +184,17 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             base_model_name = resolved_info.base_model_name
             is_nova = _is_nova_model(base_model_name)
             
-            # LLM-as-judge is not allowed for Nova models
             if is_nova:
-                raise ValueError(
-                    f"LLM-as-judge evaluation is not supported for Nova models. "
-                    f"The current model '{base_model_name}' is a Nova model."
-                )
+                session = values.get('sagemaker_session')
+                region = session.boto_region_name if session and hasattr(session, 'boto_region_name') else None
+                if region and region not in _REGION_TO_BEDROCK_PREFIX:
+                    raise ValueError(
+                        f"Nova model '{base_model_name}' is not supported for "
+                        f"LLM-as-Judge evaluation in region '{region}'. "
+                        f"Supported regions: {list(_REGION_TO_BEDROCK_PREFIX.keys())}"
+                    )
         
-        return v
+        return values
 
     @validator('evaluator_model')
     def _validate_evaluator_model(cls, v, values):
@@ -177,6 +220,27 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             
         return v
     
+    def _should_use_inspectai_path(self) -> bool:
+        """Determine if the InspectAI path should be used for Phase 1 inference.
+
+        The InspectAI path is required when the model is a Nova model, which
+        cannot use the existing ServerlessJobConfig inference-only path:
+
+        1. Nova JumpStart model → InspectAI + Bedrock cross-region inference.
+        2. Fine-tuned Nova model (identified by having a
+           ``source_model_package_arn``) → InspectAI + SageMaker Endpoint.
+
+        Non-Nova models (both JumpStart and fine-tuned model packages) continue
+        to use the existing ServerlessJobConfig path.
+
+        Returns:
+            bool: True if the InspectAI path should be used, False otherwise.
+        """
+        if self._base_model_name and _is_nova_model(self._base_model_name):
+            return True
+
+        return False
+
     def _process_builtin_metrics(self, metrics: Optional[List[str]]) -> List[str]:
         """Process builtin metrics by removing 'Builtin.' prefix if present.
         
@@ -221,6 +285,403 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid JSON in custom_metrics: {e}")
     
+    def _resolve_llmaj_proxy_model_arn(self, region: str) -> str:
+        """Resolve a non-Nova model ARN for the LLMAJEvaluation judging step.
+
+        Nova models do not support EvaluationType=LLMAJEvaluation. Since the
+        InspectAI path handles inference in Phase 1, Phase 2 (judging) only
+        needs a BaseModelArn that the backend accepts. This method resolves
+        a known non-Nova model from the SageMaker Public Hub to use as a proxy.
+
+        Args:
+            region: AWS region for hub content lookup.
+
+        Returns:
+            str: Hub content ARN for a non-Nova model that supports LLMAJEvaluation.
+        """
+        from sagemaker.train.common_utils.model_resolution import _resolve_base_model
+
+        _LLMAJ_PROXY_MODEL_ID = "meta-textgeneration-llama-3-2-1b-instruct"
+
+        try:
+            proxy_info = _resolve_base_model(
+                _LLMAJ_PROXY_MODEL_ID,
+                sagemaker_session=self.sagemaker_session,
+            )
+            _logger.info(
+                f"Resolved LLMAJ proxy model ARN for Nova: {proxy_info.base_model_arn}"
+            )
+            return proxy_info.base_model_arn
+        except Exception as e:
+            raise ValueError(
+                f"Nova models do not support LLMAJEvaluation directly. "
+                f"Failed to resolve proxy model '{_LLMAJ_PROXY_MODEL_ID}' "
+                f"for the judging step: {e}"
+            )
+
+    def _emit_cost_warning(self, instance_type: str, inference_mode: str) -> None:
+        """Emit a warning about additional InspectAI infrastructure costs.
+
+        Informs the user that the InspectAI inference path incurs costs for
+        both the orchestrator Training instance and the inference backend
+        (Bedrock or SageMaker Endpoint), in addition to the LLMAJEvaluation
+        judging step.
+
+        Args:
+            instance_type: The ML instance type used for the InspectAI
+                orchestrator Training job (e.g., ``"ml.m5.large"``).
+            inference_mode: Description of the inference backend
+                (e.g., ``"Bedrock"`` or ``"SageMaker Endpoint"``).
+        """
+        _logger.warning(
+            "This evaluation uses the InspectAI inference path. "
+            "You will incur additional costs: "
+            f"(1) A SageMaker Training instance ({instance_type}) for the InspectAI orchestrator. "
+            f"(2) {inference_mode} inference costs for generating model responses. "
+            "These costs are in addition to the LLMAJEvaluation judging step."
+        )
+
+    def _get_inference_model_id(self, region: str) -> Optional[str]:
+        """Resolve the Bedrock model ID for InspectAI inference.
+
+        For Nova JumpStart models, derives the Bedrock cross-region inference
+        profile ID from the model name and session region. For custom models
+        (model packages), returns None — they use endpoint-based inference.
+
+        Args:
+            region: AWS region from execution context.
+
+        Returns:
+            Bedrock model ID string (e.g., ``"us.amazon.nova-lite-v1:0"``),
+            or None if endpoint-based inference should be used.
+        """
+        if self._source_model_package_arn is not None:
+            # Custom model → endpoint path, no Bedrock model ID needed
+            return None
+
+        return _resolve_bedrock_model_id(self._base_model_name, region)
+
+    def _build_inspectai_config(
+        self, region: str, benchmark_s3_path: str, output_s3_uri: str
+    ) -> dict:
+        """Build the InspectAI YAML configuration for inference-only mode.
+
+        Constructs the configuration dictionary that will be serialized to YAML
+        and uploaded to S3 for the InspectAI Training job. The config controls
+        which inference provider is used, which benchmark tasks to run, and
+        eval/output settings.
+
+        :param region: AWS region for the inference provider.
+        :param benchmark_s3_path: S3 path prefix where benchmark files
+            (``inference_only.py``, ``pyproject.toml``, ``dataset.jsonl``) are stored.
+        :param output_s3_uri: S3 URI where the benchmark should write the
+            ``{prompt, response}`` JSONL output for Phase 2.
+        :returns: Configuration dictionary ready for YAML serialization.
+        """
+        config: dict = {}
+
+        bedrock_model_id = self._get_inference_model_id(region)
+        if bedrock_model_id is not None:
+            config["inference_provider"] = {
+                "bedrock": {
+                    "model_id": bedrock_model_id,
+                    "region": region,
+                }
+            }
+        else:
+            model_s3_uri, inference_image_uri = (
+                self._resolve_model_artifacts_for_endpoint(region)
+            )
+            config["inference_provider"] = {
+                "sagemaker_endpoint": {
+                    "model_s3_uri": model_s3_uri,
+                    "inference_image_uri": inference_image_uri,
+                    "cleanup_endpoint": True,
+                    "instance_count": 1,
+                    "endpoint_prefix": "llmaj-infer",
+                }
+            }
+
+        config["benchmarks"] = {
+            "s3_path": benchmark_s3_path,
+            "tasks": [
+                {
+                    "name": "inference_only",
+                    "task_args": {
+                        "dataset": "dataset.jsonl",
+                        "output_s3_uri": output_s3_uri,
+                        "region": region,
+                    },
+                }
+            ],
+        }
+
+        # Eval settings — max_connections set low for rate-limit reliability
+        config["eval"] = {
+            "max_connections": 1,
+            "max_retries": 100,
+            "timeout": 600,
+            "decoding": {
+                "temperature": 0.0,
+                "top_p": 1.0,
+                "top_k": -1,
+                "max_tokens": 8192,
+            },
+        }
+
+        s3_base = self.s3_output_path.rstrip("/")
+        config["output"] = {
+            "s3_path": f"{s3_base}/inspectai-results/",
+        }
+
+        return config
+
+    def _resolve_model_artifacts_for_endpoint(self, region: str) -> tuple[str, str]:
+        """Extract model S3 URI and inference image URI from the model package.
+
+        Retrieves the model package specified by ``self._source_model_package_arn``
+        and resolves the deployable artifacts needed to create a SageMaker endpoint
+        for InspectAI inference.
+
+        The method attempts to resolve:
+        - **model_s3_uri**: First from ``model_data_url``, then from
+          ``model_data_source.s3_data_source.s3_uri`` on the first container.
+        - **inference_image_uri**: From the container's ``image`` field. If absent,
+          derives the image URI from the ``base_model.hub_content_name`` for Nova
+          models using region-specific escrow accounts.
+
+        :param region: AWS region for model package retrieval and image URI derivation.
+        :type region: str
+        :returns: A tuple of ``(model_s3_uri, inference_image_uri)``.
+        :rtype: tuple[str, str]
+        :raises ValueError: If the model package cannot be retrieved, lacks an
+            inference specification, or the model S3 URI or inference image URI
+            cannot be resolved.
+        """
+        from sagemaker.core.resources import ModelPackage
+        from sagemaker.core.utils.utils import Unassigned
+
+        model_package_arn = self._source_model_package_arn
+
+        try:
+            session = self.sagemaker_session
+            boto_session = (
+                session.boto_session if hasattr(session, "boto_session") else session
+            )
+            mp = ModelPackage.get(
+                model_package_name=model_package_arn,
+                session=boto_session,
+                region=region,
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Failed to retrieve model package '{model_package_arn}': {e}. "
+                "Ensure the model package ARN is correct and accessible in the "
+                f"current region ({region})."
+            )
+
+        # Validate inference spec has containers
+        if (
+            not mp.inference_specification
+            or isinstance(mp.inference_specification, Unassigned)
+            or not mp.inference_specification.containers
+        ):
+            raise ValueError(
+                f"Model package '{model_package_arn}' does not have an "
+                "inference_specification with containers. Cannot resolve model "
+                "artifacts for endpoint creation. Ensure the model package was "
+                "created via SageMaker fine-tuning and has deployable artifacts."
+            )
+
+        container = mp.inference_specification.containers[0]
+
+        # Resolve model S3 URI: try model_data_url first, then model_data_source
+        model_s3_uri = getattr(container, "model_data_url", None)
+        if isinstance(model_s3_uri, Unassigned) or not model_s3_uri:
+            model_s3_uri = None
+            model_data_source = getattr(container, "model_data_source", None)
+            if model_data_source and not isinstance(model_data_source, Unassigned):
+                s3_data_source = getattr(model_data_source, "s3_data_source", None)
+                if s3_data_source and not isinstance(s3_data_source, Unassigned):
+                    s3_uri = getattr(s3_data_source, "s3_uri", None)
+                    if s3_uri and not isinstance(s3_uri, Unassigned):
+                        model_s3_uri = s3_uri
+
+        if not model_s3_uri:
+            raise ValueError(
+                f"Cannot resolve model S3 URI from model package "
+                f"'{model_package_arn}'. The inference_specification.containers[0] "
+                "has neither 'model_data_url' nor "
+                "'model_data_source.s3_data_source.s3_uri'. Ensure the model "
+                "package contains deployable model artifacts."
+            )
+
+        # Resolve inference image URI: try explicit image first
+        inference_image_uri = getattr(container, "image", None)
+        if isinstance(inference_image_uri, Unassigned) or not inference_image_uri:
+            inference_image_uri = None
+
+            # Derive from base_model for Nova models using escrow account pattern
+            base_model = getattr(container, "base_model", None)
+            if base_model and not isinstance(base_model, Unassigned):
+                hub_content_name = getattr(base_model, "hub_content_name", None)
+                if (
+                    hub_content_name
+                    and not isinstance(hub_content_name, Unassigned)
+                    and "nova" in hub_content_name.lower()
+                ):
+                    escrow_account = _NOVA_ESCROW_ACCOUNTS.get(region)
+                    if escrow_account:
+                        inference_image_uri = (
+                            f"{escrow_account}.dkr.ecr.{region}.amazonaws.com"
+                            f"/nova-inference-repo:SM-Inference-latest"
+                        )
+
+        if not inference_image_uri:
+            raise ValueError(
+                f"Cannot resolve inference image URI from model package "
+                f"'{model_package_arn}'. The inference_specification.containers[0] "
+                "does not have an 'image' field, and the base model is not a "
+                "recognized Nova model for automatic image derivation. Ensure "
+                "the model package has a valid inference container image specified."
+            )
+
+        _logger.info(
+            "Resolved model artifacts for endpoint: model_s3_uri=%s, "
+            "inference_image_uri=%s",
+            model_s3_uri,
+            inference_image_uri,
+        )
+
+        return (model_s3_uri, inference_image_uri)
+
+    def _upload_benchmark_and_dataset(self, region: str, output_s3_uri: str) -> str:
+        """Generate benchmark files, download and convert the dataset, and upload to S3.
+
+        This method handles the full preparation of InspectAI benchmark artifacts:
+
+        1. Generates the InspectAI benchmark Python file and ``pyproject.toml``.
+        2. Downloads the customer's evaluation dataset from S3 (resolving Dataset
+           ARN to S3 URI if necessary).
+        3. Converts the dataset to InspectAI format (``{"input": ..., "target": ""}``).
+        4. Uploads all files to a unique S3 prefix under the configured output path.
+
+        :param region: AWS region for S3 operations.
+        :type region: str
+        :param output_s3_uri: The S3 URI where inference output will be written.
+            Embedded in the benchmark config for the InspectAI task.
+        :type output_s3_uri: str
+        :returns: The S3 prefix where benchmark files were uploaded.
+        :rtype: str
+        :raises ValueError: If the dataset cannot be downloaded or converted.
+        """
+        from sagemaker.core.s3.client import S3Downloader, S3Uploader
+
+        from .llmaj_inference_benchmark import (
+            convert_dataset_to_inspectai_format,
+            generate_benchmark_files,
+        )
+
+        # 1. Generate benchmark files
+        benchmark_files = generate_benchmark_files()
+
+        # 2. Resolve dataset URI (handle ARN → S3 URI if needed)
+        dataset_uri = self.dataset
+        if dataset_uri.startswith("arn:") and "hub-content" in dataset_uri and "/DataSet/" in dataset_uri:
+            dataset_uri = self._resolve_dataset_arn_to_s3_uri(dataset_uri)
+
+        # 3. Download customer dataset from S3
+        try:
+            raw_content = S3Downloader.read_file(
+                s3_uri=dataset_uri,
+                sagemaker_session=self.sagemaker_session,
+            )
+        except Exception as e:
+            raise ValueError(
+                f"Failed to download dataset from {dataset_uri}: {e}"
+            ) from e
+
+        # 4. Convert to InspectAI format
+        converted_dataset = convert_dataset_to_inspectai_format(raw_content)
+
+        # 5. Upload everything to a unique S3 prefix
+        s3_base = self.s3_output_path.rstrip("/")
+        benchmark_prefix = f"{s3_base}/llmaj-benchmarks/{uuid.uuid4()}"
+
+        for filename, content in benchmark_files.items():
+            S3Uploader.upload_string_as_file_body(
+                body=content,
+                desired_s3_uri=f"{benchmark_prefix}/{filename}",
+                kms_key=self.kms_key_id,
+                sagemaker_session=self.sagemaker_session,
+            )
+
+        S3Uploader.upload_string_as_file_body(
+            body=converted_dataset,
+            desired_s3_uri=f"{benchmark_prefix}/dataset.jsonl",
+            kms_key=self.kms_key_id,
+            sagemaker_session=self.sagemaker_session,
+        )
+
+        _logger.info(f"Uploaded benchmark and dataset to: {benchmark_prefix}")
+        return benchmark_prefix
+
+    def _resolve_dataset_arn_to_s3_uri(self, dataset_arn: str) -> str:
+        """Resolve a hub-content Dataset ARN to its S3 URI.
+
+        Calls ``AIRHub.describe_hub_content`` to retrieve the dataset's S3
+        bucket and prefix, then constructs the full S3 URI.
+
+        :param dataset_arn: The hub-content Dataset ARN to resolve.
+        :type dataset_arn: str
+        :returns: The S3 URI pointing to the dataset file.
+        :rtype: str
+        :raises ValueError: If the ARN cannot be resolved to an S3 location.
+        """
+        import json as _json
+
+        from sagemaker.ai_registry.air_hub import AIRHub
+        from sagemaker.ai_registry.air_constants import (
+            DOC_KEY_DATASET_S3_BUCKET,
+            DOC_KEY_DATASET_S3_PREFIX,
+            DATASET_HUB_CONTENT_TYPE,
+            RESPONSE_KEY_HUB_CONTENT_DOCUMENT,
+        )
+
+        # ARN format: arn:aws:sagemaker:region:account:hub-content/HubName/DataSet/Name/Version
+        try:
+            arn_parts = dataset_arn.split(":")
+            resource_parts = arn_parts[-1].split("/")
+            hub_content_name = resource_parts[3]
+        except (IndexError, ValueError) as e:
+            raise ValueError(
+                f"Failed to parse dataset ARN '{dataset_arn}': {e}"
+            ) from e
+
+        try:
+            response = AIRHub.describe_hub_content(
+                hub_content_type=DATASET_HUB_CONTENT_TYPE,
+                hub_content_name=hub_content_name,
+                session=self.sagemaker_session,
+            )
+            doc = _json.loads(response[RESPONSE_KEY_HUB_CONTENT_DOCUMENT])
+            bucket = doc.get(DOC_KEY_DATASET_S3_BUCKET, "")
+            prefix = doc.get(DOC_KEY_DATASET_S3_PREFIX, "")
+
+            if not bucket or not prefix:
+                raise ValueError(
+                    f"Dataset ARN '{dataset_arn}' resolved to empty S3 location "
+                    f"(bucket={bucket!r}, prefix={prefix!r})."
+                )
+
+            return f"s3://{bucket}/{prefix}"
+        except ValueError:
+            raise
+        except Exception as e:
+            raise ValueError(
+                f"Failed to resolve dataset ARN '{dataset_arn}' to S3 URI: {e}"
+            ) from e
+
     def _upload_custom_metrics_to_s3(self, custom_metrics_json: str, eval_name: str) -> str:
         """Upload custom metrics JSON to S3 and return the S3 path.
         
@@ -303,6 +764,12 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         1. Phase 1: Generate inference responses from base and custom models
         2. Phase 2: Use judge model to evaluate responses with built-in and custom metrics
         
+        When the InspectAI path is active (custom model or Nova JumpStart model),
+        Phase 1 runs inside an InspectAI container that generates
+        inference responses and writes them to S3. Phase 2 remains unchanged —
+        the LLMAJEvaluation judging step evaluates those responses with the
+        judge model.
+        
         Returns:
             EvaluationPipelineExecution: The created LLM-as-judge evaluation execution
         
@@ -314,11 +781,6 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             
                 evaluator = LLMAsJudgeEvaluator(
                     base_model="llama-3-3-70b-instruct",
-                evaluator_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
-                dataset="s3://my-bucket/my-dataset.jsonl",
-                builtin_metrics=["Correctness", "Helpfulness"],  # Prefix optional
-                s3_output_path="s3://my-bucket/output"
-            )
                     evaluator_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
                     dataset="s3://my-bucket/my-dataset.jsonl",
                     builtin_metrics=["Correctness", "Helpfulness"],
@@ -327,25 +789,131 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 execution = evaluator.evaluate()
                 execution.wait()
         """
-        from .pipeline_templates import LLMAJ_TEMPLATE, LLMAJ_TEMPLATE_BASE_MODEL_ONLY
-        from .constants import EvalType
+        from .constants import EvalType, _get_inspect_ai_default_image_uri
+        from .pipeline_templates import (
+            LLMAJ_INSPECTAI_TEMPLATE,
+            LLMAJ_TEMPLATE,
+            LLMAJ_TEMPLATE_BASE_MODEL_ONLY,
+        )
         
         # Get AWS execution context (role ARN, region, account ID)
         aws_context = self._get_aws_execution_context()
+        region = aws_context['region']
+        role_arn = aws_context['role_arn']
         
         # Resolve model artifacts
-        artifacts = self._resolve_model_artifacts(aws_context['region'])
+        artifacts = self._resolve_model_artifacts(region)
         
         # Get or infer model_package_group ARN (handles all cases internally)
         model_package_group_arn = self._get_model_package_group_arn()
         
         # Log resolved model information for debugging
-        _logger.info(f"Resolved model info - base_model_name: {self._base_model_name}, base_model_arn: {self._base_model_arn}, source_model_package_arn: {self._source_model_package_arn}")
-        
+        _logger.info(
+            f"Resolved model info - base_model_name: {self._base_model_name}, "
+            f"base_model_arn: {self._base_model_arn}, "
+            f"source_model_package_arn: {self._source_model_package_arn}"
+        )
+
+        # Generate execution name early so we can use it for S3 paths
+        name = self.base_eval_name or "llm-judge-eval"
+
+        # InspectAI path (Nova models)
+        if self._should_use_inspectai_path():
+            import yaml
+            from sagemaker.core.s3.client import S3Uploader
+
+            inspectai_instance_type = "ml.m5.large"
+            bedrock_model_id = self._get_inference_model_id(region)
+            inference_mode = "Bedrock" if bedrock_model_id else "SageMaker Endpoint"
+            self._emit_cost_warning(inspectai_instance_type, inference_mode)
+
+            inference_run_id = str(uuid.uuid4())
+            s3_base = self.s3_output_path.rstrip("/")
+            inference_output_s3_uri = (
+                f"{s3_base}/inference/{inference_run_id}/inference_output.jsonl"
+            )
+
+            benchmark_s3_path = self._upload_benchmark_and_dataset(
+                region, inference_output_s3_uri
+            )
+
+            inspectai_config = self._build_inspectai_config(
+                region, benchmark_s3_path, inference_output_s3_uri
+            )
+            yaml_content = yaml.dump(
+                inspectai_config, default_flow_style=False, sort_keys=False
+            )
+            config_s3_prefix = (
+                f"{s3_base}/inspectai-config/{inference_run_id}"
+            )
+            config_s3_uri = f"{config_s3_prefix}/config.yaml"
+            _logger.info(f"Uploading InspectAI config to: {config_s3_uri}")
+            S3Uploader.upload_string_as_file_body(
+                body=yaml_content,
+                desired_s3_uri=config_s3_uri,
+                kms_key=self.kms_key_id,
+                sagemaker_session=self.sagemaker_session,
+            )
+
+            inspectai_image_uri = _get_inspect_ai_default_image_uri(region)
+
+            # Resolve mlflow_experiment_name: required when ModelPackageGroupArn is absent
+            mlflow_experiment_name = self.mlflow_experiment_name
+            if not mlflow_experiment_name and self.mlflow_resource_arn:
+                mlflow_experiment_name = '{{ pipeline_name }}'
+                _logger.info(
+                    "No mlflow_experiment_name provided for InspectAI path, "
+                    "using pipeline_name as default"
+                )
+
+            # Nova models don't support EvaluationType=LLMAJEvaluation. BaseModelArn
+            # is required by the API, so we resolve a non-Nova proxy model ARN.
+            if self._base_model_name and _is_nova_model(self._base_model_name):
+                judge_step_base_model_arn = self._resolve_llmaj_proxy_model_arn(region)
+            else:
+                judge_step_base_model_arn = self._base_model_arn or self.model
+
+            template_context = {
+                'role_arn': role_arn,
+                'mlflow_resource_arn': self.mlflow_resource_arn,
+                'mlflow_experiment_name': mlflow_experiment_name,
+                'inspectai_image_uri': inspectai_image_uri,
+                'inspectai_instance_type': inspectai_instance_type,
+                'inspectai_config_s3_uri': config_s3_prefix,
+                's3_output_path': s3_base,
+                'base_model_arn': judge_step_base_model_arn,
+                'inference_output_s3_uri': inference_output_s3_uri,
+            }
+
+            llmaj_additions = self._get_llmaj_template_additions(name)
+            template_context.update(llmaj_additions)
+
+            if self._source_model_package_arn and model_package_group_arn:
+                template_context['model_package_config'] = True
+                template_context['model_package_group_arn'] = model_package_group_arn
+                template_context['source_model_package_arn'] = (
+                    self._source_model_package_arn
+                )
+
+            template_context = self._add_vpc_and_kms_to_context(template_context)
+
+            pipeline_definition = self._render_pipeline_definition(
+                LLMAJ_INSPECTAI_TEMPLATE, template_context
+            )
+
+            return self._start_execution(
+                eval_type=EvalType.LLM_AS_JUDGE,
+                name=name,
+                pipeline_definition=pipeline_definition,
+                role_arn=role_arn,
+                region=region,
+            )
+
+        # Standard LLMAJ path (non-Nova JumpStart models)
         # Build base template context
         template_context = self._get_base_template_context(
-            role_arn=aws_context['role_arn'],
-            region=aws_context['region'],
+            role_arn=role_arn,
+            region=region,
             account_id=aws_context['account_id'],
             model_package_group_arn=model_package_group_arn,
             resolved_model_artifact_arn=artifacts['resolved_model_artifact_arn']
@@ -353,9 +921,6 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         
         # Add dataset URI
         template_context['dataset_uri'] = self.dataset
-        
-        # Generate execution name early so we can use it for S3 paths
-        name = self.base_eval_name or f"llm-judge-eval"
         
         # Add LLM-as-judge specific template additions (needs eval name for S3 upload)
         llmaj_additions = self._get_llmaj_template_additions(name)
@@ -378,8 +943,8 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             eval_type=EvalType.LLM_AS_JUDGE,
             name=name,
             pipeline_definition=pipeline_definition,
-            role_arn=aws_context['role_arn'],
-            region=aws_context['region']
+            role_arn=role_arn,
+            region=region,
         )
     
     @classmethod

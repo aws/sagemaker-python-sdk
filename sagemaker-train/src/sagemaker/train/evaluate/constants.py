@@ -86,6 +86,25 @@ _TAG_SAGEMAKER_MODEL_EVALUATION = "SagemakerModelEvaluation"
 _INSPECT_AI_FRAMEWORK = "sagemaker-inspect-ai"
 
 
+# Nova model inference container escrow ECR accounts per region.
+# Used to derive inference image URIs for fine-tuned Nova models when the
+# model package doesn't explicitly specify an image.
+_NOVA_ESCROW_ACCOUNTS = {
+    "us-east-1": "708977205387",
+    "us-west-2": "176779409107",
+    "eu-west-2": "470633809225",
+    "ap-northeast-1": "878185805882",
+}
+
+# Region → Bedrock cross-region inference profile prefix.
+# Scoped to regions where InspectAI is available (Nova LLMAJ requires both).
+_REGION_TO_BEDROCK_PREFIX = {
+    "us-east-1": "us",
+    "us-west-2": "us",
+    "eu-west-2": "eu",
+}
+
+
 def _get_inspect_ai_default_image_uri(region: str) -> str:
     """Get the default InspectAI container image URI for a given region.
 

@@ -31,7 +31,7 @@ from sagemaker.core.telemetry.constants import Feature
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 
 from .base_evaluator import BaseEvaluator
-from .constants import EvalType, _get_inspect_ai_default_image_uri
+from .constants import EvalType, _get_inspect_ai_default_image_uri, _NOVA_ESCROW_ACCOUNTS
 from .execution import EvaluationPipelineExecution
 from .pipeline_templates import INSPECT_AI_TEMPLATE
 
@@ -352,12 +352,6 @@ class InspectAIEvaluator(BaseEvaluator):
                     if base_model:
                         hub_content_name = getattr(base_model, "hub_content_name", None)
                         if hub_content_name and "nova" in (hub_content_name or "").lower():
-                            _NOVA_ESCROW_ACCOUNTS = {
-                                "us-east-1": "708977205387",
-                                "us-west-2": "176779409107",
-                                "eu-west-2": "470633809225",
-                                "ap-northeast-1": "878185805882",
-                            }
                             escrow_account = _NOVA_ESCROW_ACCOUNTS.get(region)
                             if escrow_account:
                                 resolved_image = (
