@@ -642,3 +642,390 @@ class TestGetNestedValue:
     def test_top_level(self):
         d = {"key": "value"}
         assert _get_nested_value(d, "key") == "value"
+
+
+# --- Validation-focused unit tests ---
+
+
+class TestValidateValueExtended:
+    """Extended validation tests covering edge cases and all spec fields."""
+
+    def test_float_at_exact_min_passes(self):
+        _validate_value("lr", 1e-7, {"type": "float", "min": 1e-7, "max": 1.0}, "test")
+
+    def test_float_at_exact_max_passes(self):
+        _validate_value("lr", 1.0, {"type": "float", "min": 1e-7, "max": 1.0}, "test")
+
+    def test_integer_at_exact_min_passes(self):
+        _validate_value("steps", 1, {"type": "integer", "min": 1, "max": 1000}, "test")
+
+    def test_integer_at_exact_max_passes(self):
+        _validate_value("steps", 1000, {"type": "integer", "min": 1, "max": 1000}, "test")
+
+    def test_integer_below_min_raises(self):
+        with pytest.raises(ValueError, match="below minimum"):
+            _validate_value("steps", 0, {"type": "integer", "min": 1, "max": 1000}, "test")
+
+    def test_integer_above_max_raises(self):
+        with pytest.raises(ValueError, match="above maximum"):
+            _validate_value("steps", 1001, {"type": "integer", "min": 1, "max": 1000}, "test")
+
+    def test_string_type_rejects_integer(self):
+        with pytest.raises(ValueError, match="expected string"):
+            _validate_value("name", 123, {"type": "string"}, "test")
+
+    def test_boolean_type_rejects_string(self):
+        with pytest.raises(ValueError, match="expected boolean"):
+            _validate_value("flag", "true", {"type": "boolean"}, "test")
+
+    def test_boolean_type_accepts_true(self):
+        _validate_value("flag", True, {"type": "boolean"}, "test")
+
+    def test_boolean_type_accepts_false(self):
+        _validate_value("flag", False, {"type": "boolean"}, "test")
+
+    def test_enum_empty_string_passes(self):
+        """Empty string is a special pass-through for enum validation."""
+        _validate_value("mode", "", {"type": "string", "enum": ["full", "lora"]}, "test")
+
+    def test_enum_default_value_passes(self):
+        """Value matching the default passes enum validation even if not in enum list."""
+        _validate_value(
+            "mode", "special",
+            {"type": "string", "enum": ["full", "lora"], "default": "special"},
+            "test",
+        )
+
+    def test_no_type_spec_skips_type_check(self):
+        """If spec has no 'type', type checking is skipped."""
+        _validate_value("param", "anything", {"min": 0, "max": 100}, "test")
+
+    def test_no_min_max_spec_skips_range_check(self):
+        """If spec has no 'min'/'max', range checking is skipped."""
+        _validate_value("param", 999999, {"type": "integer"}, "test")
+
+    def test_required_none_value_raises(self):
+        with pytest.raises(ValueError, match="required"):
+            _validate_value(
+                "dataset_path", None,
+                {"type": "string", "required": True},
+                "test",
+                resolved_recipe={"training_config": {}},
+                dotpath="training_config.dataset_path",
+            )
+
+    def test_required_with_value_passes(self):
+        _validate_value(
+            "dataset_path", "s3://bucket/data",
+            {"type": "string", "required": True},
+            "test",
+            resolved_recipe={"training_config": {"dataset_path": "s3://bucket/data"}},
+            dotpath="training_config.dataset_path",
+        )
+
+    def test_required_no_dotpath_raises(self):
+        """Required key with no dotpath (key not found in recipe) raises."""
+        with pytest.raises(ValueError, match="required"):
+            _validate_value(
+                "missing_key", None,
+                {"type": "string", "required": True},
+                "test",
+                resolved_recipe={},
+                dotpath=None,
+            )
+
+    def test_source_label_in_error_message(self):
+        """The source label appears in validation error messages."""
+        with pytest.raises(ValueError, match="my custom source"):
+            _validate_value("lr", 5.0, {"type": "float", "max": 1.0}, "my custom source")
+
+
+class TestValidateStepConstraints:
+    """Unit tests for cross-field step constraint validation."""
+
+    def test_save_steps_less_than_max_steps_passes(self):
+        from sagemaker.train.recipe_resolver import _validate_step_constraints
+
+        resolved = {"training_config": {"save_steps": 50, "max_steps": 100}}
+        key_path_map = {
+            "save_steps": "training_config.save_steps",
+            "max_steps": "training_config.max_steps",
+        }
+
+        # Should not raise
+        _validate_step_constraints(resolved, key_path_map)
+
+    def test_save_steps_equal_to_max_steps_passes(self):
+        from sagemaker.train.recipe_resolver import _validate_step_constraints
+
+        resolved = {"training_config": {"save_steps": 100, "max_steps": 100}}
+        key_path_map = {
+            "save_steps": "training_config.save_steps",
+            "max_steps": "training_config.max_steps",
+        }
+
+        _validate_step_constraints(resolved, key_path_map)
+
+    def test_save_steps_greater_than_max_steps_raises(self):
+        from sagemaker.train.recipe_resolver import _validate_step_constraints
+
+        resolved = {"training_config": {"save_steps": 200, "max_steps": 100}}
+        key_path_map = {
+            "save_steps": "training_config.save_steps",
+            "max_steps": "training_config.max_steps",
+        }
+
+        with pytest.raises(ValueError, match="save_steps.*must be less than or equal to.*max_steps"):
+            _validate_step_constraints(resolved, key_path_map)
+
+    def test_missing_save_steps_skips_validation(self):
+        from sagemaker.train.recipe_resolver import _validate_step_constraints
+
+        resolved = {"training_config": {"max_steps": 100}}
+        key_path_map = {"max_steps": "training_config.max_steps"}
+
+        # No save_steps in key_path_map -> skip
+        _validate_step_constraints(resolved, key_path_map)
+
+    def test_missing_max_steps_skips_validation(self):
+        from sagemaker.train.recipe_resolver import _validate_step_constraints
+
+        resolved = {"training_config": {"save_steps": 50}}
+        key_path_map = {"save_steps": "training_config.save_steps"}
+
+        _validate_step_constraints(resolved, key_path_map)
+
+    def test_none_save_steps_skips_validation(self):
+        from sagemaker.train.recipe_resolver import _validate_step_constraints
+
+        resolved = {"training_config": {"save_steps": None, "max_steps": 100}}
+        key_path_map = {
+            "save_steps": "training_config.save_steps",
+            "max_steps": "training_config.max_steps",
+        }
+
+        # None is not (int, float), so constraint is skipped
+        _validate_step_constraints(resolved, key_path_map)
+
+    def test_none_max_steps_skips_validation(self):
+        from sagemaker.train.recipe_resolver import _validate_step_constraints
+
+        resolved = {"training_config": {"save_steps": 50, "max_steps": None}}
+        key_path_map = {
+            "save_steps": "training_config.save_steps",
+            "max_steps": "training_config.max_steps",
+        }
+
+        _validate_step_constraints(resolved, key_path_map)
+
+
+class TestRecipeResolverInstanceTypeValidation:
+    """Unit tests for instance_type validation via compute parameter."""
+
+    def _make_template(self):
+        return {"training_config": {"learning_rate": "'{{learning_rate}}'"}}
+
+    def _make_spec_with_instance_type(self):
+        return {
+            "learning_rate": {"default": 1e-5, "type": "float", "min": 1e-7, "max": 1.0},
+            "instance_type": {
+                "type": "string",
+                "enum": ["ml.p4d.24xlarge", "ml.p5.48xlarge", "ml.g5.48xlarge"],
+            },
+        }
+
+    def test_valid_instance_type_passes(self):
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        compute = HyperPodCompute(cluster_name="cluster", instance_type="ml.p5.48xlarge")
+
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec_with_instance_type(),
+            compute=compute,
+        )
+
+        result = resolver.resolve()
+        assert result["training_config"]["learning_rate"] == 1e-5
+
+    def test_invalid_instance_type_raises(self):
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        compute = HyperPodCompute(cluster_name="cluster", instance_type="ml.t3.medium")
+
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec_with_instance_type(),
+            compute=compute,
+        )
+
+        with pytest.raises(ValueError, match="not supported"):
+            resolver.resolve()
+
+    def test_serverless_skips_instance_type_validation(self):
+        """When compute is None (serverless), instance_type validation is skipped."""
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec_with_instance_type(),
+            compute=None,
+        )
+
+        # Should not raise despite instance_type spec having enum constraint
+        result = resolver.resolve()
+        assert result["training_config"]["learning_rate"] == 1e-5
+
+    def test_compute_missing_instance_type_raises(self):
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        compute = HyperPodCompute(cluster_name="cluster", instance_type=None)
+
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec_with_instance_type(),
+            compute=compute,
+        )
+
+        with pytest.raises(ValueError, match="instance_type must be specified"):
+            resolver.resolve()
+
+
+class TestRecipeResolverValidationIntegration:
+    """Tests verifying validation runs during resolve() for different merge scenarios."""
+
+    def _make_template(self):
+        return {
+            "training_config": {
+                "learning_rate": "'{{learning_rate}}'",
+                "max_steps": "'{{max_steps}}'",
+                "save_steps": "'{{save_steps}}'",
+                "seed": "'{{seed}}'",
+            }
+        }
+
+    def _make_spec(self):
+        return {
+            "learning_rate": {"default": 1e-5, "type": "float", "min": 1e-7, "max": 1.0},
+            "max_steps": {"default": 100, "type": "integer", "min": 10, "max": 100000},
+            "save_steps": {"default": 50, "type": "integer", "min": 1, "max": 100000},
+            "seed": {"default": 42, "type": "integer", "min": 0, "max": 99999},
+        }
+
+    def test_override_out_of_range_raises(self):
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec(),
+            overrides={"training_config": {"max_steps": 5}},
+        )
+
+        with pytest.raises(ValueError, match="below minimum"):
+            resolver.resolve()
+
+    def test_user_recipe_out_of_range_raises(self, tmp_path):
+        recipe_content = {"training_config": {"learning_rate": 999.0}}
+        recipe_file = tmp_path / "recipe.yaml"
+        recipe_file.write_text(yaml.dump(recipe_content))
+
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec(),
+            user_recipe_path=str(recipe_file),
+        )
+
+        with pytest.raises(ValueError, match="above maximum"):
+            resolver.resolve()
+
+    def test_override_corrects_bad_recipe(self, tmp_path):
+        """An override can fix an invalid recipe file value."""
+        recipe_content = {"training_config": {"learning_rate": 999.0}}
+        recipe_file = tmp_path / "recipe.yaml"
+        recipe_file.write_text(yaml.dump(recipe_content))
+
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec(),
+            user_recipe_path=str(recipe_file),
+            overrides={"training_config": {"learning_rate": 1e-5}},
+        )
+
+        result = resolver.resolve()
+        assert result["training_config"]["learning_rate"] == 1e-5
+
+    def test_cross_field_save_steps_exceeds_max_steps_with_overrides(self):
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec(),
+            overrides={"training_config": {"max_steps": 50, "save_steps": 200}},
+        )
+
+        with pytest.raises(ValueError, match="save_steps.*must be less than or equal to.*max_steps"):
+            resolver.resolve()
+
+    def test_cross_field_passes_when_save_steps_equals_max_steps(self):
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec(),
+            overrides={"training_config": {"max_steps": 100, "save_steps": 100}},
+        )
+
+        result = resolver.resolve()
+        assert result["training_config"]["max_steps"] == 100
+        assert result["training_config"]["save_steps"] == 100
+
+    def test_validation_uses_merged_values_not_just_overrides(self, tmp_path):
+        """Cross-field validation operates on the merged result."""
+        recipe_content = {"training_config": {"max_steps": 30}}
+        recipe_file = tmp_path / "recipe.yaml"
+        recipe_file.write_text(yaml.dump(recipe_content))
+
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec(),
+            user_recipe_path=str(recipe_file),
+            overrides={"training_config": {"save_steps": 50}},
+        )
+
+        # max_steps=30 from recipe, save_steps=50 from override -> violation
+        with pytest.raises(ValueError, match="save_steps.*must be less than or equal to.*max_steps"):
+            resolver.resolve()
+
+    def test_all_defaults_pass_validation(self):
+        """Base template defaults should always pass validation."""
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec(),
+        )
+
+        result = resolver.resolve()
+        assert result["training_config"]["learning_rate"] == 1e-5
+        assert result["training_config"]["max_steps"] == 100
+        assert result["training_config"]["save_steps"] == 50
+        assert result["training_config"]["seed"] == 42
+
+    def test_protected_key_not_overridden_by_user_recipe(self, tmp_path):
+        recipe_content = {"training_config": {"seed": 999, "learning_rate": 2e-5}}
+        recipe_file = tmp_path / "recipe.yaml"
+        recipe_file.write_text(yaml.dump(recipe_content))
+
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec(),
+            user_recipe_path=str(recipe_file),
+            protected_keys={"seed"},
+        )
+
+        result = resolver.resolve()
+        # seed is protected, retains default
+        assert result["training_config"]["seed"] == 42
+        # learning_rate is not protected, takes recipe value
+        assert result["training_config"]["learning_rate"] == 2e-5
+
+    def test_protected_key_not_overridden_by_overrides(self):
+        resolver = RecipeResolver(
+            recipe_template=self._make_template(),
+            override_spec=self._make_spec(),
+            overrides={"training_config": {"seed": 999}},
+            protected_keys={"seed"},
+        )
+
+        result = resolver.resolve()
+        assert result["training_config"]["seed"] == 42

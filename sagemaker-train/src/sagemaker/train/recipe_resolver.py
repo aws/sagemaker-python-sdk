@@ -22,7 +22,7 @@ from typing import Any, Dict, Optional, Set, Tuple, Union
 import yaml
 from omegaconf import OmegaConf
 
-from sagemaker.core.training.configs import HyperPodCompute
+from sagemaker.core.training.configs import HyperPodCompute, TrainingJobCompute
 from sagemaker.train.sm_recipes.utils import _register_custom_resolvers
 
 logger = logging.getLogger(__name__)
@@ -516,7 +516,7 @@ class RecipeResolver:
         self,
         resolved: Dict[str, Any],
         key_path_map: Dict[str, str],
-        compute: Optional[Union["Compute", "HyperPodCompute"]] = None,
+        compute: Optional[Union["TrainingJobCompute", "HyperPodCompute"]] = None,
     ) -> None:
         """Validate resolved values against the override spec.
 
@@ -550,6 +550,27 @@ class RecipeResolver:
                     raise ValueError(
                         f"Instance type '{instance_type}' is not supported. "
                         f"Allowed types: {sorted(allowed_values)}."
+                    )
+                continue
+
+            # --- Replicas: validated from compute, not from recipe ---
+            if spec_key == "replicas":
+                if is_serverless:
+                    continue
+                node_count = getattr(compute, "node_count", None) or getattr(
+                    compute, "instance_count", None
+                )
+
+                allowed_values = spec_entry.get("enum")
+                if node_count is None:
+                    raise ValueError(
+                        "node_count (or instance_count) must be specified in Compute parameter. "
+                        f"Allowed values: {sorted(allowed_values) if allowed_values else 'unknown'}."
+                    )
+                if allowed_values and node_count not in allowed_values:
+                    raise ValueError(
+                        f"Node/Instance count '{node_count}' is not supported. "
+                        f"Allowed values: {sorted(allowed_values)}."
                     )
                 continue
 

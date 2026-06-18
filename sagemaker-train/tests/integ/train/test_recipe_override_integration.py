@@ -446,6 +446,383 @@ class TestBenchMarkEvaluatorRecipeOverrideInteg:
             evaluator.get_resolved_recipe()
 
 
+class TestSFTTrainerValidationFailuresInteg:
+    """Integration tests for validation failures triggered via SFTTrainer overrides."""
+
+    def test_sft_rejects_save_steps_greater_than_max_steps(self):
+        """Test that save_steps > max_steps raises ValueError via SFTTrainer."""
+        sft_trainer = SFTTrainer(
+            model="nova-textgeneration-lite-v2",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            overrides={
+                "training_config": {
+                    "max_steps": 50,
+                    "save_steps": 200,
+                }
+            },
+        )
+
+        with pytest.raises(ValueError, match="save_steps.*must be less than or equal to.*max_steps"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_rejects_learning_rate_above_maximum(self):
+        """Test that learning_rate > 1 (spec max) raises ValueError."""
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            overrides={
+                "training_config": {
+                    "learning_rate": 5.0,
+                }
+            },
+        )
+
+        with pytest.raises(ValueError, match="above maximum"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_rejects_invalid_type_for_learning_rate(self):
+        """Test that a string learning_rate raises type validation error."""
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            overrides={
+                "training_config": {
+                    "learning_rate": "not_a_number",
+                }
+            },
+        )
+
+        with pytest.raises(ValueError, match="Invalid type for"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_rejects_invalid_enum_value_for_seed(self):
+        """Test that an invalid enum value (e.g., batch_size not in allowed set) raises ValueError."""
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            overrides={
+                "training_config": {
+                    "lora_alpha": 99,
+                }
+            },
+        )
+
+        with pytest.raises(ValueError, match="not in allowed values"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_rejects_max_steps_below_minimum(self):
+        """Test that max_steps below spec minimum raises ValueError."""
+        sft_trainer = SFTTrainer(
+            model="nova-textgeneration-lite-v2",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            overrides={
+                "training_config": {
+                    "max_steps": 1,
+                }
+            },
+        )
+
+        with pytest.raises(ValueError, match="below minimum"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_rejects_invalid_instance_type_with_compute(self):
+        """Test that an unsupported instance_type in HyperPodCompute raises ValueError."""
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        compute = HyperPodCompute(
+            cluster_name="my-cluster",
+            instance_type="ml.t3.medium",
+        )
+
+        sft_trainer = SFTTrainer(
+            model="nova-textgeneration-lite-v2",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            compute=compute,
+            overrides={
+                "training_config": {
+                    "learning_rate": 1e-5,
+                }
+            },
+        )
+
+        with pytest.raises(ValueError, match="not supported"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_rejects_invalid_instance_type_with_hyperpod_compute(self):
+        """Test that an unsupported instance_type in HyperPodCompute raises ValueError."""
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        compute = HyperPodCompute(
+            cluster_name="my-cluster",
+            instance_type="ml.t3.medium",
+        )
+
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            compute=compute,
+            overrides={
+                "training_config": {
+                    "learning_rate": 1e-5,
+                }
+            },
+        )
+
+        with pytest.raises(ValueError, match="not supported"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_rejects_invalid_node_count_with_hyperpod_compute(self):
+        """Test that an unsupported node_count in HyperPodCompute raises ValueError."""
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        compute = HyperPodCompute(
+            cluster_name="my-cluster",
+            instance_type="ml.p5.48xlarge",
+            node_count=7,
+        )
+
+        sft_trainer = SFTTrainer(
+            model="nova-textgeneration-lite-v2",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            compute=compute,
+            overrides={
+                "training_config": {
+                    "learning_rate": 1e-5,
+                }
+            },
+        )
+
+        with pytest.raises(ValueError, match="not supported"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_valid_instance_type_passes_with_compute(self):
+        """Test that a valid instance_type in Compute passes validation."""
+        from sagemaker.core.training.configs import Compute
+
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=1)
+
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            compute=compute,
+            overrides={
+                "training_config": {
+                    "learning_rate": 1e-5,
+                }
+            },
+        )
+
+        # Should not raise
+        resolved = sft_trainer.get_resolved_recipe()
+        assert resolved["training_config"]["learning_rate"] == 1e-5
+
+    def test_sft_serverless_skips_instance_type_validation(self):
+        """Test that serverless mode (no compute) skips instance_type validation."""
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            overrides={
+                "training_config": {
+                    "learning_rate": 1e-5,
+                }
+            },
+        )
+
+        # No compute = serverless, instance_type validation skipped
+        resolved = sft_trainer.get_resolved_recipe()
+        assert resolved["training_config"]["learning_rate"] == 1e-5
+
+    def test_sft_save_steps_equal_to_max_steps_passes(self):
+        """Test that save_steps == max_steps is valid (boundary condition)."""
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            overrides={
+                "training_config": {
+                    "max_steps": 100,
+                    "save_steps": 100,
+                }
+            },
+        )
+
+        # Boundary condition: save_steps == max_steps should pass
+        resolved = sft_trainer.get_resolved_recipe()
+        assert resolved["training_config"]["max_steps"] == 100
+        assert resolved["training_config"]["save_steps"] == 100
+
+    def test_sft_recipe_file_with_invalid_value_raises(self):
+        """Test that validation catches errors from recipe file values."""
+        recipe_content = {
+            "training_config": {
+                "learning_rate": 999.0,
+            }
+        }
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as f:
+            yaml.dump(recipe_content, f)
+            recipe_path = f.name
+
+        try:
+            sft_trainer = SFTTrainer(
+                model="meta-textgeneration-llama-3-2-1b-instruct",
+                training_type=TrainingType.LORA,
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+                accept_eula=True,
+                recipe=recipe_path,
+            )
+
+            with pytest.raises(ValueError, match="above maximum"):
+                sft_trainer.get_resolved_recipe()
+        finally:
+            os.unlink(recipe_path)
+
+    def test_sft_override_corrects_invalid_recipe_value(self):
+        """Test that a programmatic override can fix an invalid recipe file value."""
+        recipe_content = {
+            "training_config": {
+                "learning_rate": 999.0,
+            }
+        }
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as f:
+            yaml.dump(recipe_content, f)
+            recipe_path = f.name
+
+        try:
+            sft_trainer = SFTTrainer(
+                model="meta-textgeneration-llama-3-2-1b-instruct",
+                training_type=TrainingType.LORA,
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+                accept_eula=True,
+                recipe=recipe_path,
+                overrides={
+                    "training_config": {
+                        "learning_rate": 1e-5,
+                    }
+                },
+            )
+
+            # Override wins, fixing the bad recipe file value
+            resolved = sft_trainer.get_resolved_recipe()
+            assert resolved["training_config"]["learning_rate"] == 1e-5
+        finally:
+            os.unlink(recipe_path)
+
+    def test_sft_nonexistent_recipe_file_raises(self):
+        """Test that a non-existent recipe file path raises ValueError."""
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            recipe="/tmp/nonexistent_recipe_file_abc123.yaml",
+        )
+
+        with pytest.raises(ValueError, match="Recipe file not found"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_http_recipe_url_rejected(self):
+        """Test that HTTP/HTTPS recipe URLs are rejected for security."""
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            recipe="https://evil.example.com/recipe.yaml",
+        )
+
+        with pytest.raises(ValueError, match="HTTP/HTTPS recipe URLs are not supported"):
+            sft_trainer.get_resolved_recipe()
+
+    def test_sft_resolved_recipe_is_idempotent(self):
+        """Test that calling get_resolved_recipe() twice returns the same result."""
+        sft_trainer = SFTTrainer(
+            model="meta-textgeneration-llama-3-2-1b-instruct",
+            training_type=TrainingType.LORA,
+            model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+            training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+            accept_eula=True,
+            overrides={
+                "training_config": {
+                    "learning_rate": 2e-5,
+                }
+            },
+        )
+
+        result1 = sft_trainer.get_resolved_recipe()
+        result2 = sft_trainer.get_resolved_recipe()
+
+        assert result1 == result2
+        assert result1["training_config"]["learning_rate"] == 2e-5
+
+        # Mutating the returned dict doesn't affect cached result
+        result1["training_config"]["learning_rate"] = 999
+        result3 = sft_trainer.get_resolved_recipe()
+        assert result3["training_config"]["learning_rate"] == 2e-5
+
+    def test_sft_invalid_yaml_content_raises(self):
+        """Test that a YAML file with non-dict content raises ValueError."""
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".yaml", delete=False
+        ) as f:
+            f.write("- just\n- a\n- list\n")
+            recipe_path = f.name
+
+        try:
+            sft_trainer = SFTTrainer(
+                model="meta-textgeneration-llama-3-2-1b-instruct",
+                training_type=TrainingType.LORA,
+                model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+                training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+                accept_eula=True,
+                recipe=recipe_path,
+            )
+
+            with pytest.raises(ValueError, match="did not parse as a YAML mapping"):
+                sft_trainer.get_resolved_recipe()
+        finally:
+            os.unlink(recipe_path)
+
+
 class TestModelTrainerRecipeOverrideInteg:
     """Integration tests for ModelTrainer.from_recipe with get_resolved_recipe()."""
 
