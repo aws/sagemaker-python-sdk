@@ -135,7 +135,12 @@ from sagemaker.core.config.config_schema import (
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
     MODEL_CONTAINERS_PATH,
 )
-from sagemaker.serve.constants import LOCAL_MODES, SUPPORTED_MODEL_SERVERS, Framework
+from sagemaker.serve.constants import (
+    LOCAL_MODES,
+    SUPPORTED_MODEL_SERVERS,
+    OMNI_TASKS,
+    Framework,
+)
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.core import fw_utils
 from sagemaker.core.helper.session_helper import container_def
@@ -2692,8 +2697,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     if self.schema_builder is None and model_task is not None:
                         self._hf_schema_builder_init(model_task)
 
+                    # Task-based auto-selection. SGLang is not auto-selected by task; it is
+                    # opt-in only via model_server=ModelServer.SGLANG, which is handled earlier
+                    # by the _build_for_model_server() short-circuit above.
                     if model_task == "text-generation":
-                        self.built_model = self._build_for_tgi()
+                        self.built_model = self._build_for_vllm()
+                        return self.built_model
+                    elif model_task in OMNI_TASKS:
+                        self.built_model = self._build_for_vllm_omni()
                         return self.built_model
                     elif model_task in ["sentence-similarity", "feature-extraction"]:
                         self.built_model = self._build_for_tei()
