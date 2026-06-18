@@ -298,6 +298,11 @@ class BaseTrainer(ABC):
         resolved_training_dataset = training_dataset or self.training_dataset
         resolved_validation_dataset = validation_dataset or self.validation_dataset
 
+        # Use "Converse" S3DataType for Nova SFT and DPO datasets
+        is_nova = _is_nova_model(self._model_name)
+        use_converse = is_nova and customization_technique not in ("RLVR", "RLAIF")
+        s3_data_type = "Converse" if use_converse else "S3Prefix"
+
         input_data_list = []
         if resolved_training_dataset:
             input_data_list.append(
@@ -305,7 +310,7 @@ class BaseTrainer(ABC):
                     channel_name="train",
                     data_source=S3DataSource(
                         s3_uri=resolved_training_dataset,
-                        s3_data_type="S3Prefix",
+                        s3_data_type=s3_data_type,
                         s3_data_distribution_type="FullyReplicated",
                     ),
                 )
@@ -316,7 +321,7 @@ class BaseTrainer(ABC):
                     channel_name="validation",
                     data_source=S3DataSource(
                         s3_uri=resolved_validation_dataset,
-                        s3_data_type="S3Prefix",
+                        s3_data_type=s3_data_type,
                         s3_data_distribution_type="FullyReplicated",
                     ),
                 )

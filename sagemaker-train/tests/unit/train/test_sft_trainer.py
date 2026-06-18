@@ -1108,3 +1108,64 @@ class TestSFTTrainerHyperPodDatamixOrchestration:
 
         # training_image should remain None since image_uri from build was None
         assert trainer.training_image is None
+
+
+class TestSFTTrainerSmtjS3DataType:
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    def _make_trainer(self, mock_opts, mock_resolve, mock_validate, model_name="nova-textgeneration-lite", compute=None):
+        from sagemaker.train.sft_trainer import SFTTrainer
+        from sagemaker.core.training.configs import Compute
+        mock_resolve.return_value = ("model", model_name)
+        mock_validate.return_value = "group"
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_opts.return_value = (mock_hp, "arn", False)
+        if compute is None:
+            compute = Compute(instance_type="ml.p5.48xlarge", instance_count=4)
+        return SFTTrainer(model=model_name, compute=compute, model_package_group="grp")
+
+    def _run_smtj_and_capture_input_config(self, model_name):
+        trainer = self._make_trainer(model_name=model_name)
+
+        mock_model_trainer_cls = Mock()
+        mock_model_trainer_cls.from_recipe.return_value = Mock()
+
+        mock_open = MagicMock()
+        mock_open.return_value.__enter__ = Mock(return_value=MagicMock(read=Mock(return_value="dummy: recipe")))
+        mock_open.return_value.__exit__ = Mock(return_value=False)
+
+        mock_s3_client = Mock()
+        mock_s3_client.download_file = Mock()
+
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_session.boto_session.client.return_value = mock_s3_client
+
+        with patch('sagemaker.train.defaults.TrainDefaults') as mock_defaults, \
+             patch('sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri', return_value="s3://bucket/recipe.yaml"), \
+             patch('sagemaker.train.common_utils.finetune_utils.get_training_image', return_value="img:latest"), \
+             patch('sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec', return_value={}), \
+             patch('sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders', return_value="content"), \
+             patch('tempfile.NamedTemporaryFile') as mock_tmp, \
+             patch('sagemaker.train.base_trainer.open', mock_open, create=True), \
+             patch.dict('sys.modules', {'sagemaker.train.model_trainer': Mock(ModelTrainer=mock_model_trainer_cls)}):
+
+            mock_defaults.get_sagemaker_session.return_value = mock_session
+            mock_defaults.get_role.return_value = "arn:aws:iam::123456789012:role/test"
+            mock_tmp.return_value.name = "/tmp/mock_recipe.yaml"
+
+            trainer._train_serverful_smtj(training_dataset="s3://bucket/train.jsonl", wait=False)
+
+        return mock_model_trainer_cls.from_recipe.call_args[1]["input_data_config"]
+
+    def test_nova_sft_uses_converse_s3_data_type(self):
+        input_data_config = self._run_smtj_and_capture_input_config("nova-textgeneration-lite")
+        assert input_data_config is not None
+        assert input_data_config[0].data_source.s3_data_type == "Converse"
+
+    def test_oss_model_uses_s3prefix_data_type(self):
+        input_data_config = self._run_smtj_and_capture_input_config("meta-textgeneration-llama-3-2-1b-instruct")
+        assert input_data_config is not None
+        assert input_data_config[0].data_source.s3_data_type == "S3Prefix"
