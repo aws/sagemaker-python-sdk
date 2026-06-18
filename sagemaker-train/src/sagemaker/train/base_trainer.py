@@ -242,6 +242,24 @@ class BaseTrainer(ABC):
         s3_client.download_file(bucket, key, recipe_tmp.name)
         recipe_local_path = recipe_tmp.name
 
+        # Resolve datasets up front so their paths can be injected into the recipe
+        # before rendering. The recipe maps data.train_files -> {{data_path}} and
+        # data.val_files -> {{validation_data_path}}; these are mounted into the
+        # container as SageMaker input channels (train/validation), so the recipe
+        # must point at the local channel mount paths, not be left empty.
+        resolved_training_dataset = training_dataset or self.training_dataset
+        resolved_validation_dataset = validation_dataset or self.validation_dataset
+
+        def _channel_mount_path(dataset_uri, channel_name):
+            """Map an S3 dataset URI to the container path where its channel mounts."""
+            mount_dir = "/opt/ml/input/data/" + channel_name
+            basename = dataset_uri.rstrip("/").rsplit("/", 1)[-1]
+            # A trailing object key with an extension is mounted as that file; an
+            # S3 prefix (directory) is mounted as the channel directory itself.
+            if "." in basename:
+                return mount_dir + "/" + basename
+            return mount_dir
+
         # Render {{placeholder}} values in the recipe template with defaults
         from sagemaker.train.common_utils.finetune_utils import (
             _render_recipe_placeholders,
@@ -253,6 +271,27 @@ class BaseTrainer(ABC):
             training_type=self.training_type,
             sagemaker_session=sagemaker_session,
         )
+
+        # Inject the resolved dataset channel paths so the rendered recipe's
+        # train_files / val_files are non-empty (the container aborts otherwise).
+        def _set_spec_default(spec, key, value):
+            entry = spec.get(key)
+            if isinstance(entry, dict):
+                entry["default"] = value
+            else:
+                spec[key] = {"default": value, "type": "string"}
+
+        if resolved_training_dataset:
+            _set_spec_default(
+                override_spec, "data_path",
+                _channel_mount_path(resolved_training_dataset, "train"),
+            )
+        if resolved_validation_dataset:
+            _set_spec_default(
+                override_spec, "validation_data_path",
+                _channel_mount_path(resolved_validation_dataset, "validation"),
+            )
+
         with open(recipe_local_path, "r") as f:
             recipe_content = f.read()
         recipe_content = _render_recipe_placeholders(recipe_content, override_spec)
@@ -294,6 +333,7 @@ class BaseTrainer(ABC):
         if extra_hp:
             final_hyperparameters.update(extra_hp)
 
+        # Build input data config (datasets resolved earlier for recipe injection)
         # Build input data config
         resolved_training_dataset = training_dataset or self.training_dataset
         resolved_validation_dataset = validation_dataset or self.validation_dataset
@@ -346,6 +386,7 @@ class BaseTrainer(ABC):
             training_image=training_image,
             input_data_config=input_data_list if input_data_list else None,
             hyperparameters=final_hyperparameters,
+            environment=self.environment or None,
             sagemaker_session=sagemaker_session,
             role=role,
             base_job_name=base_job_name,

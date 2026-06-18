@@ -750,3 +750,88 @@ class ResourcesTest(unittest.TestCase):
             job.stop()
         except Exception:
             pass
+
+
+class TestWaitLogMarkup(unittest.TestCase):
+    """Container log lines emitted while waiting must disable rich markup parsing.
+
+    Log messages are arbitrary container output and may contain square brackets
+    (e.g. file paths like ``[.../main_ppo.py]``). Without ``markup=False`` the
+    rich logging handler tries to parse them as markup tags and raises
+    MarkupError, aborting the wait loop. Each generated wait() that streams logs
+    (TrainingJob, ProcessingJob, TransformJob) must pass extra={"markup": False}.
+    """
+
+    def _drive_one_log_iteration(self, resource, status_attr):
+        """Run a single wait() iteration that streams one log event then terminates.
+
+        Returns the list of logger.info calls captured during the wait.
+        """
+        # A logger that streams one container log line, then reports a terminal
+        # status so the wait loop logs the event and exits after one iteration.
+        log_handler = MagicMock()
+        log_handler.ready.return_value = True
+        log_handler.get_latest_log_events.return_value = [
+            ("algo-1", {"message": "loaded [/opt/ml/code/main_ppo.py]"})
+        ]
+
+        with patch("sagemaker.core.resources.MultiLogStreamHandler", return_value=log_handler), \
+             patch("sagemaker.core.resources.logger") as mock_logger, \
+             patch.object(type(resource), "refresh", return_value=resource):
+            resource.wait(poll=0, logs=True)
+
+        return mock_logger.info.call_args_list
+
+    def test_training_job_wait_disables_markup_for_log_lines(self):
+        from sagemaker.core.resources import TrainingJob
+
+        job = TrainingJob(training_job_name="test-job")
+        job.training_job_status = "Completed"
+        from sagemaker.core.shapes import shapes
+        job.resource_config = shapes.ResourceConfig(
+            instance_type="ml.m5.large", instance_count=1, volume_size_in_gb=30
+        )
+
+        calls = self._drive_one_log_iteration(job, "training_job_status")
+
+        # The container log line must be logged with markup parsing disabled.
+        log_line_calls = [c for c in calls if "main_ppo.py" in str(c.args[0])]
+        assert log_line_calls, "expected the container log line to be logged"
+        for c in log_line_calls:
+            assert c.kwargs.get("extra") == {"markup": False}
+
+    def test_processing_job_wait_disables_markup_for_log_lines(self):
+        from sagemaker.core.resources import ProcessingJob
+
+        job = ProcessingJob(processing_job_name="test-job")
+        job.processing_job_status = "Completed"
+        from sagemaker.core.shapes import shapes
+        job.processing_resources = shapes.ProcessingResources(
+            cluster_config=shapes.ProcessingClusterConfig(
+                instance_count=1, instance_type="ml.m5.large", volume_size_in_gb=30
+            )
+        )
+
+        calls = self._drive_one_log_iteration(job, "processing_job_status")
+
+        log_line_calls = [c for c in calls if "main_ppo.py" in str(c.args[0])]
+        assert log_line_calls, "expected the container log line to be logged"
+        for c in log_line_calls:
+            assert c.kwargs.get("extra") == {"markup": False}
+
+    def test_transform_job_wait_disables_markup_for_log_lines(self):
+        from sagemaker.core.resources import TransformJob
+
+        job = TransformJob(transform_job_name="test-job")
+        job.transform_job_status = "Completed"
+        from sagemaker.core.shapes import shapes
+        job.transform_resources = shapes.TransformResources(
+            instance_type="ml.m5.large", instance_count=1
+        )
+
+        calls = self._drive_one_log_iteration(job, "transform_job_status")
+
+        log_line_calls = [c for c in calls if "main_ppo.py" in str(c.args[0])]
+        assert log_line_calls, "expected the container log line to be logged"
+        for c in log_line_calls:
+            assert c.kwargs.get("extra") == {"markup": False}

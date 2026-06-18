@@ -115,6 +115,23 @@ IAM_POLICY_CONFIG = {
                     }
                 ],
             },
+            # Fine-tuning jobs reference a base model via a hub-content ARN
+            # (e.g. SageMakerPublicHub/Model/<name>/<version>). The SageMaker
+            # service reads that hub content as this execution role when it
+            # creates the training job, so the role needs DescribeHubContent.
+            # Scoped to hub-content resources; the public hub lives in the "aws"
+            # account, so the account segment is left wildcard to also cover
+            # private hubs (SAGEMAKER_HUB_NAME).
+            "hub_content_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["sagemaker:DescribeHubContent"],
+                        "Resource": "arn:aws:sagemaker:*:*:hub-content/*",
+                    }
+                ],
+            },
         },
     },
     "serving": {
@@ -361,6 +378,21 @@ IAM_POLICY_CONFIG = {
                         "Effect": "Allow",
                         "Action": ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"],
                         "Resource": "KMS_PLACEHOLDER",
+                    }
+                ],
+            },
+            # Fine-tuning jobs reference a base model via a hub-content ARN
+            # (e.g. SageMakerPublicHub/Model/<name>/<version>). The job needs
+            # DescribeHubContent to resolve that base model. Scoped to hub-content
+            # resources; account segment left wildcard to cover the public hub
+            # ("aws") and private hubs (SAGEMAKER_HUB_NAME).
+            "hub_content_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["sagemaker:DescribeHubContent"],
+                        "Resource": "arn:aws:sagemaker:*:*:hub-content/*",
                     }
                 ],
             },

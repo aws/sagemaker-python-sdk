@@ -276,7 +276,14 @@ PRINT_WAIT_LOGS = """
 if logs and multi_stream_logger.ready():
     stream_log_events = multi_stream_logger.get_latest_log_events()
     for stream_id, event in stream_log_events:
-        logger.info(f"{stream_id}:\\n{event['message']}")
+        # Container log lines are arbitrary text and may contain
+        # square brackets (e.g. file paths like [.../main_ppo.py]).
+        # Disable rich markup parsing for these records so they are
+        # not misread as markup tags (raises MarkupError otherwise).
+        logger.info(
+            f"{stream_id}:\\n{event['message']}",
+            extra={"markup": False},
+        )
 """
 
 

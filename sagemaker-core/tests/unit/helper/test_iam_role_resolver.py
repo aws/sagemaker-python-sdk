@@ -376,6 +376,31 @@ class TestPolicyConfig:
         assert "ecr:BatchGetImage" in actions
         assert "logs:CreateLogStream" in actions
 
+    def test_training_role_has_describe_hub_content(self):
+        """The training execution role must carry sagemaker:DescribeHubContent.
+
+        Fine-tuning jobs reference a base model via a hub-content ARN, and the
+        SageMaker service reads that hub content as this execution role when it
+        creates the training job. Without DescribeHubContent the service fails
+        CreateTrainingJob with an "Access denied to hub content" error.
+        """
+        config = _load_policy_config()
+        actions = set(_get_required_actions("training"))
+        assert "sagemaker:DescribeHubContent" in actions
+        # Scoped to hub-content resources, not "*".
+        stmt = config["training"]["policies"]["hub_content_policy"]["Statement"][0]
+        assert stmt["Resource"] == "arn:aws:sagemaker:*:*:hub-content/*"
+
+    def test_hyperpod_job_role_has_describe_hub_content(self):
+        """The HyperPod job role also carries sagemaker:DescribeHubContent so it can
+        resolve the base model's hub content.
+        """
+        config = _load_policy_config()
+        actions = set(_get_required_actions("hyperpod"))
+        assert "sagemaker:DescribeHubContent" in actions
+        stmt = config["hyperpod"]["policies"]["hub_content_policy"]["Statement"][0]
+        assert stmt["Resource"] == "arn:aws:sagemaker:*:*:hub-content/*"
+
     def test_replace_placeholders_s3(self):
         """S3 placeholder gets replaced with actual bucket ARN."""
         policies = {
