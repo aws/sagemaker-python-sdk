@@ -31,6 +31,7 @@ _REQUIRED_IAM_ACTIONS = (
     "iam:CreatePolicy",
     "iam:AttachRolePolicy",
     "iam:GetRole",
+    "iam:TagRole",
 )
 
 # Permissions the HyperPod CLI flow needs on the *caller* identity — the local
@@ -47,6 +48,13 @@ HYPERPOD_CLI_CONNECT_ACTIONS = (
     "eks:DescribeCluster",
     "eks:AccessKubernetesApi",
 )
+
+# Ownership tags applied to every role the SDK auto-creates, so the roles are
+# auditable and clearly attributable to the SDK. ``RoleType`` (filled in per
+# role) records which workload the role was created for.
+_SDK_ROLE_TAGS = {
+    "CreatedBy": "sagemaker-python-sdk",
+}
 
 
 class RoleAutoCreationError(Exception):
@@ -84,6 +92,121 @@ def _partition_from_arn(arn: str) -> str:
     """Extract the AWS partition (aws, aws-cn, aws-us-gov) from an ARN."""
     parts = arn.split(":")
     return parts[1] if len(parts) > 1 and parts[1] else "aws"
+
+
+def _build_role_tags(role_type: str) -> List[dict]:
+    """Build the SDK ownership tag list (IAM TagList form) for a role type."""
+    tags = dict(_SDK_ROLE_TAGS)
+    tags["RoleType"] = role_type
+    return [{"Key": k, "Value": v} for k, v in tags.items()]
+
+
+def _scope_trust_policy_to_account(trust_policy: dict, account_id: str) -> dict:
+    """Substitute ACCOUNT_PLACEHOLDER in trust-policy conditions with the account ID.
+
+    The ``aws:SourceAccount`` condition restricts which account's service requests
+    may assume the role, preventing the cross-service confused-deputy problem.
+    """
+    trust_policy = copy.deepcopy(trust_policy)
+    for statement in trust_policy.get("Statement", []):
+        condition = statement.get("Condition", {})
+        for operator_values in condition.values():
+            if "aws:SourceAccount" in operator_values:
+                operator_values["aws:SourceAccount"] = account_id
+    return trust_policy
+
+
+def _ensure_role_tagged(iam_client, role_name: str, role_type: str) -> None:
+    """Idempotently ensure an existing auto-role carries the SDK ownership tags.
+
+    Roles created before tagging was introduced (or via a non-create path such as
+    a concurrent EntityAlreadyExists fallback) may be missing the tags. ``TagRole``
+    is idempotent, so re-applying identical tags is a no-op. Tagging failures are
+    non-fatal: the role is still usable, so we log and continue.
+    """
+    try:
+        existing = {
+            t["Key"] for t in iam_client.list_role_tags(RoleName=role_name).get("Tags", [])
+        }
+        desired = _build_role_tags(role_type)
+        missing = [t for t in desired if t["Key"] not in existing]
+        if missing:
+            iam_client.tag_role(RoleName=role_name, Tags=desired)
+            logger.info(
+                "Applied SDK ownership tags to existing role '%s'.", role_name
+            )
+    except ClientError as e:
+        logger.info(
+            "Could not verify/apply ownership tags on role '%s': %s", role_name, e
+        )
+
+
+def _is_wildcard_scope(resource: Union[str, List[str]]) -> bool:
+    """Return True if a resource scope resolves to the account-wide "*" wildcard.
+
+    Mirrors the collapsing behavior of ``_expand_s3_resource``/``_expand_kms_resource``:
+    a bare ``"*"`` or any list that contains ``"*"`` means account-wide access.
+    """
+    if isinstance(resource, str):
+        return resource == "*"
+    return "*" in resource
+
+
+def _role_uses_placeholder(role_config: dict, placeholder: str) -> bool:
+    """Return True if any of the role's policy statements uses ``placeholder`` as its Resource."""
+    for policy_doc in role_config["policies"].values():
+        for statement in policy_doc.get("Statement", []):
+            if statement.get("Resource") == placeholder:
+                return True
+    return False
+
+
+def _warn_broad_permissions(
+    role_type: str,
+    role_config: dict,
+    s3_resource: Union[str, List[str]],
+    kms_resource: Union[str, List[str]],
+) -> None:
+    """Warn when the auto-role will be granted account-wide ("*") resource access.
+
+    These broad grants are accepted by design — the SDK cannot always know the
+    exact buckets, keys, or Glue catalog a job needs at role-creation time — but
+    they are surfaced at WARNING so the account owner is aware and can scope them
+    down (via ``s3_resource``/``kms_resource``) or supply their own role.
+    """
+    if _role_uses_placeholder(role_config, "S3_PLACEHOLDER") and _is_wildcard_scope(
+        s3_resource
+    ):
+        logger.warning(
+            "SageMaker Python SDK is granting the auto-created '%s' role access to "
+            "ALL S3 buckets in your account (s3 resource scope is '*'). To restrict "
+            "this, pass s3_resource=<bucket name(s)> when resolving the role, or supply "
+            "your own least-privilege role via the 'role' parameter.",
+            role_type,
+        )
+    if _role_uses_placeholder(role_config, "KMS_PLACEHOLDER") and _is_wildcard_scope(
+        kms_resource
+    ):
+        logger.warning(
+            "SageMaker Python SDK is granting the auto-created '%s' role access to "
+            "ALL KMS keys in your account (kms resource scope is '*'). To restrict "
+            "this, pass kms_resource=<key id(s)> when resolving the role, or supply "
+            "your own least-privilege role via the 'role' parameter.",
+            role_type,
+        )
+    if role_type == "feature_store":
+        # The feature_store role grants read-only glue:GetTable/GetDatabase/
+        # GetPartitions on "*" (see iam_policies.py). The specific catalog,
+        # databases, and tables are not known at role-creation time, so this
+        # broad read-only metadata grant is accepted by design — surface it.
+        logger.warning(
+            "SageMaker Python SDK is granting the auto-created 'feature_store' role "
+            "read-only access to ALL AWS Glue catalog metadata in your account "
+            "(glue:GetTable/GetDatabase/GetPartitions on '*'). This metadata grant is "
+            "required because the specific Glue databases/tables are not known at "
+            "role-creation time. Supply your own least-privilege role via the 'role' "
+            "parameter to scope this down."
+        )
 
 
 def _get_attached_policy_names(iam_client, role_name: str) -> Set[str]:
@@ -169,9 +292,15 @@ def _replace_placeholders(
                     kms_resource, partition, account_id
                 )
             elif resource == "IAM_PASSROLE_PLACEHOLDER":
-                # Scope iam:PassRole to roles in the caller's account; region is
-                # omitted because IAM is a global service.
-                statement["Resource"] = f"arn:{partition}:iam::{account_id}:role/*"
+                # Scope iam:PassRole to the SDK's own auto-created roles in the
+                # caller's account (rather than all roles), so this role can only
+                # pass least-privilege SageMaker-AutoRole-* roles and never an
+                # arbitrary (e.g. highly privileged) role in the account. The
+                # PassedToService=sagemaker condition further restricts the target
+                # service. Region is omitted because IAM is a global service.
+                statement["Resource"] = (
+                    f"arn:{partition}:iam::{account_id}:role/SageMaker-AutoRole-*"
+                )
             else:
                 # Static ARNs in the config hardcode the commercial partition;
                 # normalize them to the caller's partition (no-op for "aws").
@@ -393,9 +522,11 @@ def resolve_or_create_role(
             "bedrock", "hyperpod".
         sagemaker_session: SageMaker session (used to get boto session).
         s3_resource: S3 bucket name (or list of bucket names) to scope policies.
-            Defaults to "*" (no scoping).
+            Defaults to "*" (no scoping). A "*" scope grants the auto-created role
+            access to all S3 buckets in the account and emits a WARNING.
         kms_resource: KMS key ID (or list of key IDs) to scope policies.
-            Defaults to "*" (no scoping).
+            Defaults to "*" (no scoping). A "*" scope grants the auto-created role
+            access to all KMS keys in the account and emits a WARNING.
 
     Returns:
         IAM role ARN.
@@ -609,6 +740,11 @@ def _auto_resolve_role(
     role_config = config[role_type]
     auto_role_name = role_config["role_name"]
 
+    # We are committing to the dedicated SDK auto-role (the caller's own role was
+    # unusable or absent). Warn about any account-wide ("*") grants this role will
+    # carry so the account owner is aware and can scope them down.
+    _warn_broad_permissions(role_type, role_config, s3_resource, kms_resource)
+
     try:
         existing_role = iam_client.get_role(RoleName=auto_role_name)
         auto_role_arn = existing_role["Role"]["Arn"]
@@ -618,6 +754,9 @@ def _auto_resolve_role(
                 "Existing role '%s' has sufficient permissions. Reusing.",
                 auto_role_name,
             )
+            # Ensure pre-existing auto-roles carry the SDK ownership tags, even when
+            # they were created before tagging was introduced.
+            _ensure_role_tagged(iam_client, auto_role_name, role_type)
             return auto_role_arn
         # Role exists but is missing (or we cannot verify) some policies — since we
         # own this auto-role, attach the missing ones. Attachment is idempotent.
@@ -629,6 +768,7 @@ def _auto_resolve_role(
             role_config["policies"], s3_resource, kms_resource, partition, account_id
         )
         _ensure_policies_attached(iam_client, auto_role_name, policies, account_id, partition)
+        _ensure_role_tagged(iam_client, auto_role_name, role_type)
         logger.info("Using role: %s", auto_role_arn)
         return auto_role_arn
 
@@ -640,7 +780,7 @@ def _auto_resolve_role(
             raise
 
     # Step 3: Role doesn't exist — create it.
-    trust_policy = role_config["trust_policy"]
+    trust_policy = _scope_trust_policy_to_account(role_config["trust_policy"], account_id)
     policies = _replace_placeholders(
         role_config["policies"], s3_resource, kms_resource, partition, account_id
     )
@@ -655,6 +795,7 @@ def _auto_resolve_role(
                     f"Auto-created by SageMaker Python SDK for {role_type} workloads. "
                     f"Safe to delete if no longer needed."
                 ),
+                Tags=_build_role_tags(role_type),
             )
             role_arn = response["Role"]["Arn"]
             # Surface the new role at WARNING so the user is not surprised by an
@@ -671,6 +812,8 @@ def _auto_resolve_role(
             # create left it behind). Reuse it — policy attachment below is idempotent.
             logger.info("Role '%s' already exists, reusing.", auto_role_name)
             role_arn = iam_client.get_role(RoleName=auto_role_name)["Role"]["Arn"]
+            # The concurrently/previously created role may lack ownership tags.
+            _ensure_role_tagged(iam_client, auto_role_name, role_type)
 
         _ensure_policies_attached(iam_client, auto_role_name, policies, account_id, partition)
 

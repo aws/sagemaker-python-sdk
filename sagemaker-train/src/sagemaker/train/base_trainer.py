@@ -132,7 +132,12 @@ class BaseTrainer(ABC):
             overrides=overrides,
             override_spec=override_spec,
             template_section="training_config",
-            protected_keys={"model_type", "model_name_or_path"},
+            # ``dataset_catalog`` is part of the curated recipe fetched from Hub at
+            # runtime (not a hardcoded local key); protecting it prevents user
+            # recipe/overrides from tampering with the curated dataset mix
+            # (AppSec finding #7 — data-mixing). The resolver locates the key by
+            # name in the runtime full recipe template via _build_key_path_map.
+            protected_keys={"model_type", "model_name_or_path", "dataset_catalog"},
             full_recipe_template=full_recipe_template,
             compute=getattr(self, 'compute', None),
         )

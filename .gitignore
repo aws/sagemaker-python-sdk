@@ -46,3 +46,6 @@ docs/api/generated/
 .kiro
 bedrock_api_logs/
 v3-examples/results/*
+
+# CSE security scanner artifacts (auto-added by cse init)
+.security-scan/

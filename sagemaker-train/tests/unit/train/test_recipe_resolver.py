@@ -467,6 +467,30 @@ class TestFullRecipeTemplate:
         result = resolver.resolve()
         assert result["training_config"]["model_type"] == "original"
 
+    def test_dataset_catalog_protected_at_runtime(self):
+        """The curated dataset_catalog cannot be overridden (AppSec finding #7).
+
+        dataset_catalog is not a hardcoded local key — it lives in the full recipe
+        template fetched from Hub at runtime. Adding it to protected_keys lets the
+        resolver locate it by name (via _build_key_path_map) and strip any user
+        attempt to remix the curated datasets.
+        """
+        full_template = self._make_full_template()
+        full_template["training_config"]["dataset_catalog"] = "curated-nova-mix"
+
+        resolver = RecipeResolver(
+            recipe_template={"training_config": {}},
+            override_spec=self._make_spec(),
+            full_recipe_template=full_template,
+            overrides={"training_config": {"dataset_catalog": "attacker-mix"}},
+            protected_keys={"model_type", "model_name_or_path", "dataset_catalog"},
+        )
+
+        result = resolver.resolve()
+
+        # The curated value from the runtime template is preserved; the override
+        # is stripped.
+        assert result["training_config"]["dataset_catalog"] == "curated-nova-mix"
 
 class TestBuildKeyPathMap:
     """Tests for _build_key_path_map helper."""

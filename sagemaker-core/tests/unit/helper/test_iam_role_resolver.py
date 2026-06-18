@@ -19,6 +19,12 @@ from sagemaker.core.helper.iam_role_resolver import (
     _get_boto_session,
     _simulate_denied_actions,
     _MAX_POLICY_VERSIONS,
+    _build_role_tags,
+    _scope_trust_policy_to_account,
+    _ensure_role_tagged,
+    _SDK_ROLE_TAGS,
+    _is_wildcard_scope,
+    _role_uses_placeholder,
 )
 
 
@@ -470,7 +476,7 @@ class TestPolicyConfig:
         )
         assert (
             result["iam_passrole_policy"]["Statement"][0]["Resource"]
-            == "arn:aws:iam::123456789012:role/*"
+            == "arn:aws:iam::123456789012:role/SageMaker-AutoRole-*"
         )
 
     def test_replace_placeholders_rewrites_static_arn_partition(self):
@@ -832,3 +838,376 @@ class TestVerifyHyperPodConnectPermissions:
         mock_iam.get_paginator.return_value = paginator
 
         assert verify_hyperpod_connect_permissions(sagemaker_session=session) is None
+
+
+class TestTrustPolicySourceAccount:
+    """Tests for the aws:SourceAccount confused-deputy mitigation (#1)."""
+
+    def test_all_role_types_have_source_account_placeholder(self):
+        """Every role's trust policy carries an aws:SourceAccount condition placeholder."""
+        config = _load_policy_config()
+        for role_type in ("training", "serving", "pipeline", "feature_store", "bedrock"):
+            statement = config[role_type]["trust_policy"]["Statement"][0]
+            condition = statement.get("Condition", {})
+            assert (
+                condition.get("StringEquals", {}).get("aws:SourceAccount")
+                == "ACCOUNT_PLACEHOLDER"
+            ), f"{role_type} trust policy missing aws:SourceAccount placeholder"
+
+    def test_scope_trust_policy_substitutes_account_id(self):
+        """ACCOUNT_PLACEHOLDER is replaced with the caller's account ID."""
+        config = _load_policy_config()
+        scoped = _scope_trust_policy_to_account(
+            config["training"]["trust_policy"], "123456789012"
+        )
+        condition = scoped["Statement"][0]["Condition"]["StringEquals"]
+        assert condition["aws:SourceAccount"] == "123456789012"
+
+    def test_scope_trust_policy_does_not_mutate_input(self):
+        """Substitution operates on a copy; the config constant is untouched."""
+        config = _load_policy_config()
+        original = config["training"]["trust_policy"]
+        _scope_trust_policy_to_account(original, "123456789012")
+        assert (
+            original["Statement"][0]["Condition"]["StringEquals"]["aws:SourceAccount"]
+            == "ACCOUNT_PLACEHOLDER"
+        )
+
+    def test_created_role_trust_policy_is_account_scoped(self):
+        """The trust policy passed to create_role has the real account ID substituted."""
+        mock_session = MagicMock()
+        mock_iam = MagicMock()
+        mock_sts = MagicMock()
+
+        def client_factory(service, **kwargs):
+            return mock_iam if service == "iam" else mock_sts
+
+        mock_session.boto_session.client.side_effect = client_factory
+        mock_sts.get_caller_identity.return_value = {
+            "Arn": "arn:aws:iam::123456789012:user/dev-user",
+            "Account": "123456789012",
+        }
+        mock_iam.exceptions.NoSuchEntityException = type(
+            "NoSuchEntityException", (ClientError,), {}
+        )
+        mock_iam.get_role.side_effect = mock_iam.exceptions.NoSuchEntityException(
+            {"Error": {"Code": "NoSuchEntity", "Message": ""}}, "GetRole"
+        )
+        mock_iam.create_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"}
+        }
+        mock_iam.list_attached_role_policies.return_value = {"AttachedPolicies": []}
+
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"):
+            resolve_or_create_role(
+                provided_role=None, role_type="training", sagemaker_session=mock_session
+            )
+
+        _, kwargs = mock_iam.create_role.call_args
+        trust_doc = json.loads(kwargs["AssumeRolePolicyDocument"])
+        condition = trust_doc["Statement"][0]["Condition"]["StringEquals"]
+        assert condition["aws:SourceAccount"] == "123456789012"
+
+
+class TestPassRoleScoping:
+    """Tests for narrowing iam:PassRole to SDK auto-roles (#2)."""
+
+    def test_passrole_scoped_to_auto_role_prefix(self):
+        """iam:PassRole resolves to the SageMaker-AutoRole-* prefix, not all roles."""
+        policies = {
+            "iam_passrole_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["iam:PassRole"],
+                        "Resource": "IAM_PASSROLE_PLACEHOLDER",
+                    }
+                ],
+            }
+        }
+        result = _replace_placeholders(
+            policies, s3_resource="*", kms_resource="*", account_id="123456789012"
+        )
+        resource = result["iam_passrole_policy"]["Statement"][0]["Resource"]
+        assert resource == "arn:aws:iam::123456789012:role/SageMaker-AutoRole-*"
+        assert not resource.endswith("role/*")
+
+    def test_pipeline_passrole_resource_is_scoped(self):
+        """The pipeline role's real PassRole statement resolves to the auto-role prefix."""
+        config = _load_policy_config()
+        resolved = _replace_placeholders(
+            config["pipeline"]["policies"],
+            s3_resource="*",
+            kms_resource="*",
+            account_id="123456789012",
+        )
+        passrole = resolved["iam_passrole_policy"]["Statement"][0]
+        assert passrole["Resource"] == (
+            "arn:aws:iam::123456789012:role/SageMaker-AutoRole-*"
+        )
+        # The PassedToService guard is preserved alongside the narrowed resource.
+        assert (
+            passrole["Condition"]["StringEquals"]["iam:PassedToService"]
+            == "sagemaker.amazonaws.com"
+        )
+
+
+class TestRoleOwnershipTagging:
+    """Tests for SDK ownership tagging of auto-created roles (#4)."""
+
+    def test_build_role_tags_includes_ownership_and_type(self):
+        """Tag list carries the ownership markers plus the role type."""
+        tags = {t["Key"]: t["Value"] for t in _build_role_tags("training")}
+        assert tags["CreatedBy"] == "sagemaker-python-sdk"
+        assert tags["RoleType"] == "training"
+        for key in _SDK_ROLE_TAGS:
+            assert key in tags
+
+    def test_create_role_is_tagged(self):
+        """A freshly created role is tagged via create_role's Tags arg (Action 1)."""
+        mock_session = MagicMock()
+        mock_iam = MagicMock()
+        mock_sts = MagicMock()
+
+        def client_factory(service, **kwargs):
+            return mock_iam if service == "iam" else mock_sts
+
+        mock_session.boto_session.client.side_effect = client_factory
+        mock_sts.get_caller_identity.return_value = {
+            "Arn": "arn:aws:iam::123456789012:user/dev-user",
+            "Account": "123456789012",
+        }
+        mock_iam.exceptions.NoSuchEntityException = type(
+            "NoSuchEntityException", (ClientError,), {}
+        )
+        mock_iam.get_role.side_effect = mock_iam.exceptions.NoSuchEntityException(
+            {"Error": {"Code": "NoSuchEntity", "Message": ""}}, "GetRole"
+        )
+        mock_iam.create_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"}
+        }
+        mock_iam.list_attached_role_policies.return_value = {"AttachedPolicies": []}
+
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"):
+            resolve_or_create_role(
+                provided_role=None, role_type="training", sagemaker_session=mock_session
+            )
+
+        _, kwargs = mock_iam.create_role.call_args
+        tag_keys = {t["Key"] for t in kwargs["Tags"]}
+        assert "CreatedBy" in tag_keys
+
+    def test_ensure_role_tagged_applies_missing_tags(self):
+        """An untagged existing role gets the SDK tags applied (Action 2)."""
+        mock_iam = MagicMock()
+        mock_iam.list_role_tags.return_value = {"Tags": []}
+
+        _ensure_role_tagged(mock_iam, "SageMaker-AutoRole-Training", "training")
+
+        mock_iam.tag_role.assert_called_once()
+        _, kwargs = mock_iam.tag_role.call_args
+        assert kwargs["RoleName"] == "SageMaker-AutoRole-Training"
+        assert {"Key": "CreatedBy", "Value": "sagemaker-python-sdk"} in kwargs["Tags"]
+
+    def test_ensure_role_tagged_noop_when_already_tagged(self):
+        """A role that already carries the tags is not re-tagged."""
+        mock_iam = MagicMock()
+        mock_iam.list_role_tags.return_value = {
+            "Tags": [
+                {"Key": "CreatedBy", "Value": "sagemaker-python-sdk"},
+                {"Key": "RoleType", "Value": "training"},
+            ]
+        }
+
+        _ensure_role_tagged(mock_iam, "SageMaker-AutoRole-Training", "training")
+
+        mock_iam.tag_role.assert_not_called()
+
+    def test_ensure_role_tagged_swallows_client_error(self):
+        """Tagging failures are non-fatal and do not raise."""
+        mock_iam = MagicMock()
+        mock_iam.list_role_tags.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "denied"}}, "ListRoleTags"
+        )
+
+        # Should not raise.
+        _ensure_role_tagged(mock_iam, "SageMaker-AutoRole-Training", "training")
+        mock_iam.tag_role.assert_not_called()
+
+    def test_reused_role_is_tag_checked(self):
+        """Reusing an existing sufficient auto-role triggers a tag check (Action 2)."""
+        mock_session = MagicMock()
+        mock_iam = MagicMock()
+        mock_sts = MagicMock()
+
+        def client_factory(service, **kwargs):
+            return mock_iam if service == "iam" else mock_sts
+
+        mock_session.boto_session.client.side_effect = client_factory
+        # Caller is a user (not a role), so resolution falls through to the auto-role.
+        mock_sts.get_caller_identity.return_value = {
+            "Arn": "arn:aws:iam::123456789012:user/dev-user",
+            "Account": "123456789012",
+        }
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"}
+        }
+        mock_iam.list_attached_role_policies.return_value = {
+            "AttachedPolicies": [
+                {"PolicyName": "sagemaker-autorole-training-s3_policy"},
+                {"PolicyName": "sagemaker-autorole-training-ecr_policy"},
+                {"PolicyName": "sagemaker-autorole-training-cloudwatch_logs_policy"},
+                {"PolicyName": "sagemaker-autorole-training-cloudwatch_metric_policy"},
+                {"PolicyName": "sagemaker-autorole-training-ec2_policy"},
+                {"PolicyName": "sagemaker-autorole-training-kms_policy"},
+            ]
+        }
+        mock_iam.list_role_tags.return_value = {"Tags": []}
+
+        resolve_or_create_role(
+            provided_role=None, role_type="training", sagemaker_session=mock_session
+        )
+
+        mock_iam.list_role_tags.assert_called()
+        mock_iam.tag_role.assert_called_once()
+
+
+class TestBroadPermissionWarnings:
+    """Tests for broad-permission warnings on auto-created roles (#3 and #6).
+
+    AppSec accepted the broad S3/KMS ("*") grants and the read-only Glue catalog
+    grant on the feature_store role, on the condition that the SDK warns the user
+    about them. These tests assert those WARNINGs are emitted (and suppressed when
+    the scope is actually narrowed).
+    """
+
+    def _make_auto_create_mocks(self, role_type, caller_arn=None):
+        """Build session/iam/sts mocks that drive a fresh auto-role creation path."""
+        mock_session = MagicMock()
+        mock_iam = MagicMock()
+        mock_sts = MagicMock()
+
+        def client_factory(service, **kwargs):
+            return mock_iam if service == "iam" else mock_sts
+
+        mock_session.boto_session.client.side_effect = client_factory
+        # A plain IAM user (not a role) so resolution falls through to the auto-role.
+        mock_sts.get_caller_identity.return_value = {
+            "Arn": caller_arn or "arn:aws:iam::123456789012:user/dev-user",
+            "Account": "123456789012",
+        }
+        mock_iam.exceptions.NoSuchEntityException = type(
+            "NoSuchEntityException", (ClientError,), {}
+        )
+        mock_iam.get_role.side_effect = mock_iam.exceptions.NoSuchEntityException(
+            {"Error": {"Code": "NoSuchEntity", "Message": ""}}, "GetRole"
+        )
+        config = _load_policy_config()
+        mock_iam.create_role.return_value = {
+            "Role": {
+                "Arn": f"arn:aws:iam::123456789012:role/{config[role_type]['role_name']}"
+            }
+        }
+        mock_iam.list_attached_role_policies.return_value = {"AttachedPolicies": []}
+        return mock_session, mock_iam
+
+    def test_is_wildcard_scope(self):
+        """Wildcard detection matches a bare '*' or any list containing '*'."""
+        assert _is_wildcard_scope("*") is True
+        assert _is_wildcard_scope(["*"]) is True
+        assert _is_wildcard_scope(["my-bucket", "*"]) is True
+        assert _is_wildcard_scope("my-bucket") is False
+        assert _is_wildcard_scope(["a", "b"]) is False
+
+    def test_role_uses_placeholder(self):
+        """Placeholder detection reflects which resource placeholders a role uses."""
+        config = _load_policy_config()
+        assert _role_uses_placeholder(config["training"], "S3_PLACEHOLDER") is True
+        assert _role_uses_placeholder(config["training"], "KMS_PLACEHOLDER") is True
+        # The serving role has no KMS policy.
+        assert _role_uses_placeholder(config["serving"], "KMS_PLACEHOLDER") is False
+
+    def test_wildcard_s3_emits_warning(self, caplog):
+        """Default s3_resource='*' warns about account-wide S3 access."""
+        mock_session, mock_iam = self._make_auto_create_mocks("training")
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
+            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        ):
+            resolve_or_create_role(
+                provided_role=None, role_type="training", sagemaker_session=mock_session
+            )
+        assert any(
+            r.levelno == logging.WARNING
+            and "ALL S3 buckets" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_wildcard_kms_emits_warning(self, caplog):
+        """Default kms_resource='*' warns about account-wide KMS access."""
+        mock_session, mock_iam = self._make_auto_create_mocks("training")
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
+            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        ):
+            resolve_or_create_role(
+                provided_role=None, role_type="training", sagemaker_session=mock_session
+            )
+        assert any(
+            r.levelno == logging.WARNING and "ALL KMS keys" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_scoped_s3_suppresses_s3_warning(self, caplog):
+        """Passing explicit buckets suppresses the broad-S3 warning."""
+        mock_session, mock_iam = self._make_auto_create_mocks("training")
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
+            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        ):
+            resolve_or_create_role(
+                provided_role=None,
+                role_type="training",
+                sagemaker_session=mock_session,
+                s3_resource="my-bucket",
+                kms_resource="my-key",
+            )
+        assert not any("ALL S3 buckets" in r.getMessage() for r in caplog.records)
+        assert not any("ALL KMS keys" in r.getMessage() for r in caplog.records)
+
+    def test_serving_role_does_not_warn_about_kms(self, caplog):
+        """The serving role has no KMS policy, so no KMS warning is emitted."""
+        mock_session, mock_iam = self._make_auto_create_mocks("serving")
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
+            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        ):
+            resolve_or_create_role(
+                provided_role=None, role_type="serving", sagemaker_session=mock_session
+            )
+        assert not any("ALL KMS keys" in r.getMessage() for r in caplog.records)
+
+    def test_feature_store_role_warns_about_glue(self, caplog):
+        """The feature_store role warns about account-wide Glue catalog read access."""
+        mock_session, mock_iam = self._make_auto_create_mocks("feature_store")
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
+            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        ):
+            resolve_or_create_role(
+                provided_role=None,
+                role_type="feature_store",
+                sagemaker_session=mock_session,
+            )
+        assert any(
+            r.levelno == logging.WARNING
+            and "Glue catalog metadata" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_non_feature_store_role_does_not_warn_about_glue(self, caplog):
+        """Only the feature_store role carries the Glue grant / warning."""
+        mock_session, mock_iam = self._make_auto_create_mocks("training")
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
+            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        ):
+            resolve_or_create_role(
+                provided_role=None, role_type="training", sagemaker_session=mock_session
+            )
+        assert not any("Glue catalog metadata" in r.getMessage() for r in caplog.records)
