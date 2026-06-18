@@ -61,6 +61,9 @@ where = ["src"]
 include = ["sagemaker*"]
 namespaces = true
 
+[tool.setuptools.package-data]
+"sagemaker.serve" = ["schema/*.json"]
+
 [tool.setuptools.dynamic]
 version = { file = "VERSION"}
 

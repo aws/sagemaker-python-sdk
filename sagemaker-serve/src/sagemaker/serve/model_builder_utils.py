@@ -942,16 +942,19 @@ class _ModelBuilderUtils:
                 if not model_task:
                     model_task = hf_model_md.get("pipeline_tag")
                 if model_task:
-                    self._hf_schema_builder_init(model_task)
+                    try:
+                        self._hf_schema_builder_init(model_task)
+                    except (TaskNotFoundException, FileNotFoundError, OSError) as e:
+                        logger.warning(
+                            "Could not initialize HF schema builder for task %r "
+                            "(%s: %s); falling back to the JumpStart-supplied schema.",
+                            model_task, type(e).__name__, e,
+                        )
 
             huggingface_model_id = self.model
             jumpstart_model_id = self._jumpstart_mapping[huggingface_model_id]["jumpstart-model-id"]
             self.model = jumpstart_model_id
             merged_date = self._jumpstart_mapping[huggingface_model_id].get("merged-at")
-
-            # Call _build_for_jumpstart if method exists
-            if hasattr(self, "_build_for_jumpstart"):
-                self._build_for_jumpstart()
 
             compare_model_diff_message = (
                 "If you want to identify the differences between the two, "
