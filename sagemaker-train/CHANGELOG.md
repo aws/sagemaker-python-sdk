@@ -1,4 +1,16 @@
 # Changelog
+## v1.14.0 (2026-06-18)
+
+### Bug Fixes
+
+- fix: fall back to SageMakerPublicHub when model not found in private hub (#5959)
+- fix: always use SageMakerPublicHub for base model ARN in evaluations (#5959)
+- fix: fall back to subscription recipes for models without base recipes (#5946)
+
+### Other
+
+- chore: deprecate Python 3.9 support (#5941)
+
 ## v1.13.1 (2026-06-04)
 
 ### Bug Fixes
