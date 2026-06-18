@@ -53,7 +53,7 @@ ACCOUNT_CONFIGS = {
     "729646638167": {
         "env_name": "PROD",
         #"existing_job_name": "mock-oss-test-mtrl-20260611170946",
-        "existing_job_name": "mock-oss-test-mtrl-20260615143910",
+        "existing_job_name": "mock-oss-test-mtrl-20260616153024",
         "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
