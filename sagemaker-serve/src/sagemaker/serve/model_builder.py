@@ -2706,7 +2706,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     elif model_task in OMNI_TASKS:
                         self.built_model = self._build_for_vllm_omni()
                         return self.built_model
-                    elif model_task in ["sentence-similarity", "feature-extraction"]:
+                    elif model_task in ["sentence-similarity", "feature-extraction", "text-ranking"]:
                         self.built_model = self._build_for_tei()
                         return self.built_model
                     else:
