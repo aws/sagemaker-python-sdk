@@ -373,6 +373,14 @@ class BaseTrainer(ABC):
                 "cluster_name is required in HyperPodCompute for HyperPod training."
             )
 
+        # HyperPod submits via the HyperPod CLI running as the *caller's* identity,
+        # so there is no execution role to resolve here; this verifies the caller's
+        # cluster-connect permissions (warn, non-blocking).
+        TrainDefaults.verify_hyperpod_caller_permissions(
+            sagemaker_session=sagemaker_session,
+            cluster_name=compute.cluster_name,
+        )
+
         # Validate HyperPod cluster capacity before proceeding
         is_nova = _is_nova_model(self._model_name)
         validate_hyperpod_compute(

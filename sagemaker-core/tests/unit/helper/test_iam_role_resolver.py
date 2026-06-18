@@ -9,11 +9,15 @@ from botocore.exceptions import ClientError
 from sagemaker.core.helper.iam_role_resolver import (
     RoleAutoCreationError,
     resolve_or_create_role,
+    verify_hyperpod_connect_permissions,
+    HYPERPOD_CLI_CONNECT_ACTIONS,
     _load_policy_config,
+    _get_required_actions,
     _replace_placeholders,
     _get_attached_policy_names,
     _ensure_policies_attached,
     _get_boto_session,
+    _simulate_denied_actions,
     _MAX_POLICY_VERSIONS,
 )
 
@@ -26,6 +30,14 @@ class TestResolveOrCreateRole:
         arn = "arn:aws:iam::123456789012:role/MyRole"
         result = resolve_or_create_role(provided_role=arn, role_type="training")
         assert result == arn
+
+    def test_explicit_role_arn_non_commercial_partition_returned_directly(self):
+        """A GovCloud/China role ARN is recognized and returned without IAM calls."""
+        for arn in (
+            "arn:aws-us-gov:iam::123456789012:role/MyRole",
+            "arn:aws-cn:iam::123456789012:role/MyRole",
+        ):
+            assert resolve_or_create_role(provided_role=arn, role_type="hyperpod") == arn
 
     def test_explicit_role_name_resolved_to_arn(self):
         """If user provides a role name, look it up via IAM."""
@@ -229,6 +241,61 @@ class TestResolveOrCreateRole:
         with pytest.raises(ValueError, match="Invalid role_type"):
             resolve_or_create_role(provided_role=None, role_type="invalid")
 
+    def test_hyperpod_role_type_is_accepted(self):
+        """The 'hyperpod' role type resolves an explicit ARN without IAM calls."""
+        arn = "arn:aws:iam::123456789012:role/MyHyperPodRole"
+        result = resolve_or_create_role(provided_role=arn, role_type="hyperpod")
+        assert result == arn
+
+    def test_auto_creates_hyperpod_role_when_not_exists(self, caplog):
+        """If the HyperPod auto-role doesn't exist, create it with its policies."""
+        mock_session = MagicMock()
+        mock_iam = MagicMock()
+        mock_sts = MagicMock()
+
+        def client_factory(service, **kwargs):
+            if service == "iam":
+                return mock_iam
+            return mock_sts
+
+        mock_session.boto_session.client.side_effect = client_factory
+        mock_sts.get_caller_identity.return_value = {
+            "Arn": "arn:aws:iam::123456789012:user/dev-user",
+            "Account": "123456789012",
+        }
+        mock_iam.exceptions.NoSuchEntityException = type(
+            "NoSuchEntityException", (ClientError,), {}
+        )
+        mock_iam.get_role.side_effect = mock_iam.exceptions.NoSuchEntityException(
+            {"Error": {"Code": "NoSuchEntity", "Message": ""}}, "GetRole"
+        )
+        mock_iam.create_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/SageMaker-AutoRole-HyperPod"}
+        }
+        mock_iam.list_attached_role_policies.return_value = {"AttachedPolicies": []}
+        mock_iam.create_policy.return_value = {
+            "Policy": {"Arn": "arn:aws:iam::123456789012:policy/test"}
+        }
+
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
+            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        ):
+            result = resolve_or_create_role(
+                provided_role=None,
+                role_type="hyperpod",
+                sagemaker_session=mock_session,
+            )
+
+        assert "SageMaker-AutoRole-HyperPod" in result
+        mock_iam.create_role.assert_called_once()
+        # The HyperPod role is trusted by the SageMaker service principal.
+        trust_doc = json.loads(
+            mock_iam.create_role.call_args.kwargs["AssumeRolePolicyDocument"]
+        )
+        assert (
+            trust_doc["Statement"][0]["Principal"]["Service"] == "sagemaker.amazonaws.com"
+        )
+
     def test_get_boto_session_uses_provided_session(self):
         """When a sagemaker_session is given, its boto_session is reused."""
         mock_session = MagicMock()
@@ -252,11 +319,19 @@ class TestPolicyConfig:
         assert "pipeline" in config
         assert "feature_store" in config
         assert "bedrock" in config
+        assert "hyperpod" in config
 
     def test_each_type_has_required_fields(self):
         """Each role type has role_name, trust_policy, and policies."""
         config = _load_policy_config()
-        for role_type in ("training", "serving", "pipeline", "feature_store", "bedrock"):
+        for role_type in (
+            "training",
+            "serving",
+            "pipeline",
+            "feature_store",
+            "bedrock",
+            "hyperpod",
+        ):
             assert "role_name" in config[role_type]
             assert "trust_policy" in config[role_type]
             assert "policies" in config[role_type]
@@ -267,6 +342,33 @@ class TestPolicyConfig:
         config = _load_policy_config()
         principal = config["bedrock"]["trust_policy"]["Statement"][0]["Principal"]
         assert principal["Service"] == "bedrock.amazonaws.com"
+
+    def test_hyperpod_role_trusts_sagemaker_service(self):
+        """The hyperpod job role runs as a SageMaker execution role on the cluster."""
+        config = _load_policy_config()
+        principal = config["hyperpod"]["trust_policy"]["Statement"][0]["Principal"]
+        assert principal["Service"] == "sagemaker.amazonaws.com"
+
+    def test_hyperpod_job_role_excludes_cluster_connect_permissions(self):
+        """The job execution role must NOT carry caller-side CLI connect actions.
+
+        The HyperPod CLI (connect-cluster / start-job) runs as the caller, not as
+        the SageMaker-trusted job role, so baking eks:* / sagemaker:DescribeCluster
+        onto this role would be dead weight on an identity that can't use them.
+        Those permissions are verified on the caller via
+        verify_hyperpod_connect_permissions() instead.
+        """
+        actions = set(_get_required_actions("hyperpod"))
+        assert "sagemaker:DescribeCluster" not in actions
+        assert "eks:DescribeCluster" not in actions
+        assert "eks:AccessKubernetesApi" not in actions
+
+    def test_hyperpod_job_role_has_runtime_permissions(self):
+        """The hyperpod job role carries the S3/ECR/CloudWatch job-runtime actions."""
+        actions = set(_get_required_actions("hyperpod"))
+        assert "s3:GetObject" in actions
+        assert "ecr:BatchGetImage" in actions
+        assert "logs:CreateLogStream" in actions
 
     def test_replace_placeholders_s3(self):
         """S3 placeholder gets replaced with actual bucket ARN."""
@@ -369,6 +471,48 @@ class TestPolicyConfig:
         assert (
             result["iam_passrole_policy"]["Statement"][0]["Resource"]
             == "arn:aws:iam::123456789012:role/*"
+        )
+
+    def test_replace_placeholders_rewrites_static_arn_partition(self):
+        """Literal arn:aws: ARNs are rewritten to the caller's partition."""
+        policies = {
+            "cloudwatch_logs_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["logs:PutLogEvents"],
+                        "Resource": "arn:aws:logs:*:*:log-group:/aws/sagemaker/*",
+                    }
+                ],
+            }
+        }
+        result = _replace_placeholders(
+            policies, s3_resource="*", kms_resource="*", partition="aws-us-gov"
+        )
+        assert (
+            result["cloudwatch_logs_policy"]["Statement"][0]["Resource"]
+            == "arn:aws-us-gov:logs:*:*:log-group:/aws/sagemaker/*"
+        )
+
+    def test_replace_placeholders_static_arn_unchanged_for_aws_partition(self):
+        """The default commercial partition leaves static ARNs untouched."""
+        policies = {
+            "p": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["logs:PutLogEvents"],
+                        "Resource": "arn:aws:logs:*:*:log-group:/aws/sagemaker/*",
+                    }
+                ],
+            }
+        }
+        result = _replace_placeholders(policies, s3_resource="*", kms_resource="*")
+        assert (
+            result["p"]["Statement"][0]["Resource"]
+            == "arn:aws:logs:*:*:log-group:/aws/sagemaker/*"
         )
 
     def test_replace_placeholders_list_with_wildcard_collapses(self):
@@ -545,3 +689,146 @@ class TestEnsurePoliciesAttached:
             )
 
         assert not [r for r in caplog.records if r.levelno == logging.WARNING]
+
+
+class TestSimulateDeniedActions:
+    """Tests for the shared _simulate_denied_actions() helper."""
+
+    def _paginated_iam(self, decisions):
+        """Build a mock IAM client whose simulate paginator yields `decisions`."""
+        mock_iam = MagicMock()
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {
+                "EvaluationResults": [
+                    {"EvalActionName": a, "EvalDecision": d} for a, d in decisions
+                ]
+            }
+        ]
+        mock_iam.get_paginator.return_value = paginator
+        return mock_iam
+
+    def test_returns_empty_when_all_allowed(self):
+        mock_iam = self._paginated_iam(
+            [("s3:GetObject", "allowed"), ("s3:PutObject", "allowed")]
+        )
+        denied = _simulate_denied_actions(
+            mock_iam, "arn:aws:iam::123456789012:role/R", ["s3:GetObject", "s3:PutObject"]
+        )
+        assert denied == []
+
+    def test_returns_denied_subset(self):
+        mock_iam = self._paginated_iam(
+            [("s3:GetObject", "allowed"), ("eks:DescribeCluster", "implicitDeny")]
+        )
+        denied = _simulate_denied_actions(
+            mock_iam, "arn:aws:iam::123456789012:role/R",
+            ["s3:GetObject", "eks:DescribeCluster"],
+        )
+        assert denied == ["eks:DescribeCluster"]
+
+    def test_aggregates_across_pages(self):
+        """Denied actions on a later page are not missed (no truncation)."""
+        mock_iam = MagicMock()
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {"EvaluationResults": [{"EvalActionName": "a", "EvalDecision": "allowed"}]},
+            {"EvaluationResults": [{"EvalActionName": "b", "EvalDecision": "implicitDeny"}]},
+        ]
+        mock_iam.get_paginator.return_value = paginator
+        denied = _simulate_denied_actions(mock_iam, "arn:aws:iam::1:role/R", ["a", "b"])
+        assert denied == ["b"]
+
+
+class TestVerifyHyperPodConnectPermissions:
+    """Tests for verify_hyperpod_connect_permissions() (caller-side CLI perms)."""
+
+    def _make_session(self, caller_arn, account="123456789012"):
+        mock_session = MagicMock()
+        mock_iam = MagicMock()
+        mock_sts = MagicMock()
+
+        def client_factory(service, **kwargs):
+            return mock_iam if service == "iam" else mock_sts
+
+        mock_session.boto_session.client.side_effect = client_factory
+        mock_sts.get_caller_identity.return_value = {"Arn": caller_arn, "Account": account}
+        return mock_session, mock_iam, mock_sts
+
+    def test_all_connect_actions_allowed_returns_true(self):
+        """When the caller role allows every connect action, return True."""
+        session, mock_iam, _ = self._make_session(
+            "arn:aws:sts::123456789012:assumed-role/CallerRole/session"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/CallerRole"}
+        }
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {
+                "EvaluationResults": [
+                    {"EvalActionName": a, "EvalDecision": "allowed"}
+                    for a in HYPERPOD_CLI_CONNECT_ACTIONS
+                ]
+            }
+        ]
+        mock_iam.get_paginator.return_value = paginator
+
+        assert verify_hyperpod_connect_permissions(sagemaker_session=session) is True
+
+    def test_denied_connect_action_returns_false_and_warns(self, caplog):
+        """A denied connect action returns False and warns the user."""
+        session, mock_iam, _ = self._make_session(
+            "arn:aws:sts::123456789012:assumed-role/CallerRole/session"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/CallerRole"}
+        }
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {
+                "EvaluationResults": [
+                    {"EvalActionName": "sagemaker:DescribeCluster", "EvalDecision": "allowed"},
+                    {"EvalActionName": "eks:DescribeCluster", "EvalDecision": "implicitDeny"},
+                    {"EvalActionName": "eks:AccessKubernetesApi", "EvalDecision": "allowed"},
+                ]
+            }
+        ]
+        mock_iam.get_paginator.return_value = paginator
+
+        with caplog.at_level(logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"):
+            result = verify_hyperpod_connect_permissions(
+                sagemaker_session=session, cluster_name="prod-cluster"
+            )
+
+        assert result is False
+        assert any(
+            "eks:DescribeCluster" in r.getMessage() and "prod-cluster" in r.getMessage()
+            for r in caplog.records
+            if r.levelno == logging.WARNING
+        )
+
+    def test_iam_user_caller_returns_none(self):
+        """An IAM user (no backing role) cannot be simulated → None, no raise."""
+        session, mock_iam, _ = self._make_session(
+            "arn:aws:iam::123456789012:user/dev-user"
+        )
+        assert verify_hyperpod_connect_permissions(sagemaker_session=session) is None
+        mock_iam.get_paginator.assert_not_called()
+
+    def test_simulate_access_denied_returns_none(self):
+        """If the caller cannot self-simulate, return None rather than raising."""
+        session, mock_iam, _ = self._make_session(
+            "arn:aws:sts::123456789012:assumed-role/CallerRole/session"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/CallerRole"}
+        }
+        paginator = MagicMock()
+        paginator.paginate.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "no simulate"}},
+            "SimulatePrincipalPolicy",
+        )
+        mock_iam.get_paginator.return_value = paginator
+
+        assert verify_hyperpod_connect_permissions(sagemaker_session=session) is None

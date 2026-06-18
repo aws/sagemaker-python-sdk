@@ -16,7 +16,10 @@ from __future__ import absolute_import
 from typing import Optional, Dict, Any, Union, List
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
+from sagemaker.core.helper.iam_role_resolver import (
+    resolve_or_create_role,
+    verify_hyperpod_connect_permissions,
+)
 from sagemaker.core import shapes
 
 from sagemaker.core.jumpstart.document import get_hub_content_and_document
@@ -67,13 +70,13 @@ class TrainDefaults:
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
     ) -> str:
-        """Get the default execution role.
+        """Get the default training execution role.
 
         Roles are resolved in this order (see ``resolve_or_create_role``):
             1. The explicitly provided ``role`` (returned as-is once validated).
             2. The caller's session role, if it already has sufficient permissions.
-            3. A dedicated least-privilege training role, created on demand if neither
-               of the above applies.
+            3. A dedicated least-privilege training role, created on demand if
+               neither of the above applies.
         """
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=sagemaker_session
@@ -86,6 +89,30 @@ class TrainDefaults:
         if role is None:
             logger.info(f"Role not provided. Using auto-resolved role:\n{resolved}")
         return resolved
+
+    @staticmethod
+    def verify_hyperpod_caller_permissions(
+        sagemaker_session: Optional[Session] = None,
+        cluster_name: Optional[str] = None,
+    ) -> Optional[bool]:
+        """Verify the caller can drive the HyperPod CLI (warn, non-blocking).
+
+        HyperPod jobs are submitted by the HyperPod CLI running as the *caller's*
+        own identity, so — unlike serverless/SMTJ training, which resolves an
+        execution role via :meth:`get_role` — there is no execution role for the
+        SDK to create here. This checks the caller's cluster-connect permissions
+        and logs a warning if any are missing.
+
+        Returns the verdict from
+        :func:`~sagemaker.core.helper.iam_role_resolver.verify_hyperpod_connect_permissions`
+        (``True``/``False``/``None``); it never raises on a missing permission.
+        """
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=sagemaker_session
+        )
+        return verify_hyperpod_connect_permissions(
+            sagemaker_session=sagemaker_session, cluster_name=cluster_name
+        )
 
     @staticmethod
     def get_base_job_name(

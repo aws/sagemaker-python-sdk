@@ -124,6 +124,59 @@ class TestTrainDefaultsGetRole:
         )
         assert result == expected_role
 
+    @patch("sagemaker.train.defaults.resolve_or_create_role")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_get_role_resolves_training_role(self, mock_get_session, mock_resolve):
+        """get_role always resolves the training execution role."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        expected_role = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"
+        mock_resolve.return_value = expected_role
+
+        result = TrainDefaults.get_role(role=None)
+
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
+        assert result == expected_role
+
+
+class TestTrainDefaultsVerifyHyperPodCallerPermissions:
+    """Test TrainDefaults.verify_hyperpod_caller_permissions (caller-side check)."""
+
+    @patch("sagemaker.train.defaults.verify_hyperpod_connect_permissions")
+    @patch("sagemaker.train.defaults.resolve_or_create_role")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_delegates_to_resolver_and_forwards_cluster_name(
+        self, mock_get_session, mock_resolve, mock_verify
+    ):
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        mock_verify.return_value = True
+
+        result = TrainDefaults.verify_hyperpod_caller_permissions(
+            cluster_name="my-cluster"
+        )
+
+        assert result is True
+        mock_verify.assert_called_once_with(
+            sagemaker_session=mock_session, cluster_name="my-cluster"
+        )
+        # The caller-side check never resolves/creates an execution role.
+        mock_resolve.assert_not_called()
+
+    @patch("sagemaker.train.defaults.verify_hyperpod_connect_permissions")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_propagates_negative_and_unknown_verdicts(
+        self, mock_get_session, mock_verify
+    ):
+        mock_get_session.return_value = MagicMock()
+        for verdict in (False, None):
+            mock_verify.return_value = verdict
+            assert TrainDefaults.verify_hyperpod_caller_permissions() is verdict
+
 
 class TestTrainDefaultsGetBaseJobName:
     """Test TrainDefaults.get_base_job_name method."""

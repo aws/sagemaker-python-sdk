@@ -24,8 +24,13 @@ if TYPE_CHECKING:
 
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.agent_rft_job import AgentRFTJob
-from sagemaker.train.common_utils.finetune_utils import _resolve_mlflow_resource_arn
+from sagemaker.train.common_utils.finetune_utils import (
+    _resolve_mlflow_resource_arn,
+    _is_nova_model,
+)
 from sagemaker.train.common_utils.recipe_utils import resolve_recipe
+from sagemaker.train.common_utils.validator import validate_hyperpod_compute
+from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 
 _logger = logging.getLogger(__name__)
@@ -683,6 +688,10 @@ class BaseEvaluator(BaseModel):
         #   1. self.role, if explicitly provided.
         #   2. The caller's session role, if it already has sufficient permissions.
         #   3. A dedicated least-privilege training role, created on demand otherwise.
+        # This is the job execution role for the serverless / SMTJ evaluation
+        # backends. The HyperPod backend submits via the CLI under the caller's own
+        # credentials (see _submit_hyperpod_eval_job) and does not resolve a role
+        # here, so "training" is always the correct role type at this call site.
         role_arn = resolve_or_create_role(
             provided_role=self.role,
             role_type="training",
@@ -1191,7 +1200,6 @@ class BaseEvaluator(BaseModel):
             ValueError: If cluster_name or recipe is not set.
         """
         import json
-        import re
         import subprocess
         from sagemaker.train.utils import _get_unique_name
 
@@ -1199,10 +1207,15 @@ class BaseEvaluator(BaseModel):
         if not compute.cluster_name:
             raise ValueError("cluster_name is required in HyperPodCompute for evaluation.")
 
-        # Validate HyperPod cluster capacity before proceeding
-        from sagemaker.train.common_utils.finetune_utils import _is_nova_model
-        from sagemaker.train.common_utils.validator import validate_hyperpod_compute
+        # HyperPod submits via the HyperPod CLI running as the *caller's* identity,
+        # so there is no execution role to resolve here; this verifies the caller's
+        # cluster-connect permissions (warn, non-blocking).
+        TrainDefaults.verify_hyperpod_caller_permissions(
+            sagemaker_session=self.sagemaker_session,
+            cluster_name=compute.cluster_name,
+        )
 
+        # Validate HyperPod cluster capacity before proceeding
         is_nova = _is_nova_model(self._base_model_name)
         validate_hyperpod_compute(
             compute=compute,

@@ -19,7 +19,7 @@ from sagemaker.core.helper.iam_policies import IAM_POLICY_CONFIG
 
 logger = logging.getLogger(__name__)
 
-ROLE_TYPES = ("training", "serving", "pipeline", "feature_store", "bedrock")
+ROLE_TYPES = ("training", "serving", "pipeline", "feature_store", "bedrock", "hyperpod")
 
 _IAM_PROPAGATION_DELAY_SECONDS = 10
 
@@ -33,18 +33,44 @@ _REQUIRED_IAM_ACTIONS = (
     "iam:GetRole",
 )
 
+# Permissions the HyperPod CLI flow needs on the *caller* identity — the local
+# principal that runs `hyperpod connect-cluster` and `hyperpod start-job`. The CLI
+# resolves the HyperPod cluster (sagemaker:DescribeCluster), reads its EKS
+# orchestrator and refreshes the kubeconfig (eks:DescribeCluster, via
+# `aws eks update-kubeconfig`), and submits jobs through the Kubernetes API the
+# cluster fronts (eks:AccessKubernetesApi). These are deliberately NOT attached to
+# the auto-created job execution role: that role is trusted by sagemaker.amazonaws.com
+# and assumed by the job on the cluster, whereas these actions must be held by the
+# caller running the CLI. See verify_hyperpod_connect_permissions().
+HYPERPOD_CLI_CONNECT_ACTIONS = (
+    "sagemaker:DescribeCluster",
+    "eks:DescribeCluster",
+    "eks:AccessKubernetesApi",
+)
+
 
 class RoleAutoCreationError(Exception):
     """Raised when the SDK cannot auto-create an IAM role due to insufficient permissions."""
 
 
-def _raise_auto_creation_error(role_name: str, original_error: ClientError) -> None:
+def _trust_principal_for(role_type: str) -> str:
+    """Return a human-readable trust principal for a role type's remediation text."""
+    statement = IAM_POLICY_CONFIG[role_type]["trust_policy"]["Statement"][0]
+    service = statement["Principal"]["Service"]
+    if isinstance(service, (list, tuple)):
+        return ", ".join(service)
+    return service
+
+
+def _raise_auto_creation_error(
+    role_name: str, original_error: ClientError, role_type: str = "training"
+) -> None:
     """Raise a RoleAutoCreationError with actionable remediation guidance."""
     raise RoleAutoCreationError(
         f"Cannot auto-create IAM role '{role_name}'.\n\n"
         f"Your IAM identity needs: {', '.join(_REQUIRED_IAM_ACTIONS)}\n\n"
         f"Alternatively, create a role manually and pass it via the 'role' parameter.\n"
-        f"Required trust principal: sagemaker.amazonaws.com\n\n"
+        f"Required trust principal: {_trust_principal_for(role_type)}\n\n"
         f"Original error: {original_error}"
     ) from original_error
 
@@ -99,13 +125,38 @@ def _expand_kms_resource(kms_resource, partition: str = "aws", account_id: str =
     return [f"arn:{partition}:kms:*:{account_id}:key/{key}" for key in keys]
 
 
+def _apply_partition(resource, partition: str):
+    """Rewrite the partition segment of literal ``arn:aws:`` resource ARNs.
+
+    Policy documents hardcode the commercial ``arn:aws:`` partition for static
+    ARNs (e.g. CloudWatch log groups). In GovCloud / China / ISO partitions those
+    would never match, so normalize them to the caller's partition. Accepts a
+    single ARN string or a list of them; non-ARN values (e.g. ``"*"``) pass
+    through unchanged.
+    """
+    if partition == "aws":
+        return resource
+
+    def _rewrite(value):
+        if isinstance(value, str) and value.startswith("arn:aws:"):
+            # Replace the "aws" partition token only; keep the ":service:..."
+            # remainder intact.
+            return "arn:" + partition + value[len("arn:aws"):]
+        return value
+
+    if isinstance(resource, list):
+        return [_rewrite(v) for v in resource]
+    return _rewrite(resource)
+
+
 def _replace_placeholders(
     policies: dict, s3_resource, kms_resource, partition: str = "aws", account_id: str = "*"
 ) -> dict:
     """Replace placeholder values in policy documents with actual resource ARNs.
 
     ``s3_resource`` and ``kms_resource`` each accept a single name/ID, a list of
-    them, or the "*" wildcard.
+    them, or the "*" wildcard. Literal ``arn:aws:`` ARNs in the policy documents
+    are rewritten to the caller's partition.
     """
     policies = copy.deepcopy(policies)
     for policy_doc in policies.values():
@@ -121,6 +172,10 @@ def _replace_placeholders(
                 # Scope iam:PassRole to roles in the caller's account; region is
                 # omitted because IAM is a global service.
                 statement["Resource"] = f"arn:{partition}:iam::{account_id}:role/*"
+            else:
+                # Static ARNs in the config hardcode the commercial partition;
+                # normalize them to the caller's partition (no-op for "aws").
+                statement["Resource"] = _apply_partition(resource, partition)
     return policies
 
 
@@ -136,6 +191,29 @@ def _get_required_actions(role_type: str) -> List[str]:
                 stmt_actions = [stmt_actions]
             actions.extend(stmt_actions)
     return actions
+
+
+def _simulate_denied_actions(iam_client, role_arn: str, actions: List[str]) -> List[str]:
+    """Return the subset of ``actions`` that ``role_arn`` is NOT allowed to perform.
+
+    Wraps the paginated ``iam:SimulatePrincipalPolicy`` call so both the role-
+    resolution path and the HyperPod caller-side check share one implementation.
+    An empty list means every action is allowed. The pagination matters: a
+    truncated first page must not produce a false "all allowed" verdict.
+
+    Raises ClientError on failures the caller must interpret (e.g. AccessDenied
+    when the principal can't self-simulate, NoSuchEntity when the role is gone).
+    """
+    evaluation_results = []
+    paginator = iam_client.get_paginator("simulate_principal_policy")
+    for page in paginator.paginate(PolicySourceArn=role_arn, ActionNames=actions):
+        evaluation_results.extend(page.get("EvaluationResults", []))
+
+    return [
+        result["EvalActionName"]
+        for result in evaluation_results
+        if result["EvalDecision"] != "allowed"
+    ]
 
 
 def _role_has_sufficient_permissions(
@@ -157,22 +235,7 @@ def _role_has_sufficient_permissions(
         return True
 
     try:
-        # simulate_principal_policy paginates; collect all results so a truncated
-        # first page does not produce a false "sufficient" verdict.
-        evaluation_results = []
-        paginator = iam_client.get_paginator("simulate_principal_policy")
-        for page in paginator.paginate(
-            PolicySourceArn=role_arn,
-            ActionNames=required_actions,
-        ):
-            evaluation_results.extend(page.get("EvaluationResults", []))
-
-        denied = [
-            result["EvalActionName"]
-            for result in evaluation_results
-            if result["EvalDecision"] != "allowed"
-        ]
-
+        denied = _simulate_denied_actions(iam_client, role_arn, required_actions)
         if denied:
             logger.info(
                 "Role '%s' is missing permissions for: %s",
@@ -180,7 +243,6 @@ def _role_has_sufficient_permissions(
                 ", ".join(denied[:5]) + ("..." if len(denied) > 5 else ""),
             )
             return False
-
         return True
 
     except ClientError as e:
@@ -327,7 +389,8 @@ def resolve_or_create_role(
 
     Args:
         provided_role: User-supplied role name or ARN. If set, used directly.
-        role_type: One of "training", "serving", "pipeline", "feature_store", "bedrock".
+        role_type: One of "training", "serving", "pipeline", "feature_store",
+            "bedrock", "hyperpod".
         sagemaker_session: SageMaker session (used to get boto session).
         s3_resource: S3 bucket name (or list of bucket names) to scope policies.
             Defaults to "*" (no scoping).
@@ -350,6 +413,85 @@ def resolve_or_create_role(
     return _auto_resolve_role(role_type, sagemaker_session, s3_resource, kms_resource)
 
 
+def verify_hyperpod_connect_permissions(
+    sagemaker_session=None, cluster_name: Optional[str] = None
+) -> Optional[bool]:
+    """Verify the caller can drive the HyperPod CLI; warn (don't block) if not.
+
+    The HyperPod CLI (``connect-cluster`` + ``start-job``) runs locally under the
+    *caller's* credentials, not under the job execution role. So unlike the job
+    role — which the SDK can auto-create — these permissions must already be held
+    by whoever runs the trainer. This function simulates them on the caller
+    identity and surfaces actionable guidance when they are missing.
+
+    It logs a WARNING rather than raising so the SDK does not hard-fail in the
+    common case where the caller cannot self-simulate (e.g. an execution role
+    without ``iam:SimulatePrincipalPolicy``); the CLI itself will still produce a
+    precise error if a permission is truly absent. Callers that want to fail fast
+    can inspect the return value.
+
+    Args:
+        sagemaker_session: SageMaker session (used to get the boto session).
+        cluster_name: Optional HyperPod cluster name, included in guidance.
+
+    Returns:
+        True  — all connect actions are allowed for the caller.
+        False — at least one connect action is denied.
+        None  — could not be determined (caller is not a role, or cannot simulate).
+    """
+    boto_session = _get_boto_session(sagemaker_session)
+    sts_client = boto_session.client("sts")
+    iam_client = boto_session.client("iam")
+
+    caller_identity = sts_client.get_caller_identity()
+    caller_arn = caller_identity["Arn"]
+    account_id = caller_identity["Account"]
+    partition = _partition_from_arn(caller_arn)
+
+    caller_role_arn = _resolve_caller_role_arn(iam_client, caller_arn, account_id, partition)
+    if not caller_role_arn:
+        # IAM user / root: nothing to simulate against a role. Leave it to the CLI.
+        logger.info(
+            "Could not resolve a caller role to verify HyperPod connect "
+            "permissions; the HyperPod CLI will validate access at submit time."
+        )
+        return None
+
+    try:
+        denied = _simulate_denied_actions(
+            iam_client, caller_role_arn, list(HYPERPOD_CLI_CONNECT_ACTIONS)
+        )
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code in ("AccessDenied", "AccessDeniedException"):
+            logger.info(
+                "Cannot simulate HyperPod connect permissions for '%s' (access "
+                "denied); the HyperPod CLI will validate access at submit time.",
+                caller_role_arn,
+            )
+            return None
+        raise
+
+    if denied:
+        cluster_hint = f" for cluster '{cluster_name}'" if cluster_name else ""
+        logger.warning(
+            "Your identity '%s' is missing IAM permissions the HyperPod CLI needs"
+            "%s: %s. The job execution role was resolved successfully, but "
+            "connecting to and submitting jobs on the cluster runs as your own "
+            "credentials. Grant these actions to your identity (scoped to the "
+            "cluster and its EKS orchestrator) to avoid CLI failures.",
+            caller_role_arn,
+            cluster_hint,
+            ", ".join(denied),
+        )
+        return False
+
+    logger.info(
+        "Caller '%s' has the HyperPod CLI connect permissions.", caller_role_arn
+    )
+    return True
+
+
 def _get_boto_session(sagemaker_session):
     """Return the boto session, falling back to a SageMaker core Session.
 
@@ -366,7 +508,9 @@ def _get_boto_session(sagemaker_session):
 
 def _resolve_explicit_role(provided_role: str, sagemaker_session=None) -> str:
     """Validate and return ARN for an explicitly provided role."""
-    if provided_role.startswith("arn:aws:iam::"):
+    # Accept any partition's IAM role ARN (aws, aws-cn, aws-us-gov, aws-iso-*),
+    # not just the commercial "aws" partition.
+    if provided_role.startswith("arn:") and ":iam::" in provided_role:
         return provided_role
 
     boto_session = _get_boto_session(sagemaker_session)
@@ -492,7 +636,7 @@ def _auto_resolve_role(
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code not in ("NoSuchEntity", "NoSuchEntityException"):
             if error_code in ("AccessDenied", "AccessDeniedException", "UnauthorizedAccess"):
-                _raise_auto_creation_error(auto_role_name, e)
+                _raise_auto_creation_error(auto_role_name, e, role_type)
             raise
 
     # Step 3: Role doesn't exist — create it.
@@ -538,5 +682,5 @@ def _auto_resolve_role(
     except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code in ("AccessDenied", "AccessDeniedException", "UnauthorizedAccess"):
-            _raise_auto_creation_error(auto_role_name, e)
+            _raise_auto_creation_error(auto_role_name, e, role_type)
         raise

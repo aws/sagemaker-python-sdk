@@ -263,6 +263,96 @@ IAM_POLICY_CONFIG = {
             },
         },
     },
+    "hyperpod": {
+        "role_name": "SageMaker-AutoRole-HyperPod",
+        # This is the *job execution role* that the HyperPod training job assumes
+        # while running ON the cluster, so it is trusted by the SageMaker service
+        # principal — like the "training" role. It carries only job-runtime
+        # permissions (S3/ECR/CloudWatch/KMS). It intentionally does NOT carry the
+        # cluster-connect permissions (sagemaker:DescribeCluster / eks:*): those are
+        # needed by the *caller* who runs the HyperPod CLI locally, not by the job
+        # on the cluster. See HYPERPOD_CLI_CONNECT_ACTIONS in iam_role_resolver and
+        # verify_hyperpod_connect_permissions() for how the caller side is handled.
+        # Compared to "training" it omits the EC2 ENI block, which is for VPC-mode
+        # SageMaker training jobs and does not apply to HyperPod cluster jobs.
+        "trust_policy": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "sagemaker.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ],
+        },
+        "policies": {
+            "s3_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:GetObject",
+                            "s3:PutObject",
+                            "s3:ListBucket",
+                            "s3:GetBucketLocation",
+                        ],
+                        "Resource": "S3_PLACEHOLDER",
+                    }
+                ],
+            },
+            "ecr_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ecr:GetDownloadUrlForLayer",
+                            "ecr:BatchGetImage",
+                            "ecr:BatchCheckLayerAvailability",
+                            "ecr:GetAuthorizationToken",
+                        ],
+                        "Resource": "*",
+                    }
+                ],
+            },
+            "cloudwatch_logs_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "logs:CreateLogGroup",
+                            "logs:CreateLogStream",
+                            "logs:PutLogEvents",
+                            "logs:DescribeLogStreams",
+                        ],
+                        "Resource": "arn:aws:logs:*:*:log-group:/aws/sagemaker/*",
+                    }
+                ],
+            },
+            "cloudwatch_metric_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["cloudwatch:PutMetricData"],
+                        "Resource": "*",
+                    }
+                ],
+            },
+            "kms_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"],
+                        "Resource": "KMS_PLACEHOLDER",
+                    }
+                ],
+            },
+        },
+    },
     "bedrock": {
         "role_name": "SageMaker-AutoRole-Bedrock",
         "trust_policy": {
