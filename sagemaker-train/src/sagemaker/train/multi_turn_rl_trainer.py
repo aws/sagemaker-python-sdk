@@ -246,7 +246,10 @@ class MultiTurnRLTrainer(BaseTrainer):
         self._latest_job: AgentRFTJob | None = None
 
     @_telemetry_emitter(
-        feature=Feature.MODEL_CUSTOMIZATION, func_name="MultiTurnRLTrainer.train"
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="MultiTurnRLTrainer.train",
+        emit=["_model_name", "bedrock_agentcore_qualifier"],
+        emit_presence=["networking", "kms_key_arn", "mlflow_app_arn", "agent_env"],
     )
     def train(
         self,

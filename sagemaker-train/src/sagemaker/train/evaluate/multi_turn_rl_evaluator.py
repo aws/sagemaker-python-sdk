@@ -536,6 +536,8 @@ class MultiTurnRLEvaluator(BaseEvaluator):
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="MultiTurnRLEvaluator.evaluate",
+        emit=["agent_qualifier"],
+        emit_presence=["networking", "kms_key_id", "mlflow_resource_arn", "agent_config", "stopping_condition"],
     )
     def evaluate(self) -> 'MTRLEvaluationExecution':
         """Render the MTRL pipeline and start a non-blocking execution.

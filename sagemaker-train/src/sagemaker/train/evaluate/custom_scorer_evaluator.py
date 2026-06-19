@@ -385,7 +385,12 @@ class CustomScorerEvaluator(BaseEvaluator):
             )
             return fallback_params
     
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="CustomScorerEvaluator.evaluate")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="CustomScorerEvaluator.evaluate",
+        emit=["evaluator"],
+        emit_presence=["networking", "kms_key_id", "mlflow_resource_arn"],
+    )
     def evaluate(self) -> EvaluationPipelineExecution:
         """Create and start a custom scorer evaluation job.
         

@@ -567,7 +567,12 @@ class BenchMarkEvaluator(BaseEvaluator):
         
         return benchmark_context
     
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="BenchMarkEvaluator.evaluate")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BenchMarkEvaluator.evaluate",
+        emit=["benchmark"],
+        emit_presence=["networking", "kms_key_id", "mlflow_resource_arn"],
+    )
     def evaluate(self, subtask: Optional[Union[str, List[str]]] = None) -> EvaluationPipelineExecution:
         """Create and start a benchmark evaluation job.
         

@@ -767,7 +767,12 @@ class ModelTrainer(BaseModel):
         return training_request
 
 
-    @_telemetry_emitter(feature=Feature.MODEL_TRAINER, func_name="model_trainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_TRAINER,
+        func_name="model_trainer.train",
+        emit=["training_mode", "training_input_mode"],
+        emit_presence=["networking", "stopping_condition", "distributed", "source_code", "checkpoint_config"],
+    )
     @runnable_by_pipeline
     @validate_call
     def train(

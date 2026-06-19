@@ -137,7 +137,11 @@ class BedrockModelBuilder:
         except Exception:
             return False
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="BedrockModelBuilder.deploy")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BedrockModelBuilder.deploy",
+        emit_presence=["model_package"],
+    )
     def deploy(
         self,
         job_name: Optional[str] = None,

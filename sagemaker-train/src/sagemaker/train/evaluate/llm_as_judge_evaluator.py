@@ -294,7 +294,12 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             'evaluate_base_model': self.evaluate_base_model,
         }
     
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="LLMAsJudgeEvaluator.evaluate")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="LLMAsJudgeEvaluator.evaluate",
+        emit=["evaluator_model"],
+        emit_presence=["networking", "kms_key_id", "mlflow_resource_arn", "custom_metrics"],
+    )
     def evaluate(self):
         """Create and start an LLM-as-judge evaluation job.
         

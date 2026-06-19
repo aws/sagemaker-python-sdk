@@ -72,7 +72,67 @@ STATUS_TO_CODE = {
 }
 
 
-def _telemetry_emitter(feature: str, func_name: str):
+def _classify_error(e: Exception) -> str:
+    """Classify an exception into an actionable error category."""
+    error_type = type(e).__name__
+    error_msg = str(e).lower()
+
+    if "validation" in error_type.lower() or "invalid" in error_msg or "must be" in error_msg:
+        return "validation_error"
+    if "accessdenied" in error_msg or "not authorized" in error_msg or "forbidden" in error_msg:
+        return "auth_error"
+    if "capacity" in error_msg or "insufficientcapacity" in error_msg or "resourcelimitexceeded" in error_msg:
+        return "capacity_error"
+    if "timeout" in error_type.lower() or "timed out" in error_msg or "timeout" in error_msg:
+        return "timeout_error"
+    if "not found" in error_msg or "does not exist" in error_msg or "could not find" in error_msg:
+        return "resource_not_found"
+    if "eula" in error_msg or "accept_eula" in error_msg:
+        return "eula_error"
+    if "throttl" in error_msg or "rate exceeded" in error_msg or "too many requests" in error_msg:
+        return "throttling_error"
+    if "connection" in error_msg or "network" in error_msg or "unreachable" in error_msg:
+        return "network_error"
+    return "unknown"
+
+
+def _attr_to_key(attr: str) -> str:
+    """Convert attribute name to camelCase telemetry key.
+
+    Examples: '_model_name' -> 'modelName', 'training_type' -> 'trainingType'
+    """
+    attr = attr.lstrip("_")
+    parts = attr.split("_")
+    return parts[0] + "".join(p.capitalize() for p in parts[1:])
+
+
+def _extract_telemetry_params(instance, emit=None, emit_presence=None) -> str:
+    """Extract telemetry params from an instance based on emit/emit_presence lists.
+
+    Args:
+        instance: The class instance (args[0]) to extract attributes from.
+        emit: List of attribute names whose actual values should be emitted.
+        emit_presence: List of attribute names where only presence (true/false) is emitted.
+
+    Returns:
+        str: URL query params string (e.g., "&x-modelName=llama&x-hasNetworking=true").
+    """
+    parts = []
+    if emit:
+        for attr in emit:
+            value = getattr(instance, attr, None)
+            if value is not None:
+                key = _attr_to_key(attr)
+                parts.append(f"&x-{key}={value}")
+    if emit_presence:
+        for attr in emit_presence:
+            value = getattr(instance, attr, None)
+            key = _attr_to_key(attr)
+            parts.append(f"&x-has{key[0].upper()}{key[1:]}={'true' if value else 'false'}")
+    return "".join(parts)
+
+
+def _telemetry_emitter(feature: str, func_name: str, emit=None, emit_presence=None):
     """Telemetry Emitter
 
     Decorator to emit telemetry logs for SageMaker Python SDK functions. This class needs
@@ -80,6 +140,13 @@ def _telemetry_emitter(feature: str, func_name: str):
     in this repo. When collecting telemetry for classes using sagemaker-core Session object,
     we should be aware of its differences, such as sagemaker_session.sagemaker_config does not
     exist in new Session class.
+
+    Args:
+        feature: The Feature enum value for this telemetry event.
+        func_name: Human-readable function name for tracking.
+        emit: Optional list of instance attribute names whose values will be sent in telemetry.
+        emit_presence: Optional list of instance attribute names where only presence is tracked
+            (emits true/false).
     """
 
     def decorator(func):
@@ -175,6 +242,10 @@ def _telemetry_emitter(feature: str, func_name: str):
                 if created_by:
                     extra += f"&x-createdBy={quote(created_by, safe='')}"
 
+                # Extract granular telemetry params from the instance
+                if (emit or emit_presence) and len(args) > 0:
+                    extra += _extract_telemetry_params(args[0], emit, emit_presence)
+
                 start_timer = perf_counter()
                 try:
                     # Call the original function
@@ -200,6 +271,7 @@ def _telemetry_emitter(feature: str, func_name: str):
                     stop_timer = perf_counter()
                     elapsed = stop_timer - start_timer
                     extra += f"&x-latency={round(elapsed, 2)}"
+                    extra += f"&x-errorCategory={_classify_error(e)}"
                     if not telemetry_opt_out_flag:
                         _send_telemetry_request(
                             STATUS_TO_CODE[str(Status.FAILURE)],

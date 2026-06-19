@@ -184,7 +184,12 @@ class RLVRTrainer(BaseTrainer):
                 delattr(self.hyperparameters, 'output_path')
                 self.hyperparameters._specs.pop('output_path', None)
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLVRTrainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="RLVRTrainer.train",
+        emit=["_model_name", "training_type"],
+        emit_presence=["networking", "kms_key_id", "mlflow_resource_arn", "stopping_condition", "custom_reward_function"],
+    )
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None,
               validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
         """Execute the RLVR training job.

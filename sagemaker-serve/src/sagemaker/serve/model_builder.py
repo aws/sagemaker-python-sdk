@@ -3325,7 +3325,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if hasattr(self, attr):
                 delattr(self, attr)
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.build")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="model_builder.build",
+        emit=["mode"],
+        emit_presence=["network", "source_code", "inference_spec"],
+    )
     @runnable_by_pipeline
     def build(
         self,
@@ -4188,7 +4193,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.built_model = self._create_model()
         return self.built_model
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.deploy")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="model_builder.deploy",
+        emit=["mode", "instance_type"],
+        emit_presence=["network", "compute"],
+    )
     def deploy(
         self,
         endpoint_name: str = None,
