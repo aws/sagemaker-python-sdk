@@ -410,6 +410,10 @@ class BenchMarkEvaluator(BaseEvaluator):
                 )
         
         return v
+
+    def _get_eval_recipe_display_name_filter(self) -> str:
+        """Prefer 'general text benchmark' recipes for BenchMarkEvaluator."""
+        return "benchmark"
     
     @property
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="BenchMarkEvaluator.hyperparameters")
@@ -628,12 +632,28 @@ class BenchMarkEvaluator(BaseEvaluator):
         from sagemaker.core.training.configs import Compute, HyperPodCompute
 
         # Dispatch based on compute type
+        # Validate platform compatibility (HP checkpoints must eval on HP, SMTJ on SMTJ)
+        from sagemaker.train.common_utils.finetune_utils import validate_eval_platform_compatibility
+        model_info = self._get_resolved_model_info()
+        model_path = getattr(model_info, 'checkpoint_s3_path', None) if model_info else None
+        validate_eval_platform_compatibility(model_path, self.compute)
+
         if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
             return self._evaluate_serverful_smtj(subtask=subtask)
         elif isinstance(self.compute, HyperPodCompute):
             return self._evaluate_hyperpod(subtask=subtask)
 
         # Default: serverless compute via SageMaker Pipelines
+        # S3 checkpoint paths are not supported on serverless — require SMTJ or HyperPod compute
+        from sagemaker.train.common_utils.model_resolution import _ModelType
+        info = self._get_resolved_model_info()
+        if info and info.model_type == _ModelType.S3_CHECKPOINT:
+            raise ValueError(
+                "S3 checkpoint paths cannot be used with serverless evaluation. "
+                "Please provide a 'compute' parameter (e.g., TrainingJobCompute or HyperPodCompute) "
+                "to run evaluation on dedicated instances."
+            )
+
         from .pipeline_templates import DETERMINISTIC_TEMPLATE, DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY
         
         # Resolve and validate subtask
@@ -745,6 +765,25 @@ class BenchMarkEvaluator(BaseEvaluator):
         """
         from sagemaker.train.utils import _get_unique_name
 
+        # --- Validate platform compatibility ---
+        # HyperPod-trained checkpoints cannot be evaluated on SMTJ
+        from sagemaker.train.common_utils.model_resolution import _ModelType, _detect_checkpoint_platform, _CheckpointPlatform
+        info = self._get_resolved_model_info()
+        if info and info.model_type == _ModelType.S3_CHECKPOINT and info.s3_model_path:
+            checkpoint_platform = _detect_checkpoint_platform(info.s3_model_path)
+            if checkpoint_platform == _CheckpointPlatform.HYPERPOD:
+                raise ValueError(
+                    f"HyperPod-trained checkpoints cannot be evaluated on SMTJ compute. "
+                    f"The checkpoint at '{info.s3_model_path}' was trained on HyperPod. "
+                    f"Please use HyperPodCompute for evaluation instead:\n\n"
+                    f"    compute=HyperPodCompute(\n"
+                    f"        cluster_name='your-cluster',\n"
+                    f"        namespace='kubeflow',\n"
+                    f"        instance_type='ml.p5.48xlarge',\n"
+                    f"        node_count=1,\n"
+                    f"    )"
+                )
+
         # --- Common setup ---
         sagemaker_session, role, region = self._get_smtj_session_and_role()
 
@@ -786,7 +825,8 @@ class BenchMarkEvaluator(BaseEvaluator):
         # --- Resolve run section ---
         recipe_dict.setdefault("run", {})
         recipe_dict["run"]["name"] = _get_unique_name(base_job_name)
-        recipe_dict["run"]["task"] = task_value
+        # Note: run.task is left as-is from the template (indicates job type, not benchmark name).
+        # The benchmark-specific task value ("mmlu", "bbh", etc.) is set in the evaluation section.
         recipe_dict["run"]["strategy"] = strategy_value
         recipe_dict["run"]["metric"] = metric_value
         recipe_dict["run"]["subtask"] = subtask_value
@@ -848,6 +888,10 @@ class BenchMarkEvaluator(BaseEvaluator):
                 override_parameters["recipes.evaluation.subtask"] = ",".join(eval_subtask)
             else:
                 override_parameters["recipes.evaluation.subtask"] = eval_subtask
+
+        # User-provided overrides (e.g. inference params)
+        if self.overrides:
+            override_parameters.update(self.overrides)
 
         return self._submit_hyperpod_eval_job(
             override_parameters=override_parameters,

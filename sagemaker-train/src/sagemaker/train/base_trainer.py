@@ -7,7 +7,7 @@ import re
 import subprocess
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.training.configs import Tag, Networking, InputData, Channel
+from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig
 from sagemaker.core.shapes import shapes
 from sagemaker.core.resources import TrainingJob
 from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe
@@ -378,6 +378,11 @@ class BaseTrainer(ABC):
         # Create ModelTrainer from recipe
         base_job_name = self.base_job_name or f"{self._model_name}-{customization_technique}"
 
+        # Build output data config from s3_output_path if provided
+        output_data_config = None
+        if self.s3_output_path:
+            output_data_config = OutputDataConfig(s3_output_path=self.s3_output_path)
+
         model_trainer = ModelTrainer.from_recipe(
             training_recipe=recipe_local_path,
             compute=trainer_compute,
@@ -385,6 +390,7 @@ class BaseTrainer(ABC):
             stopping_condition=self.stopping_condition,
             training_image=training_image,
             input_data_config=input_data_list if input_data_list else None,
+            output_data_config=output_data_config,
             hyperparameters=final_hyperparameters,
             environment=self.environment or None,
             sagemaker_session=sagemaker_session,

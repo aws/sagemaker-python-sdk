@@ -796,6 +796,16 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             LLMAJ_TEMPLATE_BASE_MODEL_ONLY,
         )
         
+        # S3 checkpoint paths are not supported on serverless evaluation
+        from sagemaker.train.common_utils.model_resolution import _ModelType
+        info = self._get_resolved_model_info()
+        if info and info.model_type == _ModelType.S3_CHECKPOINT:
+            raise ValueError(
+                "S3 checkpoint paths cannot be used with serverless evaluation. "
+                "LLM-as-judge evaluation currently only supports serverless compute. "
+                "Please use a Model Package ARN or JumpStart model ID instead."
+            )
+
         # Get AWS execution context (role ARN, region, account ID)
         aws_context = self._get_aws_execution_context()
         region = aws_context['region']

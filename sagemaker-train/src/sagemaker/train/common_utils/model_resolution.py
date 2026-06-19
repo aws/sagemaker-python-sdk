@@ -22,6 +22,33 @@ class _ModelType(Enum):
     """Internal enum for model type classification."""
     JUMPSTART = "jumpstart"
     FINE_TUNED = "fine_tuned"
+    S3_CHECKPOINT = "s3_checkpoint"
+
+
+class _CheckpointPlatform(Enum):
+    """Platform where a checkpoint was trained."""
+    SMTJ = "smtj"
+    HYPERPOD = "hyperpod"
+
+
+def _detect_checkpoint_platform(s3_path: str) -> Optional['_CheckpointPlatform']:
+    """Detect the training platform from an S3 checkpoint path.
+
+    Platform identifiers appear in the escrow bucket name:
+    - SMTJ: s3://customer-escrow-{account}-smtj-{id}/...
+    - HyperPod: s3://customer-escrow-{account}-hp-{id}/...
+
+    Args:
+        s3_path: S3 URI to the model checkpoint.
+
+    Returns:
+        _CheckpointPlatform.SMTJ, _CheckpointPlatform.HYPERPOD, or None if cannot determine.
+    """
+    if "-smtj-" in s3_path:
+        return _CheckpointPlatform.SMTJ
+    elif "-hp-" in s3_path:
+        return _CheckpointPlatform.HYPERPOD
+    return None
 
 
 @dataclass
@@ -33,9 +60,10 @@ class _ModelInfo:
         base_model_name: Human-readable model name
         base_model_arn: ARN of the base model
         source_model_package_arn: ARN of source model package (None for JumpStart models)
-        model_type: Type of model (JUMPSTART or FINE_TUNED)
+        model_type: Type of model (JUMPSTART, FINE_TUNED, or S3_CHECKPOINT)
         hub_content_name: Name in the hub (for JumpStart models)
         additional_metadata: Any additional metadata extracted during resolution
+        s3_model_path: Direct S3 URI to model checkpoint (for S3_CHECKPOINT type)
     """
     base_model_name: str
     base_model_arn: str
@@ -43,6 +71,7 @@ class _ModelInfo:
     model_type: _ModelType
     hub_content_name: Optional[str]
     additional_metadata: Dict[str, Any]
+    s3_model_path: Optional[str] = None
 
 
 class _ModelResolver:
@@ -83,8 +112,11 @@ class _ModelResolver:
         """
         # Check if it's a string first
         if isinstance(base_model, str):
+            # Check if it's an S3 checkpoint path
+            if base_model.startswith("s3://"):
+                return self._resolve_s3_checkpoint(base_model)
             # Check if it's a model package ARN or JumpStart model ID
-            if base_model.startswith("arn:aws:sagemaker:") and ":model-package/" in base_model:
+            elif base_model.startswith("arn:aws:sagemaker:") and ":model-package/" in base_model:
                 return self._resolve_model_package_arn(base_model)
             else:
                 return self._resolve_jumpstart_model(base_model, hub_name or get_sagemaker_hub_name())
@@ -135,10 +167,38 @@ class _ModelResolver:
                 return self._resolve_model_package_object(base_model)
             else:
                 raise ValueError(
-                    f"base_model must be a string (JumpStart model ID or ModelPackage ARN) "
+                    f"base_model must be a string (JumpStart model ID, ModelPackage ARN, or S3 URI) "
                     f"or ModelPackage object, got {type(base_model)}"
                 )
     
+    def _resolve_s3_checkpoint(self, s3_uri: str) -> _ModelInfo:
+        """Resolve model information from a direct S3 checkpoint path.
+        
+        Used for HyperPod training outputs where no Model Package is created,
+        and the checkpoint resides directly in S3.
+        
+        Args:
+            s3_uri: S3 URI to the model checkpoint (e.g., s3://bucket/path/to/checkpoint)
+            
+        Returns:
+            _ModelInfo: Model info with S3_CHECKPOINT type and the S3 path stored.
+        """
+        # Extract a human-readable name from the S3 path
+        # e.g., s3://bucket/my-job-name/outputs/checkpoints/step_10 -> "my-job-name"
+        path_parts = s3_uri.replace("s3://", "").split("/")
+        # Use the first path component after the bucket as the name
+        base_model_name = path_parts[1] if len(path_parts) > 1 else "s3-checkpoint"
+        
+        return _ModelInfo(
+            base_model_name=base_model_name,
+            base_model_arn="",
+            source_model_package_arn=None,
+            model_type=_ModelType.S3_CHECKPOINT,
+            hub_content_name=None,
+            additional_metadata={},
+            s3_model_path=s3_uri,
+        )
+
     def _resolve_jumpstart_model(self, model_id: str, hub_name: str) -> _ModelInfo:
         """
         Resolve JumpStart model information from Hub API.

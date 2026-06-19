@@ -70,7 +70,11 @@ class BaseEvaluator(BaseModel):
             - JumpStart model ID (str): e.g., 'llama3-2-1b-instruct'
             - ModelPackage object: A fine-tuned model package
             - ModelPackage ARN (str): e.g., 'arn:aws:sagemaker:region:account:model-package/name/version'
+            - S3 checkpoint path (str): e.g., 's3://bucket/path/to/checkpoint' (for HyperPod outputs)
             - BaseTrainer object: A completed training job (i.e., it must have _latest_training_job with output_model_package_arn populated)
+        base_model_name (Optional[str]): Base model name for recipe lookup when using S3 checkpoint
+            paths. Required when model is an S3 URI. E.g., 'amazon.nova-lite-v2' or
+            'nova-textgeneration-lite-v2'.
         base_eval_name (Optional[str]): Optional base name for evaluation jobs. This name is used
             as the PipelineExecutionDisplayName when creating the SageMaker pipeline execution.
             The actual display name will be "{base_eval_name}-{timestamp}". This parameter can
@@ -106,6 +110,7 @@ class BaseEvaluator(BaseModel):
     role: Optional[str] = None
     sagemaker_session: Optional[Any] = None
     model: Union[str, BaseTrainer, AgentRFTJob, ModelPackage]
+    base_model_name: Optional[str] = None
     base_eval_name: Optional[str] = None
     s3_output_path: str
     mlflow_resource_arn: Optional[str] = None
@@ -233,7 +238,7 @@ class BaseEvaluator(BaseModel):
                 if not region and session:
                     region = (session.boto_region_name 
                              if hasattr(session, 'boto_region_name') 
-                             else 'us-west-2')
+                             else boto3.Session().region_name)
                 
                 # Fetch the object
                 obj = ModelPackageGroup.get(
@@ -350,8 +355,10 @@ class BaseEvaluator(BaseModel):
             )
             
             # If model is a ModelPackage object or ARN (has source_model_package_arn),
-            # validate that the resolved base_model_arn is a hub content ARN
-            if model_info.source_model_package_arn:
+            # validate that the resolved base_model_arn is a hub content ARN.
+            # Skip this validation for S3 checkpoint paths.
+            from sagemaker.train.common_utils.model_resolution import _ModelType
+            if model_info.source_model_package_arn and model_info.model_type != _ModelType.S3_CHECKPOINT:
                 # Check if base_model_arn is a hub content ARN
                 # Format: arn:aws:sagemaker:region:aws:hub-content/...
                 if not model_info.base_model_arn or ':hub-content/' not in model_info.base_model_arn:
@@ -386,7 +393,7 @@ class BaseEvaluator(BaseModel):
             import boto3
             from sagemaker.core.helper.session_helper import Session
 
-            region = values.get('region') or os.environ.get('SAGEMAKER_REGION') or os.environ.get('AWS_REGION', 'us-west-2')
+            region = values.get('region') or os.environ.get('SAGEMAKER_REGION') or os.environ.get('AWS_REGION') or boto3.Session().region_name
 
             boto_session = boto3.Session(region_name=region)
             sm_client = boto_session.client('sagemaker')
@@ -420,7 +427,13 @@ class BaseEvaluator(BaseModel):
     
     @property
     def _base_model_name(self) -> Optional[str]:
-        """Get the resolved base model name."""
+        """Get the resolved base model name.
+        
+        Uses the explicit base_model_name field if provided (e.g., for S3 checkpoint paths),
+        otherwise falls back to the resolved model info.
+        """
+        if self.base_model_name:
+            return self.base_model_name
         info = self._get_resolved_model_info()
         return info.base_model_name if info else None
     
@@ -462,6 +475,17 @@ class BaseEvaluator(BaseModel):
                 "ModelPackage ARN, or a completed BaseTrainer."
             )
         return model_name
+
+    def _get_eval_recipe_display_name_filter(self) -> Optional[str]:
+        """Return a display name filter for selecting the appropriate evaluation recipe.
+
+        Subclasses override this to prefer specific recipe types (e.g., "benchmark"
+        for BenchMarkEvaluator, "custom" for CustomScorerEvaluator).
+
+        Returns:
+            Optional[str]: Filter string to match against recipe DisplayName, or None.
+        """
+        return None
 
     @property
     def _is_jumpstart_model(self) -> bool:
@@ -701,7 +725,7 @@ class BaseEvaluator(BaseModel):
         # Get region - prefer self.region if set, otherwise extract from session
         region = self.region or (self.sagemaker_session.boto_region_name 
                                  if hasattr(self.sagemaker_session, 'boto_region_name') 
-                                 else 'us-west-2')
+                                 else boto3.Session().region_name)
         
         # Extract account ID from role ARN
         account_id = role_arn.split(':')[4] if ':' in role_arn else '052150106756'
@@ -1080,7 +1104,7 @@ class BaseEvaluator(BaseModel):
         return recipe_dict, recipe_tmp.name
 
     def _resolve_model_s3_path(self, sagemaker_session, region):
-        """Resolve S3 model artifacts path from model package.
+        """Resolve S3 model artifacts path from model package or direct S3 URI.
 
         SMTJ evaluation requires the S3 checkpoint path (not a model package ARN).
 
@@ -1091,6 +1115,12 @@ class BaseEvaluator(BaseModel):
         Returns:
             Optional[str]: S3 path to model artifacts, or None if not resolvable.
         """
+        # If model was provided as a direct S3 checkpoint path, return it directly
+        from sagemaker.train.common_utils.model_resolution import _ModelType
+        info = self._get_resolved_model_info()
+        if info and info.model_type == _ModelType.S3_CHECKPOINT and info.s3_model_path:
+            return info.s3_model_path
+
         if not self._source_model_package_arn:
             return None
 
@@ -1244,6 +1274,7 @@ class BaseEvaluator(BaseModel):
                 training_type="FULL",
                 sagemaker_session=self.sagemaker_session,
                 job_name=job_base,
+                display_name_filter=self._get_eval_recipe_display_name_filter(),
             )
             _logger.info(f"Auto-resolved HyperPod eval recipe from Hub: {recipe_name}")
 
@@ -1253,11 +1284,42 @@ class BaseEvaluator(BaseModel):
             base_overrides["instance_type"] = compute.instance_type
         if self.training_image:
             base_overrides["container"] = self.training_image
+        else:
+            # Auto-resolve evaluation container image from Hub
+            from sagemaker.train.common_utils.finetune_utils import get_training_image
+            model_name = self._resolve_model_name_for_recipe()
+            eval_image = get_training_image(
+                model_name=model_name,
+                customization_technique="Evaluation",
+                training_type="FULL",
+                sagemaker_session=self.sagemaker_session,
+            )
+            if eval_image:
+                # Convert SMTJ image tag to HyperPod image tag
+                hp_image = eval_image.replace("SM-TJ-", "SM-HP-")
+                base_overrides["container"] = hp_image
+                _logger.info(f"Auto-resolved HyperPod eval image: {hp_image}")
         if compute.node_count:
             base_overrides["recipes.run.replicas"] = compute.node_count
 
         job_name = _get_unique_name(base_job_name or self.base_eval_name or "eval")
         base_overrides["recipes.run.name"] = job_name
+
+        # Output path
+        if self.s3_output_path:
+            base_overrides["recipes.run.output_s3_path"] = self.s3_output_path
+
+        # Model checkpoint path (fine-tuned model S3 path)
+        if isinstance(self.model, str) and self.model.startswith("s3://"):
+            base_overrides["recipes.run.model_name_or_path"] = self.model
+
+        # MLflow configuration
+        if self.mlflow_resource_arn:
+            base_overrides["recipes.run.mlflow_tracking_uri"] = self.mlflow_resource_arn
+        if self.mlflow_experiment_name:
+            base_overrides["recipes.run.mlflow_experiment_name"] = self.mlflow_experiment_name
+        if self.mlflow_run_name:
+            base_overrides["recipes.run.mlflow_run_name"] = self.mlflow_run_name
 
         # Merge evaluator-specific overrides
         if override_parameters:

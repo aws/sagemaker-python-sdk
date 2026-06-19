@@ -1498,6 +1498,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         else:
             self.s3_upload_path = None
 
+        # Ensure no script-mode artifacts are injected for passthrough
+        self.source_dir = None
+        self.entry_point = None
+        self.dependencies = None
+        self.git_config = None
+
         if self.mode in LOCAL_MODES:
             self._prepare_for_mode()
 
@@ -2270,12 +2276,27 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             MODEL_CONTAINERS_PATH,
             sagemaker_session=self.sagemaker_session,
         )
+
+        # Nova 1P images require network isolation on the Model resource
+        enable_network_isolation = self._enable_network_isolation
+        resolved_image_uri = (
+            container_def["Image"]
+            if isinstance(container_def, dict)
+            else container_def[0]["Image"]
+        )
+        if (
+            not enable_network_isolation
+            and "nova-" in resolved_image_uri
+            and is_1p_image_uri(resolved_image_uri)
+        ):
+            enable_network_isolation = True
+
         create_model_args = dict(
             name=self.model_name,
             role=self.role_arn,
             container_defs=container_def,
             vpc_config=self.vpc_config,
-            enable_network_isolation=self._enable_network_isolation,
+            enable_network_isolation=enable_network_isolation,
             tags=format_tags(self._tags),
         )
         self.sagemaker_session.create_model(**create_model_args)

@@ -61,6 +61,52 @@ def _select_recipe_by_training_type(recipes: list, training_type, with_fallback:
 
     return recipe
 
+
+def validate_eval_platform_compatibility(model_path: Optional[str], compute) -> None:
+    """Validate that the model checkpoint platform matches the evaluation compute.
+
+    SMHP-trained checkpoints can only be evaluated on HyperPod.
+    SMTJ-trained checkpoints can only be evaluated on SMTJ.
+    If the checkpoint platform cannot be determined, a warning is logged.
+
+    Args:
+        model_path: S3 path to the model checkpoint, or None for base model eval.
+        compute: The compute configuration (Compute, HyperPodCompute, or None for serverless).
+
+    Raises:
+        ValueError: If the checkpoint platform doesn't match the evaluation platform.
+    """
+    if model_path is None:
+        return  # Base model evaluation — no platform restriction
+
+    from sagemaker.core.training.configs import HyperPodCompute as _HyperPodCompute
+
+    # Detect checkpoint platform from S3 path
+    if "-hp-" in model_path:
+        checkpoint_platform = "hyperpod"
+    elif "-smtj-" in model_path:
+        checkpoint_platform = "smtj"
+    else:
+        logger.warning(
+            f"Cannot determine training platform from model path: {model_path}. "
+            f"If the checkpoint was trained on a different platform, evaluation may fail."
+        )
+        return
+
+    # Determine execution platform
+    if isinstance(compute, _HyperPodCompute):
+        exec_platform = "hyperpod"
+    else:
+        exec_platform = "smtj"
+
+    if checkpoint_platform != exec_platform:
+        raise ValueError(
+            f"Platform mismatch: model checkpoint was trained on {checkpoint_platform} "
+            f"but evaluation is configured to run on {exec_platform}. "
+            f"Checkpoints must be evaluated on the same platform they were trained on."
+        )
+
+
 def _validate_model_region_availability(model_name: str, region_name: str):
     """Validate if the model is available in the specified region."""
     if "nova" in model_name.lower():
@@ -1028,6 +1074,7 @@ def _get_recipe_entry_and_override_spec(
     sagemaker_session,
     platform: str = "smtj",
     hub_name: Optional[str] = None,
+    display_name_filter: Optional[str] = None,
 ) -> tuple:
     """Resolve the matching recipe entry and its override spec from SageMaker Hub.
 
@@ -1066,8 +1113,15 @@ def _get_recipe_entry_and_override_spec(
     recipe_collection = document.get("RecipeCollection", [])
 
     # Filter by customization technique
-    matching_recipes = [r for r in recipe_collection
-                        if r.get("CustomizationTechnique") == customization_technique]
+    # Evaluation recipes use "Type": "Evaluation" in the Hub rather than
+    # "CustomizationTechnique": "Evaluation", so check both fields.
+    if customization_technique == "Evaluation":
+        matching_recipes = [r for r in recipe_collection
+                            if r.get("CustomizationTechnique") == customization_technique
+                            or r.get("Type") == "Evaluation"]
+    else:
+        matching_recipes = [r for r in recipe_collection
+                            if r.get("CustomizationTechnique") == customization_technique]
 
     if not matching_recipes:
         raise ValueError(
@@ -1090,6 +1144,13 @@ def _get_recipe_entry_and_override_spec(
             f"No {platform} recipes found for model '{model_name}' with technique: "
             f"{customization_technique}"
         )
+
+    # Filter by display name if specified (e.g., "benchmark" for general text benchmark eval)
+    if display_name_filter:
+        filtered = [r for r in platform_recipes
+                    if display_name_filter.lower() in r.get("DisplayName", "").lower()]
+        if filtered:
+            platform_recipes = filtered
 
     # Select by training type
     recipe = _select_recipe_by_training_type(platform_recipes, training_type)
@@ -1235,7 +1296,8 @@ def _render_recipe_placeholders(recipe_content: str, override_spec: dict) -> str
 
 def get_hyperpod_recipe_path(model_name: str, customization_technique: str, training_type,
                              sagemaker_session, job_name: str,
-                             hub_name: Optional[str] = None) -> str:
+                             hub_name: Optional[str] = None,
+                             display_name_filter: Optional[str] = None) -> str:
     """Resolve and write the HyperPod recipe for a model from SageMaker Hub.
 
     Downloads the recipe template from Hub (HpEksPayloadTemplateS3Uri), writes it
@@ -1248,11 +1310,13 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
 
     Args:
         model_name: Hub content name (e.g. "nova-textgeneration-lite-v2")
-        customization_technique: e.g. "RLVR", "SFT", "DPO", "CPT"
+        customization_technique: e.g. "RLVR", "SFT", "DPO", "CPT", "Evaluation"
         training_type: TrainingType enum or string ("LORA", "FULL")
         sagemaker_session: SageMaker session for API calls
         job_name: Unique job name used as recipe filename
         hub_name: Optional hub name override
+        display_name_filter: Optional filter to match against recipe DisplayName
+            (e.g., "benchmark" to prefer general text benchmark eval recipes)
 
     Returns:
         str: Relative recipe path for the HyperPod CLI (without .yaml extension)
@@ -1271,6 +1335,7 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
         sagemaker_session=sagemaker_session,
         platform="hyperpod",
         hub_name=hub_name,
+        display_name_filter=display_name_filter,
     )
 
     hp_template_s3_uri = recipe["HpEksPayloadTemplateS3Uri"]
@@ -1370,6 +1435,8 @@ def get_training_image(model_name: str, customization_technique: str, training_t
     recipe_collection = document.get("RecipeCollection", [])
 
     matching_recipes = [r for r in recipe_collection if r.get("CustomizationTechnique") == customization_technique]
+    if not matching_recipes and customization_technique == "Evaluation":
+        matching_recipes = [r for r in recipe_collection if r.get("Type") == "Evaluation"]
     recipes_with_template = [r for r in matching_recipes if r.get("SmtjRecipeTemplateS3Uri")]
 
     recipe = _select_recipe_by_training_type(recipes_with_template, training_type, with_fallback=False)
