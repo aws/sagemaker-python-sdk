@@ -1076,12 +1076,105 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         except Exception:
             return False
 
+    def _select_nova_hosting_config_entry(self, configs, instance_type, identifier):
+        """Select a single hosting config entry from a list of Nova configs.
+
+        Picks the entry matching ``instance_type`` when provided, otherwise the
+        entry with ``Profile == "Default"`` (falling back to the first entry).
+
+        Args:
+            configs: List of hosting config dicts.
+            instance_type: Requested instance type, or None.
+            identifier: Model identifier used for error messages.
+
+        Returns:
+            The selected hosting config dict.
+
+        Raises:
+            ValueError: If ``instance_type`` is provided but no entry matches it.
+        """
+        if instance_type:
+            config = next(
+                (c for c in configs if c.get("InstanceType") == instance_type), None
+            )
+            if not config:
+                supported = [c.get("InstanceType") for c in configs]
+                raise ValueError(
+                    f"Instance type '{instance_type}' not supported for '{identifier}'. "
+                    f"Supported: {supported}"
+                )
+            return config
+        return next((c for c in configs if c.get("Profile") == "Default"), configs[0])
+
+    def _get_nova_hosting_config_from_hub_document(self, instance_type=None):
+        """Resolve Nova hosting config from the JumpStart hub document, if present.
+
+        Reads hosting configs published in the hub content document, matching the
+        standard schema used by other custom models. Looks first inside the
+        ``RecipeCollection`` entry whose ``Name`` matches the recipe, then falls
+        back to the top-level ``HostingConfigs``.
+
+        Returns:
+            A dict with ``image_uri``, ``env_vars``, and ``instance_type`` when a
+            usable hosting config is found, otherwise ``None``.
+        """
+        try:
+            hub_document = self._fetch_hub_document_for_custom_model()
+        except Exception as e:  # pragma: no cover - defensive, hub may be unavailable
+            logger.debug(f"Could not fetch hub document for Nova hosting config: {e}")
+            return None
+
+        if not hub_document:
+            return None
+
+        container = self._fetch_model_package().inference_specification.containers[0]
+        recipe_name = getattr(container.base_model, "recipe_name", None) or ""
+
+        hosting_configs = None
+        for recipe in hub_document.get("RecipeCollection", []):
+            if recipe.get("Name") == recipe_name:
+                hosting_configs = recipe.get("HostingConfigs")
+                break
+        if not hosting_configs:
+            hosting_configs = hub_document.get("HostingConfigs")
+
+        if not hosting_configs:
+            return None
+
+        config = self._select_nova_hosting_config_entry(
+            hosting_configs, instance_type, recipe_name or "nova"
+        )
+
+        image_uri = config.get("EcrAddress")
+        if not image_uri:
+            # Hosting config present but no image override; let the hardcoded
+            # fallback supply the escrow image URI.
+            return None
+
+        resolved_instance_type = config.get("InstanceType") or config.get(
+            "DefaultInstanceType"
+        )
+
+        return {
+            "image_uri": image_uri,
+            "env_vars": config.get("Environment", {}),
+            "instance_type": resolved_instance_type,
+        }
+
     def _get_nova_hosting_config(self, instance_type=None):
         """Get Nova hosting config (image URI, env vars, instance type).
 
-        Nova training recipes don't have hosting configs in the JumpStart hub document.
-        This provides the hardcoded fallback, matching Rhinestone's getNovaHostingConfigs().
+        Prefers hosting configs published in the JumpStart hub document (the
+        standard location used by other custom models). Falls back to the
+        hardcoded ``_NOVA_HOSTING_CONFIGS``, matching Rhinestone's
+        getNovaHostingConfigs(), when the hub document does not provide one.
         """
+        hub_config = self._get_nova_hosting_config_from_hub_document(
+            instance_type=instance_type
+        )
+        if hub_config:
+            return hub_config
+
         model_package = self._fetch_model_package()
         hub_content_name = model_package.inference_specification.containers[0].base_model.hub_content_name
 
@@ -1102,16 +1195,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         image_uri = f"{escrow_account}.dkr.ecr.{region}.amazonaws.com/nova-inference-repo:SM-Inference-latest"
 
-        if instance_type:
-            config = next((c for c in configs if c["InstanceType"] == instance_type), None)
-            if not config:
-                supported = [c["InstanceType"] for c in configs]
-                raise ValueError(
-                    f"Instance type '{instance_type}' not supported for '{hub_content_name}'. "
-                    f"Supported: {supported}"
-                )
-        else:
-            config = next((c for c in configs if c.get("Profile") == "Default"), configs[0])
+        config = self._select_nova_hosting_config_entry(
+            configs, instance_type, hub_content_name
+        )
 
         return {
             "image_uri": image_uri,
