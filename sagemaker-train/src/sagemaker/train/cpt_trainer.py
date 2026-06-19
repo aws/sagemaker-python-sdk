@@ -135,9 +135,12 @@ class CPTTrainer(BaseTrainer):
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
         self.training_type = TrainingType.FULL
 
-        self.model_package_group = _validate_and_resolve_model_package_group(
-            model, model_package_group, compute=compute
-        )
+        if compute is None:
+            self.model_package_group = _validate_and_resolve_model_package_group(
+                model, model_package_group
+            )
+        else:
+            self.model_package_group = model_package_group
 
         if compute is not None and not isinstance(compute, HyperPodCompute):
             raise TypeError(
