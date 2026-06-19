@@ -36,12 +36,13 @@ class _ConcreteTrainer(BaseTrainer):
         self.stopping_condition = None
         self.training_image = "123.dkr.ecr.us-east-1.amazonaws.com/nova:latest"
         self.base_job_name = "nova-lite-sft"
+        self.s3_output_path = None
 
     def train(self, *args, **kwargs):  # pragma: no cover - abstract impl
         return self._train_serverful_smtj(*args, **kwargs)
 
 
-def _run_serverful(trainer):
+def _run_serverful(trainer, base_hyperparameters=None):
     """Invoke _train_serverful_smtj with all external boundaries mocked.
 
     Returns a tuple of (override_spec captured at render time, from_recipe kwargs).
@@ -83,7 +84,7 @@ def _run_serverful(trainer):
         return_value=mock_model_trainer,
     ) as mock_from_recipe:
         trainer.hyperparameters = MagicMock()
-        trainer.hyperparameters.to_dict.return_value = {}
+        trainer.hyperparameters.to_dict.return_value = base_hyperparameters or {}
         trainer.train(wait=False)
 
     return captured.get("override_spec"), mock_from_recipe.call_args.kwargs
@@ -190,3 +191,61 @@ class TestEnvironmentForwarding:
 
         # self.environment defaults to {} -> ``or None`` collapses to None.
         assert from_recipe_kwargs["environment"] is None
+
+
+class TestOverridesAppliedToHyperparameters:
+    def test_overrides_merged_into_hyperparameters(self):
+        """User overrides take precedence over base hyperparameters."""
+        trainer = _ConcreteTrainer()
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+        trainer._overrides = {"max_epochs": 1, "name": "my-run"}
+        trainer._recipe_path = "s3://bucket/recipe.yaml"
+
+        with patch.object(
+            trainer, "get_resolved_recipe",
+            return_value={"max_epochs": 1, "name": "my-run", "lr": 0.001},
+        ), patch(
+            "sagemaker.train.base_trainer.flatten_resolved_recipe",
+            return_value={"max_epochs": "1", "name": "my-run", "lr": "0.001"},
+        ):
+            _, from_recipe_kwargs = _run_serverful(trainer, base_hyperparameters={"max_epochs": "10"})
+
+        hp = from_recipe_kwargs["hyperparameters"]
+        assert hp["max_epochs"] == "1"  # overridden from 10 -> 1
+        assert hp["name"] == "my-run"
+        assert hp["lr"] == "0.001"
+
+    def test_no_overrides_leaves_hyperparameters_unchanged(self):
+        """Without overrides or recipe_path, hyperparameters stay as-is."""
+        trainer = _ConcreteTrainer()
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+        # No _overrides or _recipe_path set
+
+        _, from_recipe_kwargs = _run_serverful(trainer)
+
+        # hyperparameters.to_dict() returns {} in _run_serverful, nothing merged
+        assert from_recipe_kwargs["hyperparameters"] == {}
+
+    def test_overrides_do_not_clobber_extra_hyperparameters(self):
+        """Subclass extra HP should persist alongside overrides."""
+        trainer = _ConcreteTrainer()
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+        trainer._overrides = {"max_epochs": 5}
+        trainer._recipe_path = "s3://bucket/recipe.yaml"
+
+        # Simulate subclass injecting extra HP
+        trainer._get_extra_smtj_hyperparameters = lambda: {"custom_key": "custom_val"}
+
+        fake_resolved = {"max_epochs": 5}
+
+        with patch.object(
+            trainer, "get_resolved_recipe", return_value=fake_resolved
+        ), patch(
+            "sagemaker.train.base_trainer.flatten_resolved_recipe",
+            return_value={"max_epochs": "5"},
+        ):
+            _, from_recipe_kwargs = _run_serverful(trainer)
+
+        hp = from_recipe_kwargs["hyperparameters"]
+        assert hp["max_epochs"] == "5"
+        assert hp["custom_key"] == "custom_val"

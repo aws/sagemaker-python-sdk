@@ -334,6 +334,9 @@ class BaseTrainer(ABC):
         if extra_hp:
             final_hyperparameters.update(extra_hp)
 
+        # Merge user-provided recipe/overrides into hyperparameters
+        final_hyperparameters = self._apply_recipe_to_hyperparameters(final_hyperparameters)
+
         # Build input data config (datasets resolved earlier for recipe injection)
         # Build input data config
         resolved_training_dataset = training_dataset or self.training_dataset
