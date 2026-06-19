@@ -1444,3 +1444,70 @@ def get_training_image(model_name: str, customization_technique: str, training_t
     if recipe:
         return recipe.get("SmtjImageUri")
     return None
+
+
+def get_hyperpod_training_image(model_name: str, customization_technique: str, training_type,
+                                sagemaker_session, hub_name: Optional[str] = None) -> Optional[str]:
+    """Resolve the training image URI for HyperPod from the EKS payload template.
+
+    Downloads the HpEksPayloadTemplateS3Uri for the matching recipe and extracts
+    the container image from the Helm chart template.
+
+    Args:
+        model_name: Hub content name or Bedrock-style model ID (e.g. "amazon.nova-lite-v2")
+        customization_technique: e.g. "RLVR", "SFT", "DPO", "CPT"
+        training_type: TrainingType enum or string ("LORA", "FULL")
+        sagemaker_session: SageMaker session
+        hub_name: Optional hub name override
+
+    Returns:
+        str or None: Training image URI if found in the template
+    """
+    try:
+        recipe, _override_spec = _get_recipe_entry_and_override_spec(
+            model_name=model_name,
+            customization_technique=customization_technique,
+            training_type=training_type,
+            sagemaker_session=sagemaker_session,
+            platform="hyperpod",
+            hub_name=hub_name,
+        )
+    except ValueError:
+        return None
+
+    hp_template_s3_uri = recipe.get("HpEksPayloadTemplateS3Uri")
+    if not hp_template_s3_uri:
+        return None
+
+    # Download recipe template from S3
+    s3_client = sagemaker_session.boto_session.client("s3")
+    uri_path = hp_template_s3_uri.replace("s3://", "")
+    bucket, key = uri_path.split("/", 1)
+    try:
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        template_content = response["Body"].read().decode("utf-8")
+    except Exception as e:
+        logger.warning("Failed to download HyperPod template from s3://%s/%s: %s", bucket, key, e)
+        return None
+
+    return extract_image_from_hyperpod_template(template_content)
+
+
+def extract_image_from_hyperpod_template(template_content: str) -> Optional[str]:
+    """Extract the container image URI from a HyperPod Helm chart template.
+
+    Parses the raw template content looking for the pytorch container image
+    definition in the training-config.yaml section.
+
+    Args:
+        template_content: Raw Helm chart template string from S3.
+
+    Returns:
+        str or None: The image URI if found, None otherwise.
+    """
+    if "training-config.yaml" in template_content:
+        image_pattern = r"name:\s*pytorch\s*\n\s*image:\s*(.+?)(?:\s|$)"
+        image_match = re.search(image_pattern, template_content, re.MULTILINE)
+        if image_match:
+            return image_match.group(1).strip()
+    return None

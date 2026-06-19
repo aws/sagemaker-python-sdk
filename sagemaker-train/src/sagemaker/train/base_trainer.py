@@ -14,6 +14,7 @@ from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_re
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 from sagemaker.train.common_utils.finetune_utils import (
     get_training_image,
+    get_hyperpod_training_image,
     get_hyperpod_recipe_path,
     _validate_hyperparameter_values,
 )
@@ -488,6 +489,21 @@ class BaseTrainer(ABC):
             )
             if smtj_image:
                 training_image = smtj_image.replace("SM-TJ-", "SM-HP-")
+            else:
+                training_image = get_hyperpod_training_image(
+                    model_name=self._model_name,
+                    customization_technique=self._customization_technique,
+                    training_type=self.training_type,
+                    sagemaker_session=sagemaker_session,
+                )
+
+        if not training_image:
+            raise ValueError(
+                "training_image is required for HyperPod compute but could not be resolved "
+                f"from model metadata for model '{self._model_name}' with customization "
+                f"technique '{self._customization_technique}'. Pass it explicitly via the "
+                "trainer's training_image parameter."
+            )
 
         # Build override parameters
         override_parameters = {}

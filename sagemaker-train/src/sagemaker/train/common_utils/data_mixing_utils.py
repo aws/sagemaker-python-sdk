@@ -27,6 +27,7 @@ from botocore.exceptions import ClientError
 
 from sagemaker.train.common_utils.model_aliases import MODEL_NAME_ALIASES
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
+from sagemaker.train.common_utils.finetune_utils import extract_image_from_hyperpod_template
 from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.core.training.constants import TrainingPlatform
 from sagemaker.train.data_mixing_config import DataMixingConfig
@@ -205,10 +206,7 @@ def resolve_hyperpod_datamix_context(
 
     image_uri = None
     if "training-config.yaml" in template_content:
-        image_pattern = r"name:\s*pytorch\s*\n\s*image:\s*(.+?)(?:\s|$)"
-        image_match = re.search(image_pattern, template_content, re.MULTILINE)
-        if image_match:
-            image_uri = image_match.group(1).strip()
+        image_uri = extract_image_from_hyperpod_template(template_content)
 
     logger.info(
         "Resolved HyperPod datamix context for model '%s' "
