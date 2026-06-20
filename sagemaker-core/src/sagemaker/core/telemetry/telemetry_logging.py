@@ -106,33 +106,67 @@ def _attr_to_key(attr: str) -> str:
     return parts[0] + "".join(p.capitalize() for p in parts[1:])
 
 
-def _extract_telemetry_params(instance, emit=None, emit_presence=None) -> str:
-    """Extract telemetry params from an instance based on emit/emit_presence lists.
+class TelemetryParamType:
+    """Constants for telemetry parameter extraction types."""
+    ATTR_VALUE = "attr_value"
+    ATTR_EXISTS = "attr_exists"
+    ATTR_CALL = "attr_call"
+    KWARG_VALUE = "kwarg_value"
+    KWARG_EXISTS = "kwarg_exists"
+    STATIC = "static"
+
+
+def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
+    """Extract telemetry params from instance/kwargs based on telemetry_params list.
 
     Args:
-        instance: The class instance (args[0]) to extract attributes from.
-        emit: List of attribute names whose actual values should be emitted.
-        emit_presence: List of attribute names where only presence (true/false) is emitted.
+        instance: The class instance (args[0]).
+        kwargs: The kwargs dict from the decorated function call.
+        telemetry_params: List of tuples defining what to extract.
+            - ("attr_name", ATTR_VALUE) → emit self.attr value
+            - ("attr_name", ATTR_EXISTS) → emit true/false
+            - ("method_name", ATTR_CALL) → call self.method(), emit return value
+            - ("kwarg_name", KWARG_VALUE) → emit kwargs value
+            - ("kwarg_name", KWARG_EXISTS) → emit true/false
+            - ("key", STATIC, "value") → emit fixed value
 
     Returns:
-        str: URL query params string (e.g., "&x-modelName=llama&x-hasNetworking=true").
+        str: URL query params string.
     """
+    if not telemetry_params:
+        return ""
     parts = []
-    if emit:
-        for attr in emit:
-            value = getattr(instance, attr, None)
+    T = TelemetryParamType
+    for param in telemetry_params:
+        name, kind = param[0], param[1]
+        key = _attr_to_key(name)
+        if kind == T.STATIC:
+            parts.append(f"&x-{name}={param[2]}")
+        elif kind == T.ATTR_VALUE:
+            value = getattr(instance, name, None)
             if value is not None:
-                key = _attr_to_key(attr)
                 parts.append(f"&x-{key}={value}")
-    if emit_presence:
-        for attr in emit_presence:
-            value = getattr(instance, attr, None)
-            key = _attr_to_key(attr)
+        elif kind == T.ATTR_EXISTS:
+            value = getattr(instance, name, None)
+            parts.append(f"&x-has{key[0].upper()}{key[1:]}={'true' if value else 'false'}")
+        elif kind == T.ATTR_CALL:
+            method = getattr(instance, name, None)
+            if callable(method):
+                try:
+                    parts.append(f"&x-{key}={method()}")
+                except Exception:
+                    pass
+        elif kind == T.KWARG_VALUE:
+            value = kwargs.get(name) if kwargs else None
+            if value is not None:
+                parts.append(f"&x-{key}={value}")
+        elif kind == T.KWARG_EXISTS:
+            value = kwargs.get(name) if kwargs else None
             parts.append(f"&x-has{key[0].upper()}{key[1:]}={'true' if value else 'false'}")
     return "".join(parts)
 
 
-def _telemetry_emitter(feature: str, func_name: str, emit=None, emit_presence=None):
+def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
     """Telemetry Emitter
 
     Decorator to emit telemetry logs for SageMaker Python SDK functions. This class needs
@@ -144,9 +178,8 @@ def _telemetry_emitter(feature: str, func_name: str, emit=None, emit_presence=No
     Args:
         feature: The Feature enum value for this telemetry event.
         func_name: Human-readable function name for tracking.
-        emit: Optional list of instance attribute names whose values will be sent in telemetry.
-        emit_presence: Optional list of instance attribute names where only presence is tracked
-            (emits true/false).
+        telemetry_params: Optional list of tuples defining granular params to extract.
+            See TelemetryParamType for available types.
     """
 
     def decorator(func):
@@ -243,8 +276,8 @@ def _telemetry_emitter(feature: str, func_name: str, emit=None, emit_presence=No
                     extra += f"&x-createdBy={quote(created_by, safe='')}"
 
                 # Extract granular telemetry params from the instance
-                if (emit or emit_presence) and len(args) > 0:
-                    extra += _extract_telemetry_params(args[0], emit, emit_presence)
+                if telemetry_params and len(args) > 0:
+                    extra += _extract_telemetry_params(args[0], kwargs, telemetry_params)
 
                 start_timer = perf_counter()
                 try:

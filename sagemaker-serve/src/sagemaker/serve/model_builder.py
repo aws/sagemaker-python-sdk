@@ -144,7 +144,7 @@ from sagemaker.core.workflow import is_pipeline_variable
 from sagemaker.core import image_uris
 from sagemaker.core.fw_utils import model_code_key_prefix
 from sagemaker.train.base_trainer import BaseTrainer
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 
 _LOWEST_MMS_VERSION = "1.2"
@@ -3328,8 +3328,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="model_builder.build",
-        emit=["mode"],
-        emit_presence=["network", "source_code", "inference_spec"],
+        telemetry_params=[
+            ("mode", TelemetryParamType.ATTR_VALUE),
+            ("network", TelemetryParamType.ATTR_EXISTS),
+            ("source_code", TelemetryParamType.ATTR_EXISTS),
+            ("inference_spec", TelemetryParamType.ATTR_EXISTS),
+        ],
     )
     @runnable_by_pipeline
     def build(
@@ -4196,8 +4200,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="model_builder.deploy",
-        emit=["mode", "instance_type"],
-        emit_presence=["network", "compute"],
+        telemetry_params=[
+            ("mode", TelemetryParamType.ATTR_VALUE),
+            ("instance_type", TelemetryParamType.ATTR_VALUE),
+            ("_is_model_customization", TelemetryParamType.ATTR_CALL),
+            ("network", TelemetryParamType.ATTR_EXISTS),
+            ("compute", TelemetryParamType.ATTR_EXISTS),
+            ("update_endpoint", TelemetryParamType.KWARG_EXISTS),
+        ],
     )
     def deploy(
         self,

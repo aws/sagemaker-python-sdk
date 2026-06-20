@@ -14,7 +14,7 @@ from pydantic import validator
 from .base_evaluator import BaseEvaluator
 from .constants import EvalType
 from .execution import EvaluationPipelineExecution
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
 
@@ -388,8 +388,12 @@ class CustomScorerEvaluator(BaseEvaluator):
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="CustomScorerEvaluator.evaluate",
-        emit=["evaluator"],
-        emit_presence=["networking", "kms_key_id", "mlflow_resource_arn"],
+        telemetry_params=[
+            ("evaluator", TelemetryParamType.ATTR_VALUE),
+            ("networking", TelemetryParamType.ATTR_EXISTS),
+            ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
+            ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
+        ],
     )
     def evaluate(self) -> EvaluationPipelineExecution:
         """Create and start a custom scorer evaluation job.

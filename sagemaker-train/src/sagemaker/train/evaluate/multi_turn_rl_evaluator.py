@@ -23,7 +23,7 @@ from .mtrl_pipeline_templates import (
     MTRL_TEMPLATE_BASE_MODEL_ONLY,
     MTRL_TEMPLATE_FINE_TUNED_ONLY,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 
 if TYPE_CHECKING:
@@ -536,8 +536,14 @@ class MultiTurnRLEvaluator(BaseEvaluator):
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="MultiTurnRLEvaluator.evaluate",
-        emit=["agent_qualifier"],
-        emit_presence=["networking", "kms_key_id", "mlflow_resource_arn", "agent_config", "stopping_condition"],
+        telemetry_params=[
+            ("agent_qualifier", TelemetryParamType.ATTR_VALUE),
+            ("networking", TelemetryParamType.ATTR_EXISTS),
+            ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
+            ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
+            ("agent_config", TelemetryParamType.ATTR_EXISTS),
+            ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
+        ],
     )
     def evaluate(self) -> 'MTRLEvaluationExecution':
         """Render the MTRL pipeline and start a non-blocking execution.
