@@ -107,12 +107,58 @@ def _attr_to_key(attr: str) -> str:
 
 
 class TelemetryParamType:
-    """Constants for telemetry parameter extraction types."""
+    """Constants for telemetry parameter extraction types.
+
+    Used in the `telemetry_params` list passed to @_telemetry_emitter decorator.
+    Each entry in telemetry_params is a tuple of (name, type) or (name, type, value).
+
+    To add a new telemetry signal to any class:
+    1. Identify what you want to track (instance attribute, method return, or kwarg).
+    2. Pick the appropriate type constant below.
+    3. Add a tuple to the `telemetry_params` list on the decorator.
+
+    Example:
+        @_telemetry_emitter(
+            feature=Feature.MODEL_CUSTOMIZATION,
+            func_name="MyClass.my_method",
+            telemetry_params=[
+                ("model_name", TelemetryParamType.ATTR_VALUE),       # emits x-modelName=<value>
+                ("networking", TelemetryParamType.ATTR_EXISTS),       # emits x-hasNetworking=true/false
+                ("_is_fine_tuned", TelemetryParamType.ATTR_CALL),    # emits x-isFineTuned=True/False
+                ("instance_type", TelemetryParamType.KWARG_VALUE),   # emits x-instanceType=<kwarg value>
+                ("kms_key_id", TelemetryParamType.KWARG_EXISTS),     # emits x-hasKmsKeyId=true/false
+                ("deployTarget", TelemetryParamType.STATIC, "bedrock"),  # emits x-deployTarget=bedrock
+            ],
+        )
+    """
+
+    # Reads self.<name> and emits the actual value.
+    # Use for: model names, training types, modes — values useful for analytics.
+    # Emits nothing if the attribute is None.
     ATTR_VALUE = "attr_value"
+
+    # Reads self.<name> and emits true/false based on whether it's set (not None).
+    # Use for: sensitive configs (KMS, VPC, MLflow) where you only need to know
+    # if the customer configured it, without exposing the actual value.
     ATTR_EXISTS = "attr_exists"
+
+    # Calls self.<name>() and emits the return value.
+    # Use for: computed/derived values like _is_model_customization(), _is_nova_model().
+    # Silently skipped if the method raises an exception.
     ATTR_CALL = "attr_call"
+
+    # Reads kwargs[<name>] from the decorated method's keyword arguments and emits the value.
+    # Use for: method parameters not stored on self (e.g., instance_type passed to deploy()).
+    # Emits nothing if the kwarg is None or not provided.
     KWARG_VALUE = "kwarg_value"
+
+    # Reads kwargs[<name>] and emits true/false based on whether it's provided and truthy.
+    # Use for: optional method parameters where you only need presence info
+    # (e.g., update_endpoint, imported_model_kms_key_id).
     KWARG_EXISTS = "kwarg_exists"
+
+    # Emits a fixed key-value pair. Tuple format: ("key", STATIC, "value").
+    # Use for: distinguishing class identity (e.g., deployTarget=bedrock vs sagemaker).
     STATIC = "static"
 
 
