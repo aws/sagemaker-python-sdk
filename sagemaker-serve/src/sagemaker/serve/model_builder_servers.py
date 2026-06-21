@@ -25,6 +25,7 @@ from typing import Union
 # SageMaker core imports
 from sagemaker.core.resources import Model, Endpoint
 from sagemaker.core.utils.utils import logger
+from sagemaker.core.common_utils import _is_s3_uri
 
 
 # SageMaker serve imports
@@ -205,11 +206,30 @@ class _ModelBuilderServers(object):
 
         from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
 
-        _create_dir_structure(self.model_path)
+        # Detect an S3 weight source (model_path="s3://..." or
+        # s3_model_data_url="s3://...") before any local directory is created. TGI's
+        # HF_MODEL_ID does not accept an S3 URI, so an S3 source is attached as an
+        # uncompressed ModelDataSource (mounted at /opt/ml/model) instead of being
+        # downloaded from the HuggingFace Hub.
+        s3_model_source = None
+        if _is_s3_uri(self.model_path):
+            s3_model_source = self.model_path
+        elif _is_s3_uri(self.s3_model_data_url):
+            s3_model_source = self.s3_model_data_url
+
+        # Skip the local mkdir for an S3 source so we do not create a literal
+        # local "s3:/..." directory tree; only create it for genuine local paths.
+        if not s3_model_source:
+            _create_dir_structure(self.model_path)
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
             # Configure HuggingFace model for TGI
-            self.env_vars.setdefault("HF_MODEL_ID", self.model)
+            if s3_model_source:
+                # Weights are mounted at /opt/ml/model; do not download from the Hub.
+                self.env_vars.setdefault("HF_MODEL_ID", "/opt/ml/model")
+                self.env_vars.setdefault("HF_HUB_OFFLINE", "1")
+            else:
+                self.env_vars.setdefault("HF_MODEL_ID", self.model)
 
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
@@ -252,6 +272,11 @@ class _ModelBuilderServers(object):
         if not self._optimizing:
             if self.mode in LOCAL_MODES:
                 self._prepare_for_mode(should_upload_artifacts=True)
+            elif s3_model_source:
+                # Route the S3 weight source through _prepare_for_mode so the
+                # _upload_tgi_artifacts S3 branch builds the uncompressed
+                # ModelDataSource (CompressionType="None", S3DataType="S3Prefix").
+                self.s3_model_data_url, _ = self._prepare_for_mode(model_path=s3_model_source)
             else:
                 self.s3_model_data_url, _ = self._prepare_for_mode()
 
@@ -284,7 +309,10 @@ class _ModelBuilderServers(object):
 
         model = self._create_model()
 
-        if "HF_HUB_OFFLINE" in self.env_vars:
+        # Reset the in-memory HF_HUB_OFFLINE flag after the container is built,
+        # EXCEPT when weights are mounted from S3: those must stay offline so TGI
+        # loads from /opt/ml/model instead of phoning home to the HuggingFace Hub.
+        if "HF_HUB_OFFLINE" in self.env_vars and not s3_model_source:
             self.env_vars.update({"HF_HUB_OFFLINE": "0"})
 
         return model
