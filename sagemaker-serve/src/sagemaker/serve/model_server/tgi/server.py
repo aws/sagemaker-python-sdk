@@ -131,7 +131,11 @@ class SageMakerTgiServing:
                 "S3DataSource": {
                     "CompressionType": "None",
                     "S3DataType": "S3Prefix",
-                    "S3Uri": model_data_url + "/",
+                    # Normalize trailing slashes so an S3Prefix URI has exactly one.
+                    # A user-supplied weight prefix may already end in "/", and a
+                    # doubled "s3://.../prefix//" would not match the actual object
+                    # keys under "s3://.../prefix/" with S3Prefix matching.
+                    "S3Uri": model_data_url.rstrip("/") + "/",
                 }
             }
             if model_data_url
