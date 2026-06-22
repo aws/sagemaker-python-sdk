@@ -1312,6 +1312,23 @@ class BaseEvaluator(BaseModel):
         # Model checkpoint path (fine-tuned model S3 path)
         if isinstance(self.model, str) and self.model.startswith("s3://"):
             base_overrides["recipes.run.model_name_or_path"] = self.model
+        else:
+            # Check if model is a BaseTrainer with a trainer checkpoint
+            from sagemaker.train.base_trainer import BaseTrainer
+            if isinstance(self.model, BaseTrainer):
+                checkpoint_uri = getattr(self.model, '_checkpoint_s3_uri', None)
+                if checkpoint_uri:
+                    base_overrides["recipes.run.model_name_or_path"] = checkpoint_uri
+                    _logger.info("Using trainer checkpoint for eval: %s", checkpoint_uri)
+            # Also check resolved model info for S3 checkpoint
+            if "recipes.run.model_name_or_path" not in base_overrides:
+                try:
+                    from sagemaker.train.common_utils.model_resolution import _ModelType
+                    info = self._get_resolved_model_info()
+                    if info and info.model_type == _ModelType.S3_CHECKPOINT and info.s3_model_path:
+                        base_overrides["recipes.run.model_name_or_path"] = info.s3_model_path
+                except Exception:
+                    _logger.debug("Could not resolve S3 checkpoint from model info", exc_info=True)
 
         # MLflow configuration
         if self.mlflow_resource_arn:

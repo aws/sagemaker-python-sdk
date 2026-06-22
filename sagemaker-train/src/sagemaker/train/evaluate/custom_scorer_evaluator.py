@@ -420,7 +420,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         # Validate platform compatibility (HP checkpoints must eval on HP, SMTJ on SMTJ)
         from sagemaker.train.common_utils.finetune_utils import validate_eval_platform_compatibility
         model_info = self._get_resolved_model_info()
-        model_path = getattr(model_info, 'checkpoint_s3_path', None) if model_info else None
+        model_path = getattr(model_info, 's3_model_path', None) if model_info else None
         validate_eval_platform_compatibility(model_path, self.compute)
 
         # Dispatch based on compute type

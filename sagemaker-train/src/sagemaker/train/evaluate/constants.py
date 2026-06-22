@@ -96,6 +96,22 @@ _NOVA_ESCROW_ACCOUNTS = {
     "ap-northeast-1": "878185805882",
 }
 
+
+def _get_nova_inference_image_uri(region: str) -> Optional[str]:
+    """Get the Nova inference container image URI for a given region.
+
+    Args:
+        region: AWS region (e.g., 'us-east-1').
+
+    Returns:
+        ECR image URI for the Nova inference container, or None if the region
+        is not supported.
+    """
+    escrow_account = _NOVA_ESCROW_ACCOUNTS.get(region)
+    if not escrow_account:
+        return None
+    return f"{escrow_account}.dkr.ecr.{region}.amazonaws.com/nova-inference-repo:SM-Inference-latest"
+
 # Region → Bedrock cross-region inference profile prefix.
 # Scoped to regions where InspectAI is available (Nova LLMAJ requires both).
 _REGION_TO_BEDROCK_PREFIX = {

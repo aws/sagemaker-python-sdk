@@ -29,9 +29,10 @@ from pydantic import root_validator, validator
 from sagemaker.core.s3.client import S3Uploader
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.utils.utils import Unassigned
 
 from .base_evaluator import BaseEvaluator
-from .constants import EvalType, _get_inspect_ai_default_image_uri, _NOVA_ESCROW_ACCOUNTS
+from .constants import EvalType, _get_inspect_ai_default_image_uri, _get_nova_inference_image_uri
 from .execution import EvaluationPipelineExecution
 from .pipeline_templates import INSPECT_AI_TEMPLATE
 
@@ -250,9 +251,17 @@ class InspectAIEvaluator(BaseEvaluator):
 
     @root_validator(skip_on_failure=True)
     def _validate_inference_mode_consistency(cls, values):
+        from sagemaker.train.base_trainer import BaseTrainer
+
         endpoint_name = values.get("endpoint_name")
         model_s3_uri = values.get("model_s3_uri")
         inference_image_uri = values.get("inference_image_uri")
+        model = values.get("model")
+
+        # Skip validation when model is a trainer — _resolve_trainer_model
+        # will fill in model_s3_uri from the trainer's checkpoint.
+        if isinstance(model, BaseTrainer):
+            return values
 
         if endpoint_name and model_s3_uri:
             raise ValueError(
@@ -304,9 +313,52 @@ class InspectAIEvaluator(BaseEvaluator):
             source_mp_arn = getattr(model._latest_job, "output_model_package_arn", None)
         # Standard trainers (SFT, DPO, RLVR, RLAIF) use _latest_training_job
         if not source_mp_arn and hasattr(model, "_latest_training_job") and model._latest_training_job is not None:
-            source_mp_arn = getattr(model._latest_training_job, "output_model_package_arn", None)
+            arn = getattr(model._latest_training_job, "output_model_package_arn", None)
+            # Filter out Unassigned sentinels from sagemaker-core
+            if arn is not None and not isinstance(arn, Unassigned):
+                source_mp_arn = arn
 
         if not source_mp_arn:
+            # Check if trainer has a resolved checkpoint path
+            checkpoint_uri = getattr(model, '_checkpoint_s3_uri', None)
+            if checkpoint_uri:
+                # CreateModel requires trailing slash for S3 prefix URIs
+                if not checkpoint_uri.endswith("/"):
+                    checkpoint_uri += "/"
+                values["model_s3_uri"] = checkpoint_uri
+
+                # Auto-derive inference image if not explicitly provided
+                if not values.get("inference_image_uri"):
+                    model_name = getattr(model, '_model_name', None) or ""
+                    region = None
+                    session = values.get("sagemaker_session")
+                    if session and hasattr(session, "boto_session"):
+                        region = session.boto_session.region_name
+
+                    if "nova" in model_name.lower() and region:
+                        resolved_image = _get_nova_inference_image_uri(region)
+                        if resolved_image:
+                            values["inference_image_uri"] = resolved_image
+                            _logger.info(
+                                "Auto-resolved Nova inference image for trainer checkpoint: "
+                                "model_s3_uri=%s, inference_image_uri=%s",
+                                checkpoint_uri,
+                                resolved_image,
+                            )
+                    else:
+                        _logger.info(
+                            "trainer checkpoint detected but no inference_image_uri set. "
+                            "For non-Nova models, provide inference_image_uri explicitly."
+                        )
+                        values.pop("model_s3_uri", None)
+                else:
+                    _logger.info(
+                        "Auto-resolved trainer checkpoint for create_endpoint mode: "
+                        "model_s3_uri=%s",
+                        checkpoint_uri,
+                    )
+                return values
+
             _logger.info(
                 "Trainer has no completed training job output; falling back to bedrock mode."
             )
@@ -352,12 +404,7 @@ class InspectAIEvaluator(BaseEvaluator):
                     if base_model:
                         hub_content_name = getattr(base_model, "hub_content_name", None)
                         if hub_content_name and "nova" in (hub_content_name or "").lower():
-                            escrow_account = _NOVA_ESCROW_ACCOUNTS.get(region)
-                            if escrow_account:
-                                resolved_image = (
-                                    f"{escrow_account}.dkr.ecr.{region}.amazonaws.com"
-                                    f"/nova-inference-repo:SM-Inference-latest"
-                                )
+                            resolved_image = _get_nova_inference_image_uri(region)
 
                 if resolved_model_s3 and resolved_image:
                     _logger.info(

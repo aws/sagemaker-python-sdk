@@ -5,6 +5,11 @@ import json
 import logging
 import re
 import subprocess
+import tarfile
+import tempfile
+from urllib.parse import urlparse
+
+import boto3
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig
@@ -90,6 +95,7 @@ class BaseTrainer(ABC):
         self.input_data_config = input_data_config
         self.environment = environment or {}
         self.training_image = training_image
+        self._checkpoint_s3_uri = None
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
@@ -410,7 +416,116 @@ class BaseTrainer(ABC):
 
         # Store latest training job reference
         self._latest_training_job = model_trainer._latest_training_job
+
+        if wait:
+            job_name = None
+            if hasattr(self._latest_training_job, 'training_job_name'):
+                job_name = self._latest_training_job.training_job_name
+            elif hasattr(self._latest_training_job, 'name'):
+                job_name = self._latest_training_job.name
+            if job_name:
+                self._try_resolve_checkpoint(job_name, sagemaker_session)
+
         return self._latest_training_job
+
+    def _try_resolve_checkpoint(self, job_name: str, sagemaker_session=None):
+        """Attempt to resolve the checkpoint path from the job manifest.
+
+        Sets ``_checkpoint_s3_uri`` on success; logs a warning on failure.
+        """
+        logger = logging.getLogger(__name__)
+        try:
+            checkpoint_path = self._resolve_checkpoint_from_manifest(
+                job_name=job_name,
+                output_s3_path=self.s3_output_path,
+                sagemaker_session=sagemaker_session,
+            )
+            if checkpoint_path:
+                self._checkpoint_s3_uri = checkpoint_path
+                logger.info("Resolved checkpoint for %s: %s", job_name, checkpoint_path)
+        except Exception as e:
+            logger.warning(
+                "Could not resolve checkpoint from manifest for %s: %s", job_name, e
+            )
+
+    @staticmethod
+    def _resolve_checkpoint_from_manifest(
+        job_name: str,
+        output_s3_path: Optional[str],
+        sagemaker_session=None,
+    ) -> Optional[str]:
+        """Resolve the model checkpoint S3 path from a training job's manifest.
+
+        Supports both platforms:
+        - **SMHP (HyperPod)**: reads ``{output_s3_path}/{job_name}/manifest.json``
+          directly from S3.
+        - **SMTJ (Serverful)**: downloads
+          ``{output_s3_path}/{job_name}/output/output.tar.gz``, extracts
+          ``manifest.json`` from the archive.
+
+        The manifest contains a ``checkpoint_s3_bucket`` field pointing to the
+        final checkpoint location on S3 (e.g. in the customer-escrow bucket).
+
+        Args:
+            job_name: The training job name.
+            output_s3_path: The S3 output path configured for the training job.
+            sagemaker_session: SageMaker session (used for region/boto client).
+
+        Returns:
+            The S3 URI of the checkpoint, or None if unavailable.
+        """
+        if not output_s3_path:
+            return None
+
+        parsed = urlparse(output_s3_path)
+        bucket = parsed.netloc
+        base_key = parsed.path.lstrip("/").rstrip("/")
+
+        region = None
+        if sagemaker_session and hasattr(sagemaker_session, 'boto_session'):
+            region = sagemaker_session.boto_session.region_name
+
+        s3_client = boto3.client("s3", region_name=region) if region else boto3.client("s3")
+
+        manifest = None
+
+        # Try SMHP format first: manifest.json directly in S3
+        manifest_key = f"{base_key}/{job_name}/manifest.json"
+        try:
+            response = s3_client.get_object(Bucket=bucket, Key=manifest_key)
+            manifest = json.loads(response["Body"].read())
+        except Exception:
+            pass
+
+        # Try SMTJ format: manifest.json inside output.tar.gz
+        if manifest is None:
+            tar_key = f"{base_key}/{job_name}/output/output.tar.gz"
+            try:
+                with tempfile.NamedTemporaryFile() as tmp_file:
+                    s3_client.download_file(bucket, tar_key, tmp_file.name)
+                    with tarfile.open(tmp_file.name, "r:gz") as tar:
+                        manifest_file = tar.extractfile("manifest.json")
+                        if manifest_file is not None:
+                            manifest = json.loads(manifest_file.read())
+            except Exception:
+                pass
+
+        if manifest is None:
+            return None
+
+        checkpoint_path = manifest.get("checkpoint_s3_bucket")
+        if not checkpoint_path or not checkpoint_path.strip():
+            return None
+
+        # The manifest may store a relative path (SMHP convention). If it
+        # doesn't start with s3://, it's relative and we cannot resolve it
+        # without knowing the escrow bucket. Return as-is if it's absolute.
+        if not checkpoint_path.startswith("s3://"):
+            return None
+
+        checkpoint_path = checkpoint_path.strip()
+
+        return checkpoint_path
 
     def _train_hyperpod(self, training_dataset=None, validation_dataset=None,
                         wait=True, wait_timeout=None, poll=5):
@@ -582,4 +697,8 @@ class BaseTrainer(ABC):
         logger.info(f"HyperPod job submitted: {job_name}")
 
         self._latest_training_job = job_name
+
+        if wait:
+            self._try_resolve_checkpoint(job_name, sagemaker_session)
+
         return job_name

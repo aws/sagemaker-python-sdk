@@ -635,7 +635,7 @@ class BenchMarkEvaluator(BaseEvaluator):
         # Validate platform compatibility (HP checkpoints must eval on HP, SMTJ on SMTJ)
         from sagemaker.train.common_utils.finetune_utils import validate_eval_platform_compatibility
         model_info = self._get_resolved_model_info()
-        model_path = getattr(model_info, 'checkpoint_s3_path', None) if model_info else None
+        model_path = getattr(model_info, 's3_model_path', None) if model_info else None
         validate_eval_platform_compatibility(model_path, self.compute)
 
         if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
@@ -825,11 +825,6 @@ class BenchMarkEvaluator(BaseEvaluator):
         # --- Resolve run section ---
         recipe_dict.setdefault("run", {})
         recipe_dict["run"]["name"] = _get_unique_name(base_job_name)
-        # Note: run.task is left as-is from the template (indicates job type, not benchmark name).
-        # The benchmark-specific task value ("mmlu", "bbh", etc.) is set in the evaluation section.
-        recipe_dict["run"]["strategy"] = strategy_value
-        recipe_dict["run"]["metric"] = metric_value
-        recipe_dict["run"]["subtask"] = subtask_value
 
         # Resolve output_s3_path
         if self.s3_output_path:

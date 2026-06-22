@@ -134,8 +134,29 @@ class _ModelResolver:
             trainer_model_arn = getattr(base_model, '_model_arn', None)
             trainer_model_name = getattr(base_model, '_model_name', None)
             if trainer_model_arn and trainer_model_name:
+                # Check for source model package ARN from completed training
+                source_mp_arn = None
                 job = getattr(base_model, '_latest_job', None)
-                source_mp_arn = getattr(job, 'output_model_package_arn', None) if job else None
+                if job:
+                    source_mp_arn = getattr(job, 'output_model_package_arn', None)
+                if not source_mp_arn:
+                    training_job = getattr(base_model, '_latest_training_job', None)
+                    if training_job and hasattr(training_job, 'output_model_package_arn'):
+                        arn = training_job.output_model_package_arn
+                        if arn and not isinstance(arn, Unassigned):
+                            source_mp_arn = arn
+                # If there's a trainer checkpoint, prefer S3_CHECKPOINT type
+                checkpoint_uri = getattr(base_model, '_checkpoint_s3_uri', None)
+                if checkpoint_uri and not source_mp_arn:
+                    return _ModelInfo(
+                        base_model_name=trainer_model_name,
+                        base_model_arn=trainer_model_arn,
+                        source_model_package_arn=None,
+                        model_type=_ModelType.S3_CHECKPOINT,
+                        hub_content_name=trainer_model_name,
+                        additional_metadata={},
+                        s3_model_path=checkpoint_uri,
+                    )
                 return _ModelInfo(
                     base_model_name=trainer_model_name,
                     base_model_arn=trainer_model_arn,
@@ -143,6 +164,19 @@ class _ModelResolver:
                     model_type=_ModelType.FINE_TUNED if source_mp_arn else _ModelType.JUMPSTART,
                     hub_content_name=trainer_model_name,
                     additional_metadata={},
+                )
+            # Check for trainer checkpoint path (set after _train_hyperpod completes)
+            checkpoint_uri = getattr(base_model, '_checkpoint_s3_uri', None)
+            if checkpoint_uri:
+                model_name = getattr(base_model, '_model_name', None) or "hyperpod-checkpoint"
+                return _ModelInfo(
+                    base_model_name=model_name,
+                    base_model_arn="",
+                    source_model_package_arn=None,
+                    model_type=_ModelType.S3_CHECKPOINT,
+                    hub_content_name=model_name,
+                    additional_metadata={},
+                    s3_model_path=checkpoint_uri,
                 )
             # Check for AgentRFT Job (MultiTurnRLTrainer uses _latest_job, not _latest_training_job)
             if hasattr(base_model, '_latest_job') and base_model._latest_job is not None:

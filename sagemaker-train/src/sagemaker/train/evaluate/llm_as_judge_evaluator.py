@@ -15,7 +15,7 @@ from .base_evaluator import BaseEvaluator
 from .constants import (
     EvalType,
     _get_inspect_ai_default_image_uri,
-    _NOVA_ESCROW_ACCOUNTS,
+    _get_nova_inference_image_uri,
     _REGION_TO_BEDROCK_PREFIX,
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
@@ -530,12 +530,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                     and not isinstance(hub_content_name, Unassigned)
                     and "nova" in hub_content_name.lower()
                 ):
-                    escrow_account = _NOVA_ESCROW_ACCOUNTS.get(region)
-                    if escrow_account:
-                        inference_image_uri = (
-                            f"{escrow_account}.dkr.ecr.{region}.amazonaws.com"
-                            f"/nova-inference-repo:SM-Inference-latest"
-                        )
+                    inference_image_uri = _get_nova_inference_image_uri(region)
 
         if not inference_image_uri:
             raise ValueError(
