@@ -418,18 +418,25 @@ class RecipeResolver:
         user_dict = {}
         if self._user_recipe_path:
             user_dict = _load_user_recipe(self._user_recipe_path)
-            if not self._full_recipe_template:
-                self._warn_unknown_keys(user_dict, base_dict)
 
-        # Warn about unknown keys in overrides (only in legacy mode)
-        if self._overrides and not self._full_recipe_template:
-            self._warn_unknown_keys(self._overrides, base_dict)
-
-        # Phase 3: Strip protected keys from copies (don't mutate loaded inputs)
+        # Phase 3: Strip protected keys and drop unknown keys from copies
+        # (don't mutate loaded inputs).
         user_dict_for_merge = copy.deepcopy(user_dict)
         overrides_for_merge = copy.deepcopy(self._overrides)
         self._strip_protected_keys(user_dict_for_merge, key_path_map)
         self._strip_protected_keys(overrides_for_merge, key_path_map)
+        # Overrides and user recipes may only modify parameters that already
+        # exist in the base recipe. Any key not present in the recipe is
+        # dropped (with a warning) so it is never merged in. (No-op when the
+        # dict is empty, e.g. no user recipe was provided.)
+        # Prune the user recipe (loaded from YAML) against the base recipe.
+        self._drop_unknown_keys(
+            user_dict_for_merge,
+            base_dict,
+            source=f"user recipe ({self._user_recipe_path})",
+        )
+        # Prune the programmatic overrides dict against the base recipe.
+        self._drop_unknown_keys(overrides_for_merge, base_dict, source="overrides")
 
         # Phase 4: OmegaConf 3-way merge (base < user < overrides)
         _register_custom_resolvers()
@@ -467,28 +474,50 @@ class RecipeResolver:
         """
         return self.resolve()
 
-    def _warn_unknown_keys(
-        self, user_dict: Dict[str, Any], base_dict: Dict[str, Any]
+    def _drop_unknown_keys(
+        self,
+        override_dict: Dict[str, Any],
+        base_dict: Dict[str, Any],
+        source: str,
+        _path: str = "",
     ) -> None:
-        """Log warnings for keys in user recipe that don't exist in base."""
+        """Drop keys not present in the base recipe and warn about each one.
 
-        def _collect_keys(d, prefix=""):
-            keys = set()
-            for k, v in d.items():
-                full_key = f"{prefix}.{k}" if prefix else k
-                keys.add(full_key)
-                if isinstance(v, dict):
-                    keys.update(_collect_keys(v, full_key))
-            return keys
+        Overrides (from the overrides dict or a user recipe) may only modify
+        parameters that already exist in the base recipe. Any key with no
+        counterpart in the base recipe is removed from ``override_dict`` in
+        place so it is never merged into the resolved recipe. A warning is
+        logged for every dropped key.
 
-        base_keys = _collect_keys(base_dict)
-        user_keys = _collect_keys(user_dict)
-        unknown = user_keys - base_keys
-        for key in sorted(unknown):
-            logger.warning(
-                f"Unknown key '{key}' in user recipe will be included but is not "
-                f"part of the base template. It will not be validated."
-            )
+        Walks both dicts in parallel so the comparison respects structure: an
+        override key is "known" only if a key of the same name exists at the
+        same location in the base recipe.
+
+        Args:
+            override_dict: Override/user-recipe dict to prune (mutated in place).
+            base_dict: The base recipe dict to validate keys against.
+            source: Human-readable origin label used in the warning message
+                (e.g. "overrides" or "user recipe (...)").
+            _path: Internal dotpath accumulator used for warning messages.
+        """
+        if not isinstance(override_dict, dict) or not isinstance(base_dict, dict):
+            return
+
+        for key in list(override_dict.keys()):
+            dotpath = f"{_path}.{key}" if _path else key
+            if key not in base_dict:
+                logger.warning(
+                    f"Override key '{dotpath}' from {source} does not exist in "
+                    f"the recipe and will be dropped."
+                )
+                del override_dict[key]
+                continue
+            # Recurse into nested mappings so unknown nested keys are dropped
+            # while known sibling keys are preserved.
+            if isinstance(override_dict[key], dict) and isinstance(base_dict[key], dict):
+                self._drop_unknown_keys(
+                    override_dict[key], base_dict[key], source, dotpath
+                )
 
     def _strip_protected_keys(
         self, d: Dict[str, Any], key_path_map: Dict[str, str]

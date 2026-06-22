@@ -25,6 +25,9 @@ from sagemaker.core.helper.iam_role_resolver import (
     _SDK_ROLE_TAGS,
     _is_wildcard_scope,
     _role_uses_placeholder,
+    _role_trusts_service,
+    _trusted_services_in_document,
+    _expected_trust_services,
 )
 
 
@@ -1236,3 +1239,257 @@ class TestBroadPermissionWarnings:
                 provided_role=None, role_type="training", sagemaker_session=mock_session
             )
         assert not any("Glue catalog metadata" in r.getMessage() for r in caplog.records)
+
+
+class TestRoleTrustsService:
+    """Tests for the trust-policy check on the caller's role (assume-role bug)."""
+
+    def test_expected_trust_services_training(self):
+        assert _expected_trust_services("training") == {"sagemaker.amazonaws.com"}
+
+    def test_expected_trust_services_multi_principal(self):
+        # feature_store trusts both sagemaker and the scheduler service.
+        assert _expected_trust_services("feature_store") == {
+            "sagemaker.amazonaws.com",
+            "scheduler.amazonaws.com",
+        }
+
+    def test_trusted_services_collects_service_principals(self):
+        doc = {
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "sagemaker.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                }
+            ]
+        }
+        assert _trusted_services_in_document(doc) == {"sagemaker.amazonaws.com"}
+
+    def test_trusted_services_ignores_non_assume_and_deny(self):
+        doc = {
+            "Statement": [
+                # Deny statement should be ignored.
+                {
+                    "Effect": "Deny",
+                    "Principal": {"Service": "sagemaker.amazonaws.com"},
+                    "Action": "sts:AssumeRole",
+                },
+                # Non-AssumeRole action should be ignored.
+                {
+                    "Effect": "Allow",
+                    "Principal": {"Service": "events.amazonaws.com"},
+                    "Action": "sts:TagSession",
+                },
+            ]
+        }
+        assert _trusted_services_in_document(doc) == set()
+
+    def test_trusted_services_account_principal_only(self):
+        # An admin role trusted by an account root has no Service principal.
+        doc = {
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {"AWS": "arn:aws:iam::123456789012:root"},
+                    "Action": "sts:AssumeRole",
+                }
+            ]
+        }
+        assert _trusted_services_in_document(doc) == set()
+
+    def test_role_trusts_service_true(self):
+        mock_iam = MagicMock()
+        mock_iam.get_role.return_value = {
+            "Role": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {"Service": "sagemaker.amazonaws.com"},
+                            "Action": "sts:AssumeRole",
+                        }
+                    ]
+                }
+            }
+        }
+        assert _role_trusts_service(
+            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training"
+        ) is True
+
+    def test_role_trusts_service_false_for_admin_role(self):
+        mock_iam = MagicMock()
+        mock_iam.get_role.return_value = {
+            "Role": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {"AWS": "arn:aws:iam::123456789012:root"},
+                            "Action": "sts:AssumeRole",
+                        }
+                    ]
+                }
+            }
+        }
+        assert _role_trusts_service(
+            mock_iam, "arn:aws:iam::123456789012:role/Admin", "training"
+        ) is False
+
+    def test_role_trusts_service_url_encoded_document(self):
+        mock_iam = MagicMock()
+        mock_iam.get_role.return_value = {
+            "Role": {
+                "AssumeRolePolicyDocument": json.dumps(
+                    {
+                        "Statement": [
+                            {
+                                "Effect": "Allow",
+                                "Principal": {"Service": "sagemaker.amazonaws.com"},
+                                "Action": "sts:AssumeRole",
+                            }
+                        ]
+                    }
+                )
+            }
+        }
+        assert _role_trusts_service(
+            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training"
+        ) is True
+
+    def test_role_trusts_service_none_when_document_missing(self):
+        mock_iam = MagicMock()
+        mock_iam.get_role.return_value = {"Role": {}}
+        assert _role_trusts_service(
+            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training"
+        ) is None
+
+    def test_role_trusts_service_none_on_access_denied(self):
+        mock_iam = MagicMock()
+        mock_iam.get_role.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": ""}}, "GetRole"
+        )
+        assert _role_trusts_service(
+            mock_iam, "arn:aws:iam::123456789012:role/MyRole", "training"
+        ) is None
+
+    def _make_admin_caller_mocks(self):
+        """Caller is an admin role: all permissions allowed, but NOT SageMaker-trusted."""
+        mock_session = MagicMock()
+        mock_iam = MagicMock()
+        mock_sts = MagicMock()
+
+        def client_factory(service, **kwargs):
+            return mock_iam if service == "iam" else mock_sts
+
+        mock_session.boto_session.client.side_effect = client_factory
+        mock_sts.get_caller_identity.return_value = {
+            "Arn": "arn:aws:sts::123456789012:assumed-role/Admin/sess",
+            "Account": "123456789012",
+        }
+        mock_iam.exceptions.NoSuchEntityException = type(
+            "NoSuchEntityException", (ClientError,), {}
+        )
+
+        admin_arn = "arn:aws:iam::123456789012:role/Admin"
+        auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"
+
+        # get_role is called for: caller-role resolution, the trust-policy check,
+        # and then the auto-role lookup (which must 404 to trigger creation).
+        def get_role(RoleName, **kwargs):
+            if RoleName == "Admin":
+                return {
+                    "Role": {
+                        "Arn": admin_arn,
+                        # Admin role: trusted by the account, not by SageMaker.
+                        "AssumeRolePolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Principal": {"AWS": "arn:aws:iam::123456789012:root"},
+                                    "Action": "sts:AssumeRole",
+                                }
+                            ]
+                        },
+                    }
+                }
+            raise mock_iam.exceptions.NoSuchEntityException(
+                {"Error": {"Code": "NoSuchEntity", "Message": ""}}, "GetRole"
+            )
+
+        mock_iam.get_role.side_effect = get_role
+        # All permission simulations report "allowed".
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [
+            {"EvaluationResults": [{"EvalActionName": "s3:GetObject", "EvalDecision": "allowed"}]}
+        ]
+        mock_iam.get_paginator.return_value = mock_paginator
+        mock_iam.create_role.return_value = {"Role": {"Arn": auto_arn}}
+        mock_iam.list_attached_role_policies.return_value = {"AttachedPolicies": []}
+        return mock_session, mock_iam, auto_arn
+
+    def test_admin_caller_not_trusted_falls_back_to_auto_role(self, caplog):
+        """An admin caller role with all perms but no SageMaker trust is not reused."""
+        mock_session, mock_iam, auto_arn = self._make_admin_caller_mocks()
+
+        with patch("sagemaker.core.helper.iam_role_resolver.time.sleep"), caplog.at_level(
+            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        ):
+            result = resolve_or_create_role(
+                provided_role=None,
+                role_type="training",
+                sagemaker_session=mock_session,
+            )
+
+        # The untrusted caller role is NOT returned; the auto-role is created instead.
+        assert result == auto_arn
+        mock_iam.create_role.assert_called_once()
+        # The fallback is surfaced to the user at WARNING level.
+        assert any(
+            r.levelno == logging.WARNING
+            and "trust policy does not allow" in r.getMessage()
+            and "sagemaker.amazonaws.com" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_trusted_caller_role_is_reused(self):
+        """A caller role that IS SageMaker-trusted (and has perms) is reused."""
+        mock_session = MagicMock()
+        mock_iam = MagicMock()
+        mock_sts = MagicMock()
+
+        def client_factory(service, **kwargs):
+            return mock_iam if service == "iam" else mock_sts
+
+        mock_session.boto_session.client.side_effect = client_factory
+        mock_sts.get_caller_identity.return_value = {
+            "Arn": "arn:aws:sts::123456789012:assumed-role/NotebookRole/sess",
+            "Account": "123456789012",
+        }
+        role_arn = "arn:aws:iam::123456789012:role/NotebookRole"
+        mock_iam.get_role.return_value = {
+            "Role": {
+                "Arn": role_arn,
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {"Service": "sagemaker.amazonaws.com"},
+                            "Action": "sts:AssumeRole",
+                        }
+                    ]
+                },
+            }
+        }
+        mock_paginator = MagicMock()
+        mock_paginator.paginate.return_value = [
+            {"EvaluationResults": [{"EvalActionName": "s3:GetObject", "EvalDecision": "allowed"}]}
+        ]
+        mock_iam.get_paginator.return_value = mock_paginator
+
+        result = resolve_or_create_role(
+            provided_role=None, role_type="training", sagemaker_session=mock_session
+        )
+
+        assert result == role_arn
+        mock_iam.create_role.assert_not_called()

@@ -19,6 +19,7 @@ import json
 import re
 import shutil
 import tempfile
+from collections.abc import Mapping
 from urllib.request import urlretrieve
 from typing import Dict, Any, Optional, Tuple, Union
 
@@ -67,6 +68,55 @@ def _load_recipes_cfg() -> str:
     return training_recipes_cfg
 
 
+def _drop_unknown_recipe_overrides(
+    overrides: Dict[str, Any],
+    base_recipe: Any,
+    _path: str = "",
+) -> Dict[str, Any]:
+    """Drop override keys that don't exist in the base recipe, warning on each.
+
+    Recipe overrides may only modify parameters that already exist in the base
+    recipe. A key with no counterpart in the recipe (e.g. ``max_steps`` for a
+    model whose recipe has no such field) is dropped instead of being injected
+    unvalidated, and a warning naming the dropped key is logged.
+
+    Walks the override dict and the base recipe in parallel so the comparison
+    respects structure: an override key is "known" only if a key of the same
+    name exists at the same location in the base recipe. Returns a new dict
+    containing only the known keys (the input is not mutated).
+
+    Args:
+        overrides: The user-supplied recipe overrides dict.
+        base_recipe: The loaded base recipe (dict or OmegaConf mapping).
+        _path: Internal dotpath accumulator used for warning messages.
+
+    Returns:
+        A filtered copy of ``overrides`` with unknown keys removed.
+    """
+    if not isinstance(overrides, dict):
+        return overrides
+
+    filtered: Dict[str, Any] = {}
+    for key, value in overrides.items():
+        dotpath = f"{_path}.{key}" if _path else key
+        base_has_key = isinstance(base_recipe, Mapping) and key in base_recipe
+        if not base_has_key:
+            logger.warning(
+                "Recipe override key '%s' does not exist in the recipe and will "
+                "be dropped.",
+                dotpath,
+            )
+            continue
+        base_value = base_recipe[key]
+        # Recurse into nested mappings so unknown nested keys are dropped while
+        # known sibling keys are preserved.
+        if isinstance(value, dict) and isinstance(base_value, Mapping):
+            filtered[key] = _drop_unknown_recipe_overrides(value, base_value, dotpath)
+        else:
+            filtered[key] = value
+    return filtered
+
+
 def _load_base_recipe(
     training_recipe: str,
     recipe_overrides: Optional[Dict[str, Any]] = None,
@@ -111,6 +161,9 @@ def _load_base_recipe(
 
     recipe = OmegaConf.load(temp_local_recipe)
     os.unlink(temp_local_recipe)
+    # Overrides may only modify keys that already exist in the recipe; drop any
+    # unknown keys (with a warning) so bogus overrides are never injected.
+    recipe_overrides = _drop_unknown_recipe_overrides(recipe_overrides, recipe)
     recipe = OmegaConf.merge(recipe, recipe_overrides)
     return recipe
 

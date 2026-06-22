@@ -492,6 +492,89 @@ class TestFullRecipeTemplate:
         # is stripped.
         assert result["training_config"]["dataset_catalog"] == "curated-nova-mix"
 
+    def test_override_key_not_in_recipe_is_dropped(self, caplog):
+        """An override key absent from the recipe is dropped, not merged."""
+        resolver = RecipeResolver(
+            recipe_template={"training_config": {}},
+            override_spec=self._make_spec(),
+            full_recipe_template=self._make_full_template(),
+            overrides={"training_config": {"nonexistent_key": 123}},
+        )
+
+        with caplog.at_level("WARNING"):
+            result = resolver.resolve()
+
+        # The unknown key never makes it into the resolved recipe.
+        assert "nonexistent_key" not in result["training_config"]
+        # And the drop is surfaced as a warning.
+        assert any(
+            "nonexistent_key" in r.message and "dropped" in r.message
+            for r in caplog.records
+        )
+
+    def test_override_key_in_recipe_but_not_spec_is_kept(self):
+        """A non-spec override key that exists in the recipe is still applied."""
+        resolver = RecipeResolver(
+            recipe_template={"training_config": {}},
+            override_spec=self._make_spec(),
+            full_recipe_template=self._make_full_template(),
+            # warmup_ratio is in the full template but not in the spec.
+            overrides={"training_config": {"warmup_ratio": 0.42}},
+        )
+
+        result = resolver.resolve()
+
+        assert result["training_config"]["warmup_ratio"] == 0.42
+
+    def test_nested_unknown_key_dropped_known_sibling_kept(self):
+        """Unknown nested keys are dropped while known siblings are applied."""
+        full_template = self._make_full_template()
+        full_template["training_config"]["optimizer"] = {"name": "adamw", "lr": 1e-4}
+
+        resolver = RecipeResolver(
+            recipe_template={"training_config": {}},
+            override_spec=self._make_spec(),
+            full_recipe_template=full_template,
+            overrides={
+                "training_config": {
+                    "optimizer": {"lr": 2e-4, "made_up": True},
+                }
+            },
+        )
+
+        result = resolver.resolve()
+
+        # Known nested key overridden, unknown nested key dropped.
+        assert result["training_config"]["optimizer"]["lr"] == 2e-4
+        assert "made_up" not in result["training_config"]["optimizer"]
+        assert result["training_config"]["optimizer"]["name"] == "adamw"
+
+    def test_user_recipe_key_not_in_recipe_is_dropped(self, tmp_path, caplog):
+        """A user-recipe key absent from the base recipe is dropped + warned."""
+        recipe_content = {
+            "training_config": {"learning_rate": 5e-5, "bogus_param": "x"}
+        }
+        recipe_file = tmp_path / "recipe.yaml"
+        recipe_file.write_text(yaml.dump(recipe_content))
+
+        resolver = RecipeResolver(
+            recipe_template={"training_config": {}},
+            override_spec=self._make_spec(),
+            full_recipe_template=self._make_full_template(),
+            user_recipe_path=str(recipe_file),
+        )
+
+        with caplog.at_level("WARNING"):
+            result = resolver.resolve()
+
+        assert result["training_config"]["learning_rate"] == 5e-5
+        assert "bogus_param" not in result["training_config"]
+        assert any(
+            "bogus_param" in r.message and "dropped" in r.message
+            for r in caplog.records
+        )
+
+
 class TestBuildKeyPathMap:
     """Tests for _build_key_path_map helper."""
 

@@ -389,6 +389,91 @@ def _role_has_sufficient_permissions(
         raise
 
 
+def _expected_trust_services(role_type: str) -> Set[str]:
+    """Return the service principals that must be able to assume a role of this type.
+
+    Derived from the role type's trust policy in the policy config (e.g.
+    ``sagemaker.amazonaws.com`` for training). These are the principals
+    SageMaker assumes the role *as* when running the workload.
+    """
+    statement = IAM_POLICY_CONFIG[role_type]["trust_policy"]["Statement"][0]
+    service = statement["Principal"]["Service"]
+    if isinstance(service, (list, tuple)):
+        return set(service)
+    return {service}
+
+
+def _trusted_services_in_document(trust_document: dict) -> Set[str]:
+    """Collect the service principals allowed to ``sts:AssumeRole`` in a trust policy.
+
+    Only ``Allow`` statements whose action grants ``sts:AssumeRole`` (directly or
+    via ``sts:*`` / ``*``) contribute. Conditions are intentionally ignored: their
+    presence does not change which service principals the policy is written for.
+    """
+    trusted: Set[str] = set()
+    for statement in trust_document.get("Statement", []):
+        if statement.get("Effect") != "Allow":
+            continue
+        actions = statement.get("Action", [])
+        if isinstance(actions, str):
+            actions = [actions]
+        if not any(action in ("sts:AssumeRole", "sts:*", "*") for action in actions):
+            continue
+        principal = statement.get("Principal", {})
+        if not isinstance(principal, dict):
+            continue
+        service = principal.get("Service")
+        if service is None:
+            continue
+        if isinstance(service, str):
+            trusted.add(service)
+        else:
+            trusted.update(service)
+    return trusted
+
+
+def _role_trusts_service(iam_client, role_arn: str, role_type: str) -> Optional[bool]:
+    """Check whether a role's trust policy lets the role type's service assume it.
+
+    A role that grants every required *permission* is still unusable if its trust
+    policy does not allow the service principal (e.g. ``sagemaker.amazonaws.com``)
+    to assume it — ``CreateTrainingJob`` then fails at the API with
+    "Could not assume role". This complements ``_role_has_sufficient_permissions``,
+    which only inspects the role's permission policies, not its trust policy.
+
+    Returns:
+        True  — every required service principal may assume the role.
+        False — at least one required service principal is not trusted.
+        None  — could not be determined (trust document unreadable, or the caller
+                lacks permission to read it). Callers should not block on None.
+    """
+    expected = _expected_trust_services(role_type)
+    if not expected:
+        return True
+
+    role_name = role_arn.split(":role/")[1].split("/")[-1]
+    try:
+        role = iam_client.get_role(RoleName=role_name)["Role"]
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code in ("AccessDenied", "AccessDeniedException"):
+            return None
+        if error_code in ("NoSuchEntity", "NoSuchEntityException"):
+            return False
+        raise
+
+    trust_document = role.get("AssumeRolePolicyDocument")
+    if not trust_document:
+        # Trust policy not returned — verdict unknown; don't block reuse.
+        return None
+    # IAM may URL-encode the stored document; normalize before inspecting.
+    if isinstance(trust_document, str):
+        trust_document = json.loads(unquote(trust_document))
+
+    trusted = _trusted_services_in_document(trust_document)
+    return expected.issubset(trusted)
+
+
 def _policy_document_matches(iam_client, policy_arn: str, desired_document: dict) -> bool:
     """Return True if the policy's default version already matches the desired document."""
     try:
@@ -726,14 +811,37 @@ def _auto_resolve_role(
         # iam:SimulatePrincipalPolicy, and creating a brand-new role in that case
         # would be a regression from the prior get_execution_role() behavior.
         if has_perms is not False:
-            reason = "has sufficient permissions" if has_perms else "assumed usable (unverifiable)"
-            logger.info("Caller role '%s' %s for %s. Using it.", caller_role_arn, reason, role_type)
-            return caller_role_arn
-        logger.info(
-            "Caller role '%s' lacks permissions for %s. Will use/create dedicated role.",
-            caller_role_arn,
-            role_type,
-        )
+            # Permissions are necessary but not sufficient: the role must also
+            # trust the service principal (e.g. sagemaker.amazonaws.com) to assume
+            # it, otherwise CreateTrainingJob fails at the API with "Could not
+            # assume role". A role can hold every permission (e.g. an admin role)
+            # yet not be assumable by SageMaker. Only block reuse on a definitive
+            # "not trusted"; treat an unknown verdict (None) as usable.
+            trusts_service = _role_trusts_service(iam_client, caller_role_arn, role_type)
+            if trusts_service is False:
+                logger.warning(
+                    "Caller role '%s' has the required permissions for %s but its "
+                    "trust policy does not allow '%s' to assume it, so SageMaker "
+                    "cannot use it (CreateTrainingJob would fail with 'Could not "
+                    "assume role'). Falling back to the auto-created '%s' role. To "
+                    "use this role instead, add '%s' as a trusted principal in its "
+                    "trust relationship.",
+                    caller_role_arn,
+                    role_type,
+                    _trust_principal_for(role_type),
+                    IAM_POLICY_CONFIG[role_type]["role_name"],
+                    _trust_principal_for(role_type),
+                )
+            else:
+                reason = "has sufficient permissions" if has_perms else "assumed usable (unverifiable)"
+                logger.info("Caller role '%s' %s for %s. Using it.", caller_role_arn, reason, role_type)
+                return caller_role_arn
+        else:
+            logger.info(
+                "Caller role '%s' lacks permissions for %s. Will use/create dedicated role.",
+                caller_role_arn,
+                role_type,
+            )
 
     # Step 2: Check if default auto-role already exists with sufficient permissions
     config = _load_policy_config()

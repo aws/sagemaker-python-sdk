@@ -23,6 +23,7 @@ from tempfile import NamedTemporaryFile
 
 from sagemaker.train.sm_recipes.utils import (
     _load_base_recipe,
+    _drop_unknown_recipe_overrides,
     _get_args_from_recipe,
     _load_recipes_cfg,
     _configure_gpu_args,
@@ -73,6 +74,75 @@ def test_load_base_recipe_with_overrides(temporary_recipe, training_recipes_cfg)
         load_recipe["trainer"]["max_epochs"] == expected_epochs
         and load_recipe["model"]["num_layers"] == expected_layers
     )
+
+
+def test_load_base_recipe_drops_unknown_overrides(
+    temporary_recipe, training_recipes_cfg, caplog
+):
+    """Override keys absent from the recipe are dropped (and warned), not injected.
+
+    Regression test for the serverful SMTJ path (bug 3): overriding e.g.
+    ``max_steps`` for a model whose recipe has no such field used to inject the
+    bogus key unvalidated. It must now be dropped with a warning, while valid
+    overrides still apply.
+    """
+    recipe_overrides = {
+        "trainer": {"max_epochs": 20, "max_steps": 999},  # max_steps not in recipe
+        "model": {"num_layers": 15},
+        "totally_bogus_section": {"x": 1},  # whole section not in recipe
+    }
+
+    with caplog.at_level("WARNING"):
+        load_recipe = _load_base_recipe(
+            training_recipe=temporary_recipe,
+            recipe_overrides=recipe_overrides,
+            training_recipes_cfg=training_recipes_cfg,
+        )
+
+    # Valid overrides applied.
+    assert load_recipe["trainer"]["max_epochs"] == 20
+    assert load_recipe["model"]["num_layers"] == 15
+    # Unknown keys dropped, not injected.
+    assert "max_steps" not in load_recipe["trainer"]
+    assert "totally_bogus_section" not in load_recipe
+    # Original recipe values preserved where not overridden.
+    assert load_recipe["trainer"]["num_nodes"] == 2
+    # Each dropped key surfaced as a warning.
+    messages = [r.getMessage() for r in caplog.records]
+    assert any("trainer.max_steps" in m and "dropped" in m for m in messages)
+    assert any("totally_bogus_section" in m and "dropped" in m for m in messages)
+
+
+class TestDropUnknownRecipeOverrides:
+    """Unit tests for the _drop_unknown_recipe_overrides helper."""
+
+    def test_keeps_known_keys(self):
+        base = OmegaConf.create({"a": 1, "b": {"c": 2}})
+        result = _drop_unknown_recipe_overrides({"a": 10, "b": {"c": 20}}, base)
+        assert result == {"a": 10, "b": {"c": 20}}
+
+    def test_drops_unknown_top_level_key(self):
+        base = OmegaConf.create({"a": 1})
+        result = _drop_unknown_recipe_overrides({"a": 10, "bogus": 5}, base)
+        assert result == {"a": 10}
+
+    def test_drops_unknown_nested_key_keeps_sibling(self):
+        base = OmegaConf.create({"trainer": {"max_epochs": 10}})
+        result = _drop_unknown_recipe_overrides(
+            {"trainer": {"max_epochs": 20, "max_steps": 99}}, base
+        )
+        assert result == {"trainer": {"max_epochs": 20}}
+
+    def test_plain_dict_base_recipe(self):
+        # Works with a plain dict base, not only OmegaConf mappings.
+        result = _drop_unknown_recipe_overrides(
+            {"a": 1, "bogus": 2}, {"a": 0}
+        )
+        assert result == {"a": 1}
+
+    def test_empty_overrides(self):
+        base = OmegaConf.create({"a": 1})
+        assert _drop_unknown_recipe_overrides({}, base) == {}
 
 
 @pytest.mark.parametrize(
