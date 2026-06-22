@@ -143,7 +143,6 @@ class TelemetryParamType:
 
     # Calls self.<name>() and emits the return value.
     # Use for: computed/derived values like _is_model_customization(), _is_nova_model().
-    # Silently skipped if the method raises an exception.
     ATTR_CALL = "attr_call"
 
     # Reads kwargs[<name>] from the decorated method's keyword arguments and emits the value.

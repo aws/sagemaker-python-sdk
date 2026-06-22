@@ -20,6 +20,7 @@ from .base_evaluator import BaseEvaluator
 from .constants import EvalType
 from .execution import EvaluationPipelineExecution
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_EVALUATOR_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
 
@@ -572,10 +573,7 @@ class BenchMarkEvaluator(BaseEvaluator):
         func_name="BenchMarkEvaluator.evaluate",
         telemetry_params=[
             ("benchmark", TelemetryParamType.ATTR_VALUE),
-            ("networking", TelemetryParamType.ATTR_EXISTS),
-            ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
-            ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
-        ],
+        ] + BASE_EVALUATOR_TELEMETRY_PARAMS,
     )
     def evaluate(self, subtask: Optional[Union[str, List[str]]] = None) -> EvaluationPipelineExecution:
         """Create and start a benchmark evaluation job.

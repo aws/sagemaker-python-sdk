@@ -26,6 +26,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_hyperparameter_values
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name, _ALLOWED_REWARD_MODEL_IDS
 
@@ -199,16 +200,8 @@ class RLAIFTrainer(BaseTrainer):
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="RLAIFTrainer.train",
-        telemetry_params=[
-            ("_model_name", TelemetryParamType.ATTR_VALUE),
-            ("training_type", TelemetryParamType.ATTR_VALUE),
-            ("networking", TelemetryParamType.ATTR_EXISTS),
-            ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
-            ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
-            ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
             ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
-            ("validation_dataset", TelemetryParamType.KWARG_EXISTS),
-            ("wait", TelemetryParamType.KWARG_EXISTS),
         ],
     )
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):

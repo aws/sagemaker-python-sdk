@@ -12,6 +12,7 @@ from pydantic import validator
 
 from .base_evaluator import BaseEvaluator
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_EVALUATOR_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import _ALLOWED_EVALUATOR_MODELS
 
@@ -299,11 +300,8 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         func_name="LLMAsJudgeEvaluator.evaluate",
         telemetry_params=[
             ("evaluator_model", TelemetryParamType.ATTR_VALUE),
-            ("networking", TelemetryParamType.ATTR_EXISTS),
-            ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
-            ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
             ("custom_metrics", TelemetryParamType.ATTR_EXISTS),
-        ],
+        ] + BASE_EVALUATOR_TELEMETRY_PARAMS,
     )
     def evaluate(self):
         """Create and start an LLM-as-judge evaluation job.
