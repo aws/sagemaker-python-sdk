@@ -127,7 +127,6 @@ class TelemetryParamType:
                 ("_is_fine_tuned", TelemetryParamType.ATTR_CALL),    # emits x-isFineTuned=True/False
                 ("instance_type", TelemetryParamType.KWARG_VALUE),   # emits x-instanceType=<kwarg value>
                 ("kms_key_id", TelemetryParamType.KWARG_EXISTS),     # emits x-hasKmsKeyId=true/false
-                ("deployTarget", TelemetryParamType.STATIC, "bedrock"),  # emits x-deployTarget=bedrock
             ],
         )
     """
@@ -157,10 +156,6 @@ class TelemetryParamType:
     # (e.g., update_endpoint, imported_model_kms_key_id).
     KWARG_EXISTS = "kwarg_exists"
 
-    # Emits a fixed key-value pair. Tuple format: ("key", STATIC, "value").
-    # Use for: distinguishing class identity (e.g., deployTarget=bedrock vs sagemaker).
-    STATIC = "static"
-
 
 def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
     """Extract telemetry params from instance/kwargs based on telemetry_params list.
@@ -174,7 +169,6 @@ def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
             - ("method_name", ATTR_CALL) → call self.method(), emit return value
             - ("kwarg_name", KWARG_VALUE) → emit kwargs value
             - ("kwarg_name", KWARG_EXISTS) → emit true/false
-            - ("key", STATIC, "value") → emit fixed value
 
     Returns:
         str: URL query params string.
@@ -186,9 +180,7 @@ def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
     for param in telemetry_params:
         name, kind = param[0], param[1]
         key = _attr_to_key(name)
-        if kind == T.STATIC:
-            parts.append(f"&x-{name}={param[2]}")
-        elif kind == T.ATTR_VALUE:
+        if kind == T.ATTR_VALUE:
             value = getattr(instance, name, None)
             if value is not None:
                 parts.append(f"&x-{key}={value}")

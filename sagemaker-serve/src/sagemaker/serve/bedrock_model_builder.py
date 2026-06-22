@@ -141,7 +141,6 @@ class BedrockModelBuilder:
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="BedrockModelBuilder.deploy",
         telemetry_params=[
-            ("deployTarget", TelemetryParamType.STATIC, "bedrock"),
             ("model_package", TelemetryParamType.ATTR_EXISTS),
             ("imported_model_kms_key_id", TelemetryParamType.KWARG_EXISTS),
         ],

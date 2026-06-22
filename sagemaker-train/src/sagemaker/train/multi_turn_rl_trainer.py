@@ -255,6 +255,7 @@ class MultiTurnRLTrainer(BaseTrainer):
             ("kms_key_arn", TelemetryParamType.ATTR_EXISTS),
             ("mlflow_app_arn", TelemetryParamType.ATTR_EXISTS),
             ("agent_env", TelemetryParamType.ATTR_EXISTS),
+            ("wait", TelemetryParamType.KWARG_EXISTS),
         ],
     )
     def train(

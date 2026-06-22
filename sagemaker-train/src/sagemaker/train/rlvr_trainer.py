@@ -195,6 +195,8 @@ class RLVRTrainer(BaseTrainer):
             ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
             ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
             ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
+            ("validation_dataset", TelemetryParamType.KWARG_EXISTS),
+            ("wait", TelemetryParamType.KWARG_EXISTS),
         ],
     )
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None,
