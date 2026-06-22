@@ -692,9 +692,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         base_model: CoreBaseModel = (
             self._fetch_model_package().inference_specification.containers[0].base_model
         )
+        # Prefer an explicitly configured hub (e.g. a private hub used for
+        # testing or for sourcing pre-release hosting configs); fall back to the
+        # public JumpStart hub when none is set.
+        hub_name = getattr(self, "hub_name", None) or "SageMakerPublicHub"
         hub_content = HubContent.get(
             hub_content_type="Model",
-            hub_name="SageMakerPublicHub",
+            hub_name=hub_name,
             hub_content_name=base_model.hub_content_name,
             hub_content_version=base_model.hub_content_version,
         )
