@@ -23,6 +23,7 @@ class ModelServer(Enum):
     VLLM = 9
     SGLANG = 10
     VLLM_OMNI = 11
+    LLAMACPP = 12
 
 
 class HardwareType(Enum):

@@ -68,6 +68,7 @@ SUPPORTED_MODEL_SERVERS: Set[ModelServer] = {
     ModelServer.VLLM,
     ModelServer.SGLANG,
     ModelServer.VLLM_OMNI,
+    ModelServer.LLAMACPP,
 }
 
 # HuggingFace pipeline tags that should route to the vLLM-omni (multimodal) server.

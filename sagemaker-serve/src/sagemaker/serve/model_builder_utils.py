@@ -727,6 +727,18 @@ class _ModelBuilderUtils:
                 )
                 self.framework = Framework.HUGGINGFACE
 
+            elif effective_model_server == ModelServer.LLAMACPP:
+                # llama.cpp: Use image_uris.retrieve with "huggingface-llamacpp" framework.
+                # This DLC ships both gpu and cpu variants, so instance_type is required to select the right processor.
+                self.image_uri = image_uris.retrieve(
+                    "huggingface-llamacpp",
+                    region=self.region,
+                    version=None,  # Use latest version
+                    image_scope="inference",
+                    instance_type=getattr(self, "instance_type", None),
+                )
+                self.framework = Framework.HUGGINGFACE
+
             elif effective_model_server == ModelServer.TEI:
                 # TEI: Use image_uris.retrieve with "huggingface-tei" framework
                 self.image_uri = image_uris.retrieve(

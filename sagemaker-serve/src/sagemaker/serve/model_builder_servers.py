@@ -122,6 +122,8 @@ class _ModelBuilderServers(object):
             return self._build_for_sglang()
         elif self.model_server == ModelServer.VLLM_OMNI:
             return self._build_for_vllm_omni()
+        elif self.model_server == ModelServer.LLAMACPP:
+            return self._build_for_llamacpp()
         elif self.model_server == ModelServer.MMS:
             return self._build_for_transformers()
         elif self.model_server == ModelServer.SMD:
@@ -392,6 +394,14 @@ class _ModelBuilderServers(object):
             Model: Configured model ready for vLLM-omni deployment.
         """
         return self._build_for_hf_server(ModelServer.VLLM_OMNI)
+
+    def _build_for_llamacpp(self) -> Model:
+        """Build a HuggingFace model for the llama.cpp serving container.
+
+        Returns:
+            Model: Configured model ready for llama.cpp deployment.
+        """
+        return self._build_for_hf_server(ModelServer.LLAMACPP)
 
     def _build_for_djl(self) -> Model:
         """Build model for DJL Serving deployment.
