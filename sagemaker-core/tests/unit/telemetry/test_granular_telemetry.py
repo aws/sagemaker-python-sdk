@@ -153,32 +153,45 @@ class TestExtractTelemetryParams(unittest.TestCase):
 class TestClassifyError(unittest.TestCase):
     """Tests for _classify_error."""
 
-    def test_validation_error(self):
-        assert _classify_error(ValueError("Invalid model name")) == "validation_error"
+    def test_value_error_type(self):
+        assert _classify_error(ValueError("anything")) == "validation_error"
 
-    def test_validation_from_message(self):
-        assert _classify_error(Exception("must be provided")) == "validation_error"
+    def test_type_error_type(self):
+        assert _classify_error(TypeError("bad arg")) == "validation_error"
 
-    def test_auth_error(self):
-        assert _classify_error(Exception("AccessDenied: not authorized")) == "auth_error"
+    def test_timeout_error_type(self):
+        assert _classify_error(TimeoutError("timed out")) == "timeout_error"
 
-    def test_capacity_error(self):
-        assert _classify_error(Exception("InsufficientCapacityException")) == "capacity_error"
+    def test_connection_error_type(self):
+        assert _classify_error(ConnectionError("refused")) == "network_error"
 
-    def test_timeout_error(self):
-        assert _classify_error(TimeoutError("request timed out")) == "timeout_error"
+    def test_aws_validation_exception(self):
+        e = Exception("ValidationException")
+        e.response = {"Error": {"Code": "ValidationException"}}
+        assert _classify_error(e) == "validation_error"
 
-    def test_resource_not_found(self):
-        assert _classify_error(Exception("Model does not exist")) == "resource_not_found"
+    def test_aws_access_denied(self):
+        e = Exception("AccessDeniedException")
+        e.response = {"Error": {"Code": "AccessDeniedException"}}
+        assert _classify_error(e) == "auth_error"
 
-    def test_eula_error(self):
+    def test_aws_resource_not_found(self):
+        e = Exception("ResourceNotFoundException")
+        e.response = {"Error": {"Code": "ResourceNotFoundException"}}
+        assert _classify_error(e) == "resource_not_found"
+
+    def test_aws_throttling(self):
+        e = Exception("ThrottlingException")
+        e.response = {"Error": {"Code": "ThrottlingException"}}
+        assert _classify_error(e) == "throttling_error"
+
+    def test_aws_capacity(self):
+        e = Exception("ResourceLimitExceeded")
+        e.response = {"Error": {"Code": "ResourceLimitExceeded"}}
+        assert _classify_error(e) == "capacity_error"
+
+    def test_eula_error_message(self):
         assert _classify_error(Exception("accept_eula=True required")) == "eula_error"
-
-    def test_throttling_error(self):
-        assert _classify_error(Exception("Rate exceeded")) == "throttling_error"
-
-    def test_network_error(self):
-        assert _classify_error(ConnectionError("network unreachable")) == "network_error"
 
     def test_unknown_error(self):
         assert _classify_error(RuntimeError("something unexpected")) == "unknown"

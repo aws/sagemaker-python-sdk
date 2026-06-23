@@ -73,26 +73,56 @@ STATUS_TO_CODE = {
 
 
 def _classify_error(e: Exception) -> str:
-    """Classify an exception into an actionable error category."""
+    """Classify an exception into an actionable error category.
+
+    Classification priority:
+    1. Python exception type (ValueError, TimeoutError, ConnectionError)
+    2. AWS error code from ClientError (ValidationException, AccessDeniedException, etc.)
+    3. Message-based fallback for generic exceptions
+    """
     error_type = type(e).__name__
     error_msg = str(e).lower()
 
-    if "validation" in error_type.lower() or "invalid" in error_msg or "must be" in error_msg:
+    # 1. Classify by Python exception type
+    if isinstance(e, (ValueError, TypeError)):
         return "validation_error"
-    if "accessdenied" in error_msg or "not authorized" in error_msg or "forbidden" in error_msg:
-        return "auth_error"
-    if "capacity" in error_msg or "insufficientcapacity" in error_msg or "resourcelimitexceeded" in error_msg:
-        return "capacity_error"
-    if "timeout" in error_type.lower() or "timed out" in error_msg or "timeout" in error_msg:
+    if isinstance(e, TimeoutError):
         return "timeout_error"
-    if "not found" in error_msg or "does not exist" in error_msg or "could not find" in error_msg:
+    if isinstance(e, (ConnectionError, OSError)):
+        return "network_error"
+
+    # 2. Classify by AWS error code (botocore ClientError)
+    aws_error_code = ""
+    if hasattr(e, "response"):
+        aws_error_code = e.response.get("Error", {}).get("Code", "").lower()
+
+    if aws_error_code in ("validationexception", "invalidparametervalue", "invalidparametercombination"):
+        return "validation_error"
+    if aws_error_code in ("accessdeniedexception", "unauthorizedaccess", "optinrequired"):
+        return "auth_error"
+    if aws_error_code in ("resourcenotfound", "resourcenotfoundexception"):
+        return "resource_not_found"
+    if aws_error_code in ("resourcelimitexceeded", "insufficientcapacityexception"):
+        return "capacity_error"
+    if aws_error_code in ("throttlingexception", "throttling", "toomanyrequestsexception"):
+        return "throttling_error"
+    if aws_error_code in ("requesttimeout", "requesttimeoutexception"):
+        return "timeout_error"
+
+    # 3. Message-based fallback
+    if "not authorized" in error_msg or "accessdenied" in error_msg:
+        return "auth_error"
+    if "not found" in error_msg or "does not exist" in error_msg:
         return "resource_not_found"
     if "eula" in error_msg or "accept_eula" in error_msg:
         return "eula_error"
-    if "throttl" in error_msg or "rate exceeded" in error_msg or "too many requests" in error_msg:
+    if "timeout" in error_msg or "timed out" in error_msg:
+        return "timeout_error"
+    if "throttl" in error_msg or "rate exceeded" in error_msg:
         return "throttling_error"
-    if "connection" in error_msg or "network" in error_msg or "unreachable" in error_msg:
-        return "network_error"
+    if "capacity" in error_msg:
+        return "capacity_error"
+
     return "unknown"
 
 
