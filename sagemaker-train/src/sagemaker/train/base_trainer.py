@@ -334,6 +334,25 @@ class BaseTrainer(ABC):
         if not _is_nova_model(self._model_name) and "output_path" in override_spec:
             _set_spec_default(override_spec, "output_path", "/opt/ml/model")
 
+        # MLflow configuration: inject tracking URI, experiment name, and run name
+        # into the recipe override spec so they render into {{mlflow_*}} placeholders.
+        # Uses the shared resolve helper to default empty names to base_job_name when
+        # a tracking URI is set (prevents OSS container recipe validation failures).
+        from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
+        job_base_name = self.base_job_name or f"{self._model_name}-{customization_technique}"
+        mlflow_tracking_uri, mlflow_experiment_name, mlflow_run_name = (
+            resolve_mlflow_tracking_fields(
+                mlflow_tracking_uri=getattr(self, 'mlflow_resource_arn', None),
+                mlflow_experiment_name=getattr(self, 'mlflow_experiment_name', None),
+                mlflow_run_name=getattr(self, 'mlflow_run_name', None),
+                base_job_name=job_base_name,
+            )
+        )
+        if mlflow_tracking_uri:
+            _set_spec_default(override_spec, "mlflow_tracking_uri", mlflow_tracking_uri)
+            _set_spec_default(override_spec, "mlflow_experiment_name", mlflow_experiment_name)
+            _set_spec_default(override_spec, "mlflow_run_name", mlflow_run_name)
+
         # Inject user-set hyperparameters into the recipe before rendering.
         # For LLMFT/SMTJ the recipe YAML is the source of truth: ModelTrainer.from_recipe
         # ignores the hyperparameters dict for non-Nova recipes, so values the user set on
@@ -717,13 +736,19 @@ class BaseTrainer(ABC):
         if self.s3_output_path:
             override_parameters["recipes.run.output_s3_path"] = self.s3_output_path
 
-        # MLflow configuration
-        if getattr(self, 'mlflow_resource_arn', None):
-            override_parameters["recipes.run.mlflow_tracking_uri"] = self.mlflow_resource_arn
-        if getattr(self, 'mlflow_experiment_name', None):
-            override_parameters["recipes.run.mlflow_experiment_name"] = self.mlflow_experiment_name
-        if getattr(self, 'mlflow_run_name', None):
-            override_parameters["recipes.run.mlflow_run_name"] = self.mlflow_run_name
+        # MLflow configuration — use the shared resolve helper to default empty
+        # names to job_base_name when a tracking URI is set.
+        from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields as _resolve_mlflow
+        mlflow_uri, mlflow_exp, mlflow_run = _resolve_mlflow(
+            mlflow_tracking_uri=getattr(self, 'mlflow_resource_arn', None),
+            mlflow_experiment_name=getattr(self, 'mlflow_experiment_name', None),
+            mlflow_run_name=getattr(self, 'mlflow_run_name', None),
+            base_job_name=job_base_name,
+        )
+        if mlflow_uri:
+            override_parameters["recipes.run.mlflow_tracking_uri"] = mlflow_uri
+            override_parameters["recipes.run.mlflow_experiment_name"] = mlflow_exp
+            override_parameters["recipes.run.mlflow_run_name"] = mlflow_run
 
         # Hyperparameters — only pass user-explicitly-set values for HyperPod
         if self.hyperparameters:

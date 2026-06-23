@@ -1617,6 +1617,69 @@ class TestResolveInferencePlaceholders:
         assert recipe == {"run": {"name": "n"}}
 
 
+class TestResolveMlflowTrackingFields:
+    """Tests for the shared _resolve_mlflow_tracking_fields helper."""
+
+    def _call(self, resource_arn, experiment_name, base_model_name,
+              run_name=None, base_job_name="eval-job"):
+        fake_self = Mock()
+        fake_self.mlflow_resource_arn = resource_arn
+        fake_self.mlflow_experiment_name = experiment_name
+        fake_self.mlflow_run_name = run_name
+        fake_self._base_model_name = base_model_name
+        return BaseEvaluator._resolve_mlflow_tracking_fields(fake_self, base_job_name)
+
+    def test_defaults_experiment_and_run_name_for_oss_when_uri_set(self):
+        """OSS model with a tracking URI but no names defaults both to base_job_name."""
+        uri, exp, run = self._call(
+            resource_arn=DEFAULT_MLFLOW_ARN,
+            experiment_name=None,
+            run_name=None,
+            base_model_name="openai-reasoning-gpt-oss-20b",
+            base_job_name="eval-mmlu",
+        )
+        assert uri == DEFAULT_MLFLOW_ARN
+        assert exp == "eval-mmlu"
+        assert run == "eval-mmlu"
+
+    def test_preserves_user_experiment_and_run_name(self):
+        """User-provided experiment and run names are never overridden."""
+        uri, exp, run = self._call(
+            resource_arn=DEFAULT_MLFLOW_ARN,
+            experiment_name="my-experiment",
+            run_name="my-run",
+            base_model_name="openai-reasoning-gpt-oss-20b",
+        )
+        assert uri == DEFAULT_MLFLOW_ARN
+        assert exp == "my-experiment"
+        assert run == "my-run"
+
+    def test_no_default_when_uri_not_set(self):
+        """Without a tracking URI the experiment and run names stay empty."""
+        uri, exp, run = self._call(
+            resource_arn=None,
+            experiment_name=None,
+            run_name=None,
+            base_model_name="openai-reasoning-gpt-oss-20b",
+        )
+        assert uri == ""
+        assert exp == ""
+        assert run == ""
+
+    def test_defaults_experiment_and_run_name_for_nova_when_uri_set(self):
+        """Nova model with a tracking URI but no names defaults both to base_job_name."""
+        uri, exp, run = self._call(
+            resource_arn=DEFAULT_MLFLOW_ARN,
+            experiment_name=None,
+            run_name=None,
+            base_model_name="amazon.nova-lite-v1",
+            base_job_name="eval-mmlu",
+        )
+        assert uri == DEFAULT_MLFLOW_ARN
+        assert exp == "eval-mmlu"
+        assert run == "eval-mmlu"
+
+
 class TestBuildEvalValueMap:
     """Tests for the spec-driven _build_eval_value_map merge."""
 

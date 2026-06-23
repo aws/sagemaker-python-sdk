@@ -249,3 +249,68 @@ class TestOverridesAppliedToHyperparameters:
         hp = from_recipe_kwargs["hyperparameters"]
         assert hp["max_epochs"] == "5"
         assert hp["custom_key"] == "custom_val"
+
+
+class TestMlflowInjection:
+    """MLflow fields must be injected into the recipe override spec for serverful SMTJ."""
+
+    def test_mlflow_fields_injected_when_tracking_uri_set(self):
+        """When mlflow_resource_arn is set, all three fields are injected into override_spec."""
+        trainer = _ConcreteTrainer()
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+        trainer.mlflow_resource_arn = "arn:aws:sagemaker:us-west-2:123:mlflow-tracking-server/srv"
+        trainer.mlflow_experiment_name = "my-exp"
+        trainer.mlflow_run_name = "my-run"
+
+        override_spec, _ = _run_serverful(trainer)
+
+        assert override_spec["mlflow_tracking_uri"]["default"] == (
+            "arn:aws:sagemaker:us-west-2:123:mlflow-tracking-server/srv"
+        )
+        assert override_spec["mlflow_experiment_name"]["default"] == "my-exp"
+        assert override_spec["mlflow_run_name"]["default"] == "my-run"
+
+    def test_mlflow_names_default_to_base_job_name_when_empty(self):
+        """Empty experiment/run names default to base_job_name when URI is set."""
+        trainer = _ConcreteTrainer()
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+        trainer.mlflow_resource_arn = "arn:aws:sagemaker:us-west-2:123:mlflow-tracking-server/srv"
+        trainer.mlflow_experiment_name = None
+        trainer.mlflow_run_name = None
+        trainer.base_job_name = "nova-lite-sft"
+
+        override_spec, _ = _run_serverful(trainer)
+
+        assert override_spec["mlflow_tracking_uri"]["default"] == (
+            "arn:aws:sagemaker:us-west-2:123:mlflow-tracking-server/srv"
+        )
+        assert override_spec["mlflow_experiment_name"]["default"] == "nova-lite-sft"
+        assert override_spec["mlflow_run_name"]["default"] == "nova-lite-sft"
+
+    def test_mlflow_not_injected_when_tracking_uri_not_set(self):
+        """When no mlflow_resource_arn is set, MLflow fields are not injected."""
+        trainer = _ConcreteTrainer()
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+        trainer.mlflow_resource_arn = None
+        trainer.mlflow_experiment_name = None
+        trainer.mlflow_run_name = None
+
+        override_spec, _ = _run_serverful(trainer)
+
+        assert "mlflow_tracking_uri" not in override_spec
+        assert "mlflow_experiment_name" not in override_spec
+        assert "mlflow_run_name" not in override_spec
+
+    def test_mlflow_partial_names_defaulted(self):
+        """Only the missing name is defaulted; the provided one is preserved."""
+        trainer = _ConcreteTrainer()
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+        trainer.mlflow_resource_arn = "arn:aws:sagemaker:us-west-2:123:mlflow-tracking-server/srv"
+        trainer.mlflow_experiment_name = "user-experiment"
+        trainer.mlflow_run_name = None
+        trainer.base_job_name = "nova-lite-sft"
+
+        override_spec, _ = _run_serverful(trainer)
+
+        assert override_spec["mlflow_experiment_name"]["default"] == "user-experiment"
+        assert override_spec["mlflow_run_name"]["default"] == "nova-lite-sft"

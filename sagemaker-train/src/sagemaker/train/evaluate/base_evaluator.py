@@ -754,6 +754,38 @@ class BaseEvaluator(BaseModel):
             'account_id': account_id
         }
     
+    def _resolve_mlflow_tracking_fields(self, base_job_name: str):
+        """Resolve the MLflow fields for an SMTJ eval recipe.
+
+        The OSS evaluation container requires, whenever an MLflow tracking URI
+        is set, both a non-empty ``mlflow_experiment_name`` and a non-empty
+        ``mlflow_run_name`` (or ``mlflow_run_id``); otherwise recipe validation
+        fails. When the tracking URI has been resolved (explicitly or via the
+        default MLflow app experience) but the user did not provide these names,
+        default them to ``base_job_name`` so MLflow tracking stays enabled. This
+        mirrors the serverless pipeline templates (which default to
+        ``pipeline_name``) and the MTRL evaluator.
+
+        Applies to all model families. The OSS container requires non-empty
+        names; the Nova container tolerates empty strings but still benefits from
+        a meaningful experiment/run name, so we default both to ``base_job_name``
+        for a consistent MLflow experience across Nova and OSS.
+
+        Args:
+            base_job_name: Fallback experiment/run name when a tracking URI is
+                set but no name was provided.
+
+        Returns:
+            tuple: ``(mlflow_tracking_uri, mlflow_experiment_name, mlflow_run_name)``.
+        """
+        from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
+        return resolve_mlflow_tracking_fields(
+            mlflow_tracking_uri=self.mlflow_resource_arn,
+            mlflow_experiment_name=self.mlflow_experiment_name,
+            mlflow_run_name=self.mlflow_run_name,
+            base_job_name=base_job_name,
+        )
+
     def _resolve_model_artifacts(self, region: str) -> Dict[str, str]:
         """Resolve model artifacts and create artifact ARN if needed.
         

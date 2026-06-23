@@ -595,6 +595,14 @@ class CustomScorerEvaluator(BaseEvaluator):
 
         # --- Build SDK-derived semantic values ---
         base_job_name = self.base_eval_name or "custom-eval"
+        # The eval container requires non-empty experiment and run names whenever
+        # an MLflow tracking URI is set (OSS); Nova tolerates empty names but
+        # still benefits from a meaningful default. Default both to base_job_name
+        # for a consistent MLflow experience. See
+        # BaseEvaluator._resolve_mlflow_tracking_fields.
+        mlflow_tracking_uri, mlflow_experiment_name, mlflow_run_name = (
+            self._resolve_mlflow_tracking_fields(base_job_name)
+        )
         # Infra field names span recipe families: Nova uses 'output_s3_path',
         # the OSS eval recipe uses 'output_path' and also carries 'base_model_name'
         # and 'instance_count' (run.replicas).
@@ -603,9 +611,9 @@ class CustomScorerEvaluator(BaseEvaluator):
             "base_model_name": self._base_model_name or "",
             "instance_count": self.compute.instance_count,
             "kms_key_id": self.kms_key_id or "",
-            "mlflow_tracking_uri": self.mlflow_resource_arn or "",
-            "mlflow_experiment_name": self.mlflow_experiment_name or "",
-            "mlflow_run_name": self.mlflow_run_name or "",
+            "mlflow_tracking_uri": mlflow_tracking_uri,
+            "mlflow_experiment_name": mlflow_experiment_name,
+            "mlflow_run_name": mlflow_run_name,
         }
 
         evaluator_config = None
