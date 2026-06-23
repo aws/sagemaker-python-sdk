@@ -544,15 +544,25 @@ class TestRLVRTrainerComputeDispatch:
 
     def test_none_routes_to_serverless(self):
         trainer = self._make_trainer(compute=None)
-        with patch.object(trainer, '_train_serverless', return_value=Mock()) as mock_sl:
-            trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
-            mock_sl.assert_called_once()
+        # The serverless path is inlined in train(); verify routing by ensuring
+        # neither compute-backed method is called and the serverless branch is
+        # entered (it begins by resolving the SageMaker session).
+        with patch.object(trainer, '_train_serverful_smtj') as mock_smtj, \
+             patch.object(trainer, '_train_hyperpod') as mock_hp, \
+             patch(
+                 'sagemaker.train.defaults.TrainDefaults.get_sagemaker_session',
+                 side_effect=RuntimeError('serverless-path-reached'),
+             ):
+            with pytest.raises(RuntimeError, match='serverless-path-reached'):
+                trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
+            mock_smtj.assert_not_called()
+            mock_hp.assert_not_called()
 
     def test_compute_routes_to_smtj(self):
         from sagemaker.core.training.configs import Compute
         compute = Compute(instance_type="ml.p5.48xlarge", instance_count=4)
         trainer = self._make_trainer(compute=compute)
-        with patch.object(trainer, '_train_smtj', return_value=Mock()) as mock_smtj:
+        with patch.object(trainer, '_train_serverful_smtj', return_value=Mock()) as mock_smtj:
             trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
             mock_smtj.assert_called_once()
 
@@ -560,6 +570,6 @@ class TestRLVRTrainerComputeDispatch:
         from sagemaker.core.training.configs import HyperPodCompute
         compute = HyperPodCompute(cluster_name="my-cluster", instance_type="ml.p5.48xlarge")
         trainer = self._make_trainer(compute=compute)
-        # RLVRTrainer._train_hyperpod not yet implemented — verify dispatch attempts it
-        with pytest.raises(AttributeError):
+        with patch.object(trainer, '_train_hyperpod', return_value="job-name") as mock_hp:
             trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
+            mock_hp.assert_called_once()

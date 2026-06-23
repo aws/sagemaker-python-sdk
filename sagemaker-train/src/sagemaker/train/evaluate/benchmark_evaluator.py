@@ -807,6 +807,13 @@ class BenchMarkEvaluator(BaseEvaluator):
             recipe_metadata["SmtjRecipeTemplateS3Uri"], sagemaker_session
         )
 
+        # --- Fetch the Hub-declared overridable field set + defaults ---
+        # The recipe's SmtjOverrideParamsS3Uri declares which fields it accepts
+        # and their defaults/types. Driving the field set from here (instead of a
+        # hardcoded list) means a model whose recipe exposes different fields is
+        # handled automatically. Mirrors the Nova Forge SDK RecipeBuilder.
+        override_spec = self._download_eval_override_spec(recipe_metadata, sagemaker_session)
+
         # --- Inject benchmark-specific fields ---
         config = _BENCHMARK_CONFIG.get(self.benchmark)
 
@@ -815,46 +822,23 @@ class BenchMarkEvaluator(BaseEvaluator):
         strategy_value = config["strategy"]
         metric_value = config["metrics"][0] if config.get("metrics") else "accuracy"
 
-        # Resolve subtask value
+        # --- Resolve subtask value ---
         eval_subtask = self._resolve_subtask_for_evaluation(subtask)
         if eval_subtask:
             subtask_value = ",".join(eval_subtask) if isinstance(eval_subtask, list) else eval_subtask
         else:
             subtask_value = ""
 
-        # --- Resolve run section ---
-        recipe_dict.setdefault("run", {})
-        recipe_dict["run"]["name"] = _get_unique_name(base_job_name)
-
-        # Resolve output_s3_path
-        if self.s3_output_path:
-            recipe_dict["run"]["output_s3_path"] = self.s3_output_path
-        else:
-            recipe_dict["run"]["output_s3_path"] = ""
-
-        # Resolve MLflow fields
-        if self.mlflow_resource_arn:
-            recipe_dict["run"]["mlflow_tracking_uri"] = self.mlflow_resource_arn
-        else:
-            recipe_dict["run"]["mlflow_tracking_uri"] = ""
-        recipe_dict["run"].setdefault("mlflow_experiment_name", "")
-        recipe_dict["run"].setdefault("mlflow_run_name", "")
-
-        # --- Resolve evaluation section ---
-        if "evaluation" in recipe_dict:
-            recipe_dict["evaluation"]["task"] = task_value
-            recipe_dict["evaluation"]["strategy"] = strategy_value
-            recipe_dict["evaluation"]["metric"] = metric_value
-            recipe_dict["evaluation"]["subtask"] = subtask_value
-
-        # --- Common: resolve inference placeholders ---
-        self._resolve_inference_placeholders(recipe_dict)
-
-        # --- Common: resolve model path ---
-        model_path = self._resolve_model_s3_path(sagemaker_session, region)
-        if model_path:
-            recipe_dict["run"]["model_name_or_path"] = model_path
-        elif self._source_model_package_arn:
+        # --- Resolve model path (fine-tuned checkpoint or OSS base weights) ---
+        # OSS eval requires model_name_or_path to point at the base model weights
+        # when there is no fine-tuned checkpoint; Nova eval resolves via model_type.
+        # OSS artifacts are delivered via a dedicated "model" input channel so the
+        # container's checkpoints/hf_merged resolution runs against a local mount
+        # (reproducing the serverless experience); Nova keeps the raw S3 path.
+        model_path, model_channel = self._resolve_eval_model_input(
+            sagemaker_session, region
+        )
+        if not model_path and self._source_model_package_arn:
             raise ValueError(
                 f"Could not resolve S3 model artifacts path from model package "
                 f"'{self._source_model_package_arn}'. SMTJ evaluation requires an S3 "
@@ -862,9 +846,77 @@ class BenchMarkEvaluator(BaseEvaluator):
                 f"training job with accessible model artifacts."
             )
 
+        # --- Build the SDK-derived semantic values ---
+        # The metric field name differs across recipe families (Nova: 'metric',
+        # OpenWeights: 'evaluation_metric'); set both aliases so the value lands
+        # in whichever leaf the recipe actually declares. Likewise infra fields:
+        # Nova recipes use 'output_s3_path', the OSS eval recipe uses 'output_path'
+        # and also carries 'base_model_name' / 'instance_count' (run.replicas).
+        semantic_values = {
+            "name": _get_unique_name(base_job_name),
+            "output_s3_path": self.s3_output_path or "",
+            "output_path": self.s3_output_path or "",
+            "base_model_name": self._base_model_name or "",
+            "instance_count": self.compute.instance_count,
+            "kms_key_id": self.kms_key_id or "",
+            "mlflow_tracking_uri": self.mlflow_resource_arn or "",
+            "mlflow_experiment_name": self.mlflow_experiment_name or "",
+            "mlflow_run_name": self.mlflow_run_name or "",
+            "task": task_value,
+            "strategy": strategy_value,
+            "metric": metric_value,
+            "evaluation_metric": metric_value,
+            "subtask": subtask_value,
+            # Standard benchmarks do not use a custom dataset or Lambda processor.
+            "data_s3_path": "",
+            "lambda_arn": "",
+            "preset_reward_function": "",
+        }
+        if model_path:
+            semantic_values["model_name_or_path"] = model_path
+
+        # --- Merge: spec defaults < semantic values < user overrides ---
+        value_map = self._build_eval_value_map(
+            override_spec, semantic_values=semantic_values, user_overrides=self.overrides
+        )
+
+        # --- Inject values by leaf-key name / placeholder (schema-agnostic) ---
+        self._apply_eval_recipe_values(recipe_dict, value_map)
+
+        # Nova recipes carry infra fields in a `run` section; ensure they are
+        # present even if the template omitted a key (preserves prior behavior).
+        # Scoped to Nova: OSS recipes use different infra field names
+        # (output_path, output.mlflow_*), which the spec/injection already
+        # covered — adding Nova-style keys here would pollute the OSS recipe.
+        from ..common_utils.recipe_utils import _is_nova_model
+        if "run" in recipe_dict and _is_nova_model(self._base_model_name):
+            run = recipe_dict["run"]
+            run.setdefault("name", semantic_values["name"])
+            run.setdefault("output_s3_path", semantic_values["output_s3_path"])
+            run.setdefault("mlflow_tracking_uri", semantic_values["mlflow_tracking_uri"])
+            run.setdefault("mlflow_experiment_name", semantic_values["mlflow_experiment_name"])
+            run.setdefault("mlflow_run_name", semantic_values["mlflow_run_name"])
+            if model_path:
+                run.setdefault("model_name_or_path", model_path)
+
+        # --- Common: resolve any remaining inference placeholders ---
+        # Fallback for inference fields the override spec did not declare.
+        self._resolve_inference_placeholders(recipe_dict)
+
+        # Blank any remaining optional infra placeholders (e.g. tensorboard dir,
+        # mlflow run id) so the recipe has no unresolved {{...}} tokens.
+        blanked = self._blank_unresolved_placeholders(recipe_dict)
+        if blanked:
+            _logger.warning(
+                f"Blanked unresolved eval recipe placeholders (not declared in the "
+                f"override spec or set by the SDK): {blanked}"
+            )
+
         # --- Common: write recipe and submit ---
+        input_data_config = [model_channel] if model_channel else None
         return self._write_and_submit_smtj_recipe(
-            recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name
+            recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name,
+            input_data_config=input_data_config,
         )
 
     def _evaluate_hyperpod(self, subtask=None):

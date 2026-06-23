@@ -409,6 +409,32 @@ def test_get_args_from_recipe_with_evaluation(temporary_recipe):
             },
             "is_llmft": False,
         },
+        {
+            # OSS SMTJ evaluation recipe: no model_type/trainer/training_config,
+            # but has an `evaluation` section -> routed via the LLMFT path.
+            "recipe": {
+                "run": {
+                    "name": "dummy-eval",
+                    "model_name_or_path": "{{model_name_or_path}}",
+                },
+                "evaluation": {"task": "{{task}}", "metric": "{{evaluation_metric}}"},
+                "inference": {"max_new_tokens": "{{max_new_tokens}}"},
+            },
+            "is_llmft": True,
+        },
+        {
+            # Nova evaluation recipe (run.model_type=amazon.nova) must NOT be
+            # classified as LLMFT even though it has an `evaluation` section.
+            "recipe": {
+                "run": {
+                    "name": "dummy-eval",
+                    "model_type": "amazon.nova-lite-v1:0",
+                    "model_name_or_path": "nova-lite/prod",
+                },
+                "evaluation": {"task": "{{task}}"},
+            },
+            "is_llmft": False,
+        },
     ],
     ids=[
         "llmft_model",
@@ -417,6 +443,8 @@ def test_get_args_from_recipe_with_evaluation(temporary_recipe):
         "non_llmft_model",
         "verl_model",
         "verl_missing_training_config",
+        "oss_eval_recipe",
+        "nova_eval_recipe_excluded",
     ],
 )
 def test_is_llmft_recipe(test_case):

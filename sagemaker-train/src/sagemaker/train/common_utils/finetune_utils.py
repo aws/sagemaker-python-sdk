@@ -204,7 +204,7 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
         mlflow_apps_list = []
         paginator = sm_client.get_paginator("list_mlflow_apps")
         for page in paginator.paginate():
-            mlflow_apps_list.extend(page.get("MlflowApps", []))
+            mlflow_apps_list.extend(page.get("Summaries", []))
 
         logger.info("Found %d MLflow apps: %s", len(mlflow_apps_list),
                     [(a.get("Name", "?"), a.get("Status", "?"), a.get("MlflowVersion", "?")) for a in mlflow_apps_list])
@@ -622,6 +622,51 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
     except Exception as e:
         logger.debug("Exception getting fine-tuning options: %s", e)
         raise
+
+
+def _resolve_base_model_weights_s3_uri(model_name: str, sagemaker_session) -> Optional[str]:
+    """Resolve the S3 URI of the base model weights for OSS/LLMFT SMTJ training.
+
+    The LLMFT container feeds ``model_name_or_path`` straight into
+    ``AutoModelForCausalLM.from_pretrained(...)``. It therefore needs HF-format
+    weights on the local filesystem, delivered via a SageMaker input channel.
+    This returns the S3 location of those weights so the caller can mount them
+    as a channel and point ``model_name_or_path`` at the local mount.
+
+    We deliberately prefer the SageMaker-prepared ``TrainingArtifactUri`` over the
+    public HuggingFace id: for models like gpt-oss the HF weights ship MXFP4-quantized
+    (carrying a ``quantization_config`` that breaks the training container), whereas
+    the SageMaker training artifact is the dequantized, fine-tuning-ready bf16 copy.
+
+    Args:
+        model_name: Hub content name (e.g., "openai-reasoning-gpt-oss-20b")
+        sagemaker_session: SageMaker session for API calls
+
+    Returns:
+        str or None: S3 URI of the base model weights, or None if unresolvable.
+    """
+    try:
+        hub_name = get_sagemaker_hub_name()
+        hub_content = _get_hub_content_metadata(
+            hub_name=hub_name,
+            hub_content_type="Model",
+            hub_content_name=model_name,
+            session=sagemaker_session.boto_session,
+            region=sagemaker_session.boto_session.region_name,
+        )
+        document = hub_content.get("hub_content_document", {})
+
+        training_artifact_uri = document.get("TrainingArtifactUri")
+        if training_artifact_uri and training_artifact_uri.startswith("s3://"):
+            logger.info(
+                f"Resolved base model weights from TrainingArtifactUri: {training_artifact_uri}"
+            )
+            return training_artifact_uri
+
+    except Exception as e:
+        logger.debug(f"Could not resolve base model weights for '{model_name}': {e}")
+
+    return None
 
 
 def _create_input_channels(dataset: str, content_type: Optional[str] = None, 

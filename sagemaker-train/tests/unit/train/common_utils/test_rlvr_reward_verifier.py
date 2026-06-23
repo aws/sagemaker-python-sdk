@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 from sagemaker.train.common_utils.rlvr_reward_verifier import verify_reward_function
 
 
@@ -692,8 +693,8 @@ def lambda_handler(event, context):
 # ---------------------------------------------------------------------------
 # Platform / Lambda ARN validation
 # ---------------------------------------------------------------------------
-def test_verify_lambda_arn_requires_platform():
-    """Test that a Lambda ARN requires the platform parameter for Nova models."""
+def test_verify_lambda_arn_requires_compute():
+    """Test that a Lambda ARN requires the compute parameter for Nova models."""
     sample_data = [
         {
             "id": "sample_1",
@@ -704,12 +705,12 @@ def test_verify_lambda_arn_requires_platform():
 
     arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-function"
 
-    with pytest.raises(ValueError, match="'platform' parameter is required"):
+    with pytest.raises(ValueError, match="'compute' parameter is required"):
         verify_reward_function(reward_function=arn, sample_data=sample_data)
 
 
-def test_verify_smhp_platform_invalid_lambda_arn():
-    """Test that SMHP platform rejects a Lambda ARN without 'SageMaker' in the name."""
+def test_verify_smhp_compute_invalid_lambda_arn():
+    """Test that HyperPod compute rejects a Lambda ARN without 'SageMaker' in the name."""
     sample_data = [
         {
             "id": "sample_1",
@@ -720,14 +721,16 @@ def test_verify_smhp_platform_invalid_lambda_arn():
 
     invalid_arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-function"
 
-    with pytest.raises(ValueError, match="Lambda ARN for SMHP.*must contain 'SageMaker'"):
+    with pytest.raises(ValueError, match="Lambda ARN for HyperPod compute.*must contain 'SageMaker'"):
         verify_reward_function(
-            reward_function=invalid_arn, sample_data=sample_data, platform="SMHP"
+            reward_function=invalid_arn,
+            sample_data=sample_data,
+            compute=HyperPodCompute(cluster_name="test-cluster", instance_type="ml.p5.48xlarge"),
         )
 
 
-def test_verify_smhp_platform_valid_lambda_arn_case_insensitive():
-    """Test that SMHP platform accepts Lambda ARNs with 'sagemaker' regardless of case."""
+def test_verify_smhp_compute_valid_lambda_arn_case_insensitive():
+    """Test that HyperPod compute accepts Lambda ARNs with 'sagemaker' regardless of case."""
     sample_data = [
         {
             "id": "sample_1",
@@ -743,17 +746,18 @@ def test_verify_smhp_platform_valid_lambda_arn_case_insensitive():
         "arn:aws:lambda:us-east-1:123456789012:function:reward-Sagemaker",
     ]
 
+    compute = HyperPodCompute(cluster_name="test-cluster", instance_type="ml.p5.48xlarge")
     for arn in valid_arns:
         # These are fake ARNs, so invocation fails - but it must NOT fail on ARN validation.
         try:
-            verify_reward_function(reward_function=arn, sample_data=sample_data, platform="SMHP")
+            verify_reward_function(reward_function=arn, sample_data=sample_data, compute=compute)
         except Exception as e:  # noqa: BLE001
             assert "must contain 'SageMaker'" not in str(e)
-            assert "'platform' parameter is required" not in str(e)
+            assert "'compute' parameter is required" not in str(e)
 
 
-def test_verify_smtj_platform_no_lambda_arn_validation():
-    """Test that SMTJ platform doesn't validate the Lambda ARN function name."""
+def test_verify_smtj_compute_no_lambda_arn_validation():
+    """Test that SMTJ (TrainingJob) compute doesn't validate the Lambda ARN function name."""
     sample_data = [
         {
             "id": "sample_1",
@@ -765,13 +769,17 @@ def test_verify_smtj_platform_no_lambda_arn_validation():
     arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-function"
 
     try:
-        verify_reward_function(reward_function=arn, sample_data=sample_data, platform="SMTJ")
+        verify_reward_function(
+            reward_function=arn,
+            sample_data=sample_data,
+            compute=TrainingJobCompute(instance_type="ml.p4d.24xlarge"),
+        )
     except Exception as e:  # noqa: BLE001
         assert "must contain 'SageMaker'" not in str(e)
 
 
 def test_verify_smhp_arn_with_version_qualifier():
-    """Test SMHP validation with a Lambda ARN that includes a version qualifier."""
+    """Test HyperPod validation with a Lambda ARN that includes a version qualifier."""
     sample_data = [
         {
             "id": "sample_1",
@@ -784,15 +792,17 @@ def test_verify_smhp_arn_with_version_qualifier():
 
     try:
         verify_reward_function(
-            reward_function=arn_with_version, sample_data=sample_data, platform="SMHP"
+            reward_function=arn_with_version,
+            sample_data=sample_data,
+            compute=HyperPodCompute(cluster_name="test-cluster", instance_type="ml.p5.48xlarge"),
         )
     except Exception as e:  # noqa: BLE001
         assert "must contain 'SageMaker'" not in str(e)
-        assert "'platform' parameter is required" not in str(e)
+        assert "'compute' parameter is required" not in str(e)
 
 
-def test_verify_smhp_platform_with_local_file():
-    """Test that SMHP platform validation doesn't affect local files."""
+def test_verify_smhp_compute_with_local_file():
+    """Test that HyperPod compute validation doesn't affect local files."""
     reward_code = """
 def lambda_handler(event, context):
     results = []
@@ -815,7 +825,9 @@ def lambda_handler(event, context):
         ]
 
         result = verify_reward_function(
-            reward_function=reward_file, sample_data=sample_data, platform="SMHP"
+            reward_function=reward_file,
+            sample_data=sample_data,
+            compute=HyperPodCompute(cluster_name="test-cluster", instance_type="ml.p5.48xlarge"),
         )
 
         assert result["success"] is True
@@ -824,8 +836,8 @@ def lambda_handler(event, context):
         Path(reward_file).unlink()
 
 
-def test_verify_combined_evaluation_mode_and_smhp_platform():
-    """Test using both metrics_list and SMHP platform together with a local file."""
+def test_verify_combined_evaluation_mode_and_smhp_compute():
+    """Test using both metrics_list and HyperPod compute together with a local file."""
     reward_code = """
 def lambda_handler(event, context):
     results = []
@@ -851,7 +863,9 @@ def lambda_handler(event, context):
         ]
 
         result = verify_reward_function(
-            reward_function=reward_file, sample_data=sample_data, platform="SMHP"
+            reward_function=reward_file,
+            sample_data=sample_data,
+            compute=HyperPodCompute(cluster_name="test-cluster", instance_type="ml.p5.48xlarge"),
         )
 
         assert result["success"] is True

@@ -387,10 +387,16 @@ class TestModelTrainerRecipeIntegration:
         from sagemaker.train.model_trainer import ModelTrainer
         from sagemaker.train.configs import Compute
 
-        trainer = ModelTrainer(
-            training_image="123456789012.dkr.ecr.us-east-1.amazonaws.com/test:latest",
-            compute=Compute(instance_type="ml.p5.48xlarge", instance_count=1),
-        )
+        # Construction resolves an execution role via STS; mock it so this unit
+        # test (which only exercises get_resolved_recipe) runs without AWS creds.
+        with patch(
+            "sagemaker.train.defaults.TrainDefaults.get_role",
+            return_value="arn:aws:iam::123456789012:role/test-role",
+        ):
+            trainer = ModelTrainer(
+                training_image="123456789012.dkr.ecr.us-east-1.amazonaws.com/test:latest",
+                compute=Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+            )
 
         with pytest.raises(AttributeError, match="get_resolved_recipe\\(\\) is only available"):
             trainer.get_resolved_recipe()

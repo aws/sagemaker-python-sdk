@@ -271,6 +271,7 @@ class BaseTrainer(ABC):
         from sagemaker.train.common_utils.finetune_utils import (
             _render_recipe_placeholders,
             _get_smtj_override_spec,
+            _resolve_base_model_weights_s3_uri,
         )
         override_spec = _get_smtj_override_spec(
             model_name=self._model_name,
@@ -288,6 +289,30 @@ class BaseTrainer(ABC):
             else:
                 spec[key] = {"default": value, "type": "string"}
 
+        # For OSS/LLMFT models the recipe's model_name_or_path feeds straight into
+        # AutoModelForCausalLM.from_pretrained(), so it must point at HF-format weights
+        # on the local filesystem. When the Hub override spec leaves it empty, deliver
+        # the SageMaker-prepared base weights via a dedicated "model" input channel and
+        # point model_name_or_path at that channel's local mount.
+        # Scoped to non-Nova: Nova recipes resolve model_name_or_path through
+        # _get_args_from_nova_recipe (into the base_model hyperparameter), so this
+        # OSS-specific workaround must never touch the Nova flow.
+        base_model_weights_uri = None
+        if not _is_nova_model(self._model_name):
+            model_name_or_path_spec = override_spec.get("model_name_or_path")
+            if model_name_or_path_spec is not None:
+                current_default = model_name_or_path_spec.get("default", "") if isinstance(model_name_or_path_spec, dict) else model_name_or_path_spec
+                if not current_default:
+                    base_model_weights_uri = _resolve_base_model_weights_s3_uri(
+                        model_name=self._model_name,
+                        sagemaker_session=sagemaker_session,
+                    )
+                    if base_model_weights_uri:
+                        _set_spec_default(
+                            override_spec, "model_name_or_path",
+                            "/opt/ml/input/data/model",
+                        )
+
         if resolved_training_dataset:
             _set_spec_default(
                 override_spec, "data_path",
@@ -298,6 +323,36 @@ class BaseTrainer(ABC):
                 override_spec, "validation_data_path",
                 _channel_mount_path(resolved_validation_dataset, "validation"),
             )
+
+        # Point the recipe's output/training dir at the local SageMaker model dir so the
+        # trained model is written there and SageMaker uploads it to s3_output_path as
+        # model.tar.gz. Without this, the recipe's {{output_path}} renders empty and the
+        # container writes the model to a local cwd that never gets uploaded (job succeeds
+        # but no artifact lands in S3). The llmft container uses local paths for output
+        # (e.g. the metering callback writes to /opt/ml/metering), so /opt/ml/model is the
+        # correct target. Scoped to non-Nova: Nova uses a managed escrow output mechanism.
+        if not _is_nova_model(self._model_name) and "output_path" in override_spec:
+            _set_spec_default(override_spec, "output_path", "/opt/ml/model")
+
+        # Inject user-set hyperparameters into the recipe before rendering.
+        # For LLMFT/SMTJ the recipe YAML is the source of truth: ModelTrainer.from_recipe
+        # ignores the hyperparameters dict for non-Nova recipes, so values the user set on
+        # self.hyperparameters (e.g. global_batch_size, learning_rate, max_epochs) must be
+        # rendered into the recipe's {{placeholders}} or they are silently dropped in favor
+        # of the Hub spec defaults.
+        def _yaml_safe_default(value):
+            # Render floats in decimal form: scientific notation like "5e-06" is parsed
+            # as a string by YAML, which breaks numeric recipe fields.
+            if isinstance(value, float):
+                s = format(value, ".12f").rstrip("0")
+                return s + "0" if s.endswith(".") else s
+            return value
+
+        for hp_key in (getattr(self.hyperparameters, "_user_set", None) or []):
+            if hp_key in override_spec:
+                hp_value = getattr(self.hyperparameters, hp_key, None)
+                if hp_value is not None:
+                    _set_spec_default(override_spec, hp_key, _yaml_safe_default(hp_value))
 
         with open(recipe_local_path, "r") as f:
             recipe_content = f.read()
@@ -372,6 +427,21 @@ class BaseTrainer(ABC):
                     data_source=S3DataSource(
                         s3_uri=resolved_validation_dataset,
                         s3_data_type=s3_data_type,
+                        s3_data_distribution_type="FullyReplicated",
+                    ),
+                )
+            )
+
+        # For OSS/LLMFT models, deliver the SageMaker-prepared base model weights as a
+        # "model" channel (mounted at /opt/ml/input/data/model). The recipe's
+        # model_name_or_path was pointed at that mount above.
+        if base_model_weights_uri:
+            input_data_list.append(
+                InputData(
+                    channel_name="model",
+                    data_source=S3DataSource(
+                        s3_uri=base_model_weights_uri,
+                        s3_data_type="S3Prefix",
                         s3_data_distribution_type="FullyReplicated",
                     ),
                 )

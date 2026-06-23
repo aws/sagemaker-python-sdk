@@ -587,37 +587,146 @@ class CustomScorerEvaluator(BaseEvaluator):
             recipe_metadata["SmtjRecipeTemplateS3Uri"], sagemaker_session
         )
 
-        # --- Inject custom scorer-specific fields ---
-        base_job_name = self.base_eval_name or "custom-eval"
-        recipe_dict.setdefault("run", {})
-        recipe_dict["run"]["name"] = _get_unique_name(base_job_name)
+        # --- Fetch the Hub-declared overridable field set + defaults ---
+        # SmtjOverrideParamsS3Uri declares the fields this recipe accepts and
+        # their defaults/types, so the overridable set is Hub-driven rather than
+        # hardcoded (mirrors the Nova Forge SDK RecipeBuilder).
+        override_spec = self._download_eval_override_spec(recipe_metadata, sagemaker_session)
 
+        # --- Build SDK-derived semantic values ---
+        base_job_name = self.base_eval_name or "custom-eval"
+        # Infra field names span recipe families: Nova uses 'output_s3_path',
+        # the OSS eval recipe uses 'output_path' and also carries 'base_model_name'
+        # and 'instance_count' (run.replicas).
+        semantic_values = {
+            "name": _get_unique_name(base_job_name),
+            "base_model_name": self._base_model_name or "",
+            "instance_count": self.compute.instance_count,
+            "kms_key_id": self.kms_key_id or "",
+            "mlflow_tracking_uri": self.mlflow_resource_arn or "",
+            "mlflow_experiment_name": self.mlflow_experiment_name or "",
+            "mlflow_run_name": self.mlflow_run_name or "",
+        }
+
+        evaluator_config = None
         if self.evaluator:
             evaluator_config = self._resolve_evaluator_config()
-            if evaluator_config.get('evaluator_arn'):
-                recipe_dict["run"]["eval_lambda_arn"] = evaluator_config['evaluator_arn']
-            elif evaluator_config.get('preset_reward_function'):
-                recipe_dict["run"]["preset_reward_function"] = evaluator_config['preset_reward_function']
+            # Custom-scorer semantic fields: task/strategy/metric (or
+            # evaluation_metric for OpenWeights), evaluator_arn, lambda_type,
+            # preset_reward_function, postprocessing, aggregation, + hyperparams.
+            semantic_values.update(
+                self._get_custom_scorer_template_additions(evaluator_config)
+            )
 
+        # --- Resolve model path (fine-tuned checkpoint or OSS base weights) ---
+        # For OSS base models the container loads weights via model_name_or_path,
+        # so it must be resolved from Hub when there is no fine-tuned checkpoint.
+        # OSS artifacts are delivered via a dedicated "model" input channel so the
+        # container's checkpoints/hf_merged resolution runs against a local mount
+        # (reproducing the serverless experience); Nova keeps the raw S3 path.
+        model_path, model_channel = self._resolve_eval_model_input(
+            sagemaker_session, region
+        )
+        if model_path:
+            semantic_values["model_name_or_path"] = model_path
+
+        # --- Dataset as input channel ---
+        input_data_config = []
         if self.dataset:
-            recipe_dict["run"]["data_s3_path"] = str(self.dataset)
+            from sagemaker.core.training.configs import InputData
+            from sagemaker.core.shapes import S3DataSource
+            from ..common_utils.recipe_utils import _is_nova_model
+
+            dataset_uri = str(self.dataset)
+            input_data_config.append(
+                InputData(
+                    channel_name="train",
+                    data_source=S3DataSource(
+                        s3_uri=dataset_uri,
+                        s3_data_type="S3Prefix",
+                        s3_data_distribution_type="FullyReplicated",
+                    ),
+                )
+            )
+            # The dataset is always delivered via the mounted "train" channel.
+            # Nova's container resolves the S3 dataset path itself, so it keeps
+            # the S3 URI. The OSS container instead validates the dataset path on
+            # the local filesystem (same as the model path), so point it at the
+            # mounted channel directory; passing the S3 URI makes it report
+            # "does not exist". This matches the proven serverless OSS recipe,
+            # which sets data to '/opt/ml/input/data/train'.
+            if _is_nova_model(self._base_model_name):
+                semantic_values["data_s3_path"] = dataset_uri
+            else:
+                semantic_values["data_s3_path"] = "/opt/ml/input/data/train"
+
+        # --- OSS base model weights as input channel (Nova adds none) ---
+        if model_channel:
+            input_data_config.append(model_channel)
+
+        input_data_config = input_data_config or None
 
         if self.s3_output_path:
-            recipe_dict["run"]["output_s3_path"] = self.s3_output_path
+            semantic_values["output_s3_path"] = self.s3_output_path
+            semantic_values["output_path"] = self.s3_output_path
 
-        # --- Common: resolve model path ---
-        model_path = self._resolve_model_s3_path(sagemaker_session, region)
-        if model_path:
-            recipe_dict["run"]["model_name_or_path"] = model_path
+        # --- Merge: spec defaults < semantic values < user overrides ---
+        value_map = self._build_eval_value_map(
+            override_spec, semantic_values=semantic_values, user_overrides=self.overrides
+        )
 
-        # --- Common: resolve inference placeholders ---
+        # --- Inject by leaf-key name / placeholder across any recipe structure ---
+        self._apply_eval_recipe_values(recipe_dict, value_map)
+
+        # --- Custom-scorer Lambda wiring (depends on section presence) ---
+        if evaluator_config:
+            if evaluator_config.get('evaluator_arn'):
+                recipe_dict.setdefault("run", {})["eval_lambda_arn"] = evaluator_config['evaluator_arn']
+            elif evaluator_config.get('preset_reward_function'):
+                # Using a preset reward function, not a custom Lambda. The container
+                # schema expects lambda_arn to be present but empty.
+                if "processor" in recipe_dict:
+                    recipe_dict["processor"]["lambda_arn"] = ""
+                recipe_dict.get("run", {}).pop("eval_lambda_arn", None)
+
+            # Remove fields from the run section that the container doesn't accept
+            # there (they belong in the processor section only).
+            for key in ("preset_reward_function", "lambda_type"):
+                recipe_dict.get("run", {}).pop(key, None)
+
+        # Nova recipes carry infra fields in a `run` section; ensure they are
+        # present even if the template omitted a key. Scoped to Nova: OSS recipes
+        # use different infra field names (output_path, output.mlflow_*) already
+        # covered by the spec/injection, so adding Nova-style keys here would
+        # pollute the OSS recipe's run section.
+        from ..common_utils.recipe_utils import _is_nova_model
+        if "run" in recipe_dict and _is_nova_model(self._base_model_name):
+            run = recipe_dict["run"]
+            run.setdefault("name", semantic_values["name"])
+            if self.dataset:
+                run.setdefault("data_s3_path", str(self.dataset))
+            if self.s3_output_path:
+                run.setdefault("output_s3_path", self.s3_output_path)
+            if model_path:
+                run.setdefault("model_name_or_path", model_path)
+
+        # --- Common: resolve any remaining inference placeholders ---
         self._resolve_inference_placeholders(recipe_dict)
+
+        # Blank any remaining optional infra placeholders so the recipe has no
+        # unresolved {{...}} tokens before submission.
+        blanked = self._blank_unresolved_placeholders(recipe_dict)
+        if blanked:
+            _logger.warning(
+                f"Blanked unresolved eval recipe placeholders (not declared in the "
+                f"override spec or set by the SDK): {blanked}"
+            )
 
         # --- Common: write recipe and submit ---
         return self._write_and_submit_smtj_recipe(
-            recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name
+            recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name,
+            input_data_config=input_data_config,
         )
-
     def _evaluate_hyperpod(self):
         """Execute custom scorer evaluation on HyperPod cluster.
 
