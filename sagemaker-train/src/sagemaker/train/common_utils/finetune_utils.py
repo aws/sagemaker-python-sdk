@@ -408,22 +408,22 @@ def _resolve_model_package_arn(model_package) -> Optional[str]:
 
 
 def _parse_context_length(value) -> int:
-    """Parse a context length value like '8K', '32K', '128K' into an integer (e.g., 8192).
-    
-    Returns 0 if value is None or unparseable.
-    """
+    """Parse a context length value like '8K', '32K', '128K' into an integer (e.g., 8192)."""
     if not value:
         return 0
     value = str(value).strip().upper()
-    if value.endswith("K"):
-        try:
-            return int(value[:-1]) * 1024
-        except ValueError:
-            return 0
+    if not value.endswith("K"):
+        raise ValueError(
+            f"Invalid sequence_length '{value}'. "
+            f"Expected a value ending in 'K', e.g. '8K' or '128K'."
+        )
     try:
-        return int(value)
+        return int(value[:-1]) * 1024
     except ValueError:
-        return 0
+        raise ValueError(
+            f"Invalid sequence_length '{value}'. "
+            f"Expected a numeric value followed by 'K', e.g. '8K' or '128K'."
+        )
 
 
 def _get_fine_tuning_options_and_model_arn(

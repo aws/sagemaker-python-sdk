@@ -886,7 +886,8 @@ class TestResolveIntermediateCheckpointMpg:
         assert _parse_context_length("8k") == 8192
 
     def test__parse_context_length_with_integer(self):
-        assert _parse_context_length("4096") == 4096
+        with pytest.raises(ValueError, match="Invalid sequence_length '4096'"):
+            _parse_context_length("4096")
 
     def test__parse_context_length_with_none(self):
         assert _parse_context_length(None) == 0
