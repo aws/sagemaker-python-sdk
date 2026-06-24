@@ -514,9 +514,15 @@ class RLVRTrainer(BaseTrainer):
 
         Injects reward_lambda_arn from the custom_reward_function if set.
         """
-        extra = {}
+        extra_hp = {}
         if self.custom_reward_function:
-            evaluator_arn = _extract_evaluator_arn(self.custom_reward_function)
-            if evaluator_arn:
-                extra["reward_lambda_arn"] = evaluator_arn
-        return extra
+            reward_fn = self.custom_reward_function
+            if isinstance(reward_fn, str) and (
+                reward_fn.startswith("arn:aws:lambda:") or "hub-content" in reward_fn
+            ):
+                extra_hp["reward_lambda_arn"] = reward_fn
+            else:
+                evaluator_arn = _extract_evaluator_arn(reward_fn)
+                if evaluator_arn:
+                    extra_hp["reward_lambda_arn"] = evaluator_arn
+        return extra_hp

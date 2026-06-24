@@ -15,6 +15,7 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig
 from sagemaker.core.shapes import shapes
 from sagemaker.core.resources import TrainingJob
+from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
 from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 from sagemaker.train.common_utils.finetune_utils import (
@@ -240,9 +241,22 @@ class BaseTrainer(ABC):
         logger.info(f"SMTJ recipe S3 URI: {recipe_s3_uri}")
 
         # Download recipe from S3 to a local temp file
+        recipe_s3_uri = resolve_s3_uri_placeholders(recipe_s3_uri, sagemaker_session)
+
         s3_client = sagemaker_session.boto_session.client("s3")
         uri_path = recipe_s3_uri.replace("s3://", "")
-        bucket, key = uri_path.split("/", 1)
+
+        # Handle S3 access point ARN URIs
+        if uri_path.startswith("arn:"):
+            match = re.match(r'(arn:aws:s3:[^:]*:[^:]*:accesspoint/[^/]+)/(.*)', uri_path)
+            if match:
+                bucket = match.group(1)
+                key = match.group(2)
+            else:
+                raise ValueError(f"Cannot parse S3 access point ARN: {uri_path}")
+        else:
+            bucket, key = uri_path.split("/", 1)
+
         recipe_tmp = tempfile.NamedTemporaryFile(
             prefix="smtj_recipe_", suffix=".yaml", delete=False
         )
@@ -373,6 +387,23 @@ class BaseTrainer(ABC):
                 if hp_value is not None:
                     _set_spec_default(override_spec, hp_key, _yaml_safe_default(hp_value))
 
+        # Build hyperparameters early to inject into recipe template before runtime.
+        final_hyperparameters = self.hyperparameters.to_dict()
+        _validate_hyperparameter_values(final_hyperparameters)
+
+        # Allow subclasses to inject extra hyperparameters
+        extra_hp = self._get_extra_smtj_hyperparameters()
+        if extra_hp:
+            final_hyperparameters.update(extra_hp)
+
+        # Merge user-provided recipe/overrides into hyperparameters
+        final_hyperparameters = self._apply_recipe_to_hyperparameters(final_hyperparameters)
+
+        # Inject all final hyperparameters into the override spec
+        for hp_key, hp_value in final_hyperparameters.items():
+            if hp_value is not None and hp_value != "":
+                _set_spec_default(override_spec, hp_key, hp_value)
+
         with open(recipe_local_path, "r") as f:
             recipe_content = f.read()
         recipe_content = _render_recipe_placeholders(recipe_content, override_spec)
@@ -404,18 +435,6 @@ class BaseTrainer(ABC):
             volume_size_in_gb=compute.volume_size_in_gb,
             keep_alive_period_in_seconds=compute.keep_alive_period_in_seconds,
         )
-
-        # Build hyperparameters dict for the recipe
-        final_hyperparameters = self.hyperparameters.to_dict()
-        _validate_hyperparameter_values(final_hyperparameters)
-
-        # Allow subclasses to inject extra hyperparameters
-        extra_hp = self._get_extra_smtj_hyperparameters()
-        if extra_hp:
-            final_hyperparameters.update(extra_hp)
-
-        # Merge user-provided recipe/overrides into hyperparameters
-        final_hyperparameters = self._apply_recipe_to_hyperparameters(final_hyperparameters)
 
         # Build input data config (datasets resolved earlier for recipe injection)
         # Build input data config

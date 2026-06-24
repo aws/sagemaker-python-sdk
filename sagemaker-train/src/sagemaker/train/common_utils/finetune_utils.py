@@ -10,6 +10,7 @@ import time
 import boto3
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE, FineTuningOptions
 from sagemaker.core.shapes import ServerlessJobConfig, Channel, DataSource, ModelPackageConfig, MlflowConfig
@@ -1106,14 +1107,14 @@ def get_recipe_s3_uri(model_name: str, customization_technique: str, training_ty
         )
 
     # Select recipe based on training type
-    recipe = _select_recipe_by_training_type(recipes_with_template, training_type, with_fallback=False)
+    recipe = _select_recipe_by_training_type(recipes_with_template, training_type, with_fallback=True)
 
     if not recipe:
         raise ValueError(
             f"No SMTJ recipe found for technique: {customization_technique}, training_type: {training_type}"
         )
 
-    return recipe["SmtjRecipeTemplateS3Uri"]
+    return resolve_s3_uri_placeholders(recipe["SmtjRecipeTemplateS3Uri"], sagemaker_session)
 
 
 def _get_recipe_entry_and_override_spec(
@@ -1214,9 +1215,21 @@ def _get_recipe_entry_and_override_spec(
     override_spec = {}
     override_s3_uri = recipe.get(override_key)
     if override_s3_uri:
+        override_s3_uri = resolve_s3_uri_placeholders(override_s3_uri, sagemaker_session)
         s3_client = sagemaker_session.boto_session.client("s3")
         uri_path = override_s3_uri.replace("s3://", "")
-        bucket, key = uri_path.split("/", 1)
+
+        # Handle S3 access point ARN URIs
+        if uri_path.startswith("arn:"):
+            match = re.match(r'(arn:aws:s3:[^:]*:[^:]*:accesspoint/[^/]+)/(.*)', uri_path)
+            if match:
+                bucket = match.group(1)
+                key = match.group(2)
+            else:
+                raise ValueError(f"Cannot parse S3 access point ARN: {uri_path}")
+        else:
+            bucket, key = uri_path.split("/", 1)
+
         response = s3_client.get_object(Bucket=bucket, Key=key)
         override_spec = json.loads(response["Body"].read())
 
@@ -1488,7 +1501,7 @@ def get_training_image(model_name: str, customization_technique: str, training_t
         matching_recipes = [r for r in recipe_collection if r.get("Type") == "Evaluation"]
     recipes_with_template = [r for r in matching_recipes if r.get("SmtjRecipeTemplateS3Uri")]
 
-    recipe = _select_recipe_by_training_type(recipes_with_template, training_type, with_fallback=False)
+    recipe = _select_recipe_by_training_type(recipes_with_template, training_type, with_fallback=True)
 
     if recipe:
         return recipe.get("SmtjImageUri")
