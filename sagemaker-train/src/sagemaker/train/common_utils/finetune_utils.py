@@ -913,11 +913,15 @@ def _create_output_config(sagemaker_session,s3_output_path=None, kms_key_id=None
     )
 
 
-def _convert_input_data_to_channels(input_data_config ):
+def _convert_input_data_to_channels(input_data_config, s3_data_type="S3Prefix"):
     """Convert InputData objects to Channel objects with S3 and dataset ARN support.
     
     Args:
         input_data_config: List of InputData objects
+        s3_data_type: The S3 data type to use for S3 data sources. Use "Converse"
+            for Nova SFT/DPO multimodal datasets so the SageMaker data agent
+            downloads images and rewrites "uri" to "localPath" in the JSONL.
+            Defaults to "S3Prefix".
     
     Returns:
         List of Channel objects
@@ -930,7 +934,7 @@ def _convert_input_data_to_channels(input_data_config ):
             data_source = DataSource(
                 s3_data_source={
                     "s3_uri": input_data.data_source,
-                    "s3_data_type": "S3Prefix",
+                    "s3_data_type": s3_data_type,
                     "s3_data_distribution_type": "FullyReplicated"
                 }
             )

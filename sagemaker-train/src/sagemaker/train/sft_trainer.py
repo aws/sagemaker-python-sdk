@@ -13,6 +13,7 @@ from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 from sagemaker.train.common_utils.finetune_utils import (
     _get_fine_tuning_options_and_model_arn,
     _validate_and_resolve_model_package_group,
+    _is_nova_model,
     _resolve_model_and_name,
     _create_input_data_config,
     _convert_input_data_to_channels,
@@ -311,7 +312,10 @@ class SFTTrainer(BaseTrainer):
         input_data_config = _create_input_data_config(training_dataset or self.training_dataset,
                                                      validation_dataset or self.validation_dataset
                                                      )
-        channels = _convert_input_data_to_channels(input_data_config)
+        channels = _convert_input_data_to_channels(
+            input_data_config,
+            s3_data_type="Converse" if _is_nova_model(self._model_name) else "S3Prefix",
+        )
 
         output_config = _create_output_config(
             s3_output_path=self.s3_output_path,
