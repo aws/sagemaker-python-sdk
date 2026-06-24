@@ -2508,7 +2508,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     containers=[container_def],
                     enable_network_isolation=True,
                     tags=[
-                        {"key": "sagemaker-studio:jumpstart-model-id",
+                        {"key": "sagemaker-sdk:jumpstart-model-id",
                          "value": base_model.hub_content_name},
                     ],
                 )
@@ -4848,10 +4848,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         )
 
         tags = [
-            {"key": "sagemaker-studio:jumpstart-model-id", "value": base_model.hub_content_name},
+            {"key": "sagemaker-sdk:jumpstart-model-id", "value": base_model.hub_content_name},
         ]
         if base_model.recipe_name:
-            tags.append({"key": "sagemaker-studio:recipe-name", "value": base_model.recipe_name})
+            tags.append({"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name})
 
         endpoint = Endpoint.create(
             endpoint_name=endpoint_name,
