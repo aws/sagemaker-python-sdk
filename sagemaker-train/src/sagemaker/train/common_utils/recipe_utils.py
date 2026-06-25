@@ -322,6 +322,109 @@ def _extract_eval_override_options(
     return extracted_params
 
 
+def get_resolved_recipe_from_context(
+    recipe_path: Optional[str],
+    overrides: Optional[Dict[str, Any]],
+    hyperparameters,
+    resolved_cache: Optional[Dict[str, Any]],
+    template_section: str,
+    protected_keys: Optional[set] = None,
+    full_recipe_template: Optional[Dict[str, Any]] = None,
+    compute=None,
+) -> Dict[str, Any]:
+    """Resolve a recipe using the standard pre-resolution pattern.
+
+    Shared helper used by BaseTrainer.get_resolved_recipe() and
+    BaseEvaluator.get_resolved_recipe(). Handles:
+      1. Returning a cached result if available.
+      2. Merging user-set hyperparameters into overrides (highest precedence).
+         When overrides already exist, user-set values are layered on top.
+         When neither recipe nor overrides are provided, user-set values
+         become the sole overrides.
+      3. Extracting override_spec from hyperparameters._specs.
+      4. Delegating to resolve_recipe() for the 3-level merge.
+
+    Precedence (highest wins):
+      1. Direct hyperparameter assignments (trainer.hyperparameters.x = val)
+      2. Programmatic overrides dict (overrides={"training_config": {...}})
+      3. User recipe YAML (recipe="path/to/recipe.yaml")
+      4. Base defaults (Hub spec defaults from override_spec)
+
+    Args:
+        recipe_path: Path to a user recipe YAML (local or S3), or None.
+        overrides: Programmatic override dict, or None.
+        hyperparameters: The FineTuningOptions-like object (must have ``_specs``,
+            ``_user_set`` attributes). May be None.
+        resolved_cache: Previously resolved recipe dict (returned as-is if not None).
+        template_section: Top-level key for the recipe template
+            (e.g. ``"training_config"`` for trainers, ``"inference"`` for evaluators).
+        protected_keys: Set of keys that cannot be overridden by user recipe/overrides.
+        full_recipe_template: Optional full recipe dict from Hub. When provided,
+            used as the base layer instead of the synthetic template.
+        compute: Optional compute configuration. None indicates SMTJServerless.
+
+    Returns:
+        Fully resolved recipe dict (deep copy).
+
+    Raises:
+        ValueError: If no recipe, overrides, or direct hyperparameter assignments
+            are available.
+    """
+    import copy
+
+    if resolved_cache is not None:
+        return copy.deepcopy(resolved_cache)
+
+    # Merge user-set hyperparameters into overrides. When overrides already
+    # exist, user-set values are layered on top (highest precedence). When
+    # neither recipe nor overrides are provided, user-set values become the
+    # sole overrides so resolution still works.
+    user_set = getattr(hyperparameters, '_user_set', None) if hyperparameters else None
+    if isinstance(user_set, set) and user_set:
+        user_values = {
+            k: getattr(hyperparameters, k)
+            for k in user_set
+            if getattr(hyperparameters, k, None) is not None
+        }
+        if user_values:
+            if overrides:
+                # Layer user-set values on top of existing overrides
+                overrides = copy.deepcopy(overrides)
+                section = overrides.setdefault(template_section, {})
+                section.update(user_values)
+            else:
+                overrides = {template_section: user_values}
+
+    if not recipe_path and not overrides:
+        raise ValueError(
+            "get_resolved_recipe() requires a 'recipe', 'overrides', or direct "
+            "hyperparameter assignments (e.g. .hyperparameters.x = val) "
+            "to be provided."
+        )
+
+    override_spec = {}
+    if hyperparameters and hasattr(hyperparameters, '_specs'):
+        override_spec = hyperparameters._specs
+
+    frt = full_recipe_template
+    if frt is None:
+        frt_candidate = getattr(hyperparameters, '_full_recipe_template', None) if hyperparameters else None
+        if isinstance(frt_candidate, dict):
+            frt = frt_candidate
+
+    resolved = resolve_recipe(
+        recipe_path=recipe_path,
+        overrides=overrides,
+        override_spec=override_spec,
+        template_section=template_section,
+        protected_keys=protected_keys,
+        full_recipe_template=frt,
+        compute=compute,
+    )
+
+    return resolved
+
+
 def resolve_recipe(
     recipe_path: Optional[str],
     overrides: Optional[Dict[str, Any]],

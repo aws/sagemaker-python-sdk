@@ -28,7 +28,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _resolve_mlflow_resource_arn,
     _is_nova_model,
 )
-from sagemaker.train.common_utils.recipe_utils import resolve_recipe
+from sagemaker.train.common_utils.recipe_utils import resolve_recipe, get_resolved_recipe_from_context
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
@@ -971,15 +971,18 @@ class BaseEvaluator(BaseModel):
     def _get_effective_hyperparameters(self) -> Dict[str, Any]:
         """Return the effective hyperparameters for this evaluation job.
 
-        If recipe/overrides are provided, returns the leaf values from the
-        resolved recipe (flattened). Otherwise returns hyperparameters.to_dict().
+        If recipe/overrides are provided, or if the user set hyperparameters
+        directly, returns the leaf values from the resolved recipe (flattened).
+        Otherwise returns hyperparameters.to_dict().
 
         This is the method that evaluate() implementations should call to get
         the final inference parameters for the pipeline template.
         """
-        if self.recipe or self.overrides:
+        try:
             resolved = self.get_resolved_recipe()
             return flatten_resolved_recipe(resolved)
+        except ValueError:
+            pass
 
         hp = getattr(self, '_hyperparameters', None)
         if hp and hasattr(hp, 'to_dict'):
@@ -996,40 +999,33 @@ class BaseEvaluator(BaseModel):
         Merges base defaults (from Hub hyperparameters spec) + user recipe YAML
         + overrides dict and returns the result. Callable before or after evaluate().
 
+        When neither ``recipe`` nor ``overrides`` were provided at construction time
+        but hyperparameters have been set directly (e.g. ``evaluator.hyperparameters.x = val``),
+        those user-set values are treated as implicit overrides so the resolved recipe
+        still reflects the user's intent.
+
         Returns:
             Dict[str, Any]: Deep copy of the resolved recipe configuration.
 
         Raises:
-            ValueError: If no recipe or overrides were provided at construction time.
+            ValueError: If no recipe, overrides, or direct hyperparameter assignments
+                were provided.
         """
         import copy
 
-        resolved_cache = getattr(self, '_resolved_recipe_cache', None)
-        if resolved_cache is not None:
-            return copy.deepcopy(resolved_cache)
-
-        if not self.recipe and not self.overrides:
-            raise ValueError(
-                "get_resolved_recipe() requires a 'recipe' or 'overrides' to be provided "
-                "at construction time."
-            )
-
-        override_spec = {}
+        # Resolve the hyperparameters object (may be lazy-loaded via property)
         hp = getattr(self, '_hyperparameters', None)
-        if hp and hasattr(hp, '_specs'):
-            override_spec = hp._specs
-        else:
+        if hp is None:
             try:
                 hp = self.hyperparameters
-                if hasattr(hp, '_specs'):
-                    override_spec = hp._specs
             except Exception:
-                pass
+                hp = None
 
-        resolved = resolve_recipe(
+        resolved = get_resolved_recipe_from_context(
             recipe_path=self.recipe,
             overrides=self.overrides,
-            override_spec=override_spec,
+            hyperparameters=hp,
+            resolved_cache=getattr(self, '_resolved_recipe_cache', None),
             template_section="inference",
             protected_keys={"task", "strategy", "metric"},
         )

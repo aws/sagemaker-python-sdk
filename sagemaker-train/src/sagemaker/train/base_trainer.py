@@ -15,8 +15,8 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig
 from sagemaker.core.shapes import shapes
 from sagemaker.core.resources import TrainingJob
+from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe, get_resolved_recipe_from_context
 from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
-from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 from sagemaker.train.common_utils.finetune_utils import (
     get_training_image,
@@ -109,44 +109,25 @@ class BaseTrainer(ABC):
         Shows the final merged result of base defaults + user recipe + overrides
         after interpolation resolution and validation. Callable before or after train().
 
+        When neither ``recipe`` nor ``overrides`` were provided at construction time
+        but hyperparameters have been set directly (e.g. ``trainer.hyperparameters.x = val``),
+        those user-set values are treated as implicit overrides so the resolved recipe
+        still reflects the user's intent.
+
         Returns:
             dict: Deep copy of the resolved recipe configuration.
 
         Raises:
-            ValueError: If no recipe or overrides were provided at construction time.
+            ValueError: If no recipe, overrides, or direct hyperparameter assignments
+                were provided.
         """
-        if getattr(self, '_resolved_recipe_cache', None) is not None:
-            return copy.deepcopy(self._resolved_recipe_cache)
-
-        recipe_path = getattr(self, '_recipe_path', None)
-        overrides = getattr(self, '_overrides', None)
-
-        if not recipe_path and not overrides:
-            raise ValueError(
-                "get_resolved_recipe() requires a 'recipe' or 'overrides' to be provided "
-                "at construction time."
-            )
-
-        override_spec = {}
-        full_recipe_template = None
-        if hasattr(self, 'hyperparameters') and hasattr(self.hyperparameters, '_specs'):
-            override_spec = self.hyperparameters._specs
-        frt = getattr(self.hyperparameters, '_full_recipe_template', None) if hasattr(self, 'hyperparameters') else None
-        if isinstance(frt, dict):
-            full_recipe_template = frt
-
-        resolved = resolve_recipe(
-            recipe_path=recipe_path,
-            overrides=overrides,
-            override_spec=override_spec,
+        resolved = get_resolved_recipe_from_context(
+            recipe_path=getattr(self, '_recipe_path', None),
+            overrides=getattr(self, '_overrides', None),
+            hyperparameters=self.hyperparameters if hasattr(self, 'hyperparameters') else None,
+            resolved_cache=getattr(self, '_resolved_recipe_cache', None),
             template_section="training_config",
-            # ``dataset_catalog`` is part of the curated recipe fetched from Hub at
-            # runtime (not a hardcoded local key); protecting it prevents user
-            # recipe/overrides from tampering with the curated dataset mix
-            # (AppSec finding #7 — data-mixing). The resolver locates the key by
-            # name in the runtime full recipe template via _build_key_path_map.
             protected_keys={"model_type", "model_name_or_path", "dataset_catalog"},
-            full_recipe_template=full_recipe_template,
             compute=getattr(self, 'compute', None),
         )
 
@@ -156,8 +137,9 @@ class BaseTrainer(ABC):
     def _apply_recipe_to_hyperparameters(self, final_hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
         """Apply resolved recipe values to final_hyperparameters dict.
 
-        If recipe/overrides were provided, merges resolved values into the
-        hyperparameters dict. All leaf values from the resolved recipe are
+        If recipe/overrides were provided, or if the user set hyperparameters
+        directly via ``.hyperparameters.*``, merges resolved recipe values into
+        the hyperparameters dict. All leaf values from the resolved recipe are
         applied — including keys not in the Hub spec subset — enabling
         power users to override any parameter in the full recipe.
         Values are converted to strings (matching the SageMaker API
@@ -169,10 +151,12 @@ class BaseTrainer(ABC):
         Returns:
             The updated hyperparameters dict with recipe values applied.
         """
-        if not getattr(self, '_recipe_path', None) and not getattr(self, '_overrides', None):
+        try:
+            resolved = self.get_resolved_recipe()
+        except ValueError:
+            # Nothing to resolve (no recipe, overrides, or user-set hyperparameters)
             return final_hyperparameters
 
-        resolved = self.get_resolved_recipe()
         flat = flatten_resolved_recipe(resolved)
         for k, v in flat.items():
             if v is not None:

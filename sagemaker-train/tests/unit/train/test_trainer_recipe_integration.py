@@ -97,6 +97,80 @@ class TestSFTTrainerRecipeIntegration:
         with pytest.raises(ValueError, match="get_resolved_recipe\\(\\) requires"):
             trainer.get_resolved_recipe()
 
+    @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
+    @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
+    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
+    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    def test_sft_direct_hyperparameter_assignment_resolves(
+        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
+    ):
+        """SFTTrainer with direct hyperparameter assignment resolves recipe."""
+        from sagemaker.train.common import FineTuningOptions
+
+        hp = FineTuningOptions({
+            "learning_rate": {"default": 1e-5, "type": "float", "min": 1e-7, "max": 1.0},
+            "num_epochs": {"default": 3, "type": "integer", "min": 1, "max": 100},
+            "batch_size": {"default": 1, "type": "integer", "min": 1, "max": 64},
+        })
+        mock_get_options.return_value = (hp, "model-arn", False)
+
+        from sagemaker.train.sft_trainer import SFTTrainer
+
+        trainer = SFTTrainer(
+            model="nova-lite-v2",
+            model_package_group="my-group",
+        )
+
+        # Simulate direct assignment (the common user pattern)
+        trainer.hyperparameters.learning_rate = 2e-5
+        trainer.hyperparameters.num_epochs = 5
+
+        resolved = trainer.get_resolved_recipe()
+
+        assert resolved["training_config"]["learning_rate"] == 2e-5
+        assert resolved["training_config"]["num_epochs"] == 5
+        # Unset params keep their defaults
+        assert resolved["training_config"]["batch_size"] == 1
+
+    @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
+    @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
+    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
+    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    def test_sft_overrides_plus_direct_hyperparameter_assignment(
+        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
+    ):
+        """SFTTrainer with overrides AND direct hyperparameter assignment merges both."""
+        from sagemaker.train.common import FineTuningOptions
+
+        hp = FineTuningOptions({
+            "learning_rate": {"default": 1e-5, "type": "float", "min": 1e-7, "max": 1.0},
+            "num_epochs": {"default": 3, "type": "integer", "min": 1, "max": 100},
+            "max_steps": {"default": 100, "type": "integer", "min": 1, "max": 10000},
+            "save_steps": {"default": 50, "type": "integer", "min": 1, "max": 10000},
+        })
+        mock_get_options.return_value = (hp, "model-arn", False)
+
+        from sagemaker.train.sft_trainer import SFTTrainer
+
+        trainer = SFTTrainer(
+            model="nova-lite-v2",
+            model_package_group="my-group",
+            overrides={"training_config": {"learning_rate": 5e-6, "num_epochs": 2}},
+        )
+
+        # Direct assignment on top of overrides
+        trainer.hyperparameters.max_steps = 5
+        trainer.hyperparameters.save_steps = 5
+
+        resolved = trainer.get_resolved_recipe()
+
+        # Overrides should be present
+        assert resolved["training_config"]["learning_rate"] == 5e-6
+        assert resolved["training_config"]["num_epochs"] == 2
+        # Direct hyperparameter assignments should also be present (layered on top)
+        assert resolved["training_config"]["max_steps"] == 5
+        assert resolved["training_config"]["save_steps"] == 5
+
 
 # --- RLVRTrainer Tests ---
 
