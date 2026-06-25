@@ -88,7 +88,7 @@ def _telemetry_emitter(feature: str, func_name: str):
             sagemaker_session = None
             if len(args) > 0 and hasattr(args[0], "sagemaker_session"):
                 # Get the sagemaker_session from the instance method args
-                sagemaker_session = args[0].sagemaker_session or _get_default_sagemaker_session()
+                sagemaker_session = args[0].sagemaker_session
             elif len(args) > 0 and hasattr(args[0], "_sagemaker_session"):
                 # Get the sagemaker_session from the instance method args (private attribute)
                 sagemaker_session = args[0]._sagemaker_session
@@ -96,6 +96,13 @@ def _telemetry_emitter(feature: str, func_name: str):
                 # Get the sagemaker_session from the function keyword arguments for remote function
                 sagemaker_session = kwargs.get(
                     "sagemaker_session", _get_default_sagemaker_session()
+                )
+
+            # Fallback: check kwargs for sagemaker_session (e.g., classmethods where
+            # args[0] is the class and the session is passed as a keyword argument)
+            if not sagemaker_session:
+                sagemaker_session = kwargs.get("sagemaker_session") or (
+                    _get_default_sagemaker_session()
                 )
 
             if sagemaker_session:
@@ -288,7 +295,6 @@ def _construct_url(
 
 def _requests_helper(url, timeout):
     """Make a GET request to the given URL"""
-
     response = None
     try:
         response = requests.get(url, timeout)

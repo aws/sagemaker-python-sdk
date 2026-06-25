@@ -171,6 +171,9 @@ class RLVRTrainer(BaseTrainer):
             if hasattr(self.hyperparameters, 'reward_lambda_arn'):
                 delattr(self.hyperparameters, 'reward_lambda_arn')
                 self.hyperparameters._specs.pop('reward_lambda_arn', None)
+            if hasattr(self.hyperparameters, 'preset_reward_function'):
+                delattr(self.hyperparameters, 'preset_reward_function')
+                self.hyperparameters._specs.pop('preset_reward_function', None)
             if hasattr(self.hyperparameters, 'data_path'):
                 delattr(self.hyperparameters, 'data_path')
                 self.hyperparameters._specs.pop('data_path', None)
@@ -183,7 +186,7 @@ class RLVRTrainer(BaseTrainer):
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLVRTrainer.train")
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None,
-              validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None):
+              validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
         """Execute the RLVR training job.
 
         Parameters:
@@ -198,6 +201,8 @@ class RLVRTrainer(BaseTrainer):
             wait_timeout (Optional[int]):
                 Maximum time in seconds to wait for the training job to complete. Only used when wait=True.
                 If None, uses the default timeout from the wait utility.
+            poll (int):
+                Polling interval in seconds for checking training job status. Defaults to 5.
 
         Returns:
             TrainingJob: The SageMaker training job object.
@@ -289,6 +294,7 @@ class RLVRTrainer(BaseTrainer):
                 wait_kwargs = {}
                 if wait_timeout is not None:
                     wait_kwargs['timeout'] = wait_timeout
+                wait_kwargs['poll'] = poll
                 _wait(training_job, **wait_kwargs)
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)

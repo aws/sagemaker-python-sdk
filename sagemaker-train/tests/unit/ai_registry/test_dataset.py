@@ -87,7 +87,7 @@ class TestDataSetValidation:
     def test_validate_dataset_file_unsupported_extension(self):
         """Test validation fails for unsupported file extensions."""
         # Test various unsupported extensions
-        unsupported_extensions = ['.csv', '.txt', '.json', '.parquet', '.xlsx']
+        unsupported_extensions = ['.txt', '.xlsx']
         
         for ext in unsupported_extensions:
             with tempfile.NamedTemporaryFile(suffix=ext, delete=False) as f:
@@ -148,19 +148,19 @@ class TestDataSetValidation:
         # S3 paths should only have extension validation, not size validation
         s3_paths = [
             "s3://bucket/data.jsonl",  # Should pass
-            "s3://bucket/data.csv",    # Should fail
+            "s3://bucket/data.csv",    # Should pass
             "s3://bucket/path/to/data.jsonl",  # Should pass
+            "s3://bucket/data.txt",    # Should fail
         ]
         
-        # Test supported S3 path
+        # Test supported S3 paths
         DataSet._validate_dataset_file(s3_paths[0])  # Should not raise
+        DataSet._validate_dataset_file(s3_paths[1])  # Should not raise
+        DataSet._validate_dataset_file(s3_paths[2])  # Should not raise
         
         # Test unsupported S3 path
-        with pytest.raises(ValueError, match="Unsupported file extension: .csv"):
-            DataSet._validate_dataset_file(s3_paths[1])
-        
-        # Test supported S3 path with subdirectories
-        DataSet._validate_dataset_file(s3_paths[2])  # Should not raise
+        with pytest.raises(ValueError, match="Unsupported file extension: .txt"):
+            DataSet._validate_dataset_file(s3_paths[3])
     
     def test_validate_dataset_file_nonexistent_local_file(self):
         """Test validation handles non-existent local files gracefully."""
@@ -172,9 +172,9 @@ class TestDataSetValidation:
         DataSet._validate_dataset_file(non_existent_file)  # Should not raise
         
         # Test with unsupported extension
-        non_existent_csv = "/path/to/nonexistent/file.csv"
-        with pytest.raises(ValueError, match="Unsupported file extension: .csv"):
-            DataSet._validate_dataset_file(non_existent_csv)
+        non_existent_txt = "/path/to/nonexistent/file.txt"
+        with pytest.raises(ValueError, match="Unsupported file extension: .txt"):
+            DataSet._validate_dataset_file(non_existent_txt)
 
 
 class TestDataSet:

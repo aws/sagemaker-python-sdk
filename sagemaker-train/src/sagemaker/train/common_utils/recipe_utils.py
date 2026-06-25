@@ -7,10 +7,13 @@ and inference parameters from SageMaker Hub content.
 
 import json
 import logging
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict, List, Optional
+
 import boto3
 
 from sagemaker.core.resources import HubContent
+from sagemaker.train.constants import get_sagemaker_hub_name
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +63,30 @@ def _get_hub_content_metadata(
         ... )
         >>> print(metadata['HubContentName'])
     """
-    hub_content = HubContent.get(
-        hub_name=hub_name,
-        hub_content_type=hub_content_type,
-        hub_content_name=hub_content_name,
-        region=region,
-        session=session
-    )
-    
+    try:
+        hub_content = HubContent.get(
+            hub_name=hub_name,
+            hub_content_type=hub_content_type,
+            hub_content_name=hub_content_name,
+            region=region,
+            session=session
+        )
+    except Exception:
+        if hub_name != "SageMakerPublicHub":
+            logger.info(
+                f"Hub content '{hub_content_name}' not found in '{hub_name}', "
+                f"falling back to SageMakerPublicHub"
+            )
+            hub_content = HubContent.get(
+                hub_name="SageMakerPublicHub",
+                hub_content_type=hub_content_type,
+                hub_content_name=hub_content_name,
+                region=region,
+                session=session
+            )
+        else:
+            raise
+
     # Convert to dict for easier access
     hub_content_dict = hub_content.__dict__
     
@@ -316,3 +335,86 @@ def _extract_eval_override_options(
             )
     
     return extracted_params
+
+
+def _build_recipe_keyword(recipe_type: str, technique: str) -> str:
+    """Build the ``@recipe:`` search keyword for a recipe type and technique.
+
+    The hub tags recipes as ``@recipe:{type}_{technique}_{strategy}`` (all
+    lowercase).  We match on the ``@recipe:{type}_{technique}_`` prefix so
+    the strategy component (e.g. ``lora``) is ignored.
+
+    Args:
+        recipe_type: ``"FineTuning"`` or ``"Evaluation"``.
+        technique: Technique value, e.g. ``"MTRL"`` or ``"MTRLEvaluation"``.
+
+    Returns:
+        Lowercase keyword prefix string, e.g. ``"@recipe:finetuning_mtrl_"``.
+    """
+    return f"@recipe:{recipe_type}_{technique}_".lower()
+
+
+def _list_hub_models_by_recipe(
+    recipe_type: str,
+    technique: str,
+    session=None,
+) -> List[str]:
+    """List all models in SageMakerPublicHub matching a recipe filter.
+
+    Filters models using ``HubContentSearchKeywords`` returned in the
+    ``list_hub_contents`` summary, avoiding per-model ``describe_hub_content``
+    calls.  Each model with a matching recipe carries a keyword of the form
+    ``@recipe:{type}_{technique}_{strategy}`` (all lowercase).
+
+    Args:
+        recipe_type: Recipe type to filter on — ``"FineTuning"`` or
+            ``"Evaluation"``.
+        technique: The technique value to match. For FineTuning this is
+            the ``CustomizationTechnique`` (e.g. ``"MTRL"``). For
+            Evaluation this is the ``EvaluationType``
+            (e.g. ``"MTRLEvaluation"``).
+        session: Optional boto3 session.
+
+    Returns:
+        Sorted list of hub content model names whose search keywords
+        contain at least one matching ``@recipe:`` tag.
+    """
+    if recipe_type not in ("FineTuning", "Evaluation"):
+        raise ValueError(
+            f"recipe_type must be 'FineTuning' or 'Evaluation', got: {recipe_type!r}"
+        )
+
+    keyword_prefix = _build_recipe_keyword(recipe_type, technique)
+
+    region = (getattr(session, "region_name", None) or 
+              getattr(getattr(session, "boto_session", None), "region_name", None) or
+              boto3.Session().region_name or "us-west-2")
+    # Use the session's sagemaker_client if available (respects custom endpoints)
+    if hasattr(session, "sagemaker_client"):
+        client = session.sagemaker_client
+    else:
+        boto_session = getattr(session, "boto_session", session) or boto3.Session()
+        client = boto_session.client("sagemaker", region_name=region)
+    matched_models: list[str] = []
+    next_token = None
+
+    while True:
+        kwargs: dict = {"HubName": get_sagemaker_hub_name(), "HubContentType": "Model"}
+        if next_token:
+            kwargs["NextToken"] = next_token
+
+        response = client.list_hub_contents(**kwargs)
+        for summary in response.get("HubContentSummaries", []):
+            content_name = summary.get("HubContentName")
+            if not content_name:
+                continue
+            keywords = summary.get("HubContentSearchKeywords", [])
+            if any(kw.lower().startswith(keyword_prefix) for kw in keywords):
+                matched_models.append(content_name)
+
+        next_token = response.get("NextToken")
+        if not next_token:
+            break
+
+    matched_models.sort()
+    return matched_models

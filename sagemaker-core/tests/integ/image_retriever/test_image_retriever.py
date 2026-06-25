@@ -94,7 +94,7 @@ def test_retrieve_base_python_image_uri():
     assert image_uri == "236514542706.dkr.ecr.us-west-2.amazonaws.com/sagemaker-base-python-310:1.0"
 
 
-@pytest.mark.skip(reason="Test is failing due to locals()[name] = default_value in Image Retriever")
+# @pytest.mark.skip(reason="Test is failing due to locals()[name] = default_value in Image Retriever")
 @patch.object(SageMakerConfig, "resolve_value_from_config")
 def test_retrieve_image_uri_intelligent_default(mock_load_config):
     def custom_return(config_path=None, **kwargs):
@@ -116,5 +116,5 @@ def test_retrieve_image_uri_intelligent_default(mock_load_config):
     )
     assert (
         image_uri
-        == "053634841547.dkr.ecr.us-west-1.amazonaws.com/sagemaker-distribution-prod:3.0.0-gpu"
+        == "053634841547.dkr.ecr.us-west-1.amazonaws.com/sagemaker-distribution-prod:3.2.0-gpu"
     )

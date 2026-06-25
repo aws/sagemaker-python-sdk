@@ -160,7 +160,12 @@ def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
         assert fg.feature_group_status == "Created"
 
         # Enable Lake Formation governance
-        result = fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
+        result = fg.enable_lake_formation(
+            hybrid_access_mode_enabled=False,
+            acknowledge_risk=True,
+            use_service_linked_role=False,
+            registration_role_arn=role,
+        )
 
         # Verify all phases completed successfully
         assert result["s3_location_registered"] is True
@@ -198,6 +203,8 @@ def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
             enabled=True,
             hybrid_access_mode_enabled = False,
             acknowledge_risk=True,
+            use_service_linked_role=False,
+            registration_role_arn=role,
         )
 
         fg = FeatureGroupManager.create(
@@ -467,8 +474,17 @@ def test_enable_lake_formation_fails_with_nonexistent_role(
     # Verify we got an appropriate error
     error_msg = str(exc_info.value)
     print(exc_info)
-    # Should mention role-related issues (not found, invalid, access denied, etc.)
-    assert "EntityNotFoundException" in error_msg
+    # The registration must fail because the role is not usable. Depending on
+    # how the build/execution role's iam:PassRole policy is scoped, this surfaces
+    # either as Lake Formation rejecting the unknown role (EntityNotFoundException)
+    # or as IAM denying PassRole before the call reaches Lake Formation
+    # (AccessDeniedException on iam:PassRole). Both are valid "nonexistent / not
+    # usable role" outcomes for this negative test.
+    assert (
+        "EntityNotFoundException" in error_msg
+        or "AccessDeniedException" in error_msg
+        or "iam:PassRole" in error_msg
+    ), f"Unexpected error for nonexistent role registration: {error_msg}"
 
 
 # ============================================================================
@@ -503,7 +519,12 @@ def test_enable_lake_formation_full_flow_with_policy_output(s3_uri, role, region
 
         # Enable Lake Formation governance
         with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
+            result = fg.enable_lake_formation(
+                hybrid_access_mode_enabled=False,
+                acknowledge_risk=True,
+                use_service_linked_role=False,
+                registration_role_arn=role,
+            )
 
         # Verify all phases completed successfully
         assert result["s3_location_registered"] is True
@@ -546,7 +567,12 @@ def test_enable_lake_formation_default_logs_recommended_policy(s3_uri, role, reg
 
         # Enable Lake Formation governance with hybrid_access_mode_enabled=False
         with caplog.at_level(logging.WARNING, logger="sagemaker.mlops.feature_store.feature_group_manager"):
-            result = fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True)
+            result = fg.enable_lake_formation(
+                hybrid_access_mode_enabled=False,
+                acknowledge_risk=True,
+                use_service_linked_role=False,
+                registration_role_arn=role,
+            )
 
         # Verify phases completed successfully
         assert result["s3_location_registered"] is True

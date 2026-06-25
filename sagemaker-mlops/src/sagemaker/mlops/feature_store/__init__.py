@@ -4,7 +4,7 @@
 
 # FeatureGroup with additional operational support
 from sagemaker.core.resources import FeatureGroup, FeatureMetadata
-from sagemaker.mlops.feature_store.feature_group_manager import FeatureGroupManager, LakeFormationConfig
+from sagemaker.mlops.feature_store.feature_group_manager import FeatureGroupManager, LakeFormationConfig, IcebergProperties
 
 # Shapes from core (Pydantic - no to_dict() needed)
 from sagemaker.core.shapes import (
@@ -82,6 +82,7 @@ __all__ = [
     "FeatureValue",
     "Filter",
     "LakeFormationConfig",
+    "IcebergProperties",
     "OfflineStoreConfig",
     "OnlineStoreConfig",
     "OnlineStoreSecurityConfig",

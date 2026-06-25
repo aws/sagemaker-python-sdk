@@ -359,9 +359,39 @@ class FeatureProcessorLineageHandler:
 
         # If pipeline lineage exists then determine whether to create a new version.
         pipeline_context: Context = self._get_pipeline_context()
-        current_pipeline_version_context: Context = self._get_pipeline_version_context(
-            last_update_time=pipeline_context.properties[LAST_UPDATE_TIME]
-        )
+        try:
+            current_pipeline_version_context: Context = self._get_pipeline_version_context(
+                last_update_time=pipeline_context.properties[LAST_UPDATE_TIME]
+            )
+        except ClientError as e:
+            if e.response[ERROR][CODE] == RESOURCE_NOT_FOUND:
+                # Pipeline version context does not exist (possibly deleted or never created).
+                # Create a new pipeline version context and its associations.
+                logger.info(
+                    "Pipeline version context not found. Creating new pipeline version lineage."
+                )
+                pipeline_context.properties["LastUpdateTime"] = self.pipeline[
+                    LAST_MODIFIED_TIME
+                ].strftime("%s")
+                PipelineLineageEntityHandler.update_pipeline_context(
+                    pipeline_context=pipeline_context
+                )
+                new_pipeline_version_context: Context = self._create_pipeline_version_lineage()
+                self._add_associations_for_pipeline(
+                    pipeline_context_arn=pipeline_context.context_arn,
+                    pipeline_versions_context_arn=new_pipeline_version_context.context_arn,
+                    input_feature_group_contexts=input_feature_group_contexts,
+                    input_raw_data_artifacts=input_raw_data_artifacts,
+                    output_feature_group_contexts=output_feature_group_contexts,
+                    transformation_code_artifact=transformation_code_artifact,
+                )
+                LineageAssociationHandler.add_pipeline_and_pipeline_version_association(
+                    pipeline_context_arn=pipeline_context.context_arn,
+                    pipeline_version_context_arn=new_pipeline_version_context.context_arn,
+                    sagemaker_session=self.sagemaker_session,
+                )
+                return
+            raise e
         upstream_feature_group_associations: Iterator[AssociationSummary] = (
             LineageAssociationHandler.list_upstream_associations(
                 # pylint: disable=no-member

@@ -105,73 +105,66 @@ class TestBaseEvaluatorInit:
         assert evaluator.model == DEFAULT_MODEL_PACKAGE_ARN
         assert evaluator._source_model_package_arn == DEFAULT_MODEL_PACKAGE_ARN
     
-    @patch("boto3.client")
+    @patch("boto3.Session")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_init_without_session_creates_default(self, mock_resolve, mock_boto_client, mock_model_info):
+    def test_init_without_session_creates_default(self, mock_resolve, mock_boto_session_cls, mock_model_info):
         """Test that default session is created if not provided."""
         mock_resolve.return_value = mock_model_info
-        mock_sm_client = MagicMock()
-        mock_boto_client.return_value = mock_sm_client
-        
+        mock_boto_session = MagicMock()
+        mock_boto_session.region_name = "us-west-2"
+        mock_boto_session_cls.return_value = mock_boto_session
+
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
         )
-        
+
         assert evaluator.sagemaker_session is not None
-        mock_boto_client.assert_called_once()
-    
+        mock_boto_session_cls.assert_called_once_with(region_name="us-west-2")
+
     @patch("os.environ.get")
-    @patch("boto3.client")
+    @patch("boto3.Session")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_init_respects_region_env_var(self, mock_resolve, mock_boto_client, mock_env_get, mock_model_info):
+    def test_init_respects_region_env_var(self, mock_resolve, mock_boto_session_cls, mock_env_get, mock_model_info):
         """Test that SAGEMAKER_REGION environment variable is respected."""
         mock_resolve.return_value = mock_model_info
         mock_env_get.side_effect = lambda key, default=None: "eu-west-1" if key == "SAGEMAKER_REGION" else None
-        mock_sm_client = MagicMock()
-        mock_boto_client.return_value = mock_sm_client
-        
+        mock_boto_session = MagicMock()
+        mock_boto_session.region_name = "eu-west-1"
+        mock_boto_session_cls.return_value = mock_boto_session
+
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
         )
-        
+
         assert evaluator.sagemaker_session is not None
-        # Verify boto3 client was called with correct region
-        call_args = mock_boto_client.call_args
-        assert call_args[1]['region_name'] == 'eu-west-1'
-    
-    @patch("os.environ.get")
-    @patch("boto3.client")
+        mock_boto_session_cls.assert_called_once_with(region_name="eu-west-1")
+
+    @patch("boto3.Session")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
-    def test_init_respects_endpoint_env_var(self, mock_resolve, mock_boto_client, mock_env_get, mock_model_info):
-        """Test that SAGEMAKER_ENDPOINT environment variable is respected."""
+    def test_init_creates_session_without_endpoint(self, mock_resolve, mock_boto_session_cls, mock_model_info):
+        """Test that session is created without custom endpoint_url."""
         mock_resolve.return_value = mock_model_info
-        test_endpoint = "https://custom-endpoint.amazonaws.com"
-        
-        def env_side_effect(key, default=None):
-            if key == "SAGEMAKER_ENDPOINT":
-                return test_endpoint
-            return default
-        
-        mock_env_get.side_effect = env_side_effect
-        mock_sm_client = MagicMock()
-        mock_boto_client.return_value = mock_sm_client
-        
+        mock_boto_session = MagicMock()
+        mock_boto_session.region_name = "us-west-2"
+        mock_boto_session_cls.return_value = mock_boto_session
+
         evaluator = BaseEvaluator(
             model=DEFAULT_MODEL,
             s3_output_path=DEFAULT_S3_OUTPUT,
             mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
         )
-        
-        # Verify boto3 client was called with custom endpoint
-        call_args = mock_boto_client.call_args
-        assert call_args[1]['endpoint_url'] == test_endpoint
+
+        # Verify boto3.Session client was called without endpoint_url
+        call_args = mock_boto_session.client.call_args
+        assert call_args is not None
+        assert 'endpoint_url' not in (call_args[1] if call_args[1] else {})
 
 
 class TestMLFlowARNValidation:

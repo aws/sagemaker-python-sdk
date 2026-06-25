@@ -430,3 +430,107 @@ def test_get_args_from_llmft_recipe(test_case):
     recipe = OmegaConf.create(test_case["recipe"])
     args, _ = _get_args_from_llmft_recipe(recipe=recipe, compute=test_case["compute"])
     assert args == test_case["expected_args"]
+
+
+class TestGetArgsFromNovaRecipeModelPackageConfig:
+    """Tests for ModelPackageConfig support in _get_args_from_nova_recipe."""
+
+    def test_mp_arn_routes_to_model_package_config(self):
+        """MP ARN in model_name_or_path should go to ModelPackageConfig."""
+        mp_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-mpg/1"
+        recipe = OmegaConf.create({
+            "run": {
+                "name": "test",
+                "model_type": "amazon.nova",
+                "model_name_or_path": mp_arn,
+                "replicas": 1,
+            }
+        })
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=1)
+        args, _ = _get_args_from_nova_recipe(recipe, compute)
+        assert args["model_package_config"]["source_model_package_arn"] == mp_arn
+        assert "base_model" not in args["hyperparameters"]
+        assert "base_model_location" not in args["hyperparameters"]
+        assert "source_model_package" not in args["hyperparameters"]
+
+    def test_mpg_from_recipe(self):
+        """model_package_group in recipe should map to ModelPackageGroupArn."""
+        mpg_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/my-mpg"
+        recipe = OmegaConf.create({
+            "run": {
+                "name": "test",
+                "model_type": "amazon.nova",
+                "model_name_or_path": "nova-pro",
+                "model_package_group": mpg_arn,
+                "replicas": 1,
+            }
+        })
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=1)
+        args, _ = _get_args_from_nova_recipe(recipe, compute)
+        assert args["model_package_config"]["model_package_group_arn"] == mpg_arn
+        assert args["hyperparameters"]["base_model"] == "nova-pro"
+
+    def test_mp_arn_and_mpg_together(self):
+        """Both MP ARN and MPG should be in model_package_config."""
+        mp_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-mpg/1"
+        mpg_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/my-mpg"
+        recipe = OmegaConf.create({
+            "run": {
+                "name": "test",
+                "model_type": "amazon.nova",
+                "model_name_or_path": mp_arn,
+                "model_package_group": mpg_arn,
+                "replicas": 1,
+            }
+        })
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=1)
+        args, _ = _get_args_from_nova_recipe(recipe, compute)
+        assert args["model_package_config"] == {
+            "source_model_package_arn": mp_arn,
+            "model_package_group_arn": mpg_arn,
+        }
+
+    def test_s3_path_still_goes_to_hyperparameters(self):
+        """S3 path should still go to base_model_location HP (legacy path)."""
+        recipe = OmegaConf.create({
+            "run": {
+                "name": "test",
+                "model_type": "amazon.nova",
+                "model_name_or_path": "s3://escrow-bucket/job-1/checkpoints/step_5",
+                "replicas": 1,
+            }
+        })
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=1)
+        args, _ = _get_args_from_nova_recipe(recipe, compute)
+        assert args["hyperparameters"]["base_model_location"] == "s3://escrow-bucket/job-1/checkpoints/step_5"
+        assert "model_package_config" not in args
+
+    def test_model_name_still_goes_to_hyperparameters(self):
+        """Model name should still go to base_model HP."""
+        recipe = OmegaConf.create({
+            "run": {
+                "name": "test",
+                "model_type": "amazon.nova",
+                "model_name_or_path": "nova-pro",
+                "replicas": 1,
+            }
+        })
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=1)
+        args, _ = _get_args_from_nova_recipe(recipe, compute)
+        assert args["hyperparameters"]["base_model"] == "nova-pro"
+        assert "model_package_config" not in args
+
+    def test_invalid_arn_treated_as_model_name(self):
+        """Invalid ARN (wrong account ID format) should be treated as model name."""
+        recipe = OmegaConf.create({
+            "run": {
+                "name": "test",
+                "model_type": "amazon.nova",
+                "model_name_or_path": "arn:aws:sagemaker:us-east-1:123:model-package/x",
+                "replicas": 1,
+            }
+        })
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=1)
+        args, _ = _get_args_from_nova_recipe(recipe, compute)
+        assert args["hyperparameters"]["base_model"] == "arn:aws:sagemaker:us-east-1:123:model-package/x"
+        assert "model_package_config" not in args

@@ -110,3 +110,6 @@ class _ErrorConstants:
     
     # General error prefixes
     ERROR_PREFIX = "[ERROR] Exception: {}: {}"
+
+# Minimum MLflow version required for MTRL training
+MIN_MLFLOW_VERSION = "3.10"

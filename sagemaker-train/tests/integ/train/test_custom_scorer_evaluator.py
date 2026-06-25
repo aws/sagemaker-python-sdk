@@ -36,7 +36,7 @@ EVALUATION_TIMEOUT_SECONDS = 14400  # 4 hours
 # TEST_CONFIG = {
 #     "evaluator_arn": "arn:aws:sagemaker:us-west-2:052150106756:hub-content/F3LMYANDKWPZCROJVCKMJ7TOML6QMZBZRRQOVTUL45VUK7PJ4SXA/JsonDoc/eval-lambda-test/0.0.1",
 #     "dataset_s3_uri": "s3://sagemaker-us-west-2-052150106756/studio-users/d20251107t195443/datasets/2025-11-07T19-55-37-609Z/zc_test.jsonl",
-#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models-gamma/28",
+#     "model_package_arn": "arn:aws:sagemaker:us-west-2:052150106756:model-package/test-finetuned-models/28",
 #     "s3_output_path": "s3://mufi-test-serverless-smtj/eval/",
 #     "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:052150106756:mlflow-tracking-server/mmlu-eval-experiment",
 #     "evaluate_base_model": False,
@@ -48,14 +48,25 @@ TEST_CONFIG = {
     "model_package_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
     "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl",
     "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
-    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-W7FOBBXZANVX",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
     "model_package_group_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
     "evaluate_base_model": False,
     "region": "us-west-2",
 }
 
+# Base model only evaluation configuration (uses JumpStart model ID directly, no model package)
+BASE_MODEL_ONLY_CONFIG = {
+    "base_model_id": "meta-textgeneration-llama-3-2-1b-instruct",
+    "evaluator_arn": "arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/eval-lambda-test/0.0.1",
+    "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/zc_test.jsonl",
+    "s3_output_path": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/",
+    "mlflow_tracking_server_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
+    "region": "us-west-2",
+}
 
-@pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
+
+# @pytest.mark.skip(reason="Temporarily skipped - moved from tests/integ/sagemaker/modules/evaluate/")
+@pytest.mark.xdist_group("custom_scorer_evaluator")
 class TestCustomScorerEvaluatorIntegration:
     """Integration tests for CustomScorerEvaluator with custom evaluator"""
 
@@ -100,7 +111,7 @@ class TestCustomScorerEvaluatorIntegration:
             dataset=TEST_CONFIG["dataset_s3_uri"],
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
         )
         
@@ -217,7 +228,7 @@ class TestCustomScorerEvaluatorIntegration:
                 evaluator=123,  # Invalid type (not string, enum, or object)
                 model=TEST_CONFIG["model_package_arn"],
                 s3_output_path=TEST_CONFIG["s3_output_path"],
-                # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+                mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
                 dataset=TEST_CONFIG["dataset_s3_uri"],
             )
         
@@ -233,7 +244,9 @@ class TestCustomScorerEvaluatorIntegration:
         
         logger.info("Validation tests passed")
 
-    @pytest.mark.skip(reason="Built-in metric evaluation - to be enabled when needed")
+    # @pytest.mark.skip(reason="Built-in metric evaluation - to be enabled when needed")
+    @pytest.mark.gpu_intensive
+    @pytest.mark.serial
     def test_custom_scorer_with_builtin_metric(self):
         """
         Test custom scorer evaluation with built-in metric.
@@ -255,7 +268,7 @@ class TestCustomScorerEvaluatorIntegration:
             dataset=TEST_CONFIG["dataset_s3_uri"],
             model=TEST_CONFIG["model_package_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
-            # mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
+            mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             evaluate_base_model=False,
         )
         
@@ -285,14 +298,127 @@ class TestCustomScorerEvaluatorIntegration:
         assert execution.status.overall_status == "Succeeded"
         logger.info("Built-in metric evaluation completed successfully")
 
-    @pytest.mark.skip(reason="Base model only evaluation - not working yet per notebook")
+    # @pytest.mark.skip(reason="Base model only evaluation - not working yet per notebook")
+    @pytest.mark.gpu_intensive
+    @pytest.mark.serial
     def test_custom_scorer_base_model_only(self):
         """
         Test custom scorer evaluation with base model only (no fine-tuned model).
         
-        Note: Per the notebook, "Evaluation with Base Model Only is yet to be 
-        implemented/tested - Not Working currently". This test is skipped until
-        that functionality is available.
+        This test uses a JumpStart model ID directly instead of a model package ARN,
+        which triggers the CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY template path.
+        The evaluation runs against only the base model without any fine-tuned weights.
+        
+        This test covers:
+        1. Creating CustomScorerEvaluator with a JumpStart model ID (base model only)
+        2. Accessing hyperparameters
+        3. Starting evaluation
+        4. Monitoring execution
+        5. Waiting for completion
+        6. Viewing results
+        7. Retrieving execution by ARN
         """
-        logger.info("Base model only evaluation - not yet implemented")
-        pass
+        # Step 1: Create CustomScorerEvaluator with JumpStart model ID
+        logger.info("Creating CustomScorerEvaluator with base model only (JumpStart model ID)")
+        
+        evaluator = CustomScorerEvaluator(
+            evaluator=BASE_MODEL_ONLY_CONFIG["evaluator_arn"],
+            dataset=BASE_MODEL_ONLY_CONFIG["dataset_s3_uri"],
+            model=BASE_MODEL_ONLY_CONFIG["base_model_id"],
+            s3_output_path=BASE_MODEL_ONLY_CONFIG["s3_output_path"],
+            evaluate_base_model=False,
+        )
+        
+        # Verify evaluator was created with base model ID
+        assert evaluator is not None
+        assert evaluator.evaluator == BASE_MODEL_ONLY_CONFIG["evaluator_arn"]
+        assert evaluator.model == BASE_MODEL_ONLY_CONFIG["base_model_id"]
+        assert evaluator.dataset == BASE_MODEL_ONLY_CONFIG["dataset_s3_uri"]
+        
+        logger.info(f"Created evaluator with base model: {BASE_MODEL_ONLY_CONFIG['base_model_id']}")
+        
+        # Step 2: Access hyperparameters
+        logger.info("Accessing hyperparameters")
+        hyperparams = evaluator.hyperparameters.to_dict()
+        
+        # Verify hyperparameters structure
+        assert isinstance(hyperparams, dict)
+        assert "max_new_tokens" in hyperparams
+        assert "temperature" in hyperparams
+        
+        logger.info(f"Hyperparameters: {hyperparams}")
+        
+        # Step 3: Start evaluation
+        logger.info("Starting evaluation execution")
+        execution = evaluator.evaluate()
+        
+        # Verify execution was created
+        assert execution is not None
+        assert execution.arn is not None
+        assert execution.name is not None
+        assert execution.eval_type is not None
+        
+        logger.info(f"Pipeline Execution ARN: {execution.arn}")
+        logger.info(f"Initial Status: {execution.status.overall_status}")
+        
+        # Step 4: Monitor execution
+        logger.info("Refreshing execution status")
+        execution.refresh()
+        
+        # Verify status was updated
+        assert execution.status.overall_status is not None
+        
+        # Log step details if available
+        if execution.status.step_details:
+            logger.info("Step Details:")
+            for step in execution.status.step_details:
+                logger.info(f"  {step.name}: {step.status}")
+        
+        # Step 5: Wait for completion
+        logger.info(f"Waiting for evaluation to complete (timeout: {EVALUATION_TIMEOUT_SECONDS}s / {EVALUATION_TIMEOUT_SECONDS//3600}h)")
+        
+        try:
+            execution.wait(target_status="Succeeded", poll=30, timeout=EVALUATION_TIMEOUT_SECONDS)
+            logger.info(f"Final Status: {execution.status.overall_status}")
+            
+            # Verify completion
+            assert execution.status.overall_status == "Succeeded"
+            
+            # Step 6: View results
+            logger.info("Displaying results")
+            execution.show_results()
+            
+            # Verify S3 output path is set
+            assert execution.s3_output_path is not None
+            logger.info(f"Results stored at: {execution.s3_output_path}")
+            
+        except Exception as e:
+            logger.error(f"Evaluation failed or timed out: {e}")
+            logger.error(f"Final status: {execution.status.overall_status}")
+            if execution.status.failure_reason:
+                logger.error(f"Failure reason: {execution.status.failure_reason}")
+            
+            # Log step failures
+            if execution.status.step_details:
+                for step in execution.status.step_details:
+                    if "failed" in step.status.lower():
+                        logger.error(f"Failed step: {step.name}")
+                        if step.failure_reason:
+                            logger.error(f"  Reason: {step.failure_reason}")
+            
+            # Re-raise to fail the test
+            raise
+        
+        # Step 7: Retrieve execution by ARN
+        logger.info("Retrieving execution by ARN")
+        retrieved_execution = EvaluationPipelineExecution.get(
+            arn=execution.arn,
+            region=BASE_MODEL_ONLY_CONFIG["region"]
+        )
+        
+        # Verify retrieved execution matches
+        assert retrieved_execution.arn == execution.arn
+        assert retrieved_execution.status.overall_status == "Succeeded"
+        
+        logger.info(f"Retrieved execution status: {retrieved_execution.status.overall_status}")
+        logger.info("Base model only evaluation completed successfully")

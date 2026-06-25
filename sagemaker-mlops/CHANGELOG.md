@@ -1,4 +1,39 @@
 # Changelog
+## v1.14.0 (2026-06-18)
+
+### Other
+
+- Update module dependencies
+- chore: deprecate Python 3.9 support (#5941)
+
+## v1.13.1 (2026-06-04)
+
+- Update module dependencies
+  
+## v1.13.0 (2026-06-02)
+
+- Update module dependencies
+
+## v1.12.0 (2026-05-19)
+
+### New Features
+
+- Add configurable `use_lake_formation_credentials` parameter to the `@feature_processor` decorator for Lake Formation credential vending (#5816)
+- Dynamic Spark image resolution supporting Spark 3.5 with Python 3.12 (#5816)
+- Export `IcebergProperties` to the `feature_store` public API surface (#5816)
+
+## v1.11.0 (2026-05-12)
+
+### New Features
+
+- Add Feature Store reference to Implement MLOps documentation page
+
+## v1.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix KMS key propagation in QualityCheckStep and ClarifyCheckStep
+
 ## v1.10.0 (2026-05-01)
 
 ### New Features

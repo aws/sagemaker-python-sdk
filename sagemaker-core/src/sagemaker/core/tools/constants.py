@@ -123,6 +123,8 @@ REQUIRED_TO_OPTIONAL_OVERRIDES = {
     # ModelPackageSecurityConfig.KmsKeyId is absent when no KMS key is configured.
     "DescribeModelPackageOutput": ["ModelPackageName"],
     "ModelPackageSecurityConfig": ["KmsKeyId"],
+    # S3Uri is optional when ModelDataSource references escrow-managed artifacts (RMP).
+    "S3ModelDataSource": ["S3Uri"],
 }
 
 # Members where the generated primitive type should be replaced with a PipelineVariable

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
+import sys
 import time
 from typing import Union
 
@@ -40,7 +41,7 @@ from sagemaker.core.remote_function.errors import (
 from sagemaker.core.common_utils import unique_name_from_base
 from tests.integ.s3_utils import assert_s3_files_exist
 
-# from tests.integ.kms_utils import get_or_create_kms_key  # TODO: provide KMS utils
+from tests.integ.integ_test_kms_helpers import get_or_create_kms_key
 import os
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "data")
@@ -71,6 +72,7 @@ def test_decorator(sagemaker_session, dummy_container_without_error, cpu_instanc
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-decorator",
     )
     def divide(x, y):
         return x / y
@@ -87,6 +89,7 @@ def test_decorated_function_raises_exception(
         image_uri=dummy_container_without_error,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-decorated-fn-raises",
     )
     def divide(x, y):
         logging.warning(f"{x}/{y}")
@@ -104,6 +107,7 @@ def test_remote_python_runtime_is_incompatible(
         image_uri=dummy_container_incompatible_python_runtime,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-remote-py-incompatible",
     )
     def divide(x, y):
         return x / y
@@ -119,7 +123,7 @@ def test_remote_python_runtime_is_incompatible(
 
 
 # TODO: add VPC settings, update SageMakerRole with KMS permissions
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_advanced_job_setting(
     sagemaker_session, dummy_container_without_error, cpu_instance_type, s3_kms_key
 ):
@@ -129,6 +133,7 @@ def test_advanced_job_setting(
         instance_type=cpu_instance_type,
         s3_kms_key=s3_kms_key,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-advanced-job-setting",
     )
     def divide(x, y):
         return x / y
@@ -153,6 +158,7 @@ def test_with_custom_file_filter(
             include_local_workdir=True,
             custom_file_filter=CustomFileFilter(),
             keep_alive_period_in_seconds=300,
+            job_name_prefix="test-custom-file-filter",
         )
         def train(x):
             from helpers import local_module
@@ -181,6 +187,7 @@ def test_with_misconfigured_custom_file_filter(
             # exclude critical modules
             custom_file_filter=CustomFileFilter(ignore_name_patterns=["helpers"]),
             keep_alive_period_in_seconds=300,
+            job_name_prefix="test-misconfig-file-filter",
         )
         def train(x):
             from helpers import local_module
@@ -203,6 +210,7 @@ def test_with_additional_dependencies(
         dependencies=dependencies_path,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-additional-deps",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -224,6 +232,7 @@ def test_additional_dependencies_with_job_conda_env(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         job_conda_env="integ_test_env",
+        job_name_prefix="test-deps-job-conda-env",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -244,6 +253,7 @@ def test_additional_dependencies_with_default_conda_env(
         dependencies=dependencies_path,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-deps-default-conda",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -265,6 +275,7 @@ def test_additional_dependencies_with_non_existent_conda_env(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         job_conda_env="non_existent_env",
+        job_name_prefix="test-deps-nonexist-conda",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -286,6 +297,7 @@ def test_additional_dependencies_with_conda_yml_file(
         sagemaker_session=sagemaker_session,
         job_conda_env="integ_test_env",
         keep_alive_period_in_seconds=120,
+        job_name_prefix="test-deps-conda-yml",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -307,6 +319,7 @@ def test_with_non_existent_dependencies(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=30,
+        job_name_prefix="test-nonexist-deps",
     )
     def divide(x, y):
         return x / y
@@ -335,6 +348,7 @@ def test_decorator_pre_execution_command(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-pre-exec-command",
     )
     def get_file_content(file_names):
         joined_content = ""
@@ -363,6 +377,7 @@ def test_decorator_pre_execution_script(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-pre-exec-script",
     )
     def get_file_content(file_names):
         joined_content = ""
@@ -397,6 +412,7 @@ def test_decorator_pre_execution_command_error(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-pre-exec-cmd-error",
     )
     def get_file_content(file_names):
         joined_content = ""
@@ -426,6 +442,7 @@ def test_decorator_pre_execution_script_error(
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        job_name_prefix="test-pre-exec-script-err",
     )
     def get_file_content(file_names):
         joined_content = ""
@@ -450,6 +467,7 @@ def test_decorator_with_spot_instances(
         sagemaker_session=sagemaker_session,
         use_spot_instances=True,
         max_wait_time_in_seconds=48 * 60 * 60,
+        job_name_prefix="test-spot-instances",
     )
     def divide(x, y):
         return x / y
@@ -471,6 +489,7 @@ def test_decorator_with_spot_instances_save_and_load_checkpoints(
         sagemaker_session=sagemaker_session,
         use_spot_instances=True,
         max_wait_time_in_seconds=48 * 60 * 60,
+        job_name_prefix="test-spot-checkpoints",
     )
     def save_checkpoints(checkpoint_path: Union[str, os.PathLike]):
         file_path_1 = os.path.join(checkpoint_path, "checkpoint_1.json")
@@ -490,6 +509,7 @@ def test_decorator_with_spot_instances_save_and_load_checkpoints(
         sagemaker_session=sagemaker_session,
         use_spot_instances=True,
         max_wait_time_in_seconds=48 * 60 * 60,
+        job_name_prefix="test-spot-checkpoints",
     )
     def load_checkpoints(checkpoint_path: Union[str, os.PathLike]):
         file_path_1 = os.path.join(checkpoint_path, "checkpoint_1.json")
@@ -524,6 +544,7 @@ def test_with_user_and_workdir_set_in_the_image(
         dependencies=dependencies_path,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-user-workdir",
     )
     def cuberoot(x):
         from scipy.special import cbrt
@@ -543,6 +564,7 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
         image_uri=dummy_container_with_user_and_workdir,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
+        job_name_prefix="test-user-workdir-err",
     )
     def my_func():
         raise RuntimeError(client_error_message)
@@ -552,18 +574,23 @@ def test_with_user_and_workdir_set_in_the_image_client_error_case(
     assert client_error_message in str(error)
 
 
-@pytest.mark.skip
-def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
+# @pytest.mark.skipif(
+#     sys.version_info[:2] not in [(3, 9), (3, 12)],
+#     reason="SageMaker Spark image only available for Python 3.9 and 3.12",
+# )
+@pytest.mark.spark_py312
+def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type, spark_pre_execution_commands):
     @remote(
         role=ROLE,
         instance_type=cpu_instance_type,
         sagemaker_session=sagemaker_session,
         keep_alive_period_in_seconds=60,
+        pre_execution_commands=spark_pre_execution_commands,
         spark_config=SparkConfig(
             configuration=[
                 {
                     "Classification": "spark-defaults",
-                    "Properties": {"spark.app.name", "remote-spark-test"},
+                    "Properties": {"spark.app.name": "remote-spark-test"},
                 }
             ]
         ),
@@ -573,12 +600,19 @@ def test_decorator_with_spark_job(sagemaker_session, cpu_instance_type):
 
         spark = SparkSession.builder.getOrCreate()
 
-        assert spark.conf.get(spark.app.name) == "remote-spark-test"
+        # Avoid bare assert here: pytest's assertion rewriting injects _pytest
+        # module references into the function bytecode, which causes
+        # deserialization to fail in the Spark container (no pytest installed).
+        app_name = spark.conf.get("spark.app.name")
+        if app_name != "remote-spark-test":
+            raise RuntimeError(
+                f"Expected spark.app.name='remote-spark-test', got '{app_name}'"
+            )
 
     test_spark_transform()
 
 
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_decorator_auto_capture(sagemaker_session, auto_capture_test_container):
     """
     This test runs a docker container. The Container invocation will execute a python script
@@ -621,6 +655,7 @@ def test_decorator_torchrun(
         keep_alive_period_in_seconds=60,
         use_torchrun=use_torchrun,
         use_mpirun=use_mpirun,
+        job_name_prefix="test-torchrun",
     )
     def divide(x, y):
         return x / y

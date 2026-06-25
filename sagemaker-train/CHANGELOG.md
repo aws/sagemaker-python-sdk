@@ -1,4 +1,53 @@
 # Changelog
+## v1.14.0 (2026-06-18)
+
+### Bug Fixes
+
+- fix: fall back to SageMakerPublicHub when model not found in private hub (#5959)
+- fix: always use SageMakerPublicHub for base model ARN in evaluations (#5959)
+- fix: fall back to subscription recipes for models without base recipes (#5946)
+
+### Other
+
+- chore: deprecate Python 3.9 support (#5941)
+
+## v1.13.1 (2026-06-04)
+
+### Bug Fixes
+
+- fix: Address MTRL Eval Hyperparameters issue
+
+## v1.13.0 (2026-06-02)
+
+### New Features
+
+- **feat: Model customization** - Add new finetuning Trainer - MultiTurnRLTrainer(Multi-Turn Reinforcement Learning)
+- **feat: Model customization** - Add new evaluator - MultiTurnRLEvaluator
+
+### Bug Fixes
+
+- fix: apply gpu_intensive mark at test-level instead of module-level (#5896)
+
+## v1.12.0 (2026-05-19)
+
+### Other
+
+- Update module dependencies
+
+## v1.11.0 (2026-05-12)
+
+### New Features
+
+- Auto-detect subscription recipe hyperparameters in SFTTrainer for Nova Forge datamix support
+
+## v1.10.1 (2026-05-07)
+
+### Bug Fixes
+
+- Fix base_model_arn construction to use private hub when SAGEMAKER_HUB_NAME is set
+- Fix imports for Model Customization interfaces
+- Increase default timeout for training jobs
+
 ## v1.10.0 (2026-05-01)
 
 ### New Features

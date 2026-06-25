@@ -15,6 +15,7 @@ class EvalType(Enum):
     BENCHMARK = "benchmark"
     CUSTOM_SCORER = "customscorer"
     LLM_AS_JUDGE = "llmasjudge"
+    MTRL = "mtrl"
 
 
 # Pipeline naming convention
@@ -32,11 +33,13 @@ def _get_eval_type_display_name(eval_type: EvalType) -> str:
             - BENCHMARK → "BenchmarkEvaluation"
             - CUSTOM_SCORER → "CustomScorerEvaluation"
             - LLM_AS_JUDGE → "LLMAJEvaluation"
+            - MTRL → "MTRLEvaluation"
     """
     mapping = {
         EvalType.BENCHMARK: "BenchmarkEvaluation",
         EvalType.CUSTOM_SCORER: "CustomScorerEvaluation",
-        EvalType.LLM_AS_JUDGE: "LLMAJEvaluation"
+        EvalType.LLM_AS_JUDGE: "LLMAJEvaluation",
+        EvalType.MTRL: "MTRLEvaluation"
     }
     return mapping[eval_type]
 

@@ -297,13 +297,12 @@ def _start_pipeline_execution(
     import boto3
     
     execution_display_name = f"{name}-{int(time.time())}"
-    endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
-    
+
     # Get boto3 client
     if session:
-        sm_client = session.client('sagemaker', region_name=region, endpoint_url=endpoint_url)
+        sm_client = session.client('sagemaker', region_name=region)
     else:
-        sm_client = boto3.client('sagemaker', region_name=region, endpoint_url=endpoint_url)
+        sm_client = boto3.client('sagemaker', region_name=region)
     
     # Start pipeline execution
     logger.info(f"Starting pipeline execution: {execution_display_name}")
@@ -381,14 +380,11 @@ def _extract_output_s3_location_from_steps(raw_steps: List[Any], session: Option
         import boto3
         import os
         
-        # Get endpoint URL from environment variable (for beta endpoint support)
-        endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
-        
-        # Get SageMaker client with optional endpoint URL
+        # Get SageMaker client
         if session:
-            sm_client = session.client('sagemaker', region_name=region, endpoint_url=endpoint_url)
+            sm_client = session.client('sagemaker', region_name=region)
         else:
-            sm_client = boto3.client('sagemaker', region_name=region, endpoint_url=endpoint_url)
+            sm_client = boto3.client('sagemaker', region_name=region)
         
         for step in raw_steps:
             step_name = getattr(step, 'step_name', '')
@@ -447,6 +443,7 @@ class StepDetail(BaseModel):
     end_time: Optional[str] = Field(None, description="Step end time")
     display_name: Optional[str] = Field(None, description="Display name for the step")
     failure_reason: Optional[str] = Field(None, description="Reason for failure if step failed")
+
     job_arn: Optional[str] = Field(None, description="ARN of the underlying job (training, processing, transform, etc.)")
 
 
@@ -843,18 +840,15 @@ class EvaluationPipelineExecution(BaseModel):
             import os
             import boto3
             
-            endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
-            
             # Get boto3 client - extract from pipeline execution if available
             if self._pipeline_execution and hasattr(self._pipeline_execution, '_session'):
                 session = self._pipeline_execution._session
                 if hasattr(session, 'boto_session'):
-                    sm_client = session.boto_session.client('sagemaker', endpoint_url=endpoint_url)
+                    sm_client = session.boto_session.client('sagemaker')
                 else:
-                    sm_client = session.client('sagemaker', endpoint_url=endpoint_url)
+                    sm_client = session.client('sagemaker')
             else:
-                # Fallback to default boto3 client
-                sm_client = boto3.client('sagemaker', endpoint_url=endpoint_url)
+                sm_client = boto3.client('sagemaker')
             
             # Stop the pipeline execution using boto3
             sm_client.stop_pipeline_execution(
@@ -924,22 +918,70 @@ class EvaluationPipelineExecution(BaseModel):
             mlflow_link_cache = {'url': None, 'timestamp': 0}
             
             def get_cached_mlflow_url():
-                """Get cached MLflow URL, regenerating every 4 minutes."""
+                """Get cached MLflow URL, regenerating every 4 minutes.
+
+                Attempts run-level deep-linking via MLflow REST API.
+                Falls back to experiment-name deep link otherwise.
+                """
                 from sagemaker.train.common_utils.trainer_wait import _is_unassigned_attribute
-                from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
+                from sagemaker.train.common_utils.mlflow_url_utils import (
+                    _build_mlflow_deep_link,
+                    _build_mlflow_deep_link_by_name,
+                    _resolve_experiment_id,
+                    _resolve_run_id,
+                )
 
                 current_time = time.time()
-                if mlflow_link_cache['url'] is None or (current_time - mlflow_link_cache['timestamp']) > 240:
+                if mlflow_link_cache['url'] is None or (current_time - mlflow_link_cache['timestamp']) > 30:
+                    arn = None
+                    exp_name = None
+
                     pe = self._pipeline_execution
                     mlflow_cfg = getattr(pe, 'm_lflow_config', None) if pe else None
                     if mlflow_cfg and not _is_unassigned_attribute(mlflow_cfg):
                         arn = getattr(mlflow_cfg, 'mlflow_resource_arn', None)
-                        if arn and not _is_unassigned_attribute(arn):
-                            exp_name = getattr(mlflow_cfg, 'mlflow_experiment_name', None)
-                            if exp_name and _is_unassigned_attribute(exp_name):
-                                exp_name = None
-                            mlflow_link_cache['url'] = get_presigned_mlflow_experiment_url(arn, exp_name)
-                            mlflow_link_cache['timestamp'] = current_time
+                        if arn and _is_unassigned_attribute(arn):
+                            arn = None
+                        exp_name = getattr(mlflow_cfg, 'mlflow_experiment_name', None)
+                        if exp_name and _is_unassigned_attribute(exp_name):
+                            exp_name = None
+
+                    if not arn:
+                        arn = getattr(self, 'mlflow_resource_arn', None)
+                    if not exp_name:
+                        exp_name = getattr(self, 'mlflow_experiment_name', None)
+
+                    if arn:
+                        try:
+                            from sagemaker.core.utils.utils import SageMakerClient
+                            sm_client = SageMakerClient().sagemaker_client
+                            response = sm_client.create_presigned_mlflow_app_url(Arn=arn)
+                            base_url = response.get("AuthorizedUrl")
+                        except Exception:
+                            base_url = None
+
+                        if base_url:
+                            details = self.get_mlflow_details() if hasattr(self, 'get_mlflow_details') else None
+                            if details and details.get("ExperimentId"):
+                                mlflow_link_cache['url'] = _build_mlflow_deep_link(
+                                    base_url,
+                                    details["ExperimentId"],
+                                    details.get("RunId"),
+                                )
+                            elif exp_name:
+                                exp_id = _resolve_experiment_id(base_url, exp_name)
+                                if exp_id:
+                                    run_id = _resolve_run_id(base_url, exp_id)
+                                    mlflow_link_cache['url'] = _build_mlflow_deep_link(
+                                        base_url, exp_id, run_id
+                                    )
+                                else:
+                                    mlflow_link_cache['url'] = _build_mlflow_deep_link_by_name(
+                                        base_url, exp_name
+                                    )
+                            else:
+                                mlflow_link_cache['url'] = base_url
+                        mlflow_link_cache['timestamp'] = current_time
                 return mlflow_link_cache['url']
             
             while True:
@@ -974,16 +1016,30 @@ class EvaluationPipelineExecution(BaseModel):
                 try:
                     from sagemaker.core.utils.utils import SageMakerClient
                     from sagemaker.train.common_utils.metrics_visualizer import _is_in_studio, _get_studio_base_url
+                    region = SageMakerClient().region_name
                     if pipeline_name and _is_in_studio():
-                        region = SageMakerClient().region_name
                         base = _get_studio_base_url(region)
                         if base:
                             pipeline_url = f"{base}/jobs/evaluation/detail?pipeline_name={pipeline_name}&execution_id={exec_id}"
                             links.append(f"[bright_blue underline][link={pipeline_url}]🔗 Pipeline Execution (Studio)[/link][/bright_blue underline]")
                 except Exception:
                     pass
+                # Add CloudWatch Logs link from the first job step
+                try:
+                    if self.status.step_details:
+                        for step in self.status.step_details:
+                            if step.job_arn:
+                                from sagemaker.train.common_utils.metrics_visualizer import get_cloudwatch_logs_url
+                                cw_url = get_cloudwatch_logs_url(step.job_arn)
+                                if cw_url:
+                                    links.append(f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs[/link][/bright_blue underline]")
+                                break
+                except Exception:
+                    pass
                 # Add MLflow experiment link if available
                 cached_mlflow_url = get_cached_mlflow_url()
+                if not cached_mlflow_url:
+                    cached_mlflow_url = getattr(self, 'mlflow_url', None)
                 if cached_mlflow_url:
                     links.append(f"[bright_blue underline][link={cached_mlflow_url}]🔗 MLflow Experiment[/link][/bright_blue underline]")
                 if links:
@@ -1161,87 +1217,104 @@ class EvaluationPipelineExecution(BaseModel):
                 
                 time.sleep(poll)
         else:
-            # Terminal experience with rich library
-            try:
-                from rich.live import Live
-                from rich.panel import Panel
-                from rich.progress import Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
-                from rich.console import Group
-                from rich.status import Status
-                from rich.style import Style
-                
-                progress = Progress(
-                    SpinnerColumn("bouncingBar"),
-                    TextColumn("{task.description}"),
-                    TimeElapsedColumn(),
-                )
-                progress.add_task(f"Waiting for PipelineExecution to reach [bold]{target_status}[/bold] status...")
-                status = Status("Current status:")
-                
-                with Live(
-                    Panel(
-                        Group(progress, status),
-                        title="Wait Log Panel",
-                        border_style=Style(color="blue"),
-                    ),
-                    transient=True,
-                ):
-                    while True:
-                        self.refresh()
-                        current_status = self.status.overall_status
-                        status.update(f"Current status: [bold]{current_status}[/bold]")
-                        
-                        if target_status == current_status:
-                            logger.info(f"Final Resource Status: [bold]{current_status}[/bold]")
-                            return
-                        
-                        if "failed" in current_status.lower():
-                            from sagemaker.core.utils.exceptions import FailedStatusError
-                            raise FailedStatusError(
-                                resource_type="PipelineExecution",
-                                status=current_status,
-                                reason=self.status.failure_reason,
-                            )
-                        
-                        if timeout is not None and time.time() - start_time >= timeout:
-                            from sagemaker.core.utils.exceptions import TimeoutExceededError
-                            raise TimeoutExceededError(
-                                resource_type="EvaluationJob",
-                                status=current_status,
-                                message="Your evaluation job is still running. Call .refresh() to check its current status.",
-                            )
-                        
-                        time.sleep(poll)
-            except ImportError:
-                # Fallback to simple print-based progress if rich is not available
-                logger.info(f"Waiting for PipelineExecution to reach {target_status} status...")
-                while True:
-                    self.refresh()
-                    current_status = self.status.overall_status
-                    elapsed = time.time() - start_time
-                    print(f"Current status: {current_status} (Elapsed: {elapsed:.1f}s)")
-                    
-                    if target_status == current_status:
-                        logger.info(f"Final Resource Status: {current_status}")
-                        return
-                    
-                    if "failed" in current_status.lower():
-                        from sagemaker.core.utils.exceptions import FailedStatusError
-                        raise FailedStatusError(
-                            resource_type="PipelineExecution",
-                            status=current_status,
-                            reason=self.status.failure_reason,
-                        )
-                    
-                    if timeout is not None and elapsed >= timeout:
-                        from sagemaker.core.utils.exceptions import TimeoutExceededError
-                        raise TimeoutExceededError(
-                            resource_type="EvaluationJob",
-                            status=current_status,
-                            message="Your evaluation job is still running. Call .refresh() to check its current status.",
-                        )
-                    
-                    time.sleep(poll)
+            # Terminal experience - plain print matching training format
+            pipeline_name = None
+            if self.arn:
+                arn_parts = self.arn.split('/')
+                if len(arn_parts) >= 3:
+                    pipeline_name = arn_parts[-3]
+            print(f"\nEvaluation started: {self.name}", flush=True)
+            if pipeline_name:
+                print(f"Pipeline: {pipeline_name}", flush=True)
+            print(f"Execution ARN: {self.arn}", flush=True)
+
+            while True:
+                self.refresh()
+                current_status = self.status.overall_status
+                elapsed = time.time() - start_time
+
+                # Print step transitions (matching training format)
+                if self.status.step_details:
+                    print("\n--------------------------------------\n", flush=True)
+                    print("Status Transitions:", flush=True)
+                    for step in self.status.step_details:
+                        duration = ""
+                        check = ""
+                        if step.start_time and step.end_time:
+                            try:
+                                from datetime import datetime
+                                start_dt = datetime.fromisoformat(step.start_time.replace('Z', '+00:00'))
+                                end_dt = datetime.fromisoformat(step.end_time.replace('Z', '+00:00'))
+                                duration = f"({(end_dt - start_dt).total_seconds():.1f}s)"
+                            except Exception:
+                                pass
+                            check = "✓"
+                        elif step.start_time:
+                            try:
+                                from datetime import datetime, timezone
+                                start_dt = datetime.fromisoformat(step.start_time.replace('Z', '+00:00'))
+                                running_secs = (datetime.now(timezone.utc) - start_dt).total_seconds()
+                                duration = f"(Running... {running_secs:.0f}s)"
+                            except Exception:
+                                duration = "(Running...)"
+                            check = "⋯"
+
+                        step_msg = f"  {check} {step.display_name or step.name}: {step.status} {duration}"
+                        print(step_msg, flush=True)
+                        if step.job_arn and ('executing' in step.status.lower() or 'failed' in step.status.lower()):
+                            print(f"    Job ARN: {step.job_arn}", flush=True)
+
+                print(f"\nStatus: {current_status} (Elapsed: {elapsed:.1f}s)", flush=True)
+
+                if target_status == current_status:
+                    if self.s3_output_path:
+                        print(f"\nResults S3: {self.s3_output_path}", flush=True)
+                    return
+
+                if "failed" in current_status.lower():
+                    if self.status.failure_reason:
+                        print(f"\nFailure reason: {self.status.failure_reason}", flush=True)
+                    if self.status.step_details:
+                        for step in self.status.step_details:
+                            if 'failed' in step.status.lower():
+                                print(f"\nFailed step: {step.display_name or step.name}", flush=True)
+                                if step.failure_reason:
+                                    print(f"Failure reason: {step.failure_reason}", flush=True)
+                                if step.job_arn:
+                                    print(f"Job ARN: {step.job_arn}", flush=True)
+                                    job_name = step.job_arn.split('/')[-1] if '/' in step.job_arn else ''
+                                    if job_name:
+                                        # Derive log group from ARN type
+                                        if 'training-job/' in step.job_arn:
+                                            log_group = "/aws/sagemaker/TrainingJobs"
+                                        elif 'processing-job/' in step.job_arn:
+                                            log_group = "/aws/sagemaker/ProcessingJobs"
+                                        elif 'transform-job/' in step.job_arn:
+                                            log_group = "/aws/sagemaker/TransformJobs"
+                                        else:
+                                            log_group = "/aws/sagemaker/TrainingJobs"
+                                        print(f"Log group: {log_group}", flush=True)
+                                        print(f"Log stream prefix: {job_name}", flush=True)
+                                        from sagemaker.train.common_utils.metrics_visualizer import get_cloudwatch_logs_url
+                                        cw_url = get_cloudwatch_logs_url(step.job_arn)
+                                        if cw_url:
+                                            print(f"CloudWatch Logs: {cw_url}", flush=True)
+                    from sagemaker.core.utils.exceptions import FailedStatusError
+                    raise FailedStatusError(
+                        resource_type="PipelineExecution",
+                        status=current_status,
+                        reason=self.status.failure_reason,
+                    )
+
+                if timeout is not None and time.time() - start_time >= timeout:
+                    from sagemaker.core.utils.exceptions import TimeoutExceededError
+                    raise TimeoutExceededError(
+                        resource_type="EvaluationJob",
+                        status=current_status,
+                        message="Your evaluation job is still running. Call .refresh() to check its current status.",
+                    )
+
+                time.sleep(poll)
     
     def _enrich_with_step_details(
         self,
@@ -1315,6 +1388,8 @@ class EvaluationPipelineExecution(BaseModel):
             execution = BenchmarkEvaluationExecution(**execution_dict)
         elif eval_type == EvalType.LLM_AS_JUDGE:
             execution = LLMAJEvaluationExecution(**execution_dict)
+        elif eval_type == EvalType.MTRL:
+            execution = MTRLEvaluationExecution(**execution_dict)
         else:
             execution = self
         
@@ -1491,3 +1566,137 @@ class LLMAJEvaluationExecution(EvaluationPipelineExecution):
         # Delegate to utility
         from ..common_utils.show_results_utils import _show_llmaj_results
         _show_llmaj_results(self, limit=limit, offset=offset, show_explanations=show_explanations)
+
+
+class MTRLEvaluationExecution(EvaluationPipelineExecution):
+    """MultiTurnRL (MTRL) evaluation execution subclass.
+
+    Inherits the standard sagemaker-core-based ``wait()``, ``refresh()``,
+    and ``stop()`` from ``EvaluationPipelineExecution``. No custom overrides
+    are needed — the shared pipeline infrastructure handles lifecycle.
+    """
+
+    mlflow_url: Optional[str] = Field(None, description="Presigned MLflow tracking URL")
+    mlflow_resource_arn: Optional[str] = Field(None, description="MLflow app/tracking server ARN")
+    mlflow_experiment_name: Optional[str] = Field(None, description="MLflow experiment name for this eval")
+    _mlflow_details_cache: Optional[Dict[str, Any]] = None
+
+    def get_mlflow_details(self) -> Optional[Dict[str, Any]]:
+        """Fetch MLflow details (ExperimentId, RunId, etc.) from the first completed eval Job step.
+
+        Describes the underlying Job via sagemaker-core and extracts
+        ``ServiceOutput.MlflowDetails`` from the JobConfigDocument.
+
+        Returns:
+            Dict with keys ExperimentName, RunName, ExperimentId, RunId, or None.
+        """
+        if self._mlflow_details_cache:
+            return self._mlflow_details_cache
+
+        if not self.status.step_details:
+            return None
+
+        for step in self.status.step_details:
+            if step.status != "Succeeded" or not step.job_arn:
+                continue
+            if step.name not in ("EvaluateBaseModel", "EvaluateFineTunedModel"):
+                continue
+            try:
+                from sagemaker.core.resources import Job
+                job_name = step.job_arn.rsplit("/", 1)[-1]
+                region = step.job_arn.split(":")[3]
+                job = Job.get(job_name=job_name, job_category="AgentRFTEvaluation", region=region)
+                config_doc = job.job_config_document
+                if config_doc:
+                    config = json.loads(config_doc)
+                    details = config.get("ServiceOutput", {}).get("MlflowDetails")
+                    if details and details.get("ExperimentId"):
+                        self._mlflow_details_cache = details
+                        return details
+            except Exception as e:
+                logger.debug(f"Failed to fetch MLflow details from step {step.name}: {e}")
+                continue
+
+        return None
+
+    def get_mlflow_url(self) -> Optional[str]:
+        """Generate a presigned MLflow URL deep-linked to the eval run.
+
+        Deep-links to the specific experiment/run (matching training behavior).
+        Raises an error if unable to resolve the full URL with run_id.
+
+        Returns:
+            Presigned URL string with experiment + run deep link.
+
+        Raises:
+            RuntimeError: If unable to resolve the full MLflow URL with run details.
+        """
+        from sagemaker.train.common_utils.mlflow_url_utils import (
+            _build_mlflow_deep_link,
+            _resolve_experiment_id,
+            _resolve_run_id,
+        )
+
+        arn = self.mlflow_resource_arn
+        if not arn:
+            pe = self._pipeline_execution
+            if pe:
+                from sagemaker.train.common_utils.trainer_wait import _is_unassigned_attribute
+                mlflow_cfg = getattr(pe, 'm_lflow_config', None)
+                if mlflow_cfg and not _is_unassigned_attribute(mlflow_cfg):
+                    arn = getattr(mlflow_cfg, 'mlflow_resource_arn', None)
+                    if arn and _is_unassigned_attribute(arn):
+                        arn = None
+
+        if not arn:
+            raise RuntimeError(
+                "Cannot generate MLflow URL: no mlflow_resource_arn configured on this execution."
+            )
+
+        # Get presigned base URL
+        try:
+            from sagemaker.core.utils.utils import SageMakerClient
+            sm_client = SageMakerClient().sagemaker_client
+            response = sm_client.create_presigned_mlflow_app_url(Arn=arn)
+            base_url = response.get("AuthorizedUrl")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to get presigned MLflow URL from CreatePresignedMlflowAppUrl: {e}"
+            ) from e
+
+        if not base_url:
+            raise RuntimeError(
+                "CreatePresignedMlflowAppUrl returned empty AuthorizedUrl."
+            )
+
+        # Try run-level deep link from ServiceOutput.MlflowDetails (via Job describe)
+        details = self.get_mlflow_details()
+        if details:
+            exp_id = details.get("ExperimentId")
+            run_id = details.get("RunId")
+            if exp_id and run_id:
+                return _build_mlflow_deep_link(base_url, exp_id, run_id)
+
+        # Resolve experiment ID + run ID via MLflow REST API
+        exp_name = self.mlflow_experiment_name
+        if not exp_name:
+            raise RuntimeError(
+                "Cannot generate MLflow URL: no mlflow_experiment_name configured and "
+                "ServiceOutput.MlflowDetails not available from the eval job."
+            )
+
+        exp_id = _resolve_experiment_id(base_url, exp_name)
+        if not exp_id:
+            raise RuntimeError(
+                f"Failed to resolve MLflow experiment ID for experiment name '{exp_name}'. "
+                f"The experiment may not exist yet (eval job still running?)."
+            )
+
+        run_id = _resolve_run_id(base_url, exp_id)
+        if not run_id:
+            raise RuntimeError(
+                f"Failed to resolve MLflow run ID for experiment '{exp_name}' (id={exp_id}). "
+                f"No runs found — the eval job may still be running."
+            )
+
+        return _build_mlflow_deep_link(base_url, exp_id, run_id)

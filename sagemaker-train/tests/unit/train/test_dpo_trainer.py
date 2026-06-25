@@ -420,7 +420,7 @@ class TestDPOTrainer:
         trainer = DPOTrainer(model="test-model", model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=True, wait_timeout=600)
 
-        mock_wait.assert_called_once_with(mock_training_job, timeout=600)
+        mock_wait.assert_called_once_with(mock_training_job, timeout=600, poll=5)
 
     @patch('sagemaker.train.common_utils.trainer_wait.wait')
     @patch('sagemaker.train.dpo_trainer._resolve_model_and_name')
@@ -463,7 +463,7 @@ class TestDPOTrainer:
         trainer = DPOTrainer(model="test-model", model_package_group="test-group", training_dataset="s3://bucket/train")
         trainer.train(wait=True)
 
-        mock_wait.assert_called_once_with(mock_training_job)
+        mock_wait.assert_called_once_with(mock_training_job, poll=5)
 
     @patch('sagemaker.train.common_utils.trainer_wait.wait')
     @patch('sagemaker.train.dpo_trainer._resolve_model_and_name')

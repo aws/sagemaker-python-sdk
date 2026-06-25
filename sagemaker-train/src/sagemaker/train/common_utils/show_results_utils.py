@@ -855,3 +855,6 @@ def _show_llmaj_results(
         console.print("═" * 70)
     else:
         console.print("[yellow]No per-example results available to display[/yellow]")
+
+
+

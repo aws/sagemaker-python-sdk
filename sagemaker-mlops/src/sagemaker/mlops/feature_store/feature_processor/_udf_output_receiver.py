@@ -81,6 +81,7 @@ class SparkOutputReceiver(UDFOutputReceiver[DataFrame]):
                 input_data_frame=output,
                 feature_group_arn=fp_config.output,
                 target_stores=fp_config.target_stores,
+                use_lake_formation_credentials=fp_config.use_lake_formation_credentials
             )
         except Py4JJavaError as e:
             if e.java_exception.getClass().getSimpleName() == "StreamIngestionFailureException":

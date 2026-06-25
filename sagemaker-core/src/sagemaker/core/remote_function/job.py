@@ -670,6 +670,31 @@ class _JobSettings:
             sagemaker_session=self.sagemaker_session,
         )
 
+        # When using Spark, ensure sagemaker-feature-store-pyspark is installed
+        # and its version-matched JAR is on Spark's classpath before spark-submit
+        if spark_config:
+            install_cmd = (
+                "pip install --root-user-action=ignore"
+                " 'sagemaker-feature-store-pyspark>=2,<3'"
+            )
+            copy_jar_cmd = (
+                "python3 -c \""
+                "import feature_store_pyspark, shutil, os, glob, re; "
+                "release_file = os.path.join(os.environ.get('SPARK_HOME', '/usr/lib/spark'), 'RELEASE'); "
+                "spark_ver = '3.5'; "
+                "rf = open(release_file).read() if os.path.exists(release_file) else ''; "
+                "m = re.search(r'Spark (\\d+\\.\\d+)', rf); "
+                "spark_ver = m.group(1) if m else spark_ver; "
+                "jars_dir = os.path.join(os.path.dirname(feature_store_pyspark.__file__), 'jars'); "
+                "[shutil.copy(j, '/usr/lib/spark/jars/') "
+                "for j in glob.glob(os.path.join(jars_dir, '*' + spark_ver + '*.jar'))]\""
+            )
+            if self.pre_execution_commands is None:
+                self.pre_execution_commands = [install_cmd, copy_jar_cmd]
+            elif install_cmd not in self.pre_execution_commands:
+                self.pre_execution_commands.append(install_cmd)
+                self.pre_execution_commands.append(copy_jar_cmd)
+
         self.pre_execution_script = resolve_value_from_config(
             direct_input=pre_execution_script,
             config_path=REMOTE_FUNCTION_PRE_EXECUTION_SCRIPT,
@@ -822,15 +847,27 @@ class _JobSettings:
 
         py_version = str(sys.version_info[0]) + str(sys.version_info[1])
 
-        if py_version not in ["39"]:
+        if py_version not in ["39", "312"]:
             raise ValueError(
-                "The SageMaker Spark image for remote job only supports Python version 3.9. "
+                "The SageMaker Spark image for remote job only supports Python versions 3.9 and 3.12."
             )
+
+        # Detect Spark version from installed pyspark, fall back to default
+        spark_version = DEFAULT_SPARK_VERSION
+        try:
+            import pyspark
+            spark_version = ".".join(pyspark.__version__.split(".")[:2])
+        except ImportError:
+            pass
+
+        # Spark 3.3 and below do not support py312; use 3.5 which supports both py39 and py312
+        if py_version == "312" and spark_version in ("2.4", "3.0", "3.1", "3.2", "3.3"):
+            spark_version = "3.5"
 
         image_uri = image_uris.retrieve(
             framework=SPARK_NAME,
             region=region,
-            version=DEFAULT_SPARK_VERSION,
+            version=spark_version,
             instance_type=None,
             py_version=f"py{py_version}",
             container_version=DEFAULT_SPARK_CONTAINER_VERSION,

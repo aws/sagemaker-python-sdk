@@ -1,3 +1,4 @@
+import json
 import pytest
 from unittest.mock import Mock, patch, MagicMock
 from sagemaker.train.common_utils.finetune_utils import (
@@ -75,57 +76,62 @@ class TestFinetuneUtils:
 
     @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
     @patch('sagemaker.train.common_utils.finetune_utils._create_mlflow_app')
-    @patch('sagemaker.core.resources.MlflowApp.get_all')
-    def test__resolve_mlflow_resource_arn_creates_new_app(self, mock_get_all, mock_create_app, mock_get_domain):
+    @patch('sagemaker.train.common_utils.finetune_utils._get_prod_sm_client')
+    def test__resolve_mlflow_resource_arn_creates_new_app(self, mock_get_client, mock_create_app, mock_get_domain):
         mock_session = Mock()
         mock_session.boto_session.region_name = "us-east-1"
         mock_get_domain.return_value = "d-123456789"
-        mock_get_all.return_value = []  # No existing apps
-        mock_app = Mock()
-        mock_app.arn = "arn:aws:mlflow:us-east-1:123456789012:tracking-server/new-app"
-        mock_create_app.return_value = mock_app
-        
-        result = _resolve_mlflow_resource_arn(mock_session, None)
-        
-        assert result == mock_app.arn
+        mock_sm_client = Mock()
+        mock_paginator = Mock()
+        mock_paginator.paginate.return_value = [{"Summaries": []}]
+        mock_sm_client.get_paginator.return_value = mock_paginator
+        mock_get_client.return_value = mock_sm_client
+        expected_arn = "arn:aws:mlflow:us-east-1:123456789012:tracking-server/new-app"
+        mock_create_app.return_value = expected_arn
 
+        result = _resolve_mlflow_resource_arn(mock_session, None)
+
+        assert result == expected_arn
+
+    @patch('sagemaker.train.common_utils.finetune_utils._wait_for_mlflow_app_ready_boto')
     @patch('sagemaker.train.common_utils.finetune_utils.TrainDefaults.get_role')
-    @patch('sagemaker.core.resources.MlflowApp.create')
-    def test_create_mlflow_app_success(self, mock_create, mock_get_role):
+    @patch('sagemaker.train.common_utils.finetune_utils._get_prod_sm_client')
+    def test_create_mlflow_app_success(self, mock_get_client, mock_get_role, mock_wait):
         mock_session = Mock()
-        mock_session.region_name = "us-east-1"
+        mock_session.boto_session.region_name = "us-east-1"
         mock_sts_client = Mock()
         mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
         mock_s3_client = Mock()
         mock_s3_client.list_objects_v2.return_value = {"Contents": [{"Key": "mlflow-artifacts/"}]}
-        
+
         def mock_client(service_name):
             if service_name == 'sts':
                 return mock_sts_client
             elif service_name == 's3':
                 return mock_s3_client
             return Mock()
-        
-        mock_session.boto_session.client.side_effect = mock_client
-        mock_session.boto_session.region_name = "us-east-1"
-        mock_get_role.return_value = "arn:aws:iam::123456789012:role/test-role"
-        mock_app = Mock()
-        mock_app.status = "Created"
-        mock_create.return_value = mock_app
-        
-        result = _create_mlflow_app(mock_session)
-        
-        assert result == mock_app
-        mock_create.assert_called_once()
-        mock_app.refresh.assert_called()
 
-    @patch('sagemaker.core.resources.MlflowApp.create')
-    def test_create_mlflow_app_failure(self, mock_create):
-        mock_session = Mock()
-        mock_create.side_effect = Exception("Creation failed")
-        
+        mock_session.boto_session.client.side_effect = mock_client
+        mock_get_role.return_value = "arn:aws:iam::123456789012:role/test-role"
+        mock_sm_client = Mock()
+        expected_arn = "arn:aws:mlflow:us-east-1:123456789012:tracking-server/new-app"
+        mock_sm_client.create_mlflow_app.return_value = {"Arn": expected_arn}
+        mock_get_client.return_value = mock_sm_client
+        mock_wait.return_value = expected_arn
+
         result = _create_mlflow_app(mock_session)
-        
+
+        assert result == expected_arn
+        mock_sm_client.create_mlflow_app.assert_called_once()
+        mock_wait.assert_called_once_with(mock_sm_client, expected_arn)
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_prod_sm_client')
+    def test_create_mlflow_app_failure(self, mock_get_client):
+        mock_session = Mock()
+        mock_get_client.side_effect = Exception("Creation failed")
+
+        result = _create_mlflow_app(mock_session)
+
         assert result is None
 
     def test__validate_dataset_arn_valid(self):
@@ -304,6 +310,8 @@ class TestFinetuneUtils:
         mock_s3_client.get_object.return_value = {
             "Body": Mock(read=Mock(return_value=b'{"learning_rate": 0.001}'))
         }
+        mock_session.boto_session.client.return_value = mock_s3_client
+        mock_session.boto_session.client.return_value = mock_s3_client
         
         result = _get_fine_tuning_options_and_model_arn("test-model", "SFT", "LORA", mock_session)
         
@@ -551,3 +559,527 @@ class TestFinetuneUtils:
         mock_s3_client.put_object.assert_called_once_with(Bucket="test-bucket", Key="prefix/", Body=b'')
 
 
+class TestMlflowVersionMeetsMinimum:
+    def test_meets_minimum(self):
+        from sagemaker.train.common_utils.finetune_utils import _mlflow_version_meets_minimum_dict
+        app = {"MlflowVersion": "3.10"}
+        assert _mlflow_version_meets_minimum_dict(app, "3.10") is True
+
+    def test_above_minimum(self):
+        from sagemaker.train.common_utils.finetune_utils import _mlflow_version_meets_minimum_dict
+        app = {"MlflowVersion": "3.12"}
+        assert _mlflow_version_meets_minimum_dict(app, "3.10") is True
+
+    def test_below_minimum(self):
+        from sagemaker.train.common_utils.finetune_utils import _mlflow_version_meets_minimum_dict
+        app = {"MlflowVersion": "3.4"}
+        assert _mlflow_version_meets_minimum_dict(app, "3.10") is False
+
+    def test_no_version(self):
+        from sagemaker.train.common_utils.finetune_utils import _mlflow_version_meets_minimum_dict
+        app = {"MlflowVersion": None}
+        assert _mlflow_version_meets_minimum_dict(app, "3.10") is False
+
+
+class TestWaitForMlflowAppReady:
+    @patch("sagemaker.train.common_utils.finetune_utils.time.sleep")
+    def test_returns_on_created(self, mock_sleep):
+        from sagemaker.train.common_utils.finetune_utils import _wait_for_mlflow_app_ready_boto
+        sm_client = Mock()
+        arn = "arn:aws:mlflow:us-east-1:123456789012:tracking-server/test"
+        sm_client.describe_mlflow_app.return_value = {"Status": "Created"}
+        result = _wait_for_mlflow_app_ready_boto(sm_client, arn, timeout=60)
+        assert result == arn
+
+    @patch("sagemaker.train.common_utils.finetune_utils.time.sleep")
+    def test_returns_none_on_failed(self, mock_sleep):
+        from sagemaker.train.common_utils.finetune_utils import _wait_for_mlflow_app_ready_boto
+        sm_client = Mock()
+        arn = "arn:aws:mlflow:us-east-1:123456789012:tracking-server/test"
+        sm_client.describe_mlflow_app.return_value = {"Status": "CreateFailed", "FailureReason": "quota exceeded"}
+        result = _wait_for_mlflow_app_ready_boto(sm_client, arn, timeout=60)
+        assert result is None
+
+    @patch("sagemaker.train.common_utils.finetune_utils.time.time")
+    @patch("sagemaker.train.common_utils.finetune_utils.time.sleep")
+    def test_polls_until_ready(self, mock_sleep, mock_time):
+        from sagemaker.train.common_utils.finetune_utils import _wait_for_mlflow_app_ready_boto
+        mock_time.side_effect = [0, 0, 10, 10, 20, 20]
+        sm_client = Mock()
+        arn = "arn:aws:mlflow:us-east-1:123456789012:tracking-server/test"
+        sm_client.describe_mlflow_app.side_effect = [
+            {"Status": "Creating"},
+            {"Status": "Created"},
+        ]
+        result = _wait_for_mlflow_app_ready_boto(sm_client, arn, timeout=60)
+        assert result == arn
+
+
+class TestResolveMlflowWithVersionCheck:
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.train.common_utils.finetune_utils._create_mlflow_app_as_upgrade")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_prod_sm_client")
+    def test_upgrades_when_below_min_version(self, mock_get_client, mock_upgrade, mock_domain):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        mock_domain.return_value = None
+
+        old_app = {
+            "DefaultDomainIdList": [],
+            "AccountDefaultStatus": "ENABLED",
+            "Status": "Created",
+            "MlflowVersion": "3.4",
+            "Arn": "arn:old",
+        }
+        mock_sm_client = Mock()
+        mock_paginator = Mock()
+        mock_paginator.paginate.return_value = [{"Summaries": [old_app]}]
+        mock_sm_client.get_paginator.return_value = mock_paginator
+        mock_get_client.return_value = mock_sm_client
+
+        mock_upgrade.return_value = "arn:new"
+
+        result = _resolve_mlflow_resource_arn(mock_session, None, min_mlflow_version="3.10")
+        assert result == "arn:new"
+        mock_upgrade.assert_called_once()
+
+    @patch("sagemaker.train.common_utils.finetune_utils._get_current_domain_id")
+    @patch("sagemaker.train.common_utils.finetune_utils._get_prod_sm_client")
+    def test_no_upgrade_when_meets_version(self, mock_get_client, mock_domain):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        mock_domain.return_value = None
+
+        app = {
+            "DefaultDomainIdList": [],
+            "AccountDefaultStatus": "ENABLED",
+            "Status": "Created",
+            "MlflowVersion": "3.10",
+            "Arn": "arn:good",
+        }
+        mock_sm_client = Mock()
+        mock_paginator = Mock()
+        mock_paginator.paginate.return_value = [{"Summaries": [app]}]
+        mock_sm_client.get_paginator.return_value = mock_paginator
+        mock_get_client.return_value = mock_sm_client
+
+        result = _resolve_mlflow_resource_arn(mock_session, None, min_mlflow_version="3.10")
+        assert result == "arn:good"
+
+
+class TestGetOrCreateMpg:
+    def test_with_model_package_group_object(self):
+        from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+        from sagemaker.core.resources import ModelPackageGroup
+        trainer = object.__new__(MultiTurnRLTrainer)
+        mpg = MagicMock(spec=ModelPackageGroup)
+        mpg.model_package_group_arn = "arn:mpg"
+        result = trainer._get_or_create_mpg(mpg, "default-name", Mock())
+        assert result == "arn:mpg"
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_with_string_name(self, mock_get):
+        from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+        trainer = object.__new__(MultiTurnRLTrainer)
+        mock_mpg = Mock()
+        mock_mpg.model_package_group_arn = "arn:mpg"
+        mock_get.return_value = mock_mpg
+        session = Mock()
+        result = trainer._get_or_create_mpg("my-group", None, session)
+        assert result == "arn:mpg"
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.create")
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_auto_creates_when_not_found(self, mock_get, mock_create):
+        from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+        trainer = object.__new__(MultiTurnRLTrainer)
+        mock_get.side_effect = Exception("not found")
+        mock_mpg = Mock()
+        mock_mpg.model_package_group_arn = "arn:created"
+        mock_create.return_value = mock_mpg
+        session = Mock()
+        result = trainer._get_or_create_mpg(None, "auto-name", session)
+        assert result == "arn:created"
+
+
+class TestResolveIntermediateCheckpointMpg:
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_raises_when_same_as_output(self, mock_get):
+        from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+        trainer = object.__new__(MultiTurnRLTrainer)
+        trainer._model_name = "test-model"
+        trainer.output_model_package_group = "arn:same"
+        mock_mpg = Mock()
+        mock_mpg.model_package_group_arn = "arn:same"
+        mock_get.return_value = mock_mpg
+        session = Mock()
+        with pytest.raises(ValueError, match="must differ"):
+            trainer._resolve_intermediate_checkpoint_mpg("arn:same", session)
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_auto_creates_different_from_output(self, mock_get):
+        from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
+        trainer = object.__new__(MultiTurnRLTrainer)
+        trainer._model_name = "test-model"
+        trainer.output_model_package_group = "arn:output"
+        mock_mpg = Mock()
+        mock_mpg.model_package_group_arn = "arn:checkpoint"
+        mock_get.return_value = mock_mpg
+        session = Mock()
+        result = trainer._resolve_intermediate_checkpoint_mpg(None, session)
+        assert result == "arn:checkpoint"
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_with_subscription_recipe_enabled(self, mock_get_hub_content):
+        """When  and user is subscribed, datamix HPs are available."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/standard_params.json",
+                        "Name": "standard_sft"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-123456789012/source/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/params.json",
+                        "Name": "datamix_sft",
+                        "IsSubscriptionModel": True
+                    }
+                ]
+            }
+        }
+
+        # Standard recipe returns base params
+        standard_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        # Subscription recipe returns datamix params
+        datamix_params = json.dumps({"customer_data_percent": {"type": "integer", "required": False, "default": 50}})
+
+        mock_s3.get_object.side_effect = [
+            {"Body": Mock(read=Mock(return_value=standard_params.encode()))},
+            {"Body": Mock(read=Mock(return_value=datamix_params.encode()))},
+        ]
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "test-model", "SFT", "FULL", mock_session, 
+        )
+
+        assert "max_steps" in options._specs
+        assert "customer_data_percent" in options._specs
+        assert options._specs["customer_data_percent"]["default"] is None  # defaults are None so they dont serialize unless explicitly set
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_subscription_disabled_no_datamix_hps(self, mock_get_hub_content):
+        """When  (default), datamix HPs are NOT available."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/standard_params.json",
+                        "Name": "standard_sft"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/params.json",
+                        "Name": "datamix_sft",
+                        "IsSubscriptionModel": True
+                    }
+                ]
+            }
+        }
+
+        standard_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=standard_params.encode()))}
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "test-model", "SFT", "FULL", mock_session, 
+        )
+
+        assert "max_steps" in options._specs
+        assert "customer_data_percent" not in options._specs
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_subscription_enabled_but_not_subscribed(self, mock_get_hub_content):
+        """When  but user is NOT subscribed, falls back gracefully."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "999999999999"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/standard_params.json",
+                        "Name": "standard_sft"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/source/params.json",
+                        "Name": "datamix_sft",
+                        "IsSubscriptionModel": True
+                    }
+                ]
+            }
+        }
+
+        standard_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        # First call succeeds (standard recipe), second call fails (access denied)
+        mock_s3.get_object.side_effect = [
+            {"Body": Mock(read=Mock(return_value=standard_params.encode()))},
+            Exception("Access Denied"),
+        ]
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "test-model", "SFT", "FULL", mock_session, 
+        )
+
+        # Should still have standard params, just not datamix ones
+        assert "max_steps" in options._specs
+        assert "customer_data_percent" not in options._specs
+
+
+class TestSubscriptionOnlyModelFallback:
+    """Tests for models that only have subscription recipes."""
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_fallback_to_subscription_recipe_lora(self, mock_get_hub_content):
+        """When no non-subscription LORA recipe exists, falls back to subscription recipe."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        # Only subscription recipes exist for this model
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
+                        "Peft": True,
+                        "IsSubscriptionModel": True,
+                        "Name": "subscription_model_sft_lora"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/full_params.json",
+                        "Peft": False,
+                        "IsSubscriptionModel": True,
+                        "Name": "subscription_model_sft_full"
+                    }
+                ]
+            }
+        }
+
+        sub_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=sub_params.encode()))}
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "subscription-only-model", "SFT", "LORA", mock_session,
+        )
+
+        assert model_arn == "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model"
+        assert "max_steps" in options._specs
+        assert is_gated is False
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_fallback_to_subscription_recipe_full(self, mock_get_hub_content):
+        """When no non-subscription FULL recipe exists, falls back to subscription recipe."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/full_params.json",
+                        "Peft": False,
+                        "IsSubscriptionModel": True,
+                        "Name": "subscription_model_sft_full"
+                    }
+                ]
+            }
+        }
+
+        sub_params = json.dumps({"learning_rate": {"type": "float", "required": True, "default": 5e-6}})
+        mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=sub_params.encode()))}
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "subscription-only-model", "SFT", "FULL", mock_session,
+        )
+
+        assert "learning_rate" in options._specs
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_subscription_only_model_access_denied_raises_clear_error(self, mock_get_hub_content):
+        """When subscription recipe download fails (AccessDenied), raises actionable ValueError."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "999999999999"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
+                        "Peft": True,
+                        "IsSubscriptionModel": True,
+                        "Name": "subscription_model_sft_lora"
+                    }
+                ]
+            }
+        }
+
+        # Simulate AccessDenied from S3 access point
+        from botocore.exceptions import ClientError
+        mock_s3.get_object.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "Could not access through this access point"}},
+            "GetObject"
+        )
+
+        with pytest.raises(ValueError) as exc_info:
+            _get_fine_tuning_options_and_model_arn(
+                "subscription-only-model", "SFT", "LORA", mock_session,
+            )
+
+        error_msg = str(exc_info.value)
+        assert "subscription" in error_msg.lower()
+        assert "subscription-only-model" in error_msg
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_non_subscription_recipe_preferred_over_subscription(self, mock_get_hub_content):
+        """When both standard and subscription recipes exist, standard is selected as primary."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/nova-lite-v2",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/standard_template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/standard_params.json",
+                        "Peft": True,
+                        "Name": "nova_lite_v2_sft_lora"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
+                        "Peft": True,
+                        "IsSubscriptionModel": True,
+                        "Name": "nova_lite_v2_sft_lora_datamix"
+                    }
+                ]
+            }
+        }
+
+        standard_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        datamix_params = json.dumps({"customer_data_percent": {"type": "integer", "required": False, "default": 50}})
+        mock_s3.get_object.side_effect = [
+            {"Body": Mock(read=Mock(return_value=standard_params.encode()))},
+            {"Body": Mock(read=Mock(return_value=datamix_params.encode()))},
+        ]
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "nova-textgeneration-lite-v2", "SFT", "LORA", mock_session,
+        )
+
+        # Standard recipe's params should be loaded as primary
+        assert "max_steps" in options._specs
+        assert options._specs["max_steps"]["default"] == 100
+        # Subscription params merged with None defaults
+        assert "customer_data_percent" in options._specs
+        assert options._specs["customer_data_percent"]["default"] is None
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test_subscription_only_skips_overlay_merge(self, mock_get_hub_content):
+        """When primary recipe IS a subscription recipe, overlay merge is skipped."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_session.boto_session.client.side_effect = lambda service, **kwargs: mock_s3 if service == "s3" else mock_sts
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/subscription-only-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/template.yaml",
+                        "SmtjOverrideParamsS3Uri": "s3://arn:aws:s3:us-east-1:334772094012:accesspoint/recipes-{customer_id}/lora_params.json",
+                        "Peft": True,
+                        "IsSubscriptionModel": True,
+                        "Name": "subscription_model_sft_lora"
+                    }
+                ]
+            }
+        }
+
+        sub_params = json.dumps({"max_steps": {"type": "integer", "required": True, "default": 100}})
+        mock_s3.get_object.return_value = {"Body": Mock(read=Mock(return_value=sub_params.encode()))}
+
+        options, model_arn, is_gated = _get_fine_tuning_options_and_model_arn(
+            "subscription-only-model", "SFT", "LORA", mock_session,
+        )
+
+        # S3 get_object should only be called once (primary recipe), not twice (no overlay merge)
+        assert mock_s3.get_object.call_count == 1

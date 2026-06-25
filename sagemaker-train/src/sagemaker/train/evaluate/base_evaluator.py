@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from sagemaker.core.helper.session_helper import Session
 
 from sagemaker.train.base_trainer import BaseTrainer
+from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.train.common_utils.finetune_utils import _resolve_mlflow_resource_arn
 # Module-level logger
 _logger = logging.getLogger(__name__)
@@ -95,7 +96,7 @@ class BaseEvaluator(BaseModel):
     region: Optional[str] = None
     role: Optional[str] = None
     sagemaker_session: Optional[Any] = None
-    model: Union[str, BaseTrainer, ModelPackage]
+    model: Union[str, BaseTrainer, AgentRFTJob, ModelPackage]
     base_eval_name: Optional[str] = None
     s3_output_path: str
     mlflow_resource_arn: Optional[str] = None
@@ -342,13 +343,11 @@ class BaseEvaluator(BaseModel):
     @validator('sagemaker_session', always=True, pre=True)
     def _create_default_session(cls, v: Optional[Any], values: dict) -> Any:
         """Create a default SageMaker session if not provided.
-        
-        Respects SAGEMAKER_ENDPOINT and SAGEMAKER_REGION environment variables.
-        
+
         Args:
             v (Optional[Any]): The sagemaker_session if provided, None otherwise.
             values (dict): Dictionary of already-validated fields.
-            
+
         Returns:
             Any: SageMaker session object (provided or newly created).
         """
@@ -356,18 +355,12 @@ class BaseEvaluator(BaseModel):
             import os
             import boto3
             from sagemaker.core.helper.session_helper import Session
-            
-            # Get region from parameter or environment
+
             region = values.get('region') or os.environ.get('SAGEMAKER_REGION') or os.environ.get('AWS_REGION', 'us-west-2')
-            
-            # Check for beta endpoint in environment variable
-            endpoint = os.environ.get('SAGEMAKER_ENDPOINT')
-            sm_client = boto3.client(
-                'sagemaker',
-                endpoint_url=endpoint if endpoint else None,
-                region_name=region
-            )
-            return Session(sagemaker_client=sm_client)
+
+            boto_session = boto3.Session(region_name=region)
+            sm_client = boto_session.client('sagemaker')
+            return Session(boto_session=boto_session, sagemaker_client=sm_client)
         return v
     
     def __init__(self, **data: Any) -> None:

@@ -238,6 +238,7 @@ def test_prepare_step_input_channel(
     (
         input_data_config,
         spark_dependency_paths,
+        _public_key_pem,
     ) = config_uploader.prepare_step_input_channel_for_spark_mode(
         wrapped_func,
         config_uploader.remote_decorator_config.s3_root_uri,
@@ -315,3 +316,23 @@ def test_prepare_step_input_channel(
         SPARK_PY_FILES_PATH: "path_b",
         SPARK_FILES_PATH: "path_c",
     }
+
+
+@patch("sagemaker.mlops.feature_store.feature_processor._config_uploader.StoredFunction")
+def test_prepare_and_upload_callable_returns_pem_and_passes_signing_key(
+    mock_stored_function_cls, config_uploader, wrapped_func
+):
+    mock_stored_function_cls.return_value = Mock()
+
+    result = config_uploader._prepare_and_upload_callable(
+        wrapped_func, "s3://bucket/prefix", sagemaker_session
+    )
+
+    assert result.startswith("-----BEGIN PUBLIC KEY-----")
+    assert result.strip().endswith("-----END PUBLIC KEY-----")
+
+    call_kwargs = mock_stored_function_cls.call_args.kwargs
+    assert "signing_key" in call_kwargs
+    assert call_kwargs["signing_key"] is not None
+
+    mock_stored_function_cls.return_value.save.assert_called_once_with(wrapped_func)

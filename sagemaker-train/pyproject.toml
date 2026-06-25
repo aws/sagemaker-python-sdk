@@ -7,7 +7,7 @@ name = "sagemaker-train"
 dynamic = ["version"]
 description = "Open source library for training and deploying models on Amazon SageMaker."
 readme = "README.rst"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
   { name = "Amazon Web Services" },
 ]
@@ -27,13 +27,12 @@ classifiers = [
   #"License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.10.0",
+    "sagemaker-core>=2.14.0",
     "graphene>=3,<4",
     "typing_extensions>=4.9.0",
     "tblib>=1.7.0",
@@ -43,12 +42,16 @@ dependencies = [
     "sagemaker-mlflow>=0.0.1,<1.0.0",
     "mlflow>=3.0.0,<4.0.0",
     "nest_asyncio>=1.5.0",
+    "requests>=2.28.0",
+    "pydantic>=2.0.0",
 ]
 
 [project.urls]
 Homepage = "https://github.com/aws/sagemaker-python-sdk"
 
 [project.optional-dependencies]
+rft-strands = ["strands-agents"]
+rft-langchain = ["httpx>=0.24.0"]
 test = [
     "pytest",
     "pytest-cov",

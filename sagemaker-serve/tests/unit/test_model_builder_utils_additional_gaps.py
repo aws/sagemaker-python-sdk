@@ -10,6 +10,7 @@ import os
 
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 from sagemaker.serve.constants import Framework
+from sagemaker.serve.utils.exceptions import TaskNotFoundException
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.train import ModelTrainer
 
@@ -189,10 +190,56 @@ class TestAutoDetectImageUri(unittest.TestCase):
 class TestUseJumpStartEquivalent(unittest.TestCase):
     """Test _use_jumpstart_equivalent method."""
 
+    def _make_utils(self):
+        utils = _ModelBuilderUtils()
+        utils.model = "gpt2"
+        utils.image_uri = None
+        utils.env_vars = None
+        utils.schema_builder = None
+        utils.model_metadata = None
+        utils._is_gated_model = Mock(return_value=False)
+        utils._build_for_jumpstart = Mock()
+        return utils
+
+    @patch.object(_ModelBuilderUtils, 'get_huggingface_model_metadata')
+    @patch.object(_ModelBuilderUtils, '_hf_schema_builder_init')
     @patch.object(_ModelBuilderUtils, '_retrieve_hugging_face_model_mapping')
-    def test_use_jumpstart_equivalent_no_image_uri(self, mock_retrieve):
-        """Test using JumpStart equivalent without image_uri - skipped (complex schema builder init)."""
-        pass
+    def test_use_jumpstart_equivalent_redirects_hf_to_js(
+        self, mock_retrieve, mock_schema_init, mock_md
+    ):
+        """HF id with a JumpStart mirror is rewritten to its JS id."""
+        utils = self._make_utils()
+        mock_retrieve.return_value = {
+            "gpt2": {"jumpstart-model-id": "huggingface-textgeneration-gpt2", "merged-at": "2024-01-01"}
+        }
+        mock_md.return_value = {"pipeline_tag": "text-generation"}
+
+        result = utils._use_jumpstart_equivalent()
+
+        self.assertTrue(result)
+        self.assertEqual(utils.model, "huggingface-textgeneration-gpt2")
+        utils._build_for_jumpstart.assert_not_called()
+        mock_schema_init.assert_called_once_with("text-generation")
+
+    @patch.object(_ModelBuilderUtils, 'get_huggingface_model_metadata')
+    @patch.object(_ModelBuilderUtils, '_hf_schema_builder_init')
+    @patch.object(_ModelBuilderUtils, '_retrieve_hugging_face_model_mapping')
+    def test_use_jumpstart_equivalent_swallows_schema_failures(
+        self, mock_retrieve, mock_schema_init, mock_md
+    ):
+        """Schema bootstrap failures are tolerated and the JumpStart id swap still happens."""
+        mock_retrieve.return_value = {
+            "gpt2": {"jumpstart-model-id": "huggingface-textgeneration-gpt2"}
+        }
+        mock_md.return_value = {"pipeline_tag": "text-generation"}
+
+        for exc in (TaskNotFoundException("x"), FileNotFoundError("x"), OSError("x")):
+            with self.subTest(exception=type(exc).__name__):
+                mock_schema_init.side_effect = exc
+                utils = self._make_utils()
+                result = utils._use_jumpstart_equivalent()
+                self.assertTrue(result)
+                self.assertEqual(utils.model, "huggingface-textgeneration-gpt2")
 
     def test_use_jumpstart_equivalent_with_image_uri(self):
         """Test using JumpStart equivalent with image_uri provided."""
