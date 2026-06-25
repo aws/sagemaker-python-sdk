@@ -1705,3 +1705,54 @@ def test_llmft_recipe_missing_training_image_error(modules_session):
 
         # Clean up the temporary file
         os.unlink(recipe.name)
+
+def test_resolve_staging_bucket_returns_default_when_allowed(model_trainer):
+    """When training role has PutObject access to default bucket, use default bucket."""
+    mock_iam = MagicMock()
+    mock_iam.simulate_principal_policy.return_value = {
+        "EvaluationResults": [{"EvalDecision": "allowed"}]
+    }
+    with patch.object(model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+        with patch.object(model_trainer.sagemaker_session, "boto_session") as mock_boto:
+            mock_boto.client.return_value = mock_iam
+            bucket, prefix = model_trainer._resolve_staging_bucket()
+
+    assert bucket == DEFAULT_BUCKET
+    assert prefix is None
+
+
+def test_resolve_staging_bucket_falls_back_when_denied(modules_session):
+    """When training role is denied, fall back to output path bucket."""
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=OutputDataConfig(
+            s3_output_path="s3://fallback-bucket/my/prefix/",
+        ),
+    )
+    mock_iam = MagicMock()
+    mock_iam.simulate_principal_policy.return_value = {
+        "EvaluationResults": [{"EvalDecision": "implicitDeny"}]
+    }
+    with patch.object(trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+        with patch.object(trainer.sagemaker_session, "boto_session") as mock_boto:
+            mock_boto.client.return_value = mock_iam
+            bucket, prefix = trainer._resolve_staging_bucket()
+
+    assert bucket == "fallback-bucket"
+    assert prefix == "my/prefix"
+
+
+def test_resolve_staging_bucket_returns_default_on_iam_error(model_trainer):
+    """When IAM simulate call fails, gracefully returns default bucket."""
+    mock_iam = MagicMock()
+    mock_iam.simulate_principal_policy.side_effect = Exception("AccessDenied")
+    with patch.object(model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+        with patch.object(model_trainer.sagemaker_session, "boto_session") as mock_boto:
+            mock_boto.client.return_value = mock_iam
+            bucket, prefix = model_trainer._resolve_staging_bucket()
+
+    assert bucket == DEFAULT_BUCKET
+    assert prefix is None

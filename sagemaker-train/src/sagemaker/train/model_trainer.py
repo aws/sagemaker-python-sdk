@@ -830,6 +830,54 @@ class ModelTrainer(BaseModel):
         if self._temp_code_dir is not None:
             self._temp_code_dir.cleanup()
 
+    def _resolve_staging_bucket(self) -> tuple[str,str]:
+        """Resolve the S3 bucket and key prefix for staging training artifacts.
+
+        Uses iam:SimulatePrincipalPolicy to check whether the training role
+        can access the default SageMaker bucket. If not, falls back to the
+        s3_output_path bucket and prefix.
+
+        Returns:
+            tuple: (bucket_name, prefix_override) where prefix_override is None
+                   when using the default bucket, or the output path prefix when
+                   falling back.
+        """
+        default_bucket = self.sagemaker_session.default_bucket()
+
+        if not self.role:
+            logger.debug(
+                "No training role specified; skipping bucket access check. "
+                "Using default bucket '%s' for artifact staging.", default_bucket
+            )
+            return default_bucket, None
+
+        try:
+            iam_client = self.sagemaker_session.boto_session.client("iam")
+            result = iam_client.simulate_principal_policy(
+                PolicySourceArn=self.role,
+                ActionNames=["s3:PutObject"],
+                ResourceArns=[f"arn:aws:s3:::{default_bucket}/*"],
+            )
+            decisions = result.get("EvaluationResults", [])
+            if decisions and decisions[0].get("EvalDecision") != "allowed":
+                # Training role can't access default bucket — fall back to output path
+                if self.output_data_config and hasattr(self.output_data_config, 's3_output_path'):
+                    output_path = self.output_data_config.s3_output_path
+                    if output_path and output_path.startswith("s3://"):
+                        from urllib.parse import urlparse
+                        parsed = urlparse(output_path)
+                        if parsed.netloc:
+                            prefix = parsed.path.strip("/")
+                            logger.info(
+                                f"Training role '{self.role}' cannot access default bucket "
+                                f"'{default_bucket}'. Using output path bucket "
+                                f"'{parsed.netloc}/{prefix}' for artifact staging."
+                            )
+                            return parsed.netloc, prefix
+        except Exception as e:
+            logger.debug(f"Could not verify role access to default bucket: {e}")
+
+        return default_bucket, None
 
     def create_input_data_channel(
         self,
@@ -904,6 +952,9 @@ class ModelTrainer(BaseModel):
                     )
                     if self.sagemaker_session.default_bucket_prefix:
                         key_prefix = f"{self.sagemaker_session.default_bucket_prefix}/{key_prefix}"
+                    # Resolve staging bucket based on training role permissions
+                    staging_bucket, staging_prefix = self._resolve_staging_bucket()
+                    effective_prefix = f"{staging_prefix}/{key_prefix}" if staging_prefix else key_prefix
                     if ignore_patterns and _is_valid_path(data_source, path_type="Directory"):
                         tmp_dir = TemporaryDirectory()
                         copied_path = os.path.join(
@@ -917,14 +968,14 @@ class ModelTrainer(BaseModel):
                         )
                         s3_uri = self.sagemaker_session.upload_data(
                             path=copied_path,
-                            bucket=self.sagemaker_session.default_bucket(),
-                            key_prefix=key_prefix,
+                            bucket=staging_bucket,
+                            key_prefix=effective_prefix,
                         )
                     else:
                         s3_uri = self.sagemaker_session.upload_data(
                             path=data_source,
-                            bucket=self.sagemaker_session.default_bucket(),
-                            key_prefix=key_prefix,
+                            bucket=staging_bucket,
+                            key_prefix=effective_prefix,
                         )
                     channel = Channel(
                         channel_name=channel_name,
