@@ -1,4 +1,11 @@
 # Changelog
+## v2.14.0 (2026-06-18)
+
+### Other
+
+- Update SDK to use latest LMI image for v3.x (#5954)
+- chore: deprecate Python 3.9 support (#5941)
+
 ## v2.13.1 (2026-06-04)
 ### Other 
 - Update version

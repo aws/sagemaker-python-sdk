@@ -63,14 +63,30 @@ def _get_hub_content_metadata(
         ... )
         >>> print(metadata['HubContentName'])
     """
-    hub_content = HubContent.get(
-        hub_name=hub_name,
-        hub_content_type=hub_content_type,
-        hub_content_name=hub_content_name,
-        region=region,
-        session=session
-    )
-    
+    try:
+        hub_content = HubContent.get(
+            hub_name=hub_name,
+            hub_content_type=hub_content_type,
+            hub_content_name=hub_content_name,
+            region=region,
+            session=session
+        )
+    except Exception:
+        if hub_name != "SageMakerPublicHub":
+            logger.info(
+                f"Hub content '{hub_content_name}' not found in '{hub_name}', "
+                f"falling back to SageMakerPublicHub"
+            )
+            hub_content = HubContent.get(
+                hub_name="SageMakerPublicHub",
+                hub_content_type=hub_content_type,
+                hub_content_name=hub_content_name,
+                region=region,
+                session=session
+            )
+        else:
+            raise
+
     # Convert to dict for easier access
     hub_content_dict = hub_content.__dict__
     
