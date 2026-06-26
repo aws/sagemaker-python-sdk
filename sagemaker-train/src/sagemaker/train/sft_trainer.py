@@ -15,6 +15,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_and_resolve_model_package_group,
     _is_nova_model,
     _resolve_model_and_name,
+    _resolve_model_with_checkpoint,
     _create_input_data_config,
     _convert_input_data_to_channels,
     _create_output_config,
@@ -126,6 +127,15 @@ class SFTTrainer(BaseTrainer):
         is_multimodal (Optional[bool]):
             Whether the training dataset contains multimodal data. If None (default),
             auto-detected from the training dataset at train time.
+        base_model_name (Optional[str]):
+            Base model name for recipe lookup when ``model`` is an S3 checkpoint
+            path. Required when ``model`` starts with ``s3://`` so the SDK knows
+            which recipe, container image, and validation spec to use.
+            Example: ``"amazon.nova-2-lite-v1"``.
+        disable_output_compression (Optional[bool]):
+            Whether to disable compression of model output artifacts. When True,
+            model artifacts are stored uncompressed in S3 (compression_type="NONE").
+            Recommended for large model outputs. Defaults to False (gzip compression).
     """
 
     _customization_technique = CustomizationTechnique.SFT.value
@@ -150,12 +160,17 @@ class SFTTrainer(BaseTrainer):
         overrides: Optional[dict] = None,
         is_multimodal: Optional[bool] = None,
         data_mixing_config: Optional[DataMixingConfig] = None,
+        base_model_name: Optional[str] = None,
+        disable_output_compression: Optional[bool] = False,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, **kwargs)
 
-        # Resolve model and model name
-        self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
+        self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
+            model, self.base_model_name, compute, self.sagemaker_session,
+            resolve_fn=_resolve_model_and_name,
+        )
+
         self.training_type = training_type
 
         self.compute = compute
@@ -320,7 +335,8 @@ class SFTTrainer(BaseTrainer):
         output_config = _create_output_config(
             s3_output_path=self.s3_output_path,
             sagemaker_session=sagemaker_session,
-            kms_key_id=self.kms_key_id
+            kms_key_id=self.kms_key_id,
+            disable_output_compression=getattr(self, 'disable_output_compression', False),
         )
 
         serverless_config = _create_serverless_config(model_arn=self._model_arn,

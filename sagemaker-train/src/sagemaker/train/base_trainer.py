@@ -92,6 +92,8 @@ class BaseTrainer(ABC):
         input_data_config: Optional[List[Union[Channel, InputData]]] = None,
         environment: Optional[Dict[str, str]] = None,
         training_image: Optional[str] = None,
+        base_model_name: Optional[str] = None,
+        disable_output_compression: Optional[bool] = False,
     ):
         self.sagemaker_session = sagemaker_session
         self.role = role
@@ -102,6 +104,8 @@ class BaseTrainer(ABC):
         self.input_data_config = input_data_config
         self.environment = environment or {}
         self.training_image = training_image
+        self.base_model_name = base_model_name
+        self.disable_output_compression = disable_output_compression
         self._checkpoint_s3_uri = None
 
     def _is_nova_model_for_telemetry(self) -> bool:
@@ -420,21 +424,21 @@ class BaseTrainer(ABC):
         # Scoped to non-Nova: Nova recipes resolve model_name_or_path through
         # _get_args_from_nova_recipe (into the base_model hyperparameter), so this
         # OSS-specific workaround must never touch the Nova flow.
-        base_model_weights_uri = None
+        base_model_weights_uri = getattr(self, 'model_source', None) if not _is_nova_model(self._model_name) else None
         if not _is_nova_model(self._model_name):
             model_name_or_path_spec = override_spec.get("model_name_or_path")
             if model_name_or_path_spec is not None:
                 current_default = model_name_or_path_spec.get("default", "") if isinstance(model_name_or_path_spec, dict) else model_name_or_path_spec
-                if not current_default:
+                if not current_default and not base_model_weights_uri:
                     base_model_weights_uri = _resolve_base_model_weights_s3_uri(
                         model_name=self._model_name,
                         sagemaker_session=sagemaker_session,
                     )
-                    if base_model_weights_uri:
-                        _set_spec_default(
-                            override_spec, "model_name_or_path",
-                            "/opt/ml/input/data/model",
-                        )
+                if base_model_weights_uri:
+                    _set_spec_default(
+                        override_spec, "model_name_or_path",
+                        "/opt/ml/input/data/model",
+                    )
 
         if resolved_training_dataset:
             _set_spec_default(
@@ -515,6 +519,27 @@ class BaseTrainer(ABC):
         with open(recipe_local_path, "r") as f:
             recipe_content = f.read()
         recipe_content = _render_recipe_placeholders(recipe_content, override_spec)
+
+        # Inject model_source into the recipe as model_name_or_path for iterative
+        # training (resuming from a previously trained checkpoint).
+        # Only applies to Nova models — OSS models handle this via the input channel.
+        if getattr(self, 'model_source', None) and _is_nova_model(self._model_name):
+            import yaml as _yaml
+            recipe_dict = _yaml.safe_load(recipe_content)
+
+            applied = False
+            if "run" in recipe_dict and isinstance(recipe_dict["run"], dict):
+                recipe_dict["run"]["model_name_or_path"] = self.model_source
+                applied = True
+
+            if not applied:
+                logger.warning(
+                    "model checkpoint path was provided but the expected recipe path for "
+                    "'model_name_or_path' was not found. The checkpoint path will not be applied."
+                )
+            else:
+                recipe_content = _yaml.dump(recipe_dict, default_flow_style=False, sort_keys=False)
+                logger.info(f"Overriding model_name_or_path with checkpoint: {self.model_source}")
 
         with open(recipe_local_path, "w") as f:
             f.write(recipe_content)
@@ -882,12 +907,14 @@ class BaseTrainer(ABC):
         )
         logger.info(f"HyperPod recipe resolved: {recipe_cli_path}")
 
-        # Only instance_type and container remain as override parameters
+        # Only instance_type, container, and model_name_or_path remain as override parameters
         override_parameters = {}
         if compute.instance_type:
             override_parameters["instance_type"] = compute.instance_type
         if training_image:
             override_parameters["container"] = training_image
+        if getattr(self, 'model_source', None):
+            override_parameters["recipes.run.model_name_or_path"] = self.model_source
 
         # Submit job
         start_job_cmd = [

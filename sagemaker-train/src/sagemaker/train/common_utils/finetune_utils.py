@@ -715,6 +715,52 @@ def _create_input_channels(dataset: str, content_type: Optional[str] = None,
     return channels
 
 
+def _resolve_model_with_checkpoint(model, base_model_name, compute, sagemaker_session=None, resolve_fn=None):
+    """Resolve model identity and checkpoint source from model param.
+
+    Handles the S3 checkpoint detection: when model is an S3 URI, base_model_name
+    is used for recipe lookup and model becomes the checkpoint source.
+
+    Args:
+        model: Model name, ARN, ModelPackage, or S3 URI (checkpoint).
+        base_model_name: Required when model is S3 URI. Identifies the model for recipe lookup.
+        compute: Compute config. Required when model is S3 URI.
+        sagemaker_session: SageMaker session for API calls.
+        resolve_fn: Model resolution function. Defaults to _resolve_model_and_name.
+            Pass the trainer's imported copy so test patches are respected.
+
+    Returns:
+        tuple: (resolved_model, model_name, model_source)
+            - resolved_model: Model identity (name or ModelPackage)
+            - model_name: Normalized model name for Hub lookups
+            - model_source: S3 checkpoint path, or None
+    """
+    if resolve_fn is None:
+        resolve_fn = _resolve_model_and_name
+
+    if isinstance(model, str) and model.startswith("s3://"):
+        if not base_model_name:
+            raise ValueError(
+                "base_model_name is required when 'model' is an S3 URI "
+                "(e.g., base_model_name='amazon.nova-2-lite-v1')."
+            )
+        if compute is None:
+            raise ValueError(
+                "S3 checkpoint model is only supported with HyperPodCompute or "
+                "TrainingJobCompute. For serverless, pass a model name or model package ARN instead."
+            )
+        _, model_name = resolve_fn(base_model_name, sagemaker_session)
+        return base_model_name, model_name, model
+    else:
+        if base_model_name:
+            logger.warning(
+                "base_model_name is ignored when 'model' is not an S3 URI. "
+                "'model' parameter will be used."
+            )
+        resolved_model, model_name = resolve_fn(model, sagemaker_session)
+        return resolved_model, model_name, None
+
+
 def _resolve_model_and_name(model, sagemaker_session=None):
     """Resolve model and extract model name from string, ARN, or ModelPackage object.
     
@@ -889,14 +935,15 @@ def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None,
     return mlflow_config
 
 
-def _create_output_config(sagemaker_session,s3_output_path=None, kms_key_id=None):
+def _create_output_config(sagemaker_session, s3_output_path=None, kms_key_id=None, disable_output_compression=False):
     """Create output data configuration with default S3 path if needed.
-    
+
     Args:
         s3_output_path: S3 output path (if None, generates default path)
         sagemaker_session: SageMaker session for generating default path
         kms_key_id: Optional KMS key ID for encryption
-    
+        disable_output_compression: If True, sets compression_type to "NONE"
+
     Returns:
         OutputDataConfig object
     """
@@ -904,14 +951,18 @@ def _create_output_config(sagemaker_session,s3_output_path=None, kms_key_id=None
     # Use default S3 output path if none provided
     if s3_output_path is None:
         s3_output_path = _get_default_s3_output_path(sagemaker_session)
-    
+
     # Validate S3 path exists
     _validate_s3_path_exists(s3_output_path, sagemaker_session)
 
-    return OutputDataConfig(
-        s3_output_path=s3_output_path,
-        kms_key_id=kms_key_id,
-    )
+    config_kwargs = {
+        "s3_output_path": s3_output_path,
+        "kms_key_id": kms_key_id,
+    }
+    if disable_output_compression:
+        config_kwargs["compression_type"] = "NONE"
+
+    return OutputDataConfig(**config_kwargs)
 
 
 def _convert_input_data_to_channels(input_data_config, s3_data_type="S3Prefix"):

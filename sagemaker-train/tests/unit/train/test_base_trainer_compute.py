@@ -189,3 +189,33 @@ class TestHyperPodComputeMapping:
             trainer._train_hyperpod(wait=False)
 
         mock_verify.assert_not_called()
+
+    @patch("sagemaker.train.base_trainer.subprocess")
+    @patch("sagemaker.train.base_trainer.TrainDefaults.verify_hyperpod_caller_permissions")
+    @patch("sagemaker.train.base_trainer.validate_hyperpod_compute")
+    @patch("sagemaker.train.base_trainer.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.base_trainer.get_hyperpod_recipe_path", return_value="recipes/test")
+    @patch("sagemaker.train.base_trainer.flatten_resolved_recipe", return_value={})
+    @patch("sagemaker.train.base_trainer._get_smhp_replicas_enum", return_value=[4, 8])
+    def test_model_source_passed_as_override_parameter(
+        self, mock_replicas, mock_flatten, mock_get_recipe_path, mock_get_session,
+        mock_validate, mock_verify, mock_subprocess
+    ):
+        """model_source is passed as recipes.run.model_name_or_path override."""
+        mock_get_session.return_value = MagicMock()
+        mock_subprocess.run.return_value = SimpleNamespace(
+            stdout="NAME: my-job-456\n", stderr=""
+        )
+
+        trainer = _make_hyperpod_trainer(node_count=4)
+        trainer.model_source = "s3://bucket/checkpoint/step_10"
+
+        with patch(
+            "sagemaker.train.common_utils.finetune_utils.get_training_image",
+            return_value=None,
+        ), patch.object(trainer, "get_resolved_recipe", return_value={"training_config": {}}):
+            trainer._train_hyperpod(wait=False)
+
+        start_cmd = mock_subprocess.run.call_args_list[-1].args[0]
+        overrides = json.loads(start_cmd[start_cmd.index("--override-parameters") + 1])
+        assert overrides["recipes.run.model_name_or_path"] == "s3://bucket/checkpoint/step_10"

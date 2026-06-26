@@ -1180,3 +1180,107 @@ class TestSFTTrainerSmtjS3DataType:
         input_data_config = self._run_smtj_and_capture_input_config("meta-textgeneration-llama-3-2-1b-instruct")
         assert input_data_config is not None
         assert input_data_config[0].data_source.s3_data_type == "S3Prefix"
+
+
+class TestSFTTrainerBaseModelName:
+    """Tests for base_model_name param and iterative training with S3 checkpoints."""
+
+    @patch('sagemaker.train.sft_trainer._validate_eula_for_gated_model', return_value=False)
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group', return_value="my-group")
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name', return_value=("model_obj", "nova-textgeneration-lite-v2"))
+    def test_s3_model_with_base_model_name(self, mock_resolve, mock_validate_group, mock_get_options, mock_eula):
+        """When model is S3 URI with base_model_name, model_source is set."""
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_hp._specs = {}
+        mock_hp._user_set = None
+        mock_get_options.return_value = (mock_hp, "model-arn", False)
+
+        trainer = SFTTrainer(
+            model="s3://bucket/checkpoint/step_10",
+            base_model_name="amazon.nova-2-lite-v1",
+            compute=HyperPodCompute(cluster_name="my-cluster", node_count=4),
+            training_dataset="s3://bucket/train.jsonl",
+        )
+
+        assert trainer.model_source == "s3://bucket/checkpoint/step_10"
+        assert trainer._model_name == "nova-textgeneration-lite-v2"
+
+    @patch('sagemaker.train.sft_trainer._validate_eula_for_gated_model', return_value=False)
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group', return_value="my-group")
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name', return_value=("model_obj", "nova-textgeneration-lite-v2"))
+    def test_s3_model_without_base_model_name_raises(self, mock_resolve, mock_validate_group, mock_get_options, mock_eula):
+        """When model is S3 URI without base_model_name, ValueError is raised."""
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_get_options.return_value = (mock_hp, "model-arn", False)
+
+        with pytest.raises(ValueError, match="base_model_name is required"):
+            SFTTrainer(
+                model="s3://bucket/checkpoint/step_10",
+                compute=HyperPodCompute(cluster_name="my-cluster", node_count=4),
+                training_dataset="s3://bucket/train.jsonl",
+            )
+
+    @patch('sagemaker.train.sft_trainer._validate_eula_for_gated_model', return_value=False)
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group', return_value="my-group")
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name', return_value=("model_obj", "nova-textgeneration-lite-v2"))
+    def test_s3_model_without_compute_raises(self, mock_resolve, mock_validate_group, mock_get_options, mock_eula):
+        """When model is S3 URI without compute, ValueError is raised."""
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_get_options.return_value = (mock_hp, "model-arn", False)
+
+        with pytest.raises(ValueError, match="only supported with HyperPodCompute"):
+            SFTTrainer(
+                model="s3://bucket/checkpoint/step_10",
+                base_model_name="amazon.nova-2-lite-v1",
+                training_dataset="s3://bucket/train.jsonl",
+            )
+
+    @patch('sagemaker.train.sft_trainer._validate_eula_for_gated_model', return_value=False)
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group', return_value="my-group")
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name', return_value=("model_obj", "nova-textgeneration-lite-v2"))
+    def test_normal_model_name_sets_no_model_source(self, mock_resolve, mock_validate_group, mock_get_options, mock_eula):
+        """When model is a name (not S3), model_source is None."""
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_hp._specs = {}
+        mock_hp._user_set = None
+        mock_get_options.return_value = (mock_hp, "model-arn", False)
+
+        trainer = SFTTrainer(
+            model="amazon.nova-2-lite-v1",
+            model_package_group="my-group",
+            training_dataset="s3://bucket/train.jsonl",
+        )
+
+        assert trainer.model_source is None
+
+    @patch('sagemaker.train.sft_trainer._validate_eula_for_gated_model', return_value=False)
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group', return_value="my-group")
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name', return_value=("model_obj", "nova-textgeneration-lite-v2"))
+    def test_disable_output_compression_stored(self, mock_resolve, mock_validate_group, mock_get_options, mock_eula):
+        """disable_output_compression is stored on the trainer."""
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_hp._specs = {}
+        mock_hp._user_set = None
+        mock_get_options.return_value = (mock_hp, "model-arn", False)
+
+        trainer = SFTTrainer(
+            model="amazon.nova-2-lite-v1",
+            model_package_group="my-group",
+            disable_output_compression=True,
+        )
+
+        assert trainer.disable_output_compression is True

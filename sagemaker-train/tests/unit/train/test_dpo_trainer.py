@@ -576,3 +576,48 @@ class TestDPOTrainerComputeDispatch:
         with patch.object(trainer, '_train_hyperpod', return_value="job-name") as mock_hp:
             trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
             mock_hp.assert_called_once()
+
+
+class TestDPOTrainerBaseModelName:
+    """Tests for base_model_name param and iterative training."""
+
+    @patch('sagemaker.train.dpo_trainer._validate_eula_for_gated_model', return_value=False)
+    @patch('sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group', return_value="my-group")
+    @patch('sagemaker.train.dpo_trainer._resolve_model_and_name', return_value=("model_obj", "nova-textgeneration-lite-v2"))
+    def test_s3_model_with_base_model_name(self, mock_resolve, mock_validate_group, mock_get_options, mock_eula):
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_hp._specs = {}
+        mock_hp._user_set = None
+        mock_get_options.return_value = (mock_hp, "model-arn", False)
+
+        trainer = DPOTrainer(
+            model="s3://bucket/checkpoint/step_10",
+            base_model_name="amazon.nova-2-lite-v1",
+            compute=HyperPodCompute(cluster_name="my-cluster", node_count=4),
+            training_dataset="s3://bucket/train.jsonl",
+        )
+
+        assert trainer.model_source == "s3://bucket/checkpoint/step_10"
+        assert trainer._model_name == "nova-textgeneration-lite-v2"
+
+    @patch('sagemaker.train.dpo_trainer._validate_eula_for_gated_model', return_value=False)
+    @patch('sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group', return_value="my-group")
+    @patch('sagemaker.train.dpo_trainer._resolve_model_and_name', return_value=("model_obj", "nova-textgeneration-lite-v2"))
+    def test_s3_model_without_base_model_name_raises(self, mock_resolve, mock_validate_group, mock_get_options, mock_eula):
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_get_options.return_value = (mock_hp, "model-arn", False)
+
+        with pytest.raises(ValueError, match="base_model_name is required"):
+            DPOTrainer(
+                model="s3://bucket/checkpoint/step_10",
+                compute=HyperPodCompute(cluster_name="my-cluster", node_count=4),
+                training_dataset="s3://bucket/train.jsonl",
+            )

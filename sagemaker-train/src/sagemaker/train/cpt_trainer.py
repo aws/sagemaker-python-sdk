@@ -26,6 +26,7 @@ from sagemaker.core.training.configs import HyperPodCompute
 from sagemaker.train.common_utils.finetune_utils import (
     _validate_and_resolve_model_package_group,
     _resolve_model_and_name,
+    _resolve_model_with_checkpoint,
     _validate_eula_for_gated_model,
 )
 from sagemaker.train.common_utils.data_mixing_utils import (
@@ -128,11 +129,16 @@ class CPTTrainer(BaseTrainer):
         overrides: Optional[dict] = None,
         training_image: Optional[str] = None,
         data_mixing_config: Optional[DataMixingConfig] = None,
+        base_model_name: Optional[str] = None,
+        disable_output_compression: Optional[bool] = False,
         **kwargs,
     ):
-        super().__init__(training_image=training_image, **kwargs)
+        super().__init__(training_image=training_image, base_model_name=base_model_name, disable_output_compression=disable_output_compression, **kwargs)
 
-        self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
+        self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
+            model, self.base_model_name, compute, self.sagemaker_session,
+            resolve_fn=_resolve_model_and_name,
+        )
         self.training_type = TrainingType.FULL
 
         if compute is None:
@@ -163,6 +169,7 @@ class CPTTrainer(BaseTrainer):
         self._overrides = overrides
         self._recipe_resolver = None
         self._resolved_recipe_cache = None
+        self.disable_output_compression = disable_output_compression
 
         # CPT is HyperPod-only and the recipe is auto-resolved from Hub if not
         # provided by the user. No Hub lookup for hyperparameters is needed —

@@ -20,6 +20,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _is_lambda_arn,
     _is_nova_model,
     _resolve_model_and_name,
+    _resolve_model_with_checkpoint,
     _create_input_data_config,
     _convert_input_data_to_channels,
     _create_output_config,
@@ -155,12 +156,16 @@ class RLVRTrainer(BaseTrainer):
         recipe: Optional[str] = None,
         overrides: Optional[dict] = None,
         is_multimodal: Optional[bool] = None,
+        base_model_name: Optional[str] = None,
+        disable_output_compression: Optional[bool] = False,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, **kwargs)
 
-        # Resolve model and model name
-        self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
+        self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
+            model, self.base_model_name, compute, self.sagemaker_session,
+            resolve_fn=_resolve_model_and_name,
+        )
 
         self.training_type = training_type
         self.custom_reward_function = custom_reward_function
@@ -420,7 +425,8 @@ class RLVRTrainer(BaseTrainer):
         output_config = _create_output_config(
             s3_output_path=self.s3_output_path,
             sagemaker_session=sagemaker_session,
-            kms_key_id=self.kms_key_id
+            kms_key_id=self.kms_key_id,
+            disable_output_compression=getattr(self, 'disable_output_compression', False),
         )
 
         # Extract and validate evaluator ARN

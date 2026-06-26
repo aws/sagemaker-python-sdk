@@ -4,7 +4,7 @@ import json
 import boto3
 import logging
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional, Tuple, Union
 from botocore.exceptions import ClientError
 
 from sagemaker.core.s3 import parse_s3_url
@@ -21,7 +21,7 @@ class FileLoadError(Exception):
     pass
 
 
-def _parse_s3_uri(uri: str) -> tuple[str, str] | None:
+def _parse_s3_uri(uri: str) -> Optional[Tuple[str, str]]:
     """Parse S3 URI into (bucket, key) tuple, or None if the URI is invalid."""
     if not S3_URI_REGEX.match(uri):
         return None
