@@ -1,14 +1,53 @@
 name: GPU Integ Tests
 on:
   schedule:
-    - cron: "0 */8 * * *"
+    # US Pacific (PST, UTC-8): 10:00 PM / 1:00 AM / 4:00 AM -> 06/09/12 UTC.
+    # All three fire within the same UTC day so the run-level CloudWatch metric
+    # (GpuIntegRunFailure) aggregates correctly per day.
+    - cron: "0 6 * * *"
+    - cron: "0 9 * * *"
+    - cron: "0 12 * * *"
   workflow_dispatch:
 
 permissions:
-    id-token: write # This is required for requesting the JWT
+  id-token: write # This is required for requesting the JWT
+  actions: read   # required for the gate job to query prior runs of this workflow
 
 jobs:
+  # Gate: if an earlier scheduled run already succeeded today, skip the rest of
+  # today's scheduled runs. Manual (workflow_dispatch) runs always proceed.
+  check-prior-success:
+    runs-on: ubuntu-latest
+    outputs:
+      already_succeeded: ${{ steps.check.outputs.already_succeeded }}
+    steps:
+      - name: Check for a successful scheduled run earlier today
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Not a scheduled run; proceeding."
+            echo "already_succeeded=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          today=$(date -u +%Y-%m-%d)
+          count=$(gh api -X GET \
+            "/repos/${{ github.repository }}/actions/workflows/gpu-integ-tests.yml/runs" \
+            -f event=schedule \
+            -f status=success \
+            -f "created=>=${today}T00:00:00Z" \
+            --jq '.workflow_runs | length')
+          echo "Successful scheduled runs today: $count"
+          if [ "$count" -gt 0 ]; then
+            echo "already_succeeded=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "already_succeeded=false" >> "$GITHUB_OUTPUT"
+          fi
+
   gpu-integ-tests:
+    needs: check-prior-success
+    if: needs.check-prior-success.outputs.already_succeeded != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
@@ -24,6 +63,8 @@ jobs:
           source-version: refs/heads/master
 
   gpu-integ-tests-us-east-1:
+    needs: check-prior-success
+    if: needs.check-prior-success.outputs.already_succeeded != 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials (us-east-1)
@@ -37,3 +78,72 @@ jobs:
         with:
           project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests
           source-version: refs/heads/master
+
+  # Bedrock model-import integ tests. Run serially (concurrency 1) in their own
+  # CodeBuild project because the "Concurrent model import jobs" Bedrock quota is
+  # fixed at 1 and not raisable; running them in parallel (as PR checks did)
+  # makes them collide and flake. us-west-2 only (no us_east_1-marked tests).
+  # Folded into the same run-level pass/fail metric as the GPU jobs below, so it
+  # shares the GpuIntegRunAlarm rather than getting a separate alarm.
+  import-model-integ-tests:
+    needs: check-prior-success
+    if: needs.check-prior-success.outputs.already_succeeded != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Bedrock Model-Import Integ Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-import-model-integ-tests
+          source-version: refs/heads/master
+
+  # Run-level result: a run is successful only if BOTH region jobs succeeded.
+  # Emits GpuIntegRunFailure = 1 (failed) / 0 (succeeded) to CloudWatch in
+  # us-west-2. The CDK alarm (GpuIntegRunAlarm) sums this over a UTC day and
+  # cuts a daytime sev2 when all of the day's runs failed. Skipped when the gate
+  # short-circuited today's run (an earlier run already succeeded).
+  report-result:
+    needs: [check-prior-success, gpu-integ-tests, gpu-integ-tests-us-east-1, import-model-integ-tests]
+    # Only emit the daily alarm metric for scheduled runs that actually executed
+    # the test jobs:
+    #   - check-prior-success.result == 'success': if the gate job itself failed,
+    #     the test jobs are skipped; without this guard always() would still run
+    #     report-result and read those skips as a (false) failure -> emit 1.
+    #   - already_succeeded != 'true': an earlier run today already passed, so the
+    #     gate short-circuited this run; nothing to report.
+    if: always() && needs.check-prior-success.result == 'success' && needs.check-prior-success.outputs.already_succeeded != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.MONITORING_ROLE_ARN }}
+          aws-region: us-west-2
+      - name: Emit run-level pass/fail metric
+        run: |
+          # Manual (workflow_dispatch) runs must not contribute to the daily
+          # GpuIntegRunFailure count that drives GpuIntegRunAlarm; only scheduled
+          # runs count toward the "all of today's scheduled runs failed" alarm.
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Not a scheduled run (${{ github.event_name }}); skipping metric emission."
+            exit 0
+          fi
+          if [ "${{ needs.gpu-integ-tests.result }}" == "success" ] && \
+             [ "${{ needs.gpu-integ-tests-us-east-1.result }}" == "success" ] && \
+             [ "${{ needs.import-model-integ-tests.result }}" == "success" ]; then
+            value=0
+            echo "All region/import jobs succeeded; emitting GpuIntegRunFailure=0"
+          else
+            value=1
+            echo "At least one region/import job did not succeed; emitting GpuIntegRunFailure=1"
+          fi
+          aws cloudwatch put-metric-data \
+            --namespace GpuIntegRunMetrics \
+            --metric-name GpuIntegRunFailure \
+            --value "$value" \
+            --unit Count

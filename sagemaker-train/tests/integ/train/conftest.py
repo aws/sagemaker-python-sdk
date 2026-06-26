@@ -147,6 +147,13 @@ def _ensure_lambda_function(region, function_name, source_file):
     return function_arn
 
 
+@pytest.fixture(autouse=True, scope="session")
+def use_private_hub():
+    os.environ["SAGEMAKER_HUB_NAME"] = "sdktest"
+    yield
+    del os.environ["SAGEMAKER_HUB_NAME"]
+
+
 @pytest.fixture(scope="module")
 def sagemaker_session():
     region = os.environ.get("AWS_DEFAULT_REGION")

@@ -17,6 +17,7 @@ import json
 import time
 import random
 import logging
+from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
 import boto3
@@ -43,10 +44,59 @@ def role_arn():
     return get_execution_role()
 
 
+# Prefix used for all provisioned throughputs created by this test module.
+PT_TEST_PREFIX = "test-pt-integ-"
+# Provisioned throughputs older than this are considered leaked and reaped on setup.
+PT_STALE_AGE = timedelta(hours=2)
+
+
 @pytest.fixture(scope="module")
 def bedrock_client():
-    """Create Bedrock client."""
-    return boto3.client("bedrock", region_name=AWS_REGION)
+    """Create Bedrock client and eagerly reap leaked test provisioned throughputs.
+
+    Provisioned throughputs cost money and consume a small, easily-exhausted
+    model-unit quota. A test process killed before its teardown runs (CodeBuild
+    timeout, worker crash, etc.) leaks its PT, and these accumulate across runs
+    until the quota is full and CreateProvisionedModelThroughput starts failing.
+
+    To stay self-healing, on setup we delete any ``test-pt-integ-*`` PT older
+    than PT_STALE_AGE. The age guard avoids racing a PT that another concurrent
+    run just created.
+    """
+    client = boto3.client("bedrock", region_name=AWS_REGION)
+
+    try:
+        cutoff = datetime.now(timezone.utc) - PT_STALE_AGE
+        paginator_token = None
+        while True:
+            params = {"maxResults": 100}
+            if paginator_token:
+                params["nextToken"] = paginator_token
+            response = client.list_provisioned_model_throughputs(**params)
+            for pt in response.get("provisionedModelSummaries", []):
+                name = pt.get("provisionedModelName", "")
+                if not name.startswith(PT_TEST_PREFIX):
+                    continue
+                created = pt.get("creationTime")
+                if created and created >= cutoff:
+                    continue
+                # Only InService/Failed PTs can be deleted.
+                if pt.get("status") not in ("InService", "Failed"):
+                    continue
+                try:
+                    logger.info("Eager cleanup of stale provisioned throughput: %s", name)
+                    client.delete_provisioned_model_throughput(
+                        provisionedModelId=pt["provisionedModelArn"]
+                    )
+                except Exception as e:
+                    logger.warning("Eager cleanup failed for %s: %s", name, e)
+            paginator_token = response.get("nextToken")
+            if not paginator_token:
+                break
+    except Exception as e:
+        logger.warning("Failed to list provisioned throughputs for eager cleanup: %s", e)
+
+    return client
 
 
 @pytest.fixture(scope="module")
@@ -120,6 +170,7 @@ def _setup_model_files(s3_artifacts_uri, s3_client):
 
 
 @pytest.mark.serial
+@pytest.mark.import_model
 class TestBedrockImportJobPolling:
     """Test import job polling for OSS models (Option C: deploy only waits for import)."""
 
@@ -186,6 +237,7 @@ class TestBedrockImportJobPolling:
 
 
 @pytest.mark.serial
+@pytest.mark.import_model
 class TestBedrockProvisionedThroughput:
     """Test create_provisioned_throughput as a standalone method.
 

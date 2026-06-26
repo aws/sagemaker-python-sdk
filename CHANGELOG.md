@@ -37,6 +37,12 @@
 - fix: MLflow error causing OSS model eval to fail
 - fix: RLVR setup and reward Lambda handling
 
+## v3.14.0 (2026-06-18)
+
+### Other
+
+- chore: deprecate Python 3.9 support (#5941)
+- chore: update SDK to use latest LMI image for v3.x (#5954)
 
 ## v3.13.1 (2026-06-04)
 

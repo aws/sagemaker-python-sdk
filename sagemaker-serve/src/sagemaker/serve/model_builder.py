@@ -135,7 +135,12 @@ from sagemaker.core.config.config_schema import (
     ENDPOINT_CONFIG_ASYNC_KMS_KEY_ID_PATH,
     MODEL_CONTAINERS_PATH,
 )
-from sagemaker.serve.constants import LOCAL_MODES, SUPPORTED_MODEL_SERVERS, Framework
+from sagemaker.serve.constants import (
+    LOCAL_MODES,
+    SUPPORTED_MODEL_SERVERS,
+    OMNI_TASKS,
+    Framework,
+)
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
 from sagemaker.core import fw_utils
 from sagemaker.core.helper.session_helper import container_def
@@ -700,9 +705,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         base_model: CoreBaseModel = (
             self._fetch_model_package().inference_specification.containers[0].base_model
         )
+        # Prefer an explicitly configured hub (e.g. a private hub used for
+        # testing or for sourcing pre-release hosting configs); fall back to the
+        # public JumpStart hub when none is set.
+        hub_name = getattr(self, "hub_name", None) or "SageMakerPublicHub"
         hub_content = HubContent.get(
             hub_content_type="Model",
-            hub_name="SageMakerPublicHub",
+            hub_name=hub_name,
             hub_content_name=base_model.hub_content_name,
             hub_content_version=base_model.hub_content_version,
         )
@@ -1084,12 +1093,105 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         except Exception:
             return False
 
+    def _select_nova_hosting_config_entry(self, configs, instance_type, identifier):
+        """Select a single hosting config entry from a list of Nova configs.
+
+        Picks the entry matching ``instance_type`` when provided, otherwise the
+        entry with ``Profile == "Default"`` (falling back to the first entry).
+
+        Args:
+            configs: List of hosting config dicts.
+            instance_type: Requested instance type, or None.
+            identifier: Model identifier used for error messages.
+
+        Returns:
+            The selected hosting config dict.
+
+        Raises:
+            ValueError: If ``instance_type`` is provided but no entry matches it.
+        """
+        if instance_type:
+            config = next(
+                (c for c in configs if c.get("InstanceType") == instance_type), None
+            )
+            if not config:
+                supported = [c.get("InstanceType") for c in configs]
+                raise ValueError(
+                    f"Instance type '{instance_type}' not supported for '{identifier}'. "
+                    f"Supported: {supported}"
+                )
+            return config
+        return next((c for c in configs if c.get("Profile") == "Default"), configs[0])
+
+    def _get_nova_hosting_config_from_hub_document(self, instance_type=None):
+        """Resolve Nova hosting config from the JumpStart hub document, if present.
+
+        Reads hosting configs published in the hub content document, matching the
+        standard schema used by other custom models. Looks first inside the
+        ``RecipeCollection`` entry whose ``Name`` matches the recipe, then falls
+        back to the top-level ``HostingConfigs``.
+
+        Returns:
+            A dict with ``image_uri``, ``env_vars``, and ``instance_type`` when a
+            usable hosting config is found, otherwise ``None``.
+        """
+        try:
+            hub_document = self._fetch_hub_document_for_custom_model()
+        except Exception as e:  # pragma: no cover - defensive, hub may be unavailable
+            logger.debug(f"Could not fetch hub document for Nova hosting config: {e}")
+            return None
+
+        if not hub_document:
+            return None
+
+        container = self._fetch_model_package().inference_specification.containers[0]
+        recipe_name = getattr(container.base_model, "recipe_name", None) or ""
+
+        hosting_configs = None
+        for recipe in hub_document.get("RecipeCollection", []):
+            if recipe.get("Name") == recipe_name:
+                hosting_configs = recipe.get("HostingConfigs")
+                break
+        if not hosting_configs:
+            hosting_configs = hub_document.get("HostingConfigs")
+
+        if not hosting_configs:
+            return None
+
+        config = self._select_nova_hosting_config_entry(
+            hosting_configs, instance_type, recipe_name or "nova"
+        )
+
+        image_uri = config.get("EcrAddress")
+        if not image_uri:
+            # Hosting config present but no image override; let the hardcoded
+            # fallback supply the escrow image URI.
+            return None
+
+        resolved_instance_type = config.get("InstanceType") or config.get(
+            "DefaultInstanceType"
+        )
+
+        return {
+            "image_uri": image_uri,
+            "env_vars": config.get("Environment", {}),
+            "instance_type": resolved_instance_type,
+        }
+
     def _get_nova_hosting_config(self, instance_type=None):
         """Get Nova hosting config (image URI, env vars, instance type).
 
-        Nova training recipes don't have hosting configs in the JumpStart hub document.
-        This provides the hardcoded fallback, matching Rhinestone's getNovaHostingConfigs().
+        Prefers hosting configs published in the JumpStart hub document (the
+        standard location used by other custom models). Falls back to the
+        hardcoded ``_NOVA_HOSTING_CONFIGS``, matching Rhinestone's
+        getNovaHostingConfigs(), when the hub document does not provide one.
         """
+        hub_config = self._get_nova_hosting_config_from_hub_document(
+            instance_type=instance_type
+        )
+        if hub_config:
+            return hub_config
+
         model_package = self._fetch_model_package()
         hub_content_name = model_package.inference_specification.containers[0].base_model.hub_content_name
 
@@ -1110,16 +1212,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         image_uri = f"{escrow_account}.dkr.ecr.{region}.amazonaws.com/nova-inference-repo:SM-Inference-latest"
 
-        if instance_type:
-            config = next((c for c in configs if c["InstanceType"] == instance_type), None)
-            if not config:
-                supported = [c["InstanceType"] for c in configs]
-                raise ValueError(
-                    f"Instance type '{instance_type}' not supported for '{hub_content_name}'. "
-                    f"Supported: {supported}"
-                )
-        else:
-            config = next((c for c in configs if c.get("Profile") == "Default"), configs[0])
+        config = self._select_nova_hosting_config_entry(
+            configs, instance_type, hub_content_name
+        )
 
         return {
             "image_uri": image_uri,
@@ -2712,10 +2807,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     if self.schema_builder is None and model_task is not None:
                         self._hf_schema_builder_init(model_task)
 
+                    # Task-based auto-selection. SGLang is not auto-selected by task; it is
+                    # opt-in only via model_server=ModelServer.SGLANG, which is handled earlier
+                    # by the _build_for_model_server() short-circuit above.
                     if model_task == "text-generation":
-                        self.built_model = self._build_for_tgi()
+                        self.built_model = self._build_for_vllm()
                         return self.built_model
-                    elif model_task in ["sentence-similarity", "feature-extraction"]:
+                    elif model_task in OMNI_TASKS:
+                        self.built_model = self._build_for_vllm_omni()
+                        return self.built_model
+                    elif model_task in ["sentence-similarity", "feature-extraction", "text-ranking"]:
                         self.built_model = self._build_for_tei()
                         return self.built_model
                     else:
@@ -4808,6 +4909,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if isinstance(self.model, TrainingJob):
             training_job = self.model
         elif isinstance(self.model, ModelTrainer):
+            training_job = self.model._latest_training_job
+        elif isinstance(self.model, BaseTrainer) and hasattr(self.model, "_latest_training_job"):
+            # SFTTrainer / RLVRTrainer / DPOTrainer expose the job via _latest_training_job.
             training_job = self.model._latest_training_job
         else:
             raise ValueError("Nova escrow URI resolution requires a TrainingJob or ModelTrainer")

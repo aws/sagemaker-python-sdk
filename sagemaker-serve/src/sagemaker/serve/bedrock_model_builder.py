@@ -805,10 +805,9 @@ class BedrockModelBuilder:
         """Get checkpoint URI from manifest.json for Nova models.
 
         Steps:
-        1. Fetch S3 model artifacts from training job
-        2. Construct path to manifest.json in the output directory
-        3. Read and parse manifest.json
-        4. Return checkpoint_s3_bucket value
+        1. Build the manifest.json path from the training job output_data_config
+        2. Read and parse manifest.json
+        3. Return checkpoint_s3_bucket value
 
         Returns:
             Checkpoint URI from manifest.json.
@@ -820,16 +819,15 @@ class BedrockModelBuilder:
         if not isinstance(self.model, TrainingJob):
             raise ValueError("Model must be a TrainingJob instance for Nova models")
 
-        s3_artifacts = self.model.model_artifacts.s3_model_artifacts
-        if not s3_artifacts:
-            raise ValueError("No S3 model artifacts found in training job")
+        # Nova serverless training jobs have no model_artifacts; the manifest
+        # lives under the job's output_data_config path.
+        output_data_config = getattr(self.model, "output_data_config", None)
+        s3_output_path = getattr(output_data_config, "s3_output_path", None)
+        if not s3_output_path:
+            raise ValueError("No S3 output path found in training job output_data_config")
 
-        logger.info("S3 artifacts path: %s", s3_artifacts)
-
-        # Construct manifest path
-        # s3://bucket/path/output/model.tar.gz -> s3://bucket/path/output/output/manifest.json
-        parts = s3_artifacts.rstrip("/").rsplit("/", 1)
-        manifest_path = parts[0] + "/output/manifest.json"
+        output_path = s3_output_path.rstrip("/")
+        manifest_path = f"{output_path}/{self.model.training_job_name}/output/output/manifest.json"
 
         logger.info("Manifest path: %s", manifest_path)
 

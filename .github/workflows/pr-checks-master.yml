@@ -119,26 +119,40 @@ jobs:
             fi
           }
           
-          # Check which submodules changed and add them plus their dependents
-          if echo "$CHANGES" | grep -q "^sagemaker-core/"; then
-            echo "sagemaker-core changed - will add core and all dependents"
-            add_module_and_dependents "sagemaker-core"
-          fi
+          # Determine whether a module has any non-test changes. A change counts
+          # as a source change if it touches anything under the module other than
+          # its tests/ directory (e.g. src/, pyproject.toml, tox.ini, VERSION).
+          # This is intentionally conservative: only changes confined entirely to
+          # tests/ are treated as test-only.
+          is_source_changed() {
+            local module=$1
+            echo "$CHANGES" | grep "^$module/" | grep -qv "^$module/tests/"
+          }
           
-          if echo "$CHANGES" | grep -q "^sagemaker-train/"; then
-            echo "sagemaker-train changed - will add train and all dependents"
-            add_module_and_dependents "sagemaker-train"
-          fi
+          all_modules=("sagemaker-core" "sagemaker-train" "sagemaker-serve" "sagemaker-mlops")
           
-          if echo "$CHANGES" | grep -q "^sagemaker-serve/"; then
-            echo "sagemaker-serve changed - will add serve and all dependents"
-            add_module_and_dependents "sagemaker-serve"
-          fi
+          # Pass 1: modules with source changes pull in themselves plus every
+          # module that (transitively) depends on them, since a source change can
+          # affect downstream behaviour. This preserves the original logic.
+          for module in "${all_modules[@]}"; do
+            if is_source_changed "$module"; then
+              echo "$module has source changes - adding it and all dependents"
+              add_module_and_dependents "$module"
+            fi
+          done
           
-          if echo "$CHANGES" | grep -q "^sagemaker-mlops/"; then
-            echo "sagemaker-mlops changed - will add mlops"
-            add_module_and_dependents "sagemaker-mlops"
-          fi
+          # Pass 2: modules with test-only changes add only themselves and skip
+          # dependency propagation, since changing a module's tests cannot affect
+          # other modules. Run after Pass 1 so source-change propagation is never
+          # short-circuited by a test-only module already being in the set.
+          for module in "${all_modules[@]}"; do
+            if echo "$CHANGES" | grep -q "^$module/" && ! is_source_changed "$module"; then
+              if [ -z "${SUBMODULES_SET[$module]}" ]; then
+                echo "$module has test-only changes - adding only $module"
+                SUBMODULES_SET["$module"]=1
+              fi
+            fi
+          done
           
           # Convert associative array to JSON array
           SUBMODULES='[]'
@@ -222,7 +236,7 @@ jobs:
   integ-tests-us-east-1:
     runs-on: ubuntu-latest
     needs: [detect-changes]
-    if: contains(fromJson(needs.detect-changes.outputs.submodules), 'sagemaker-train')
+    if: needs.detect-changes.outputs.submodules != '[]'
     steps:
       - name: Configure AWS Credentials (us-east-1)
         uses: aws-actions/configure-aws-credentials@v4
@@ -231,8 +245,8 @@ jobs:
           aws-region: us-east-1
           role-duration-seconds: 10800
 
-      - name: Run us-east-1 Integ Tests for sagemaker-train
+      - name: Run us-east-1 Integ Tests (all submodules)
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: ${{ github.event.repository.name }}-ci-sagemaker-train-integ-tests
+          project-name: ${{ github.event.repository.name }}-ci-integ-tests-us-east-1
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'

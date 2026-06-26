@@ -7,7 +7,7 @@ name = "sagemaker-train"
 dynamic = ["version"]
 description = "Open source library for training and deploying models on Amazon SageMaker."
 readme = "README.rst"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 authors = [
   { name = "Amazon Web Services" },
 ]
@@ -27,13 +27,12 @@ classifiers = [
   #"License :: OSI Approved :: Apache Software License",
   "Natural Language :: English",
   "Programming Language :: Python",
-  "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.13.1",
+    "sagemaker-core>=2.14.0",
     "graphene>=3,<4",
     "typing_extensions>=4.9.0",
     "tblib>=1.7.0",

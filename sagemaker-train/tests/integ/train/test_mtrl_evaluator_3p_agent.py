@@ -38,19 +38,13 @@ from sagemaker.train.custom_agent_lambda import CustomAgentLambda
 logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(name)s - %(message)s")
 logger = logging.getLogger(__name__)
 
-os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
-os.environ.setdefault("SAGEMAKER_REGION", "us-west-2")
-
 # Timeout for evaluation pipeline execution (4 hours)
 EVALUATION_TIMEOUT_SECONDS = 14400
 
-# Resolve current account ID for account-agnostic paths
 _REGION = "us-west-2"
-_ACCOUNT_ID = boto3.client("sts", region_name=_REGION).get_caller_identity()["Account"]
 
 # Lambda configuration
 LAMBDA_FUNCTION_NAME = "SageMaker-AgentConnector-Lambda-MTRL-integ-test"
-LAMBDA_ROLE = f"arn:aws:iam::{_ACCOUNT_ID}:role/Admin"
 LAMBDA_RUNTIME = "python3.12"
 LAMBDA_TIMEOUT = 120
 LAMBDA_REGION = _REGION
@@ -149,26 +143,37 @@ def handler(event, context):
 '''
 
 # Test configuration for 3P agent evaluation.
-TEST_CONFIG = {
-    "base_model": "openai-reasoning-gpt-oss-20b",
-    "dataset": os.environ.get(
-        "MTRL_3P_DATASET",
-        f"s3://sagemaker-rft-{_ACCOUNT_ID}/prompts/gsm8k_small/prompts.parquet",
-    ),
-    "s3_output_path": os.environ.get(
-        "MTRL_3P_S3_OUTPUT",
-        f"s3://sagemaker-{_REGION}-{_ACCOUNT_ID}/model-evaluation/3p-agent-integ/",
-    ),
-    "mlflow_resource_arn": os.environ.get(
-        "MTRL_3P_MLFLOW_ARN",
-        f"arn:aws:sagemaker:{_REGION}:{_ACCOUNT_ID}:mlflow-app/app-TTAUWUNMUHH6",
-    ),
-    "role": os.environ.get(
-        "MTRL_3P_ROLE",
-        f"arn:aws:iam::{_ACCOUNT_ID}:role/Admin",
-    ),
-    "region": os.environ.get("MTRL_3P_REGION", _REGION),
-}
+def _get_3p_test_config():
+    """Build test configuration lazily (only when tests actually run)."""
+    boto_session = boto3.Session(region_name=_REGION)
+    account_id = boto_session.client("sts").get_caller_identity()["Account"]
+    return {
+        "base_model": "mock-oss-test",
+        "dataset": os.environ.get(
+            "MTRL_3P_DATASET",
+            f"s3://sagemaker-rft-{account_id}/prompts/gsm8k_small/prompts.parquet",
+        ),
+        "s3_output_path": os.environ.get(
+            "MTRL_3P_S3_OUTPUT",
+            f"s3://sagemaker-{_REGION}-{account_id}/model-evaluation/3p-agent-integ/",
+        ),
+        "mlflow_resource_arn": os.environ.get(
+            "MTRL_3P_MLFLOW_ARN",
+            f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
+        ),
+        "role": os.environ.get(
+            "MTRL_3P_ROLE",
+            f"arn:aws:iam::{account_id}:role/Admin",
+        ),
+        "region": os.environ.get("MTRL_3P_REGION", _REGION),
+        "account_id": account_id,
+    }
+
+
+@pytest.fixture(scope="module")
+def test_config():
+    """Lazily resolve test configuration."""
+    return _get_3p_test_config()
 
 
 def _create_lambda_zip(source_code: str) -> bytes:
@@ -179,11 +184,13 @@ def _create_lambda_zip(source_code: str) -> bytes:
     return buf.getvalue()
 
 
-def _ensure_lambda_exists() -> str:
+def _ensure_lambda_exists(account_id) -> str:
     """Create the Lambda function if it doesn't exist, return its ARN."""
     from botocore.exceptions import ClientError
 
-    client = boto3.client("lambda", region_name=LAMBDA_REGION)
+    boto_session = boto3.Session(region_name=LAMBDA_REGION)
+    client = boto_session.client("lambda")
+    lambda_role = f"arn:aws:iam::{account_id}:role/Admin"
 
     try:
         resp = client.get_function(FunctionName=LAMBDA_FUNCTION_NAME)
@@ -204,7 +211,7 @@ def _ensure_lambda_exists() -> str:
     resp = client.create_function(
         FunctionName=LAMBDA_FUNCTION_NAME,
         Runtime=LAMBDA_RUNTIME,
-        Role=LAMBDA_ROLE,
+        Role=lambda_role,
         Handler="lambda_function.handler",
         Code={"ZipFile": zip_bytes},
         Timeout=LAMBDA_TIMEOUT,
@@ -228,29 +235,31 @@ def _ensure_lambda_exists() -> str:
 
 
 @pytest.fixture(scope="module")
-def lambda_agent_arn():
+def lambda_agent_arn(test_config):
     """Ensure the 3P agent Lambda exists and return its ARN."""
-    return _ensure_lambda_exists()
+    return _ensure_lambda_exists(test_config["account_id"])
 
 
+@pytest.mark.gpu_intensive
+@pytest.mark.serial
 class TestMTRLEvaluator3PAgentIntegration:
     """Integration tests for MultiTurnRLEvaluator with Lambda-based 3P agent."""
 
-    def test_evaluate_base_model_with_lambda_agent(self, lambda_agent_arn):
-        """Test evaluating a base model using a Lambda ARN as agent_config.
+    def test_evaluate_with_lambda_agent_wait_for_completion(self, lambda_agent_arn, test_config):
+        """Test full end-to-end: start evaluation, wait for completion, and verify discoverability.
 
-        This is the primary 3P integration pattern: customer provides a
-        Lambda function that wraps their agent (LangChain, Strands, etc.)
-        and the evaluator runs rollouts against it.
+        This test validates the complete lifecycle including wait() using
+        the standard sagemaker-core pipeline execution path, and verifies
+        the evaluation is discoverable via get_all().
         """
         evaluator = MultiTurnRLEvaluator(
-            model=TEST_CONFIG["base_model"],
-            dataset=TEST_CONFIG["dataset"],
+            model=test_config["base_model"],
+            dataset=test_config["dataset"],
             agent_config=lambda_agent_arn,
-            s3_output_path=f'{TEST_CONFIG["s3_output_path"]}lambda-base-model/',
-            mlflow_resource_arn=TEST_CONFIG["mlflow_resource_arn"],
-            role=TEST_CONFIG["role"],
-            region=TEST_CONFIG["region"],
+            s3_output_path=f'{test_config["s3_output_path"]}lambda-e2e/',
+            mlflow_resource_arn=test_config["mlflow_resource_arn"],
+            role=test_config["role"],
+            region=test_config["region"],
             accept_eula=True,
         )
 
@@ -260,10 +269,28 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution.arn is not None
         assert "pipeline" in execution.arn.lower()
         logger.info(f"Started 3P agent base model evaluation: {execution.arn}")
-        logger.info(f"Status: {execution.status.overall_status}")
 
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
-    def test_evaluate_base_model_with_agent_lambda_object(self, lambda_agent_arn):
+        execution.wait(timeout=EVALUATION_TIMEOUT_SECONDS)
+        assert execution.status.overall_status in ("Succeeded", "Failed", "Stopped")
+        logger.info(f"Execution completed: {execution.status.overall_status}")
+
+        if execution.status.overall_status == "Failed":
+            logger.error(f"Failure reason: {execution.status.failure_reason}")
+
+        # Verify it's discoverable via get_all
+        found = False
+        for ex in MultiTurnRLEvaluator.get_all(region=test_config["region"]):
+            if ex.arn == execution.arn:
+                found = True
+                break
+
+        assert found, (
+            f"Evaluation {execution.arn} not found via get_all(). "
+            "Pipeline tagging may not be working correctly."
+        )
+        logger.info(f"Successfully discovered evaluation via get_all: {execution.arn}")
+
+    def test_evaluate_base_model_with_agent_lambda_object(self, lambda_agent_arn, test_config):
         """Test evaluating using an CustomAgentLambda object as agent_config.
 
         Validates that the evaluator accepts CustomAgentLambda instances (not
@@ -272,13 +299,13 @@ class TestMTRLEvaluator3PAgentIntegration:
         agent = CustomAgentLambda(lambda_arn=lambda_agent_arn)
 
         evaluator = MultiTurnRLEvaluator(
-            model=TEST_CONFIG["base_model"],
-            dataset=TEST_CONFIG["dataset"],
+            model=test_config["base_model"],
+            dataset=test_config["dataset"],
             agent_config=agent,
-            s3_output_path=f'{TEST_CONFIG["s3_output_path"]}lambda-object/',
-            mlflow_resource_arn=TEST_CONFIG["mlflow_resource_arn"],
-            role=TEST_CONFIG["role"],
-            region=TEST_CONFIG["region"],
+            s3_output_path=f'{test_config["s3_output_path"]}lambda-object/',
+            mlflow_resource_arn=test_config["mlflow_resource_arn"],
+            role=test_config["role"],
+            region=test_config["region"],
             accept_eula=True,
         )
 
@@ -288,93 +315,25 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution.arn is not None
         logger.info(f"Started CustomAgentLambda object evaluation: {execution.arn}")
 
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
-    def test_evaluate_with_lambda_agent_wait_for_completion(self, lambda_agent_arn):
-        """Test full end-to-end: start evaluation and wait for completion.
+        execution.wait(timeout=EVALUATION_TIMEOUT_SECONDS)
+        assert execution.status.overall_status == "Succeeded"
 
-        This test validates the complete lifecycle including wait() using
-        the standard sagemaker-core pipeline execution path.
-        """
-        evaluator = MultiTurnRLEvaluator(
-            model=TEST_CONFIG["base_model"],
-            dataset=TEST_CONFIG["dataset"],
-            agent_config=lambda_agent_arn,
-            s3_output_path=f'{TEST_CONFIG["s3_output_path"]}lambda-e2e/',
-            mlflow_resource_arn=TEST_CONFIG["mlflow_resource_arn"],
-            role=TEST_CONFIG["role"],
-            region=TEST_CONFIG["region"],
-            accept_eula=True,
-        )
-
-        execution = evaluator.evaluate()
-        assert execution is not None
-
-        logger.info(f"Waiting for execution: {execution.arn}")
-        execution.wait()
-
-        assert execution.status.overall_status in ("Succeeded", "Failed", "Stopped")
-        logger.info(f"Execution completed: {execution.status.overall_status}")
-
-        if execution.status.overall_status == "Failed":
-            logger.error(f"Failure reason: {execution.status.failure_reason}")
-
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
-    def test_evaluate_lambda_agent_discoverable_via_get_all(self, lambda_agent_arn):
-        """Test that 3P agent evaluations are discoverable via get_all.
-
-        Validates that evaluations started with Lambda agents show up in
-        the standard get_all() discovery path (pipeline tagging works).
-        """
-        evaluator = MultiTurnRLEvaluator(
-            model=TEST_CONFIG["base_model"],
-            dataset=TEST_CONFIG["dataset"],
-            agent_config=lambda_agent_arn,
-            s3_output_path=f'{TEST_CONFIG["s3_output_path"]}lambda-discovery/',
-            mlflow_resource_arn=TEST_CONFIG["mlflow_resource_arn"],
-            role=TEST_CONFIG["role"],
-            region=TEST_CONFIG["region"],
-            accept_eula=True,
-        )
-
-        execution = evaluator.evaluate()
-        assert execution is not None
-        started_arn = execution.arn
-
-        # Give pipeline time to register
-        time.sleep(10)
-
-        # Verify it's discoverable via get_all
-        found = False
-        for ex in MultiTurnRLEvaluator.get_all(region=TEST_CONFIG["region"]):
-            if ex.arn == started_arn:
-                found = True
-                break
-
-        assert found, (
-            f"Evaluation {started_arn} not found via get_all(). "
-            "Pipeline tagging may not be working correctly."
-        )
-        logger.info(f"Successfully discovered evaluation via get_all: {started_arn}")
-
-
-
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
-    def test_evaluate_with_attached_trainer(self, lambda_agent_arn):
+    def test_evaluate_with_attached_trainer(self, lambda_agent_arn, test_config):
         """Test evaluating a fine-tuned model by attaching to an existing training job."""
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
         attached_job = MultiTurnRLTrainer.attach(
-            "openai-reasoning-gpt-oss-20b-mtrl-20260602164546", session=boto3.Session(region_name=_REGION)
+            "mock-oss-test-mtrl-20260616153024", session=boto3.Session(region_name=_REGION)
         )
 
         evaluator = MultiTurnRLEvaluator(
             model=attached_job,
-            dataset=TEST_CONFIG["dataset"],
+            dataset=test_config["dataset"],
             agent_config=lambda_agent_arn,
-            s3_output_path=f'{TEST_CONFIG["s3_output_path"]}attached-trainer/',
-            mlflow_resource_arn=TEST_CONFIG["mlflow_resource_arn"],
-            role=TEST_CONFIG["role"],
-            region=TEST_CONFIG["region"],
+            s3_output_path=f'{test_config["s3_output_path"]}attached-trainer/',
+            mlflow_resource_arn=test_config["mlflow_resource_arn"],
+            role=test_config["role"],
+            region=test_config["region"],
             accept_eula=True,
         )
 
@@ -383,3 +342,6 @@ class TestMTRLEvaluator3PAgentIntegration:
         assert execution is not None
         assert execution.arn is not None
         logger.info(f"Started attached trainer evaluation: {execution.arn}")
+
+        execution.wait(timeout=EVALUATION_TIMEOUT_SECONDS)
+        assert execution.status.overall_status == "Succeeded"

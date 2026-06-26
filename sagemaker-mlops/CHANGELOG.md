@@ -10,6 +10,13 @@
 - fix(iam): Validate roles by default, opt-in creation, and add MLflow perms (#2080)
 - fix: Resolve MLflow app discovery issues (#5924)
 
+## v1.14.0 (2026-06-18)
+
+### Other
+
+- Update module dependencies
+- chore: deprecate Python 3.9 support (#5941)
+
 ## v1.13.1 (2026-06-04)
 
 - Update module dependencies

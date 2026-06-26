@@ -16,6 +16,7 @@ This module provides the ModelBuilder class, which offers a unified interface fo
 and deploying machine learning models across different model servers and deployment modes.
 It supports various frameworks including PyTorch, TensorFlow, HuggingFace, XGBoost, and more.
 """
+
 from __future__ import absolute_import, annotations
 
 import os
@@ -36,7 +37,10 @@ from sagemaker.serve.utils.local_hardware import (
     _get_gpu_info_fallback,
 )
 from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
-from sagemaker.serve.detector.image_detector import _get_model_base, _detect_framework_and_version
+from sagemaker.serve.detector.image_detector import (
+    _get_model_base,
+    _detect_framework_and_version,
+)
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.utils.types import ModelServer
 
@@ -48,11 +52,15 @@ from sagemaker.serve.model_server.djl_serving.utils import (
 from sagemaker.serve.model_server.tgi.utils import _get_default_tgi_configurations
 from sagemaker.serve.model_server.tgi.prepare import prepare_tgi_js_resources
 from sagemaker.serve.model_server.djl_serving.prepare import prepare_djl_js_resources
-from sagemaker.serve.model_server.multi_model_server.prepare import prepare_mms_js_resources
+from sagemaker.serve.model_server.multi_model_server.prepare import (
+    prepare_mms_js_resources,
+)
 
 # Model server preparation
 from sagemaker.serve.model_server.torchserve.prepare import prepare_for_torchserve
-from sagemaker.serve.model_server.tensorflow_serving.prepare import prepare_for_tf_serving
+from sagemaker.serve.model_server.tensorflow_serving.prepare import (
+    prepare_for_tf_serving,
+)
 from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
 from sagemaker.serve.model_server.multi_model_server.prepare import prepare_for_mms
 
@@ -70,7 +78,6 @@ SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
 
 
 class _ModelBuilderServers(object):
-
     def _build_for_model_server(self) -> Model:
         """Build model using explicit model server configuration.
 
@@ -109,6 +116,14 @@ class _ModelBuilderServers(object):
             return self._build_for_tei()
         elif self.model_server == ModelServer.TGI:
             return self._build_for_tgi()
+        elif self.model_server == ModelServer.VLLM:
+            return self._build_for_vllm()
+        elif self.model_server == ModelServer.SGLANG:
+            return self._build_for_sglang()
+        elif self.model_server == ModelServer.VLLM_OMNI:
+            return self._build_for_vllm_omni()
+        elif self.model_server == ModelServer.LLAMACPP:
+            return self._build_for_llamacpp()
         elif self.model_server == ModelServer.MMS:
             return self._build_for_transformers()
         elif self.model_server == ModelServer.SMD:
@@ -288,6 +303,105 @@ class _ModelBuilderServers(object):
             self.env_vars.update({"HF_HUB_OFFLINE": "0"})
 
         return model
+
+    def _build_for_hf_server(self, model_server: ModelServer) -> Model:
+        """Build a HuggingFace model for a hub-download serving container.
+
+        Generic build path shared by the vLLM, SGLang, and vLLM-omni servers. It
+        configures the container to pull the model directly from the HuggingFace Hub
+        (HF_MODEL_ID), resolves the appropriate DLC image via _auto_detect_image_uri,
+        and prepares the model for the selected mode. Server-specific tuning (sharding,
+        tensor parallelism, MAX_* limits, etc.) is intentionally left to the container
+        defaults and will be added in a follow-up.
+
+        Args:
+            model_server: The HuggingFace serving model server to build for
+                (VLLM, SGLANG, or VLLM_OMNI).
+
+        Returns:
+            Model: Configured model ready for deployment.
+        """
+        self.secret_key = ""
+        self.model_server = model_server
+
+        # Use notebook instance type if available
+        nb_instance = _get_nb_instance()
+        if nb_instance and not self._user_provided_instance_type:
+            self.instance_type = nb_instance
+            logger.debug(f"Using detected notebook instance type: {nb_instance}")
+
+        from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
+
+        _create_dir_structure(self.model_path)
+
+        if isinstance(self.model, str) and not self._is_jumpstart_model_id():
+            # These containers download the model directly from the HuggingFace Hub
+            # Todo: missing something?
+            self.env_vars.setdefault("HF_MODEL_ID", self.model)
+
+            if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
+                self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
+
+            self.s3_upload_path = None
+
+        self._auto_detect_image_uri()
+
+        if not self._optimizing:
+            if self.mode in LOCAL_MODES:
+                self._prepare_for_mode(should_upload_artifacts=True)
+            else:
+                self.s3_model_data_url, _ = self._prepare_for_mode()
+
+        # Cache management based on mode
+        if self.mode in LOCAL_MODES:
+            self.env_vars.update({"HF_HUB_OFFLINE": "1"})
+        else:
+            self.env_vars["HF_HOME"] = "/tmp"
+            self.env_vars["HUGGINGFACE_HUB_CACHE"] = "/tmp"
+
+        if self.mode == Mode.SAGEMAKER_ENDPOINT and not self.instance_type:
+            raise ValueError(
+                "Instance type must be provided when building for SageMaker Endpoint mode."
+            )
+
+        model = self._create_model()
+
+        if "HF_HUB_OFFLINE" in self.env_vars:
+            self.env_vars.update({"HF_HUB_OFFLINE": "0"})
+
+        return model
+
+    def _build_for_vllm(self) -> Model:
+        """Build a HuggingFace model for the vLLM serving container.
+
+        Returns:
+            Model: Configured model ready for vLLM deployment.
+        """
+        return self._build_for_hf_server(ModelServer.VLLM)
+
+    def _build_for_sglang(self) -> Model:
+        """Build a HuggingFace model for the SGLang serving container.
+
+        Returns:
+            Model: Configured model ready for SGLang deployment.
+        """
+        return self._build_for_hf_server(ModelServer.SGLANG)
+
+    def _build_for_vllm_omni(self) -> Model:
+        """Build a HuggingFace model for the vLLM-omni (multimodal) serving container.
+
+        Returns:
+            Model: Configured model ready for vLLM-omni deployment.
+        """
+        return self._build_for_hf_server(ModelServer.VLLM_OMNI)
+
+    def _build_for_llamacpp(self) -> Model:
+        """Build a HuggingFace model for the llama.cpp serving container.
+
+        Returns:
+            Model: Configured model ready for llama.cpp deployment.
+        """
+        return self._build_for_hf_server(ModelServer.LLAMACPP)
 
     def _build_for_djl(self) -> Model:
         """Build model for DJL Serving deployment.

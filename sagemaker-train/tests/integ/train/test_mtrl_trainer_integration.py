@@ -28,10 +28,6 @@ import logging
 
 import boto3
 
-os.environ.setdefault("AWS_DEFAULT_REGION", "us-west-2")
-os.environ.setdefault("SAGEMAKER_REGION", "us-west-2")
-os.environ.setdefault("AWS_REGION", "us-west-2")
-
 from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.evaluate import MultiTurnRLEvaluator
 
@@ -45,7 +41,8 @@ EVAL_TIMEOUT = 14400  # 4 hours
 
 def _get_account_id():
     """Get current AWS account ID via STS."""
-    return boto3.client("sts", region_name=_REGION).get_caller_identity()["Account"]
+    boto_session = boto3.Session(region_name=_REGION)
+    return boto_session.client("sts").get_caller_identity()["Account"]
 
 # ============================================================
 # Per-account resource configuration
@@ -55,8 +52,9 @@ ACCOUNT_CONFIGS = {
     # PROD — Main account (729646638167)
     "729646638167": {
         "env_name": "PROD",
-        "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260602215955",
-        "base_model": "openai-reasoning-gpt-oss-20b",
+        #"existing_job_name": "mock-oss-test-mtrl-20260611170946",
+        "existing_job_name": "mock-oss-test-mtrl-20260616153024",
+        "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
@@ -68,7 +66,7 @@ ACCOUNT_CONFIGS = {
     "391266019386": {
         "env_name": "PREPROD",
         "existing_job_name": "mtrl-integ-gpt-oss-agentcore-1779143704358",
-        "base_model": "openai-reasoning-gpt-oss-20b",
+        "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:391266019386:runtime/mtrl_integ_gsm8k_streaming-bIz4H5Echk",
         "dataset": "s3://sagemaker-rft-beta-391266019386/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-391266019386/mtrl-integ/eval-output/",
@@ -80,7 +78,7 @@ ACCOUNT_CONFIGS = {
     "742774200982": {
         "env_name": "BETA",
         "existing_job_name": "openai-reasoning-gpt-oss-20b-mtrl-20260601114439",
-        "base_model": "openai-reasoning-gpt-oss-20b",
+        "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:742774200982:runtime/sagemaker_rft_prod_gsm8k_streaming-UwSB6LEfEq",
         "dataset": "s3://sagemaker-rft-beta-742774200982/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-742774200982/mtrl-integ/eval-output/",
@@ -142,6 +140,8 @@ def attached_trainer(config):
     return trainer
 
 
+@pytest.mark.gpu_intensive
+@pytest.mark.serial
 class TestMTRLEvalIntegration:
     """Integration tests for MTRL evaluation: attach → evaluate → wait for success."""
 
@@ -187,7 +187,6 @@ class TestMTRLEvalIntegration:
             f"reason: {execution.status.failure_reason}"
         )
 
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
     def test_evaluate_base_model(self, config):
         """Evaluate the base model only — submit and wait for completion."""
         evaluator = MultiTurnRLEvaluator(
@@ -246,37 +245,5 @@ class TestMTRLEvalIntegration:
 
         assert status == "Succeeded", (
             f"[{config['env_name']}] Comparison eval failed with status: {status}, "
-            f"reason: {execution.status.failure_reason}"
-        )
-
-    @pytest.mark.skip(reason="Quota limited (1 concurrent eval job) - run manually")
-    def test_evaluate_with_hyperparam_override(self, attached_trainer, config):
-        """Test that hyperparameter overrides are passed through to the eval job."""
-        evaluator = MultiTurnRLEvaluator(
-            model=attached_trainer,
-            dataset=config["dataset"],
-            s3_output_path=f'{config["s3_output_path"]}hyperparam-override/',
-            mlflow_resource_arn=config["mlflow_resource_arn"],
-            role=config["role"],
-            region=_REGION,
-        )
-
-        # Override MTRL-specific hyperparams
-        evaluator.hyperparameters.sampling_max_tokens = 1024
-        evaluator.hyperparameters.eval_group_size = 4
-
-        execution = evaluator.evaluate()
-
-        assert execution is not None
-        assert execution.arn is not None
-        logger.info(f"[{config['env_name']}] Started hyperparam override eval: {execution.arn}")
-
-        execution.wait(timeout=EVAL_TIMEOUT)
-
-        status = execution.status.overall_status
-        logger.info(f"[{config['env_name']}] Hyperparam override eval completed: {status}")
-
-        assert status == "Succeeded", (
-            f"[{config['env_name']}] Hyperparam override eval failed with status: {status}, "
             f"reason: {execution.status.failure_reason}"
         )
