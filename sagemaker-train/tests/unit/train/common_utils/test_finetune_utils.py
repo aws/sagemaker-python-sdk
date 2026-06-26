@@ -27,9 +27,11 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_mlflow_config,
     _validate_eula_for_gated_model,
     _validate_model_region_availability,
-    _validate_s3_path_exists
+    _validate_s3_path_exists,
+    _parse_context_length
 )
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
+from sagemaker.core.utils.utils import Unassigned
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.train.common import TrainingType
 from sagemaker.train.configs import InputData
@@ -464,7 +466,6 @@ class TestFinetuneUtils:
 
     def test__validate_eula_for_gated_model_with_model_package(self):
         """Test EULA validation returns True for ModelPackage input"""
-        from sagemaker.core.resources import ModelPackage
         model_package = Mock(spec=ModelPackage)
         
         result = _validate_eula_for_gated_model(model_package, False, True)
@@ -864,6 +865,102 @@ class TestResolveIntermediateCheckpointMpg:
         # Should still have standard params, just not datamix ones
         assert "max_steps" in options._specs
         assert "customer_data_percent" not in options._specs
+
+    def test__create_serverless_config_with_sequence_length(self):
+        config = _create_serverless_config("model-arn", "SFT", TrainingType.LORA, accept_eula=True, sequence_length="8K")
+
+        assert config.sequence_length == "8K"
+        assert config.base_model_arn == "model-arn"
+
+    def test__create_serverless_config_without_sequence_length(self):
+        config = _create_serverless_config("model-arn", "SFT", TrainingType.LORA, accept_eula=True)
+
+        assert config.sequence_length is None
+
+    def test__parse_context_length_with_k_suffix(self):
+        assert _parse_context_length("8K") == 8192
+        assert _parse_context_length("32K") == 32768
+        assert _parse_context_length("128K") == 131072
+
+    def test__parse_context_length_with_lowercase(self):
+        assert _parse_context_length("8k") == 8192
+
+    def test__parse_context_length_with_integer(self):
+        with pytest.raises(ValueError, match="Invalid sequence_length '4096'"):
+            _parse_context_length("4096")
+
+    def test__parse_context_length_with_none(self):
+        assert _parse_context_length(None) == 0
+
+    def test__parse_context_length_with_empty(self):
+        assert _parse_context_length("") == 0
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_filters_by_sequence_length(self, mock_get_hub_content):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=b'{"max_length": {"default": 32768}}'))
+        }
+        mock_session.boto_session.client.return_value = mock_s3
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-4k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-4k.json",
+                        "Peft": True,
+                        "SequenceLength": "4K"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-32k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-32k.json",
+                        "Peft": True,
+                        "SequenceLength": "32K"
+                    }
+                ]
+            }
+        }
+
+        result = _get_fine_tuning_options_and_model_arn("test-model", "SFT", "LORA", mock_session, sequence_length="8K")
+
+        if result is not None:
+            options, model_arn, is_gated_model = result
+            # Should pick the 32K recipe (smallest >= 8K)
+            mock_s3.get_object.assert_called_once()
+            call_args = mock_s3.get_object.call_args[1]
+            assert "params-32k" in call_args["Key"]
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_raises_when_no_sufficient_context_length(self, mock_get_hub_content):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-4k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-4k.json",
+                        "Peft": True,
+                        "SequenceLength": "4K"
+                    }
+                ]
+            }
+        }
+
+        # Requesting 128K but only 4K available — should raise
+        with pytest.raises(ValueError, match="No recipes found with SequenceLength >= 128K"):
+            _get_fine_tuning_options_and_model_arn("test-model", "SFT", "LORA", mock_session, sequence_length="128K")
 
 
 class TestSubscriptionOnlyModelFallback:

@@ -102,6 +102,10 @@ class SFTTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
             If not specified, uses SageMaker service default (24 hours for serverless training).
+        sequence_length (Optional[str]):
+            The sequence length for the training job. Valid values are
+            "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K".
+            If not specified, the service will use default recipe selection behavior.
     """
 
     def __init__(
@@ -119,6 +123,7 @@ class SFTTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         accept_eula: Optional[bool] = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        sequence_length: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -138,15 +143,17 @@ class SFTTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self.sequence_length = sequence_length
 
         # Initialize fine-tuning options with beta session fallback
-        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
-                                                                     CustomizationTechnique.SFT.value,
-                                                                     self.training_type,
-                                                                     self.sagemaker_session or TrainDefaults.get_sagemaker_session(
-                                                                     sagemaker_session=self.sagemaker_session
-                                                                     ))
-        
+        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(
+            self._model_name,
+            CustomizationTechnique.SFT.value,
+            self.training_type,
+            self.sagemaker_session or TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
+            sequence_length=self.sequence_length
+        )
+
         # Process hyperparameters
         self._process_hyperparameters()
         
@@ -225,12 +232,14 @@ class SFTTrainer(BaseTrainer):
             kms_key_id=self.kms_key_id
         )
 
-        serverless_config = _create_serverless_config(model_arn=self._model_arn,
-                                                     customization_technique=CustomizationTechnique.SFT.value,
-                                                     training_type=self.training_type,
-                                                     accept_eula=self.accept_eula,
-                                                     job_type=JOB_TYPE
-                                                     )
+        serverless_config = _create_serverless_config(
+            model_arn=self._model_arn,
+            customization_technique=CustomizationTechnique.SFT.value,
+            training_type=self.training_type,
+            accept_eula=self.accept_eula,
+            sequence_length=self.sequence_length,
+            job_type=JOB_TYPE
+        )
         mlflow_config = _create_mlflow_config(
             sagemaker_session,
             mlflow_resource_arn=self.mlflow_resource_arn,
