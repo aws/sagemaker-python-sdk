@@ -938,7 +938,7 @@ class TestModelBuilderV3ModelServers(unittest.TestCase):
         self.assertEqual(result, mock_model)
         mock_build_djl.assert_called_once()
 
-    @patch('sagemaker.serve.model_builder.ModelBuilder._build_for_tgi')
+    @patch('sagemaker.serve.model_builder.ModelBuilder._build_for_vllm')
     @patch('sagemaker.serve.model_builder.ModelBuilder._is_huggingface_model')
     @patch('sagemaker.serve.model_builder.ModelBuilder.get_huggingface_model_metadata')
     @patch('sagemaker.serve.model_builder.ModelBuilder._get_client_translators')
@@ -946,29 +946,29 @@ class TestModelBuilderV3ModelServers(unittest.TestCase):
     @patch('sagemaker.serve.model_builder.ModelBuilder._build_validations')
     @patch('sagemaker.serve.model_builder.ModelBuilder._handle_mlflow_input')
     @patch('sagemaker.serve.model_builder.ModelBuilder._hf_schema_builder_init')
-    def test_build_with_tgi_for_text_generation(
+    def test_build_with_vllm_for_text_generation(
         self, mock_hf_schema_init, mock_mlflow, mock_validations, mock_serve_setting,
-        mock_translators, mock_hf_metadata, mock_is_hf, mock_build_tgi
+        mock_translators, mock_hf_metadata, mock_is_hf, mock_build_vllm
     ):
-        """Test build with TGI for text-generation models."""
+        """Test build defaults to vLLM for text-generation models."""
         mock_model = Mock(spec=Model)
-        mock_build_tgi.return_value = mock_model
+        mock_build_vllm.return_value = mock_model
         mock_translators.return_value = (Mock(), Mock())
         mock_serve_setting.return_value = Mock()
         mock_is_hf.return_value = True
         mock_hf_metadata.return_value = {"pipeline_tag": "text-generation"}
         mock_hf_schema_init.return_value = None  # Skip schema initialization
-        
+
         builder = ModelBuilder(
             model="gpt2",
             role_arn=self.mock_role_arn,
             sagemaker_session=self.mock_session
         )
-        
+
         result = builder._build_single_modelbuilder()
-        
+
         self.assertEqual(result, mock_model)
-        mock_build_tgi.assert_called_once()
+        mock_build_vllm.assert_called_once()
 
 
 if __name__ == '__main__':
