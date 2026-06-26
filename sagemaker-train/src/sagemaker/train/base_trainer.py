@@ -1,4 +1,6 @@
 import copy
+import os
+import yaml
 from abc import ABC, abstractmethod
 from typing import Optional, Dict, Any, List, Union
 import json
@@ -16,7 +18,7 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig
 from sagemaker.core.shapes import shapes
 from sagemaker.core.resources import TrainingJob
-from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe, get_resolved_recipe_from_context
+from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe, get_resolved_recipe_from_context, NoRecipeError
 from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
 from sagemaker.train.common_utils.finetune_utils import (
@@ -25,7 +27,9 @@ from sagemaker.train.common_utils.finetune_utils import (
     get_hyperpod_recipe_path,
     get_recipe_s3_uri,
     _validate_hyperparameter_values,
+    _get_smhp_replicas_enum,
 )
+from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name
@@ -245,10 +249,12 @@ class BaseTrainer(ABC):
         Returns:
             The updated hyperparameters dict with recipe values applied.
         """
+        if not hasattr(self, 'hyperparameters') or not isinstance(getattr(self.hyperparameters, '_specs', None), dict):
+            return final_hyperparameters
+
         try:
             resolved = self.get_resolved_recipe()
-        except ValueError:
-            # Nothing to resolve (no recipe, overrides, or user-set hyperparameters)
+        except NoRecipeError:
             return final_hyperparameters
 
         flat = flatten_resolved_recipe(resolved)
@@ -257,6 +263,21 @@ class BaseTrainer(ABC):
                 final_hyperparameters[k] = str(v) if not isinstance(v, str) else v
 
         return final_hyperparameters
+
+    def _validate_instance_count(self, instance_count, sagemaker_session):
+        """Validate instance/node count against allowed values from SMHP recipe."""
+        smhp_replicas_enum = _get_smhp_replicas_enum(
+            model_name=self._model_name,
+            customization_technique=self._customization_technique,
+            training_type=self.training_type,
+            sagemaker_session=sagemaker_session,
+        )
+        if smhp_replicas_enum and instance_count not in smhp_replicas_enum:
+            raise ValueError(
+                f"Node/Instance count '{instance_count}' is not supported. "
+                f"Allowed values: {sorted(smhp_replicas_enum)}."
+            )
+        return smhp_replicas_enum
 
     @abstractmethod
     def train(self, input_data_config: List[InputData], wait: bool = True, logs: bool = True, wait_timeout: Optional[int] = None):
@@ -363,6 +384,7 @@ class BaseTrainer(ABC):
         from sagemaker.train.common_utils.finetune_utils import (
             _render_recipe_placeholders,
             _get_smtj_override_spec,
+            _get_smhp_replicas_enum,
             _resolve_base_model_weights_s3_uri,
         )
         override_spec = _get_smtj_override_spec(
@@ -371,6 +393,15 @@ class BaseTrainer(ABC):
             training_type=self.training_type,
             sagemaker_session=sagemaker_session,
         )
+
+        # Validate instance count against allowed values from SMHP recipe.
+        smhp_replicas_enum = self._validate_instance_count(compute.instance_count, sagemaker_session)
+        if smhp_replicas_enum:
+            override_spec.setdefault("replicas", {})["enum"] = smhp_replicas_enum
+            if hasattr(self, 'hyperparameters') and hasattr(self.hyperparameters, '_specs'):
+                self.hyperparameters._specs.setdefault("replicas", {})["enum"] = smhp_replicas_enum
+                if not hasattr(self.hyperparameters, 'replicas'):
+                    object.__setattr__(self.hyperparameters, 'replicas', compute.instance_count)
 
         # Inject the resolved dataset channel paths so the rendered recipe's
         # train_files / val_files are non-empty (the container aborts otherwise).
@@ -430,7 +461,6 @@ class BaseTrainer(ABC):
         # into the recipe override spec so they render into {{mlflow_*}} placeholders.
         # Uses the shared resolve helper to default empty names to base_job_name when
         # a tracking URI is set (prevents OSS container recipe validation failures).
-        from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
         job_base_name = self.base_job_name or f"{self._model_name}-{customization_technique}"
         mlflow_tracking_uri, mlflow_experiment_name, mlflow_run_name = (
             resolve_mlflow_tracking_fields(
@@ -485,6 +515,7 @@ class BaseTrainer(ABC):
         with open(recipe_local_path, "r") as f:
             recipe_content = f.read()
         recipe_content = _render_recipe_placeholders(recipe_content, override_spec)
+
         with open(recipe_local_path, "w") as f:
             f.write(recipe_content)
 
@@ -577,7 +608,10 @@ class BaseTrainer(ABC):
         # Build output data config from s3_output_path if provided
         output_data_config = None
         if self.s3_output_path:
-            output_data_config = OutputDataConfig(s3_output_path=self.s3_output_path)
+            output_config_kwargs = {"s3_output_path": self.s3_output_path}
+            if getattr(self, "disable_output_compression", False):
+                output_config_kwargs["compression_type"] = "NONE"
+            output_data_config = OutputDataConfig(**output_config_kwargs)
 
         model_trainer = ModelTrainer.from_recipe(
             training_recipe=recipe_local_path,
@@ -769,19 +803,6 @@ class BaseTrainer(ABC):
                 "Install it with: pip install hyperpod"
             )
 
-        # Resolve recipe: use user-provided recipe or auto-resolve from Hub
-        recipe_name = getattr(self, '_recipe_path', None)
-        if not recipe_name:
-            job_base_name = self.base_job_name or f"{self._model_name}-{self._customization_technique}"
-            recipe_name = get_hyperpod_recipe_path(
-                model_name=self._model_name,
-                customization_technique=self._customization_technique,
-                training_type=self.training_type,
-                sagemaker_session=sagemaker_session,
-                job_name=job_base_name,
-            )
-            logger.info(f"Auto-resolved HyperPod recipe from Hub: {recipe_name}")
-
         # Resolve training image
         training_image = self.training_image
         if not training_image:
@@ -809,61 +830,70 @@ class BaseTrainer(ABC):
                 "trainer's training_image parameter."
             )
 
-        # Build override parameters
-        override_parameters = {}
-        if compute.instance_type:
-            override_parameters["instance_type"] = compute.instance_type
-        if training_image:
-            override_parameters["container"] = training_image
-        if compute.node_count:
-            override_parameters["recipes.run.replicas"] = compute.node_count
-
         job_base_name = self.base_job_name or f"{self._model_name}-{self._customization_technique}"
-        override_parameters["recipes.run.name"] = _get_unique_name(job_base_name)
+
+        # Validate node_count against allowed values from SMHP recipe
+        self._validate_instance_count(compute.node_count, sagemaker_session)
+
+        # Resolve and validate the recipe (3-level merge: base → user recipe → overrides)
+        try:
+            resolved = self.get_resolved_recipe()
+            additional_overrides = flatten_resolved_recipe(resolved)
+        except NoRecipeError:
+            additional_overrides = {}
+
+        # Add HyperPod-specific fields not in the recipe
+        additional_overrides["name"] = _get_unique_name(job_base_name)
+        if compute.node_count:
+            additional_overrides["replicas"] = compute.node_count
 
         # Data paths
         resolved_training_dataset = training_dataset or self.training_dataset
         resolved_validation_dataset = validation_dataset or self.validation_dataset
         if resolved_training_dataset:
-            override_parameters["recipes.run.data_s3_path"] = resolved_training_dataset
+            additional_overrides["data_s3_path"] = resolved_training_dataset
         if resolved_validation_dataset:
-            override_parameters["recipes.run.validation_data_s3_path"] = resolved_validation_dataset
+            additional_overrides["validation_data_s3_path"] = resolved_validation_dataset
 
         # Output path
         if self.s3_output_path:
-            override_parameters["recipes.run.output_s3_path"] = self.s3_output_path
+            additional_overrides["output_s3_path"] = self.s3_output_path
 
-        # MLflow configuration — use the shared resolve helper to default empty
-        # names to job_base_name when a tracking URI is set.
-        from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields as _resolve_mlflow
-        mlflow_uri, mlflow_exp, mlflow_run = _resolve_mlflow(
+        # MLflow configuration
+        mlflow_uri, mlflow_exp, mlflow_run = resolve_mlflow_tracking_fields(
             mlflow_tracking_uri=getattr(self, 'mlflow_resource_arn', None),
             mlflow_experiment_name=getattr(self, 'mlflow_experiment_name', None),
             mlflow_run_name=getattr(self, 'mlflow_run_name', None),
             base_job_name=job_base_name,
         )
         if mlflow_uri:
-            override_parameters["recipes.run.mlflow_tracking_uri"] = mlflow_uri
-            override_parameters["recipes.run.mlflow_experiment_name"] = mlflow_exp
-            override_parameters["recipes.run.mlflow_run_name"] = mlflow_run
+            additional_overrides["mlflow_tracking_uri"] = mlflow_uri
+            additional_overrides["mlflow_experiment_name"] = mlflow_exp
+            additional_overrides["mlflow_run_name"] = mlflow_run
 
-        # Hyperparameters — only pass user-explicitly-set values for HyperPod
-        if self.hyperparameters:
-            for hp_key in getattr(self.hyperparameters, '_user_set', []):
-                hp_value = getattr(self.hyperparameters, hp_key, None)
-                if hp_value is not None:
-                    override_parameters[f"recipes.training_config.{hp_key}"] = hp_value
+        # Render recipe with all overrides baked in and write to CLI directory
+        recipe_cli_path = get_hyperpod_recipe_path(
+            model_name=self._model_name,
+            customization_technique=self._customization_technique,
+            training_type=self.training_type,
+            sagemaker_session=sagemaker_session,
+            job_name=job_base_name,
+            additional_overrides=additional_overrides,
+        )
+        logger.info(f"HyperPod recipe resolved: {recipe_cli_path}")
 
-        # Apply user-provided overrides (supports nested recipe paths)
-        if getattr(self, '_overrides', None):
-            for key, value in self._overrides.items():
-                override_parameters[key] = value
+        # Only instance_type and container remain as override parameters
+        override_parameters = {}
+        if compute.instance_type:
+            override_parameters["instance_type"] = compute.instance_type
+        if training_image:
+            override_parameters["container"] = training_image
 
         # Submit job
         start_job_cmd = [
             "hyperpod", "start-job",
             "--namespace", namespace,
-            "--recipe", recipe_name,
+            "--recipe", recipe_cli_path,
         ]
         if override_parameters:
             start_job_cmd.extend(["--override-parameters", json.dumps(override_parameters)])

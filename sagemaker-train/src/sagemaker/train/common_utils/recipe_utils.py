@@ -19,6 +19,11 @@ from sagemaker.train.recipe_resolver import RecipeResolver
 logger = logging.getLogger(__name__)
 
 
+class NoRecipeError(ValueError):
+    """Raised when get_resolved_recipe has no recipe, overrides, or user-set hyperparameters."""
+    pass
+
+
 def _is_nova_model(model_id: str) -> bool:
     """Check if the model ID is a Nova model.
     
@@ -396,7 +401,7 @@ def get_resolved_recipe_from_context(
                 overrides = {template_section: user_values}
 
     if not recipe_path and not overrides:
-        raise ValueError(
+        raise NoRecipeError(
             "get_resolved_recipe() requires a 'recipe', 'overrides', or direct "
             "hyperparameter assignments (e.g. .hyperparameters.x = val) "
             "to be provided."

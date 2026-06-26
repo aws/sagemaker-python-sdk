@@ -146,8 +146,11 @@ class TestHyperPodComputeMapping:
     @patch("sagemaker.train.base_trainer.TrainDefaults.verify_hyperpod_caller_permissions")
     @patch("sagemaker.train.base_trainer.validate_hyperpod_compute")
     @patch("sagemaker.train.base_trainer.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.base_trainer.get_hyperpod_recipe_path", return_value="recipes/test")
+    @patch("sagemaker.train.base_trainer.flatten_resolved_recipe", return_value={})
     def test_compute_fields_land_in_override_parameters(
-        self, mock_get_session, mock_validate, mock_verify, mock_subprocess
+        self, mock_flatten, mock_get_recipe_path, mock_get_session,
+        mock_validate, mock_verify, mock_subprocess
     ):
         mock_get_session.return_value = MagicMock()
         mock_subprocess.run.return_value = SimpleNamespace(
@@ -158,16 +161,19 @@ class TestHyperPodComputeMapping:
         with patch(
             "sagemaker.train.common_utils.finetune_utils.get_training_image",
             return_value=None,
-        ):
+        ), patch.object(trainer, "get_resolved_recipe", return_value={"training_config": {}}):
             job_name = trainer._train_hyperpod(wait=False)
 
         assert job_name == "my-job-123"
 
-        # The start-job command carries the override parameters as a JSON blob.
+        # instance_type is in --override-parameters
         start_cmd = mock_subprocess.run.call_args_list[-1].args[0]
         overrides = json.loads(start_cmd[start_cmd.index("--override-parameters") + 1])
         assert overrides["instance_type"] == "ml.p5.48xlarge"
-        assert overrides["recipes.run.replicas"] == 3
+
+        # replicas is now passed via additional_overrides to get_hyperpod_recipe_path
+        recipe_call_kwargs = mock_get_recipe_path.call_args.kwargs
+        assert recipe_call_kwargs["additional_overrides"]["replicas"] == 3
 
     @patch("sagemaker.train.base_trainer.subprocess")
     @patch("sagemaker.train.base_trainer.TrainDefaults.verify_hyperpod_caller_permissions")

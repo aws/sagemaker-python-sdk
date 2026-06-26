@@ -84,6 +84,8 @@ def _run_serverful(trainer, base_hyperparameters=None):
         return_value=mock_model_trainer,
     ) as mock_from_recipe:
         trainer.hyperparameters = MagicMock()
+        trainer.hyperparameters._specs = {}
+        trainer.hyperparameters._user_set = None
         trainer.hyperparameters.to_dict.return_value = base_hyperparameters or {}
         trainer.train(wait=False)
 
@@ -165,6 +167,8 @@ class TestChannelMountInjection:
             return_value=MagicMock(),
         ):
             trainer.hyperparameters = MagicMock()
+            trainer.hyperparameters._specs = {}
+            trainer.hyperparameters._user_set = None
             trainer.hyperparameters.to_dict.return_value = {}
             trainer.train(wait=False)
 

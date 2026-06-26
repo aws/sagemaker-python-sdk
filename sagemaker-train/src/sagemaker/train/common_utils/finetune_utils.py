@@ -5,7 +5,7 @@ import re
 import time
 import logging
 import json
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import time
 import boto3
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
@@ -1270,6 +1270,39 @@ def _get_smtj_override_spec(model_name: str, customization_technique: str, train
     return override_spec
 
 
+def _get_smhp_replicas_enum(model_name: str, customization_technique: str, training_type,
+                            sagemaker_session, hub_name: Optional[str] = None) -> Optional[list]:
+    """Fetch the replicas enum from the SMHP override spec for the same model/technique.
+
+    SMTJ hub content does not include a replicas enum in its override spec, but
+    the SMHP recipe for the same configuration does. This function retrieves that
+    enum so it can be applied to SMTJ recipe validation.
+
+    Returns:
+        List of valid instance counts, or None if unavailable.
+    """
+    try:
+        _, smhp_override_spec = _get_recipe_entry_and_override_spec(
+            model_name=model_name,
+            customization_technique=customization_technique,
+            training_type=training_type,
+            sagemaker_session=sagemaker_session,
+            platform="hyperpod",
+            hub_name=hub_name,
+        )
+        replicas_meta = smhp_override_spec.get("replicas", {})
+        enum_val = replicas_meta.get("enum")
+        if isinstance(enum_val, list) and enum_val:
+            return enum_val
+    except Exception as e:
+        logger.warning(
+            f"Could not fetch valid instance counts from SMHP recipe for "
+            f"{model_name}/{customization_technique}: {e}. "
+            "Instance count validation will be skipped."
+        )
+    return None
+
+
 def _extract_recipe_from_helm_template(template_content: str) -> str:
     """Extract the training config YAML from a HyperPod Helm chart template.
 
@@ -1359,7 +1392,8 @@ def _render_recipe_placeholders(recipe_content: str, override_spec: dict) -> str
 def get_hyperpod_recipe_path(model_name: str, customization_technique: str, training_type,
                              sagemaker_session, job_name: str,
                              hub_name: Optional[str] = None,
-                             display_name_filter: Optional[str] = None) -> str:
+                             display_name_filter: Optional[str] = None,
+                             additional_overrides: Optional[Dict[str, Any]] = None) -> str:
     """Resolve and write the HyperPod recipe for a model from SageMaker Hub.
 
     Downloads the recipe template from Hub (HpEksPayloadTemplateS3Uri), writes it
@@ -1379,6 +1413,9 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
         hub_name: Optional hub name override
         display_name_filter: Optional filter to match against recipe DisplayName
             (e.g., "benchmark" to prefer general text benchmark eval recipes)
+        additional_overrides: Optional dict of extra key-value pairs to inject
+            into the override spec before rendering. These take precedence over
+            Hub defaults. Keys should be flat spec keys (e.g., "save_steps").
 
     Returns:
         str: Relative recipe path for the HyperPod CLI (without .yaml extension)
@@ -1412,6 +1449,15 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
 
     # Extract the training config from the Helm chart template
     recipe_content = _extract_recipe_from_helm_template(recipe_content)
+
+    # Inject additional overrides into spec before rendering
+    if additional_overrides:
+        for k, v in additional_overrides.items():
+            entry = override_spec.get(k)
+            if isinstance(entry, dict):
+                entry["default"] = v
+            else:
+                override_spec[k] = {"default": v, "type": "string"}
 
     # Render {{placeholder}} values with defaults from the override params spec.
     recipe_content = _render_recipe_placeholders(recipe_content, override_spec)
