@@ -3,21 +3,11 @@
 
 ### New Features
 
-- feat: IAM role creation — auto-create least-privilege execution roles with `iam_policies.py` and `iam_role_resolver.py` helpers (#2041)
-- feat: HyperPod IAM creation (#2057)
-- feat(train): Add Serverless / SMTJ / HyperPod support to trainers and evaluators (#2045)
-- feat(train): Auto-resolve HyperPod recipe from Hub (#2050)
-- feat(train): Enable Data Mixing for Nova models (#2054)
-- feat: InspectAI evaluator (#2039)
-- feat: Codegen-emitted `model_artifacts` synthesis (#2086)
+- feat: IAM role creation — auto-create least-privilege execution roles, SDK-wide (#2041)
 
 ### Bug Fixes
 
-- fix: Reject unknown recipe overrides (serverless + serverful) and untrusted IAM roles (#2071)
-- fix: Hub-content IAM perms, recipe dataset paths, and log markup escaping (#2065)
-- fix: Harden auto-created IAM roles and protect curated recipe keys (#2058)
 - fix(iam): Validate roles by default, opt-in creation, and add MLflow perms (#2080)
-- fix: RLVR setup and reward Lambda handling (#2076)
 
 ## v2.13.1 (2026-06-04)
 ### Other 

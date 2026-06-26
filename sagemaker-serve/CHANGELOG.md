@@ -6,12 +6,6 @@
 - feat: Add Nova SMI config bounds validation to ModelBuilder (#2040)
 - feat: IAM role creation — auto-create least-privilege execution roles, SDK-wide (#2041)
 
-### Bug Fixes
-
-- fix: Recipe override errors in evaluator (#2067)
-- fix: Evaluation on HyperPod (#2061)
-- fix(iam): Validate roles by default, opt-in creation, and add MLflow perms (#2080)
-
 ## v1.13.1 (2026-06-04)
 
 ### Features
