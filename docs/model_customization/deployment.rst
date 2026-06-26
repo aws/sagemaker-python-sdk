@@ -1,14 +1,10 @@
 Model Deployment
 =================
 
-Deploy your fine-tuned models using:
-
-  * **SageMaker Inference Endpoints** - Real-time and batch inference
-  * **Amazon Bedrock Custom Model Import** - Integrate with Bedrock services
+Deploy your fine-tuned models to either a SageMaker real-time endpoint or Amazon Bedrock.
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
 
+   deploy_sagemaker_endpoint
    ../../v3-examples/model-customization-examples/bedrock-modelbuilder-deployment
-   ../../v3-examples/model-customization-examples/model_builder_deployment_notebook
