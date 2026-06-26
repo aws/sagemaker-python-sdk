@@ -72,7 +72,7 @@ CUSTOM_METRIC_DICT = {
 
 TEST_CONFIG = {
     "model_package_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
-    "evaluator_model": "anthropic.claude-haiku-4-5-20251001-v1:0",
+    "evaluator_model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
     "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/gen_qa.jsonl",
     "builtin_metrics": ["Completeness", "Faithfulness"],
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
