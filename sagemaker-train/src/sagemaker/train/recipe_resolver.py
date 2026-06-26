@@ -423,6 +423,46 @@ class RecipeResolver:
         # (don't mutate loaded inputs).
         user_dict_for_merge = copy.deepcopy(user_dict)
         overrides_for_merge = copy.deepcopy(self._overrides)
+
+        # Expand flat override keys into nested structure using key_path_map.
+        # Users may pass overrides like {"fine_tuned_model": 0.9} or
+        # {"training_config": {"learning_rate": 5e-6}} where the flat key doesn't
+        # match the actual recipe path (e.g., training_config.optim_config.lr).
+        # Use key_path_map to place them at the correct nested position.
+        if overrides_for_merge and key_path_map:
+            expanded = {}
+            remaining = {}
+
+            # Build a map of recipe field names → dotpaths so users can override
+            # using actual recipe field names (e.g. lora_plus_lr_ratio)
+            all_field_paths = {}
+            def _map_all_fields(d, prefix=""):
+                for k, v in d.items():
+                    path = f"{prefix}.{k}" if prefix else k
+                    if isinstance(v, dict):
+                        _map_all_fields(v, path)
+                    else:
+                        all_field_paths[k] = path
+            _map_all_fields(base_dict)
+
+            def _collect_flat_keys(d, prefix=""):
+                """Recursively find leaf values and their current paths."""
+                for k, v in d.items():
+                    current_path = f"{prefix}.{k}" if prefix else k
+                    if isinstance(v, dict):
+                        _collect_flat_keys(v, current_path)
+                    else:
+                        # Recipe field name takes priority, fall back to spec key (placeholder)
+                        if k in all_field_paths:
+                            _set_nested_value(expanded, all_field_paths[k], v)
+                        elif k in key_path_map:
+                            _set_nested_value(expanded, key_path_map[k], v)
+                        else:
+                            _set_nested_value(expanded, current_path, v)
+
+            _collect_flat_keys(overrides_for_merge)
+            overrides_for_merge = expanded
+
         self._strip_protected_keys(user_dict_for_merge, key_path_map)
         self._strip_protected_keys(overrides_for_merge, key_path_map)
         # Overrides and user recipes may only modify parameters that already
@@ -606,7 +646,12 @@ class RecipeResolver:
             # Skip keys not mapped into the recipe structure
             dotpath = key_path_map.get(spec_key)
             if not dotpath:
-                # Still check required even when not in key_path_map
+                # When using a full recipe template, keys not found in the recipe
+                # have no corresponding {{placeholder}} in the template, meaning
+                # they are not overridable via the recipe - these are skipped.
+                if self._full_recipe_template:
+                    continue
+                # Still check required even when not in key_path_map (synthetic template)
                 if spec_entry.get("required", False):
                     raise ValueError(
                         f"'{spec_key}' is required but was not found in the "

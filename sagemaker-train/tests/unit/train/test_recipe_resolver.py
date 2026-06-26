@@ -574,6 +574,51 @@ class TestFullRecipeTemplate:
             for r in caplog.records
         )
 
+    def test_flat_override_maps_to_nested_path(self):
+        """A flat override key (recipe field name) is placed at the correct nested path."""
+        full_template = {
+            "training_config": {
+                "peft": {
+                    "lora_tuning": {
+                        "alpha": 16,
+                        "lora_plus_lr_ratio": 1.0,
+                    }
+                },
+                "learning_rate": 1e-4,
+            }
+        }
+
+        resolver = RecipeResolver(
+            recipe_template={"training_config": {}},
+            override_spec=self._make_spec(),
+            full_recipe_template=full_template,
+            overrides={"lora_plus_lr_ratio": 32, "alpha": 64},
+        )
+
+        result = resolver.resolve()
+
+        assert result["training_config"]["peft"]["lora_tuning"]["lora_plus_lr_ratio"] == 32
+        assert result["training_config"]["peft"]["lora_tuning"]["alpha"] == 64
+
+    def test_unmapped_spec_key_skipped_with_full_template(self):
+        """Spec keys without a matching recipe field are skipped (not ValueError)."""
+        spec = self._make_spec()
+        # max_context_length is in the spec but has no {{placeholder}} in the template
+        spec["max_context_length"] = {
+            "default": 32768, "type": "integer", "min": 1, "max": 131072
+        }
+
+        resolver = RecipeResolver(
+            recipe_template={"training_config": {"max_length": "{{max_context_length}}"}},
+            override_spec=spec,
+            full_recipe_template=self._make_full_template(),
+            overrides={"training_config": {"learning_rate": 5e-5}},
+        )
+
+        # Should NOT raise ValueError for max_context_length
+        result = resolver.resolve()
+        assert result["training_config"]["learning_rate"] == 5e-5
+
 
 class TestBuildKeyPathMap:
     """Tests for _build_key_path_map helper."""

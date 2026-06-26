@@ -9,6 +9,7 @@ import tarfile
 import tempfile
 from urllib.parse import urlparse
 
+import yaml
 import boto3
 
 from sagemaker.core.helper.session_helper import Session
@@ -22,6 +23,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     get_training_image,
     get_hyperpod_training_image,
     get_hyperpod_recipe_path,
+    get_recipe_s3_uri,
     _validate_hyperparameter_values,
 )
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
@@ -121,6 +123,9 @@ class BaseTrainer(ABC):
             ValueError: If no recipe, overrides, or direct hyperparameter assignments
                 were provided.
         """
+        # Fetch full recipe template from Hub to preserve YAML structure
+        full_recipe_template = self._fetch_full_recipe_template()
+
         resolved = get_resolved_recipe_from_context(
             recipe_path=getattr(self, '_recipe_path', None),
             overrides=getattr(self, '_overrides', None),
@@ -128,11 +133,100 @@ class BaseTrainer(ABC):
             resolved_cache=getattr(self, '_resolved_recipe_cache', None),
             template_section="training_config",
             protected_keys={"model_type", "model_name_or_path", "dataset_catalog"},
+            full_recipe_template=full_recipe_template,
             compute=getattr(self, 'compute', None),
         )
 
+        # Post-resolution patches for display accuracy
+        self._patch_resolved_recipe(resolved)
+
         self._resolved_recipe_cache = resolved
         return copy.deepcopy(resolved)
+
+    def _fetch_full_recipe_template(self) -> Optional[Dict[str, Any]]:
+        """Fetch the full recipe template from Hub to preserve YAML structure.
+
+        Returns None if the template can't be fetched (fallback to synthetic template).
+        """
+        logger = logging.getLogger(__name__)
+        frt = getattr(self.hyperparameters, '_full_recipe_template', None) if hasattr(self, 'hyperparameters') else None
+        if isinstance(frt, dict):
+            return frt
+
+        if not hasattr(self, '_model_name') or not hasattr(self, '_customization_technique'):
+            return None
+
+        try:
+            from sagemaker.core.training.configs import HyperPodCompute
+            from sagemaker.train.common_utils.finetune_utils import (
+                _get_recipe_entry_and_override_spec,
+                _extract_recipe_from_helm_template,
+            )
+
+            is_hyperpod = isinstance(getattr(self, 'compute', None), HyperPodCompute)
+            sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session)
+            platform = "hyperpod" if is_hyperpod else "smtj"
+
+            recipe_entry, _ = _get_recipe_entry_and_override_spec(
+                model_name=self._model_name,
+                customization_technique=self._customization_technique,
+                training_type=self.training_type,
+                sagemaker_session=sagemaker_session,
+                platform=platform,
+            )
+
+            s3_client = sagemaker_session.boto_session.client("s3")
+
+            if is_hyperpod:
+                hp_uri = recipe_entry["HpEksPayloadTemplateS3Uri"]
+                bucket, key = hp_uri.replace("s3://", "").split("/", 1)
+                raw = s3_client.get_object(Bucket=bucket, Key=key)["Body"].read().decode("utf-8")
+                return yaml.safe_load(_extract_recipe_from_helm_template(raw))
+            else:
+                smtj_uri = resolve_s3_uri_placeholders(recipe_entry["SmtjRecipeTemplateS3Uri"], sagemaker_session)
+                uri_path = smtj_uri.replace("s3://", "")
+                if uri_path.startswith("arn:"):
+                    match = re.match(r'(arn:aws:s3:[^:]*:[^:]*:accesspoint/[^/]+)/(.*)', uri_path)
+                    bucket, key = (match.group(1), match.group(2)) if match else uri_path.split("/", 1)
+                else:
+                    bucket, key = uri_path.split("/", 1)
+                tmp = tempfile.NamedTemporaryFile(suffix=".yaml", delete=False)
+                s3_client.download_file(bucket, key, tmp.name)
+                with open(tmp.name, "r") as f:
+                    return yaml.safe_load(f)
+        except Exception as e:
+            logger.debug(f"Could not fetch full recipe template: {e}")
+            return None
+
+    def _patch_resolved_recipe(self, resolved: Dict[str, Any]) -> None:
+        """Apply post-resolution patches to make the preview match actual job config."""
+        from sagemaker.train.recipe_resolver import _set_nested_value, _build_key_path_map
+
+        # Build a map of where keys live in the resolved structure
+        patch_values = {}
+
+        # base_job_name → name
+        if self.base_job_name:
+            patch_values["name"] = _get_unique_name(self.base_job_name)
+
+        # output_s3_path and data_s3_path from trainer config
+        if getattr(self, 's3_output_path', None):
+            patch_values["output_s3_path"] = self.s3_output_path
+        if getattr(self, 'training_dataset', None):
+            patch_values["data_s3_path"] = self.training_dataset
+
+        # Subclass-specific hyperparameters (e.g. reward_lambda_arn for RLVR)
+        patch_values.update(self._get_extra_smtj_hyperparameters())
+
+        if not patch_values:
+            return
+
+        # Find where each key lives in the resolved dict and set it
+        key_path_map = _build_key_path_map(resolved, set(patch_values.keys()))
+        for key, value in patch_values.items():
+            dotpath = key_path_map.get(key)
+            if dotpath:
+                _set_nested_value(resolved, dotpath, value)
 
     def _apply_recipe_to_hyperparameters(self, final_hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
         """Apply resolved recipe values to final_hyperparameters dict.
