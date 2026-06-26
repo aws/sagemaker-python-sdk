@@ -150,8 +150,62 @@ class TestDetectHuggingFaceImage(unittest.TestCase):
         mock_retrieve.return_value = "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-tei:latest"
         
         utils._detect_huggingface_image()
-        
+
         self.assertIsNotNone(utils.image_uri)
+
+    @patch('sagemaker.core.image_uris.retrieve')
+    @patch.object(_ModelBuilderUtils, 'get_huggingface_model_metadata')
+    def test_detect_hf_image_vllm(self, mock_metadata, mock_retrieve):
+        """Test HF image detection resolves the huggingface-vllm framework for vLLM."""
+        utils = _ModelBuilderUtils()
+        utils.model = "gpt2"
+        utils.region = "us-west-2"
+        utils.model_server = ModelServer.VLLM
+        mock_retrieve.return_value = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-vllm:latest"
+        )
+
+        utils._detect_huggingface_image()
+
+        self.assertIsNotNone(utils.image_uri)
+        self.assertEqual(utils.framework, Framework.HUGGINGFACE)
+        self.assertEqual(mock_retrieve.call_args.args[0], "huggingface-vllm")
+
+    @patch('sagemaker.core.image_uris.retrieve')
+    @patch.object(_ModelBuilderUtils, 'get_huggingface_model_metadata')
+    def test_detect_hf_image_sglang(self, mock_metadata, mock_retrieve):
+        """Test HF image detection resolves the huggingface-sglang framework for SGLang."""
+        utils = _ModelBuilderUtils()
+        utils.model = "gpt2"
+        utils.region = "us-west-2"
+        utils.model_server = ModelServer.SGLANG
+        mock_retrieve.return_value = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-sglang:latest"
+        )
+
+        utils._detect_huggingface_image()
+
+        self.assertIsNotNone(utils.image_uri)
+        self.assertEqual(utils.framework, Framework.HUGGINGFACE)
+        self.assertEqual(mock_retrieve.call_args.args[0], "huggingface-sglang")
+
+    @patch('sagemaker.core.image_uris.retrieve')
+    @patch.object(_ModelBuilderUtils, 'get_huggingface_model_metadata')
+    def test_detect_hf_image_vllm_omni(self, mock_metadata, mock_retrieve):
+        """Test HF image detection resolves the huggingface-vllm-omni framework for omni."""
+        utils = _ModelBuilderUtils()
+        utils.model = "llava-hf/llava-1.5-7b-hf"
+        utils.region = "us-west-2"
+        utils.model_server = ModelServer.VLLM_OMNI
+        mock_retrieve.return_value = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-vllm-omni:latest"
+        )
+
+        utils._detect_huggingface_image()
+
+        self.assertIsNotNone(utils.image_uri)
+        self.assertEqual(utils.framework, Framework.HUGGINGFACE)
+        self.assertEqual(mock_retrieve.call_args.args[0], "huggingface-vllm-omni")
 
 
 class TestNormalizeFrameworkToEnum(unittest.TestCase):
