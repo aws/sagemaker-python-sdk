@@ -24,7 +24,7 @@ import boto3
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.core.resources import Job, ModelPackageGroup, ModelPackage, MlflowApp
 from sagemaker.core.shapes import VpcConfig
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.custom_agent_lambda import CustomAgentLambda
 from sagemaker.train.agent_rft_job import AgentRFTJob
@@ -246,7 +246,17 @@ class MultiTurnRLTrainer(BaseTrainer):
         self._latest_job: AgentRFTJob | None = None
 
     @_telemetry_emitter(
-        feature=Feature.MODEL_CUSTOMIZATION, func_name="MultiTurnRLTrainer.train"
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="MultiTurnRLTrainer.train",
+        telemetry_params=[
+            ("_model_name", TelemetryParamType.ATTR_VALUE),
+            ("bedrock_agentcore_qualifier", TelemetryParamType.ATTR_VALUE),
+            ("networking", TelemetryParamType.ATTR_EXISTS),
+            ("kms_key_arn", TelemetryParamType.ATTR_EXISTS),
+            ("mlflow_app_arn", TelemetryParamType.ATTR_EXISTS),
+            ("agent_env", TelemetryParamType.ATTR_EXISTS),
+            ("wait", TelemetryParamType.KWARG_EXISTS),
+        ],
     )
     def train(
         self,

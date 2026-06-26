@@ -19,7 +19,8 @@ from sagemaker.core.resources import ModelPackageGroup
 from .base_evaluator import BaseEvaluator
 from .constants import EvalType
 from .execution import EvaluationPipelineExecution
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_EVALUATOR_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
 
@@ -567,7 +568,13 @@ class BenchMarkEvaluator(BaseEvaluator):
         
         return benchmark_context
     
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="BenchMarkEvaluator.evaluate")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BenchMarkEvaluator.evaluate",
+        telemetry_params=[
+            ("benchmark", TelemetryParamType.ATTR_VALUE),
+        ] + BASE_EVALUATOR_TELEMETRY_PARAMS,
+    )
     def evaluate(self, subtask: Optional[Union[str, List[str]]] = None) -> EvaluationPipelineExecution:
         """Create and start a benchmark evaluation job.
         
