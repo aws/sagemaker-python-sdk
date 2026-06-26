@@ -101,7 +101,7 @@ class TestModelBuilderInitialization(unittest.TestCase):
         
         self.assertEqual(builder.region, "us-west-2")
 
-    @patch('sagemaker.serve.model_builder.resolve_or_create_role')
+    @patch('sagemaker.serve.model_builder.resolve_and_validate_role')
     def test_initialization_gets_default_role(self, mock_resolve_role):
         """Test that default role is retrieved when not provided."""
         mock_resolve_role.return_value = "arn:aws:iam::123456789012:role/DefaultRole"

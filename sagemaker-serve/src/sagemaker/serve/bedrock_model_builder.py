@@ -24,7 +24,7 @@ from typing import Optional, Dict, Any, Union
 from urllib.parse import urlparse
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
+from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.resources import TrainingJob, ModelPackage
 
 from sagemaker.train.model_trainer import ModelTrainer
@@ -196,14 +196,14 @@ class BedrockModelBuilder:
         if self._is_rmp or is_nova:
             if not custom_model_name:
                 raise ValueError("custom_model_name is required for Nova model deployment.")
-            if not role_arn:
-                # Auto-resolve (or create) a least-privilege Bedrock service role
-                # when the caller does not provide one.
-                role_arn = resolve_or_create_role(
-                    provided_role=None,
-                    role_type="bedrock",
-                    sagemaker_session=self.sagemaker_session,
-                )
+            # Resolve and validate the Bedrock role: the provided role_arn if given,
+            # otherwise the caller's own identity role. A RoleValidationError
+            # explains remediation if the resolved role is insufficient.
+            role_arn = resolve_and_validate_role(
+                provided_role=role_arn,
+                role_type="bedrock",
+                sagemaker_session=self.sagemaker_session,
+            )
 
             if self._is_rmp:
                 params = {
@@ -233,14 +233,14 @@ class BedrockModelBuilder:
             deploy_name = deployment_name or f"{custom_model_name}-deployment"
             return self.create_deployment(model_arn=model_arn, deployment_name=deploy_name)
         else:
-            if not role_arn:
-                # Auto-resolve (or create) a least-privilege Bedrock service role
-                # when the caller does not provide one.
-                role_arn = resolve_or_create_role(
-                    provided_role=None,
-                    role_type="bedrock",
-                    sagemaker_session=self.sagemaker_session,
-                )
+            # Resolve and validate the Bedrock role: the provided role_arn if given,
+            # otherwise the caller's own identity role. A RoleValidationError
+            # explains remediation if the resolved role is insufficient.
+            role_arn = resolve_and_validate_role(
+                provided_role=role_arn,
+                role_type="bedrock",
+                sagemaker_session=self.sagemaker_session,
+            )
             model_data_source = {"s3DataSource": {"s3Uri": self.s3_model_artifacts}}
             # Auto-generate job_name if not provided
             if not job_name:

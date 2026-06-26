@@ -109,7 +109,7 @@ DEFAULT_ARGUMENTS = [
 @pytest.fixture(scope="module", autouse=True)
 def modules_session():
     with patch("sagemaker.train.Session", spec=Session) as session_mock, patch(
-        "sagemaker.train.defaults.resolve_or_create_role", return_value=DEFAULT_ROLE
+        "sagemaker.train.defaults.resolve_and_validate_role", return_value=DEFAULT_ROLE
     ):
         session_instance = session_mock.return_value
         session_instance.default_bucket.return_value = DEFAULT_BUCKET

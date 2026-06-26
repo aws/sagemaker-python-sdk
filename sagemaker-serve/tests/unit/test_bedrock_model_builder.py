@@ -469,6 +469,21 @@ class TestWaitForDeploymentActive:
 
 
 class TestDeploy:
+    @pytest.fixture(autouse=True)
+    def _stub_role_validation(self):
+        """deploy() now validates the provided role via resolve_and_validate_role.
+
+        These tests pass a placeholder role ("r") and exercise the deploy flow, not
+        IAM validation, so stub the resolver to echo the provided role back (or fall
+        back to an auto-role when none is given). Tests that specifically assert the
+        auto-resolve path patch the resolver themselves.
+        """
+        with patch(
+            f"{MODULE}.resolve_and_validate_role",
+            side_effect=lambda provided_role, **kwargs: provided_role or "auto-role",
+        ):
+            yield
+
     def test_oss_waits_for_import_and_returns_job_details(self):
         """OSS deploy: import job → wait → return job details."""
         c = _make_container(s3_uri="s3://b/m.tar.gz")
@@ -606,7 +621,7 @@ class TestDeploy:
         b._bedrock_client = Mock()
         b._bedrock_client.create_custom_model.return_value = {"modelArn": "model-arn"}
 
-        with patch(f"{MODULE}.resolve_or_create_role", return_value="auto-role") as mock_resolve, \
+        with patch(f"{MODULE}.resolve_and_validate_role", return_value="auto-role") as mock_resolve, \
              patch.object(b, "create_deployment", return_value={"ok": True}) as mock_create_deploy:
             b.deploy(custom_model_name="m")
 
@@ -632,7 +647,7 @@ class TestDeploy:
             "importedModelName": "m",
         }
 
-        with patch(f"{MODULE}.resolve_or_create_role", return_value="auto-role") as mock_resolve, \
+        with patch(f"{MODULE}.resolve_and_validate_role", return_value="auto-role") as mock_resolve, \
              patch(f"{MODULE}.time.sleep"):
             b.deploy(job_name="j", imported_model_name="m")
 

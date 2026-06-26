@@ -52,14 +52,12 @@ if __package__ in (None, ""):
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "..", "src"))
 
 from sagemaker.core.helper.iam_role_resolver import (  # noqa: E402
-    resolve_or_create_role,
     verify_hyperpod_connect_permissions,
     HYPERPOD_CLI_CONNECT_ACTIONS,
-    _ensure_policies_attached,
     _get_required_actions,
     _load_policy_config,
-    _replace_placeholders,
 )
+from sagemaker.core.helper.iam_role_resolver import IamRoleResolver  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("hyperpod_iam_integ")
@@ -126,41 +124,22 @@ def run_end_to_end() -> None:
     config = _load_policy_config()[ROLE_TYPE]
     expected_policy_keys = list(config["policies"])
 
-    # Use a unique role name so the creation path ALWAYS runs (a broad caller
-    # identity would otherwise let resolve_or_create_role reuse its own role and
-    # silently skip the account-mutating logic this test exists to verify).
+    # Use a unique role name so the creation path ALWAYS runs the account-mutating
+    # logic this test exists to verify.
     unique_role_name = f"{ROLE_NAME}-IntegTest-{uuid.uuid4().hex[:12]}"
     keep = os.environ.get("KEEP_HYPERPOD_ROLE") == "1"
+    creator = IamRoleResolver()
 
-    # Best-effort clean slate for the well-known role name (in case a prior
-    # resolve_or_create_role smoke run left it behind).
+    # Best-effort clean slate for the well-known role name.
     _delete_role_and_policies(iam_client, ROLE_NAME)
 
     try:
-        # --- Smoke: resolve_or_create_role end-to-end against real IAM. This may
-        # reuse the caller's role or create the dedicated one; either way it must
-        # return a usable ARN without error.
-        smoke_arn = resolve_or_create_role(provided_role=None, role_type=ROLE_TYPE)
-        assert smoke_arn.startswith("arn:"), f"unexpected ARN: {smoke_arn}"
-        logger.info("OK: resolve_or_create_role returned %s", smoke_arn)
-
-        # --- Deterministic creation path: exercise the real role + policy creation
-        # logic (the part that mutates the account) against a unique role name.
-        account_id = boto_session.client("sts").get_caller_identity()["Account"]
-        partition = smoke_arn.split(":")[1]
-        iam_client.create_role(
-            RoleName=unique_role_name,
-            AssumeRolePolicyDocument=json.dumps(config["trust_policy"]),
-            Description="Integ test for HyperPod IAM role auto-creation. Safe to delete.",
+        # --- Deterministic creation path: explicitly create the role + policies
+        # via the opt-in IamRoleResolver against a unique role name.
+        role_arn = creator.create_execution_role(
+            role_type=ROLE_TYPE, role_name=unique_role_name
         )
-        policies = _replace_placeholders(
-            config["policies"], s3_resource="*", kms_resource="*",
-            partition=partition, account_id=account_id,
-        )
-        _ensure_policies_attached(
-            iam_client, unique_role_name, policies, account_id, partition
-        )
-        role_arn = iam_client.get_role(RoleName=unique_role_name)["Role"]["Arn"]
+        assert role_arn.startswith("arn:"), f"unexpected ARN: {role_arn}"
         logger.info("Created and provisioned test role: %s", role_arn)
 
         # --- Verify 1: the job role is trusted by sagemaker.amazonaws.com.
@@ -204,9 +183,7 @@ def run_end_to_end() -> None:
         logger.info("OK: job role has runtime perms and excludes CLI connect perms")
 
         # --- Verify 4: idempotency — re-provisioning does not error or duplicate.
-        _ensure_policies_attached(
-            iam_client, unique_role_name, policies, account_id, partition
-        )
+        creator.create_execution_role(role_type=ROLE_TYPE, role_name=unique_role_name)
         attached_again = {
             p["PolicyName"]
             for p in iam_client.list_attached_role_policies(RoleName=unique_role_name)[

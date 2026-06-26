@@ -54,7 +54,7 @@ from sagemaker.core.resources import (
 )
 from sagemaker.core.utils.utils import logger
 from sagemaker.core.helper import session_helper
-from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
+from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.helper.session_helper import (
     Session,
     _wait_until,
@@ -509,12 +509,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 except Exception:
                     self.region = None  # Default fallback
 
-        # Resolve role_arn in priority order (see resolve_or_create_role):
-        #   1. self.role_arn, if the user supplied one (handled by the guard below).
-        #   2. The caller's session role, if it already has sufficient permissions.
-        #   3. A dedicated least-privilege serving role, created on demand otherwise.
+        # At construction, only resolve a default role when none was supplied (so
+        # building a ModelBuilder does no IAM work when a role is given). The
+        # resolved role is validated for serving permissions at the actual
+        # build/deploy operation (see _create_model), where a RoleValidationError
+        # explains remediation if it is insufficient.
         if not self.role_arn:
-            self.role_arn = resolve_or_create_role(
+            self.role_arn = resolve_and_validate_role(
                 provided_role=None,
                 role_type="serving",
                 sagemaker_session=self.sagemaker_session,
@@ -2309,18 +2310,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self._optimizing:
             return None
 
-        # Resolution order (see resolve_or_create_role):
-        #   1. self.role_arn, if already set.
-        #   2. The caller's session role, if it has sufficient permissions.
-        #   3. A dedicated least-privilege serving role, created on demand otherwise.
-        execution_role = self.role_arn
-        if not execution_role:
-            execution_role = resolve_or_create_role(
-                provided_role=None,
-                role_type="serving",
-                sagemaker_session=self.sagemaker_session,
-            )
-            self.role_arn = execution_role
+        # Resolve and validate the serving role: self.role_arn if set, otherwise
+        # the caller's own identity role. The resolved role is validated for the
+        # serving permissions; a RoleValidationError explains remediation.
+        execution_role = resolve_and_validate_role(
+            provided_role=self.role_arn,
+            role_type="serving",
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.role_arn = execution_role
 
         if self.mode == Mode.LOCAL_CONTAINER:
             from sagemaker.core.local.local_session import LocalSession
@@ -2355,15 +2353,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         elif self.mode == Mode.SAGEMAKER_ENDPOINT:
             self._init_sagemaker_session_if_does_not_exist(self.instance_type)
-            # Resolution order (see resolve_or_create_role): explicit role_arn >
-            # caller session role with sufficient permissions > on-demand
-            # least-privilege serving role.
-            if not self.role_arn:
-                self.role_arn = resolve_or_create_role(
-                    provided_role=None,
-                    role_type="serving",
-                    sagemaker_session=self.sagemaker_session,
-                )
+            # Resolve and validate the serving role: explicit role_arn if set,
+            # otherwise the caller's own identity role. A RoleValidationError
+            # explains remediation if the resolved role is insufficient.
+            self.role_arn = resolve_and_validate_role(
+                provided_role=self.role_arn,
+                role_type="serving",
+                sagemaker_session=self.sagemaker_session,
+            )
 
             self.role_arn = resolve_value_from_config(
                 self.role_arn,

@@ -118,17 +118,58 @@ IAM_POLICY_CONFIG = {
             # Fine-tuning jobs reference a base model via a hub-content ARN
             # (e.g. SageMakerPublicHub/Model/<name>/<version>). The SageMaker
             # service reads that hub content as this execution role when it
-            # creates the training job, so the role needs DescribeHubContent.
-            # Scoped to hub-content resources; the public hub lives in the "aws"
-            # account, so the account segment is left wildcard to also cover
-            # private hubs (SAGEMAKER_HUB_NAME).
+            # creates the training job, so the role needs hub access. This
+            # requires permissions on BOTH the hub-content resource
+            # (DescribeHubContent) AND the parent hub resource itself
+            # (DescribeHub / ListHubContents) — granting DescribeHubContent alone
+            # still fails with "Access denied to hub content" because the service
+            # resolves the hub before reading its content. The public hub lives in
+            # the "aws" account, so the account segment is left wildcard to also
+            # cover private hubs (SAGEMAKER_HUB_NAME).
             "hub_content_policy": {
                 "Version": "2012-10-17",
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": ["sagemaker:DescribeHubContent"],
-                        "Resource": "arn:aws:sagemaker:*:*:hub-content/*",
+                        "Action": [
+                            "sagemaker:DescribeHubContent",
+                            "sagemaker:ListHubContents",
+                            "sagemaker:ListHubs",
+                            "sagemaker:DescribeHub",
+                        ],
+                        "Resource": [
+                            "arn:aws:sagemaker:*:*:hub/*",
+                            "arn:aws:sagemaker:*:*:hub-content/*",
+                        ],
+                    }
+                ],
+            },
+            # Fine-tuning registers the resulting model into a model package
+            # group (the SDK's ``model_package_group`` argument), creating the
+            # group if needed and adding a new model package version to it. The
+            # service performs these as the execution role during/after the
+            # training job, so the role needs model-package-group + model-package
+            # CRUD. Scoped to model-package-group/* and model-package/* in the
+            # caller's account; AddTags is the dependent action for the Create*
+            # calls, which tag the resources they create.
+            "model_package_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "sagemaker:CreateModelPackageGroup",
+                            "sagemaker:DescribeModelPackageGroup",
+                            "sagemaker:CreateModelPackage",
+                            "sagemaker:DescribeModelPackage",
+                            "sagemaker:ListModelPackages",
+                            "sagemaker:UpdateModelPackage",
+                            "sagemaker:AddTags",
+                        ],
+                        "Resource": [
+                            "arn:aws:sagemaker:*:*:model-package-group/*",
+                            "arn:aws:sagemaker:*:*:model-package/*",
+                        ],
                     }
                 ],
             },
@@ -140,6 +181,133 @@ IAM_POLICY_CONFIG = {
                         "Action": ["lambda:InvokeFunction"],
                         "Resource": "arn:aws:lambda:*:*:function:*",
                     }
+                ],
+            },
+            # When the trainer is given an ``mlflow_resource_arn`` (a SageMaker
+            # managed MLflow tracking server / mlflow-app), the training/eval job
+            # logs to it *as the execution role*. This policy has two statements:
+            #
+            #   1. Data-plane logging via the ``sagemaker-mlflow`` namespace. Those
+            #      REST calls are SigV4-signed by the ``sagemaker-mlflow`` auth
+            #      plugin. The action set mirrors the Nova Forge SDK's documented
+            #      MLflowSageMaker policy (nova-customization-sdk/docs/iam_setup.md)
+            #      so jobs can do the full experiment-tracking + model-registry
+            #      workflow (experiments, runs, logged models, registered models,
+            #      tags).
+            #   2. Control-plane describe via the ``sagemaker`` namespace. The job
+            #      resolves the tracking endpoint from the MLflow ARN before
+            #      logging — DescribeMlflowApp for the newer mlflow-app and
+            #      DescribeMlflowTrackingServer for the classic tracking server.
+            #
+            # Both statements are scoped to MLflow resources only (mlflow-app/* and
+            # mlflow-tracking-server/*). No-op for jobs that do not use MLflow.
+            "mlflow_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "sagemaker-mlflow:AccessUI",
+                            "sagemaker-mlflow:CreateExperiment",
+                            "sagemaker-mlflow:CreateModelVersion",
+                            "sagemaker-mlflow:CreateRegisteredModel",
+                            "sagemaker-mlflow:CreateRun",
+                            "sagemaker-mlflow:DeleteTag",
+                            "sagemaker-mlflow:FinalizeLoggedModel",
+                            "sagemaker-mlflow:Get*",
+                            "sagemaker-mlflow:ListArtifacts",
+                            "sagemaker-mlflow:ListLoggedModelArtifacts",
+                            "sagemaker-mlflow:LogBatch",
+                            "sagemaker-mlflow:LogInputs",
+                            "sagemaker-mlflow:LogLoggedModelParams",
+                            "sagemaker-mlflow:LogMetric",
+                            "sagemaker-mlflow:LogModel",
+                            "sagemaker-mlflow:LogOutputs",
+                            "sagemaker-mlflow:LogParam",
+                            "sagemaker-mlflow:RenameRegisteredModel",
+                            "sagemaker-mlflow:RestoreExperiment",
+                            "sagemaker-mlflow:RestoreRun",
+                            "sagemaker-mlflow:Search*",
+                            "sagemaker-mlflow:SetExperimentTag",
+                            "sagemaker-mlflow:SetLoggedModelTags",
+                            "sagemaker-mlflow:SetRegisteredModelAlias",
+                            "sagemaker-mlflow:SetRegisteredModelTag",
+                            "sagemaker-mlflow:SetTag",
+                            "sagemaker-mlflow:TransitionModelVersionStage",
+                            "sagemaker-mlflow:UpdateExperiment",
+                            "sagemaker-mlflow:UpdateModelVersion",
+                            "sagemaker-mlflow:UpdateRegisteredModel",
+                        ],
+                        "Resource": [
+                            "arn:aws:sagemaker:*:*:mlflow-app/*",
+                            "arn:aws:sagemaker:*:*:mlflow-tracking-server/*",
+                        ],
+                    },
+                    {
+                        # Control-plane describe to resolve the tracking endpoint
+                        # from the provided MLflow ARN (app or classic server).
+                        "Effect": "Allow",
+                        "Action": [
+                            "sagemaker:DescribeMlflowApp",
+                            "sagemaker:DescribeMlflowTrackingServer",
+                        ],
+                        "Resource": [
+                            "arn:aws:sagemaker:*:*:mlflow-app/*",
+                            "arn:aws:sagemaker:*:*:mlflow-tracking-server/*",
+                        ],
+                    },
+                ],
+            },
+            # Evaluation runs as a SageMaker Pipeline under this execution role and
+            # does two things the plain fine-tuning grants above don't cover:
+            #   1. Records lineage — it creates an evaluation Action and the
+            #      input/output Artifacts (and the associations between them), so it
+            #      needs the lineage Create/Describe/Add* actions on action/*,
+            #      artifact/* and context/*.
+            #   2. Launches the evaluation training job and tags it, so it needs
+            #      CreateTrainingJob + AddTags on training-job/* (the existing
+            #      model_package AddTags is scoped to model-package* resources only).
+            # Scoped to the lineage + training-job resource types these steps touch.
+            "evaluation_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "sagemaker:CreateAction",
+                            "sagemaker:UpdateAction",
+                            "sagemaker:DescribeAction",
+                            "sagemaker:DeleteAction",
+                            "sagemaker:ListActions",
+                            "sagemaker:CreateArtifact",
+                            "sagemaker:DescribeArtifact",
+                            "sagemaker:UpdateArtifact",
+                            "sagemaker:DeleteArtifact",
+                            "sagemaker:ListArtifacts",
+                            "sagemaker:AddAssociation",
+                            "sagemaker:DeleteAssociation",
+                            "sagemaker:ListAssociations",
+                            "sagemaker:CreateContext",
+                            "sagemaker:DescribeContext",
+                            "sagemaker:AddTags",
+                        ],
+                        "Resource": [
+                            "arn:aws:sagemaker:*:*:action/*",
+                            "arn:aws:sagemaker:*:*:artifact/*",
+                            "arn:aws:sagemaker:*:*:context/*",
+                        ],
+                    },
+                    {
+                        # The evaluation pipeline launches and tags a training job.
+                        "Effect": "Allow",
+                        "Action": [
+                            "sagemaker:CreateTrainingJob",
+                            "sagemaker:DescribeTrainingJob",
+                            "sagemaker:StopTrainingJob",
+                            "sagemaker:AddTags",
+                        ],
+                        "Resource": "arn:aws:sagemaker:*:*:training-job/*",
+                    },
                 ],
             },
         },
@@ -322,6 +490,9 @@ IAM_POLICY_CONFIG = {
                     "Effect": "Allow",
                     "Principal": {"Service": "sagemaker.amazonaws.com"},
                     "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
+                    },
                 }
             ],
         },
@@ -392,17 +563,107 @@ IAM_POLICY_CONFIG = {
                 ],
             },
             # Fine-tuning jobs reference a base model via a hub-content ARN
-            # (e.g. SageMakerPublicHub/Model/<name>/<version>). The job needs
-            # DescribeHubContent to resolve that base model. Scoped to hub-content
-            # resources; account segment left wildcard to cover the public hub
-            # ("aws") and private hubs (SAGEMAKER_HUB_NAME).
+            # (e.g. SageMakerPublicHub/Model/<name>/<version>). The job needs to
+            # resolve that base model, which requires access to BOTH the parent
+            # hub resource (DescribeHub / ListHubContents) AND the hub-content
+            # resource (DescribeHubContent) — DescribeHubContent alone still fails
+            # with "Access denied to hub content". Account segment left wildcard to
+            # cover the public hub ("aws") and private hubs (SAGEMAKER_HUB_NAME).
             "hub_content_policy": {
                 "Version": "2012-10-17",
                 "Statement": [
                     {
                         "Effect": "Allow",
-                        "Action": ["sagemaker:DescribeHubContent"],
-                        "Resource": "arn:aws:sagemaker:*:*:hub-content/*",
+                        "Action": [
+                            "sagemaker:DescribeHubContent",
+                            "sagemaker:ListHubContents",
+                            "sagemaker:ListHubs",
+                            "sagemaker:DescribeHub",
+                        ],
+                        "Resource": [
+                            "arn:aws:sagemaker:*:*:hub/*",
+                            "arn:aws:sagemaker:*:*:hub-content/*",
+                        ],
+                    }
+                ],
+            },
+            # HyperPod fine-tuning jobs log to managed MLflow as the execution role
+            # just like SMTJ/serverless jobs: when an ``mlflow_resource_arn`` is
+            # provided, the MLflow tracking URI is injected into the HyperPod recipe
+            # (see base_trainer._train_hyperpod), and the job logs to it on the
+            # cluster as this role. Mirrors the "training" role's mlflow_policy —
+            # data-plane logging via ``sagemaker-mlflow`` plus control-plane describe
+            # to resolve the tracking endpoint. Scoped to MLflow resources only.
+            "mlflow_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "sagemaker-mlflow:AccessUI",
+                            "sagemaker-mlflow:CreateExperiment",
+                            "sagemaker-mlflow:CreateModelVersion",
+                            "sagemaker-mlflow:CreateRegisteredModel",
+                            "sagemaker-mlflow:CreateRun",
+                            "sagemaker-mlflow:DeleteTag",
+                            "sagemaker-mlflow:FinalizeLoggedModel",
+                            "sagemaker-mlflow:Get*",
+                            "sagemaker-mlflow:ListArtifacts",
+                            "sagemaker-mlflow:ListLoggedModelArtifacts",
+                            "sagemaker-mlflow:LogBatch",
+                            "sagemaker-mlflow:LogInputs",
+                            "sagemaker-mlflow:LogLoggedModelParams",
+                            "sagemaker-mlflow:LogMetric",
+                            "sagemaker-mlflow:LogModel",
+                            "sagemaker-mlflow:LogOutputs",
+                            "sagemaker-mlflow:LogParam",
+                            "sagemaker-mlflow:RenameRegisteredModel",
+                            "sagemaker-mlflow:RestoreExperiment",
+                            "sagemaker-mlflow:RestoreRun",
+                            "sagemaker-mlflow:Search*",
+                            "sagemaker-mlflow:SetExperimentTag",
+                            "sagemaker-mlflow:SetLoggedModelTags",
+                            "sagemaker-mlflow:SetRegisteredModelAlias",
+                            "sagemaker-mlflow:SetRegisteredModelTag",
+                            "sagemaker-mlflow:SetTag",
+                            "sagemaker-mlflow:TransitionModelVersionStage",
+                            "sagemaker-mlflow:UpdateExperiment",
+                            "sagemaker-mlflow:UpdateModelVersion",
+                            "sagemaker-mlflow:UpdateRegisteredModel",
+                        ],
+                        "Resource": [
+                            "arn:aws:sagemaker:*:*:mlflow-app/*",
+                            "arn:aws:sagemaker:*:*:mlflow-tracking-server/*",
+                        ],
+                    },
+                    {
+                        # Control-plane describe to resolve the tracking endpoint
+                        # from the provided MLflow ARN (app or classic server).
+                        "Effect": "Allow",
+                        "Action": [
+                            "sagemaker:DescribeMlflowApp",
+                            "sagemaker:DescribeMlflowTrackingServer",
+                        ],
+                        "Resource": [
+                            "arn:aws:sagemaker:*:*:mlflow-app/*",
+                            "arn:aws:sagemaker:*:*:mlflow-tracking-server/*",
+                        ],
+                    },
+                ],
+            },
+            # RLVR fine-tuning supports a Lambda ``custom_reward_function``, and
+            # RLVR runs on HyperPod (HyperPodCompute -> _train_hyperpod). When the
+            # reward function is a Lambda ARN, the training job invokes it *as the
+            # execution role* during the RL loop, so the role needs
+            # lambda:InvokeFunction (mirrors the "training" role). No-op for jobs
+            # that do not use a Lambda reward function.
+            "lambda_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["lambda:InvokeFunction"],
+                        "Resource": "arn:aws:lambda:*:*:function:*",
                     }
                 ],
             },

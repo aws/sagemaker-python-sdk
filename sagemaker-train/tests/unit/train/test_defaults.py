@@ -72,7 +72,7 @@ class TestTrainDefaultsGetSagemakerSession:
 class TestTrainDefaultsGetRole:
     """Test TrainDefaults.get_role method."""
 
-    @patch("sagemaker.train.defaults.resolve_or_create_role")
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
     @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
     def test_returns_provided_role(self, mock_get_session, mock_resolve):
         """Test returns the provided role (passed through the resolver)."""
@@ -90,7 +90,7 @@ class TestTrainDefaultsGetRole:
             sagemaker_session=mock_session,
         )
 
-    @patch("sagemaker.train.defaults.resolve_or_create_role")
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
     @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
     def test_auto_resolves_role_when_none(self, mock_get_session, mock_resolve):
         """Test auto-resolves a training role when none is provided."""
@@ -108,7 +108,7 @@ class TestTrainDefaultsGetRole:
         )
         assert result == expected_role
 
-    @patch("sagemaker.train.defaults.resolve_or_create_role")
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
     def test_uses_provided_session_for_role(self, mock_resolve):
         """Test uses provided session when resolving the role."""
         mock_session = MagicMock()
@@ -124,7 +124,7 @@ class TestTrainDefaultsGetRole:
         )
         assert result == expected_role
 
-    @patch("sagemaker.train.defaults.resolve_or_create_role")
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
     @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
     def test_get_role_resolves_training_role(self, mock_get_session, mock_resolve):
         """get_role always resolves the training execution role."""
@@ -147,7 +147,7 @@ class TestTrainDefaultsVerifyHyperPodCallerPermissions:
     """Test TrainDefaults.verify_hyperpod_caller_permissions (caller-side check)."""
 
     @patch("sagemaker.train.defaults.verify_hyperpod_connect_permissions")
-    @patch("sagemaker.train.defaults.resolve_or_create_role")
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
     @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
     def test_delegates_to_resolver_and_forwards_cluster_name(
         self, mock_get_session, mock_resolve, mock_verify

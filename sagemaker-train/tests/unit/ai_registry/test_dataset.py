@@ -178,7 +178,7 @@ class TestDataSetValidation:
 
 
 class TestDataSet:
-    @patch('sagemaker.train.defaults.resolve_or_create_role', return_value="arn:aws:iam::123456789012:role/SageMakerRole")
+    @patch('sagemaker.train.defaults.resolve_and_validate_role', return_value="arn:aws:iam::123456789012:role/SageMakerRole")
     @patch('boto3.client')
     @patch('sagemaker.core.helper.session_helper.Session')
     @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
@@ -234,7 +234,7 @@ class TestDataSet:
             mock_air_hub.import_hub_content.assert_called_once()
             mock_validate_file.assert_called_once_with("s3://test-bucket/data/file.jsonl")
 
-    @patch('sagemaker.train.defaults.resolve_or_create_role', return_value="arn:aws:iam::123456789012:role/SageMakerRole")
+    @patch('sagemaker.train.defaults.resolve_and_validate_role', return_value="arn:aws:iam::123456789012:role/SageMakerRole")
     @patch('boto3.client')
     @patch('sagemaker.core.helper.session_helper.Session')
     @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')

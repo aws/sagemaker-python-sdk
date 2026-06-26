@@ -711,7 +711,7 @@ class TestArtifactManagement:
 class TestAWSExecutionContext:
     """Tests for AWS execution context retrieval."""
     
-    @patch("sagemaker.train.evaluate.base_evaluator.resolve_or_create_role")
+    @patch("sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
     def test_get_aws_execution_context(self, mock_resolve, mock_role, mock_session, mock_model_info):
         """Test getting AWS execution context resolves the role via the resolver."""
@@ -738,7 +738,7 @@ class TestAWSExecutionContext:
             sagemaker_session=mock_session,
         )
 
-    @patch("sagemaker.train.evaluate.base_evaluator.resolve_or_create_role")
+    @patch("sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
     def test_get_aws_execution_context_with_explicit_role(self, mock_resolve, mock_role, mock_session, mock_model_info):
         """Test that an explicit role is passed through the resolver."""
@@ -765,7 +765,7 @@ class TestAWSExecutionContext:
             sagemaker_session=mock_session,
         )
 
-    @patch("sagemaker.train.evaluate.base_evaluator.resolve_or_create_role")
+    @patch("sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role")
     @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
     def test_get_aws_execution_context_without_region(self, mock_resolve, mock_role, mock_session, mock_model_info):
         """Test getting AWS execution context without explicit region."""

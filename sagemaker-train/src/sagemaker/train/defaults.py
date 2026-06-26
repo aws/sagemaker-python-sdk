@@ -17,7 +17,7 @@ from typing import Optional, Dict, Any, Union, List
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.helper.iam_role_resolver import (
-    resolve_or_create_role,
+    resolve_and_validate_role,
     verify_hyperpod_connect_permissions,
 )
 from sagemaker.core import shapes
@@ -70,24 +70,24 @@ class TrainDefaults:
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
     ) -> str:
-        """Get the default training execution role.
+        """Get and validate the training execution role.
 
-        Roles are resolved in this order (see ``resolve_or_create_role``):
-            1. The explicitly provided ``role`` (returned as-is once validated).
-            2. The caller's session role, if it already has sufficient permissions.
-            3. A dedicated least-privilege training role, created on demand if
-               neither of the above applies.
+        Resolves the explicitly provided ``role`` (or the caller's own identity if
+        none is given) and validates it has the permissions/trust required for
+        training. Never creates an IAM role: if validation fails, a
+        ``RoleValidationError`` is raised explaining what to grant or how to create
+        a dedicated role via ``IamRoleResolver().create_execution_role``.
         """
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=sagemaker_session
         )
-        resolved = resolve_or_create_role(
+        resolved = resolve_and_validate_role(
             provided_role=role,
             role_type="training",
             sagemaker_session=sagemaker_session,
         )
         if role is None:
-            logger.info(f"Role not provided. Using auto-resolved role:\n{resolved}")
+            logger.info(f"Role not provided. Using validated caller role:\n{resolved}")
         return resolved
 
     @staticmethod

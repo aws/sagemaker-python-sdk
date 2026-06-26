@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, validator
 
 from sagemaker.core.common_utils import TagsDict
-from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
+from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.core.training.configs import Compute, HyperPodCompute
@@ -726,15 +726,15 @@ class BaseEvaluator(BaseModel):
                 - region (str): AWS region
                 - account_id (str): AWS account ID
         """
-        # Get role ARN. Resolution order (see resolve_or_create_role):
+        # Get role ARN. Resolution order (see resolve_and_validate_role):
         #   1. self.role, if explicitly provided.
-        #   2. The caller's session role, if it already has sufficient permissions.
-        #   3. A dedicated least-privilege training role, created on demand otherwise.
-        # This is the job execution role for the serverless / SMTJ evaluation
-        # backends. The HyperPod backend submits via the CLI under the caller's own
-        # credentials (see _submit_hyperpod_eval_job) and does not resolve a role
-        # here, so "training" is always the correct role type at this call site.
-        role_arn = resolve_or_create_role(
+        #   2. Otherwise the caller's own identity role.
+        # The resolved role is validated (read-only) for the required permissions.
+        # This is the job execution role for the
+        # serverless / SMTJ evaluation backends. The HyperPod backend submits via
+        # the CLI under the caller's own credentials (see _submit_hyperpod_eval_job)
+        # and does not resolve a role here, so "training" is always correct here.
+        role_arn = resolve_and_validate_role(
             provided_role=self.role,
             role_type="training",
             sagemaker_session=self.sagemaker_session,

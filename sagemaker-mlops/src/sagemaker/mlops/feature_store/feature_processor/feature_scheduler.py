@@ -76,7 +76,7 @@ from sagemaker.core.s3 import s3_path_join
 from sagemaker.core.resources import FeatureGroup
 
 from sagemaker.core.helper.session_helper import Session, get_execution_role
-from sagemaker.core.helper.iam_role_resolver import resolve_or_create_role
+from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.mlops.feature_store.feature_processor._event_bridge_scheduler_helper import (
     EventBridgeSchedulerHelper,
 )
@@ -165,11 +165,10 @@ def to_pipeline(
     remote_decorator_config = _get_remote_decorator_config_from_input(
         wrapped_func=step, sagemaker_session=_sagemaker_session
     )
-    # Resolution order (see resolve_or_create_role):
-    #   1. role_arn, if explicitly provided.
-    #   2. The caller's session role, if it already has sufficient permissions.
-    #   3. A dedicated least-privilege feature_store role, created on demand otherwise.
-    _role = resolve_or_create_role(
+    # Resolve and validate the feature_store role: role_arn if explicitly provided,
+    # otherwise the caller's own identity role. A RoleValidationError explains
+    # remediation if the resolved role is insufficient.
+    _role = resolve_and_validate_role(
         provided_role=role_arn,
         role_type="feature_store",
         sagemaker_session=_sagemaker_session,
@@ -334,11 +333,10 @@ def schedule(
     _validate_pipeline_lineage_resources(pipeline_name, _sagemaker_session)
     _start_date = start_date or datetime.now(tz=pytz.utc)
 
-    # Resolution order (see resolve_or_create_role):
-    #   1. role_arn, if explicitly provided.
-    #   2. The caller's session role, if it already has sufficient permissions.
-    #   3. A dedicated least-privilege feature_store role, created on demand otherwise.
-    _role_arn = resolve_or_create_role(
+    # Resolve and validate the feature_store role: role_arn if explicitly provided,
+    # otherwise the caller's own identity role. A RoleValidationError explains
+    # remediation if the resolved role is insufficient.
+    _role_arn = resolve_and_validate_role(
         provided_role=role_arn,
         role_type="feature_store",
         sagemaker_session=_sagemaker_session,

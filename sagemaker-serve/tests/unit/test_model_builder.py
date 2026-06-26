@@ -104,7 +104,7 @@ class TestModelBuilderV3(unittest.TestCase):
         
         self.assertEqual(builder.env_vars["CUSTOM_VAR"], "custom_value")
 
-    @patch("sagemaker.serve.model_builder.resolve_or_create_role")
+    @patch("sagemaker.serve.model_builder.resolve_and_validate_role")
     def test_auto_resolves_serving_role_when_none(self, mock_resolve):
         """When no role_arn is provided, the constructor auto-resolves a serving role."""
         auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Serving"
@@ -123,7 +123,7 @@ class TestModelBuilderV3(unittest.TestCase):
             sagemaker_session=self.mock_session,
         )
 
-    @patch("sagemaker.serve.model_builder.resolve_or_create_role")
+    @patch("sagemaker.serve.model_builder.resolve_and_validate_role")
     def test_explicit_role_skips_auto_resolution(self, mock_resolve):
         """An explicitly provided role_arn is used and the resolver is not invoked at init."""
         explicit = "arn:aws:iam::123456789012:role/SageMakerExecutionRole"
