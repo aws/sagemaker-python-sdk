@@ -65,6 +65,18 @@ SUPPORTED_MODEL_SERVERS: Set[ModelServer] = {
     ModelServer.TGI,
     ModelServer.TEI,
     ModelServer.SMD,
+    ModelServer.VLLM,
+    ModelServer.SGLANG,
+    ModelServer.VLLM_OMNI,
+    ModelServer.LLAMACPP,
+}
+
+# HuggingFace pipeline tags that should route to the vLLM-omni (multimodal) server.
+# Note: visual-question-answering is folded into image-text-to-text as of transformers v5.
+OMNI_TASKS: Set[str] = {
+    "image-text-to-text",
+    "any-to-any",
+    "audio-text-to-text",
 }
 
 # ========================================
