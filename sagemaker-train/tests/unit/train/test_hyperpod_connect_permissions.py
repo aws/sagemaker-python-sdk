@@ -58,7 +58,7 @@ def _make_base_trainer():
     trainer.validation_dataset = None
     trainer.s3_output_path = "s3://bucket/out/"
     trainer.hyperparameters = None
-    trainer._recipe_path = "recipe-name"
+    trainer._recipe_path = None
     trainer._overrides = None
     return trainer
 
@@ -89,6 +89,9 @@ class TestTrainHyperPodVerifiesConnectPermissions:
         with patch(
             "sagemaker.train.common_utils.finetune_utils.get_training_image",
             return_value=None,
+        ), patch(
+            "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
+            return_value="fine-tuning/nova/test-recipe",
         ):
             trainer._train_hyperpod(wait=False)
 
@@ -131,6 +134,9 @@ class TestTrainHyperPodVerifiesConnectPermissions:
         with patch(
             "sagemaker.train.common_utils.finetune_utils.get_training_image",
             return_value=None,
+        ), patch(
+            "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
+            return_value="fine-tuning/nova/test-recipe",
         ):
             job_name = trainer._train_hyperpod(wait=False)
 
@@ -201,6 +207,9 @@ class TestTrainHyperPodConnectPermissionsEndToEnd:
         with patch(
             "sagemaker.train.common_utils.finetune_utils.get_training_image",
             return_value=None,
+        ), patch(
+            "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
+            return_value="fine-tuning/nova/test-recipe",
         ), caplog.at_level(
             logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
         ):
@@ -240,6 +249,9 @@ class TestTrainHyperPodConnectPermissionsEndToEnd:
         with patch(
             "sagemaker.train.common_utils.finetune_utils.get_training_image",
             return_value=None,
+        ), patch(
+            "sagemaker.train.base_trainer.get_hyperpod_recipe_path",
+            return_value="fine-tuning/nova/test-recipe",
         ), caplog.at_level(
             logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
         ):
