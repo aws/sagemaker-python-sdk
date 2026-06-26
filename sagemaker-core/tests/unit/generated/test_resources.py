@@ -835,3 +835,102 @@ class TestWaitLogMarkup(unittest.TestCase):
         assert log_line_calls, "expected the container log line to be logged"
         for c in log_line_calls:
             assert c.kwargs.get("extra") == {"markup": False}
+
+
+class TestTrainingJobGetModelArtifactsSynthesis(unittest.TestCase):
+    """TrainingJob.get() synthesizes model_artifacts when the API omits them.
+
+    Some completed training jobs (e.g. serverful Nova jobs) do not return
+    ModelArtifacts from DescribeTrainingJob. The generated get() reconstructs the
+    artifact path from output_data_config so downstream consumers (evaluators,
+    deployers) can resolve the trained model. This customization is emitted by the
+    codegen engine (resources_codegen._get_method_post_processing); these tests
+    guard it against regressions in the next autogeneration of resources.py.
+    """
+
+    def _call_get(self, transformed_attrs):
+        """Drive TrainingJob.get() with transform() returning the given attrs."""
+        with patch("sagemaker.core.resources.transform", return_value=transformed_attrs), \
+             patch.object(Base, "get_sagemaker_client") as mock_get_client:
+            from sagemaker.core.resources import TrainingJob
+
+            mock_get_client.return_value.describe_training_job.return_value = {}
+            return TrainingJob.get("test-job")
+
+    def test_synthesizes_model_artifacts_when_missing(self):
+        from sagemaker.core.shapes import OutputDataConfig
+        from sagemaker.core.utils.utils import Unassigned
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "Completed",
+                "output_data_config": OutputDataConfig(s3_output_path="s3://bucket/prefix"),
+            }
+        )
+
+        assert not isinstance(job.model_artifacts, Unassigned)
+        assert (
+            job.model_artifacts.s3_model_artifacts
+            == "s3://bucket/prefix/test-job/output/"
+        )
+
+    def test_trailing_slash_in_output_path_is_normalized(self):
+        from sagemaker.core.shapes import OutputDataConfig
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "Completed",
+                "output_data_config": OutputDataConfig(s3_output_path="s3://bucket/prefix/"),
+            }
+        )
+
+        # No double slash between prefix and job name.
+        assert (
+            job.model_artifacts.s3_model_artifacts
+            == "s3://bucket/prefix/test-job/output/"
+        )
+
+    def test_does_not_override_existing_model_artifacts(self):
+        from sagemaker.core.resources import ModelArtifacts
+        from sagemaker.core.shapes import OutputDataConfig
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "Completed",
+                "model_artifacts": ModelArtifacts(s3_model_artifacts="s3://real/model.tar.gz"),
+                "output_data_config": OutputDataConfig(s3_output_path="s3://bucket/prefix"),
+            }
+        )
+
+        # The API-provided artifacts must be preserved, not synthesized over.
+        assert job.model_artifacts.s3_model_artifacts == "s3://real/model.tar.gz"
+
+    def test_no_synthesis_for_incomplete_job(self):
+        from sagemaker.core.shapes import OutputDataConfig
+        from sagemaker.core.utils.utils import Unassigned
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "InProgress",
+                "output_data_config": OutputDataConfig(s3_output_path="s3://bucket/prefix"),
+            }
+        )
+
+        # Only completed jobs have artifacts to synthesize.
+        assert isinstance(job.model_artifacts, Unassigned)
+
+    def test_no_synthesis_without_output_data_config(self):
+        from sagemaker.core.utils.utils import Unassigned
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "Completed",
+            }
+        )
+
+        assert isinstance(job.model_artifacts, Unassigned)

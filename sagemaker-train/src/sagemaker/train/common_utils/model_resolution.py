@@ -146,7 +146,14 @@ class _ModelResolver:
                         if arn and not isinstance(arn, Unassigned):
                             source_mp_arn = arn
                 # If there's a trainer checkpoint, prefer S3_CHECKPOINT type
-                checkpoint_uri = getattr(base_model, '_checkpoint_s3_uri', None)
+                checkpoint_uri = None
+                training_job = getattr(base_model, '_latest_training_job', None)
+                if training_job:
+                    artifacts = getattr(training_job, 'model_artifacts', None)
+                    if artifacts and not isinstance(artifacts, Unassigned):
+                        s3_path = getattr(artifacts, 's3_model_artifacts', None)
+                        if s3_path and isinstance(s3_path, str):
+                            checkpoint_uri = s3_path
                 if checkpoint_uri and not source_mp_arn:
                     return _ModelInfo(
                         base_model_name=trainer_model_name,
@@ -165,8 +172,15 @@ class _ModelResolver:
                     hub_content_name=trainer_model_name,
                     additional_metadata={},
                 )
-            # Check for trainer checkpoint path (set after _train_hyperpod completes)
-            checkpoint_uri = getattr(base_model, '_checkpoint_s3_uri', None)
+            # Check for trainer checkpoint path from _latest_training_job.model_artifacts
+            checkpoint_uri = None
+            training_job = getattr(base_model, '_latest_training_job', None)
+            if training_job:
+                artifacts = getattr(training_job, 'model_artifacts', None)
+                if artifacts and not isinstance(artifacts, Unassigned):
+                    s3_path = getattr(artifacts, 's3_model_artifacts', None)
+                    if s3_path and isinstance(s3_path, str):
+                        checkpoint_uri = s3_path
             if checkpoint_uri:
                 model_name = getattr(base_model, '_model_name', None) or "hyperpod-checkpoint"
                 return _ModelInfo(

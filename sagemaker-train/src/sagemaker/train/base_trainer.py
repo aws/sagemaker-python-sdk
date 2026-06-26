@@ -669,29 +669,27 @@ class BaseTrainer(ABC):
             elif hasattr(self._latest_training_job, 'name'):
                 job_name = self._latest_training_job.name
             if job_name:
-                self._try_resolve_checkpoint(job_name, sagemaker_session)
+                try:
+                    checkpoint_path = self._resolve_checkpoint_from_manifest(
+                        job_name=job_name,
+                        output_s3_path=self.s3_output_path,
+                        sagemaker_session=sagemaker_session,
+                    )
+                    if checkpoint_path:
+                        self._latest_training_job.model_artifacts = shapes.ModelArtifacts(
+                            s3_model_artifacts=checkpoint_path
+                        )
+                        logger.info(
+                            "Resolved checkpoint for %s: %s", job_name, checkpoint_path
+                        )
+                except Exception as e:
+                    logger.warning(
+                        "Could not resolve checkpoint from manifest for %s: %s",
+                        job_name,
+                        e,
+                    )
 
         return self._latest_training_job
-
-    def _try_resolve_checkpoint(self, job_name: str, sagemaker_session=None):
-        """Attempt to resolve the checkpoint path from the job manifest.
-
-        Sets ``_checkpoint_s3_uri`` on success; logs a warning on failure.
-        """
-        logger = logging.getLogger(__name__)
-        try:
-            checkpoint_path = self._resolve_checkpoint_from_manifest(
-                job_name=job_name,
-                output_s3_path=self.s3_output_path,
-                sagemaker_session=sagemaker_session,
-            )
-            if checkpoint_path:
-                self._checkpoint_s3_uri = checkpoint_path
-                logger.info("Resolved checkpoint for %s: %s", job_name, checkpoint_path)
-        except Exception as e:
-            logger.warning(
-                "Could not resolve checkpoint from manifest for %s: %s", job_name, e
-            )
 
     @staticmethod
     def _resolve_checkpoint_from_manifest(
@@ -945,9 +943,22 @@ class BaseTrainer(ABC):
         job_name = matched.group(1)
         logger.info(f"HyperPod job submitted: {job_name}")
 
-        self._latest_training_job = job_name
-
+        training_job = TrainingJob(training_job_name=job_name)
         if wait:
-            self._try_resolve_checkpoint(job_name, sagemaker_session)
+            try:
+                checkpoint_path = self._resolve_checkpoint_from_manifest(
+                    job_name=job_name,
+                    output_s3_path=self.s3_output_path,
+                    sagemaker_session=sagemaker_session,
+                )
+                if checkpoint_path:
+                    training_job.model_artifacts = shapes.ModelArtifacts(
+                        s3_model_artifacts=checkpoint_path
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Could not resolve checkpoint from manifest for %s: %s", job_name, e
+                )
+        self._latest_training_job = training_job
 
         return job_name

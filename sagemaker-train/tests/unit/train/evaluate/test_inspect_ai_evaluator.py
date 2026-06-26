@@ -1107,3 +1107,87 @@ class TestInspectAITrainerResourceChaining:
 
         assert evaluator._infer_scenario() == "create_endpoint"
         assert evaluator.model_s3_uri == "s3://bucket/model/output/model.tar.gz"
+
+    def test_trainer_checkpoint_from_model_artifacts_without_model_package(
+        self, mock_artifact, mock_resolve
+    ):
+        """No model package ARN: fall back to _latest_training_job.model_artifacts.
+
+        Serverful Nova jobs return no output_model_package_arn but do expose a
+        synthesized model_artifacts S3 path. The resolver must use that path as
+        model_s3_uri (adding the trailing slash CreateModel requires).
+        """
+        mock_resolve.return_value = _mock_model_resolution()
+        mock_artifact.get_all.return_value = iter([])
+        mock_artifact_instance = Mock()
+        mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+        mock_artifact.create.return_value = mock_artifact_instance
+
+        from sagemaker.train.base_trainer import BaseTrainer
+
+        trainer = Mock(spec=BaseTrainer)
+        trainer.__class__ = BaseTrainer
+        trainer._model_arn = DEFAULT_BASE_MODEL_ARN
+        trainer._model_name = DEFAULT_MODEL
+        trainer._latest_job = None
+        # Completed job with no model package ARN but a synthesized artifact path.
+        mock_job = Mock()
+        mock_job.output_model_package_arn = None
+        mock_job.model_artifacts = Mock()
+        mock_job.model_artifacts.s3_model_artifacts = "s3://bucket/job/output"
+        trainer._latest_training_job = mock_job
+
+        with patch(
+            "sagemaker.train.evaluate.inspect_ai_evaluator._get_nova_inference_image_uri",
+            return_value="123456789012.dkr.ecr.us-east-1.amazonaws.com/nova-inference:latest",
+        ):
+            evaluator = InspectAIEvaluator(
+                model=trainer,
+                benchmarks_path=DEFAULT_BENCHMARKS_PATH,
+                s3_output_path=DEFAULT_S3_OUTPUT,
+                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+                model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+                sagemaker_session=_mock_session(),
+            )
+
+        assert evaluator._infer_scenario() == "create_endpoint"
+        # Trailing slash added for the S3 prefix URI.
+        assert evaluator.model_s3_uri == "s3://bucket/job/output/"
+
+    def test_trainer_unassigned_model_artifacts_falls_back_to_bedrock(
+        self, mock_artifact, mock_resolve
+    ):
+        """Unassigned model_artifacts must not be treated as a checkpoint path."""
+        from sagemaker.core.utils.utils import Unassigned
+
+        mock_info = _mock_model_resolution()
+        mock_info.bedrock_model_id = "us.amazon.nova-lite-v1:0"
+        mock_resolve.return_value = mock_info
+        mock_artifact.get_all.return_value = iter([])
+        mock_artifact_instance = Mock()
+        mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+        mock_artifact.create.return_value = mock_artifact_instance
+
+        from sagemaker.train.base_trainer import BaseTrainer
+
+        trainer = Mock(spec=BaseTrainer)
+        trainer.__class__ = BaseTrainer
+        trainer._model_arn = DEFAULT_BASE_MODEL_ARN
+        trainer._model_name = DEFAULT_MODEL
+        trainer._latest_job = None
+        mock_job = Mock()
+        mock_job.output_model_package_arn = Unassigned()
+        mock_job.model_artifacts = Unassigned()
+        trainer._latest_training_job = mock_job
+
+        evaluator = InspectAIEvaluator(
+            model=trainer,
+            benchmarks_path=DEFAULT_BENCHMARKS_PATH,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=_mock_session(),
+        )
+
+        assert evaluator._infer_scenario() == "bedrock"
+        assert evaluator.model_s3_uri is None

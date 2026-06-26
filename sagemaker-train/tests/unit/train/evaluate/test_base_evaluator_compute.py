@@ -25,6 +25,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from sagemaker.core.training.configs import Compute, HyperPodCompute
+from sagemaker.core.utils.utils import Unassigned
+from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.evaluate.base_evaluator import BaseEvaluator
 
 
@@ -224,3 +226,101 @@ class TestSubmitHyperpodEvalJob:
 
         mock_verify.assert_not_called()
         mock_run.assert_not_called()
+
+
+def _trainer_with_artifacts(s3_model_artifacts):
+    """Build a BaseTrainer mock exposing a completed job's model_artifacts.
+
+    ``model_artifacts`` mirrors the sagemaker-core shape: an object with an
+    ``s3_model_artifacts`` attribute, reachable via
+    ``trainer._latest_training_job.model_artifacts.s3_model_artifacts``.
+    """
+    trainer = MagicMock(spec=BaseTrainer)
+    if s3_model_artifacts is None:
+        trainer._latest_training_job = None
+    else:
+        trainer._latest_training_job = SimpleNamespace(
+            model_artifacts=SimpleNamespace(s3_model_artifacts=s3_model_artifacts)
+        )
+    return trainer
+
+
+def _submit_overrides(evaluator):
+    """Drive _submit_hyperpod_eval_job and return the parsed override dict."""
+    import json
+
+    with patch("sagemaker.train.evaluate.base_evaluator.validate_hyperpod_compute"), \
+         patch(
+             "sagemaker.train.evaluate.base_evaluator.TrainDefaults."
+             "verify_hyperpod_caller_permissions"
+         ), \
+         patch("subprocess.run") as mock_run:
+        mock_run.side_effect = [
+            SimpleNamespace(stdout="", stderr=""),  # connect-cluster
+            SimpleNamespace(stdout="NAME: eval-job-123\n", stderr=""),  # start-job
+        ]
+        evaluator._submit_hyperpod_eval_job(base_job_name="eval")
+
+    start_cmd = mock_run.call_args_list[1].args[0]
+    raw = start_cmd[start_cmd.index("--override-parameters") + 1]
+    return json.loads(raw)
+
+
+class TestSubmitHyperpodEvalCheckpointResolution:
+    """``_submit_hyperpod_eval_job`` resolves a trainer checkpoint into the recipe.
+
+    When ``model`` is a BaseTrainer with a completed training job, the model
+    checkpoint S3 URI is read from ``_latest_training_job.model_artifacts`` and
+    written to ``recipes.run.model_name_or_path`` (replacing the old
+    ``_checkpoint_s3_uri`` attribute). These tests guard that resolution.
+    """
+
+    _COMPUTE = HyperPodCompute(
+        cluster_name="my-cluster", instance_type="ml.p5.48xlarge", node_count=1
+    )
+
+    def test_string_s3_model_used_directly(self):
+        evaluator = _bare_evaluator(self._COMPUTE)
+        object.__setattr__(evaluator, "model", "s3://bucket/checkpoint/")
+
+        overrides = _submit_overrides(evaluator)
+
+        assert overrides["recipes.run.model_name_or_path"] == "s3://bucket/checkpoint/"
+
+    def test_trainer_checkpoint_resolved_from_model_artifacts(self):
+        evaluator = _bare_evaluator(self._COMPUTE)
+        object.__setattr__(
+            evaluator,
+            "model",
+            _trainer_with_artifacts("s3://bucket/job/output/model.tar.gz"),
+        )
+
+        overrides = _submit_overrides(evaluator)
+
+        assert (
+            overrides["recipes.run.model_name_or_path"]
+            == "s3://bucket/job/output/model.tar.gz"
+        )
+
+    def test_trainer_without_training_job_falls_back_to_model_info(self):
+        evaluator = _bare_evaluator(self._COMPUTE)
+        object.__setattr__(evaluator, "model", _trainer_with_artifacts(None))
+        # No checkpoint from the trainer; the model-info fallback must run.
+        evaluator._get_resolved_model_info = MagicMock(return_value=None)
+
+        overrides = _submit_overrides(evaluator)
+
+        assert "recipes.run.model_name_or_path" not in overrides
+        evaluator._get_resolved_model_info.assert_called_once()
+
+    def test_unassigned_model_artifacts_does_not_resolve_checkpoint(self):
+        evaluator = _bare_evaluator(self._COMPUTE)
+        trainer = MagicMock(spec=BaseTrainer)
+        trainer._latest_training_job = SimpleNamespace(model_artifacts=Unassigned())
+        object.__setattr__(evaluator, "model", trainer)
+        evaluator._get_resolved_model_info = MagicMock(return_value=None)
+
+        overrides = _submit_overrides(evaluator)
+
+        # Unassigned sentinel must be treated as "no checkpoint".
+        assert "recipes.run.model_name_or_path" not in overrides

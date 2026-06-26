@@ -31220,6 +31220,25 @@ class TrainingJob(Base):
         # deserialize the response
         transformed_response = transform(response, "DescribeTrainingJobResponse")
         training_job = cls(**transformed_response)
+
+        # Post-processing: synthesize model_artifacts for completed jobs where
+        # the API does not return ModelArtifacts (e.g., serverful Nova training jobs).
+        if (
+            training_job.training_job_status == "Completed"
+            and isinstance(training_job.model_artifacts, Unassigned)
+            and not isinstance(training_job.output_data_config, Unassigned)
+            and training_job.output_data_config
+        ):
+            s3_output_path = training_job.output_data_config.s3_output_path
+            if s3_output_path and isinstance(s3_output_path, str):
+                synthesized_path = (
+                    f"{s3_output_path.rstrip('/')}/{training_job.training_job_name}/output/"
+                )
+                training_job.model_artifacts = ModelArtifacts(s3_model_artifacts=synthesized_path)
+                logger.info(
+                    "Synthesized model_artifacts from output_data_config: %s",
+                    synthesized_path,
+                )
         return training_job
 
     @Base.add_validate_call

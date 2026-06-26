@@ -231,7 +231,7 @@ def get(
 
     # deserialize the response
     transformed_response = transform(response, '{describe_operation_output_shape}')
-    {resource_lower} = cls(**transformed_response)
+    {resource_lower} = cls(**transformed_response){post_processing}
     return {resource_lower}
 """
 

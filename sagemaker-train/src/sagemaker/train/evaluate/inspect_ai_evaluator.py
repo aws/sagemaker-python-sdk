@@ -319,8 +319,15 @@ class InspectAIEvaluator(BaseEvaluator):
                 source_mp_arn = arn
 
         if not source_mp_arn:
-            # Check if trainer has a resolved checkpoint path
-            checkpoint_uri = getattr(model, '_checkpoint_s3_uri', None)
+            # Check if trainer has a resolved checkpoint path from model_artifacts
+            checkpoint_uri = None
+            training_job = getattr(model, '_latest_training_job', None)
+            if training_job:
+                artifacts = getattr(training_job, 'model_artifacts', None)
+                if artifacts and not isinstance(artifacts, Unassigned):
+                    s3_path = getattr(artifacts, 's3_model_artifacts', None)
+                    if s3_path and isinstance(s3_path, str):
+                        checkpoint_uri = s3_path
             if checkpoint_uri:
                 # CreateModel requires trailing slash for S3 prefix URIs
                 if not checkpoint_uri.endswith("/"):

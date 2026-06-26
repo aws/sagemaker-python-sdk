@@ -18,6 +18,7 @@ from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.core.training.configs import Compute, HyperPodCompute
+from sagemaker.core.utils.utils import Unassigned
 
 if TYPE_CHECKING:
     from sagemaker.core.helper.session_helper import Session
@@ -1788,10 +1789,17 @@ class BaseEvaluator(BaseModel):
         if isinstance(self.model, str) and self.model.startswith("s3://"):
             base_overrides["recipes.run.model_name_or_path"] = self.model
         else:
-            # Check if model is a BaseTrainer with a trainer checkpoint
+            # Check if model is a BaseTrainer with a completed training job
             from sagemaker.train.base_trainer import BaseTrainer
             if isinstance(self.model, BaseTrainer):
-                checkpoint_uri = getattr(self.model, '_checkpoint_s3_uri', None)
+                checkpoint_uri = None
+                training_job = getattr(self.model, '_latest_training_job', None)
+                if training_job:
+                    artifacts = getattr(training_job, 'model_artifacts', None)
+                    if artifacts and not isinstance(artifacts, Unassigned):
+                        s3_path = getattr(artifacts, 's3_model_artifacts', None)
+                        if s3_path and isinstance(s3_path, str):
+                            checkpoint_uri = s3_path
                 if checkpoint_uri:
                     base_overrides["recipes.run.model_name_or_path"] = checkpoint_uri
                     _logger.info("Using trainer checkpoint for eval: %s", checkpoint_uri)
