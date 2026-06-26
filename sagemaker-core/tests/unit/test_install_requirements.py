@@ -13,6 +13,7 @@
 from __future__ import absolute_import
 
 import subprocess
+import sys
 from unittest import mock
 
 import pytest
@@ -68,6 +69,10 @@ def _uv_cmd(requirements="reqs.txt"):
     return [UV_PATH, "pip", "install", "--system", "-r", requirements]
 
 
+def _pip_config_set_cmd(index=EXPECTED_INDEX):
+    return [sys.executable, "-m", "pip", "config", "set", "global.index-url", index]
+
+
 # ---------------------------------------------------------------------------
 # _parse_arn
 # ---------------------------------------------------------------------------
@@ -106,7 +111,8 @@ class TestConfigurePipAuto:
 
     def test_boto3_success(self, ca_env, mock_boto3_ca):
         factory, client = mock_boto3_ca
-        result = configure_pip()
+        with mock.patch("subprocess.check_call") as mock_call:
+            result = configure_pip()
 
         factory.assert_called_once_with("codeartifact", region_name="us-west-2")
         client.get_authorization_token.assert_called_once_with(
@@ -116,6 +122,9 @@ class TestConfigurePipAuto:
             domain="my-domain", domainOwner="123456789012", repository="my-repo", format="pypi"
         )
         assert result == EXPECTED_INDEX
+        # boto3 path also persists the index to pip config so the uv bootstrap
+        # (and any other pip call) inherits CodeArtifact in isolated environments.
+        mock_call.assert_called_once_with(_pip_config_set_cmd())
 
     def test_falls_back_to_cli_when_no_boto3(self, ca_env):
         with mock.patch(f"{_MODULE}._get_index_boto3", side_effect=ImportError):
@@ -151,8 +160,15 @@ class TestConfigurePipBoto3Only:
 
     def test_does_not_try_cli(self, ca_env, mock_boto3_ca):
         with mock.patch(f"{_MODULE}._login_awscli") as mock_cli:
-            configure_pip(auth_method=CodeArtifactAuthMethod.BOTO3)
+            with mock.patch("subprocess.check_call"):
+                configure_pip(auth_method=CodeArtifactAuthMethod.BOTO3)
         mock_cli.assert_not_called()
+
+    def test_writes_pip_config(self, ca_env, mock_boto3_ca):
+        """boto3 path persists the index to pip config for the uv bootstrap."""
+        with mock.patch("subprocess.check_call") as mock_call:
+            configure_pip(auth_method=CodeArtifactAuthMethod.BOTO3)
+        mock_call.assert_called_once_with(_pip_config_set_cmd())
 
 
 # ---------------------------------------------------------------------------
@@ -275,7 +291,9 @@ class TestInstallRequirements:
                 with mock.patch(f"{_MODULE}._pip_config_get", return_value=None):
                     with mock.patch("subprocess.check_call"):
                         install_requirements("reqs.txt", auth_method=CodeArtifactAuthMethod.BOTO3)
-        mock_configure.assert_called_once_with(auth_method=CodeArtifactAuthMethod.BOTO3)
+        mock_configure.assert_called_once_with(
+            auth_method=CodeArtifactAuthMethod.BOTO3, python_executable=sys.executable
+        )
 
 
 # ---------------------------------------------------------------------------

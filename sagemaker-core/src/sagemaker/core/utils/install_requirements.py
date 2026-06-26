@@ -112,16 +112,36 @@ def _login_awscli(region, account, domain, repo):
     )
 
 
-def configure_pip(auth_method=CodeArtifactAuthMethod.AUTO):
+def _set_pip_index(python_executable, index_url):
+    """Persist an authenticated index URL into pip config.
+
+    Mirrors what ``aws codeartifact login`` does for the CLI path: writes
+    ``global.index-url`` so the container's pip — including the ``uv`` bootstrap in
+    :func:`_ensure_uv` — pulls from CodeArtifact. This matters in isolated
+    environments with no public PyPI access. (``uv`` ignores ``pip.conf``, so the
+    index is still surfaced to uv separately via ``UV_INDEX_URL``.)
+    """
+    subprocess.check_call(
+        [python_executable, "-m", "pip", "config", "set", "global.index-url", index_url]
+    )
+
+
+def configure_pip(auth_method=CodeArtifactAuthMethod.AUTO, python_executable=None):
     """Configure pip for CodeArtifact if ``CA_REPOSITORY_ARN`` is set.
+
+    Both auth paths persist the authenticated index into pip config, so any later
+    pip invocation — including the ``uv`` bootstrap in :func:`_ensure_uv` — uses
+    CodeArtifact even in isolated environments without public PyPI access.
 
     Args:
         auth_method: Authentication mechanism to use. Defaults to ``CodeArtifactAuthMethod.AUTO``
             (try boto3 first, fall back to AWS CLI).
+        python_executable: Python executable whose pip config is written on the
+            boto3 path. Defaults to ``sys.executable``.
 
     Returns:
-        An authenticated pip index URL (str) when boto3 succeeds,
-        ``None`` when AWS CLI was used (pip config modified globally),
+        An authenticated pip index URL (str) when boto3 succeeds (also written to
+        pip config), ``None`` when AWS CLI was used (pip config modified globally),
         or ``None`` when ``CA_REPOSITORY_ARN`` is not set.
 
     Raises:
@@ -129,6 +149,7 @@ def configure_pip(auth_method=CodeArtifactAuthMethod.AUTO):
             auth method is not available.
         ValueError: When the ARN format is invalid.
     """
+    python_executable = python_executable or sys.executable
     arn = os.environ.get(CA_REPOSITORY_ARN_ENV)
     if not arn:
         return None
@@ -145,12 +166,15 @@ def configure_pip(auth_method=CodeArtifactAuthMethod.AUTO):
 
     if auth_method in (CodeArtifactAuthMethod.BOTO3, CodeArtifactAuthMethod.AUTO):
         try:
-            return _get_index_boto3(region, account, domain, repo)
+            index = _get_index_boto3(region, account, domain, repo)
         except ImportError:
             if auth_method == CodeArtifactAuthMethod.BOTO3:
                 logger.error("boto3 is not available")
                 sys.exit(1)
             logger.info("boto3 not available, trying AWS CLI fallback")
+        else:
+            _set_pip_index(python_executable, index)
+            return index
 
     if auth_method in (CodeArtifactAuthMethod.AWS_CLI, CodeArtifactAuthMethod.AUTO):
         try:
@@ -267,7 +291,7 @@ def install_requirements(
     """
     python_executable = python_executable or sys.executable
 
-    index = configure_pip(auth_method=auth_method)
+    index = configure_pip(auth_method=auth_method, python_executable=python_executable)
 
     uv = _ensure_uv(python_executable)
     env = os.environ.copy()
