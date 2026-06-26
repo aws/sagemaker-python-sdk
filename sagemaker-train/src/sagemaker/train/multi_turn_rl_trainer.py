@@ -44,7 +44,7 @@ from sagemaker.train.common_utils.constants import MIN_MLFLOW_VERSION
 from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe, _is_nova_model
 from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.train.defaults import TrainDefaults
-from sagemaker.train.utils import _get_unique_name, _get_studio_tags
+from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 
 logger = logging.getLogger(__name__)
 
@@ -288,7 +288,7 @@ class MultiTurnRLTrainer(BaseTrainer):
             self.training_dataset = training_dataset
         job_config_doc = self._build_job_config_document()
 
-        tags = _get_studio_tags(self._model_name, get_sagemaker_hub_name())
+        tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
         try:
             job = Job.create(

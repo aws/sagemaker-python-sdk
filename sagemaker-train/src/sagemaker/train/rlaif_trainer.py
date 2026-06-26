@@ -5,7 +5,7 @@ from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYP
 from sagemaker.core.resources import TrainingJob, ModelPackageGroup, MlflowTrackingServer, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.train.defaults import TrainDefaults
-from sagemaker.train.utils import _get_unique_name, _get_studio_tags
+from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.evaluator import Evaluator
@@ -280,7 +280,7 @@ class RLAIFTrainer(BaseTrainer):
         )
 
         vpc_config = self.networking if self.networking else None
-        tags = _get_studio_tags(self._model_name, get_sagemaker_hub_name())
+        tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
         # Build TrainingJob.create() arguments
         create_args = {

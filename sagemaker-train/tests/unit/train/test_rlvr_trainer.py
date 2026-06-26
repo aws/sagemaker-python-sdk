@@ -272,8 +272,8 @@ class TestRLVRTrainer:
         mock_training_job_create.assert_called_once()
         call_kwargs = mock_training_job_create.call_args[1]
         assert call_kwargs["tags"] == [
-            {"key": "sagemaker-studio:jumpstart-model-id", "value": "test-model"},
-            {"key": "sagemaker-studio:jumpstart-hub-name", "value": "SageMakerPublicHub"}
+            {"key": "sagemaker-sdk:jumpstart-model-id", "value": "test-model"},
+            {"key": "sagemaker-sdk:jumpstart-hub-name", "value": "SageMakerPublicHub"}
         ]
 
     @patch('sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group')
