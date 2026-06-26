@@ -10,50 +10,44 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-
-"""
-Local SageMaker Serve development package.
-
-This __init__.py file imports key modules used by inference scripts to prevent
-Python module resolution conflicts with external serve.py files.
-
-The imports below "prime" the module cache so that sagemaker.serve is recognized
-as a package, preventing conflicts when inference scripts import from submodules.
-"""
-
+"""SageMaker GenAI inference benchmarking and recommendation."""
 from __future__ import absolute_import
 
-# Strategic imports to prime module cache and prevent serve.py conflicts
-# Match V2's imports to ensure same priming behavior
-from sagemaker.serve.spec.inference_spec import InferenceSpec
-from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.model_builder import ModelBuilder
-
-from sagemaker.serve.ai_inference_recommender import (
-    BenchmarkJob,
-    BenchmarkResult,
+from sagemaker.serve.ai_inference_recommender._constants import (
     InferenceFramework,
     PerformanceTarget,
-    RecommendationJob,
-    Secret,
-    Workload,
+)
+from sagemaker.serve.ai_inference_recommender.exceptions import (
     FeatureGatedError,
     WorkloadValidationError,
+)
+from sagemaker.serve.ai_inference_recommender.jobs import (
+    BenchmarkJob,
+    RecommendationJob,
+)
+from sagemaker.serve.ai_inference_recommender.result import (
+    BenchmarkMetric,
+    BenchmarkMetrics,
+    BenchmarkResult,
+)
+from sagemaker.serve.ai_inference_recommender.secrets import Secret
+from sagemaker.serve.ai_inference_recommender.workload import Workload
+from sagemaker.serve.ai_inference_recommender._model_builder_methods import (
     start_benchmark,
 )
 
+
 __all__ = [
-    "InferenceSpec",
-    "ModelServer",
-    "ModelBuilder",
     "BenchmarkJob",
+    "BenchmarkMetric",
+    "BenchmarkMetrics",
     "BenchmarkResult",
+    "FeatureGatedError",
     "InferenceFramework",
     "PerformanceTarget",
     "RecommendationJob",
     "Secret",
     "Workload",
-    "FeatureGatedError",
     "WorkloadValidationError",
     "start_benchmark",
 ]
