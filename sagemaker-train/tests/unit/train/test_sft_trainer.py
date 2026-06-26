@@ -284,8 +284,8 @@ class TestSFTTrainer:
         mock_training_job_create.assert_called_once()
         call_kwargs = mock_training_job_create.call_args[1]
         assert call_kwargs["tags"] == [
-            {"key": "sagemaker-studio:jumpstart-model-id", "value": "test-model"},
-            {"key": "sagemaker-studio:jumpstart-hub-name", "value": "SageMakerPublicHub"}
+            {"key": "sagemaker-sdk:jumpstart-model-id", "value": "test-model"},
+            {"key": "sagemaker-sdk:jumpstart-hub-name", "value": "SageMakerPublicHub"}
         ]
 
     def test_process_hyperparameters_removes_constructor_handled_keys(self):
