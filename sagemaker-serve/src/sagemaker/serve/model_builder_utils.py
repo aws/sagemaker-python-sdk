@@ -62,6 +62,7 @@ from sagemaker.train import ModelTrainer
 from sagemaker.serve.compute_resource_requirements import ResourceRequirements
 from sagemaker.serve.constants import (
     DEFAULT_SERIALIZERS_BY_FRAMEWORK,
+    OMNI_TASKS,
     Framework,
 )
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
@@ -675,7 +676,9 @@ class _ModelBuilderUtils:
                 model_task = hf_model_md.get("pipeline_tag")
 
                 if model_task == "text-generation":
-                    effective_model_server = ModelServer.TGI
+                    effective_model_server = ModelServer.VLLM
+                elif model_task in OMNI_TASKS:
+                    effective_model_server = ModelServer.VLLM_OMNI
                 elif model_task in ["sentence-similarity", "feature-extraction"]:
                     effective_model_server = ModelServer.TEI
                 else:
@@ -691,6 +694,48 @@ class _ModelBuilderUtils:
                     region=self.region,
                     version=None,  # Use latest version
                     image_scope="inference",
+                )
+                self.framework = Framework.HUGGINGFACE
+
+            elif effective_model_server == ModelServer.VLLM:
+                # vLLM: Use image_uris.retrieve with "huggingface-vllm" framework
+                self.image_uri = image_uris.retrieve(
+                    "huggingface-vllm",
+                    region=self.region,
+                    version=None,  # Use latest version
+                    image_scope="inference",
+                )
+                self.framework = Framework.HUGGINGFACE
+
+            elif effective_model_server == ModelServer.SGLANG:
+                # SGLang: Use image_uris.retrieve with "huggingface-sglang" framework
+                self.image_uri = image_uris.retrieve(
+                    "huggingface-sglang",
+                    region=self.region,
+                    version=None,  # Use latest version
+                    image_scope="inference",
+                )
+                self.framework = Framework.HUGGINGFACE
+
+            elif effective_model_server == ModelServer.VLLM_OMNI:
+                # vLLM-omni: Use image_uris.retrieve with "huggingface-vllm-omni" framework
+                self.image_uri = image_uris.retrieve(
+                    "huggingface-vllm-omni",
+                    region=self.region,
+                    version=None,  # Use latest version
+                    image_scope="inference",
+                )
+                self.framework = Framework.HUGGINGFACE
+
+            elif effective_model_server == ModelServer.LLAMACPP:
+                # llama.cpp: Use image_uris.retrieve with "huggingface-llamacpp" framework.
+                # This DLC ships both gpu and cpu variants, so instance_type is required to select the right processor.
+                self.image_uri = image_uris.retrieve(
+                    "huggingface-llamacpp",
+                    region=self.region,
+                    version=None,  # Use latest version
+                    image_scope="inference",
+                    instance_type=getattr(self, "instance_type", None),
                 )
                 self.framework = Framework.HUGGINGFACE
 
