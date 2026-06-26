@@ -184,7 +184,6 @@ class Compute(shapes.ResourceConfig):
 
     volume_size_in_gb: Optional[int] = 30
     enable_managed_spot_training: Optional[bool] = None
-    training_image: Optional[StrPipeVar] = None
 
     @model_validator(mode="after")
     def _model_validator(self) -> "Compute":

@@ -12,29 +12,10 @@ class TestComputeClass:
         assert compute.instance_count == 4
         assert compute.volume_size_in_gb == 30
 
-    def test_training_image_field(self):
-        compute = Compute(
-            instance_type="ml.p5.48xlarge",
-            training_image="123456.dkr.ecr.us-east-1.amazonaws.com/repo:tag",
-        )
-        assert compute.training_image == "123456.dkr.ecr.us-east-1.amazonaws.com/repo:tag"
-
-    def test_training_image_excluded_from_resource_config(self):
-        compute = Compute(
-            instance_type="ml.p5.48xlarge",
-            instance_count=2,
-            training_image="image:tag",
-        )
-        resource_config = compute._to_resource_config()
-        # training_image is not a ResourceConfig field
-        config_dict = resource_config.model_dump()
-        assert "training_image" not in config_dict
-
     def test_defaults(self):
         compute = Compute(instance_type="ml.m5.xlarge")
         assert compute.volume_size_in_gb == 30
         assert compute.enable_managed_spot_training is None
-        assert compute.training_image is None
 
     def test_to_resource_config_basic(self):
         compute = Compute(instance_type="ml.p5.48xlarge", instance_count=4)
