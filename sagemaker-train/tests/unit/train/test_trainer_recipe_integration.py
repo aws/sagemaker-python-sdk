@@ -620,7 +620,7 @@ class TestFullRecipeTemplateResolution:
              patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_studio_tags", return_value=[]):
+             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -669,7 +669,7 @@ class TestFullRecipeTemplateResolution:
              patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_studio_tags", return_value=[]):
+             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -734,7 +734,7 @@ class TestFullRecipeTemplateResolution:
              patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_studio_tags", return_value=[]):
+             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -783,7 +783,7 @@ class TestFullRecipeTemplateResolution:
              patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_studio_tags", return_value=[]):
+             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -862,7 +862,7 @@ class TestSFTTrainerRecipeFlowsIntoTrain:
              patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_studio_tags", return_value=[]):
+             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
@@ -910,7 +910,7 @@ class TestSFTTrainerRecipeFlowsIntoTrain:
              patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
              patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
-             patch("sagemaker.train.sft_trainer._get_studio_tags", return_value=[]):
+             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
 
             mock_session = MagicMock()
             mock_session.boto_session.region_name = "us-west-2"
