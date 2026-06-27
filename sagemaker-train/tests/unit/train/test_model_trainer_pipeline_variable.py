@@ -50,7 +50,8 @@ DEFAULT_OUTPUT = OutputDataConfig(
 
 @pytest.fixture(scope="module", autouse=True)
 def modules_session():
-    with patch("sagemaker.train.Session", spec=Session) as session_mock:
+    with patch("sagemaker.train.Session", spec=Session) as session_mock, \
+         patch("sagemaker.train.defaults.resolve_and_validate_role", side_effect=lambda provided_role, **kwargs: provided_role or DEFAULT_ROLE):
         session_instance = session_mock.return_value
         session_instance.default_bucket.return_value = DEFAULT_BUCKET
         session_instance.get_caller_identity_arn.return_value = DEFAULT_ROLE

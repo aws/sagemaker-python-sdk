@@ -14,18 +14,16 @@
 from __future__ import absolute_import
 
 import json
-import pytest
-from jinja2 import Template
 
+from jinja2 import Template
 from sagemaker.train.evaluate.pipeline_templates import (
-    DETERMINISTIC_TEMPLATE,
-    LLMAJ_TEMPLATE_BASE_MODEL_ONLY,
-    DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY,
     CUSTOM_SCORER_TEMPLATE,
     CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY,
+    DETERMINISTIC_TEMPLATE,
+    DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY,
     LLMAJ_TEMPLATE,
+    LLMAJ_TEMPLATE_BASE_MODEL_ONLY,
 )
-
 
 # Base context for all templates
 BASE_CONTEXT = {
@@ -56,16 +54,16 @@ class TestDeterministicTemplate:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         # Verify it's valid JSON
         pipeline_def = json.loads(rendered)
-        
+
         # Verify basic structure
         assert pipeline_def["Version"] == "2020-12-01"
         assert "MlflowConfig" in pipeline_def
         assert pipeline_def["MlflowConfig"]["MlflowResourceArn"] == context["mlflow_resource_arn"]
         assert "Steps" in pipeline_def
-        
+
         # Should have 2 steps: CreateEvaluationAction and EvaluateCustomModel (no base model)
         assert len(pipeline_def["Steps"]) == 3
         assert pipeline_def["Steps"][0]["Name"] == "CreateEvaluationAction"
@@ -89,9 +87,9 @@ class TestDeterministicTemplate:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Should have 3 steps: CreateEvaluationAction, EvaluateBaseModel, EvaluateCustomModel, AssociateLineage
         assert len(pipeline_def["Steps"]) == 4
         assert pipeline_def["Steps"][0]["Name"] == "CreateEvaluationAction"
@@ -117,9 +115,9 @@ class TestDeterministicTemplate:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         assert pipeline_def["MlflowConfig"]["MlflowExperimentName"] == "test-experiment"
 
     def test_deterministic_template_with_all_hyperparameters(self):
@@ -147,13 +145,13 @@ class TestDeterministicTemplate:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Check EvaluateCustomModel step has all hyperparameters
         custom_model_step = pipeline_def["Steps"][1]
         hyperparams = custom_model_step["Arguments"]["HyperParameters"]
-        
+
         assert hyperparams["task"] == "text-generation"
         assert hyperparams["max_new_tokens"] == "100"
         assert hyperparams["temperature"] == "0.7"
@@ -182,12 +180,12 @@ class TestDeterministicTemplate:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         custom_model_step = pipeline_def["Steps"][1]
         output_config = custom_model_step["Arguments"]["OutputDataConfig"]
-        
+
         assert output_config["KmsKeyId"] == "arn:aws:kms:us-west-2:123456789012:key/test-key"
 
     def test_deterministic_template_with_vpc_config(self):
@@ -209,12 +207,12 @@ class TestDeterministicTemplate:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         custom_model_step = pipeline_def["Steps"][1]
         vpc_config = custom_model_step["Arguments"]["VpcConfig"]
-        
+
         assert vpc_config["SecurityGroupIds"] == ["sg-12345", "sg-67890"]
         assert vpc_config["Subnets"] == ["subnet-abc", "subnet-def"]
 
@@ -235,12 +233,12 @@ class TestDeterministicTemplate:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         custom_model_step = pipeline_def["Steps"][1]
         data_source = custom_model_step["Arguments"]["InputDataConfig"][0]["DataSource"]
-        
+
         # Should use DatasetSource instead of S3DataSource
         assert "DatasetSource" in data_source
         assert data_source["DatasetSource"]["DatasetArn"] == context["dataset_uri"]
@@ -262,13 +260,16 @@ class TestDeterministicTemplate:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         custom_model_step = pipeline_def["Steps"][1]
         serverless_config = custom_model_step["Arguments"]["ServerlessJobConfig"]
-        
-        assert serverless_config["EvaluatorArn"] == "arn:aws:sagemaker:us-west-2:123456789012:evaluator/test-evaluator"
+
+        assert (
+            serverless_config["EvaluatorArn"]
+            == "arn:aws:sagemaker:us-west-2:123456789012:evaluator/test-evaluator"
+        )
 
 
 class TestDeterministicTemplateBaseModelOnly:
@@ -285,9 +286,9 @@ class TestDeterministicTemplateBaseModelOnly:
 
         template = Template(DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Should have only 1 step: EvaluateBaseModel
         assert len(pipeline_def["Steps"]) == 1
         assert pipeline_def["Steps"][0]["Name"] == "EvaluateBaseModel"
@@ -312,27 +313,32 @@ class TestDeterministicTemplateBaseModelOnly:
 
         template = Template(DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         base_model_step = pipeline_def["Steps"][0]
-        
+
         # Verify MLflow config is present in BASE_MODEL_ONLY template
         assert "MlflowConfig" in pipeline_def
-        assert pipeline_def["MlflowConfig"]["MlflowResourceArn"] == BASE_CONTEXT["mlflow_resource_arn"]
-        
+        assert (
+            pipeline_def["MlflowConfig"]["MlflowResourceArn"] == BASE_CONTEXT["mlflow_resource_arn"]
+        )
+
         # Verify KMS key
         assert base_model_step["Arguments"]["OutputDataConfig"]["KmsKeyId"] == context["kms_key_id"]
-        
+
         # Verify VPC config
         assert base_model_step["Arguments"]["VpcConfig"]["SecurityGroupIds"] == ["sg-12345"]
-        
+
         # Verify hyperparameters
         assert base_model_step["Arguments"]["HyperParameters"]["max_new_tokens"] == "100"
         assert base_model_step["Arguments"]["HyperParameters"]["temperature"] == "0.7"
-        
+
         # Verify evaluator ARN
-        assert base_model_step["Arguments"]["ServerlessJobConfig"]["EvaluatorArn"] == context["evaluator_arn"]
+        assert (
+            base_model_step["Arguments"]["ServerlessJobConfig"]["EvaluatorArn"]
+            == context["evaluator_arn"]
+        )
 
 
 class TestCustomScorerTemplate:
@@ -354,12 +360,15 @@ class TestCustomScorerTemplate:
 
         template = Template(CUSTOM_SCORER_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Verify EvaluationType is CustomScorerEvaluation
         custom_model_step = pipeline_def["Steps"][1]
-        assert custom_model_step["Arguments"]["ServerlessJobConfig"]["EvaluationType"] == "CustomScorerEvaluation"
+        assert (
+            custom_model_step["Arguments"]["ServerlessJobConfig"]["EvaluationType"]
+            == "CustomScorerEvaluation"
+        )
 
     def test_custom_scorer_template_with_base_model(self):
         """Test CUSTOM_SCORER_TEMPLATE with base model evaluation."""
@@ -378,9 +387,9 @@ class TestCustomScorerTemplate:
 
         template = Template(CUSTOM_SCORER_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Should have both base and custom model evaluation steps
         assert len(pipeline_def["Steps"]) == 4
         assert pipeline_def["Steps"][1]["Name"] == "EvaluateBaseModel"
@@ -401,20 +410,25 @@ class TestCustomScorerTemplateBaseModelOnly:
 
         template = Template(CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Verify MLflow config is present in BASE_MODEL_ONLY template
         assert "MlflowConfig" in pipeline_def
-        assert pipeline_def["MlflowConfig"]["MlflowResourceArn"] == BASE_CONTEXT["mlflow_resource_arn"]
-        
+        assert (
+            pipeline_def["MlflowConfig"]["MlflowResourceArn"] == BASE_CONTEXT["mlflow_resource_arn"]
+        )
+
         # Should have only 1 step
         assert len(pipeline_def["Steps"]) == 1
         assert pipeline_def["Steps"][0]["Name"] == "EvaluateBaseModel"
-        
+
         # Verify it's CustomScorerEvaluation
         base_model_step = pipeline_def["Steps"][0]
-        assert base_model_step["Arguments"]["ServerlessJobConfig"]["EvaluationType"] == "CustomScorerEvaluation"
+        assert (
+            base_model_step["Arguments"]["ServerlessJobConfig"]["EvaluationType"]
+            == "CustomScorerEvaluation"
+        )
 
 
 class TestLLMAJTemplate:
@@ -439,26 +453,36 @@ class TestLLMAJTemplate:
 
         template = Template(LLMAJ_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Should have CreateEvaluationAction, EvaluateCustomInferenceModel, EvaluateCustomModelMetrics, AssociateLineage
         assert len(pipeline_def["Steps"]) == 4
         assert pipeline_def["Steps"][0]["Name"] == "CreateEvaluationAction"
         assert pipeline_def["Steps"][1]["Name"] == "EvaluateCustomInferenceModel"
         assert pipeline_def["Steps"][2]["Name"] == "EvaluateCustomModelMetrics"
         assert pipeline_def["Steps"][3]["Name"] == "AssociateLineage"
-        
+
         # Verify inference step
         inference_step = pipeline_def["Steps"][1]
         assert inference_step["Arguments"]["HyperParameters"]["task"] == "inference_only"
-        assert inference_step["Arguments"]["ServerlessJobConfig"]["EvaluationType"] == "BenchmarkEvaluation"
-        
+        assert (
+            inference_step["Arguments"]["ServerlessJobConfig"]["EvaluationType"]
+            == "BenchmarkEvaluation"
+        )
+
         # Verify metrics step
         metrics_step = pipeline_def["Steps"][2]
-        assert metrics_step["Arguments"]["ServerlessJobConfig"]["EvaluationType"] == "LLMAJEvaluation"
-        assert metrics_step["Arguments"]["HyperParameters"]["judge_model_id"] == "anthropic.claude-v2"
-        assert metrics_step["Arguments"]["HyperParameters"]["llmaj_metrics"] == ["coherence", "relevance"]
+        assert (
+            metrics_step["Arguments"]["ServerlessJobConfig"]["EvaluationType"] == "LLMAJEvaluation"
+        )
+        assert (
+            metrics_step["Arguments"]["HyperParameters"]["judge_model_id"] == "anthropic.claude-v2"
+        )
+        assert metrics_step["Arguments"]["HyperParameters"]["llmaj_metrics"] == [
+            "coherence",
+            "relevance",
+        ]
 
     def test_llmaj_template_with_base_model(self):
         """Test LLMAJ_TEMPLATE with base model evaluation."""
@@ -480,9 +504,9 @@ class TestLLMAJTemplate:
 
         template = Template(LLMAJ_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Should have 6 steps with base model evaluation
         assert len(pipeline_def["Steps"]) == 6
         assert pipeline_def["Steps"][0]["Name"] == "CreateEvaluationAction"
@@ -512,12 +536,12 @@ class TestLLMAJTemplate:
 
         template = Template(LLMAJ_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         metrics_step = pipeline_def["Steps"][2]
         hyperparams = metrics_step["Arguments"]["HyperParameters"]
-        
+
         assert hyperparams["custom_metrics"] == "s3://test-bucket/custom-metrics.json"
 
     def test_llmaj_template_with_vpc_and_kms(self):
@@ -543,14 +567,14 @@ class TestLLMAJTemplate:
 
         template = Template(LLMAJ_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         inference_step = pipeline_def["Steps"][1]
-        
+
         # Verify KMS key
         assert inference_step["Arguments"]["OutputDataConfig"]["KmsKeyId"] == context["kms_key_id"]
-        
+
         # Verify VPC config
         assert inference_step["Arguments"]["VpcConfig"]["SecurityGroupIds"] == ["sg-12345"]
         assert inference_step["Arguments"]["VpcConfig"]["Subnets"] == ["subnet-abc"]
@@ -573,25 +597,29 @@ class TestLLMAJTemplateBaseModelOnly:
 
         template = Template(LLMAJ_TEMPLATE_BASE_MODEL_ONLY)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Verify MLflow config is present in BASE_MODEL_ONLY template
         assert "MlflowConfig" in pipeline_def
-        assert pipeline_def["MlflowConfig"]["MlflowResourceArn"] == BASE_CONTEXT["mlflow_resource_arn"]
-        
+        assert (
+            pipeline_def["MlflowConfig"]["MlflowResourceArn"] == BASE_CONTEXT["mlflow_resource_arn"]
+        )
+
         # Should have 2 steps: EvaluateBaseInferenceModel and EvaluateBaseModelMetrics
         assert len(pipeline_def["Steps"]) == 2
         assert pipeline_def["Steps"][0]["Name"] == "EvaluateBaseInferenceModel"
         assert pipeline_def["Steps"][1]["Name"] == "EvaluateBaseModelMetrics"
-        
+
         # Verify inference step
         inference_step = pipeline_def["Steps"][0]
         assert inference_step["Arguments"]["HyperParameters"]["task"] == "inference_only"
-        
+
         # Verify metrics step
         metrics_step = pipeline_def["Steps"][1]
-        assert metrics_step["Arguments"]["HyperParameters"]["judge_model_id"] == "anthropic.claude-v2"
+        assert (
+            metrics_step["Arguments"]["HyperParameters"]["judge_model_id"] == "anthropic.claude-v2"
+        )
         assert metrics_step["Arguments"]["HyperParameters"]["llmaj_metrics"] == ["coherence"]
 
     def test_llmaj_base_model_only_with_custom_metrics(self):
@@ -609,11 +637,14 @@ class TestLLMAJTemplateBaseModelOnly:
 
         template = Template(LLMAJ_TEMPLATE_BASE_MODEL_ONLY)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         metrics_step = pipeline_def["Steps"][1]
-        assert metrics_step["Arguments"]["HyperParameters"]["custom_metrics"] == "s3://test-bucket/custom-metrics.json"
+        assert (
+            metrics_step["Arguments"]["HyperParameters"]["custom_metrics"]
+            == "s3://test-bucket/custom-metrics.json"
+        )
 
     def test_llmaj_base_model_only_with_kms_and_vpc(self):
         """Test LLMAJ_TEMPLATE_BASE_MODEL_ONLY with KMS and VPC."""
@@ -633,14 +664,14 @@ class TestLLMAJTemplateBaseModelOnly:
 
         template = Template(LLMAJ_TEMPLATE_BASE_MODEL_ONLY)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         inference_step = pipeline_def["Steps"][0]
-        
+
         # Verify KMS
         assert inference_step["Arguments"]["OutputDataConfig"]["KmsKeyId"] == context["kms_key_id"]
-        
+
         # Verify VPC
         assert inference_step["Arguments"]["VpcConfig"]["SecurityGroupIds"] == ["sg-12345"]
         assert inference_step["Arguments"]["VpcConfig"]["Subnets"] == ["subnet-abc"]
@@ -659,7 +690,7 @@ class TestTemplateEdgeCases:
             CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY,
             LLMAJ_TEMPLATE,
         ]
-        
+
         for template_str in templates:
             # Should not raise exception
             template = Template(template_str)
@@ -682,17 +713,17 @@ class TestTemplateEdgeCases:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Should not have optional fields in MlflowConfig
         assert "MlflowExperimentName" not in pipeline_def["MlflowConfig"]
         assert "MlflowRunName" not in pipeline_def["MlflowConfig"]
-        
+
         # Should not have KMS key in output config
         custom_model_step = pipeline_def["Steps"][1]
         assert "KmsKeyId" not in custom_model_step["Arguments"]["OutputDataConfig"]
-        
+
         # Should not have VPC config
         assert "VpcConfig" not in custom_model_step["Arguments"]
 
@@ -715,8 +746,10 @@ class TestTemplateEdgeCases:
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered_s3 = template.render(**context_s3)
         pipeline_def_s3 = json.loads(rendered_s3)
-        
-        data_source_s3 = pipeline_def_s3["Steps"][1]["Arguments"]["InputDataConfig"][0]["DataSource"]
+
+        data_source_s3 = pipeline_def_s3["Steps"][1]["Arguments"]["InputDataConfig"][0][
+            "DataSource"
+        ]
         assert "S3DataSource" in data_source_s3
         assert data_source_s3["S3DataSource"]["S3Uri"] == "s3://test-bucket/dataset"
 
@@ -728,8 +761,10 @@ class TestTemplateEdgeCases:
 
         rendered_dataset = template.render(**context_dataset)
         pipeline_def_dataset = json.loads(rendered_dataset)
-        
-        data_source_dataset = pipeline_def_dataset["Steps"][1]["Arguments"]["InputDataConfig"][0]["DataSource"]
+
+        data_source_dataset = pipeline_def_dataset["Steps"][1]["Arguments"]["InputDataConfig"][0][
+            "DataSource"
+        ]
         assert "DatasetSource" in data_source_dataset
         assert data_source_dataset["DatasetSource"]["DatasetArn"] == context_dataset["dataset_uri"]
 
@@ -753,15 +788,15 @@ class TestTemplateEdgeCases:
 
         template = Template(LLMAJ_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Check dependencies
         base_inference_step = pipeline_def["Steps"][1]
         custom_inference_step = pipeline_def["Steps"][2]
         base_metrics_step = pipeline_def["Steps"][3]
         custom_metrics_step = pipeline_def["Steps"][4]
-        
+
         assert base_inference_step["DependsOn"] == ["CreateEvaluationAction"]
         assert custom_inference_step["DependsOn"] == ["CreateEvaluationAction"]
         assert base_metrics_step["DependsOn"] == ["EvaluateBaseInferenceModel"]
@@ -784,16 +819,16 @@ class TestTemplateEdgeCases:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # AssociateLineage step
         lineage_step = pipeline_def["Steps"][3]
         assert lineage_step["Name"] == "AssociateLineage"
-        
+
         # Should have 2 artifacts (base and custom eval reports)
         assert len(lineage_step["Arguments"]["Artifacts"]) == 2
-        
+
         # Should have 2 associations
         assert len(lineage_step["Arguments"]["Associations"]) == 2
 
@@ -817,11 +852,11 @@ class TestTemplateEdgeCases:
 
         template = Template(DETERMINISTIC_TEMPLATE)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         hyperparams = pipeline_def["Steps"][1]["Arguments"]["HyperParameters"]
-        
+
         # All should be strings in JSON
         assert hyperparams["max_new_tokens"] == "100"
         assert hyperparams["temperature"] == "0.7"
@@ -842,13 +877,13 @@ class TestTemplateEdgeCases:
 
         template = Template(LLMAJ_TEMPLATE_BASE_MODEL_ONLY)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         # Check that training job name is set
         inference_step = pipeline_def["Steps"][0]
         assert inference_step["Arguments"]["TrainingJobName"] == "BaseInference"
-        
+
         # Check that metrics step has dynamic training job name
         metrics_step = pipeline_def["Steps"][1]
         training_job_name = metrics_step["Arguments"]["TrainingJobName"]
@@ -870,18 +905,89 @@ class TestTemplateEdgeCases:
 
         template = Template(LLMAJ_TEMPLATE_BASE_MODEL_ONLY)
         rendered = template.render(**context)
-        
+
         pipeline_def = json.loads(rendered)
-        
+
         metrics_step = pipeline_def["Steps"][1]
         inference_path = metrics_step["Arguments"]["HyperParameters"]["inference_data_s3_path"]
-        
+
         # Should be a Std:Join expression
         assert "Std:Join" in inference_path
         assert inference_path["Std:Join"]["On"] == ""
-        
+
         # Should reference the inference step output
         values = inference_path["Std:Join"]["Values"]
-        assert any("Steps.EvaluateBaseInferenceModel.OutputDataConfig.S3OutputPath" in str(v) for v in values)
+        assert any(
+            "Steps.EvaluateBaseInferenceModel.OutputDataConfig.S3OutputPath" in str(v)
+            for v in values
+        )
         assert "BaseInference" in values
         assert "/eval_results/inference_output.jsonl" in values
+
+
+class TestInspectAITemplate:
+    """Test InspectAI template rendering."""
+
+    def test_inspect_ai_template_minimal(self):
+        """Test InspectAI template renders valid JSON with minimal context."""
+        from jinja2 import Template
+        from sagemaker.train.evaluate.pipeline_templates import INSPECT_AI_TEMPLATE
+
+        context = {
+            "job_name_prefix": "inspectai-eval",
+            "image_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-inspect-ai",
+            "role_arn": "arn:aws:iam::123456789012:role/test-role",
+            "instance_type": "ml.m5.large",
+            "max_runtime_seconds": 86400,
+            "config_s3_uri": "s3://bucket/config/prefix",
+            "s3_output_path": "s3://bucket/output",
+            "kms_key_id": None,
+            "environment": None,
+            "vpc_config": False,
+        }
+
+        template = Template(INSPECT_AI_TEMPLATE)
+        rendered = template.render(**context)
+        parsed = json.loads(rendered)
+
+        assert parsed["Version"] == "2020-12-01"
+        assert len(parsed["Steps"]) == 1
+        step = parsed["Steps"][0]
+        assert step["Name"] == "InspectAIEvaluation"
+        assert step["Type"] == "Training"
+        assert step["Arguments"]["AlgorithmSpecification"]["TrainingImage"] == context["image_uri"]
+        assert step["Arguments"]["ResourceConfig"]["InstanceType"] == "ml.m5.large"
+        assert step["Arguments"]["ResourceConfig"]["InstanceCount"] == 1
+        assert step["Arguments"]["InputDataConfig"][0]["ChannelName"] == "config"
+        assert "VpcConfig" not in step["Arguments"]
+        assert "Environment" not in step["Arguments"]
+
+    def test_inspect_ai_template_with_vpc_and_env(self):
+        """Test InspectAI template renders with VPC and environment."""
+        from jinja2 import Template
+        from sagemaker.train.evaluate.pipeline_templates import INSPECT_AI_TEMPLATE
+
+        context = {
+            "job_name_prefix": "inspectai-eval",
+            "image_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-inspect-ai",
+            "role_arn": "arn:aws:iam::123456789012:role/test-role",
+            "instance_type": "ml.m5.large",
+            "max_runtime_seconds": 3600,
+            "config_s3_uri": "s3://bucket/config/prefix",
+            "s3_output_path": "s3://bucket/output",
+            "kms_key_id": "arn:aws:kms:us-east-1:123456789012:key/test-key",
+            "environment": {"MY_VAR": "my_value"},
+            "vpc_config": True,
+            "vpc_security_group_ids": ["sg-123"],
+            "vpc_subnets": ["subnet-abc"],
+        }
+
+        template = Template(INSPECT_AI_TEMPLATE)
+        rendered = template.render(**context)
+        parsed = json.loads(rendered)
+
+        step = parsed["Steps"][0]
+        assert step["Arguments"]["Environment"] == {"MY_VAR": "my_value"}
+        assert step["Arguments"]["VpcConfig"]["SecurityGroupIds"] == ["sg-123"]
+        assert step["Arguments"]["VpcConfig"]["Subnets"] == ["subnet-abc"]
+        assert step["Arguments"]["OutputDataConfig"]["KmsKeyId"] == context["kms_key_id"]

@@ -510,3 +510,113 @@ class TestRLVRTrainer:
         trainer.train(wait=False, wait_timeout=600)
 
         mock_wait.assert_not_called()
+
+
+class TestRLVRTrainerComputeDispatch:
+    """Tests for compute dispatch in RLVRTrainer."""
+
+    @patch('sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.rlvr_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
+    def _make_trainer(self, mock_opts, mock_resolve, mock_validate, compute=None):
+        from sagemaker.train.rlvr_trainer import RLVRTrainer
+        from sagemaker.core.training.configs import Compute, HyperPodCompute
+        mock_resolve.return_value = ("model", "nova-textgeneration-lite-v2")
+        mock_validate.return_value = "group"
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_opts.return_value = (mock_hp, "arn", False)
+        return RLVRTrainer(model="amazon.nova-lite-v2", compute=compute, model_package_group="grp")
+
+    def test_rejects_invalid_compute_type(self):
+        with pytest.raises(TypeError, match="Compute or HyperPodCompute"):
+            self._make_trainer(compute=123)
+
+    def test_accepts_none_compute(self):
+        trainer = self._make_trainer(compute=None)
+        assert trainer.compute is None
+
+    def test_accepts_compute_instance(self):
+        from sagemaker.core.training.configs import Compute
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=4)
+        trainer = self._make_trainer(compute=compute)
+        assert trainer.compute is compute
+
+    def test_none_routes_to_serverless(self):
+        trainer = self._make_trainer(compute=None)
+        # The serverless path is inlined in train(); verify routing by ensuring
+        # neither compute-backed method is called and the serverless branch is
+        # entered (it begins by resolving the SageMaker session).
+        with patch.object(trainer, '_train_serverful_smtj') as mock_smtj, \
+             patch.object(trainer, '_train_hyperpod') as mock_hp, \
+             patch(
+                 'sagemaker.train.defaults.TrainDefaults.get_sagemaker_session',
+                 side_effect=RuntimeError('serverless-path-reached'),
+             ):
+            with pytest.raises(RuntimeError, match='serverless-path-reached'):
+                trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
+            mock_smtj.assert_not_called()
+            mock_hp.assert_not_called()
+
+    def test_compute_routes_to_smtj(self):
+        from sagemaker.core.training.configs import Compute
+        compute = Compute(instance_type="ml.p5.48xlarge", instance_count=4)
+        trainer = self._make_trainer(compute=compute)
+        with patch.object(trainer, '_train_serverful_smtj', return_value=Mock()) as mock_smtj:
+            trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
+            mock_smtj.assert_called_once()
+
+    def test_hyperpod_routes_to_hyperpod(self):
+        from sagemaker.core.training.configs import HyperPodCompute
+        compute = HyperPodCompute(cluster_name="my-cluster", instance_type="ml.p5.48xlarge")
+        trainer = self._make_trainer(compute=compute)
+        with patch.object(trainer, '_train_hyperpod', return_value="job-name") as mock_hp:
+            trainer.train(training_dataset="s3://bucket/data.jsonl", wait=False)
+            mock_hp.assert_called_once()
+
+
+class TestRLVRTrainerBaseModelName:
+    """Tests for base_model_name param and iterative training."""
+
+    @patch('sagemaker.train.rlvr_trainer._validate_eula_for_gated_model', return_value=False)
+    @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group', return_value="my-group")
+    @patch('sagemaker.train.rlvr_trainer._resolve_model_and_name', return_value=("model_obj", "nova-textgeneration-lite-v2"))
+    def test_s3_model_with_base_model_name(self, mock_resolve, mock_validate_group, mock_get_options, mock_eula):
+        from sagemaker.train.rlvr_trainer import RLVRTrainer
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_hp._specs = {}
+        mock_hp._user_set = None
+        mock_get_options.return_value = (mock_hp, "model-arn", False)
+
+        trainer = RLVRTrainer(
+            model="s3://bucket/checkpoint/step_10",
+            base_model_name="amazon.nova-2-lite-v1",
+            compute=HyperPodCompute(cluster_name="my-cluster", node_count=4),
+            training_dataset="s3://bucket/train.jsonl",
+        )
+
+        assert trainer.model_source == "s3://bucket/checkpoint/step_10"
+        assert trainer._model_name == "nova-textgeneration-lite-v2"
+
+    @patch('sagemaker.train.rlvr_trainer._validate_eula_for_gated_model', return_value=False)
+    @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group', return_value="my-group")
+    @patch('sagemaker.train.rlvr_trainer._resolve_model_and_name', return_value=("model_obj", "nova-textgeneration-lite-v2"))
+    def test_s3_model_without_base_model_name_raises(self, mock_resolve, mock_validate_group, mock_get_options, mock_eula):
+        from sagemaker.train.rlvr_trainer import RLVRTrainer
+        from sagemaker.core.training.configs import HyperPodCompute
+
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_get_options.return_value = (mock_hp, "model-arn", False)
+
+        with pytest.raises(ValueError, match="base_model_name is required"):
+            RLVRTrainer(
+                model="s3://bucket/checkpoint/step_10",
+                compute=HyperPodCompute(cluster_name="my-cluster", node_count=4),
+                training_dataset="s3://bucket/train.jsonl",
+            )

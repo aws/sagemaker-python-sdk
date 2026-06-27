@@ -15,7 +15,11 @@ from __future__ import absolute_import
 
 from typing import Optional, Dict, Any, Union, List
 
-from sagemaker.core.helper.session_helper import Session, get_execution_role
+from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.helper.iam_role_resolver import (
+    resolve_and_validate_role,
+    verify_hyperpod_connect_permissions,
+)
 from sagemaker.core import shapes
 
 from sagemaker.core.jumpstart.document import get_hub_content_and_document
@@ -66,14 +70,49 @@ class TrainDefaults:
         role: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
     ) -> str:
-        """Get the default execution role."""
+        """Get and validate the training execution role.
+
+        Resolves the explicitly provided ``role`` (or the caller's own identity if
+        none is given) and validates it has the permissions/trust required for
+        training. Never creates an IAM role: if validation fails, a
+        ``RoleValidationError`` is raised explaining what to grant or how to create
+        a dedicated role via ``IamRoleResolver().create_execution_role``.
+        """
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=sagemaker_session
+        )
+        resolved = resolve_and_validate_role(
+            provided_role=role,
+            role_type="training",
+            sagemaker_session=sagemaker_session,
+        )
         if role is None:
-            sagemaker_session = TrainDefaults.get_sagemaker_session(
-                sagemaker_session=sagemaker_session
-            )
-            role = get_execution_role(sagemaker_session)
-            logger.info(f"Role not provided. Using default role:\n{role}")
-        return role
+            logger.info(f"Role not provided. Using validated caller role:\n{resolved}")
+        return resolved
+
+    @staticmethod
+    def verify_hyperpod_caller_permissions(
+        sagemaker_session: Optional[Session] = None,
+        cluster_name: Optional[str] = None,
+    ) -> Optional[bool]:
+        """Verify the caller can drive the HyperPod CLI (warn, non-blocking).
+
+        HyperPod jobs are submitted by the HyperPod CLI running as the *caller's*
+        own identity, so — unlike serverless/SMTJ training, which resolves an
+        execution role via :meth:`get_role` — there is no execution role for the
+        SDK to create here. This checks the caller's cluster-connect permissions
+        and logs a warning if any are missing.
+
+        Returns the verdict from
+        :func:`~sagemaker.core.helper.iam_role_resolver.verify_hyperpod_connect_permissions`
+        (``True``/``False``/``None``); it never raises on a missing permission.
+        """
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=sagemaker_session
+        )
+        return verify_hyperpod_connect_permissions(
+            sagemaker_session=sagemaker_session, cluster_name=cluster_name
+        )
 
     @staticmethod
     def get_base_job_name(

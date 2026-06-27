@@ -185,9 +185,14 @@ class MultiTurnRLTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         kms_key_arn: Optional[str] = None,
         accept_eula: bool = False,
+        recipe: Optional[str] = None,
+        overrides: Optional[dict] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self._recipe_path = recipe
+        self._overrides = overrides
+        self._resolved_recipe_cache = None
 
         self._validate_agent_config(agent_env)
         self._validate_networking(networking)
@@ -273,6 +278,10 @@ class MultiTurnRLTrainer(BaseTrainer):
         logger.info(f"Job Name: {current_job_name}")
 
         self._final_hyperparameters = self.hyperparameters.to_dict()
+
+        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
+        self._final_hyperparameters = self._apply_recipe_to_hyperparameters(self._final_hyperparameters)
+
         _validate_hyperparameter_values(self._final_hyperparameters)
 
         if training_dataset is not None:
