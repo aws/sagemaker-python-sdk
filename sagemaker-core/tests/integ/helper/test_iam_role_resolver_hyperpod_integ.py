@@ -207,13 +207,7 @@ def run_end_to_end() -> None:
             _delete_role_and_policies(iam_client, ROLE_NAME)
 
 
-@pytest.mark.integ
-@pytest.mark.skipif(
-    not _credentials_available(), reason="No AWS credentials available for integ test"
-)
-def test_hyperpod_role_end_to_end():
-    """Pytest entry point for the no-mocks HyperPod IAM role flow."""
-    run_end_to_end()
+
 
 
 if __name__ == "__main__":

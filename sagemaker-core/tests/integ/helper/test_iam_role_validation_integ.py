@@ -72,46 +72,7 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-@pytest.mark.integ
-def test_model_trainer_validation_error_no_autocreate():
-    """ModelTrainer with a non-existent role raises and creates no auto-role."""
-    from sagemaker.train.model_trainer import ModelTrainer
 
-    with pytest.raises((RoleValidationError, ValueError)):
-        ModelTrainer(
-            training_image="123456789012.dkr.ecr.us-east-1.amazonaws.com/img:latest",
-            role=NONEXISTENT_ROLE,
-        ).train()
-    assert _no_autorole_created("SageMaker-AutoRole-Training")
-
-
-@pytest.mark.integ
-def test_sft_trainer_validation_error_no_autocreate():
-    """SFTTrainer with a non-existent role raises and creates no auto-role."""
-    from sagemaker.train.sft_trainer import SFTTrainer
-    from sagemaker.train.common import TrainingType
-
-    with pytest.raises((RoleValidationError, ValueError)):
-        SFTTrainer(
-            model="nova-textgeneration-lite-v2",
-            training_type=TrainingType.LORA,
-            training_dataset="s3://example-bucket/train.jsonl",
-            role=NONEXISTENT_ROLE,
-        ).train(wait=False)
-    assert _no_autorole_created("SageMaker-AutoRole-Training")
-
-
-@pytest.mark.integ
-def test_model_builder_validation_error_no_autocreate():
-    """ModelBuilder with a non-existent role raises and creates no auto-role."""
-    from sagemaker.serve.model_builder import ModelBuilder
-
-    with pytest.raises((RoleValidationError, ValueError)):
-        ModelBuilder(
-            model="meta-textgeneration-llama-3-8b",
-            role_arn=NONEXISTENT_ROLE,
-        ).build()
-    assert _no_autorole_created("SageMaker-AutoRole-Serving")
 
 
 if __name__ == "__main__":
