@@ -28,6 +28,7 @@ from sagemaker.config import (
     TRANSFORM_RESOURCES_VOLUME_KMS_KEY_ID_PATH,
     PIPELINE_ROLE_ARN_PATH,
 )
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.job import _Job
 from sagemaker.session import Session, get_execution_role
 from sagemaker.inputs import BatchDataCaptureConfig
@@ -111,6 +112,10 @@ class Transformer(object):
             volume_kms_key (str or PipelineVariable): Optional. KMS key ID for encrypting
                 the volume attached to the ML compute instance (default: None).
         """
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="sagemaker.core.shapes.TransformJob",
+        )
         self.model_name = model_name
         self.strategy = strategy
 

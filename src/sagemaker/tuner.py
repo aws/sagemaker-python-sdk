@@ -29,7 +29,7 @@ from sagemaker.amazon.amazon_estimator import (
 )
 from sagemaker.amazon.hyperparameter import Hyperparameter as hp  # noqa
 from sagemaker.analytics import HyperparameterTuningJobAnalytics
-from sagemaker.deprecations import removed_function
+from sagemaker.deprecations import removed_function, warn_v2_deprecation
 from sagemaker.estimator import EstimatorBase, Framework
 from sagemaker.inputs import FileSystemInput, TrainingInput
 from sagemaker.job import _Job
@@ -683,6 +683,13 @@ class HyperparameterTuner(object):
                 static and will not be assigned a tunable range with Autotune functionality.
                 (default: None).
         """
+        # The migration guide moves HPT to sagemaker-core but does not publish a
+        # single import path (it spans multiple classes), so we point at the
+        # namespace and defer to the guide.
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="the hyperparameter tuning classes under sagemaker.core",
+        )
         if hyperparameter_ranges is None or len(hyperparameter_ranges) == 0:
             if not autotune:
                 raise ValueError("Need to specify hyperparameter ranges or set autotune=True.")

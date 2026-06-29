@@ -17,6 +17,7 @@
 from __future__ import absolute_import
 from typing import Optional, TYPE_CHECKING
 from sagemaker.apiutils import _utils
+from sagemaker.deprecations import warn_v2_deprecation
 
 if TYPE_CHECKING:
     from sagemaker import Session
@@ -43,6 +44,10 @@ def generate_mlflow_presigned_url(
     Returns:
         (str): Authorized Url to acess the Mlflow UI.
     """
+    warn_v2_deprecation(
+        feature="The MLflow integration",
+        v3_replacement="the MLflow classes under sagemaker.mlops",
+    )
     session = sagemaker_session or _utils.default_session()
     api_response = session.create_presigned_mlflow_tracking_server_url(
         name, expires_in_seconds, session_expiration_duration_in_seconds
