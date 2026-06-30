@@ -409,6 +409,474 @@ class TestBuildForTGI(unittest.TestCase):
         mock_fallback.assert_called_once()
         mock_create.assert_called_once()
 
+    # ------------------------------------------------------------------
+    # Bug condition tests (tgi-s3-model-loading bugfix spec)
+    #
+    # Properties 1-3: Expected Behavior - TGI honors S3 model inputs.
+    #
+    # These were the bug-condition exploration tests written in task 1 to
+    # assert the buggy behavior on the UNFIXED code. Now that the additive
+    # S3 fix from task 3.1 is in place, the SAME tests have had their
+    # assertions inverted to encode the expected (fixed) behavior:
+    #   * an S3 model_path no longer reaches the local mkdir (Property 1),
+    #   * the container env points HF_MODEL_ID at /opt/ml/model with
+    #     HF_HUB_OFFLINE=1 and the S3 source is routed through
+    #     _prepare_for_mode(model_path=...) so the uncompressed
+    #     ModelDataSource is built (Property 2),
+    #   * a user-supplied HF_MODEL_ID is preserved (Property 3).
+    # See .kiro/specs/tgi-s3-model-loading/{bugfix,design,tasks}.md.
+    # ------------------------------------------------------------------
+
+    @patch("sagemaker.serve.model_builder_servers._get_gpu_info")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tensor_parallel_degree")
+    @patch("sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tgi_configurations")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.tgi.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_validate_tgi_serving_sample_data")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_fixed_s3_model_path_skips_local_mkdir(
+        self,
+        mock_create,
+        mock_prepare,
+        mock_detect,
+        mock_js,
+        mock_validate,
+        mock_dir,
+        mock_nb,
+        mock_tgi_config,
+        mock_hf_config,
+        mock_tp,
+        mock_gpu,
+    ):
+        """Property 1 (clause 2.1): an S3 model_path skips the local mkdir.
+
+        On the FIXED code the S3 weight source is detected before any local
+        directory is created, so ``_create_dir_structure`` is NOT invoked for
+        an ``s3://...`` model_path and no bogus ``s3:/bucket/weights`` dir is
+        created on disk. EXPECTED OUTCOME: this test PASSES on fixed code.
+
+        Validates: Requirements 2.1
+        """
+        mock_js.return_value = False
+        mock_nb.return_value = None
+        mock_hf_config.return_value = {"model_type": "gpt2"}
+        mock_tgi_config.return_value = ({"MAX_INPUT_LENGTH": "1024"}, 512)
+        mock_gpu.return_value = 1
+        mock_tp.return_value = 1
+        mock_create.return_value = Mock()
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.model = "mistralai/Mistral-7B-v0.1"
+        self.builder.model_path = "s3://bucket/weights/"
+
+        self.builder._build_for_tgi()
+
+        # Property 1: the S3 URI is never fed into the local mkdir helper.
+        mock_dir.assert_not_called()
+
+    @patch("sagemaker.serve.model_builder_servers._get_gpu_info")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tensor_parallel_degree")
+    @patch("sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tgi_configurations")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.tgi.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_validate_tgi_serving_sample_data")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_fixed_s3_model_path_points_at_mounted_weights(
+        self,
+        mock_create,
+        mock_prepare,
+        mock_detect,
+        mock_js,
+        mock_validate,
+        mock_dir,
+        mock_nb,
+        mock_tgi_config,
+        mock_hf_config,
+        mock_tp,
+        mock_gpu,
+    ):
+        """Property 2 (clauses 2.2, 2.3, 2.4): an S3 model_path points the
+        container at the mounted weights.
+
+        On the FIXED code the container env (captured at ``_create_model`` time)
+        has ``HF_MODEL_ID=/opt/ml/model`` and ``HF_HUB_OFFLINE=1``, and the S3
+        source is routed through ``_prepare_for_mode(model_path=...)`` so the
+        ``_upload_tgi_artifacts`` S3 branch builds the uncompressed
+        ``ModelDataSource``. EXPECTED OUTCOME: this test PASSES on fixed code.
+
+        Validates: Requirements 2.2, 2.3, 2.4
+        """
+        mock_js.return_value = False
+        mock_nb.return_value = None
+        mock_hf_config.return_value = {"model_type": "gpt2"}
+        mock_tgi_config.return_value = ({"MAX_INPUT_LENGTH": "1024"}, 512)
+        mock_gpu.return_value = 1
+        mock_tp.return_value = 1
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.model = "mistralai/Mistral-7B-v0.1"
+        self.builder.model_path = "s3://bucket/weights/"
+
+        # The container env is baked at _create_model() time (the post-build
+        # HF_HUB_OFFLINE reset only mutates the in-memory env_vars afterwards),
+        # so capture a snapshot of env_vars when _create_model is invoked.
+        captured_env = {}
+
+        def _capture_container_env():
+            captured_env.update(self.builder.env_vars)
+            return Mock()
+
+        mock_create.side_effect = _capture_container_env
+
+        self.builder._build_for_tgi()
+
+        # Property 2: container points at the mounted S3 weights, offline.
+        self.assertEqual(captured_env["HF_MODEL_ID"], "/opt/ml/model")
+        self.assertEqual(captured_env["HF_HUB_OFFLINE"], "1")
+        # Property 2 (2.4): the S3 source is routed through _prepare_for_mode so
+        # the _upload_tgi_artifacts S3 branch builds the ModelDataSource.
+        mock_prepare.assert_called_once_with(model_path="s3://bucket/weights/")
+
+    @patch("sagemaker.serve.model_builder_servers._get_gpu_info")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tensor_parallel_degree")
+    @patch("sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tgi_configurations")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.tgi.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_validate_tgi_serving_sample_data")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_fixed_s3_hf_hub_offline_survives_post_build_reset(
+        self,
+        mock_create,
+        mock_prepare,
+        mock_detect,
+        mock_js,
+        mock_validate,
+        mock_dir,
+        mock_nb,
+        mock_tgi_config,
+        mock_hf_config,
+        mock_tp,
+        mock_gpu,
+    ):
+        """Property 2 (clause 2.3): HF_HUB_OFFLINE stays "1" through end of build.
+
+        The end-of-method reset (``if "HF_HUB_OFFLINE" in self.env_vars: ... "0"``)
+        runs after ``_create_model`` and previously clobbered the S3 offline flag
+        back to "0". For an S3-mounted weight source it must remain "1" so TGI
+        loads from /opt/ml/model and does not phone home. Regression test for the
+        HF_HUB_OFFLINE-reset defect surfaced during real deployment.
+
+        Validates: Requirements 2.3
+        """
+        mock_js.return_value = False
+        mock_nb.return_value = None
+        mock_hf_config.return_value = {"model_type": "gpt2"}
+        mock_tgi_config.return_value = ({"MAX_INPUT_LENGTH": "1024"}, 512)
+        mock_gpu.return_value = 1
+        mock_tp.return_value = 1
+        mock_create.return_value = Mock()
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.model = "mistralai/Mistral-7B-v0.1"
+        self.builder.model_path = "s3://bucket/weights/"
+
+        self.builder._build_for_tgi()
+
+        # After the full build (including the post-build reset), the S3 path must
+        # still be offline so TGI serves from the mounted weights.
+        self.assertEqual(self.builder.env_vars["HF_HUB_OFFLINE"], "1")
+
+    @patch("sagemaker.serve.model_builder_servers._get_gpu_info")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tensor_parallel_degree")
+    @patch("sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tgi_configurations")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.tgi.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_validate_tgi_serving_sample_data")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_fixed_s3_model_data_url_routed_to_s3_branch(
+        self,
+        mock_create,
+        mock_prepare,
+        mock_detect,
+        mock_js,
+        mock_validate,
+        mock_dir,
+        mock_nb,
+        mock_tgi_config,
+        mock_hf_config,
+        mock_tp,
+        mock_gpu,
+    ):
+        """Property 2 (clause 2.4): an s3_model_data_url weight source is honored.
+
+        On the FIXED code the non-local branch detects the S3 weight source
+        supplied via ``s3_model_data_url`` and calls
+        ``_prepare_for_mode(model_path=<s3 url>)`` so it reaches the
+        ``_upload_tgi_artifacts`` S3 upload branch, and the container env
+        (captured at ``_create_model`` time) has ``HF_MODEL_ID=/opt/ml/model``.
+        EXPECTED OUTCOME: this test PASSES on fixed code.
+
+        Validates: Requirements 2.4
+        """
+        mock_js.return_value = False
+        mock_nb.return_value = None
+        mock_hf_config.return_value = {"model_type": "gpt2"}
+        mock_tgi_config.return_value = ({"MAX_INPUT_LENGTH": "1024"}, 512)
+        mock_gpu.return_value = 1
+        mock_tp.return_value = 1
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.model = "org/model"
+        # model_path stays the genuine local default; the S3 weight source is
+        # supplied via s3_model_data_url.
+        self.builder.s3_model_data_url = "s3://bucket/weights/"
+
+        captured_env = {}
+
+        def _capture_container_env():
+            captured_env.update(self.builder.env_vars)
+            return Mock()
+
+        mock_create.side_effect = _capture_container_env
+
+        self.builder._build_for_tgi()
+
+        # Property 2 (2.4): the s3_model_data_url is routed through the S3
+        # upload branch via _prepare_for_mode(model_path=...).
+        mock_prepare.assert_called_once_with(model_path="s3://bucket/weights/")
+        self.assertEqual(captured_env["HF_MODEL_ID"], "/opt/ml/model")
+        self.assertEqual(captured_env["HF_HUB_OFFLINE"], "1")
+
+    @patch("sagemaker.serve.model_builder_servers._get_gpu_info")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tensor_parallel_degree")
+    @patch("sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tgi_configurations")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.tgi.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_validate_tgi_serving_sample_data")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_fixed_s3_preserves_user_supplied_hf_model_id(
+        self,
+        mock_create,
+        mock_prepare,
+        mock_detect,
+        mock_js,
+        mock_validate,
+        mock_dir,
+        mock_nb,
+        mock_tgi_config,
+        mock_hf_config,
+        mock_tp,
+        mock_gpu,
+    ):
+        """Property 3 (clause 2.5): a user-supplied HF_MODEL_ID is preserved.
+
+        With an S3 weight source and ``env_vars={"HF_MODEL_ID":
+        "/opt/ml/model/custom"}`` the fixed code uses ``setdefault`` so the
+        user value is preserved and NOT overwritten with ``/opt/ml/model``.
+        ``HF_HUB_OFFLINE`` is still defaulted to ``"1"``.
+        EXPECTED OUTCOME: this test PASSES on fixed code.
+
+        Validates: Requirements 2.5
+        """
+        mock_js.return_value = False
+        mock_nb.return_value = None
+        mock_hf_config.return_value = {"model_type": "gpt2"}
+        mock_tgi_config.return_value = ({"MAX_INPUT_LENGTH": "1024"}, 512)
+        mock_gpu.return_value = 1
+        mock_tp.return_value = 1
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.model = "mistralai/Mistral-7B-v0.1"
+        self.builder.model_path = "s3://bucket/weights/"
+        self.builder.env_vars = {"HF_MODEL_ID": "/opt/ml/model/custom"}
+
+        captured_env = {}
+
+        def _capture_container_env():
+            captured_env.update(self.builder.env_vars)
+            return Mock()
+
+        mock_create.side_effect = _capture_container_env
+
+        self.builder._build_for_tgi()
+
+        # Property 3: the user-supplied HF_MODEL_ID is preserved.
+        self.assertEqual(captured_env["HF_MODEL_ID"], "/opt/ml/model/custom")
+        self.assertEqual(captured_env["HF_HUB_OFFLINE"], "1")
+
+    # ------------------------------------------------------------------
+    # Preservation property tests (tgi-s3-model-loading bugfix spec)
+    #
+    # Property 4: Preservation - non-bug TGI and non-TGI builds are unchanged.
+    #
+    # Observation-first methodology: the outputs asserted below were recorded
+    # by running the UNFIXED code for inputs where isBugCondition is false
+    # (no S3 weight source). They assert the baseline behavior to preserve, so
+    # they PASS on the unfixed code and must keep passing after the additive
+    # S3 fix. Each test parametrizes across multiple non-bug inputs (varied
+    # local paths, repo ids, JumpStart ids) to assert the universal
+    # preservation property.
+    # See .kiro/specs/tgi-s3-model-loading/{bugfix,design,tasks}.md.
+    # ------------------------------------------------------------------
+
+    @patch("sagemaker.serve.model_builder_servers._get_gpu_info")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tensor_parallel_degree")
+    @patch("sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tgi_configurations")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.tgi.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_validate_tgi_serving_sample_data")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_preserve_local_path_and_hf_hub(
+        self,
+        mock_create,
+        mock_prepare,
+        mock_detect,
+        mock_js,
+        mock_validate,
+        mock_dir,
+        mock_nb,
+        mock_tgi_config,
+        mock_hf_config,
+        mock_tp,
+        mock_gpu,
+    ):
+        """Property 4 (clauses 3.1, 3.2): genuine local path + HF repo id unchanged.
+
+        Property-based style: across varied genuine local ``model_path`` and HF
+        repo id inputs (where ``isBugCondition`` is false because there is no S3
+        weight source), the TGI build always:
+          * calls ``_create_dir_structure`` with the genuine local path (3.1),
+          * sets ``HF_MODEL_ID`` to the HF repo id and never sets
+            ``HF_HUB_OFFLINE`` in SAGEMAKER_ENDPOINT mode (3.2),
+          * routes ``_prepare_for_mode`` with no ``model_path`` so no S3
+            ``ModelDataSource`` is attached (3.2),
+          * leaves ``s3_upload_path`` as ``None``.
+
+        Observed on UNFIXED code. EXPECTED OUTCOME: PASSES (baseline to preserve).
+
+        Validates: Requirements 3.1, 3.2
+        """
+        mock_js.return_value = False
+        mock_nb.return_value = None
+        mock_hf_config.return_value = {"model_type": "gpt2"}
+        mock_tgi_config.return_value = ({"MAX_INPUT_LENGTH": "1024"}, 512)
+        mock_gpu.return_value = 1
+        mock_tp.return_value = 1
+        mock_create.return_value = Mock()
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+
+        non_bug_cases = [
+            ("/tmp/local", "gpt2"),
+            ("/tmp/foo", "mistralai/Mistral-7B-v0.1"),
+            ("/home/user/models", "org/custom-model"),
+            (tempfile.mkdtemp(), "bert-base-uncased"),
+        ]
+        for model_path, repo_id in non_bug_cases:
+            with self.subTest(model_path=model_path, repo_id=repo_id):
+                mock_dir.reset_mock()
+                mock_prepare.reset_mock()
+                builder = MockModelBuilderServers()
+                builder.model_server = ModelServer.TGI
+                builder.mode = Mode.SAGEMAKER_ENDPOINT
+                builder.model = repo_id
+                builder.model_path = model_path
+
+                builder._build_for_tgi()
+
+                # 3.1: the genuine local dir is created (no S3 short-circuit).
+                mock_dir.assert_called_once_with(model_path)
+                # 3.2: HF-Hub download preserved, no offline flag in endpoint mode.
+                self.assertEqual(builder.env_vars["HF_MODEL_ID"], repo_id)
+                self.assertNotIn("HF_HUB_OFFLINE", builder.env_vars)
+                # 3.2: no S3 ModelDataSource routing (prepare called with no model_path).
+                mock_prepare.assert_called_once_with()
+                self.assertIsNone(builder.s3_upload_path)
+
+    @patch("sagemaker.serve.model_builder_servers._get_gpu_info")
+    @patch("sagemaker.serve.model_builder_servers._get_default_tensor_parallel_degree")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.tgi.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_validate_tgi_serving_sample_data")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_preserve_jumpstart_build(
+        self,
+        mock_create,
+        mock_prepare,
+        mock_detect,
+        mock_js,
+        mock_validate,
+        mock_dir,
+        mock_nb,
+        mock_tp,
+        mock_gpu,
+    ):
+        """Property 4 (clause 3.4): JumpStart TGI builds unchanged.
+
+        When ``_is_jumpstart_model_id()`` is true the HF configuration block in
+        ``_build_for_tgi`` is skipped, so ``HF_MODEL_ID`` is never set from the
+        model id and the JumpStart artifact path runs as before. The genuine
+        local dir is still created. Across varied JumpStart ids this baseline
+        holds on the UNFIXED code and must be preserved (the bug condition
+        explicitly excludes JumpStart ids).
+
+        EXPECTED OUTCOME: PASSES on unfixed code.
+
+        Validates: Requirements 3.4
+        """
+        mock_js.return_value = True
+        mock_nb.return_value = None
+        mock_gpu.return_value = 1
+        mock_tp.return_value = 1
+        mock_create.return_value = Mock()
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+
+        jumpstart_ids = [
+            "huggingface-llm-falcon-7b",
+            "meta-textgeneration-llama-2-7b",
+            "huggingface-textgeneration1-gpt-j-6b",
+        ]
+        for js_id in jumpstart_ids:
+            with self.subTest(js_id=js_id):
+                mock_dir.reset_mock()
+                builder = MockModelBuilderServers()
+                builder.model_server = ModelServer.TGI
+                builder.mode = Mode.SAGEMAKER_ENDPOINT
+                builder.model = js_id
+                builder.model_path = "/tmp/local"
+
+                builder._build_for_tgi()
+
+                # JumpStart path: local dir created, HF block skipped entirely.
+                mock_dir.assert_called_once_with("/tmp/local")
+                self.assertNotIn("HF_MODEL_ID", builder.env_vars)
+
 
 class TestBuildForDJL(unittest.TestCase):
     """Test _build_for_djl method."""
@@ -511,6 +979,66 @@ class TestBuildForDJL(unittest.TestCase):
 
         self.assertEqual(self.builder.env_vars["TENSOR_PARALLEL_DEGREE"], "4")
         mock_create.assert_called_once()
+
+    # ------------------------------------------------------------------
+    # Preservation property test (tgi-s3-model-loading bugfix spec)
+    #
+    # Property 4 (clause 3.3): a non-TGI build (DJL) is not touched by the
+    # TGI-only S3 fix. Extends the existing DJL HF-model coverage with a
+    # property-based parametrization across repo ids. Observed on UNFIXED code.
+    # ------------------------------------------------------------------
+
+    @patch("sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf")
+    @patch("sagemaker.serve.model_builder_servers._get_default_djl_configurations")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.djl_serving.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_validate_djl_serving_sample_data")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_preserve_djl_build_unchanged(
+        self,
+        mock_create,
+        mock_prepare,
+        mock_detect,
+        mock_js,
+        mock_validate,
+        mock_dir,
+        mock_nb,
+        mock_djl_config,
+        mock_hf_config,
+    ):
+        """Property 4 (clause 3.3): non-TGI DJL build is unaffected by the TGI fix.
+
+        Across varied HF repo ids the DJL build keeps ``HF_MODEL_ID=<repo id>``,
+        applies its own DJL configuration (#5529), and creates its own local dir
+        structure. The TGI-only S3 fix must not change any of this.
+
+        EXPECTED OUTCOME: PASSES on unfixed code.
+
+        Validates: Requirements 3.3
+        """
+        mock_js.return_value = False
+        mock_nb.return_value = None
+        mock_hf_config.return_value = {"model_type": "gpt2"}
+        mock_djl_config.return_value = ({"OPTION_ENGINE": "Python"}, 512)
+        mock_create.return_value = Mock()
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+
+        for repo_id in ["gpt2", "mistralai/Mistral-7B-v0.1", "org/custom-model"]:
+            with self.subTest(repo_id=repo_id):
+                mock_dir.reset_mock()
+                builder = MockModelBuilderServers()
+                builder.model_server = ModelServer.DJL_SERVING
+                builder.mode = Mode.LOCAL_CONTAINER
+                builder.model = repo_id
+
+                builder._build_for_djl()
+
+                self.assertEqual(builder.env_vars["HF_MODEL_ID"], repo_id)
+                self.assertEqual(builder.env_vars["OPTION_ENGINE"], "Python")
+                mock_dir.assert_called_once_with(builder.model_path)
 
 
 class TestBuildForTriton(unittest.TestCase):
@@ -680,6 +1208,56 @@ class TestBuildForTEI(unittest.TestCase):
         with self.assertRaises(ValueError) as ctx:
             self.builder._build_for_tei()
         self.assertIn("Instance type", str(ctx.exception))
+
+    # ------------------------------------------------------------------
+    # Preservation property test (tgi-s3-model-loading bugfix spec)
+    #
+    # Property 4 (clause 3.3): a non-TGI build (TEI) is not touched by the
+    # TGI-only S3 fix. Extends the existing TEI HF-model coverage with a
+    # property-based parametrization across repo ids. Observed on UNFIXED code.
+    # ------------------------------------------------------------------
+
+    @patch("sagemaker.serve.model_builder_servers._get_model_config_properties_from_hf")
+    @patch("sagemaker.serve.model_builder_servers._get_nb_instance")
+    @patch("sagemaker.serve.model_server.tgi.prepare._create_dir_structure")
+    @patch.object(MockModelBuilderServers, "_is_jumpstart_model_id")
+    @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_preserve_tei_build_unchanged(
+        self, mock_create, mock_prepare, mock_detect, mock_js, mock_dir, mock_nb, mock_hf_config
+    ):
+        """Property 4 (clause 3.3): non-TGI TEI build is unaffected by the TGI fix.
+
+        Across varied HF repo ids the TEI build keeps ``HF_MODEL_ID=<repo id>``
+        and creates its local dir structure. The TGI-only S3 fix must not change
+        this behavior.
+
+        EXPECTED OUTCOME: PASSES on unfixed code.
+
+        Validates: Requirements 3.3
+        """
+        mock_js.return_value = False
+        mock_nb.return_value = None
+        mock_hf_config.return_value = {"model_type": "bert"}
+        mock_create.return_value = Mock()
+        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+
+        for repo_id in [
+            "bert-base-uncased",
+            "sentence-transformers/all-MiniLM-L6-v2",
+            "intfloat/e5-large-v2",
+        ]:
+            with self.subTest(repo_id=repo_id):
+                mock_dir.reset_mock()
+                builder = MockModelBuilderServers()
+                builder.model_server = ModelServer.TEI
+                builder.model = repo_id
+
+                builder._build_for_tei()
+
+                self.assertEqual(builder.env_vars["HF_MODEL_ID"], repo_id)
+                mock_dir.assert_called_once_with(builder.model_path)
 
 
 class TestBuildForSMD(unittest.TestCase):
