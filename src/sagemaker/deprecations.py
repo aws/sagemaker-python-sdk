@@ -14,11 +14,92 @@
 from __future__ import absolute_import
 
 import logging
+import os
 import warnings
 
 logger = logging.getLogger(__name__)
 
 V2_URL = "https://sagemaker.readthedocs.io/en/stable/v2.html"
+
+# Migration guide for the v2 -> v3 (major version) transition.
+V3_MIGRATION_URL = "https://github.com/aws/sagemaker-python-sdk/blob/master/migration.md"
+
+# Setting this environment variable to a truthy value silences the v2 -> v3
+# migration warnings. Intended for users who cannot migrate yet (e.g. pinned
+# production jobs, CI) and do not want the nudge on every run.
+SUPPRESS_V2_WARNING_ENV_VAR = "SAGEMAKER_SUPPRESS_V2_WARNING"
+
+# Tracks the v2 -> v3 nudges already emitted in this process so that each
+# distinct feature warns at most once, regardless of how many objects are
+# created. Keyed by feature name (None for the package-level nudge).
+_v2_deprecation_warned = set()
+
+
+class SageMakerV2DeprecationWarning(FutureWarning):
+    """Warning for the SageMaker Python SDK v2 -> v3 migration.
+
+    Subclasses ``FutureWarning`` rather than ``DeprecationWarning`` so the
+    message is shown by default to end users running application code (Python
+    silences ``DeprecationWarning`` outside of ``__main__``). Users can still
+    silence it through the standard ``warnings`` filters, the ``PYTHONWARNINGS``
+    environment variable, or by setting ``SAGEMAKER_SUPPRESS_V2_WARNING=1``.
+    """
+
+
+def _v2_suppressed():
+    """Return True if the v2 -> v3 migration warnings are suppressed via env var."""
+    return bool(os.environ.get(SUPPRESS_V2_WARNING_ENV_VAR))
+
+
+def warn_v2_deprecation(feature=None, v3_replacement=None, v3_import=None, stacklevel=2):
+    """Emit a visible, once-per-process warning about the v2 -> v3 migration.
+
+    Args:
+        feature (str): Name of the v2 feature being flagged (e.g. ``"Estimator"``).
+            When ``None``, emits the package-level nudge shown on ``import sagemaker``.
+        v3_replacement (str): The exact v3 symbol (or fully qualified path) that
+            replaces this feature, e.g. ``"ModelTrainer"`` or
+            ``"sagemaker.core.shapes.TransformJob"``. Optional.
+        v3_import (str): The exact import statement for the v3 replacement, e.g.
+            ``"from sagemaker.train import ModelTrainer"``. Quoted verbatim in the
+            message so users can copy-paste it. Optional; provide only when the
+            migration guide gives a confirmed import path.
+        stacklevel (int): Passed through to ``warnings.warn`` so the warning is
+            attributed to the caller's frame. Defaults to 2.
+
+    Notes:
+        The warning fires at most once per distinct ``feature`` per process and
+        is a no-op when ``SAGEMAKER_SUPPRESS_V2_WARNING`` is set.
+    """
+    if _v2_suppressed():
+        return
+    if feature in _v2_deprecation_warned:
+        return
+    _v2_deprecation_warned.add(feature)
+
+    if feature is None:
+        msg = (
+            "You are using the SageMaker Python SDK v2, which is on path of deprecation. "
+            "v3 is the actively developed major version."
+        )
+    else:
+        msg = f"{feature} is part of the SageMaker Python SDK v2, which is on path of deprecation."
+        if v3_replacement:
+            # Backtick-quote concrete symbols/paths (no spaces); leave descriptive
+            # phrases (used when the migration guide gives no exact symbol) unquoted.
+            if " " in v3_replacement:
+                msg += f" In v3, use {v3_replacement}"
+            else:
+                msg += f" In v3, use `{v3_replacement}`"
+            if v3_import:
+                msg += f" (`{v3_import}`)"
+            msg += "."
+    msg += (
+        f"\nSee {V3_MIGRATION_URL} for the migration guide. "
+        f"Set {SUPPRESS_V2_WARNING_ENV_VAR}=1 to silence this warning."
+    )
+    warnings.warn(msg, SageMakerV2DeprecationWarning, stacklevel=stacklevel)
+    logger.warning(msg)
 
 
 def _warn(msg, sdk_version=None):

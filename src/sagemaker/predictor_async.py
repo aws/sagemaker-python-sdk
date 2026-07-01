@@ -18,6 +18,7 @@ import uuid
 from botocore.exceptions import WaiterError
 
 from sagemaker import s3
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.exceptions import PollingTimeoutError, AsyncInferenceModelError
 from sagemaker.async_inference import WaiterConfig, AsyncInferenceResponse
 from sagemaker.s3 import parse_s3_url
@@ -40,6 +41,11 @@ class AsyncPredictor:
                 object has useful methods and variables. ``AsyncPredictor``
                 stands on top of it with capability for async inference.
         """
+        warn_v2_deprecation(
+            feature="AsyncPredictor",
+            v3_replacement="ModelBuilder.deploy(...)",
+            v3_import="from sagemaker.serve import ModelBuilder",
+        )
         self.predictor = predictor
         self.endpoint_name = predictor.endpoint_name
         self.sagemaker_session = predictor.sagemaker_session or Session()
