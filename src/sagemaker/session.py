@@ -137,6 +137,7 @@ from sagemaker.utils import (
     format_tags,
     Tags,
     TagsDict,
+    validate_path_within_directory,
 )
 from sagemaker import exceptions
 from sagemaker.session_settings import SessionSettings
@@ -551,12 +552,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
             download_extra_args["ExpectedBucketOwner"] = expected_owner
         downloaded_paths = []
         for dir_path in directories:
+            validate_path_within_directory(dir_path, path)
             os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
+
+            validate_path_within_directory(destination_path, path, source_description=key)
+
             if not os.path.exists(os.path.dirname(destination_path)):
                 os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             s3.download_file(
