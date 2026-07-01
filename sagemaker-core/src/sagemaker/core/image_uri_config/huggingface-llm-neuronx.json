@@ -55,7 +55,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "1.13.1-optimum0.0.16",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -109,7 +111,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "1.13.1-optimum0.0.17",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -163,7 +167,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "1.13.1-optimum0.0.18",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -217,7 +223,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "1.13.1-optimum0.0.19",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -271,7 +279,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "1.13.1-optimum0.0.20",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -325,7 +335,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "1.13.1-optimum0.0.21",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -379,7 +391,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "2.1.2-optimum0.0.22",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -433,7 +447,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "2.1.2-optimum0.0.23",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -487,7 +503,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "2.1.2-optimum0.0.24",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -541,7 +559,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "2.1.2-optimum0.0.25",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -595,7 +615,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "2.1.2-optimum0.0.27",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -649,7 +671,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "2.1.2-optimum0.0.28",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -703,7 +727,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "2.5.1-optimum3.3.4",
                 "repository": "huggingface-pytorch-tgi-inference",
@@ -757,7 +783,9 @@
                     "us-isof-east-1": "303241398832",
                     "us-isof-south-1": "454834333376",
                     "us-west-1": "763104351884",
-                    "us-west-2": "763104351884"
+                    "us-west-2": "763104351884",
+                    "eu-isoe-west-1": "371248457586",
+                    "eusc-de-east-1": "204133271717"
                 },
                 "tag_prefix": "2.7.0-optimum3.3.6",
                 "repository": "huggingface-pytorch-tgi-inference",
