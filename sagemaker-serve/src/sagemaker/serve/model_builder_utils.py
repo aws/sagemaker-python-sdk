@@ -634,6 +634,7 @@ class _ModelBuilderUtils:
                 model_version=getattr(self, "model_version", None) or "*",
                 region=self.region,
                 instance_type=getattr(self, "instance_type", None),
+                hub_arn=getattr(self, "hub_arn", None),
                 tolerate_vulnerable_model=getattr(self, "tolerate_vulnerable_model", None),
                 tolerate_deprecated_model=getattr(self, "tolerate_deprecated_model", None),
             )
