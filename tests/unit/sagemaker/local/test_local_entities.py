@@ -173,6 +173,44 @@ def test_local_transform_job_perform_batch_inference(
     assert "file2.out" in output_files
 
 
+def test_local_transform_job_perform_batch_inference_path_traversal(
+    sagemaker_local_session, tmpdir
+):
+    """Test that file paths resolving outside working_dir are blocked (CWE-22)."""
+    # Build a dedicated job instance to avoid mutating the shared session-scoped fixture.
+    with patch(
+        "sagemaker.local.local_session.LocalSagemakerClient.describe_model"
+    ) as describe_model:
+        describe_model.return_value = {
+            "PrimaryContainer": {"Environment": {}, "Image": "some-image:1.0"}
+        }
+        job = sagemaker.local.entities._LocalTransformJob(
+            "traversal-transform-job", "some-model", sagemaker_local_session
+        )
+
+    working_dir = str(tmpdir.mkdir("working"))
+    dataset_dir = str(tmpdir.mkdir("dataset"))
+
+    job._get_working_directory = Mock(return_value=working_dir)
+
+    data_source = Mock()
+    data_source.get_root_dir.return_value = dataset_dir
+    # A file that resolves outside working_dir via '..' relative path
+    traversal_file = os.path.join(dataset_dir, "..", "..", "..", "etc", "passwd")
+    data_source.get_file_list.return_value = [traversal_file]
+
+    batch_provider = Mock()
+    job._prepare_data_transformation = Mock(return_value=(data_source, batch_provider))
+
+    input_data = {"ContentType": "text/csv"}
+    output_data = {"S3OutputPath": "s3://bucket/output", "Accept": "text/csv"}
+
+    with pytest.raises(ValueError, match="Path traversal detected"):
+        job._perform_batch_inference(
+            input_data, output_data, BatchStrategy="MultiRecord", MaxPayloadInMB="6"
+        )
+
+
 @patch("sagemaker.local.entities._SageMakerContainer", Mock())
 @patch("sagemaker.local.entities.get_docker_host")
 @patch("sagemaker.local.entities._perform_request")
