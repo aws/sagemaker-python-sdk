@@ -852,7 +852,6 @@ def test_llm_as_judge_evaluator_valid_evaluator_models(mock_artifact, mock_resol
     # in ap-northeast-1 (see test_llm_as_judge_evaluator_region_restriction).
     valid_models = [
         "anthropic.claude-3-haiku-20240307-v1:0",
-        "anthropic.claude-3-5-haiku-20241022-v1:0",
         "anthropic.claude-sonnet-4-20250514-v1:0",
         "anthropic.claude-haiku-4-5-20251001-v1:0",
         "anthropic.claude-sonnet-4-5-20250929-v1:0",
