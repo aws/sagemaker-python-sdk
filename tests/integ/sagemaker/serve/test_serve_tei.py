@@ -47,7 +47,12 @@ def model_builder_model_schema_builder(sagemaker_session):
         schema_builder=SchemaBuilder(sample_input, loaded_response),
         env_vars={
             # Add this to bypass JumpStart model mapping
-            "HF_MODEL_ID": "BAAI/bge-m3"
+            "HF_MODEL_ID": "BAAI/bge-m3",
+            # Force plain HTTPS model download in the container. HF Hub repos are now
+            # backed by Xet storage, and the DLC's hf_transfer path returns 403 against
+            # the Xet CDN, so the container fails the ping health check on startup.
+            "HF_HUB_ENABLE_HF_TRANSFER": "0",
+            "HF_HUB_DISABLE_XET": "1",
         },
     )
 
