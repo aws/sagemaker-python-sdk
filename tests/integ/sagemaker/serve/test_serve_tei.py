@@ -62,6 +62,7 @@ def model_builder(request):
     return request.getfixturevalue(request.param)
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
     reason="Testing feature needs latest metadata",
