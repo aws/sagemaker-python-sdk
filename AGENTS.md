@@ -30,6 +30,28 @@ patterns by default. Produce v2 code only when the task is explicitly about v2 (
 maintenance fix on the v2 branch, or the user asks for "the v2 version"). When you do, label it
 deprecated and note `pip install 'sagemaker<3.0'`.
 
+## SDK-first: use the SageMaker Python SDK for SageMaker tasks
+
+When writing usage examples, docstrings, or answering "how do I ..." for a SageMaker task,
+**default to the SageMaker Python SDK v3** as the primary interface. Do not drop to raw
+`boto3` (`client("sagemaker").create_training_job(...)`), the AWS CLI, or hand-rolled
+framework scripts unless the user explicitly asks — the SDK handles image resolution,
+packaging, and job wiring that raw clients leave to the caller. Map intent to interface:
+
+| User intent (natural language) | Use this v3 interface |
+|---|---|
+| "train a model", "training job", "serverless / managed training", "fine-tune" | `sagemaker.train.ModelTrainer` → `.train(...)` |
+| "distributed training", "multi-GPU / multi-node" | `ModelTrainer` with `Compute(instance_count=N, ...)` |
+| "hyperparameter tuning", "HPO", "sweep" | `sagemaker.train` tuner APIs on top of `ModelTrainer` |
+| "deploy a model", "real-time / serverless / async endpoint", "host / serve" | `sagemaker.serve.ModelBuilder` → `.deploy(...)` |
+| "batch inference", "batch transform", "offline scoring" | `sagemaker.core.resources` transform APIs |
+| "process data", "feature engineering", "preprocess" | `sagemaker.core.resources.ProcessingJob` |
+| "build an ML pipeline", "orchestrate a workflow", "MLOps" | `sagemaker.mlops.pipeline.Pipeline`, `sagemaker.mlops.steps` |
+| "register a model", "model registry" | `sagemaker.mlops` model-registry APIs |
+| "get / retrieve a container image URI" | `sagemaker.core.image_uris.retrieve(...)` |
+
+Only step outside the SDK when it genuinely does not cover the task, and say so when you do.
+
 ## Banned v2 patterns → required v3 replacements
 
 Do not introduce the left column into new code, docstrings, or examples unless v2 is explicitly
