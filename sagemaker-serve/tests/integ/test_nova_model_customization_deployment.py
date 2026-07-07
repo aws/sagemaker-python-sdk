@@ -26,6 +26,7 @@ import time
 import pytest
 import random
 from sagemaker.serve import ModelBuilder
+from sagemaker.serve.model_reuse import MODEL_SOURCE_TAG_KEY
 from sagemaker.core.resources import TrainingJob
 
 logger = logging.getLogger(__name__)
@@ -225,6 +226,13 @@ class TestModelCustomizationFromTrainingJob:
         assert endpoint is not None
         assert endpoint.endpoint_arn is not None
         assert endpoint.endpoint_status == "InService"
+
+        # The endpoint should carry the model-source tag that powers resource reuse.
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        endpoint_tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
+        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in endpoint_tags}, (
+            f"Endpoint {endpoint.endpoint_arn} missing model-source tag for reuse"
+        )
 
         time.sleep(10)  # brief buffer for inference component readiness
 
@@ -490,6 +498,14 @@ class TestNovaBedrockDeployment:
             customModelDeploymentIdentifier=deployment_arn
         )
         assert deployment.get("status") == "Active"
+
+    def test_nova_bedrock_custom_model_tagged_for_reuse(self, deployed_nova_model, bedrock_client):
+        """The Nova custom model should carry the model-source tag that powers reuse."""
+        model_arn = deployed_nova_model["model_arn"]
+        tags = bedrock_client.list_tags_for_resource(resourceARN=model_arn).get("tags", [])
+        assert MODEL_SOURCE_TAG_KEY in {t["key"] for t in tags}, (
+            f"Custom model {model_arn} missing model-source tag for reuse"
+        )
 
     @pytest.mark.slow
     def test_nova_bedrock_invoke(self, deployed_nova_model, bedrock_runtime):

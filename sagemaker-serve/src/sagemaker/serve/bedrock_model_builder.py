@@ -18,11 +18,20 @@ import os
 import time
 import logging
 from datetime import datetime, timezone
-
-from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
 from typing import Optional, Dict, Any, Union
 from urllib.parse import urlparse
 
+from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
+from sagemaker.serve.model_reuse import (
+    build_source_tag,
+    find_active_bedrock_deployment_for_model,
+    find_existing_bedrock_model,
+)
+from sagemaker.core.training.utils import (
+    build_nova_manifest_s3_uri,
+    read_nova_checkpoint_uri_from_manifest,
+    resolve_nova_checkpoint_uri,
+)
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.resources import TrainingJob, ModelPackage
@@ -85,7 +94,18 @@ class BedrockModelBuilder:
 
     This class provides functionality to deploy SageMaker models to Bedrock
     using either model import jobs or custom model creation, depending on
-    the model type (Nova models vs. other models).
+    the model type. Nova models use the ``create_custom_model`` +
+    ``create_custom_model_deployment`` path; other (OSS) models use the
+    ``create_model_import_job`` path.
+
+    Resource reuse:
+        ``deploy()`` accepts ``reuse_resources`` (default False). When True, it
+        tags each custom model it creates with the model source and, on a
+        subsequent deploy of the same source, reuses the existing custom model
+        (and its active deployment if present) instead of creating duplicates,
+        logging a warning rather than raising. This matters because Bedrock
+        custom-model import is slow and consumes the limited imported-model
+        quota per account/region.
 
     Args:
         model: The model to deploy. Can be a ModelTrainer, MultiTurnRLTrainer,
@@ -145,6 +165,80 @@ class BedrockModelBuilder:
             self._sagemaker_client = self.boto_session.client("sagemaker")
         return self._sagemaker_client
 
+    def _resolve_model_source_id(self) -> Optional[str]:
+        """Determine the model source identifier for reuse lookups.
+
+        Resolution order:
+        1. Checkpoint URI from training job manifest (Nova models)
+        2. Model package ARN (RMP models)
+        3. Training job / trainer S3 model artifacts
+        4. Direct S3 artifact path
+
+        Returns:
+            Source identifier string, or None if cannot be determined.
+        """
+        try:
+            # Nova models resolve to the checkpoint URI read from the manifest.
+            if isinstance(self.model, TrainingJob) and self.model_package:
+                spec = getattr(self.model_package, "inference_specification", None)
+                containers = getattr(spec, "containers", None) if spec else None
+                container = containers[0] if containers else None
+                if container and _is_nova_model(container):
+                    return self._get_checkpoint_uri_from_manifest_safe()
+
+            # Restricted model packages resolve to their ARN.
+            if self._is_rmp and self.model_package:
+                return self.model_package.model_package_arn
+
+            # TrainingJob and ModelTrainer/BaseTrainer both expose a training job
+            # (directly or via _latest_training_job) carrying the artifacts.
+            training_job = self._resolve_training_job()
+            if training_job is not None:
+                mp_arn = getattr(training_job, "output_model_package_arn", None)
+                if isinstance(mp_arn, str) and mp_arn:
+                    return mp_arn
+                s3_path = self._s3_artifacts_from_training_job(training_job)
+                if s3_path:
+                    return s3_path
+
+            if self.s3_model_artifacts:
+                return self.s3_model_artifacts
+
+        except Exception as e:
+            logger.warning("Could not resolve model source identifier: %s", e)
+
+        return None
+
+    @staticmethod
+    def _s3_artifacts_from_training_job(training_job) -> Optional[str]:
+        """Return s3_model_artifacts from a training job's model_artifacts, if set."""
+        artifacts = getattr(training_job, "model_artifacts", None)
+        if artifacts and not isinstance(artifacts, Unassigned):
+            s3_path = getattr(artifacts, "s3_model_artifacts", None)
+            if isinstance(s3_path, str) and s3_path:
+                return s3_path
+        return None
+
+    def _get_checkpoint_uri_from_manifest_safe(self) -> Optional[str]:
+        """Attempt to read checkpoint URI from manifest, returning None on failure."""
+        if not isinstance(self.model, TrainingJob):
+            return None
+
+        output_data_config = getattr(self.model, "output_data_config", None)
+        s3_output_path = getattr(output_data_config, "s3_output_path", None)
+        if not s3_output_path:
+            return None
+
+        try:
+            return resolve_nova_checkpoint_uri(
+                self.boto_session.client("s3"),
+                s3_output_path,
+                self.model.training_job_name,
+            )
+        except Exception as e:
+            logger.warning("Could not read checkpoint URI from manifest: %s", e)
+            return None
+
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
         try:
@@ -168,6 +262,7 @@ class BedrockModelBuilder:
         client_request_token: Optional[str] = None,
         imported_model_kms_key_id: Optional[str] = None,
         deployment_name: Optional[str] = None,
+        reuse_resources: bool = False,
     ) -> Dict[str, Any]:
         """Deploy the model to Bedrock.
 
@@ -197,9 +292,19 @@ class BedrockModelBuilder:
             imported_model_kms_key_id: KMS key ID for encryption (OSS models only).
             deployment_name: Name for the deployment (Nova models only). If not provided,
                 defaults to custom_model_name suffixed with '-deployment'.
+            reuse_resources: If False (default), always creates new resources. If
+                True, checks for an existing custom model (and active deployment)
+                with the same source tag and reuses them instead of creating
+                duplicates. Newly created models are always tagged for future
+                discovery regardless of this flag.
 
         Returns:
-            For Nova models: the create_custom_model_deployment response.
+            For Nova models: the create_custom_model_deployment response. The
+            response always includes a ``modelArn`` key identifying the custom
+            model that was created or reused. When ``reuse_resources=True`` and a
+            match is found, returns ``{"modelArn": ..., "customModelDeploymentArn":
+            ...}`` for the reused model and its existing active deployment (or a
+            newly created deployment on the reused model if none exists).
             For OSS models: the completed get_model_import_job response.
 
         Raises:
@@ -235,6 +340,45 @@ class BedrockModelBuilder:
                 sagemaker_session=self.sagemaker_session,
             )
 
+            source_id = self._resolve_model_source_id()
+
+            if source_id and reuse_resources:
+                existing_arn = find_existing_bedrock_model(
+                    self._get_bedrock_client(),
+                    source_id,
+                )
+                if existing_arn:
+                    model_arn = existing_arn
+                    # Reuse an existing active deployment on the model if present;
+                    # otherwise create a new deployment on the reused model.
+                    existing_deployment = find_active_bedrock_deployment_for_model(
+                        self._get_bedrock_client(), model_arn
+                    )
+                    if existing_deployment:
+                        logger.warning(
+                            "Reusing existing custom model %s and deployment %s "
+                            "(matched model-source tag). No new resources were created. "
+                            "Pass reuse_resources=False to force new resources.",
+                            model_arn,
+                            existing_deployment,
+                        )
+                        return {
+                            "modelArn": model_arn,
+                            "customModelDeploymentArn": existing_deployment,
+                        }
+                    logger.warning(
+                        "Reusing existing custom model %s (matched model-source tag); "
+                        "creating a new deployment on it. Pass reuse_resources=False to "
+                        "force a new model.",
+                        model_arn,
+                    )
+                    deploy_name = deployment_name or f"{custom_model_name}-deployment"
+                    response = self.create_deployment(
+                        model_arn=model_arn, deployment_name=deploy_name
+                    )
+                    response.setdefault("modelArn", model_arn)
+                    return response
+
             if self._is_rmp:
                 params = {
                     "modelName": custom_model_name,
@@ -251,8 +395,17 @@ class BedrockModelBuilder:
                     "modelSourceConfig": {"s3DataSource": {"s3Uri": self.s3_model_artifacts}},
                     "roleArn": role_arn,
                 }
-            if model_tags:
-                params["modelTags"] = model_tags
+
+            merged_tags = list(model_tags) if model_tags else []
+            if source_id:
+                source_tag = build_source_tag(source_id)
+                merged_tags = [
+                    t for t in merged_tags if t.get("key") != source_tag["key"]
+                ]
+                merged_tags.append(source_tag)
+            if merged_tags:
+                params["modelTags"] = merged_tags
+
             params = {k: v for k, v in params.items() if v is not None}
 
             logger.info("Creating custom model %s for Nova deployment", custom_model_name)
@@ -261,7 +414,9 @@ class BedrockModelBuilder:
 
             model_arn = create_response.get("modelArn")
             deploy_name = deployment_name or f"{custom_model_name}-deployment"
-            return self.create_deployment(model_arn=model_arn, deployment_name=deploy_name)
+            response = self.create_deployment(model_arn=model_arn, deployment_name=deploy_name)
+            response.setdefault("modelArn", model_arn)
+            return response
         else:
             # Resolve and validate the Bedrock role: the provided role_arn if given,
             # otherwise the caller's own identity role. A RoleValidationError
@@ -657,33 +812,27 @@ class BedrockModelBuilder:
                         return self._resolve_hf_model_path(s3_uri)
             return None
 
-        # No model_package — resolve from model_artifacts directly.
+        # No model_package — resolve from the training job's model_artifacts,
+        # whether the model is a TrainingJob or a trainer wrapping one.
+        training_job = self._resolve_training_job()
+        if training_job is not None:
+            s3_path = self._s3_artifacts_from_training_job(training_job)
+            if s3_path:
+                logger.info("Resolved S3 artifacts from training job: %s", s3_path)
+            return s3_path
+
+        return None
+
+    def _resolve_training_job(self):
+        """Return the underlying TrainingJob for the model, if any.
+
+        Handles a direct ``TrainingJob`` as well as ``ModelTrainer``/``BaseTrainer``
+        instances that expose one via ``_latest_training_job``.
+        """
         if isinstance(self.model, TrainingJob):
-            artifacts = getattr(self.model, 'model_artifacts', None)
-            if artifacts and not isinstance(artifacts, Unassigned):
-                s3_path = getattr(artifacts, 's3_model_artifacts', None)
-                if s3_path and isinstance(s3_path, str):
-                    logger.info(
-                        "Resolved S3 artifacts from TrainingJob model_artifacts: %s", s3_path
-                    )
-                    return s3_path
-            return None
-
-        # ModelTrainer or BaseTrainer — resolve from _latest_training_job.model_artifacts.
+            return self.model
         if isinstance(self.model, (ModelTrainer, BaseTrainer)):
-            training_job = getattr(self.model, '_latest_training_job', None)
-            if not training_job:
-                return None
-            artifacts = getattr(training_job, 'model_artifacts', None)
-            if artifacts and not isinstance(artifacts, Unassigned):
-                s3_path = getattr(artifacts, 's3_model_artifacts', None)
-                if s3_path and isinstance(s3_path, str):
-                    logger.info(
-                        "Resolved S3 artifacts from trainer's training job: %s", s3_path
-                    )
-                    return s3_path
-            return None
-
+            return getattr(self.model, "_latest_training_job", None)
         return None
 
     def _resolve_hf_model_path(self, s3_uri: str) -> str:
@@ -826,38 +975,13 @@ class BedrockModelBuilder:
         if not s3_output_path:
             raise ValueError("No S3 output path found in training job output_data_config")
 
-        output_path = s3_output_path.rstrip("/")
-        manifest_path = f"{output_path}/{self.model.training_job_name}/output/output/manifest.json"
+        manifest_uri = build_nova_manifest_s3_uri(s3_output_path, self.model.training_job_name)
+        logger.info("Looking for manifest at %s", manifest_uri)
 
-        logger.info("Manifest path: %s", manifest_path)
-
-        parsed = urlparse(manifest_path)
-        bucket = parsed.netloc
-        manifest_key = parsed.path.lstrip("/")
-
-        logger.info("Looking for manifest at s3://%s/%s", bucket, manifest_key)
-
-        s3_client = self.boto_session.client("s3")
         try:
-            response = s3_client.get_object(Bucket=bucket, Key=manifest_key)
-            manifest = json.loads(response["Body"].read().decode("utf-8"))
-            logger.info("Manifest content: %s", manifest)
-
-            checkpoint_uri = manifest.get("checkpoint_s3_bucket")
-            if not checkpoint_uri:
-                raise ValueError(
-                    "'checkpoint_s3_bucket' not found in manifest. "
-                    "Available keys: %s" % list(manifest.keys())
-                )
-
-            logger.info("Checkpoint URI: %s", checkpoint_uri)
-            return checkpoint_uri
-        except s3_client.exceptions.NoSuchKey:
-            raise ValueError(
-                "manifest.json not found at s3://%s/%s" % (bucket, manifest_key)
+            return read_nova_checkpoint_uri_from_manifest(
+                self.boto_session.client("s3"), manifest_uri
             )
-        except json.JSONDecodeError as e:
-            raise ValueError("Failed to parse manifest.json: %s" % e)
         except ValueError:
             raise
         except Exception as e:

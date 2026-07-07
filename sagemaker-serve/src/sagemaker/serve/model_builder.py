@@ -151,6 +151,12 @@ from sagemaker.core.fw_utils import model_code_key_prefix
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.serve.model_reuse import (
+    build_source_tag,
+    find_existing_sagemaker_endpoint,
+    MODEL_SOURCE_TAG_KEY,
+)
+from sagemaker.core.training.utils import resolve_nova_checkpoint_uri
 
 _LOWEST_MMS_VERSION = "1.2"
 SCRIPT_PARAM_NAME = "sagemaker_program"
@@ -176,6 +182,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     2. Call build() to create a deployable Model resource
     3. Call deploy() to create an Endpoint resource for inference
 
+    Resource reuse:
+        Both build() and deploy() accept ``reuse_resources`` (default False), and it
+        must be set on each call you want to reuse — the flag is honored per call, not
+        inherited. When True, ModelBuilder tags each resource it creates with the model
+        source and, on a subsequent call for the same source, discovers the existing
+        endpoint instead of creating a duplicate (logging a warning; it does not raise).
+        This is useful because endpoint creation is slow and constrained by
+        accelerated-instance capacity.
+
+        - build(reuse_resources=True): on a hit, creates no new Model/EndpointConfig/
+          Endpoint and sets ``built_model`` to the existing Model backing the reused
+          endpoint.
+        - deploy(reuse_resources=True): on a hit, returns the existing endpoint instead
+          of creating a new one.
+
     Example:
         >>> from sagemaker.serve.model_builder import ModelBuilder
         >>> from sagemaker.serve.mode.function_pointers import Mode
@@ -190,6 +211,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         >>> # Build the model (creates SageMaker Model resource)
         >>> model = model_builder.build()
         >>>
+        >>> # Reuse an existing endpoint if one was already built from this source
+        >>> model_builder.build(reuse_resources=True)
+        >>> endpoint = model_builder.deploy(reuse_resources=True)
+        >>>
         >>> # Deploy to endpoint (creates SageMaker Endpoint resource)
         >>> endpoint = model_builder.deploy(endpoint_name="my-endpoint")
         >>>
@@ -198,7 +223,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
     Args:
         model: The model to deploy. Can be a trained model object, ModelTrainer, TrainingJob,
-            ModelPackage, or JumpStart model ID string. Either model or inference_spec is required.
+            ModelPackage, JumpStart model ID string, or a raw S3 URI string pointing to model
+            artifacts. For a raw S3 URI that targets a Nova base model, supply the base model
+            via ``model_metadata={"BASE_MODEL_NAME": "..."}``. Either model or inference_spec
+            is required.
         model_path: Local directory path where model artifacts are stored or will be downloaded.
         inference_spec: Custom inference specification with load() and invoke() functions.
         schema_builder: Defines input/output schema for serialization and deserialization.
@@ -323,7 +351,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             "help": "Dictionary to override model metadata. Supported keys: HF_TASK (for HuggingFace "
             "models without task metadata), MLFLOW_MODEL_PATH (local or S3 path to MLflow artifacts), "
             "FINE_TUNING_MODEL_PATH (S3 path to fine-tuned model), FINE_TUNING_JOB_NAME (fine-tuning "
-            "job name), and CUSTOM_MODEL_PATH (local or S3 path to custom model artifacts). "
+            "job name), CUSTOM_MODEL_PATH (local or S3 path to custom model artifacts), and "
+            "BASE_MODEL_NAME (base model identifier for a raw S3 URI model, e.g. a Nova checkpoint "
+            "deployed without a ModelPackage). "
             "FINE_TUNING_MODEL_PATH and FINE_TUNING_JOB_NAME are mutually exclusive."
         },
     )
@@ -1071,11 +1101,39 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         ],
     }
 
+    def _base_model_name(self) -> Optional[str]:
+        """Resolve the base model identifier once.
+
+        Comes from the model package's ``base_model.hub_content_name`` when a
+        package is available; otherwise from the trainer's ``base_model_name``
+        (e.g. a BaseTrainer built from an S3 checkpoint).
+
+        Returns:
+            The base model name string, or None if it cannot be determined.
+        """
+        model_package = self._fetch_model_package()
+        if model_package is not None:
+            base_model = model_package.inference_specification.containers[0].base_model
+            return getattr(base_model, "hub_content_name", None) if base_model else None
+        if isinstance(self.model, BaseTrainer):
+            return self.model.base_model_name
+        # Raw S3 checkpoint: base model identity is supplied via model_metadata.
+        if self.model_metadata:
+            return self.model_metadata.get("BASE_MODEL_NAME")
+        return None
+
+    def _is_raw_s3_model(self) -> bool:
+        """Return True if the model was provided as a raw S3 URI string."""
+        return isinstance(self.model, str) and self.model.startswith("s3://")
+
     def _is_nova_model(self) -> bool:
         """Check if the model is a Nova model based on recipe name or hub content name."""
         model_package = self._fetch_model_package()
         if not model_package:
-            return False
+            # No model package (e.g. a trainer built from an S3 checkpoint). Fall
+            # back to the base model name carried by the trainer.
+            base_model_name = self._base_model_name()
+            return bool(base_model_name) and "nova" in base_model_name.lower()
         containers = getattr(model_package.inference_specification, "containers", None)
         if not containers:
             return False
@@ -1696,6 +1754,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             ):
                 return True
 
+        # Raw S3 checkpoint with a Nova base model supplied via model_metadata
+        # (e.g. a HyperPod/SMTJ Nova checkpoint deployed without a ModelPackage).
+        if self._is_raw_s3_model() and self._is_nova_model():
+            return True
+
         # AgentRFTJob from MultiTurnRLTrainer.attach()
         if isinstance(self.model, AgentRFTJob):
             return True
@@ -1704,6 +1767,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if isinstance(self.model, MultiTurnRLTrainer):
             return True
         if isinstance(self.model, BaseTrainer) and hasattr(self.model, "_latest_training_job"):
+            # Trainer built from an S3 checkpoint (e.g. Serverful SMTJ): no model
+            # package, but the completed training job has an S3 output path that
+            # holds the customized artifacts.
+            output_data_config = getattr(
+                self.model._latest_training_job, "output_data_config", None
+            )
+            s3_output_path = getattr(output_data_config, "s3_output_path", None)
+            if s3_output_path and not isinstance(s3_output_path, Unassigned):
+                return True
             # Check model_package_config first (new location)
             if (
                 hasattr(self.model._latest_training_job, "model_package_config")
@@ -1825,6 +1897,166 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if arn:
             return ModelPackage.get(arn)
         return None
+
+    def _resolve_model_source_id(self) -> Optional[str]:
+        """Determine the model source identifier for reuse lookups.
+
+        Resolution order:
+        1. Model package ARN (if model_package available)
+        2. Nova escrow checkpoint URI (for Nova model customization)
+        3. Raw S3 URI passed as the model
+        4. S3 model artifact URI
+        5. JumpStart model ID
+
+        Returns:
+            Source identifier string, or None if cannot be determined.
+        """
+        model_package_arn = self._fetch_model_package_arn()
+        if model_package_arn:
+            return model_package_arn
+
+        # For Nova model customization, the stable identifier is the escrow
+        # checkpoint URI from the training job manifest. Resolve it before falling
+        # back to s3_model_data_url, which may be an auto-generated per-deploy
+        # "model-builder/<uuid>/" upload path that is useless as a reuse key.
+        if self._is_model_customization() and self._is_nova_model():
+            try:
+                escrow_uri = self._resolve_nova_escrow_uri()
+                if escrow_uri:
+                    return escrow_uri
+            except Exception as e:
+                logger.warning("Could not resolve Nova escrow URI for reuse: %s", e)
+
+        if isinstance(self.model, str):
+            # A model passed as an S3 URI (e.g. a Nova escrow checkpoint path) is
+            # itself the source identifier for reuse.
+            if self.model.startswith("s3://"):
+                return self.model
+            if self._is_jumpstart_model_id():
+                return self.model
+
+        if self.s3_model_data_url and isinstance(self.s3_model_data_url, str):
+            return self.s3_model_data_url
+
+        return None
+
+    def _get_model_for_endpoint(self, endpoint_name: str) -> Optional[Model]:
+        """Return the Model resource backing an existing endpoint, if resolvable.
+
+        Reads the endpoint's config production variant to find the model name,
+        then fetches that Model. Returns None if it cannot be resolved.
+        """
+        sagemaker_client = self.sagemaker_session.sagemaker_client
+        try:
+            endpoint_desc = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+            config_desc = sagemaker_client.describe_endpoint_config(
+                EndpointConfigName=endpoint_desc["EndpointConfigName"]
+            )
+            variants = config_desc.get("ProductionVariants", [])
+            if not variants:
+                return None
+            model_name = variants[0]["ModelName"]
+            return Model.get(model_name=model_name, region=self.region)
+        except Exception as e:
+            logger.warning(
+                "Could not resolve the Model backing endpoint %s: %s.",
+                endpoint_name,
+                e,
+            )
+            return None
+
+    def _find_reusable_endpoint(self, instance_type: Optional[str] = None) -> Optional[str]:
+        """Return the name of an existing endpoint that can be reused, if any.
+
+        A candidate must carry the same model-source tag and match the requested
+        deployment configuration (env vars, image URI, instance type).
+
+        Args:
+            instance_type: The instance type requested for this deploy, if any.
+
+        Returns:
+            The reusable endpoint name, or None if there is no suitable match.
+        """
+        source_id = self._resolve_model_source_id()
+        if not source_id:
+            return None
+
+        existing_arn = find_existing_sagemaker_endpoint(
+            self.sagemaker_session.sagemaker_client,
+            source_id,
+        )
+        if not existing_arn:
+            return None
+
+        existing_name = existing_arn.rsplit("/", 1)[-1]
+        if self._reused_endpoint_matches_config(
+            existing_name, instance_type=instance_type or self.instance_type
+        ):
+            return existing_name
+
+        logger.info(
+            "Existing endpoint %s matches the model source but has different "
+            "deployment configuration; creating a new endpoint.",
+            existing_name,
+        )
+        return None
+
+    def _reused_endpoint_matches_config(
+        self, endpoint_name: str, instance_type: Optional[str] = None
+    ) -> bool:
+        """Check that a reuse candidate endpoint matches the requested deploy config.
+
+        A source-tag match only proves the endpoint was built from the same model
+        artifacts. Before reusing it, confirm the runtime configuration the caller
+        requested (container environment variables, instance type, and image URI)
+        also matches, so a differently-configured request does not silently get an
+        endpoint that contradicts it.
+
+        Args:
+            endpoint_name: Name of the candidate endpoint to inspect.
+            instance_type: The instance type requested for this deploy, if any.
+
+        Returns:
+            True if the candidate matches (or the config cannot be read and reuse
+            should be attempted), False if a definite mismatch is detected.
+        """
+        sagemaker_client = self.sagemaker_session.sagemaker_client
+        try:
+            endpoint_desc = sagemaker_client.describe_endpoint(EndpointName=endpoint_name)
+            config_desc = sagemaker_client.describe_endpoint_config(
+                EndpointConfigName=endpoint_desc["EndpointConfigName"]
+            )
+            variants = config_desc.get("ProductionVariants", [])
+            if not variants:
+                return True
+            variant = variants[0]
+            model_desc = sagemaker_client.describe_model(ModelName=variant["ModelName"])
+            # Check PrimaryContainer and fallback to Containers list if PrimaryContainer is empty
+            container = model_desc.get("PrimaryContainer")
+            if not container:
+                containers = model_desc.get("Containers") or []
+                container = containers[0] if containers else {}
+        except Exception as e:
+            logger.warning(
+                "Could not read configuration of existing endpoint %s: %s. "
+                "Proceeding with reuse.",
+                endpoint_name,
+                e,
+            )
+            return True
+
+        existing_env = container.get("Environment") or {}
+        requested_env = self.env_vars or {}
+        if requested_env and requested_env != existing_env:
+            return False
+
+        if self.image_uri and container.get("Image") and self.image_uri != container["Image"]:
+            return False
+
+        if instance_type and variant.get("InstanceType") and instance_type != variant["InstanceType"]:
+            return False
+
+        return True
 
     def _convert_model_data_source_to_local(self, model_data_source):
         """Convert Core ModelDataSource to Local dictionary format."""
@@ -2595,15 +2827,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 self.built_model = Model.create(**create_kwargs)
                 return self.built_model
 
-            # Fetch recipe config first to set image_uri, instance_type, env_vars, and s3_upload_path
-            base_model = model_package.inference_specification.containers[0].base_model
-            if base_model is not None:
-                self._fetch_and_cache_recipe_config()
+            # Fetch recipe config first to set image_uri, instance_type, env_vars,
+            # and s3_upload_path. Only possible when a model package is available;
+            # trainers built from an S3 checkpoint carry no package, so the caller
+            # must supply image_uri/instance_type/env_vars directly.
+            if model_package is not None:
+                base_model = model_package.inference_specification.containers[0].base_model
+                if base_model is not None:
+                    self._fetch_and_cache_recipe_config()
 
             # Nova models use a completely different deployment architecture
             if self._is_nova_model():
                 escrow_uri = self._resolve_nova_escrow_uri()
-                base_model = model_package.inference_specification.containers[0].base_model
+                base_model_name = self._base_model_name()
 
                 container_def = ContainerDefinition(
                     image=self.image_uri,
@@ -2617,15 +2853,23 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     },
                 )
                 model_name = self.model_name or f"model-{uuid.uuid4().hex[:10]}"
+                nova_tags = [
+                    {"key": "sagemaker-sdk:jumpstart-model-id", "value": base_model_name},
+                ]
+                # Tag the Model with the model source so it is discoverable and
+                # trackable, mirroring the endpoint tagging done at deploy time.
+                source_id = self._resolve_model_source_id()
+                if source_id:
+                    source_tag = build_source_tag(source_id)
+                    nova_tags.append(
+                        {"key": source_tag["key"], "value": source_tag["value"]}
+                    )
                 self.built_model = Model.create(
                     execution_role_arn=self.role_arn,
                     model_name=model_name,
                     containers=[container_def],
                     enable_network_isolation=True,
-                    tags=[
-                        {"key": "sagemaker-sdk:jumpstart-model-id",
-                         "value": base_model.hub_content_name},
-                    ],
+                    tags=nova_tags,
                 )
                 return self.built_model
 
@@ -3545,6 +3789,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         role_arn: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
         region: Optional[str] = None,
+        reuse_resources: bool = False,
     ) -> Union[Model, "ModelBuilder", None]:
         """Build a deployable ``Model`` instance with ``ModelBuilder``.
 
@@ -3568,6 +3813,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 configuration chain. (Default: None).
             region (str, optional): The AWS region for deployment. If specified and different
                 from the current region, a new session will be created. (Default: None).
+            reuse_resources (bool, optional): If True, checks for an existing endpoint built
+                from the same model source (with matching deployment configuration) before
+                creating anything. On a match, build() creates no new resources and sets
+                ``built_model`` to the existing Model backing that endpoint; the subsequent
+                deploy() returns the existing endpoint. (Default: False).
 
         Returns:
             Union[Model, ModelBuilder, None]: A ``sagemaker.core.resources.Model`` resource
@@ -3621,6 +3871,34 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.model_reference_arn = getattr(self, "model_reference_arn", None)
         self.accept_eula = getattr(self, "accept_eula", None)
         self.container_log_level = getattr(self, "container_log_level", None)
+
+        # Inference-component builds (modelbuilder_list or a custom orchestrator
+        # inference spec) populate self._deployables and manage their own reuse by
+        # IC name at deploy time. The endpoint-return reuse short-circuit only
+        # applies to single-model builds, so those IC builds still run normally.
+        is_inference_component_build = bool(self.modelbuilder_list) or isinstance(
+            self.inference_spec, (CustomOrchestrator, AsyncCustomOrchestrator)
+        )
+
+        # Resource reuse: if an existing endpoint built from the same model source
+        # (with matching config) is found, skip creating any new resources — no
+        # Model, EndpointConfig, or Endpoint. The subsequent deploy() returns the
+        # existing endpoint.
+        if reuse_resources and not is_inference_component_build:
+            self.serve_settings = self._get_serve_setting()
+            reusable_endpoint = self._find_reusable_endpoint()
+            if reusable_endpoint:
+                logger.warning(
+                    "Reusing existing endpoint %r (matched model-source tag and "
+                    "deployment configuration). No new resources will be created. "
+                    "Pass reuse_resources=False to force new resources.",
+                    reusable_endpoint,
+                )
+                self._reused_endpoint_name = reusable_endpoint
+                # Point built_model at the existing Model backing the reused
+                # endpoint, so deploy() has a valid built_model to return.
+                self.built_model = self._get_model_for_endpoint(reusable_endpoint)
+                return self.built_model
 
         deployables = {}
 
@@ -4418,6 +4696,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         ] = None,
         custom_orchestrator_instance_type: str = None,
         custom_orchestrator_initial_instance_count: int = None,
+        reuse_resources: bool = False,
         **kwargs,
     ) -> Union[Endpoint, LocalEndpoint, Transformer]:
         """Deploy the built model to an ``Endpoint``.
@@ -4451,6 +4730,22 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 orchestrator deployment. (Default: None).
             custom_orchestrator_initial_instance_count (int, optional): Initial instance count
                 for custom orchestrator deployment. (Default: None).
+            reuse_resources (bool): If False (default), always creates a new endpoint.
+                If True, checks for an existing endpoint created from the same model
+                source (with matching deployment configuration) and returns it instead
+                of creating a duplicate. New endpoints are always tagged for future
+                discovery regardless of this flag.
+
+                Note: this flag must be set on ``deploy()`` for it to reuse an endpoint;
+                reuse is not inherited from ``build()``. Passing ``reuse_resources=True``
+                here only avoids creating a new *endpoint* — the ``Model`` is created by
+                ``build()``, which runs first. To also avoid creating a new Model on a
+                reuse hit, pass ``reuse_resources=True`` to ``build()`` as well (build
+                then sets ``built_model`` to the existing Model backing the endpoint).
+                Inference-component deployments (``inference_config`` is a
+                ``ResourceRequirements``, or a ``modelbuilder_list`` build) are not
+                intercepted by this flag — they manage their own reuse by inference
+                component name (create vs. in-place update).
         Returns:
             Union[Endpoint, LocalEndpoint, Transformer]: A ``sagemaker.core.resources.Endpoint``
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,
@@ -4472,6 +4767,54 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")
+
+        # Inference component deployments manage their own reuse by IC name
+        # (create vs. in-place update in _deploy_for_ic). The endpoint-return
+        # reuse gate must not intercept them, or an intended IC create/update
+        # would be silently skipped.
+        is_inference_component_deploy = isinstance(
+            inference_config, ResourceRequirements
+        ) or bool(getattr(self, "_deployables", None))
+
+        # Resource reuse is opt-in per call. When requested, reuse an existing
+        # endpoint built from the same model source (with matching config). If
+        # build() already resolved one (build's reuse gate), use that; otherwise
+        # discover it here.
+        if reuse_resources and not is_inference_component_deploy:
+            reusable_endpoint = getattr(
+                self, "_reused_endpoint_name", None
+            ) or self._find_reusable_endpoint(
+                instance_type=instance_type or self.instance_type
+            )
+            if reusable_endpoint:
+                if endpoint_name and endpoint_name != reusable_endpoint:
+                    logger.warning(
+                        "Requested endpoint name %r is ignored; reusing existing "
+                        "endpoint %r which matches the model source and deployment "
+                        "configuration.",
+                        endpoint_name,
+                        reusable_endpoint,
+                    )
+                logger.warning(
+                    "Reusing existing endpoint %r (matched model-source tag and "
+                    "deployment configuration). No new resources were created. "
+                    "Pass reuse_resources=False to force a new endpoint.",
+                    reusable_endpoint,
+                )
+                return Endpoint.get(
+                    endpoint_name=reusable_endpoint,
+                    session=self.sagemaker_session.boto_session,
+                    region=self.region,
+                )
+
+        source_id = self._resolve_model_source_id()
+
+        if source_id:
+            tag = build_source_tag(source_id)
+            # Pass as a single-element list; a bare {"Key":..., "Value":...} dict
+            # is ambiguous and gets expanded by format_tags into two junk tags
+            # keyed "Key" and "Value".
+            self.add_tags([{"Key": MODEL_SOURCE_TAG_KEY, "Value": tag["value"]}])
 
         # Handle model customization deployment
         if self._is_model_customization():
@@ -4903,8 +5246,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         Nova training jobs write artifacts to an escrow S3 bucket. The location
         is recorded in manifest.json in the training job output directory.
         """
-        import json
-        from urllib.parse import urlparse
+        # Raw S3 checkpoint: the provided URI is itself the escrow location.
+        if self._is_raw_s3_model():
+            return self.model.rstrip("/")
 
         if isinstance(self.model, TrainingJob):
             training_job = self.model
@@ -4916,24 +5260,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         else:
             raise ValueError("Nova escrow URI resolution requires a TrainingJob or ModelTrainer")
 
-        output_path = training_job.output_data_config.s3_output_path.rstrip("/")
-        manifest_s3 = f"{output_path}/{training_job.training_job_name}/output/output/manifest.json"
-
-        parsed = urlparse(manifest_s3)
-        bucket = parsed.netloc
-        key = parsed.path.lstrip("/")
-
-        s3_client = self.sagemaker_session.boto_session.client("s3")
-        resp = s3_client.get_object(Bucket=bucket, Key=key)
-        manifest = json.loads(resp["Body"].read().decode())
-
-        escrow_uri = manifest.get("checkpoint_s3_bucket")
-        if not escrow_uri:
-            raise ValueError(
-                f"'checkpoint_s3_bucket' not found in manifest.json. "
-                f"Available keys: {list(manifest.keys())}"
-            )
-        return escrow_uri
+        # Resolve the checkpoint URI from the job's manifest.json, which may be a
+        # raw object or packaged inside output.tar.gz.
+        return resolve_nova_checkpoint_uri(
+            self.sagemaker_session.boto_session.client("s3"),
+            training_job.output_data_config.s3_output_path,
+            training_job.training_job_name,
+        )
 
     def _deploy_nova_model(
         self,
@@ -4950,9 +5283,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         """
         from sagemaker.core.shapes import ProductionVariant
 
-        model_package = self._fetch_model_package()
-        base_model = model_package.inference_specification.containers[0].base_model
-
         if not endpoint_name:
             endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
 
@@ -4968,11 +5298,27 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             ],
         )
 
+        # The jumpstart-model-id tag always applies (resolved from the model
+        # package or the trainer's base_model_name). The recipe-name tag is only
+        # available when a model package is present.
         tags = [
-            {"key": "sagemaker-sdk:jumpstart-model-id", "value": base_model.hub_content_name},
+            {"key": "sagemaker-sdk:jumpstart-model-id", "value": self._base_model_name()},
         ]
-        if base_model.recipe_name:
-            tags.append({"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name})
+        model_package = self._fetch_model_package()
+        if model_package is not None:
+            base_model = model_package.inference_specification.containers[0].base_model
+            if base_model is not None and base_model.recipe_name:
+                tags.append({"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name})
+
+        # Merge tags accumulated via add_tags (e.g. the model-source reuse tag).
+        # Those are stored in {"Key": ..., "Value": ...} form, so normalize to the
+        # {"key": ..., "value": ...} form Endpoint.create expects and de-duplicate.
+        existing_keys = {tag["key"] for tag in tags}
+        for tag in format_tags(getattr(self, "_tags", None) or []):
+            key = tag["Key"]
+            if key not in existing_keys:
+                tags.append({"key": key, "value": tag["Value"]})
+                existing_keys.add(key)
 
         endpoint = Endpoint.create(
             endpoint_name=endpoint_name,
