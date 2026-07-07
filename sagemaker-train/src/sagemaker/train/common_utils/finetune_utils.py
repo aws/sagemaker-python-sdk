@@ -12,6 +12,9 @@ from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
+# Single source of truth for Lambda-ARN detection, shared with the reward verifier
+# so both code paths agree on what counts as a Lambda ARN.
+from sagemaker.train.common_utils.rlvr_reward_verifier import LAMBDA_ARN_REGEX
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE, FineTuningOptions
 from sagemaker.core.shapes import ServerlessJobConfig, Channel, DataSource, ModelPackageConfig, MlflowConfig
 from sagemaker.core.training.configs import HyperPodCompute, TrainingJobCompute
