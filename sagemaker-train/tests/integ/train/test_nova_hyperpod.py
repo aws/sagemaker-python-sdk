@@ -30,7 +30,7 @@ S3_BUCKET = "mc-flows-sdk-testing-us-east-1-784379639078"
 S3_PREFIX = "input_data"
 SFT_TRAIN_S3_KEY = f"{S3_PREFIX}/sft-nova/sft_200_samples.jsonl"
 SFT_TRAIN_S3_PATH = f"s3://{S3_BUCKET}/{SFT_TRAIN_S3_KEY}"
-S3_OUTPUT_PATH = f"s3://{S3_BUCKET}/{S3_PREFIX}/output"
+S3_OUTPUT_PATH = f"s3://{S3_BUCKET}/output"
 
 
 @pytest.fixture(scope="module")
@@ -99,23 +99,32 @@ def test_sft_trainer_nova_micro_hyperpod_lora(
     sft_trainer.hyperparameters.max_epochs = 1
 
     # Submit — SFTTrainer routes to HyperPod based on compute type
-    training_job = sft_trainer.train(wait=False)
+    job_name = sft_trainer.train(wait=False)
 
-    # Manual wait loop to avoid resource_config issue
+    logger.info(f"HyperPod SFT job submitted: {job_name}")
+
+    # Poll for job completion by checking for the manifest in S3
+    from sagemaker.train.base_trainer import BaseTrainer
+
     max_wait_time = 21600  # 6 hour timeout (HyperPod jobs can take longer)
-    poll_interval = 30  # Check every 30 seconds
+    poll_interval = 60  # Check every 60 seconds
     start_time = time.time()
+    checkpoint_path = None
 
-    # while time.time() - start_time < max_wait_time:
-    #     training_job.refresh()
-    #     status = training_job.training_job_status
+    while time.time() - start_time < max_wait_time:
+        checkpoint_path = BaseTrainer._resolve_checkpoint_from_manifest(
+            job_name=job_name,
+            output_s3_path=S3_OUTPUT_PATH,
+        )
+        if checkpoint_path:
+            logger.info(f"Checkpoint resolved: {checkpoint_path}")
+            break
 
-    #     if status in ["Completed", "Failed", "Stopped"]:
-    #         break
+        elapsed = int(time.time() - start_time)
+        logger.info(f"Waiting for manifest... ({elapsed}s elapsed)")
+        time.sleep(poll_interval)
 
-    #     time.sleep(poll_interval)
-
-    # # Verify job completed successfully
-    # assert training_job.training_job_status == "Completed"
-
-    logger.info(f"\nHyperPod SFT job submitted: {training_job}")
+    assert checkpoint_path is not None, (
+        f"Job {job_name} did not produce a manifest within {max_wait_time}s"
+    )
+    logger.info(f"Training complete. Checkpoint: {checkpoint_path}")
