@@ -99,7 +99,7 @@ class TestLLMAJCustomModelIntegration:
     """Integration tests for LLMAsJudgeEvaluator with InspectAI inference path."""
 
     def test_llmaj_bedrock_inference_end_to_end(
-        self, sagemaker_session_us_east_1, test_resources
+        self, sagemaker_session_us_east_1, test_resources, monkeypatch
     ):
         """Test full InspectAI-based LLMAJ pipeline with Bedrock inference.
 
@@ -113,6 +113,11 @@ class TestLLMAJCustomModelIntegration:
         logger.info("=" * 80)
         logger.info("Test: LLM-as-Judge with InspectAI Bedrock Inference (Nova Lite)")
         logger.info("=" * 80)
+
+        # The base model lives in the public hub, not the private "sdktest" recipe
+        # hub that the session-scoped use_private_hub fixture pins SAGEMAKER_HUB_NAME
+        # to. Explicitly resolve the base model against SageMakerPublicHub for this test.
+        monkeypatch.setenv("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
 
         # Step 1: Create evaluator — Nova model auto-routes to InspectAI+Bedrock
         logger.info("Creating LLMAsJudgeEvaluator with Nova model (auto-routed)...")
