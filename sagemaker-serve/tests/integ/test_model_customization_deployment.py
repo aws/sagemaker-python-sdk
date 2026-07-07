@@ -21,6 +21,7 @@ import pytest
 import random
 import logging
 from botocore.config import Config
+from botocore.exceptions import ClientError
 from datetime import datetime, timezone, timedelta
 
 
@@ -130,14 +131,17 @@ class TestModelCustomizationFromTrainingJob:
                 endpoint_name=endpoint_name,
                 inference_component_name=adapter_name if peft_type == "LORA" else None,
             )
-        except FailedStatusError as e:
-            # Endpoint provisioning can fail when the region is temporarily out of
-            # capacity for the requested instance type. This is an environmental
-            # condition unrelated to the SDK, so xfail rather than fail the build.
-            if "InsufficientInstanceCapacity" in str(e):
+        except (FailedStatusError, ClientError) as e:
+            # Endpoint provisioning can fail for environmental reasons unrelated to
+            # the SDK: the region may be temporarily out of capacity for the
+            # requested instance type (InsufficientInstanceCapacity), or the test
+            # account may be at its endpoint-usage quota for the instance type
+            # (ResourceLimitExceeded). xfail rather than fail the build in those cases.
+            msg = str(e)
+            if "InsufficientInstanceCapacity" in msg or "ResourceLimitExceeded" in msg:
                 cleanup_endpoints.append(endpoint_name)
                 pytest.xfail(
-                    f"InsufficientInstanceCapacity for ml.g5.4xlarge in {AWS_REGION}: {e}"
+                    f"Environmental capacity/quota limit for ml.g5.4xlarge in {AWS_REGION}: {e}"
                 )
             raise
 
