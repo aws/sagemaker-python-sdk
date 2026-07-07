@@ -852,6 +852,7 @@ def test_llm_as_judge_evaluator_valid_evaluator_models(mock_artifact, mock_resol
         "anthropic.claude-3-5-sonnet-20241022-v2:0",
         "anthropic.claude-3-haiku-20240307-v1:0",
         "anthropic.claude-3-5-haiku-20241022-v1:0",
+        "anthropic.claude-haiku-4-5-20251001-v1:0",
         "meta.llama3-1-70b-instruct-v1:0",
         "mistral.mistral-large-2402-v1:0",
     ]

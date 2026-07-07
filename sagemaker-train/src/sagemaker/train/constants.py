@@ -64,6 +64,7 @@ _ALLOWED_EVALUATOR_MODELS = {
     "anthropic.claude-3-5-sonnet-20241022-v2:0": ["us-west-2"],
     "anthropic.claude-3-haiku-20240307-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
     "anthropic.claude-3-5-haiku-20241022-v1:0": ["us-west-2"],
+    "anthropic.claude-haiku-4-5-20251001-v1:0": ["us-west-2", "us-east-1"],
     "meta.llama3-1-70b-instruct-v1:0": ["us-west-2"],
     "mistral.mistral-large-2402-v1:0": ["us-west-2", "us-east-1", "eu-west-1"],
     "amazon.nova-pro-v1:0": ["us-east-1"]
