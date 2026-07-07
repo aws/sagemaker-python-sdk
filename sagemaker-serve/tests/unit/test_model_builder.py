@@ -750,6 +750,86 @@ class ModelCustomizationTest(unittest.TestCase):
         compute_reqs = created_ic_spec.compute_resource_requirements
         self.assertIs(compute_reqs, cached_reqs)
 
+    def test_deploy_nova_inference_component(self):
+        """Nova + ResourceRequirements deploys via the shared single-IC path.
+
+        A Nova checkpoint with an inference_config must NOT take the
+        model-on-variant path (_deploy_nova_model); it is hosted as a single
+        inference component referencing the built Model. The endpoint config
+        must set network isolation to match the Nova Model, or
+        CreateInferenceComponent rejects the mismatch.
+        """
+        from sagemaker.core.resources import Endpoint, EndpointConfig, InferenceComponent
+        from sagemaker.core.inference_config import ResourceRequirements
+
+        mock_endpoint = Mock()
+        mock_endpoint.wait_for_status = Mock()
+        mock_ic = Mock()
+        mock_ic.inference_component_arn = (
+            "arn:aws:sagemaker:us-east-1:123456789012:inference-component/nova-ic"
+        )
+
+        builder = ModelBuilder(
+            model=self.mock_training_job,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            sagemaker_session=self.mock_session,
+            image_uri="test-nova-image:latest",
+            instance_type="ml.p5.48xlarge",
+        )
+        builder.built_model = Mock()
+        builder.built_model.model_name = "nova-model"
+
+        inference_config = ResourceRequirements(
+            requests={"num_accelerators": 4, "num_cpus": 20, "memory": 35000, "copies": 1}
+        )
+
+        created_config_kwargs = {}
+
+        def capture_config_create(**kwargs):
+            created_config_kwargs.update(kwargs)
+            return Mock()
+
+        created_ic_kwargs = {}
+
+        def capture_ic_create(**kwargs):
+            created_ic_kwargs.update(kwargs)
+            return mock_ic
+
+        with patch.object(builder, "_is_nova_model", return_value=True):
+            with patch.object(builder, "_deploy_nova_model") as mock_deploy_nova:
+                with patch.object(builder, "_fetch_model_package", return_value=None):
+                    with patch.object(builder, "_does_endpoint_exist", return_value=False):
+                        with patch.object(
+                            EndpointConfig, "create", side_effect=capture_config_create
+                        ):
+                            with patch.object(Endpoint, "create", return_value=mock_endpoint):
+                                with patch.object(
+                                    InferenceComponent, "create", side_effect=capture_ic_create
+                                ):
+                                    result = builder._deploy_model_customization(
+                                        endpoint_name="nova-ic-endpoint",
+                                        instance_type="ml.p5.48xlarge",
+                                        initial_instance_count=1,
+                                        inference_config=inference_config,
+                                    )
+
+        # Routed through the IC path, not the model-on-variant Nova path.
+        mock_deploy_nova.assert_not_called()
+        self.assertEqual(result, mock_endpoint)
+
+        # Endpoint config network isolation matches the Nova Model.
+        self.assertTrue(created_config_kwargs.get("enable_network_isolation"))
+
+        # A single IC was created referencing the built Model with the requested
+        # compute requirements.
+        self.assertEqual(created_ic_kwargs["endpoint_name"], "nova-ic-endpoint")
+        ic_spec = created_ic_kwargs["specification"]
+        self.assertEqual(ic_spec.model_name, "nova-model")
+        compute_reqs = ic_spec.compute_resource_requirements
+        self.assertEqual(compute_reqs.number_of_accelerator_devices_required, 4)
+        self.assertEqual(compute_reqs.number_of_cpu_cores_required, 20)
+        self.assertEqual(compute_reqs.min_memory_required_in_mb, 35000)
+
     def test_deploy_passes_inference_config_to_model_customization(self):
         """Test that deploy() passes inference_config to _deploy_model_customization for model customization deployments."""
         from sagemaker.core.inference_config import ResourceRequirements
@@ -1112,9 +1192,7 @@ class TestModelReuse(unittest.TestCase):
     ):
         # reuse_resources=True must NOT short-circuit an IC deploy; the IC path
         # (inference_config is a ResourceRequirements) manages its own reuse.
-        from sagemaker.core.compute_resource_requirements.resource_requirements import (
-            ResourceRequirements,
-        )
+        from sagemaker.core.inference_config import ResourceRequirements
 
         with (
             patch.object(ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"),

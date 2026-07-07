@@ -45,6 +45,10 @@ from sagemaker.core.shapes import (
     ModelLifeCycle,
     DriftCheckBaselines,
     InferenceComponentComputeResourceRequirements,
+    InferenceComponentSpecification,
+    InferenceComponentContainerSpecification,
+    InferenceComponentRuntimeConfig,
+    ProductionVariant,
 )
 from sagemaker.core.resources import (
     ModelPackage,
@@ -1127,22 +1131,28 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return isinstance(self.model, str) and self.model.startswith("s3://")
 
     def _is_nova_model(self) -> bool:
-        """Check if the model is a Nova model based on recipe name or hub content name."""
+        """Check if the model is a Nova model.
+
+        Recognizes Nova from the model package's recipe/hub-content name, and also
+        from a package-less source (raw S3 checkpoint or trainer) via the resolved
+        ``base_model_name``. All supported Nova checkpoints — full-rank custom
+        models and LoRA-merged models — are identified here.
+        """
         model_package = self._fetch_model_package()
-        if not model_package:
-            # No model package (e.g. a trainer built from an S3 checkpoint). Fall
-            # back to the base model name carried by the trainer.
-            base_model_name = self._base_model_name()
-            return bool(base_model_name) and "nova" in base_model_name.lower()
-        containers = getattr(model_package.inference_specification, "containers", None)
-        if not containers:
-            return False
-        base_model = getattr(containers[0], "base_model", None)
-        if not base_model:
-            return False
-        recipe_name = getattr(base_model, "recipe_name", "") or ""
-        hub_content_name = getattr(base_model, "hub_content_name", "") or ""
-        return "nova" in recipe_name.lower() or "nova" in hub_content_name.lower()
+        if model_package:
+            containers = getattr(model_package.inference_specification, "containers", None)
+            if containers:
+                base_model = getattr(containers[0], "base_model", None)
+                if base_model:
+                    recipe_name = getattr(base_model, "recipe_name", "") or ""
+                    hub_content_name = getattr(base_model, "hub_content_name", "") or ""
+                    if "nova" in recipe_name.lower() or "nova" in hub_content_name.lower():
+                        return True
+
+        # No (or non-Nova) model package: fall back to the base model name carried
+        # by a trainer or supplied via model_metadata for a raw S3 checkpoint.
+        base_model_name = self._base_model_name()
+        return bool(base_model_name) and "nova" in base_model_name.lower()
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
@@ -3888,17 +3898,24 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.serve_settings = self._get_serve_setting()
             reusable_endpoint = self._find_reusable_endpoint()
             if reusable_endpoint:
-                logger.warning(
-                    "Reusing existing endpoint %r (matched model-source tag and "
-                    "deployment configuration). No new resources will be created. "
-                    "Pass reuse_resources=False to force new resources.",
-                    reusable_endpoint,
-                )
-                self._reused_endpoint_name = reusable_endpoint
-                # Point built_model at the existing Model backing the reused
-                # endpoint, so deploy() has a valid built_model to return.
-                self.built_model = self._get_model_for_endpoint(reusable_endpoint)
-                return self.built_model
+                # Only short-circuit if the backing Model can be resolved. An
+                # inference-component endpoint has no model on its production
+                # variant (the model lives in the IC), and a stale endpoint whose
+                # config was deleted also cannot be resolved. In those cases fall
+                # through and build the Model normally — an IC deploy references
+                # built_model.model_name and must have a real Model to deploy.
+                reused_model = self._get_model_for_endpoint(reusable_endpoint)
+                if reused_model is not None:
+                    logger.warning(
+                        "Reusing existing endpoint %r (matched model-source tag "
+                        "and deployment configuration). No new resources will be "
+                        "created. Pass reuse_resources=False to force new "
+                        "resources.",
+                        reusable_endpoint,
+                    )
+                    self._reused_endpoint_name = reusable_endpoint
+                    self.built_model = reused_model
+                    return self.built_model
 
         deployables = {}
 
@@ -4776,6 +4793,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             inference_config, ResourceRequirements
         ) or bool(getattr(self, "_deployables", None))
 
+        if reuse_resources and is_inference_component_deploy:
+            logger.warning(
+                "reuse_resources has no effect for inference component "
+                "deployments; inference components manage their own reuse by "
+                "name (a new component is added to the endpoint, or an existing "
+                "one is updated in place)."
+            )
+
         # Resource reuse is opt-in per call. When requested, reuse an existing
         # endpoint built from the same model source (with matching config). If
         # build() already resolved one (build's reuse gate), use that; otherwise
@@ -4831,6 +4856,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 endpoint_name=endpoint_name,
                 instance_type=instance_type or self.instance_type,
                 initial_instance_count=initial_instance_count,
+                inference_component_name=kwargs.pop("inference_component_name", None),
                 wait=wait,
                 container_timeout_in_seconds=container_timeout_in_seconds,
                 inference_config=inference_config_param,
@@ -4992,30 +5018,36 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         Returns:
             Endpoint: The deployed sagemaker.core.resources.Endpoint
         """
-        from sagemaker.core.shapes import (
-            InferenceComponentSpecification,
-            InferenceComponentContainerSpecification,
-            InferenceComponentRuntimeConfig,
-            InferenceComponentComputeResourceRequirements,
-        )
-        from sagemaker.core.shapes import ProductionVariant
         from sagemaker.core.resources import InferenceComponent
         from sagemaker.core.resources import Tag as CoreTag
 
-        # Nova models use direct model-on-variant, no InferenceComponents
-        if self._is_nova_model():
+        # An inference_config of ResourceRequirements requests an inference
+        # component deployment; otherwise the model is placed directly on the
+        # production variant.
+        is_ic_deploy = isinstance(inference_config, ResourceRequirements)
+
+        # Nova models without IC resources use the direct model-on-variant path.
+        # Nova models WITH a ResourceRequirements inference_config fall through to
+        # the shared single-IC path below: each Nova checkpoint is hosted as one
+        # inference component referencing the built Model, which carries the
+        # image, escrow artifacts, and env.
+        is_nova = self._is_nova_model()
+        if is_nova and not is_ic_deploy:
             return self._deploy_nova_model(
                 endpoint_name=endpoint_name,
                 initial_instance_count=initial_instance_count,
                 wait=kwargs.get("wait", True),
             )
 
-        # Fetch model package
+        # The model package may be absent (e.g. a Nova CPTTrainer or raw-S3
+        # checkpoint), restricted (e.g. a Nova MTRL Serverless job), or a normal
+        # package (e.g. a Nova SFTTrainer serverless job).
         model_package = self._fetch_model_package()
 
-        # Restricted model packages: simple endpoint deployment
+        # Restricted model packages deploy model-on-variant, but only when an
+        # inference component was not explicitly requested.
         from sagemaker.serve.utils.model_package_utils import is_restricted_model_package
-        if is_restricted_model_package(model_package):
+        if not is_ic_deploy and is_restricted_model_package(model_package):
             if not endpoint_name:
                 endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
             EndpointConfig.create(
@@ -5036,6 +5068,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 endpoint.wait_for_status("InService")
             return endpoint
 
+        if not endpoint_name:
+            endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
+
+        # The endpoint config's network isolation must match the built Model, or
+        # CreateInferenceComponent rejects the mismatch. Nova models are always
+        # created with network isolation enabled; for other models honor the
+        # value on the built Model (falling back to the builder's setting).
+        enable_network_isolation = bool(
+            is_nova
+            or getattr(self.built_model, "enable_network_isolation", None)
+            or self._enable_network_isolation
+        )
+
         # Check if endpoint exists
         is_existing_endpoint = self._does_endpoint_exist(endpoint_name)
 
@@ -5050,19 +5095,35 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     )
                 ],
                 execution_role_arn=self.role_arn,
+                enable_network_isolation=enable_network_isolation,
             )
             logger.info("Endpoint core call starting")
+            # Apply tags accumulated via add_tags (e.g. the model-source reuse
+            # tag) to the endpoint so it is discoverable. Stored tags are in
+            # {"Key":..,"Value":..} form; normalize to the key/value form the
+            # core resource expects.
+            endpoint_tags = [
+                {"key": tag["Key"], "value": tag["Value"]}
+                for tag in format_tags(getattr(self, "_tags", None) or [])
+            ]
             endpoint = Endpoint.create(
-                endpoint_name=endpoint_name, endpoint_config_name=endpoint_name
+                endpoint_name=endpoint_name,
+                endpoint_config_name=endpoint_name,
+                tags=endpoint_tags or None,
             )
             endpoint.wait_for_status("InService")
         else:
             endpoint = Endpoint.get(endpoint_name=endpoint_name)
 
-        peft_type = self._fetch_peft()
-        base_model_recipe_name = model_package.inference_specification.containers[
-            0
-        ].base_model.recipe_name
+        # Without a model package (e.g. a Nova CPTTrainer or raw-S3 checkpoint)
+        # there is no PEFT/recipe metadata, so the deployment follows the
+        # single-IC path below.
+        peft_type = self._fetch_peft() if model_package is not None else None
+        base_model_recipe_name = (
+            model_package.inference_specification.containers[0].base_model.recipe_name
+            if model_package is not None
+            else None
+        )
 
         if peft_type == "LORA":
             # LORA deployment: base IC + adapter IC
@@ -5162,8 +5223,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 runtime_config=InferenceComponentRuntimeConfig(copy_count=1),
             )
 
-        # Create lineage tracking for new endpoints
-        if not is_existing_endpoint:
+        # Create lineage tracking for new endpoints. Lineage is keyed off the
+        # model package, so it is only created when one is available (a Nova
+        # CPTTrainer / raw-S3 checkpoint has no package).
+        if not is_existing_endpoint and model_package is not None:
             try:
                 from sagemaker.core.resources import Action, Association, Artifact
                 from sagemaker.core.shapes import ActionSource, MetadataProperties

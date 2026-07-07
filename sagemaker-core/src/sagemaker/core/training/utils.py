@@ -208,6 +208,18 @@ def resolve_nova_checkpoint_uri(
     manifest_uri = build_nova_manifest_s3_uri(s3_output_path, training_job_name)
     try:
         return read_nova_checkpoint_uri_from_manifest(s3_client, manifest_uri)
-    except Exception:
+    except Exception as manifest_error:
+        # The raw manifest.json is the primary source (e.g. HyperPod). Only fall
+        # back to the copy inside output.tar.gz (e.g. some SMTJ jobs) if it exists.
+        # If the fallback also fails, surface BOTH errors so the raw-manifest
+        # failure isn't masked by a misleading "not found in tar.gz" message.
         tar_gz_uri = build_nova_output_tar_gz_s3_uri(s3_output_path, training_job_name)
-        return _read_checkpoint_uri_from_tar_gz(s3_client, tar_gz_uri)
+        try:
+            return _read_checkpoint_uri_from_tar_gz(s3_client, tar_gz_uri)
+        except Exception as tar_gz_error:
+            raise ValueError(
+                "Could not resolve the Nova checkpoint URI. "
+                f"Reading manifest.json at {manifest_uri} failed: {manifest_error}. "
+                f"Falling back to output.tar.gz at {tar_gz_uri} also failed: "
+                f"{tar_gz_error}."
+            ) from manifest_error
