@@ -179,6 +179,11 @@ def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
             cleanup_feature_group(fg)
 
 
+# Lake Formation serializes concurrent modifications to its permission state and can
+# raise a transient ConcurrentModificationException (e.g. from RevokePermissions when
+# disabling hybrid access mode), expecting the caller to retry. Rerun this test a few
+# times to absorb that transient error instead of failing the build.
+@pytest.mark.flaky(reruns=1, reruns_delay=15)
 @pytest.mark.serial
 @pytest.mark.slow_test
 def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
