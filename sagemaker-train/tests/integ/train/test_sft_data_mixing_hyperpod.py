@@ -30,6 +30,7 @@ from __future__ import absolute_import
 
 import json
 import logging
+import os
 import time
 import random
 
@@ -49,7 +50,9 @@ logger = logging.getLogger(__name__)
 REGION = "us-east-1"
 DATA_PREFIX = "test-sft-data-mixing-hyperpod-integ"
 NUM_TRAINING_SAMPLES = 300
-HYPERPOD_CLUSTER_NAME = "riv-rig"
+# HyperPod cluster provisioned for the pysdk integ-test account in us-east-1.
+# Overridable via env var so a cluster rename does not require a code change.
+HYPERPOD_CLUSTER_NAME = os.environ.get("PYSDK_HYPERPOD_CLUSTER_NAME", "pysdk-hp-integ-tests")
 HYPERPOD_INSTANCE_TYPE = "ml.p5.48xlarge"
 
 

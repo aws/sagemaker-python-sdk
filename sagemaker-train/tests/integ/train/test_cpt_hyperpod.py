@@ -29,6 +29,7 @@ from __future__ import absolute_import
 
 import json
 import logging
+import os
 import subprocess
 import time
 import random
@@ -45,7 +46,9 @@ logger = logging.getLogger(__name__)
 
 # Test configuration
 REGION = "us-east-1"
-CLUSTER_NAME = "riv-rig"
+# HyperPod cluster provisioned for the pysdk integ-test account in us-east-1.
+# Overridable via env var so a cluster rename does not require a code change.
+CLUSTER_NAME = os.environ.get("PYSDK_HYPERPOD_CLUSTER_NAME", "pysdk-hp-integ-tests")
 INSTANCE_TYPE = "ml.p5.48xlarge"
 NODE_COUNT = 2
 MODEL_NAME = "nova-textgeneration-micro"
