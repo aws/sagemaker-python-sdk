@@ -113,7 +113,9 @@ def inspect_ai_resources(sagemaker_session_us_east_1):
 class TestInspectAIEvaluatorIntegration:
     """Integration tests for InspectAI evaluation with Bedrock inference."""
 
-    def test_inspect_ai_bedrock_evaluation(self, sagemaker_session_us_east_1, inspect_ai_resources):
+    def test_inspect_ai_bedrock_evaluation(
+        self, sagemaker_session_us_east_1, inspect_ai_resources, monkeypatch
+    ):
         """Test InspectAI evaluation with Bedrock inference mode.
 
         Runs a BoolQ benchmark with Nova Lite via Bedrock inference.
@@ -122,6 +124,11 @@ class TestInspectAIEvaluatorIntegration:
         The execution role is resolved from the active credentials by
         BaseEvaluator (no ``role`` argument passed).
         """
+        # The base model lives in the public hub, not the private "sdktest"
+        # recipe hub that the session-scoped use_private_hub fixture pins
+        # SAGEMAKER_HUB_NAME to. Explicitly resolve against SageMakerPublicHub.
+        monkeypatch.setenv("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
+
         evaluator = InspectAIEvaluator(
             model="nova-textgeneration-lite",
             bedrock_model_id="us.amazon.nova-lite-v1:0",
@@ -159,12 +166,19 @@ class TestInspectAIEvaluatorIntegration:
         execution.show_results()
         logger.info("InspectAI Bedrock evaluation completed successfully.")
 
-    def test_inspect_ai_upload_benchmarks(self, sagemaker_session_us_east_1, inspect_ai_resources):
+    def test_inspect_ai_upload_benchmarks(
+        self, sagemaker_session_us_east_1, inspect_ai_resources, monkeypatch
+    ):
         """Test uploading benchmarks to S3 via upload_benchmarks().
 
         Validates that local benchmark files are successfully uploaded and
         the returned S3 URI is accessible to the training job.
         """
+        # The base model lives in the public hub, not the private "sdktest"
+        # recipe hub that the session-scoped use_private_hub fixture pins
+        # SAGEMAKER_HUB_NAME to. Explicitly resolve against SageMakerPublicHub.
+        monkeypatch.setenv("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
+
         evaluator = InspectAIEvaluator(
             model="nova-textgeneration-lite",
             bedrock_model_id="us.amazon.nova-lite-v1:0",
