@@ -44,12 +44,17 @@ class TestSFTTrainerRecipeOverrideInteg:
 
     def test_sft_get_resolved_recipe_with_local_yaml(self):
         """Test that SFTTrainer.get_resolved_recipe() returns merged config from a local YAML."""
-        # Create a recipe file
+        # Create a recipe file. Use real recipe field names: the SFT recipe
+        # nests hyperparameters under training_config.training_args and uses
+        # max_epochs (not num_epochs) and global_batch_size (which maps to
+        # train_batch_size) rather than batch_size.
         recipe_content = {
             "training_config": {
-                "learning_rate": 1e-5,
-                "num_epochs": 3,
-                "batch_size": 8,
+                "training_args": {
+                    "learning_rate": 1e-5,
+                    "max_epochs": 3,
+                    "train_batch_size": 8,
+                }
             }
         }
         with tempfile.NamedTemporaryFile(
@@ -69,18 +74,19 @@ class TestSFTTrainerRecipeOverrideInteg:
                 overrides={
                     "training_config": {
                         "learning_rate": 2e-5,
-                        "num_epochs": 5,
+                        "max_epochs": 5,
                     }
                 },
             )
 
             resolved = sft_trainer.get_resolved_recipe()
 
+            training_args = resolved["training_config"]["training_args"]
             # Overrides win
-            assert resolved["training_config"]["learning_rate"] == 2e-5
-            assert resolved["training_config"]["num_epochs"] == 5
+            assert training_args["learning_rate"] == 2e-5
+            assert training_args["max_epochs"] == 5
             # Recipe file value preserved where no override
-            assert resolved["training_config"]["batch_size"] == 8
+            assert training_args["train_batch_size"] == 8
 
         finally:
             os.unlink(recipe_path)
@@ -102,8 +108,9 @@ class TestSFTTrainerRecipeOverrideInteg:
 
         resolved = sft_trainer.get_resolved_recipe()
 
-        # Override applied on top of Hub defaults
-        assert resolved["training_config"]["learning_rate"] == 3e-5
+        # Override applied on top of Hub defaults. learning_rate lives under
+        # training_config.training_args in the real SFT recipe.
+        assert resolved["training_config"]["training_args"]["learning_rate"] == 3e-5
 
     def test_sft_get_resolved_recipe_no_recipe_raises(self, sagemaker_session):
         """Test that get_resolved_recipe() raises when no recipe or overrides provided."""
@@ -176,7 +183,13 @@ class TestSFTTrainerFullRecipeOverrideInteg:
     """Integration tests for SFTTrainer overriding non-spec keys via full recipe template."""
 
     def test_sft_override_non_spec_keys(self):
-        """Test that non-spec keys (max_length, save_top_k) can be overridden."""
+        """Test that non-spec keys can be overridden.
+
+        micro_train_batch_size and max_norm exist in the recipe's
+        training_config.training_args but are not exposed in the override spec.
+        They should still be overridable when the full recipe template is used
+        as the base layer.
+        """
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
@@ -185,8 +198,8 @@ class TestSFTTrainerFullRecipeOverrideInteg:
             accept_eula=True,
             overrides={
                 "training_config": {
-                    "max_length": 16384,
-                    "save_top_k": 3,
+                    "micro_train_batch_size": 4,
+                    "max_norm": 2.0,
                 }
             },
         )
@@ -194,8 +207,9 @@ class TestSFTTrainerFullRecipeOverrideInteg:
         resolved = sft_trainer.get_resolved_recipe()
 
         # Non-spec keys should be overridable when full recipe template is available
-        assert resolved["training_config"]["max_length"] == 16384
-        assert resolved["training_config"]["save_top_k"] == 3
+        training_args = resolved["training_config"]["training_args"]
+        assert training_args["micro_train_batch_size"] == 4
+        assert training_args["max_norm"] == 2.0
 
     def test_sft_override_nested_non_spec_keys(self):
         """Test that nested non-spec keys (training_args.max_len) can be overridden."""
@@ -214,10 +228,10 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
         resolved = sft_trainer.get_resolved_recipe()
 
-        # Nested non-spec key overridden (merged into resolved recipe as new key)
+        # Nested key overridden at training_config.training_args.max_len
         assert resolved["training_config"]["training_args"]["max_len"] == 8192
-        # Spec-level default preserved at training_config level (seed is a spec key)
-        assert resolved["training_config"]["seed"] == 42
+        # Spec-level default preserved (seed lives under training_args)
+        assert resolved["training_config"]["training_args"]["seed"] == 42
 
     def test_sft_full_recipe_defaults_preserved(self):
         """Test that full recipe defaults are present for keys not overridden."""
@@ -236,8 +250,8 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
         resolved = sft_trainer.get_resolved_recipe()
 
-        # Override applied
-        assert resolved["training_config"]["learning_rate"] == 3e-5
+        # Override applied (learning_rate lives under training_args)
+        assert resolved["training_config"]["training_args"]["learning_rate"] == 3e-5
         # Full recipe template keys are present (not just spec keys)
         training_config = resolved.get("training_config", {})
         assert len(training_config) > 3, (
@@ -246,10 +260,14 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
     def test_sft_full_recipe_with_recipe_file_and_overrides(self):
         """Test 3-level merge: full_template < recipe file < overrides with non-spec keys."""
+        # Recipe files are not field-name remapped, so keys must be written at
+        # their real path under training_config.training_args.
         recipe_content = {
             "training_config": {
-                "max_length": 8192,
-                "learning_rate": 1e-5,
+                "training_args": {
+                    "max_len": 8192,
+                    "learning_rate": 1e-5,
+                }
             }
         }
         with tempfile.NamedTemporaryFile(
@@ -275,10 +293,11 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
             resolved = sft_trainer.get_resolved_recipe()
 
+            training_args = resolved["training_config"]["training_args"]
             # Overrides win
-            assert resolved["training_config"]["learning_rate"] == 2e-5
+            assert training_args["learning_rate"] == 2e-5
             # Recipe file wins over full template default
-            assert resolved["training_config"]["max_length"] == 8192
+            assert training_args["max_len"] == 8192
 
         finally:
             os.unlink(recipe_path)
@@ -656,7 +675,7 @@ class TestSFTTrainerValidationFailuresInteg:
 
         # Should not raise
         resolved = sft_trainer.get_resolved_recipe()
-        assert resolved["training_config"]["learning_rate"] == 1e-5
+        assert resolved["training_config"]["training_args"]["learning_rate"] == 1e-5
 
     def test_sft_serverless_skips_instance_type_validation(self):
         """Test that serverless mode (no compute) skips instance_type validation."""
@@ -675,8 +694,14 @@ class TestSFTTrainerValidationFailuresInteg:
 
         # No compute = serverless, instance_type validation skipped
         resolved = sft_trainer.get_resolved_recipe()
-        assert resolved["training_config"]["learning_rate"] == 1e-5
+        assert resolved["training_config"]["training_args"]["learning_rate"] == 1e-5
 
+    @pytest.mark.skip(
+        reason="save_steps/max_steps are not part of the llama SFT recipe "
+        "(it trains by epochs, not steps), so the save_steps<=max_steps "
+        "boundary cannot be exercised against this model. Needs a recipe that "
+        "actually exposes step-based training to be meaningful."
+    )
     def test_sft_save_steps_equal_to_max_steps_passes(self):
         """Test that save_steps == max_steps is valid (boundary condition)."""
         sft_trainer = SFTTrainer(
@@ -700,9 +725,14 @@ class TestSFTTrainerValidationFailuresInteg:
 
     def test_sft_recipe_file_with_invalid_value_raises(self):
         """Test that validation catches errors from recipe file values."""
+        # Recipe files are not field-name remapped, so the key must be at its
+        # real path (training_config.training_args.learning_rate) to be merged
+        # and validated. learning_rate's spec max is 1e-4, so 999.0 is invalid.
         recipe_content = {
             "training_config": {
-                "learning_rate": 999.0,
+                "training_args": {
+                    "learning_rate": 999.0,
+                }
             }
         }
         with tempfile.NamedTemporaryFile(
@@ -728,9 +758,13 @@ class TestSFTTrainerValidationFailuresInteg:
 
     def test_sft_override_corrects_invalid_recipe_value(self):
         """Test that a programmatic override can fix an invalid recipe file value."""
+        # Recipe file value at its real path is invalid (>max); the override
+        # (field-name remapped to the same path) must win and pass validation.
         recipe_content = {
             "training_config": {
-                "learning_rate": 999.0,
+                "training_args": {
+                    "learning_rate": 999.0,
+                }
             }
         }
         with tempfile.NamedTemporaryFile(
@@ -756,7 +790,7 @@ class TestSFTTrainerValidationFailuresInteg:
 
             # Override wins, fixing the bad recipe file value
             resolved = sft_trainer.get_resolved_recipe()
-            assert resolved["training_config"]["learning_rate"] == 1e-5
+            assert resolved["training_config"]["training_args"]["learning_rate"] == 1e-5
         finally:
             os.unlink(recipe_path)
 
@@ -807,12 +841,12 @@ class TestSFTTrainerValidationFailuresInteg:
         result2 = sft_trainer.get_resolved_recipe()
 
         assert result1 == result2
-        assert result1["training_config"]["learning_rate"] == 2e-5
+        assert result1["training_config"]["training_args"]["learning_rate"] == 2e-5
 
         # Mutating the returned dict doesn't affect cached result
-        result1["training_config"]["learning_rate"] = 999
+        result1["training_config"]["training_args"]["learning_rate"] = 999
         result3 = sft_trainer.get_resolved_recipe()
-        assert result3["training_config"]["learning_rate"] == 2e-5
+        assert result3["training_config"]["training_args"]["learning_rate"] == 2e-5
 
     def test_sft_invalid_yaml_content_raises(self):
         """Test that a YAML file with non-dict content raises ValueError."""
