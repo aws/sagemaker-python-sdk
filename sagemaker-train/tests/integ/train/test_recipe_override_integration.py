@@ -230,7 +230,7 @@ class TestSFTTrainerFullRecipeOverrideInteg:
         # Spec-level default preserved (seed lives under training_args)
         assert resolved["training_config"]["training_args"]["seed"] == 42
 
-    def test_sft_full_recipe_defaults_preserved(self):
+    def test_sft_full_recipe_defaults_preserved(self, sagemaker_session):
         """Test that full recipe defaults are present for keys not overridden."""
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -238,6 +238,7 @@ class TestSFTTrainerFullRecipeOverrideInteg:
             model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
+            sagemaker_session=sagemaker_session,
             overrides={
                 "training_config": {
                     "learning_rate": 3e-5,
@@ -739,7 +740,7 @@ class TestSFTTrainerValidationFailuresInteg:
         finally:
             os.unlink(recipe_path)
 
-    def test_sft_override_corrects_invalid_recipe_value(self):
+    def test_sft_override_corrects_invalid_recipe_value(self, sagemaker_session):
         """Test that a programmatic override can fix an invalid recipe file value."""
         # Recipe value is invalid (>max); the override must win and pass validation.
         recipe_content = {
@@ -762,6 +763,7 @@ class TestSFTTrainerValidationFailuresInteg:
                 model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
                 training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
                 accept_eula=True,
+                sagemaker_session=sagemaker_session,
                 recipe=recipe_path,
                 overrides={
                     "training_config": {
