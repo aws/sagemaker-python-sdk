@@ -38,7 +38,17 @@ extensions = [
 ]
 
 # Add any paths that contain templates here, relative to this directory.
+# The _templates/layout.html override injects a <meta name="robots" content="noindex">
+# tag into every page's <head> so search engines drop the deprecated V2 docs from
+# their results (search de-indexing lever).
 templates_path = ["_templates"]
+
+# Canonical URL. Sphinx emits <link rel="canonical"> on each page using this base URL,
+# declaring the V3 ("stable") page as the authoritative URL for each V2 page so search
+# engines and automation consolidate signals on V3. A page built at
+# /en/v2/<path>.html points its canonical at https://sagemaker.readthedocs.io/en/stable/<path>.html
+# (same relative path under the V3 tree). Only accurate where a same-path V3 page exists.
+html_baseurl = "https://sagemaker.readthedocs.io/en/stable/"
 
 source_suffix = ".rst"  # The suffix of source filenames.
 master_doc = "index"  # The master toctree document.
