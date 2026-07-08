@@ -26,8 +26,9 @@ def lambda_handler(event, context):
         # print(sample)
         if not "id" in sample:
             print(f"ID is None/empty for sample: {sample}")
-        else:
-            idx = sample["id"]
+            continue
+
+        idx = sample["id"]
 
         ro = RewardOutput(id=idx, aggregate_reward_score=0.0)
 
@@ -38,22 +39,22 @@ def lambda_handler(event, context):
         
         # Extract answer from ground truth dict
         if ground_truth is None:
-            print(f"No answer found in ground truth for id: {idx}")
-            # scores.append(RewardOutput(id="0", aggregate_reward_score=0.0))
+            print(f"Warning: No answer found in ground truth (reference_answer) for id: {idx}")
+            scores.append(RewardOutput(id=idx, aggregate_reward_score=0.0))
             continue
         
         # Get completion from last message (assistant message)
         last_message = sample["messages"][-1]
         # completion_text = last_message["content"]
-        
-        if last_message["role"] != "assistant":
-            print(f"Last message is not from assistant for id: {idx}")
-            # scores.append(RewardOutput(id="0", aggregate_reward_score=0.0))
-            continue
 
         if not "content" in last_message:
             print(f"Completion text is empty for id: {idx}")
             # scores.append(RewardOutput(id="0", aggregate_reward_score=0.0))
+            continue
+
+        if last_message["role"] != "assistant":
+            print(f"Last message is not from assistant for id: {idx}")
+            scores.append(RewardOutput(id=idx, aggregate_reward_score=0.0))
             continue
 
         random_score = random.uniform(0.0, 1.0)

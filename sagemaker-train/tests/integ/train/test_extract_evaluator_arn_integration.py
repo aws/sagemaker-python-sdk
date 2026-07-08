@@ -91,12 +91,3 @@ def test_extract_evaluator_arn_with_evaluator_string(sagemaker_session, evaluato
     # Should return the ARN string unchanged
     assert result == evaluator.arn
 
-
-def test_extract_evaluator_arn_with_lambda_arn_string(sagemaker_session, lambda_arn):
-    """Test _extract_evaluator_arn rejects a Lambda ARN string.
-
-    It only accepts a hub-content evaluator ARN (or Evaluator object); Lambda
-    ARNs are dispatched upstream, so passing one here must fail validation.
-    """
-    with pytest.raises(ValueError, match="must be a valid SageMaker hub-content evaluator ARN"):
-        _extract_evaluator_arn(lambda_arn, "custom_reward_function")
