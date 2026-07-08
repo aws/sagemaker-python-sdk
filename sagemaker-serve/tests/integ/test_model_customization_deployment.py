@@ -132,11 +132,7 @@ class TestModelCustomizationFromTrainingJob:
                 inference_component_name=adapter_name if peft_type == "LORA" else None,
             )
         except (FailedStatusError, ClientError) as e:
-            # Endpoint provisioning can fail for environmental reasons unrelated to
-            # the SDK: the region may be temporarily out of capacity for the
-            # requested instance type (InsufficientInstanceCapacity), or the test
-            # account may be at its endpoint-usage quota for the instance type
-            # (ResourceLimitExceeded). xfail rather than fail the build in those cases.
+            # xfail on environmental capacity/quota limits rather than fail the build.
             msg = str(e)
             if "InsufficientInstanceCapacity" in msg or "ResourceLimitExceeded" in msg:
                 cleanup_endpoints.append(endpoint_name)

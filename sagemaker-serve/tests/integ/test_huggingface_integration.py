@@ -25,7 +25,7 @@ from sagemaker.core.resources import EndpointConfig
 logger = logging.getLogger(__name__)
 
 # Configuration - easily customizable
-MODEL_ID = "openai-community/gpt2"  # Small causal LM; HF Hub no longer accepts the single-segment id "gpt2"
+MODEL_ID = "openai-community/gpt2"  # canonical HF repo id ("gpt2" no longer accepted)
 MODEL_NAME_PREFIX = "hf-test-model"
 ENDPOINT_NAME_PREFIX = "hf-test-endpoint"
 

@@ -44,10 +44,8 @@ class TestSFTTrainerRecipeOverrideInteg:
 
     def test_sft_get_resolved_recipe_with_local_yaml(self):
         """Test that SFTTrainer.get_resolved_recipe() returns merged config from a local YAML."""
-        # Create a recipe file. Use real recipe field names: the SFT recipe
-        # nests hyperparameters under training_config.training_args and uses
-        # max_epochs (not num_epochs) and global_batch_size (which maps to
-        # train_batch_size) rather than batch_size.
+        # Real SFT recipe field names: hyperparameters nest under
+        # training_config.training_args (e.g. max_epochs, global_batch_size).
         recipe_content = {
             "training_config": {
                 "training_args": {
@@ -108,8 +106,7 @@ class TestSFTTrainerRecipeOverrideInteg:
 
         resolved = sft_trainer.get_resolved_recipe()
 
-        # Override applied on top of Hub defaults. learning_rate lives under
-        # training_config.training_args in the real SFT recipe.
+        # Override applied; learning_rate lives under training_config.training_args.
         assert resolved["training_config"]["training_args"]["learning_rate"] == 3e-5
 
     def test_sft_get_resolved_recipe_no_recipe_raises(self, sagemaker_session):
@@ -260,8 +257,7 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
     def test_sft_full_recipe_with_recipe_file_and_overrides(self):
         """Test 3-level merge: full_template < recipe file < overrides with non-spec keys."""
-        # Recipe files are not field-name remapped, so keys must be written at
-        # their real path under training_config.training_args.
+        # Recipe files aren't field-name remapped, so use the real nested path.
         recipe_content = {
             "training_config": {
                 "training_args": {
@@ -713,9 +709,8 @@ class TestSFTTrainerValidationFailuresInteg:
 
     def test_sft_recipe_file_with_invalid_value_raises(self):
         """Test that validation catches errors from recipe file values."""
-        # Recipe files are not field-name remapped, so the key must be at its
-        # real path (training_config.training_args.learning_rate) to be merged
-        # and validated. learning_rate's spec max is 1e-4, so 999.0 is invalid.
+        # Use the real nested path so the value is validated; 999.0 exceeds
+        # learning_rate's spec max of 1e-4.
         recipe_content = {
             "training_config": {
                 "training_args": {
@@ -746,8 +741,7 @@ class TestSFTTrainerValidationFailuresInteg:
 
     def test_sft_override_corrects_invalid_recipe_value(self):
         """Test that a programmatic override can fix an invalid recipe file value."""
-        # Recipe file value at its real path is invalid (>max); the override
-        # (field-name remapped to the same path) must win and pass validation.
+        # Recipe value is invalid (>max); the override must win and pass validation.
         recipe_content = {
             "training_config": {
                 "training_args": {

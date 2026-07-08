@@ -176,9 +176,8 @@ class TestLLMAJCustomModelIntegration:
         )
         logger.info(f"Pipeline completed with status: {execution.status.overall_status}")
 
-        # Log step details and assert every step succeeded — this is the real
-        # signal that inference (InspectAIInference) and judging (EvaluateWithJudge)
-        # both produced results end to end.
+        # Assert every step succeeded — the real signal that inference and
+        # judging both ran end to end.
         assert execution.status.step_details, "Pipeline reported no step details."
         for step in execution.status.step_details:
             logger.info(f"  Step '{step.name}': {step.status}")
@@ -187,17 +186,10 @@ class TestLLMAJCustomModelIntegration:
                 f"Failure: {step.failure_reason}"
             )
 
-        # Step 5: Display evaluation results (best-effort).
-        # NOTE: For the InspectAI+Bedrock path, the pipeline steps are named
-        # "InspectAIInference"/"EvaluateWithJudge", but show_results() ->
-        # _show_llmaj_results() only recognizes the traditional LLMAJ step names
-        # ("EvaluateCustomModelMetrics"/"EvaluateBaseModelMetrics") and therefore
-        # raises "Could not extract training job name from pipeline steps". This is
-        # a known SDK display-layer gap that does not affect the evaluation itself —
-        # results are produced and stored in S3. Treat display as best-effort so the
-        # test validates the end-to-end pipeline rather than the display helper.
-        # TODO: Once _show_llmaj_results() supports the InspectAI path, restore a
-        # strict assertion on show_results().
+        # show_results() best-effort: _show_llmaj_results() doesn't yet recognize
+        # the InspectAI step names, a known display-layer gap that doesn't affect
+        # the evaluation (results are still produced and stored in S3).
+        # TODO: restore a strict assertion once it supports the InspectAI path.
         logger.info("Fetching evaluation results (best-effort)...")
         try:
             execution.show_results()

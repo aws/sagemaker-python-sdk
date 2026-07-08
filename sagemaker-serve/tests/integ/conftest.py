@@ -38,27 +38,20 @@ import boto3
 import pytest
 from botocore.config import Config
 
-# Higher, adaptive retry budget for the throttling-prone IAM validation calls.
+# Adaptive retry budget for throttling-prone IAM validation calls.
 _ADAPTIVE_RETRY_CONFIG = Config(retries={"max_attempts": 10, "mode": "adaptive"})
 
-# Signature of the throttled call we tolerate: the IAM permission simulation used
-# during role validation. Kept specific so unrelated throttling still fails loudly.
+# Only tolerate throttling on the IAM permission simulation used during role
+# validation, so unrelated throttling still fails loudly.
 _THROTTLE_ERROR_CODES = ("Throttling", "ThrottlingException", "RequestLimitExceeded")
 _SIMULATE_OP = "SimulatePrincipalPolicy"
 
 
 @pytest.fixture(autouse=True, scope="session")
 def _configure_default_boto_retries():
-    """Approach A: give boto3's default session adaptive retries for IAM calls.
-
-    The role resolver builds its IAM client from the default boto session when no
-    explicit session is supplied, so clients created after this runs inherit the
-    adaptive retry policy and absorb transient ``SimulatePrincipalPolicy``
-    throttling instead of erroring out.
-    """
+    """Give boto3's default session adaptive retries so IAM clients built by the
+    role resolver absorb transient SimulatePrincipalPolicy throttling."""
     boto3.setup_default_session()
-    # botocore honors this default config for every client created from the
-    # session afterwards (including ones built deep inside the SDK).
     boto3.DEFAULT_SESSION._session.set_default_client_config(_ADAPTIVE_RETRY_CONFIG)
     yield
 
@@ -76,12 +69,8 @@ def _is_simulate_policy_throttle(exc):
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item, call):
-    """Approach C: xfail (don't fail) on residual SimulatePrincipalPolicy throttling.
-
-    If the adaptive retries above are still not enough under extreme concurrency,
-    treat the throttled role-permission simulation as an expected-environmental
-    condition rather than a test failure. Any other error is reported normally.
-    """
+    """Skip (rather than fail) on residual SimulatePrincipalPolicy throttling that
+    survives the adaptive retries under heavy concurrency."""
     outcome = yield
     report = outcome.get_result()
 
@@ -89,7 +78,7 @@ def pytest_runtest_makereport(item, call):
         return
 
     exc = call.excinfo.value if call.excinfo else None
-    # Walk the exception chain so a wrapped/chained ClientError is still detected.
+    # Walk the exception chain so a wrapped ClientError is still detected.
     while exc is not None:
         if _is_simulate_policy_throttle(exc):
             report.outcome = "skipped"
