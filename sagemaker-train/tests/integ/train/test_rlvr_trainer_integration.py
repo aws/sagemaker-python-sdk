@@ -171,6 +171,7 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
         validation_dataset="s3://sagemaker-us-east-1-784379639078/input_data/rlvr-nova/grpo-64-sample.jsonl",
         s3_output_path="s3://sagemaker-us-east-1-784379639078/output/",
         custom_reward_function="arn:aws:sagemaker:us-east-1:784379639078:hub-content/sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1",
+        # Can uncomment below reward function to test lambda arn flow as well.
         # custom_reward_function="arn:aws:lambda:us-east-1:784379639078:function:rlvr-nova-reward-function",
         accept_eula=True,
         sagemaker_session=sagemaker_session_us_east_1,
