@@ -3895,6 +3895,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         mb_instance.resource_requirements = resource_requirements
         mb_instance.model_kms_key = model_kms_key
         mb_instance.hub_name = jumpstart_config.hub_name
+        if mb_instance.hub_name and not getattr(mb_instance, "hub_arn", None):
+            from sagemaker.core.jumpstart.hub.utils import (
+                generate_hub_arn_for_init_kwargs,
+            )
+
+            mb_instance.hub_arn = generate_hub_arn_for_init_kwargs(
+                hub_name=mb_instance.hub_name,
+                region=mb_instance.region,
+                session=mb_instance.sagemaker_session,
+            )
         mb_instance.config_name = jumpstart_config.inference_config_name
         mb_instance.accept_eula = jumpstart_config.accept_eula
         mb_instance.tolerate_vulnerable_model = tolerate_vulnerable_model
