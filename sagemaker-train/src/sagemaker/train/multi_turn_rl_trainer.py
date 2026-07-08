@@ -44,7 +44,7 @@ from sagemaker.train.common_utils.constants import MIN_MLFLOW_VERSION
 from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe, _is_nova_model
 from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.train.defaults import TrainDefaults
-from sagemaker.train.utils import _get_unique_name, _get_studio_tags
+from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 
 logger = logging.getLogger(__name__)
 
@@ -185,9 +185,14 @@ class MultiTurnRLTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         kms_key_arn: Optional[str] = None,
         accept_eula: bool = False,
+        recipe: Optional[str] = None,
+        overrides: Optional[dict] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
+        self._recipe_path = recipe
+        self._overrides = overrides
+        self._resolved_recipe_cache = None
 
         self._validate_agent_config(agent_env)
         self._validate_networking(networking)
@@ -283,13 +288,17 @@ class MultiTurnRLTrainer(BaseTrainer):
         logger.info(f"Job Name: {current_job_name}")
 
         self._final_hyperparameters = self.hyperparameters.to_dict()
+
+        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
+        self._final_hyperparameters = self._apply_recipe_to_hyperparameters(self._final_hyperparameters)
+
         _validate_hyperparameter_values(self._final_hyperparameters)
 
         if training_dataset is not None:
             self.training_dataset = training_dataset
         job_config_doc = self._build_job_config_document()
 
-        tags = _get_studio_tags(self._model_name, get_sagemaker_hub_name())
+        tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
         try:
             job = Job.create(

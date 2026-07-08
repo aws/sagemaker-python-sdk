@@ -975,15 +975,20 @@ class _ModelBuilderServers(object):
         self.secret_key = ""
 
         # Get JumpStart model configuration
-        init_kwargs = get_init_kwargs(
+        init_kwargs_params = dict(
             model_id=self.model,
             model_version=self.model_version or "*",
             region=self.region,
             instance_type=self.instance_type,
+            sagemaker_session=self.sagemaker_session,
             tolerate_vulnerable_model=getattr(self, "tolerate_vulnerable_model", None),
             tolerate_deprecated_model=getattr(self, "tolerate_deprecated_model", None),
             config_name=getattr(self, "config_name", None),
         )
+        hub_arn = getattr(self, "hub_arn", None)
+        if hub_arn:
+            init_kwargs_params["hub_arn"] = hub_arn
+        init_kwargs = get_init_kwargs(**init_kwargs_params)
 
         # Configure image URI and environment variables
         self.image_uri = self.image_uri or init_kwargs.image_uri

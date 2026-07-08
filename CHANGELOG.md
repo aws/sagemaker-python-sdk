@@ -1,4 +1,42 @@
 # Changelog
+## v3.15.0 (2026-06-22)
+
+### New Features
+
+- **feat: Training — Recipes** - Add 3-level recipe override support with `get_resolved_recipe()`
+- **feat: Training — Recipes** - Recipe override handling
+- **feat: Training — Recipes** - Add Nova-specific recipe validations
+- **feat: Training — Recipes** - Auto-resolve HyperPod recipe from Hub
+- **feat: Training — Compute/Infra** - Add Serverless / SMTJ / HyperPod support to trainers and evaluators
+- **feat: Training — Compute/Infra** - Add infra validation
+- **feat: Training — Methods & Data** - Enable Data Mixing for Nova models
+- **feat: Training — Methods & Data** - Add `is_multimodal` utils function (multimodal data auto-detection)
+- **feat: Training — Methods & Data** - RLVRTrainer Lambda ARN support
+- **feat: Training — Methods & Data** - RLVR reward Lambda validation
+- **feat: Evaluation** - InspectAI evaluator
+- **feat: Evaluation** - Add Nova as a target for LLM-as-a-Judge (LLMAJ)
+- **feat: Evaluation** - Support serverful training job checkpoint resolution in InspectAI evaluator
+- **feat: Deploy/Setup/Validation** - Add Nova SMI config bounds validation to ModelBuilder
+- **feat: Deploy/Setup/Validation** - IAM role creation (auto-create least-privilege execution roles, SDK-wide)
+- **feat: Deploy/Setup/Validation** - HyperPod IAM creation
+
+### Bug Fixes
+
+- fix: Reject unknown recipe overrides (serverless + serverful) and untrusted IAM roles
+- fix: Apply recipe overrides to hyperparameters in SMTJ serverful path
+- fix: Recipe override errors in evaluator
+- fix: Hub-content IAM perms, recipe dataset paths, and log markup escaping
+- fix: Harden auto-created IAM roles and protect curated recipe keys
+- fix: Add HyperPod validation in train and evaluate
+- fix: Evaluation on HyperPod
+- fix: Resolve HyperPod training image from EKS payload template
+- fix: Skip `model_package_group` validation when HyperPod compute is provided in CPTTrainer
+- fix: Use compute param in get fine-tuning utils
+- fix: Set Converse as S3DataType for Nova models in SMTJ Serverful for SFT and DPO
+- fix: Use Converse S3DataType for Nova SFT/DPO in serverless flow
+- fix: MLflow error causing OSS model eval to fail
+- fix: RLVR setup and reward Lambda handling
+
 ## v3.14.0 (2026-06-18)
 
 ### Other

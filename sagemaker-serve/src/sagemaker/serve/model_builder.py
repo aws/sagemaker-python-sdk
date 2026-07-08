@@ -54,9 +54,9 @@ from sagemaker.core.resources import (
 )
 from sagemaker.core.utils.utils import logger
 from sagemaker.core.helper import session_helper
+from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.helper.session_helper import (
     Session,
-    get_execution_role,
     _wait_until,
     _deploy_done,
 )
@@ -514,9 +514,17 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 except Exception:
                     self.region = None  # Default fallback
 
-        # Set role_arn with priority: user input > execution role detection
+        # At construction, only resolve a default role when none was supplied (so
+        # building a ModelBuilder does no IAM work when a role is given). The
+        # resolved role is validated for serving permissions at the actual
+        # build/deploy operation (see _create_model), where a RoleValidationError
+        # explains remediation if it is insufficient.
         if not self.role_arn:
-            self.role_arn = get_execution_role(self.sagemaker_session, use_default=True)
+            self.role_arn = resolve_and_validate_role(
+                provided_role=None,
+                role_type="serving",
+                sagemaker_session=self.sagemaker_session,
+            )
 
         self._metadata_configs = None
         self.s3_upload_path = None
@@ -1008,11 +1016,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if not self.image_uri:
                 self.image_uri = nova_config["image_uri"]
             if self.env_vars:
-                self.env_vars.update(nova_config["env_vars"])
+                user_overrides = dict(self.env_vars)
+                self.env_vars = dict(nova_config["env_vars"])
+                self.env_vars.update(user_overrides)
             else:
                 self.env_vars = nova_config["env_vars"]
             if not self.instance_type:
                 self.instance_type = nova_config["instance_type"]
+            self._validate_nova_smi_config()
             return
 
         raise ValueError(
@@ -1030,36 +1041,33 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     }
 
     # Nova hosting configs per model (from Rhinestone modelDeployment.ts)
-    # NOTE: The nova-inference container (:SM-Inference-latest) enforces per-tier
-    # MAX_CONCURRENCY limits based on CONTEXT_LENGTH. These values were updated
-    # ~2026-03-23 synced with AGISageMakerInference ALLOWLISTED_CONFIGURATIONS.
-    # Uses the highest tier's CONTEXT_LENGTH and its MAX_CONCURRENCY per instance.
-    # If deployments fail with "MAX_CONCURRENCY N exceeds tier limit M", the
-    # container has likely tightened limits — check CloudWatch logs for the cap.
+    # Environment: default env vars for deployment (highest tier context/concurrency).
+    # Tiers: all (max_context_length, max_concurrency) bounds enforced by the container,
+    #   sorted by context length. Source: AGISageMakerInference ALLOWLISTED_CONFIGURATIONS.
     _NOVA_HOSTING_CONFIGS = {
         "nova-textgeneration-micro": [
-            {"InstanceType": "ml.g5.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}},
-            {"InstanceType": "ml.g5.24xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
-            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}},
-            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
-            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "12"}},
-            {"InstanceType": "ml.g6e.xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}},
-            {"InstanceType": "ml.g6e.2xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}},
-            {"InstanceType": "ml.g6e.4xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}},
-            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.g5.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}, "Tiers": [(4000, 12), (8000, 6)]},
+            {"InstanceType": "ml.g5.24xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(8000, 8)]},
+            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "6"}, "Tiers": [(4000, 12), (8000, 6)]},
+            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(8000, 8)]},
+            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "12"}, "Tiers": [(8000, 12)]},
+            {"InstanceType": "ml.g6e.xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}, "Tiers": [(8000, 2)]},
+            {"InstanceType": "ml.g6e.2xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}, "Tiers": [(8000, 2)]},
+            {"InstanceType": "ml.g6e.4xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}, "Tiers": [(8000, 4)]},
+            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}, "Tiers": [(16000, 128), (64000, 32), (128000, 8)]},
         ],
         "nova-textgeneration-lite": [
-            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}},
-            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}},
-            {"InstanceType": "ml.g6.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
-            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.g6.12xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "2"}, "Tiers": [(8000, 2)]},
+            {"InstanceType": "ml.g6.24xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "4"}, "Tiers": [(8000, 4)]},
+            {"InstanceType": "ml.g6.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(4000, 16), (8000, 8)]},
+            {"InstanceType": "ml.p5.48xlarge", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}, "Tiers": [(16000, 128), (60000, 8)]},
         ],
         "nova-textgeneration-pro": [
-            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "24000", "MAX_CONCURRENCY": "1"}},
+            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "24000", "MAX_CONCURRENCY": "1"}, "Tiers": [(8000, 8), (16000, 2), (24000, 1)]},
         ],
         "nova-textgeneration-lite-v2": [
-            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}},
-            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "128000", "MAX_CONCURRENCY": "8"}},
+            {"InstanceType": "ml.g6.48xlarge", "Environment": {"CONTEXT_LENGTH": "8000", "MAX_CONCURRENCY": "8"}, "Tiers": [(8000, 8)]},
+            {"InstanceType": "ml.p5.48xlarge", "Profile": "Default", "Environment": {"CONTEXT_LENGTH": "256000", "MAX_CONCURRENCY": "2"}, "Tiers": [(16000, 128), (64000, 32), (128000, 8), (256000, 2)]},
         ],
     }
 
@@ -1213,6 +1221,71 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             "env_vars": config["Environment"],
             "instance_type": config["InstanceType"],
         }
+
+    def _validate_nova_smi_config(self) -> None:
+        """Validate CONTEXT_LENGTH and MAX_CONCURRENCY against per-tier bounds.
+
+        Uses the Tiers field in _NOVA_HOSTING_CONFIGS to validate that the user's
+        requested (context_length, max_concurrency) pair falls within the allowed
+        bounds for the applicable tier. Only validates when both values are present.
+        """
+        if not self.env_vars:
+            return
+
+        context_length_str = self.env_vars.get("CONTEXT_LENGTH")
+        max_concurrency_str = self.env_vars.get("MAX_CONCURRENCY")
+        if context_length_str is None or max_concurrency_str is None:
+            return
+
+        model_package = self._fetch_model_package()
+        if not model_package:
+            return
+        containers = getattr(model_package.inference_specification, "containers", None)
+        if not containers:
+            return
+        base_model = getattr(containers[0], "base_model", None)
+        if not base_model:
+            return
+        hub_content_name = getattr(base_model, "hub_content_name", None)
+        if not hub_content_name:
+            return
+
+        configs = self._NOVA_HOSTING_CONFIGS.get(hub_content_name)
+        if not configs:
+            return
+
+        instance_type = self.instance_type
+        instance_config = next(
+            (c for c in configs if c["InstanceType"] == instance_type), None
+        )
+        if not instance_config:
+            return
+
+        tiers = instance_config.get("Tiers")
+        if not tiers:
+            return
+
+        context_length = int(context_length_str)
+        max_concurrency = int(max_concurrency_str)
+
+        sorted_tiers = sorted(tiers, key=lambda t: t[0])
+        max_supported_context = sorted_tiers[-1][0]
+
+        if context_length > max_supported_context:
+            raise ValueError(
+                f"CONTEXT_LENGTH={context_length} exceeds maximum supported value "
+                f"of {max_supported_context} for '{hub_content_name}' on {instance_type}."
+            )
+
+        for tier_context, tier_concurrency in sorted_tiers:
+            if context_length <= tier_context:
+                if max_concurrency > tier_concurrency:
+                    raise ValueError(
+                        f"MAX_CONCURRENCY={max_concurrency} exceeds maximum supported value "
+                        f"of {tier_concurrency} for '{hub_content_name}' on {instance_type} "
+                        f"at CONTEXT_LENGTH<={tier_context}."
+                    )
+                return
 
     def _initialize_jumpstart_config(self) -> None:
         """Initialize JumpStart-specific configuration."""
@@ -1520,6 +1593,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.s3_upload_path = self.model_path
         else:
             self.s3_upload_path = None
+
+        # Ensure no script-mode artifacts are injected for passthrough
+        self.source_dir = None
+        self.entry_point = None
+        self.dependencies = None
+        self.git_config = None
 
         if self.mode in LOCAL_MODES:
             self._prepare_for_mode()
@@ -2293,12 +2372,27 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             MODEL_CONTAINERS_PATH,
             sagemaker_session=self.sagemaker_session,
         )
+
+        # Nova 1P images require network isolation on the Model resource
+        enable_network_isolation = self._enable_network_isolation
+        resolved_image_uri = (
+            container_def["Image"]
+            if isinstance(container_def, dict)
+            else container_def[0]["Image"]
+        )
+        if (
+            not enable_network_isolation
+            and "nova-" in resolved_image_uri
+            and is_1p_image_uri(resolved_image_uri)
+        ):
+            enable_network_isolation = True
+
         create_model_args = dict(
             name=self.model_name,
             role=self.role_arn,
             container_defs=container_def,
             vpc_config=self.vpc_config,
-            enable_network_isolation=self._enable_network_isolation,
+            enable_network_isolation=enable_network_isolation,
             tags=format_tags(self._tags),
         )
         self.sagemaker_session.create_model(**create_model_args)
@@ -2311,10 +2405,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self._optimizing:
             return None
 
-        execution_role = self.role_arn
-        if not execution_role:
-            execution_role = get_execution_role(self.sagemaker_session, use_default=True)
-            self.role_arn = execution_role
+        # Resolve and validate the serving role: self.role_arn if set, otherwise
+        # the caller's own identity role. The resolved role is validated for the
+        # serving permissions; a RoleValidationError explains remediation.
+        execution_role = resolve_and_validate_role(
+            provided_role=self.role_arn,
+            role_type="serving",
+            sagemaker_session=self.sagemaker_session,
+        )
+        self.role_arn = execution_role
 
         if self.mode == Mode.LOCAL_CONTAINER:
             from sagemaker.core.local.local_session import LocalSession
@@ -2349,8 +2448,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         elif self.mode == Mode.SAGEMAKER_ENDPOINT:
             self._init_sagemaker_session_if_does_not_exist(self.instance_type)
-            if not self.role_arn:
-                self.role_arn = get_execution_role(self.sagemaker_session, use_default=True)
+            # Resolve and validate the serving role: explicit role_arn if set,
+            # otherwise the caller's own identity role. A RoleValidationError
+            # explains remediation if the resolved role is insufficient.
+            self.role_arn = resolve_and_validate_role(
+                provided_role=self.role_arn,
+                role_type="serving",
+                sagemaker_session=self.sagemaker_session,
+            )
 
             self.role_arn = resolve_value_from_config(
                 self.role_arn,
@@ -2471,9 +2576,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     nova_config = self._get_nova_hosting_config(instance_type=self.instance_type)
                     if not self.image_uri:
                         container_kwargs["image"] = nova_config["image_uri"]
-                    container_kwargs["environment"] = nova_config["env_vars"]
+                    env = dict(nova_config["env_vars"])
+                    if self.env_vars:
+                        env.update(self.env_vars)
+                    container_kwargs["environment"] = env
+                    self.env_vars = env
                     if not self.instance_type:
                         self.instance_type = nova_config["instance_type"]
+                    self._validate_nova_smi_config()
                 container_def = ContainerDefinition(**container_kwargs)
                 create_kwargs = {
                     "execution_role_arn": self.role_arn,
@@ -2513,7 +2623,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     containers=[container_def],
                     enable_network_isolation=True,
                     tags=[
-                        {"key": "sagemaker-studio:jumpstart-model-id",
+                        {"key": "sagemaker-sdk:jumpstart-model-id",
                          "value": base_model.hub_content_name},
                     ],
                 )
@@ -3794,6 +3904,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         mb_instance.resource_requirements = resource_requirements
         mb_instance.model_kms_key = model_kms_key
         mb_instance.hub_name = jumpstart_config.hub_name
+        if mb_instance.hub_name and not getattr(mb_instance, "hub_arn", None):
+            from sagemaker.core.jumpstart.hub.utils import (
+                generate_hub_arn_for_init_kwargs,
+            )
+
+            mb_instance.hub_arn = generate_hub_arn_for_init_kwargs(
+                hub_name=mb_instance.hub_name,
+                region=mb_instance.region,
+                session=mb_instance.sagemaker_session,
+            )
         mb_instance.config_name = jumpstart_config.inference_config_name
         mb_instance.accept_eula = jumpstart_config.accept_eula
         mb_instance.tolerate_vulnerable_model = tolerate_vulnerable_model
@@ -4879,10 +4999,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         )
 
         tags = [
-            {"key": "sagemaker-studio:jumpstart-model-id", "value": base_model.hub_content_name},
+            {"key": "sagemaker-sdk:jumpstart-model-id", "value": base_model.hub_content_name},
         ]
         if base_model.recipe_name:
-            tags.append({"key": "sagemaker-studio:recipe-name", "value": base_model.recipe_name})
+            tags.append({"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name})
 
         endpoint = Endpoint.create(
             endpoint_name=endpoint_name,

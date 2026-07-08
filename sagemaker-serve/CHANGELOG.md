@@ -1,4 +1,11 @@
 # Changelog
+## v1.15.0 (2026-06-22)
+
+### New Features
+
+- feat: Add Nova SMI config bounds validation to ModelBuilder (#2040)
+- feat: IAM role creation — auto-create least-privilege execution roles, SDK-wide (#2041)
+
 ## v1.14.0 (2026-06-18)
 
 ### Bug Fixes

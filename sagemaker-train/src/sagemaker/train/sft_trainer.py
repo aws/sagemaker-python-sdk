@@ -1,4 +1,3 @@
-from logging import exception
 from typing import Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
@@ -6,13 +5,17 @@ from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYP
 from sagemaker.core.resources import TrainingJob, ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.train.defaults import TrainDefaults
-from sagemaker.train.utils import _get_unique_name, _get_studio_tags
+from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.train.configs import StoppingCondition
+from sagemaker.train.data_mixing_config import DataMixingConfig
+from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 from sagemaker.train.common_utils.finetune_utils import (
     _get_fine_tuning_options_and_model_arn,
     _validate_and_resolve_model_package_group,
+    _is_nova_model,
     _resolve_model_and_name,
+    _resolve_model_with_checkpoint,
     _create_input_data_config,
     _convert_input_data_to_channels,
     _create_output_config,
@@ -22,10 +25,20 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_eula_for_gated_model,
     _validate_hyperparameter_values
 )
+from sagemaker.train.common_utils.data_utils import is_multimodal_data
+from sagemaker.train.common_utils.data_mixing_utils import (
+    validate_data_mixing_model,
+    validate_data_mixing_categories,
+    validate_data_mixing_platform,
+    resolve_datamix_recipe,
+    resolve_hyperpod_datamix_context,
+    build_hyperpod_datamix_recipe_from_context,
+)
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
+from sagemaker.core.training.constants import TrainingPlatform
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -103,13 +116,37 @@ class SFTTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
             If not specified, uses SageMaker service default (24 hours for serverless training).
+        recipe (Optional[str]):
+            Path to a user recipe YAML file (local path or S3 URI). When provided,
+            enables 3-level recipe resolution: Hub defaults < recipe file < overrides dict.
+            The recipe file can contain any training parameters in nested YAML format.
+        overrides (Optional[dict]):
+            Programmatic overrides dict with nested structure matching the recipe layout
+            (e.g., ``{"training_config": {"learning_rate": 2e-5}}``). Takes highest precedence.
+            When provided, resolved recipe values override matching hyperparameters at
+            train() time. Use ``get_resolved_recipe()`` to inspect the final merged config.
+        is_multimodal (Optional[bool]):
+            Whether the training dataset contains multimodal data. If None (default),
+            auto-detected from the training dataset at train time.
+        base_model_name (Optional[str]):
+            Base model name for recipe lookup when ``model`` is an S3 checkpoint
+            path. Required when ``model`` starts with ``s3://`` so the SDK knows
+            which recipe, container image, and validation spec to use.
+            Example: ``"amazon.nova-2-lite-v1"``.
+        disable_output_compression (Optional[bool]):
+            Whether to disable compression of model output artifacts. When True,
+            model artifacts are stored uncompressed in S3 (compression_type="NONE").
+            Recommended for large model outputs. Defaults to False (gzip compression).
     """
+
+    _customization_technique = CustomizationTechnique.SFT.value
 
     def __init__(
         self,
         model: Union[str, ModelPackage],
         training_type: Union[TrainingType, str] = TrainingType.LORA,
         model_package_group: Optional[Union[str, ModelPackageGroup]] = None,
+        compute: Optional[Union[TrainingJobCompute, HyperPodCompute]] = None,
         mlflow_resource_arn: Optional[str] = None,
         mlflow_experiment_name: Optional[str] = None,
         mlflow_run_name: Optional[str] = None,
@@ -120,16 +157,35 @@ class SFTTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         accept_eula: Optional[bool] = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        recipe: Optional[str] = None,
+        overrides: Optional[dict] = None,
+        is_multimodal: Optional[bool] = None,
+        data_mixing_config: Optional[DataMixingConfig] = None,
+        base_model_name: Optional[str] = None,
+        disable_output_compression: Optional[bool] = False,
         **kwargs,
     ):
-        super().__init__(**kwargs)
-        
-        # Resolve model and model name
-        self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
+        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, **kwargs)
+
+        self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
+            model, self.base_model_name, compute, self.sagemaker_session,
+            resolve_fn=_resolve_model_and_name,
+        )
+
         self.training_type = training_type
 
-        self.model_package_group = _validate_and_resolve_model_package_group(model,
-                                                                                 model_package_group)
+        self.compute = compute
+        if compute is not None and not isinstance(compute, (TrainingJobCompute, HyperPodCompute)):
+            raise TypeError(
+                f"compute must be a TrainingJobCompute or HyperPodCompute instance, got {type(compute).__name__}"
+            )
+
+        if compute is None:
+            self.model_package_group = _validate_and_resolve_model_package_group(
+                model, model_package_group
+            )
+        else:
+            self.model_package_group = model_package_group
         self.mlflow_resource_arn = mlflow_resource_arn
         self.mlflow_experiment_name = mlflow_experiment_name
         self.mlflow_run_name = mlflow_run_name
@@ -139,6 +195,12 @@ class SFTTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self._recipe_path = recipe
+        self._overrides = overrides
+        self._recipe_resolver = None
+        self._resolved_recipe_cache = None
+        self.is_multimodal = is_multimodal
+        self.data_mixing_config = data_mixing_config
 
         # Initialize fine-tuning options with beta session fallback
         self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
@@ -146,7 +208,8 @@ class SFTTrainer(BaseTrainer):
                                                                      self.training_type,
                                                                      self.sagemaker_session or TrainDefaults.get_sagemaker_session(
                                                                      sagemaker_session=self.sagemaker_session
-                                                                     ))
+                                                                     ),
+                                                                     compute=self.compute)
         
         # Process hyperparameters
         self._process_hyperparameters()
@@ -206,7 +269,54 @@ class SFTTrainer(BaseTrainer):
         Returns:
             TrainingJob: The SageMaker training job object.
         """
+        # Dispatch based on compute type
+        if isinstance(self.compute, HyperPodCompute):
+            if self.data_mixing_config is not None:
+                from sagemaker.train.defaults import TrainDefaults as _TrainDefaults
 
+                validate_data_mixing_model(self._model_name)
+                _session = _TrainDefaults.get_sagemaker_session(
+                    sagemaker_session=self.sagemaker_session
+                )
+                is_multimodal = self.is_multimodal if self.is_multimodal is not None else False
+                training_type_str = "LORA" if self.training_type == TrainingType.LORA else "FULL"
+
+                context = resolve_hyperpod_datamix_context(
+                    model_name=self._model_name,
+                    is_multimodal=is_multimodal,
+                    sagemaker_session=_session,
+                    training_type=training_type_str,
+                    customization_technique="SFT",
+                )
+                validated_config = validate_data_mixing_categories(
+                    self.data_mixing_config, context.categories
+                )
+                recipe_path, hp_image_uri = build_hyperpod_datamix_recipe_from_context(
+                    context, validated_config
+                )
+                self._recipe_path = recipe_path
+                if hp_image_uri and not self.training_image:
+                    self.training_image = hp_image_uri
+
+            return self._train_hyperpod(
+                training_dataset=training_dataset,
+                validation_dataset=validation_dataset,
+                wait=wait,
+                wait_timeout=wait_timeout,
+                poll=poll,
+            )
+        elif isinstance(self.compute, TrainingJobCompute):
+            if self.data_mixing_config is not None:
+                validate_data_mixing_platform(TrainingPlatform.SAGEMAKER_TRAINING_JOB_SERVERFUL)
+            return self._train_serverful_smtj(
+                training_dataset=training_dataset,
+                validation_dataset=validation_dataset,
+                wait=wait,
+                wait_timeout=wait_timeout,
+                poll=poll,
+            )
+
+        # Default: serverless compute (None)
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
         )
@@ -222,12 +332,16 @@ class SFTTrainer(BaseTrainer):
         input_data_config = _create_input_data_config(training_dataset or self.training_dataset,
                                                      validation_dataset or self.validation_dataset
                                                      )
-        channels = _convert_input_data_to_channels(input_data_config)
+        channels = _convert_input_data_to_channels(
+            input_data_config,
+            s3_data_type="Converse" if _is_nova_model(self._model_name) else "S3Prefix",
+        )
 
         output_config = _create_output_config(
             s3_output_path=self.s3_output_path,
             sagemaker_session=sagemaker_session,
-            kms_key_id=self.kms_key_id
+            kms_key_id=self.kms_key_id,
+            disable_output_compression=getattr(self, 'disable_output_compression', False),
         )
 
         serverless_config = _create_serverless_config(model_arn=self._model_arn,
@@ -244,7 +358,28 @@ class SFTTrainer(BaseTrainer):
         )
 
         final_hyperparameters = self.hyperparameters.to_dict()
-        
+
+        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
+        final_hyperparameters = self._apply_recipe_to_hyperparameters(final_hyperparameters)
+        # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
+        if self.is_multimodal is None:
+            effective_training_dataset = training_dataset or self.training_dataset
+            if effective_training_dataset is not None:
+                self.is_multimodal = is_multimodal_data(effective_training_dataset)
+
+        if self.data_mixing_config is not None:
+            validate_data_mixing_platform(TrainingPlatform.SAGEMAKER_TRAINING_JOB_SERVERLESS)
+            validate_data_mixing_model(self._model_name)
+            recipe_categories = resolve_datamix_recipe(
+                self._model_name, self.is_multimodal, sagemaker_session
+            )
+            validated_config = validate_data_mixing_categories(
+                self.data_mixing_config, recipe_categories
+            )
+            data_mixing_params = validated_config.to_hyperparameters()
+            for param_name, param_value in data_mixing_params.items():
+                final_hyperparameters[param_name] = param_value
+
         # Validate hyperparameter values
         _validate_hyperparameter_values(final_hyperparameters)
 
@@ -255,7 +390,7 @@ class SFTTrainer(BaseTrainer):
         )
 
         vpc_config = self.networking if self.networking else None
-        tags = _get_studio_tags(self._model_name, get_sagemaker_hub_name())
+        tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
         # Build TrainingJob.create() arguments
         create_args = {
@@ -272,7 +407,7 @@ class SFTTrainer(BaseTrainer):
             "region": sagemaker_session.boto_session.region_name,
             "tags": tags,
         }
-        
+
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
@@ -286,7 +421,7 @@ class SFTTrainer(BaseTrainer):
         if wait:
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
             from sagemaker.core.utils.exceptions import TimeoutExceededError
-            try :
+            try:
                 wait_kwargs = {}
                 if wait_timeout is not None:
                     wait_kwargs['timeout'] = wait_timeout
@@ -297,5 +432,3 @@ class SFTTrainer(BaseTrainer):
 
         self._latest_training_job = training_job
         return training_job
-
-

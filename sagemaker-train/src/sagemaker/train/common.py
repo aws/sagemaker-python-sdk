@@ -17,6 +17,7 @@ class CustomizationTechnique(Enum):
     RLVR = "RLVR"
     RLAIF = "RLAIF"
     DPO = "DPO"
+    CPT = "CPT"
 
 
 class FineTuningOptions:
@@ -24,6 +25,7 @@ class FineTuningOptions:
     
     def __init__(self, options_dict: Dict[str, Any]):
         self._specs = options_dict.copy()
+        self._user_set = set()
         self._initialized = False
         # Extract default values and set as attributes (no validation during init)
         for key, spec in options_dict.items():
@@ -34,6 +36,10 @@ class FineTuningOptions:
     def to_dict(self) -> Dict[str, Any]:
         """Convert back to dictionary for hyperparameters with string values."""
         return {k: str(v) for k in self._specs.keys() if (v := getattr(self, k)) is not None}
+
+    def to_user_dict(self) -> Dict[str, Any]:
+        """Return only user-explicitly-set hyperparameters as string key-value pairs."""
+        return {k: str(getattr(self, k)) for k in self._user_set if getattr(self, k, None) is not None}
     
     def __setattr__(self, name: str, value: Any):
         if name.startswith('_'):
@@ -44,6 +50,7 @@ class FineTuningOptions:
                 spec = self._specs[name]
                 if isinstance(spec, dict):
                     self._validate_value(name, value, spec)
+                self._user_set.add(name)
             super().__setattr__(name, value)
         elif hasattr(self, '_specs'):
             raise AttributeError(f"'{name}' is not a valid fine-tuning option. Valid options: {list(self._specs.keys())}")

@@ -11,6 +11,7 @@ SageMaker Python SDK V3
    overview
    installation
    quickstart
+   lifecycle
 
 .. toctree::
    :maxdepth: 2

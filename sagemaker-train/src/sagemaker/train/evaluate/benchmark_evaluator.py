@@ -27,6 +27,11 @@ from sagemaker.train.constants import get_sagemaker_hub_name
 _logger = logging.getLogger(__name__)
 
 
+def _is_placeholder(value) -> bool:
+    """Check if a value is an unresolved template placeholder like '{{key}}'."""
+    return isinstance(value, str) and "{{" in value and "}}" in value
+
+
 # Internal enums and classes - not meant for direct user access
 class _Benchmark(str, Enum):
     """Internal benchmark types for model evaluation"""
@@ -246,11 +251,11 @@ def get_benchmark_properties(benchmark: _Benchmark) -> Dict[str, Any]:
 
 class BenchMarkEvaluator(BaseEvaluator):
     """Benchmark evaluator for standard model evaluation tasks.
-    
+
     This evaluator accepts a benchmark enum and automatically deduces the appropriate
     metrics, strategy, and subtask availability based on the benchmark configuration.
     Supports various standard benchmarks like MMLU, BBH, MATH, MMMU, and others.
-    
+
     Attributes:
         benchmark (_Benchmark): Benchmark type from the Benchmark enum obtained via ``get_benchmarks()``.
             Required. Use get_benchmarks() to access available benchmark types.
@@ -265,6 +270,10 @@ class BenchMarkEvaluator(BaseEvaluator):
         evaluate_base_model (bool): Whether to evaluate the base model in addition to the custom
             model. Set to False to skip base model evaluation and only evaluate the custom model.
             Defaults to True (evaluates both models).
+        recipe (Optional[str]): Path to a user recipe YAML file (local or S3 URI) for evaluation
+            configuration. Optional. When provided, values are merged with overrides.
+        overrides (Optional[Dict[str, Any]]): Programmatic overrides dict (nested structure).
+            These take highest precedence over recipe file and base defaults.
         region (Optional[str]): AWS region. Inherited from BaseEvaluator.
         sagemaker_session (Optional[Any]): SageMaker session object. Inherited from BaseEvaluator.
         model (Union[str, Any]): Model for evaluation. Inherited from BaseEvaluator.
@@ -276,14 +285,14 @@ class BenchMarkEvaluator(BaseEvaluator):
         kms_key_id (Optional[str]): KMS key ID for encryption. Inherited from BaseEvaluator.
         model_package_group (Optional[Union[str, ModelPackageGroup]]): Model package group.
             Inherited from BaseEvaluator.
-    
+
     Example:
-    
+
         .. code:: python
-        
+
             # Get available benchmarks
             Benchmark = get_benchmarks()
-            
+
             # Create evaluator with benchmark and subtasks
             evaluator = BenchMarkEvaluator(
                 benchmark=Benchmark.MMLU,
@@ -292,15 +301,25 @@ class BenchMarkEvaluator(BaseEvaluator):
                 s3_output_path="s3://bucket/outputs/",
                 mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server"
             )
-            
+
             # Run evaluation with configured subtasks
             execution = evaluator.evaluate()
             execution.wait()
-            
+
             # Or override subtasks at evaluation time
             execution = evaluator.evaluate(subtask="abstract_algebra")
+
+            # With recipe file for evaluation config
+            evaluator = BenchMarkEvaluator(
+                benchmark=Benchmark.MMLU,
+                model="amazon-nova-pro-v2",
+                s3_output_path="s3://bucket/outputs/",
+                recipe="./eval-recipes/nova-pro-mmlu.yaml",
+                overrides={"inference": {"max_new_tokens": 4096, "temperature": 0}},
+            )
+            resolved = evaluator.get_resolved_recipe()
     """
-    
+
     benchmark: _Benchmark
     subtasks: Optional[Union[str, List[str]]] = None
     evaluate_base_model: bool = False
@@ -392,6 +411,10 @@ class BenchMarkEvaluator(BaseEvaluator):
                 )
         
         return v
+
+    def _get_eval_recipe_display_name_filter(self) -> str:
+        """Prefer 'general text benchmark' recipes for BenchMarkEvaluator."""
+        return "benchmark"
     
     @property
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="BenchMarkEvaluator.hyperparameters")
@@ -539,9 +562,9 @@ class BenchMarkEvaluator(BaseEvaluator):
             dict: Benchmark-specific template context fields
         """
         from ..common_utils.recipe_utils import _is_nova_model
-        
-        # Get configured hyperparameters (triggers lazy load from hub with Nova model logic)
-        configured_params = self.hyperparameters.to_dict()
+
+        # Get effective hyperparameters (recipe/overrides take precedence if provided)
+        configured_params = self._get_effective_hyperparameters()
         _logger.info(f"Using configured hyperparameters: {configured_params}")
         
         # Determine if this is a Nova model
@@ -578,6 +601,12 @@ class BenchMarkEvaluator(BaseEvaluator):
     def evaluate(self, subtask: Optional[Union[str, List[str]]] = None) -> EvaluationPipelineExecution:
         """Create and start a benchmark evaluation job.
         
+        Supports multiple compute backends via the ``compute`` parameter set at
+        construction time:
+        - **Serverless** (default): Runs via SageMaker Pipelines.
+        - **SMTJ**: Runs on user-managed instances via ModelTrainer.
+        - **HyperPod**: Submits to a HyperPod cluster via the HyperPod CLI.
+        
         Args:
             subtask (Optional[Union[str, list[str]]]): Optional subtask(s) to evaluate. If not provided, 
                 uses the subtasks from constructor. Can be a single subtask string, a list of 
@@ -607,6 +636,31 @@ class BenchMarkEvaluator(BaseEvaluator):
                 # Evaluate all subtasks (uses constructor default)
                 execution = evaluator.evaluate()
         """
+        from sagemaker.core.training.configs import Compute, HyperPodCompute
+
+        # Dispatch based on compute type
+        # Validate platform compatibility (HP checkpoints must eval on HP, SMTJ on SMTJ)
+        from sagemaker.train.common_utils.finetune_utils import validate_eval_platform_compatibility
+        model_info = self._get_resolved_model_info()
+        model_path = getattr(model_info, 's3_model_path', None) if model_info else None
+        validate_eval_platform_compatibility(model_path, self.compute)
+
+        if isinstance(self.compute, Compute) and not isinstance(self.compute, HyperPodCompute):
+            return self._evaluate_serverful_smtj(subtask=subtask)
+        elif isinstance(self.compute, HyperPodCompute):
+            return self._evaluate_hyperpod(subtask=subtask)
+
+        # Default: serverless compute via SageMaker Pipelines
+        # S3 checkpoint paths are not supported on serverless — require SMTJ or HyperPod compute
+        from sagemaker.train.common_utils.model_resolution import _ModelType
+        info = self._get_resolved_model_info()
+        if info and info.model_type == _ModelType.S3_CHECKPOINT:
+            raise ValueError(
+                "S3 checkpoint paths cannot be used with serverless evaluation. "
+                "Please provide a 'compute' parameter (e.g., TrainingJobCompute or HyperPodCompute) "
+                "to run evaluation on dedicated instances."
+            )
+
         from .pipeline_templates import DETERMINISTIC_TEMPLATE, DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY
         
         # Resolve and validate subtask
@@ -706,4 +760,203 @@ class BenchMarkEvaluator(BaseEvaluator):
             eval_type=EvalType.BENCHMARK,
             session=session,
             region=region
+        )
+
+    def _evaluate_serverful_smtj(self, subtask=None):
+        """Execute benchmark evaluation on SMTJ compute via ModelTrainer.
+
+        Fetches the evaluation recipe template from SageMaker Hub (filtered by
+        Type=Evaluation), injects benchmark-specific parameters, and launches
+        via ModelTrainer.from_recipe(). Follows the same Hub lookup pattern as
+        the Nova Forge SDK.
+        """
+        from sagemaker.train.utils import _get_unique_name
+
+        # --- Validate platform compatibility ---
+        # HyperPod-trained checkpoints cannot be evaluated on SMTJ
+        from sagemaker.train.common_utils.model_resolution import _ModelType, _detect_checkpoint_platform, _CheckpointPlatform
+        info = self._get_resolved_model_info()
+        if info and info.model_type == _ModelType.S3_CHECKPOINT and info.s3_model_path:
+            checkpoint_platform = _detect_checkpoint_platform(info.s3_model_path)
+            if checkpoint_platform == _CheckpointPlatform.HYPERPOD:
+                raise ValueError(
+                    f"HyperPod-trained checkpoints cannot be evaluated on SMTJ compute. "
+                    f"The checkpoint at '{info.s3_model_path}' was trained on HyperPod. "
+                    f"Please use HyperPodCompute for evaluation instead:\n\n"
+                    f"    compute=HyperPodCompute(\n"
+                    f"        cluster_name='your-cluster',\n"
+                    f"        namespace='kubeflow',\n"
+                    f"        instance_type='ml.p5.48xlarge',\n"
+                    f"        node_count=1,\n"
+                    f"    )"
+                )
+
+        # --- Common setup ---
+        sagemaker_session, role, region = self._get_smtj_session_and_role()
+
+        # --- Find SMTJ evaluation recipe ---
+        smtj_eval_recipes = self._get_smtj_eval_recipes(sagemaker_session, region)
+
+        # For standard benchmarks (MMLU, BBH, etc.), filter for "general text benchmark"
+        benchmark_recipes = [
+            r for r in smtj_eval_recipes
+            if "general text benchmark" in r.get("DisplayName", "").lower()
+        ]
+
+        # Fall back to first available SMTJ eval recipe if no benchmark match
+        recipe_metadata = benchmark_recipes[0] if benchmark_recipes else smtj_eval_recipes[0]
+
+        # Get recipe template S3 URI and image URI
+        training_image = self.training_image or recipe_metadata.get("SmtjImageUri")
+
+        # --- Download and load recipe ---
+        recipe_dict, recipe_tmp_path = self._download_and_load_recipe(
+            recipe_metadata["SmtjRecipeTemplateS3Uri"], sagemaker_session
+        )
+
+        # --- Fetch the Hub-declared overridable field set + defaults ---
+        # The recipe's SmtjOverrideParamsS3Uri declares which fields it accepts
+        # and their defaults/types. Driving the field set from here (instead of a
+        # hardcoded list) means a model whose recipe exposes different fields is
+        # handled automatically. Mirrors the Nova Forge SDK RecipeBuilder.
+        override_spec = self._download_eval_override_spec(recipe_metadata, sagemaker_session)
+
+        # --- Inject benchmark-specific fields ---
+        config = _BENCHMARK_CONFIG.get(self.benchmark)
+
+        base_job_name = self.base_eval_name or f"eval-{self.benchmark.value}"
+        task_value = str(self.benchmark.value)
+        strategy_value = config["strategy"]
+        metric_value = config["metrics"][0] if config.get("metrics") else "accuracy"
+
+        # --- Resolve subtask value ---
+        eval_subtask = self._resolve_subtask_for_evaluation(subtask)
+        if eval_subtask:
+            subtask_value = ",".join(eval_subtask) if isinstance(eval_subtask, list) else eval_subtask
+        else:
+            subtask_value = ""
+
+        # --- Resolve model path (fine-tuned checkpoint or OSS base weights) ---
+        # OSS eval requires model_name_or_path to point at the base model weights
+        # when there is no fine-tuned checkpoint; Nova eval resolves via model_type.
+        # OSS artifacts are delivered via a dedicated "model" input channel so the
+        # container's checkpoints/hf_merged resolution runs against a local mount
+        # (reproducing the serverless experience); Nova keeps the raw S3 path.
+        model_path, model_channel = self._resolve_eval_model_input(
+            sagemaker_session, region
+        )
+        if not model_path and self._source_model_package_arn:
+            raise ValueError(
+                f"Could not resolve S3 model artifacts path from model package "
+                f"'{self._source_model_package_arn}'. SMTJ evaluation requires an S3 "
+                f"checkpoint path. Ensure the model package was created from a SMTJ "
+                f"training job with accessible model artifacts."
+            )
+
+        # --- Build the SDK-derived semantic values ---
+        # The metric field name differs across recipe families (Nova: 'metric',
+        # OpenWeights: 'evaluation_metric'); set both aliases so the value lands
+        # in whichever leaf the recipe actually declares. Likewise infra fields:
+        # Nova recipes use 'output_s3_path', the OSS eval recipe uses 'output_path'
+        # and also carries 'base_model_name' / 'instance_count' (run.replicas).
+        # The eval container requires non-empty experiment and run names whenever
+        # an MLflow tracking URI is set (OSS); Nova tolerates empty names but
+        # still benefits from a meaningful default. Default both to base_job_name
+        # for a consistent MLflow experience. See
+        # BaseEvaluator._resolve_mlflow_tracking_fields.
+        mlflow_tracking_uri, mlflow_experiment_name, mlflow_run_name = (
+            self._resolve_mlflow_tracking_fields(base_job_name)
+        )
+
+        semantic_values = {
+            "name": _get_unique_name(base_job_name),
+            "output_s3_path": self.s3_output_path or "",
+            "output_path": self.s3_output_path or "",
+            "base_model_name": self._base_model_name or "",
+            "instance_count": self.compute.instance_count,
+            "kms_key_id": self.kms_key_id or "",
+            "mlflow_tracking_uri": mlflow_tracking_uri,
+            "mlflow_experiment_name": mlflow_experiment_name,
+            "mlflow_run_name": mlflow_run_name,
+            "task": task_value,
+            "strategy": strategy_value,
+            "metric": metric_value,
+            "evaluation_metric": metric_value,
+            "subtask": subtask_value,
+            # Standard benchmarks do not use a custom dataset or Lambda processor.
+            "data_s3_path": "",
+            "lambda_arn": "",
+            "preset_reward_function": "",
+        }
+        if model_path:
+            semantic_values["model_name_or_path"] = model_path
+
+        # --- Merge: spec defaults < semantic values < user overrides ---
+        value_map = self._build_eval_value_map(
+            override_spec, semantic_values=semantic_values, user_overrides=self.overrides
+        )
+
+        # --- Inject values by leaf-key name / placeholder (schema-agnostic) ---
+        self._apply_eval_recipe_values(recipe_dict, value_map)
+
+        # Nova recipes carry infra fields in a `run` section; ensure they are
+        # present even if the template omitted a key (preserves prior behavior).
+        # Scoped to Nova: OSS recipes use different infra field names
+        # (output_path, output.mlflow_*), which the spec/injection already
+        # covered — adding Nova-style keys here would pollute the OSS recipe.
+        from ..common_utils.recipe_utils import _is_nova_model
+        if "run" in recipe_dict and _is_nova_model(self._base_model_name):
+            run = recipe_dict["run"]
+            run.setdefault("name", semantic_values["name"])
+            run.setdefault("output_s3_path", semantic_values["output_s3_path"])
+            run.setdefault("mlflow_tracking_uri", semantic_values["mlflow_tracking_uri"])
+            run.setdefault("mlflow_experiment_name", semantic_values["mlflow_experiment_name"])
+            run.setdefault("mlflow_run_name", semantic_values["mlflow_run_name"])
+            if model_path:
+                run.setdefault("model_name_or_path", model_path)
+
+        # --- Common: resolve any remaining inference placeholders ---
+        # Fallback for inference fields the override spec did not declare.
+        self._resolve_inference_placeholders(recipe_dict)
+
+        # Blank any remaining optional infra placeholders (e.g. tensorboard dir,
+        # mlflow run id) so the recipe has no unresolved {{...}} tokens.
+        blanked = self._blank_unresolved_placeholders(recipe_dict)
+        if blanked:
+            _logger.warning(
+                f"Blanked unresolved eval recipe placeholders (not declared in the "
+                f"override spec or set by the SDK): {blanked}"
+            )
+
+        # --- Common: write recipe and submit ---
+        input_data_config = [model_channel] if model_channel else None
+        return self._write_and_submit_smtj_recipe(
+            recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name,
+            input_data_config=input_data_config,
+        )
+
+    def _evaluate_hyperpod(self, subtask=None):
+        """Execute benchmark evaluation on HyperPod cluster.
+
+        Builds benchmark-specific override parameters (eval task, subtask)
+        and delegates to BaseEvaluator._submit_hyperpod_eval_job().
+        """
+        override_parameters = {}
+
+        # Eval task config
+        eval_subtask = self._resolve_subtask_for_evaluation(subtask)
+        override_parameters["recipes.evaluation.task"] = str(self.benchmark.value)
+        if eval_subtask:
+            if isinstance(eval_subtask, list):
+                override_parameters["recipes.evaluation.subtask"] = ",".join(eval_subtask)
+            else:
+                override_parameters["recipes.evaluation.subtask"] = eval_subtask
+
+        # User-provided overrides (e.g. inference params)
+        if self.overrides:
+            override_parameters.update(self.overrides)
+
+        return self._submit_hyperpod_eval_job(
+            override_parameters=override_parameters,
+            base_job_name=f"eval-{self.benchmark.value}",
         )

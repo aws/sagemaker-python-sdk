@@ -31,7 +31,7 @@ DEFAULT_MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-s
 DEFAULT_MODEL_PACKAGE_GROUP_ARN = "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test-group"
 DEFAULT_BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/llama3-2-1b-instruct/1.0.0"
 DEFAULT_ARTIFACT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
-DEFAULT_EVALUATOR_MODEL = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+DEFAULT_EVALUATOR_MODEL = "anthropic.claude-sonnet-4-20250514-v1:0"
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
@@ -192,8 +192,8 @@ def test_llm_as_judge_evaluator_dataset_resolution_from_object(mock_artifact, mo
 @patch('sagemaker.train.common_utils.recipe_utils._is_nova_model')
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
 @patch('sagemaker.core.resources.Artifact')
-def test_llm_as_judge_evaluator_nova_model_validation(mock_artifact, mock_resolve, mock_is_nova):
-    """Test that Nova models are rejected for LLM-as-judge evaluation."""
+def test_llm_as_judge_evaluator_nova_model_auto_routed(mock_artifact, mock_resolve, mock_is_nova):
+    """Test that Nova models are accepted and auto-routed to InspectAI+Bedrock."""
     mock_info = Mock()
     mock_info.base_model_name = "amazon-nova-lite-v1"
     mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/amazon-nova-lite-v1/1.0.0"
@@ -212,16 +212,17 @@ def test_llm_as_judge_evaluator_nova_model_validation(mock_artifact, mock_resolv
     
     mock_is_nova.return_value = True
     
-    with pytest.raises(ValueError, match="LLM-as-judge evaluation is not supported for Nova models"):
-        LLMAsJudgeEvaluator(
-            evaluator_model=DEFAULT_EVALUATOR_MODEL,
-            dataset=DEFAULT_DATASET,
-            model="amazon-nova-lite-v1",
-            s3_output_path=DEFAULT_S3_OUTPUT,
-            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
-            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
-            sagemaker_session=mock_session,
-        )
+    # Nova models are now allowed — they auto-route to InspectAI+Bedrock
+    evaluator = LLMAsJudgeEvaluator(
+        evaluator_model=DEFAULT_EVALUATOR_MODEL,
+        dataset=DEFAULT_DATASET,
+        model="amazon-nova-lite-v1",
+        s3_output_path=DEFAULT_S3_OUTPUT,
+        mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+        model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+        sagemaker_session=mock_session,
+    )
+    assert evaluator._should_use_inspectai_path() is True
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
@@ -846,13 +847,21 @@ def test_llm_as_judge_evaluator_with_mlflow_names(mock_artifact, mock_resolve):
 @patch('sagemaker.core.resources.Artifact')
 def test_llm_as_judge_evaluator_valid_evaluator_models(mock_artifact, mock_resolve):
     """Test LLMAsJudgeEvaluator with valid evaluator models."""
+    # Models available in us-west-2 per the regional allowlist. The Claude 3.5
+    # Sonnet v1/v2 models are intentionally omitted here — they are only allowed
+    # in ap-northeast-1 (see test_llm_as_judge_evaluator_region_restriction).
     valid_models = [
-        "anthropic.claude-3-5-sonnet-20240620-v1:0",
-        "anthropic.claude-3-5-sonnet-20241022-v2:0",
         "anthropic.claude-3-haiku-20240307-v1:0",
-        "anthropic.claude-3-5-haiku-20241022-v1:0",
+        "anthropic.claude-sonnet-4-20250514-v1:0",
+        "anthropic.claude-haiku-4-5-20251001-v1:0",
+        "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "anthropic.claude-opus-4-5-20251101-v1:0",
         "meta.llama3-1-70b-instruct-v1:0",
         "mistral.mistral-large-2402-v1:0",
+        "amazon.nova-pro-v1:0",
+        "amazon.nova-2-lite-v1:0",
+        "amazon.nova-micro-v1:0",
+        "amazon.nova-premier-v1:0",
     ]
     
     mock_info = Mock()
@@ -953,3 +962,108 @@ def test_llm_as_judge_evaluator_region_restriction(mock_artifact, mock_resolve, 
             sagemaker_session=mock_session,
         )
     assert "not available in region" in str(exc_info.value)
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_nova_model_allowed_auto_routed(mock_artifact, mock_resolve):
+    """Test that Nova JumpStart model is allowed — auto-routes to InspectAI+Bedrock."""
+    mock_info = Mock()
+    mock_info.base_model_name = "nova-textgeneration-lite"
+    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/nova-textgeneration-lite/1.0.0"
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+
+    # Should NOT raise ValueError — Nova is auto-routed to InspectAI+Bedrock
+    evaluator = LLMAsJudgeEvaluator(
+        evaluator_model=DEFAULT_EVALUATOR_MODEL,
+        dataset=DEFAULT_DATASET,
+        model="nova-textgeneration-lite",
+        s3_output_path=DEFAULT_S3_OUTPUT,
+        mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+        model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+        sagemaker_session=mock_session,
+    )
+
+    assert evaluator.model == "nova-textgeneration-lite"
+    assert evaluator._should_use_inspectai_path() is True
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_non_nova_jumpstart_model_uses_existing_path(mock_artifact, mock_resolve):
+    """Test that non-Nova JumpStart model uses the existing ServerlessJobConfig path."""
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+
+    evaluator = LLMAsJudgeEvaluator(
+        evaluator_model=DEFAULT_EVALUATOR_MODEL,
+        dataset=DEFAULT_DATASET,
+        model=DEFAULT_MODEL,
+        s3_output_path=DEFAULT_S3_OUTPUT,
+        mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+        model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+        sagemaker_session=mock_session,
+    )
+
+    assert evaluator._should_use_inspectai_path() is False
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_nova_model_rejected_in_unsupported_region(mock_artifact, mock_resolve):
+    """Test that Nova model in unsupported region fails validation.
+
+    In practice, the evaluator_model region validator fires first when both
+    the evaluator model and the Bedrock prefix are unsupported in a region.
+    This test verifies that construction fails with a region-related error.
+    """
+    mock_info = Mock()
+    mock_info.base_model_name = "nova-textgeneration-lite"
+    mock_info.base_model_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/nova-textgeneration-lite/1.0.0"
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    mock_session = Mock()
+    mock_session.boto_region_name = "af-south-1"  # Unsupported region
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+
+    with pytest.raises(ValueError, match="not available in region"):
+        LLMAsJudgeEvaluator(
+            evaluator_model=DEFAULT_EVALUATOR_MODEL,
+            dataset=DEFAULT_DATASET,
+            model="nova-textgeneration-lite",
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )

@@ -280,14 +280,19 @@ def test_to_pipeline(
     wrapped_func.job_settings.return_value = job_settings
     wrapped_func.wrapped_func.return_value = job_function
 
-    pipeline_arn = to_pipeline(
-        pipeline_name="pipeline_name",
-        step=wrapped_func,
-        role_arn=EXECUTION_ROLE_ARN,
-        max_retries=1,
-        tags=[("tag_key_1", "tag_value_1"), ("tag_key_2", "tag_value_2")],
-        sagemaker_session=session,
-    )
+    with patch(
+        "sagemaker.mlops.feature_store.feature_processor.feature_scheduler."
+        "resolve_and_validate_role",
+        side_effect=lambda provided_role, **kw: provided_role,
+    ):
+        pipeline_arn = to_pipeline(
+            pipeline_name="pipeline_name",
+            step=wrapped_func,
+            role_arn=EXECUTION_ROLE_ARN,
+            max_retries=1,
+            tags=[("tag_key_1", "tag_value_1"), ("tag_key_2", "tag_value_2")],
+            sagemaker_session=session,
+        )
     assert pipeline_arn == PIPELINE_ARN
 
     assert mock_upload_callable.called_once_with(job_function)
@@ -683,7 +688,11 @@ def test_to_pipeline_used_reserved_tags(get_execution_role, mock_spark_image, se
     "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.FeatureProcessorLineageHandler",
     return_value=mock_feature_processor_lineage(),
 )
-def test_schedule(lineage, helper, validation, get_tags):
+@patch(
+    "sagemaker.mlops.feature_store.feature_processor.feature_scheduler.resolve_and_validate_role",
+    return_value=SCHEDULE_ROLE_ARN,
+)
+def test_schedule(mock_resolve, lineage, helper, validation, get_tags):
     session = Mock(Session, sagemaker_client=Mock(), boto_session=Mock())
     session.sagemaker_client.describe_pipeline = Mock(
         return_value={"PipelineArn": "my:arn", "CreationTime": NOW}
@@ -699,6 +708,12 @@ def test_schedule(lineage, helper, validation, get_tags):
     )
 
     assert schedule_arn == SCHEDULE_ARN
+    # The role flows through the IAM resolver with the feature_store role type.
+    mock_resolve.assert_called_once_with(
+        provided_role=SCHEDULE_ROLE_ARN,
+        role_type="feature_store",
+        sagemaker_session=session,
+    )
 
 
 @patch(

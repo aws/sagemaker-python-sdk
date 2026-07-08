@@ -1244,8 +1244,53 @@ class ResourcesCodeGen:
             operation_input_args=operation_input_args,
             operation=operation,
             describe_operation_output_shape=resource_operation_output_shape_name,
+            post_processing=self._get_method_post_processing(resource_name, resource_lower),
         )
         return formatted_method
+
+    def _get_method_post_processing(self, resource_name: str, resource_lower: str) -> str:
+        """Get resource-specific post-processing applied to the deserialized get() response.
+
+        Some resources require synthesizing attributes that the describe API does not
+        always return. Emitting this from the codegen engine ensures the customization
+        survives the next autogeneration of resources.py.
+
+        Args:
+            resource_name (str): The resource name.
+            resource_lower (str): The snake_case resource name (the local variable name).
+
+        Returns:
+            str: An indented block of post-processing statements, or an empty string.
+        """
+        if resource_name == "TrainingJob":
+            # Synthesize model_artifacts for completed jobs where the API does not
+            # return ModelArtifacts (e.g., serverful Nova training jobs). The block is
+            # emitted at 4-space indent to match the get() template body (add_indent
+            # later promotes it to the 8-space class-method body indentation).
+            return f"""
+
+    # Post-processing: synthesize model_artifacts for completed jobs where
+    # the API does not return ModelArtifacts (e.g., serverful Nova training jobs).
+    if (
+        {resource_lower}.training_job_status == "Completed"
+        and isinstance({resource_lower}.model_artifacts, Unassigned)
+        and not isinstance({resource_lower}.output_data_config, Unassigned)
+        and {resource_lower}.output_data_config
+    ):
+        s3_output_path = {resource_lower}.output_data_config.s3_output_path
+        if s3_output_path and isinstance(s3_output_path, str):
+            synthesized_path = (
+                f"{{s3_output_path.rstrip('/')}}/{{{resource_lower}.training_job_name}}/output/"
+            )
+            {resource_lower}.model_artifacts = ModelArtifacts(
+                s3_model_artifacts=synthesized_path
+            )
+            logger.info(
+                "Synthesized model_artifacts from output_data_config: %s",
+                synthesized_path,
+            )"""
+
+        return ""
 
     def generate_refresh_method(self, resource_name: str, **kwargs) -> str:
         """Auto-Generate 'refresh' object Method [describe API] for a resource.

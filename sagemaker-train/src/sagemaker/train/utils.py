@@ -240,14 +240,14 @@ def _run_clone_command_silent(repo_url, dest_dir):
             logger.error(f"Error output:\n{e}")
             raise
 
-def _get_studio_tags(model_id: str, hub_name: str):
+def _get_jumpstart_tags(model_id: str, hub_name: str):
     return [
         {
-            "key": "sagemaker-studio:jumpstart-model-id",
+            "key": "sagemaker-sdk:jumpstart-model-id",
             "value": model_id
         },
         {
-            "key": "sagemaker-studio:jumpstart-hub-name",
+            "key": "sagemaker-sdk:jumpstart-hub-name",
             "value": hub_name
         }
     ]

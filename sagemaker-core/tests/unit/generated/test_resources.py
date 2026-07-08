@@ -750,3 +750,187 @@ class ResourcesTest(unittest.TestCase):
             job.stop()
         except Exception:
             pass
+
+
+class TestWaitLogMarkup(unittest.TestCase):
+    """Container log lines emitted while waiting must disable rich markup parsing.
+
+    Log messages are arbitrary container output and may contain square brackets
+    (e.g. file paths like ``[.../main_ppo.py]``). Without ``markup=False`` the
+    rich logging handler tries to parse them as markup tags and raises
+    MarkupError, aborting the wait loop. Each generated wait() that streams logs
+    (TrainingJob, ProcessingJob, TransformJob) must pass extra={"markup": False}.
+    """
+
+    def _drive_one_log_iteration(self, resource, status_attr):
+        """Run a single wait() iteration that streams one log event then terminates.
+
+        Returns the list of logger.info calls captured during the wait.
+        """
+        # A logger that streams one container log line, then reports a terminal
+        # status so the wait loop logs the event and exits after one iteration.
+        log_handler = MagicMock()
+        log_handler.ready.return_value = True
+        log_handler.get_latest_log_events.return_value = [
+            ("algo-1", {"message": "loaded [/opt/ml/code/main_ppo.py]"})
+        ]
+
+        with patch("sagemaker.core.resources.MultiLogStreamHandler", return_value=log_handler), \
+             patch("sagemaker.core.resources.logger") as mock_logger, \
+             patch.object(type(resource), "refresh", return_value=resource):
+            resource.wait(poll=0, logs=True)
+
+        return mock_logger.info.call_args_list
+
+    def test_training_job_wait_disables_markup_for_log_lines(self):
+        from sagemaker.core.resources import TrainingJob
+
+        job = TrainingJob(training_job_name="test-job")
+        job.training_job_status = "Completed"
+        from sagemaker.core.shapes import shapes
+        job.resource_config = shapes.ResourceConfig(
+            instance_type="ml.m5.large", instance_count=1, volume_size_in_gb=30
+        )
+
+        calls = self._drive_one_log_iteration(job, "training_job_status")
+
+        # The container log line must be logged with markup parsing disabled.
+        log_line_calls = [c for c in calls if "main_ppo.py" in str(c.args[0])]
+        assert log_line_calls, "expected the container log line to be logged"
+        for c in log_line_calls:
+            assert c.kwargs.get("extra") == {"markup": False}
+
+    def test_processing_job_wait_disables_markup_for_log_lines(self):
+        from sagemaker.core.resources import ProcessingJob
+
+        job = ProcessingJob(processing_job_name="test-job")
+        job.processing_job_status = "Completed"
+        from sagemaker.core.shapes import shapes
+        job.processing_resources = shapes.ProcessingResources(
+            cluster_config=shapes.ProcessingClusterConfig(
+                instance_count=1, instance_type="ml.m5.large", volume_size_in_gb=30
+            )
+        )
+
+        calls = self._drive_one_log_iteration(job, "processing_job_status")
+
+        log_line_calls = [c for c in calls if "main_ppo.py" in str(c.args[0])]
+        assert log_line_calls, "expected the container log line to be logged"
+        for c in log_line_calls:
+            assert c.kwargs.get("extra") == {"markup": False}
+
+    def test_transform_job_wait_disables_markup_for_log_lines(self):
+        from sagemaker.core.resources import TransformJob
+
+        job = TransformJob(transform_job_name="test-job")
+        job.transform_job_status = "Completed"
+        from sagemaker.core.shapes import shapes
+        job.transform_resources = shapes.TransformResources(
+            instance_type="ml.m5.large", instance_count=1
+        )
+
+        calls = self._drive_one_log_iteration(job, "transform_job_status")
+
+        log_line_calls = [c for c in calls if "main_ppo.py" in str(c.args[0])]
+        assert log_line_calls, "expected the container log line to be logged"
+        for c in log_line_calls:
+            assert c.kwargs.get("extra") == {"markup": False}
+
+
+class TestTrainingJobGetModelArtifactsSynthesis(unittest.TestCase):
+    """TrainingJob.get() synthesizes model_artifacts when the API omits them.
+
+    Some completed training jobs (e.g. serverful Nova jobs) do not return
+    ModelArtifacts from DescribeTrainingJob. The generated get() reconstructs the
+    artifact path from output_data_config so downstream consumers (evaluators,
+    deployers) can resolve the trained model. This customization is emitted by the
+    codegen engine (resources_codegen._get_method_post_processing); these tests
+    guard it against regressions in the next autogeneration of resources.py.
+    """
+
+    def _call_get(self, transformed_attrs):
+        """Drive TrainingJob.get() with transform() returning the given attrs."""
+        with patch("sagemaker.core.resources.transform", return_value=transformed_attrs), \
+             patch.object(Base, "get_sagemaker_client") as mock_get_client:
+            from sagemaker.core.resources import TrainingJob
+
+            mock_get_client.return_value.describe_training_job.return_value = {}
+            return TrainingJob.get("test-job")
+
+    def test_synthesizes_model_artifacts_when_missing(self):
+        from sagemaker.core.shapes import OutputDataConfig
+        from sagemaker.core.utils.utils import Unassigned
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "Completed",
+                "output_data_config": OutputDataConfig(s3_output_path="s3://bucket/prefix"),
+            }
+        )
+
+        assert not isinstance(job.model_artifacts, Unassigned)
+        assert (
+            job.model_artifacts.s3_model_artifacts
+            == "s3://bucket/prefix/test-job/output/"
+        )
+
+    def test_trailing_slash_in_output_path_is_normalized(self):
+        from sagemaker.core.shapes import OutputDataConfig
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "Completed",
+                "output_data_config": OutputDataConfig(s3_output_path="s3://bucket/prefix/"),
+            }
+        )
+
+        # No double slash between prefix and job name.
+        assert (
+            job.model_artifacts.s3_model_artifacts
+            == "s3://bucket/prefix/test-job/output/"
+        )
+
+    def test_does_not_override_existing_model_artifacts(self):
+        from sagemaker.core.resources import ModelArtifacts
+        from sagemaker.core.shapes import OutputDataConfig
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "Completed",
+                "model_artifacts": ModelArtifacts(s3_model_artifacts="s3://real/model.tar.gz"),
+                "output_data_config": OutputDataConfig(s3_output_path="s3://bucket/prefix"),
+            }
+        )
+
+        # The API-provided artifacts must be preserved, not synthesized over.
+        assert job.model_artifacts.s3_model_artifacts == "s3://real/model.tar.gz"
+
+    def test_no_synthesis_for_incomplete_job(self):
+        from sagemaker.core.shapes import OutputDataConfig
+        from sagemaker.core.utils.utils import Unassigned
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "InProgress",
+                "output_data_config": OutputDataConfig(s3_output_path="s3://bucket/prefix"),
+            }
+        )
+
+        # Only completed jobs have artifacts to synthesize.
+        assert isinstance(job.model_artifacts, Unassigned)
+
+    def test_no_synthesis_without_output_data_config(self):
+        from sagemaker.core.utils.utils import Unassigned
+
+        job = self._call_get(
+            {
+                "training_job_name": "test-job",
+                "training_job_status": "Completed",
+            }
+        )
+
+        assert isinstance(job.model_artifacts, Unassigned)

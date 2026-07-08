@@ -33,6 +33,7 @@ from sagemaker.core.remote_function.core.stored_function import RESULTS_FOLDER
 from sagemaker.core.remote_function.errors import RemoteFunctionError
 from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
 from sagemaker.core.s3 import s3_path_join
+from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.common_utils import (
     resolve_value_from_config,
@@ -196,12 +197,14 @@ class Pipeline:
         role_arn = resolve_value_from_config(
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        if not role_arn:
-            # Originally IAM role was a required parameter.
-            # Now we marked that as Optional because we can fetch it from SageMakerConfig
-            # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
-            raise ValueError("An AWS IAM role is required to create a Pipeline.")
+        # Resolve and validate the pipeline role: the provided/config role_arn if
+        # set, otherwise the caller's own identity role. A RoleValidationError
+        # explains how to grant the missing permissions if it is insufficient.
+        role_arn = resolve_and_validate_role(
+            provided_role=role_arn,
+            role_type="pipeline",
+            sagemaker_session=self.sagemaker_session,
+        )
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
@@ -302,12 +305,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         role_arn = resolve_value_from_config(
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        if not role_arn:
-            # Originally IAM role was a required parameter.
-            # Now we marked that as Optional because we can fetch it from SageMakerConfig
-            # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
-            raise ValueError("An AWS IAM role is required to update a Pipeline.")
+        # Resolve and validate the pipeline role: the provided/config role_arn if
+        # set, otherwise the caller's own identity role. A RoleValidationError
+        # explains how to grant the missing permissions if it is insufficient.
+        role_arn = resolve_and_validate_role(
+            provided_role=role_arn,
+            role_type="pipeline",
+            sagemaker_session=self.sagemaker_session,
+        )
         if self.sagemaker_session.local_mode:
             if parallelism_config:
                 logger.warning("Pipeline parallelism config is not supported in the local mode.")
@@ -339,12 +344,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
         tags = format_tags(tags)
-        if not role_arn:
-            # Originally IAM role was a required parameter.
-            # Now we marked that as Optional because we can fetch it from SageMakerConfig
-            # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
-            raise ValueError("An AWS IAM role is required to create or update a Pipeline.")
+        # Resolve and validate the pipeline role: the provided/config role_arn if
+        # set, otherwise the caller's own identity role. A RoleValidationError
+        # explains how to grant the missing permissions if it is insufficient.
+        role_arn = resolve_and_validate_role(
+            provided_role=role_arn,
+            role_type="pipeline",
+            sagemaker_session=self.sagemaker_session,
+        )
         try:
             response = self.create(role_arn, description, tags, parallelism_config)
         except ClientError as ce:
@@ -674,12 +681,14 @@ sagemaker.html#SageMaker.Client.describe_pipeline>`_
         _role_arn = role_arn or resolve_value_from_config(
             role_arn, PIPELINE_ROLE_ARN_PATH, sagemaker_session=self.sagemaker_session
         )
-        if not _role_arn:
-            # Originally IAM role was a required parameter.
-            # Now we marked that as Optional because we can fetch it from SageMakerConfig
-            # Because of marking that parameter as optional, we should validate if it is None, even
-            # after fetching the config.
-            raise ValueError("An AWS IAM role is required to create triggers for a pipeline.")
+        # Resolve and validate the pipeline role: the provided/config role if set,
+        # otherwise the caller's own identity role. A RoleValidationError explains
+        # how to grant the missing permissions if it is insufficient.
+        _role_arn = resolve_and_validate_role(
+            provided_role=_role_arn,
+            role_type="pipeline",
+            sagemaker_session=self.sagemaker_session,
+        )
         if not triggers:
             raise TypeError(
                 "No Triggers provided. Please specify at least one to setup pipeline triggers."

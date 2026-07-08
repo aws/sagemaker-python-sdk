@@ -1,4 +1,15 @@
 # Changelog
+## v1.15.0 (2026-06-22)
+
+### New Features
+
+- feat: IAM role creation — auto-create least-privilege execution roles, SDK-wide (#2041)
+
+### Bug Fixes
+
+- fix(iam): Validate roles by default, opt-in creation, and add MLflow perms (#2080)
+- fix: Resolve MLflow app discovery issues (#5924)
+
 ## v1.14.0 (2026-06-18)
 
 ### Other

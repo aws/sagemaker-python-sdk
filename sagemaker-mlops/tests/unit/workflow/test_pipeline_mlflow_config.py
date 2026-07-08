@@ -154,7 +154,10 @@ def test_pipeline_update_with_mlflow_config(mock_session):
     with patch(
         "sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="dummy-role"
     ):
-        pipeline.update("dummy-role")
+        with patch(
+            "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", return_value="dummy-role"
+        ):
+            pipeline.update("dummy-role")
 
     mock_session.sagemaker_client.update_pipeline.assert_called_once()
     call_args = mock_session.sagemaker_client.update_pipeline.call_args
