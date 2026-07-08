@@ -176,6 +176,8 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
         sagemaker_session=sagemaker_session_us_east_1,
         base_job_name=f"rlvr-nova-integ-{unique_id}",
     )
+    # Workaround: Hub spec has save_steps default=null but recipe template requires an integer
+    rlvr_trainer.hyperparameters.save_steps = 10
     training_job = rlvr_trainer.train(wait=False)
     logger.info(f"Training job submitted: {training_job.training_job_arn}")
     
