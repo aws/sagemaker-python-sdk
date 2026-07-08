@@ -5,6 +5,7 @@ import boto3
 import joblib
 import time
 import os
+import uuid
 from sklearn.datasets import make_classification
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
@@ -59,7 +60,7 @@ def trained_model(test_data):
 def test_clarify_e2e(sagemaker_session, role, test_data, trained_model):
     model, X_test, y_test = trained_model
     bucket = sagemaker_session.default_bucket()
-    prefix = 'clarify-test'
+    prefix = f'clarify-test-{uuid.uuid4().hex[:8]}'
     data_filename = 'clarify_bias_test_data.csv'
     model_filename = 'clarify_test_model.joblib'
     
