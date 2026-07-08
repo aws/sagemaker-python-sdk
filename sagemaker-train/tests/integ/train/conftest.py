@@ -148,6 +148,24 @@ def _ensure_lambda_function(region, function_name, source_file):
 
 
 @pytest.fixture(autouse=True, scope="session")
+def ensure_default_region():
+    """Guarantee AWS_DEFAULT_REGION is set for the whole test session.
+
+    Some tests construct trainers/evaluators without passing an explicit
+    ``sagemaker_session``. Those objects build a default ``Session()`` that
+    reads the region from the environment. Under xdist (``-n auto``) a worker
+    may run only such tests, so without this fixture the region could be unset
+    on that worker and ``Session()`` raises "Must setup local AWS configuration
+    with a region supported by SageMaker.". Pin the region up front (without
+    clobbering an externally provided value) so region resolution never depends
+    on test execution order.
+    """
+    if not os.environ.get("AWS_DEFAULT_REGION"):
+        os.environ["AWS_DEFAULT_REGION"] = DEFAULT_REGION
+    yield
+
+
+@pytest.fixture(autouse=True, scope="session")
 def use_private_hub():
     os.environ["SAGEMAKER_HUB_NAME"] = "sdktest"
     yield

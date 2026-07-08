@@ -116,7 +116,7 @@ class TestSFTTrainerRecipeOverrideInteg:
             sagemaker_session=sagemaker_session,
         )
 
-        with pytest.raises(ValueError, match="requires a 'recipe' or 'overrides'"):
+        with pytest.raises(ValueError, match=r"requires a 'recipe', 'overrides'"):
             sft_trainer.get_resolved_recipe()
 
     @pytest.mark.skip(reason="Skipping GPU resource intensive test - submits actual training job")
@@ -385,8 +385,15 @@ class TestSFTTrainerNestedRecipeOverrideInteg:
 class TestBenchMarkEvaluatorRecipeOverrideInteg:
     """Integration tests for BenchMarkEvaluator with recipe override."""
 
-    def test_evaluator_get_resolved_recipe_with_local_yaml(self):
+    def test_evaluator_get_resolved_recipe_with_local_yaml(self, monkeypatch):
         """Test BenchMarkEvaluator.get_resolved_recipe() with recipe + overrides."""
+        # The base model lives in the public hub, not the private "sdktest"
+        # recipe hub that the session-scoped use_private_hub fixture pins
+        # SAGEMAKER_HUB_NAME to. The evaluator's JumpStart model resolution does
+        # not fall back to the public hub, so resolve the base model against
+        # SageMakerPublicHub explicitly.
+        monkeypatch.setenv("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
+
         from sagemaker.train.evaluate import BenchMarkEvaluator, get_benchmarks
 
         Benchmark = get_benchmarks()
@@ -430,8 +437,13 @@ class TestBenchMarkEvaluatorRecipeOverrideInteg:
         finally:
             os.unlink(recipe_path)
 
-    def test_evaluator_get_resolved_recipe_no_recipe_raises(self):
+    def test_evaluator_get_resolved_recipe_no_recipe_raises(self, monkeypatch):
         """Test that get_resolved_recipe() raises without recipe/overrides."""
+        # See test_evaluator_get_resolved_recipe_with_local_yaml: resolve the
+        # base model against the public hub since the evaluator does not fall
+        # back to it from the pinned private "sdktest" hub.
+        monkeypatch.setenv("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
+
         from sagemaker.train.evaluate import BenchMarkEvaluator, get_benchmarks
 
         Benchmark = get_benchmarks()
@@ -443,7 +455,7 @@ class TestBenchMarkEvaluatorRecipeOverrideInteg:
             s3_output_path="s3://mc-flows-sdk-testing/eval-output/",
         )
 
-        with pytest.raises(ValueError, match="requires a 'recipe' or 'overrides'"):
+        with pytest.raises(ValueError, match=r"requires a 'recipe', 'overrides'"):
             evaluator.get_resolved_recipe()
 
 
