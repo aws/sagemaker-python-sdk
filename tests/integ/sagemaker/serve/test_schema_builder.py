@@ -62,6 +62,7 @@ def test_model_builder_negative_path(sagemaker_session):
         model_builder.build(sagemaker_session=sagemaker_session)
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
     reason="Testing Schema Builder Simplification feature - Local Schema",

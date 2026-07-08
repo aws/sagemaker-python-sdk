@@ -96,6 +96,7 @@ def test_jumpstart_estimator(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
 @x_fail_if_ice
 @pytest.mark.skipif(
     tests.integ.test_region() not in GATED_TRAINING_MODEL_V1_SUPPORTED_REGIONS,
@@ -145,6 +146,7 @@ def test_gated_model_training_v1(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
 @x_fail_if_ice
 def test_gated_model_training_v2(setup):
 

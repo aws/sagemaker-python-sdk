@@ -107,6 +107,7 @@ def test_prepacked_jumpstart_model(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     tests.integ.test_region() not in GATED_INFERENCE_MODEL_PACKAGE_SUPPORTED_REGIONS,
     reason=f"JumpStart model package inference models unavailable in {tests.integ.test_region()}.",
@@ -193,6 +194,7 @@ def test_jumpstart_gated_model(setup):
     assert response is not None
 
 
+@pytest.mark.slow_test
 @x_fail_if_ice
 def test_jumpstart_gated_model_inference_component_enabled(setup):
 
