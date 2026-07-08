@@ -116,6 +116,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
             mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
+            region=TEST_CONFIG["region"],
         )
         
         # Verify evaluator was created

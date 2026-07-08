@@ -105,7 +105,7 @@ class TestSFTTrainerRecipeOverrideInteg:
         # Override applied on top of Hub defaults
         assert resolved["training_config"]["learning_rate"] == 3e-5
 
-    def test_sft_get_resolved_recipe_no_recipe_raises(self):
+    def test_sft_get_resolved_recipe_no_recipe_raises(self, sagemaker_session):
         """Test that get_resolved_recipe() raises when no recipe or overrides provided."""
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -113,6 +113,7 @@ class TestSFTTrainerRecipeOverrideInteg:
             model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
+            sagemaker_session=sagemaker_session,
         )
 
         with pytest.raises(ValueError, match="requires a 'recipe' or 'overrides'"):
@@ -522,7 +523,8 @@ class TestSFTTrainerValidationFailuresInteg:
         with pytest.raises(ValueError, match="not in allowed values"):
             sft_trainer.get_resolved_recipe()
 
-    def test_sft_rejects_max_steps_below_minimum(self):
+    @pytest.mark.us_east_1
+    def test_sft_rejects_max_steps_below_minimum(self, sagemaker_session_us_east_1):
         """Test that max_steps below spec minimum raises ValueError."""
         sft_trainer = SFTTrainer(
             model="nova-textgeneration-lite-v2",
@@ -530,6 +532,7 @@ class TestSFTTrainerValidationFailuresInteg:
             model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
+            sagemaker_session=sagemaker_session_us_east_1,
             overrides={
                 "training_config": {
                     "max_steps": 1,

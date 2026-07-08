@@ -109,6 +109,7 @@ def inspect_ai_resources(sagemaker_session_us_east_1):
     }
 
 
+@pytest.mark.us_east_1
 class TestInspectAIEvaluatorIntegration:
     """Integration tests for InspectAI evaluation with Bedrock inference."""
 
