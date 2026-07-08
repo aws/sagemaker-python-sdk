@@ -149,6 +149,22 @@ class TestExtractTelemetryParams(unittest.TestCase):
         assert "&x-hasKmsKeyId=false" in result
         assert "&x-hasWait=true" in result
 
+    def test_attr_type_emits_class_name(self):
+        class HyperPodCompute:
+            pass
+        instance = self._make_instance(compute=HyperPodCompute())
+        result = _extract_telemetry_params(instance, {}, [
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ])
+        assert "&x-computeType=HyperPodCompute" in result
+
+    def test_attr_type_skips_none(self):
+        instance = self._make_instance(compute=None)
+        result = _extract_telemetry_params(instance, {}, [
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ])
+        assert "compute" not in result
+
 
 class TestClassifyError(unittest.TestCase):
     """Tests for _classify_error."""
@@ -167,34 +183,34 @@ class TestClassifyError(unittest.TestCase):
 
     def test_aws_validation_exception(self):
         e = Exception("ValidationException")
-        e.response = {"Error": {"Code": "ValidationException"}}
+        e.response = {"ResponseMetadata": {"HTTPStatusCode": 400}}
         assert _classify_error(e) == "validation_error"
 
     def test_aws_access_denied(self):
         e = Exception("AccessDeniedException")
-        e.response = {"Error": {"Code": "AccessDeniedException"}}
+        e.response = {"ResponseMetadata": {"HTTPStatusCode": 403}}
         assert _classify_error(e) == "auth_error"
 
     def test_aws_resource_not_found(self):
         e = Exception("ResourceNotFoundException")
-        e.response = {"Error": {"Code": "ResourceNotFoundException"}}
+        e.response = {"ResponseMetadata": {"HTTPStatusCode": 404}}
         assert _classify_error(e) == "resource_not_found"
 
     def test_aws_throttling(self):
         e = Exception("ThrottlingException")
-        e.response = {"Error": {"Code": "ThrottlingException"}}
+        e.response = {"ResponseMetadata": {"HTTPStatusCode": 429}}
         assert _classify_error(e) == "throttling_error"
 
-    def test_aws_capacity(self):
-        e = Exception("ResourceLimitExceeded")
-        e.response = {"Error": {"Code": "ResourceLimitExceeded"}}
-        assert _classify_error(e) == "capacity_error"
+    def test_aws_service_error(self):
+        e = Exception("InternalServerError")
+        e.response = {"ResponseMetadata": {"HTTPStatusCode": 500}}
+        assert _classify_error(e) == "service_error"
 
-    def test_eula_error_message(self):
-        assert _classify_error(Exception("accept_eula=True required")) == "eula_error"
+    def test_eula_value_error_classified_as_validation(self):
+        assert _classify_error(ValueError("accept_eula=True required")) == "validation_error"
 
-    def test_unknown_error(self):
-        assert _classify_error(RuntimeError("something unexpected")) == "unknown"
+    def test_unclassified_returns_class_name(self):
+        assert _classify_error(RuntimeError("something unexpected")) == "runtimeerror"
 
 
 class TestTelemetryEmitterWithParams(unittest.TestCase):

@@ -34,7 +34,7 @@ from sagemaker.train.common_utils.data_mixing_utils import (
     resolve_hyperpod_datamix_context,
     build_hyperpod_datamix_recipe_from_context,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
@@ -246,7 +246,9 @@ class SFTTrainer(BaseTrainer):
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="SFTTrainer.train",
-        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS,
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ],
     )
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
         """Execute the SFT training job.

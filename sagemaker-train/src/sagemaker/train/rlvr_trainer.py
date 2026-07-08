@@ -241,6 +241,7 @@ class RLVRTrainer(BaseTrainer):
         func_name="RLVRTrainer.train",
         telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
             ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
+            ("compute", TelemetryParamType.ATTR_TYPE),
         ],
     )
     def _verify_reward_function(

@@ -23,6 +23,17 @@ import requests
 from urllib.parse import quote
 
 import boto3
+from botocore.exceptions import (
+    ParamValidationError,
+    NoCredentialsError,
+    PartialCredentialsError,
+    ConnectTimeoutError,
+    ReadTimeoutError,
+    EndpointConnectionError,
+    ConnectionClosedError,
+    ClientError,
+    NoRegionError,
+)
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.telemetry.resource_creation import get_resource_arn
@@ -76,54 +87,43 @@ def _classify_error(e: Exception) -> str:
     """Classify an exception into an actionable error category.
 
     Classification priority:
-    1. Python exception type (ValueError, TimeoutError, ConnectionError)
-    2. AWS error code from ClientError (ValidationException, AccessDeniedException, etc.)
-    3. Message-based fallback for generic exceptions
+    1. Botocore static exceptions (client-side errors with well-defined types)
+    2. AWS error code from ClientError response (service-side errors)
+    3. HTTP status code fallback
+    4. Message-based fallback for generic exceptions
     """
-    error_type = type(e).__name__
-    error_msg = str(e).lower()
-
-    # 1. Classify by Python exception type
-    if isinstance(e, (ValueError, TypeError)):
+    # 1. Classify by exception type
+    # Botocore static exceptions: https://github.com/boto/botocore/blob/develop/botocore/exceptions.py
+    # Python built-in exceptions: https://docs.python.org/3/library/exceptions.html
+    if isinstance(e, (ParamValidationError, NoRegionError, ValueError, TypeError)):
         return "validation_error"
-    if isinstance(e, TimeoutError):
+    if isinstance(e, (NoCredentialsError, PartialCredentialsError)):
+        return "auth_error"
+    if isinstance(e, (ConnectTimeoutError, ReadTimeoutError, TimeoutError)):
         return "timeout_error"
-    if isinstance(e, (ConnectionError, OSError)):
+    if isinstance(e, (EndpointConnectionError, ConnectionClosedError, ConnectionError, OSError)):
         return "network_error"
 
-    # 2. Classify by AWS error code (botocore ClientError)
-    aws_error_code = ""
-    if hasattr(e, "response"):
-        aws_error_code = e.response.get("Error", {}).get("Code", "").lower()
+    # 2. Classify by HTTP status code from AWS service response
+    # Reference: https://docs.aws.amazon.com/boto3/latest/guide/error-handling.html
+    http_status = 0
+    if hasattr(e, "response") and isinstance(e.response, dict):
+        http_status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
 
-    if aws_error_code in ("validationexception", "invalidparametervalue", "invalidparametercombination"):
+    if http_status == 400:
         return "validation_error"
-    if aws_error_code in ("accessdeniedexception", "unauthorizedaccess", "optinrequired"):
+    if http_status in (401, 403):
         return "auth_error"
-    if aws_error_code in ("resourcenotfound", "resourcenotfoundexception"):
+    if http_status == 404:
         return "resource_not_found"
-    if aws_error_code in ("resourcelimitexceeded", "insufficientcapacityexception"):
-        return "capacity_error"
-    if aws_error_code in ("throttlingexception", "throttling", "toomanyrequestsexception"):
-        return "throttling_error"
-    if aws_error_code in ("requesttimeout", "requesttimeoutexception"):
+    if http_status == 408:
         return "timeout_error"
-
-    # 3. Message-based fallback
-    if "not authorized" in error_msg or "accessdenied" in error_msg:
-        return "auth_error"
-    if "not found" in error_msg or "does not exist" in error_msg:
-        return "resource_not_found"
-    if "eula" in error_msg or "accept_eula" in error_msg:
-        return "eula_error"
-    if "timeout" in error_msg or "timed out" in error_msg:
-        return "timeout_error"
-    if "throttl" in error_msg or "rate exceeded" in error_msg:
+    if http_status == 429:
         return "throttling_error"
-    if "capacity" in error_msg:
-        return "capacity_error"
+    if 500 <= http_status < 600:
+        return "service_error"
 
-    return "unknown"
+    return e.__class__.__name__.lower()
 
 
 def _attr_to_key(attr: str) -> str:
@@ -185,6 +185,12 @@ class TelemetryParamType:
     # (e.g., update_endpoint, imported_model_kms_key_id).
     KWARG_EXISTS = "kwarg_exists"
 
+    # Reads type(self.<name>).__name__ and emits the class name of the attribute.
+    # Use for: polymorphic attributes where the subclass determines the code path
+    # (e.g., compute → "HyperPodCompute"/"TrainingJobCompute", distributed → "Torchrun"/"MPI").
+    # Emits nothing if the attribute is None.
+    ATTR_TYPE = "attr_type"
+
 
 def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
     """Extract telemetry params from instance/kwargs based on telemetry_params list.
@@ -198,6 +204,7 @@ def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
             - ("method_name", ATTR_CALL) → call self.method(), emit return value
             - ("kwarg_name", KWARG_VALUE) → emit kwargs value
             - ("kwarg_name", KWARG_EXISTS) → emit true/false
+            - ("attr_name", ATTR_TYPE) → emit type(self.attr).__name__
 
     Returns:
         str: URL query params string.
@@ -230,6 +237,10 @@ def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
         elif kind == T.KWARG_EXISTS:
             value = kwargs.get(name) if kwargs else None
             parts.append(f"&x-has{key[0].upper()}{key[1:]}={'true' if value else 'false'}")
+        elif kind == T.ATTR_TYPE:
+            value = getattr(instance, name, None)
+            if value is not None:
+                parts.append(f"&x-{key}Type={type(value).__name__}")
     return "".join(parts)
 
 
