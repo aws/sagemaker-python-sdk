@@ -19,6 +19,7 @@ import pytest
 from unittest.mock import Mock
 
 from sagemaker.core.training.utils import (
+    build_nova_hyperpod_manifest_s3_uri,
     build_nova_manifest_s3_uri,
     build_nova_output_tar_gz_s3_uri,
     read_nova_checkpoint_uri_from_manifest,
@@ -37,6 +38,11 @@ def test_build_nova_manifest_s3_uri_strips_trailing_slash():
     assert build_nova_manifest_s3_uri(
         "s3://bucket/output//", "my-job"
     ) == "s3://bucket/output/my-job/output/output/manifest.json"
+
+
+def test_build_nova_hyperpod_manifest_s3_uri():
+    result = build_nova_hyperpod_manifest_s3_uri("s3://bucket/output/", "my-job")
+    assert result == "s3://bucket/output/my-job/manifest.json"
 
 
 def test_build_nova_output_tar_gz_s3_uri():
@@ -102,6 +108,52 @@ def test_resolve_checkpoint_uri_from_raw_manifest():
     client = _s3_client_returning(
         json.dumps({"checkpoint_s3_bucket": CHECKPOINT_URI}).encode("utf-8")
     )
+    result = resolve_nova_checkpoint_uri(client, "s3://bucket/output/", "my-job")
+    assert result == CHECKPOINT_URI
+
+
+def test_resolve_checkpoint_uri_from_hyperpod_layout():
+    """HyperPod writes the manifest at <output>/<job>/manifest.json."""
+    client = Mock()
+    client.exceptions = Mock()
+    no_such_key = type("NoSuchKey", (Exception,), {})
+    client.exceptions.NoSuchKey = no_such_key
+    hyperpod_key = "output/my-job/manifest.json"
+
+    def get_object(Bucket, Key):
+        if Key != hyperpod_key:
+            raise no_such_key()
+        body = Mock()
+        body.read.return_value = json.dumps(
+            {"checkpoint_s3_bucket": CHECKPOINT_URI}
+        ).encode("utf-8")
+        return {"Body": body}
+
+    client.get_object.side_effect = get_object
+
+    result = resolve_nova_checkpoint_uri(client, "s3://bucket/output/", "my-job")
+    assert result == CHECKPOINT_URI
+
+
+def test_resolve_checkpoint_uri_from_serverless_layout():
+    """Serverless writes the manifest at <output>/<job>/output/output/manifest.json."""
+    client = Mock()
+    client.exceptions = Mock()
+    no_such_key = type("NoSuchKey", (Exception,), {})
+    client.exceptions.NoSuchKey = no_such_key
+    serverless_key = "output/my-job/output/output/manifest.json"
+
+    def get_object(Bucket, Key):
+        if Key != serverless_key:
+            raise no_such_key()
+        body = Mock()
+        body.read.return_value = json.dumps(
+            {"checkpoint_s3_bucket": CHECKPOINT_URI}
+        ).encode("utf-8")
+        return {"Body": body}
+
+    client.get_object.side_effect = get_object
+
     result = resolve_nova_checkpoint_uri(client, "s3://bucket/output/", "my-job")
     assert result == CHECKPOINT_URI
 

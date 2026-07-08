@@ -84,8 +84,28 @@ def _is_valid_s3_uri(path: str, path_type: Literal["File", "Directory", "Any"] =
 _MANIFEST_CHECKPOINT_KEY = "checkpoint_s3_bucket"
 
 
+def build_nova_hyperpod_manifest_s3_uri(s3_output_path: str, training_job_name: str) -> str:
+    """Build the HyperPod manifest.json S3 URI for a Nova training job.
+
+    HyperPod jobs write the manifest directly under the job directory:
+    ``<s3_output_path>/<training_job_name>/manifest.json``.
+
+    Args:
+        s3_output_path: The training job's ``output_data_config.s3_output_path``.
+        training_job_name: The training job name.
+
+    Returns:
+        Fully-qualified S3 URI to the job's manifest.json.
+    """
+    output_path = s3_output_path.rstrip("/")
+    return f"{output_path}/{training_job_name}/manifest.json"
+
+
 def build_nova_manifest_s3_uri(s3_output_path: str, training_job_name: str) -> str:
-    """Build the manifest.json S3 URI for a Nova training job.
+    """Build the serverless manifest.json S3 URI for a Nova training job.
+
+    Serverless jobs write the manifest under a nested output directory:
+    ``<s3_output_path>/<training_job_name>/output/output/manifest.json``.
 
     Args:
         s3_output_path: The training job's ``output_data_config.s3_output_path``.
@@ -203,23 +223,36 @@ def resolve_nova_checkpoint_uri(
         The checkpoint URI recorded in the manifest.
 
     Raises:
-        ValueError: If the checkpoint URI cannot be resolved from either source.
+        ValueError: If the checkpoint URI cannot be resolved from any known
+            output layout.
     """
-    manifest_uri = build_nova_manifest_s3_uri(s3_output_path, training_job_name)
-    try:
-        return read_nova_checkpoint_uri_from_manifest(s3_client, manifest_uri)
-    except Exception as manifest_error:
-        # The raw manifest.json is the primary source (e.g. HyperPod). Only fall
-        # back to the copy inside output.tar.gz (e.g. some SMTJ jobs) if it exists.
-        # If the fallback also fails, surface BOTH errors so the raw-manifest
-        # failure isn't masked by a misleading "not found in tar.gz" message.
-        tar_gz_uri = build_nova_output_tar_gz_s3_uri(s3_output_path, training_job_name)
+    # Nova jobs write their manifest to different locations depending on the
+    # training platform:
+    #   HyperPod:   <output>/<job>/manifest.json
+    #   Serverless: <output>/<job>/output/output/manifest.json
+    #   Serverful:  <output>/<job>/output/output.tar.gz  (manifest is inside)
+    # Try each in turn and surface every failure if none resolve, so the real
+    # cause is not masked by a misleading message from the last attempt.
+    hyperpod_manifest_uri = build_nova_hyperpod_manifest_s3_uri(
+        s3_output_path, training_job_name
+    )
+    serverless_manifest_uri = build_nova_manifest_s3_uri(s3_output_path, training_job_name)
+    tar_gz_uri = build_nova_output_tar_gz_s3_uri(s3_output_path, training_job_name)
+
+    attempts = [
+        ("HyperPod manifest.json", hyperpod_manifest_uri, read_nova_checkpoint_uri_from_manifest),
+        ("serverless manifest.json", serverless_manifest_uri, read_nova_checkpoint_uri_from_manifest),
+        ("serverful output.tar.gz", tar_gz_uri, _read_checkpoint_uri_from_tar_gz),
+    ]
+
+    errors = []
+    for label, uri, reader in attempts:
         try:
-            return _read_checkpoint_uri_from_tar_gz(s3_client, tar_gz_uri)
-        except Exception as tar_gz_error:
-            raise ValueError(
-                "Could not resolve the Nova checkpoint URI. "
-                f"Reading manifest.json at {manifest_uri} failed: {manifest_error}. "
-                f"Falling back to output.tar.gz at {tar_gz_uri} also failed: "
-                f"{tar_gz_error}."
-            ) from manifest_error
+            return reader(s3_client, uri)
+        except Exception as error:  # noqa: PERF203 - each attempt may fail independently
+            errors.append(f"{label} at {uri} failed: {error}")
+
+    raise ValueError(
+        "Could not resolve the Nova checkpoint URI from any known output layout. "
+        + " ".join(errors)
+    )
