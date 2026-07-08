@@ -16,6 +16,9 @@ import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
+from sagemaker.core.training.configs import HyperPodCompute
+
+
 logger = logging.getLogger(__name__)
 
 GLOBAL_STEP_REGEX = r"global_step[=:]\s*([\d.]+)"
@@ -45,14 +48,12 @@ def _get_smtj_log_group() -> str:
     return "/aws/sagemaker/TrainingJobs"
 
 
-def _get_smhp_log_group(cluster_name: str, sagemaker_session) -> str:
+def _get_smhp_log_group(cluster_name: str, sagemaker_client) -> str:
     """Return the CW log group for a HyperPod cluster.
 
     The log group follows the pattern:
         /aws/sagemaker/Clusters/{cluster_name}/{cluster_id}
     """
-    region_name = sagemaker_session.boto_session.region_name
-    sagemaker_client = sagemaker_session.boto_session.client("sagemaker", region_name=region_name)
     response = sagemaker_client.describe_cluster(ClusterName=cluster_name)
     cluster_arn = response["ClusterArn"]
     cluster_id = cluster_arn.split("/")[-1]
@@ -316,10 +317,9 @@ def plot_metrics(
 
 def fetch_and_plot_metrics(
     job_id: str,
-    platform: str,
+    compute,
     customization_technique: str,
     sagemaker_session,
-    cluster_name: Optional[str] = None,
     metrics: Optional[List[str]] = None,
     starting_step: Optional[int] = None,
     ending_step: Optional[int] = None,
@@ -332,10 +332,9 @@ def fetch_and_plot_metrics(
 
     Args:
         job_id: Training job name (SMTJ) or HyperPod job name.
-        platform: "smtj" or "smhp".
+        compute: Determines whether to use SMHP or SMTJ strategy.
         customization_technique: "SFT", "CPT", or "RLVR".
         sagemaker_session: SageMaker session (provides boto_session).
-        cluster_name: Required for SMHP platform — the HyperPod cluster name.
         metrics: Optional list of metric names to extract.
         starting_step: Filter to steps >= this value.
         ending_step: Filter to steps <= this value.
@@ -350,6 +349,9 @@ def fetch_and_plot_metrics(
         ValueError: If no logs or metrics are found.
     """
     technique = customization_technique.upper()
+
+    # Determine platform from compute type
+    platform = "smhp" if isinstance(compute, HyperPodCompute) else "smtj"
 
     if technique in _UNSUPPORTED_TECHNIQUES:
         raise NotImplementedError(
@@ -369,14 +371,14 @@ def fetch_and_plot_metrics(
     region_name = sagemaker_session.boto_session.region_name
     logs_client = sagemaker_session.boto_session.client("logs", region_name=region_name)
 
-    # Fetch logs based on platform
-    if platform == "smhp":
-        if not cluster_name:
+    # Fetch logs based on compute type
+    if isinstance(compute, HyperPodCompute):
+        if not compute.cluster_name:
             raise ValueError(
                 "cluster_name is required for HyperPod metrics. "
                 "This should be available from the compute configuration."
             )
-        log_group = _get_smhp_log_group(cluster_name, sagemaker_session)
+        log_group = _get_smhp_log_group(compute.cluster_name, sagemaker_session.sagemaker_client)
         log_events = _fetch_smhp_logs(
             job_id=job_id,
             logs_client=logs_client,
@@ -385,7 +387,6 @@ def fetch_and_plot_metrics(
             end_time=end_time,
         )
     else:
-        # SMTJ (serverless or serverful)
         log_group = _get_smtj_log_group()
         log_events = _fetch_smtj_logs(
             job_name=job_id,

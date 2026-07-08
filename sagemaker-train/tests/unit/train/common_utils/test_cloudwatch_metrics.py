@@ -2,11 +2,14 @@
 
 from __future__ import absolute_import
 
+from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
 import pandas
 import pytest
 
+from sagemaker.core.training.configs import Compute, HyperPodCompute
+from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common_utils.cloudwatch_metrics import (
     _fetch_smhp_logs,
     _fetch_smtj_logs,
@@ -130,7 +133,10 @@ class TestFetchAndPlotMetrics:
     def test_smtj_sft_end_to_end(self, mock_fetch, mock_plot):
         mock_fetch.return_value = FAKE_SFT_LOGS
 
-        df = fetch_and_plot_metrics("my-job", "smtj", "SFT", self._session())
+        df = fetch_and_plot_metrics(
+            "my-job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+            "SFT", self._session(),
+        )
 
         assert len(df) == 3
         assert "training_loss" in df.columns
@@ -143,21 +149,30 @@ class TestFetchAndPlotMetrics:
         mock_lg.return_value = "/aws/sagemaker/Clusters/c/id"
         mock_fetch.return_value = FAKE_RLVR_SMHP_LOGS
 
-        df = fetch_and_plot_metrics("hp-job", "smhp", "RLVR", self._session(), cluster_name="c")
+        df = fetch_and_plot_metrics(
+            "hp-job", HyperPodCompute(cluster_name="c", instance_type="ml.p5.48xlarge", node_count=1),
+            "RLVR", self._session(),
+        )
 
         assert len(df) == 2
         assert "reward_score" in df.columns
 
     def test_invalid_technique_raises_before_fetching(self):
         with pytest.raises(ValueError, match="not a supported training technique"):
-            fetch_and_plot_metrics("job", "smtj", "RFT", self._session())
+            fetch_and_plot_metrics(
+                "job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+                "RFT", self._session(),
+            )
 
     @patch("sagemaker.train.common_utils.cloudwatch_metrics._fetch_smtj_logs")
     def test_no_logs_found_raises(self, mock_fetch):
         mock_fetch.return_value = []
 
         with pytest.raises(ValueError, match="No CloudWatch logs found"):
-            fetch_and_plot_metrics("missing-job", "smtj", "SFT", self._session())
+            fetch_and_plot_metrics(
+                "missing-job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+                "SFT", self._session(),
+            )
 
     @patch("sagemaker.train.common_utils.cloudwatch_metrics.plot_metrics")
     @patch("sagemaker.train.common_utils.cloudwatch_metrics._fetch_smtj_logs")
@@ -168,7 +183,10 @@ class TestFetchAndPlotMetrics:
             {"message": "global_step=1 reduced_train_loss=5.0"},
         ]
 
-        df = fetch_and_plot_metrics("job", "smtj", "SFT", self._session(), metrics=["training_loss"])
+        df = fetch_and_plot_metrics(
+            "job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+            "SFT", self._session(), metrics=["training_loss"],
+        )
 
         assert df["global_step"].tolist() == [1, 5]
 
@@ -177,8 +195,6 @@ class TestStreamLogs:
 
     def _make_trainer(self, compute=None, latest_job=None):
         """Create a minimal trainer stub for stream_logs testing."""
-        from sagemaker.train.base_trainer import BaseTrainer
-
         class _StubTrainer(BaseTrainer):
             _customization_technique = "SFT"
 
@@ -202,9 +218,6 @@ class TestStreamLogs:
     @patch("sagemaker.train.common_utils.cloudwatch_metrics._get_smhp_log_group")
     def test_smhp_dispatches_with_start_time(self, mock_log_group, mock_session):
         """SMHP stream_logs passes start_time to the polling loop."""
-        from datetime import datetime, timezone
-        from sagemaker.core.training.configs import HyperPodCompute
-
         mock_log_group.return_value = "/aws/sagemaker/Clusters/c/id"
         mock_sess = MagicMock()
         mock_sess.boto_session.region_name = "us-east-1"
@@ -233,11 +246,9 @@ class TestStreamLogs:
         assert call_kwargs["startTime"] == expected_ts
 
     @patch("sagemaker.core.resources.TrainingJob.get")
-    @patch("sagemaker.core.utils.logs.MultiLogStreamHandler")
+    @patch("sagemaker.train.base_trainer.MultiLogStreamHandler")
     def test_smtj_stops_on_completed(self, mock_handler_cls, mock_get_job):
         """SMTJ stream_logs exits when job status is Completed."""
-        from sagemaker.core.training.configs import Compute
-
         # Mock the handler to return one event then empty
         mock_handler = MagicMock()
         mock_handler.get_latest_log_events.side_effect = [
@@ -260,3 +271,11 @@ class TestStreamLogs:
         trainer.stream_logs()
 
         mock_get_job.assert_called()
+
+    def test_show_metrics_rejects_oss_models(self):
+        """show_metrics() raises NotImplementedError for non-Nova models."""
+        trainer = self._make_trainer(latest_job="some-job")
+        trainer._model_name = "test-oss-model"
+
+        with pytest.raises(NotImplementedError, match="only supported for Nova models"):
+            trainer.show_metrics()

@@ -1,7 +1,9 @@
 import copy
 import os
+import time
 import yaml
 from abc import ABC, abstractmethod
+from datetime import datetime as _datetime
 from typing import Optional, Dict, Any, List, Union
 import json
 import logging
@@ -15,7 +17,8 @@ import yaml
 import boto3
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig
+from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig, HyperPodCompute
+from sagemaker.core.utils.logs import MultiLogStreamHandler
 from sagemaker.core.shapes import shapes
 from sagemaker.core.resources import TrainingJob
 from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe, get_resolved_recipe_from_context, NoRecipeError
@@ -31,8 +34,12 @@ from sagemaker.train.common_utils.finetune_utils import (
 )
 from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
+from sagemaker.train.common_utils.cloudwatch_metrics import fetch_and_plot_metrics, _get_smhp_log_group
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name
+
+logger = logging.getLogger(__name__)
+
 
 class BaseTrainer(ABC):
     """Abstract base class for all SageMaker training workflows.
@@ -300,9 +307,12 @@ class BaseTrainer(ABC):
             ValueError: If no training job has been run yet, or no logs/metrics
                 are found.
         """
-        from datetime import datetime as _datetime
-        from sagemaker.core.training.configs import HyperPodCompute
-        from sagemaker.train.common_utils.cloudwatch_metrics import fetch_and_plot_metrics
+        # Gate to Nova models only 
+        model_name = getattr(self, '_model_name', None)
+        if model_name and not _is_nova_model(model_name):
+            raise NotImplementedError(
+                "show_metrics() is currently only supported for Nova models. "
+            )
 
         # Validate that we have a training job to get metrics from
         if not hasattr(self, '_latest_training_job') or self._latest_training_job is None:
@@ -322,12 +332,6 @@ class BaseTrainer(ABC):
 
         # Determine platform from compute config
         compute = getattr(self, 'compute', None)
-        if isinstance(compute, HyperPodCompute):
-            platform = "smhp"
-            cluster_name = compute.cluster_name
-        else:
-            platform = "smtj"
-            cluster_name = None
 
         # Get customization technique
         customization_technique = getattr(self, '_customization_technique', None)
@@ -365,10 +369,9 @@ class BaseTrainer(ABC):
 
         return fetch_and_plot_metrics(
             job_id=job_id,
-            platform=platform,
+            compute=compute,
             customization_technique=customization_technique,
             sagemaker_session=sagemaker_session,
-            cluster_name=cluster_name,
             metrics=metrics,
             starting_step=starting_step,
             ending_step=ending_step,
@@ -394,10 +397,6 @@ class BaseTrainer(ABC):
         Raises:
             ValueError: If no training job has been run yet.
         """
-        import time
-        from datetime import datetime as _datetime
-        from sagemaker.core.training.configs import HyperPodCompute
-
         if not hasattr(self, '_latest_training_job') or self._latest_training_job is None:
             raise ValueError(
                 "No training job found. Call .train(wait=False) first, "
@@ -422,9 +421,6 @@ class BaseTrainer(ABC):
 
     def _stream_logs_smtj(self, training_job, poll: int) -> None:
         """Stream logs for an SMTJ training job using MultiLogStreamHandler."""
-        import time
-        from sagemaker.core.utils.logs import MultiLogStreamHandler
-        from sagemaker.core.resources import TrainingJob
 
         # Resolve job name
         if hasattr(training_job, 'training_job_name'):
@@ -443,9 +439,8 @@ class BaseTrainer(ABC):
             expected_stream_count=instance_count,
         )
 
-        print(f"Streaming logs for job: {job_name}")
-        print(f"Log group: {log_group}")
-        print("-" * 60)
+        logger.info(f"Streaming logs for job: {job_name}")
+        logger.info(f"Log group: {log_group}")
 
         terminal_statuses = {"Completed", "Failed", "Stopped"}
 
@@ -453,7 +448,7 @@ class BaseTrainer(ABC):
             for stream_name, event in handler.get_latest_log_events():
                 message = event.get("message", "").rstrip()
                 if message:
-                    print(message)
+                    logger.info(message)
 
             # Check job status
             try:
@@ -464,9 +459,8 @@ class BaseTrainer(ABC):
                     for stream_name, event in handler.get_latest_log_events():
                         message = event.get("message", "").rstrip()
                         if message:
-                            print(message)
-                    print("-" * 60)
-                    print(f"Job {job_name} finished with status: {status}")
+                            logger.info(message)
+                    logger.info(f"Job {job_name} finished with status: {status}")
                     return
             except Exception:
                 pass
@@ -475,8 +469,6 @@ class BaseTrainer(ABC):
 
     def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None) -> None:
         """Stream logs for a HyperPod job using filter_log_events polling."""
-        import time
-        from sagemaker.train.common_utils.cloudwatch_metrics import _get_smhp_log_group
 
         job_id = training_job if isinstance(training_job, str) else str(training_job)
 
@@ -485,13 +477,12 @@ class BaseTrainer(ABC):
         )
         region_name = sagemaker_session.boto_session.region_name
         logs_client = sagemaker_session.boto_session.client("logs", region_name=region_name)
-        log_group = _get_smhp_log_group(compute.cluster_name, sagemaker_session)
+        log_group = _get_smhp_log_group(compute.cluster_name, sagemaker_session.sagemaker_client)
 
-        print(f"Streaming logs for HyperPod job: {job_id}")
-        print(f"Cluster: {compute.cluster_name}")
-        print(f"Log group: {log_group}")
-        print("Press Ctrl+C to stop streaming.")
-        print("-" * 60)
+        logger.info(f"Streaming logs for HyperPod job: {job_id}")
+        logger.info(f"Cluster: {compute.cluster_name}")
+        logger.info(f"Log group: {log_group}")
+        logger.info("Press Ctrl+C to stop streaming.")
 
         # Pick start time (user-provided > training job start time > now)
         if start_time_ms is not None:
@@ -522,7 +513,7 @@ class BaseTrainer(ABC):
                         seen_event_ids.add(event_id)
                         message = event.get("message", "").rstrip()
                         if message:
-                            print(message)
+                            logger.info(message)
                         ts = event.get("timestamp", 0)
                         if ts > last_timestamp:
                             last_timestamp = ts
@@ -534,8 +525,7 @@ class BaseTrainer(ABC):
             try:
                 time.sleep(poll)
             except KeyboardInterrupt:
-                print("\n" + "-" * 60)
-                print("Log streaming stopped by user.")
+                logger.info("Log streaming stopped by user.")
                 return
 
     def _validate_instance_count(self, instance_count, sagemaker_session):
