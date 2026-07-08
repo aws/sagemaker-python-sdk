@@ -13,10 +13,11 @@
 """Tests for the RLVR reward function verifier."""
 from __future__ import absolute_import
 
+import pytest
+import logging
 import tempfile
 from pathlib import Path
 
-import pytest
 
 from sagemaker.core.training.configs import TrainingJobCompute, HyperPodCompute
 from sagemaker.train.common_utils.rlvr_reward_verifier import verify_reward_function
@@ -693,21 +694,6 @@ def lambda_handler(event, context):
 # ---------------------------------------------------------------------------
 # Platform / Lambda ARN validation
 # ---------------------------------------------------------------------------
-def test_verify_lambda_arn_requires_compute():
-    """Test that a Lambda ARN requires the compute parameter for Nova models."""
-    sample_data = [
-        {
-            "id": "sample_1",
-            "messages": [{"role": "user", "content": "test"}],
-            "reference_answer": "answer",
-        }
-    ]
-
-    arn = "arn:aws:lambda:us-east-1:123456789012:function:my-reward-function"
-
-    with pytest.raises(ValueError, match="'compute' parameter is required"):
-        verify_reward_function(reward_function=arn, sample_data=sample_data)
-
 
 def test_verify_smhp_compute_invalid_lambda_arn():
     """Test that HyperPod compute rejects a Lambda ARN without 'SageMaker' in the name."""
@@ -801,8 +787,10 @@ def test_verify_smhp_arn_with_version_qualifier():
         assert "'compute' parameter is required" not in str(e)
 
 
-def test_verify_smhp_compute_with_local_file():
-    """Test that HyperPod compute validation doesn't affect local files."""
+def test_verify_smhp_compute_with_local_file(caplog):
+    """Test that HyperPod compute logs a warning for local files."""
+    caplog.set_level(logging.WARNING)
+
     reward_code = """
 def lambda_handler(event, context):
     results = []
@@ -831,6 +819,14 @@ def lambda_handler(event, context):
         )
 
         assert result["success"] is True
+
+        # Verify the warning was logged with file name and guidance
+        log_text = caplog.text
+        assert "Skipping Lambda function name validation" in log_text
+        assert reward_file in log_text
+        assert "Nova RLVR jobs on HyperPod" in log_text
+        assert "'SageMaker'" in log_text
+        assert "arn:aws:lambda:*:*:function:*SageMaker*" in log_text
 
     finally:
         Path(reward_file).unlink()

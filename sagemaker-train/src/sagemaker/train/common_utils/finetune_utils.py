@@ -479,6 +479,67 @@ def _extract_evaluator_arn(evaluator, param_name: str = "custom_reward_function"
         return evaluator.arn
 
 
+def _get_lambda_arn_from_evaluator_arn(evaluator_arn: str, sagemaker_session=None) -> str:
+    """Extract the Lambda ARN from an evaluator's hub content entry.
+
+    Parses the hub name, content type, content name, and version directly from the
+    evaluator ARN, then calls describe_hub_content on the SageMaker client to retrieve
+    the stored Lambda function reference. This bypasses AIRHub (which hardcodes a
+    single hub name) so it works for evaluators stored in any hub.
+
+    Args:
+        evaluator_arn: Full evaluator ARN
+            (e.g., arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/JsonDoc/my-eval/0.0.1)
+        sagemaker_session: Optional SageMaker session
+
+    Returns:
+        The Lambda function ARN stored as the evaluator's reference
+
+    Raises:
+        ValueError: If the ARN cannot be parsed or the evaluator has no Lambda reference
+    """
+    # Parse: arn:aws:sagemaker:region:account:hub-content/HubName/ContentType/ContentName/Version
+    try:
+        resource_part = evaluator_arn.split(":", 5)[5]  # "hub-content/HubName/Type/Name/Version"
+        parts = resource_part.split("/")
+        # parts[0] = "hub-content", parts[1] = HubName, parts[2] = ContentType,
+        # parts[3] = ContentName, parts[4] = Version (optional)
+        hub_name = parts[1]
+        hub_content_type = parts[2]
+        hub_content_name = parts[3]
+        hub_content_version = parts[4] if len(parts) > 4 else None
+    except (IndexError, ValueError) as e:
+        raise ValueError(
+            f"Failed to parse evaluator ARN '{evaluator_arn}': {str(e)}"
+        )
+
+    sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
+    client = sagemaker_session.sagemaker_client
+
+    request = {
+        "HubName": hub_name,
+        "HubContentType": hub_content_type,
+        "HubContentName": hub_content_name,
+    }
+    if hub_content_version:
+        request["HubContentVersion"] = hub_content_version
+
+    response = client.describe_hub_content(**request)
+
+    # Parse the document: HubContentDocument -> JsonContent -> Reference
+    doc = json.loads(response["HubContentDocument"])
+    json_content = json.loads(doc.get("JsonContent", "{}"))
+    reference = json_content.get("Reference", "")
+
+    if not reference:
+        raise ValueError(
+            f"Evaluator '{hub_content_name}' in hub '{hub_name}' does not have a "
+            "Lambda ARN reference."
+        )
+
+    return reference
+
+
 def _resolve_model_name(model_package) -> str:
     """Resolve model_name from model_package if needed."""
     if model_package:
