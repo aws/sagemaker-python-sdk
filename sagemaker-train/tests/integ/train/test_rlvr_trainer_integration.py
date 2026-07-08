@@ -92,6 +92,7 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     
     # Create training job
     training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
     
     # Manual wait loop to avoid resource_config issue
     max_wait_time = 3600  # 1 hour timeout
@@ -176,7 +177,6 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
         base_job_name=f"rlvr-nova-integ-{unique_id}",
     )
     training_job = rlvr_trainer.train(wait=False)
-
     logger.info(f"Training job submitted: {training_job.training_job_arn}")
     
     # Manual wait loop
