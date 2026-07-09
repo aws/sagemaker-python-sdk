@@ -372,8 +372,11 @@ def test_enable_lake_formation_fails_for_non_created_status(s3_uri, role, region
         # Force a non-'Created' status deterministically. refresh() is patched to a
         # no-op so it does not overwrite the pinned status, and enable_lake_formation()
         # should reject before ever calling RegisterResource.
+        # NOTE: FeatureGroupManager is a pydantic model, so patching the method on the
+        # instance (mock.patch.object(fg, "refresh")) is rejected by pydantic's
+        # validate_assignment. Patch on the class instead to stay pydantic-safe.
         fg.feature_group_status = "Creating"
-        with mock.patch.object(fg, "refresh", return_value=None):
+        with mock.patch.object(type(fg), "refresh", return_value=None):
             with pytest.raises(ValueError) as exc_info:
                 fg.enable_lake_formation(
                     hybrid_access_mode_enabled=False, acknowledge_risk=True, wait_for_active=False
