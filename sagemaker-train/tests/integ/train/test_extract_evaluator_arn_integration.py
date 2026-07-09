@@ -12,14 +12,13 @@
 # language governing permissions and limitations under the License.
 """Integration tests for _extract_evaluator_arn in finetune_utils.
 
-These tests exercise the three input paths of _extract_evaluator_arn:
+These tests exercise the input paths of _extract_evaluator_arn:
 1. Evaluator object  -> returns evaluator.arn directly
 2. Evaluator ARN string -> validates and returns the string
-3. Lambda ARN string -> auto-creates an Evaluator in AI Registry and returns its ARN
+3. Lambda ARN string -> rejected (only hub-content evaluator ARNs are accepted;
+   Lambda ARNs are dispatched upstream via rlvr_trainer's _is_lambda_arn handling)
 """
 
-import os
-import re
 import logging
 import pytest
 from sagemaker.ai_registry.evaluator import Evaluator
@@ -32,8 +31,6 @@ logger = logging.getLogger(__name__)
 # Test resource names (ARNs are constructed dynamically from account/region)
 EVALUATOR_NAME = "rlvr-eval-lambda-arn-integ-test"
 LAMBDA_FUNCTION_NAME = "rlvr-oss-reward-function"
-# _extract_evaluator_arn sanitizes the function name (replaces non-alphanumeric/hyphen with -)
-SANITIZED_LAMBDA_FUNCTION_NAME = re.sub(r"[^a-zA-Z0-9-]", "-", LAMBDA_FUNCTION_NAME)[:63]
 
 
 @pytest.fixture(scope="module")

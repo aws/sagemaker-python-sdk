@@ -2,6 +2,7 @@ import pytest
 import time
 import boto3
 import os
+import uuid
 from sagemaker.core.helper.session_helper import Session, get_execution_role
 from sagemaker.train import ModelTrainer
 from sagemaker.train.configs import Compute, SourceCode, InputData, StoppingCondition
@@ -27,7 +28,7 @@ def mnist_data_dir():
 def test_hyperparameter_tuning_e2e(sagemaker_session, role, mnist_data_dir):
     region = sagemaker_session.boto_region_name
     bucket = sagemaker_session.default_bucket()
-    prefix = "v3-tunning-integ-test"
+    prefix = f"v3-tunning-integ-test-{uuid.uuid4().hex[:8]}"
     
     try:
         # Upload pre-downloaded MNIST data to S3

@@ -216,6 +216,54 @@ class TestResolveJumpStartModel:
         with pytest.raises(ValueError, match="Failed to resolve JumpStart model"):
             resolver._resolve_jumpstart_model("test-model", "SageMakerPublicHub")
 
+    @patch('sagemaker.core.resources.HubContent')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
+    def test_resolve_jumpstart_falls_back_to_public_hub(
+        self, mock_get_session, mock_hub_content_class
+    ):
+        """Base model missing from a private hub falls back to SageMakerPublicHub."""
+        mock_session = MagicMock()
+        mock_session.boto_session.region_name = 'us-west-2'
+        mock_get_session.return_value = mock_session
+
+        mock_hub_content = MagicMock()
+        mock_hub_content.hub_content_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/test"
+        mock_hub_content.hub_content_document = '{"key": "value"}'
+        # First call (private hub) raises, fallback (public hub) succeeds.
+        mock_hub_content_class.get.side_effect = [
+            Exception("ResourceNotFound in private hub"),
+            mock_hub_content,
+        ]
+
+        resolver = _ModelResolver()
+        result = resolver._resolve_jumpstart_model("test-model", "sdktest")
+
+        assert result.base_model_name == "test-model"
+        assert result.model_type == _ModelType.JUMPSTART
+        assert mock_hub_content_class.get.call_count == 2
+        # The fallback call must target the public hub.
+        assert mock_hub_content_class.get.call_args_list[1].kwargs["hub_name"] == (
+            "SageMakerPublicHub"
+        )
+
+    @patch('sagemaker.core.resources.HubContent')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
+    def test_resolve_jumpstart_public_hub_failure_does_not_retry(
+        self, mock_get_session, mock_hub_content_class
+    ):
+        """A public-hub miss raises immediately without a redundant fallback call."""
+        mock_session = MagicMock()
+        mock_session.boto_session.region_name = 'us-west-2'
+        mock_get_session.return_value = mock_session
+        mock_hub_content_class.get.side_effect = Exception("Hub error")
+
+        resolver = _ModelResolver()
+
+        with pytest.raises(ValueError, match="Failed to resolve JumpStart model"):
+            resolver._resolve_jumpstart_model("test-model", "SageMakerPublicHub")
+
+        assert mock_hub_content_class.get.call_count == 1
+
 
 class TestResolveModelPackageObject:
     """Tests for _resolve_model_package_object method."""

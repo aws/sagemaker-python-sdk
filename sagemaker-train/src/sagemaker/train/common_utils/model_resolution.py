@@ -262,13 +262,28 @@ class _ModelResolver:
         session = self._get_session()
         
         try:
-            hub_content = HubContent.get(
-                hub_name=hub_name,
-                hub_content_type="Model",
-                hub_content_name=model_id,
-                session=session.boto_session,
-                region=session.boto_session.region_name
-            )
+            try:
+                hub_content = HubContent.get(
+                    hub_name=hub_name,
+                    hub_content_type="Model",
+                    hub_content_name=model_id,
+                    session=session.boto_session,
+                    region=session.boto_session.region_name
+                )
+            except Exception:
+                # The base model may not exist in a custom/private hub (e.g. a
+                # recipe hub pinned via SAGEMAKER_HUB_NAME). Base models are
+                # published to the public hub, so fall back to it before giving
+                # up, mirroring the resolution behavior in recipe_utils.
+                if hub_name == "SageMakerPublicHub":
+                    raise
+                hub_content = HubContent.get(
+                    hub_name="SageMakerPublicHub",
+                    hub_content_type="Model",
+                    hub_content_name=model_id,
+                    session=session.boto_session,
+                    region=session.boto_session.region_name
+                )
             
             # Parse additional metadata from hub content document
             additional_metadata = {}
