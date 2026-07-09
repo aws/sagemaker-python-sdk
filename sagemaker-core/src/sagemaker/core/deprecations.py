@@ -32,6 +32,24 @@ V3_MIGRATION_URL = "https://github.com/aws/sagemaker-python-sdk/blob/master/migr
 _KNOWN_V3_TOPLEVEL = frozenset({"core", "train", "serve", "mlops", "lineage", "ai_registry"})
 
 
+def _emit_removed_telemetry(module):
+    """Best-effort telemetry that a removed v2 module was imported.
+
+    Imported lazily and fully guarded so that telemetry can never delay or break
+    the import/error path. See
+    ``sagemaker.core.telemetry.telemetry_logging.emit_removed_interface_telemetry``
+    for the time-bounded, opt-out-able implementation.
+    """
+    try:
+        from sagemaker.core.telemetry.telemetry_logging import (
+            emit_removed_interface_telemetry,
+        )
+
+        emit_removed_interface_telemetry(module)
+    except Exception:  # pylint: disable=W0703
+        logger.debug("Removed-interface telemetry hook failed; continuing.")
+
+
 def raise_removed_in_v3(module, replacement=None, v3_import=None):
     """Warn and then raise an actionable error for a v2 module removed in v3.
 
@@ -61,6 +79,7 @@ def raise_removed_in_v3(module, replacement=None, v3_import=None):
         msg += f" ({v3_import})"
     msg += f"\nSee {V3_MIGRATION_URL} for the migration guide."
 
+    _emit_removed_telemetry(module)
     warnings.warn(msg, DeprecationWarning, stacklevel=2)
     logger.warning(msg)
     raise ModuleNotFoundError(msg, name=module)
@@ -98,6 +117,7 @@ class _RemovedV2ModuleFinder(importlib.abc.MetaPathFinder):
             "It may have been removed or moved to a new location."
             f"\nSee {V3_MIGRATION_URL} for the migration guide."
         )
+        _emit_removed_telemetry(fullname)
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
         logger.warning(msg)
         raise ModuleNotFoundError(msg, name=fullname)

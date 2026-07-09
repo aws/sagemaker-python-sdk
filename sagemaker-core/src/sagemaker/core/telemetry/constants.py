@@ -32,6 +32,7 @@ class Feature(Enum):
     PROCESSING = 18
     MODEL_CUSTOMIZATION_NOVA = 19
     MODEL_CUSTOMIZATION_OSS = 20
+    DEPRECATED_V2_INTERFACE = 21
 
     def __str__(self):  # pylint: disable=E0307
         """Return the feature name."""

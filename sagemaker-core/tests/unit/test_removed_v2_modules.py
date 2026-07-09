@@ -159,3 +159,148 @@ def test_finder_ignores_non_sagemaker_and_nested():
     assert finder.find_spec("sagemaker.workflow.steps") is None
     # Real v3 top-level -> never guarded.
     assert finder.find_spec("sagemaker.train") is None
+
+
+# --- Removed-interface telemetry (session-less, import-time) ---
+
+
+@pytest.fixture(autouse=True)
+def _reset_telemetry_state(monkeypatch):
+    """Isolate telemetry dedup + opt-out env var per test.
+
+    Also neutralize the actual network/STS emit by default so the suite is
+    hermetic and fast; tests that assert telemetry behavior re-patch as needed.
+    """
+    import sagemaker.core.telemetry.telemetry_logging as tl
+
+    monkeypatch.delenv(tl.DEPRECATION_TELEMETRY_OPT_OUT_ENV_VAR, raising=False)
+    tl._deprecation_telemetry_sent.clear()
+    monkeypatch.setattr(tl, "_emit_removed_interface_telemetry_blocking", lambda module: None)
+    yield
+    tl._deprecation_telemetry_sent.clear()
+
+
+def test_telemetry_emitted_once_per_module(monkeypatch):
+    import sagemaker.core.telemetry.telemetry_logging as tl
+
+    calls = []
+    # Stop before any network/STS: record invocations of the blocking worker.
+    monkeypatch.setattr(
+        tl, "_emit_removed_interface_telemetry_blocking", lambda module: calls.append(module)
+    )
+    tl.emit_removed_interface_telemetry("sagemaker.estimator")
+    tl.emit_removed_interface_telemetry("sagemaker.estimator")
+    tl.emit_removed_interface_telemetry("sagemaker.transformer")
+    assert calls == ["sagemaker.estimator", "sagemaker.transformer"]
+
+
+def test_telemetry_opt_out_env_var(monkeypatch):
+    import sagemaker.core.telemetry.telemetry_logging as tl
+
+    calls = []
+    monkeypatch.setattr(
+        tl, "_emit_removed_interface_telemetry_blocking", lambda module: calls.append(module)
+    )
+    monkeypatch.setenv(tl.DEPRECATION_TELEMETRY_OPT_OUT_ENV_VAR, "1")
+    tl.emit_removed_interface_telemetry("sagemaker.estimator")
+    assert calls == []
+
+
+def test_telemetry_honors_config_opt_out(monkeypatch):
+    """A user who set TelemetryOptOut in SDK config is opted out here too."""
+    import sagemaker.core.telemetry.telemetry_logging as tl
+    from sagemaker.core.config import config as core_config
+
+    calls = []
+    monkeypatch.setattr(
+        tl, "_emit_removed_interface_telemetry_blocking", lambda module: calls.append(module)
+    )
+    # No env var set; opt-out comes purely from config.
+    monkeypatch.delenv(tl.DEPRECATION_TELEMETRY_OPT_OUT_ENV_VAR, raising=False)
+    monkeypatch.setattr(
+        core_config,
+        "load_sagemaker_config",
+        lambda *a, **k: {
+            "SchemaVersion": "1.0",
+            "SageMaker": {"PythonSDK": {"Modules": {"TelemetryOptOut": True}}},
+        },
+    )
+    tl.emit_removed_interface_telemetry("sagemaker.estimator")
+    assert calls == []
+
+
+def test_telemetry_config_load_failure_does_not_block(monkeypatch):
+    """If config loading fails, telemetry still proceeds (not opted out)."""
+    import sagemaker.core.telemetry.telemetry_logging as tl
+    from sagemaker.core.config import config as core_config
+
+    calls = []
+    monkeypatch.setattr(
+        tl, "_emit_removed_interface_telemetry_blocking", lambda module: calls.append(module)
+    )
+    monkeypatch.delenv(tl.DEPRECATION_TELEMETRY_OPT_OUT_ENV_VAR, raising=False)
+
+    def _boom(*a, **k):
+        raise RuntimeError("bad config")
+
+    monkeypatch.setattr(core_config, "load_sagemaker_config", _boom)
+    tl.emit_removed_interface_telemetry("sagemaker.estimator")
+    assert calls == ["sagemaker.estimator"]
+
+
+def test_telemetry_never_raises(monkeypatch):
+    import sagemaker.core.telemetry.telemetry_logging as tl
+
+    def boom(module):
+        raise RuntimeError("network exploded")
+
+    monkeypatch.setattr(tl, "_emit_removed_interface_telemetry_blocking", boom)
+    # Must swallow the worker error; the caller must never see it.
+    tl.emit_removed_interface_telemetry("sagemaker.estimator")
+
+
+def test_telemetry_is_time_bounded(monkeypatch):
+    import time
+    import sagemaker.core.telemetry.telemetry_logging as tl
+
+    monkeypatch.setattr(tl, "_DEPRECATION_TELEMETRY_BUDGET_SECONDS", 0.2)
+    monkeypatch.setattr(
+        tl, "_emit_removed_interface_telemetry_blocking", lambda module: time.sleep(5)
+    )
+    start = time.perf_counter()
+    tl.emit_removed_interface_telemetry("sagemaker.estimator")
+    elapsed = time.perf_counter() - start
+    # Bounded by the budget, not the 5s sleep.
+    assert elapsed < 1.0
+
+
+def test_account_resolution_defaults_when_unavailable(monkeypatch):
+    import sagemaker.core.telemetry.telemetry_logging as tl
+
+    class _BoomSession:
+        region_name = None
+
+        def client(self, *a, **k):
+            raise RuntimeError("no creds")
+
+    monkeypatch.setattr(tl.boto3, "Session", lambda *a, **k: _BoomSession())
+    account_id, region = tl._resolve_account_and_region_sessionless()
+    assert account_id == "NotAvailable"
+    assert region == tl.DEFAULT_AWS_REGION
+
+
+def test_removed_import_triggers_telemetry_hook(monkeypatch):
+    """End-to-end: importing a removed module invokes the telemetry hook."""
+    import importlib
+    import sys
+    import sagemaker.core  # noqa: F401  -- ensures finder + telemetry loaded
+    import sagemaker.core.deprecations as dep
+
+    seen = []
+    monkeypatch.setattr(dep, "_emit_removed_telemetry", lambda module: seen.append(module))
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        sys.modules.pop("sagemaker.estimator", None)
+        with pytest.raises(ModuleNotFoundError):
+            importlib.import_module("sagemaker.estimator")
+    assert "sagemaker.estimator" in seen
