@@ -147,6 +147,14 @@ class TestModelCustomizationFromTrainingJob:
         assert endpoint.endpoint_arn is not None
         assert endpoint.endpoint_status == "InService"
 
+        # Verify model-source tag is present on the endpoint for reuse discovery.
+        from sagemaker.serve.model_reuse import MODEL_SOURCE_TAG_KEY
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        endpoint_tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
+        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in endpoint_tags}, (
+            f"Endpoint {endpoint.endpoint_arn} missing model-source tag for reuse"
+        )
+
         if peft_type == "LORA":
             # Verify base IC was created
             base_ic_name = f"{endpoint_name}-inference-component"
@@ -695,5 +703,6 @@ def test_model_customization_workflow(training_job_name):
         print("2. Model artifacts access patterns")
         print("3. BedrockModelBuilder initialization with new sagemaker-core objects")
         raise
+
 
 

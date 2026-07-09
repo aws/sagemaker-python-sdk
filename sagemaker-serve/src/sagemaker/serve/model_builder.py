@@ -1951,10 +1951,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return None
 
     def _get_model_for_endpoint(self, endpoint_name: str) -> Optional[Model]:
-        """Return the Model resource backing an existing endpoint, if resolvable.
+        """Return the Model resource backing a model-on-variant endpoint.
 
         Reads the endpoint's config production variant to find the model name,
-        then fetches that Model. Returns None if it cannot be resolved.
+        then fetches that Model. Returns None for IC-based endpoints (no
+        ModelName on variant) or if the config cannot be read.
         """
         sagemaker_client = self.sagemaker_session.sagemaker_client
         try:
@@ -1965,7 +1966,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             variants = config_desc.get("ProductionVariants", [])
             if not variants:
                 return None
-            model_name = variants[0]["ModelName"]
+            model_name = variants[0].get("ModelName")
+            if not model_name:
+                return None
             return Model.get(model_name=model_name, region=self.region)
         except Exception as e:
             logger.warning(
@@ -1974,6 +1977,46 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 e,
             )
             return None
+
+    def _find_reusable_model(self) -> Optional["Model"]:
+        """Find an existing SageMaker Model tagged with the same model source.
+
+        Scans Models by creation time and checks for a matching model-source tag.
+        Returns the Model resource if found (and it still exists), None otherwise.
+        """
+        source_id = self._resolve_model_source_id()
+        if not source_id:
+            return None
+
+        from sagemaker.serve.model_reuse import normalize_tag_value
+        tag_value = normalize_tag_value(source_id)
+        sagemaker_client = self.sagemaker_session.sagemaker_client
+
+        try:
+            next_token = None
+            while True:
+                kwargs = {"SortBy": "CreationTime", "SortOrder": "Descending"}
+                if next_token:
+                    kwargs["NextToken"] = next_token
+                response = sagemaker_client.list_models(**kwargs)
+                for model_summary in response.get("Models", []):
+                    model_name = model_summary.get("ModelName")
+                    model_arn = model_summary.get("ModelArn")
+                    if not model_arn:
+                        continue
+                    tags = sagemaker_client.list_tags(ResourceArn=model_arn).get("Tags", [])
+                    if any(
+                        t.get("Key") == MODEL_SOURCE_TAG_KEY and t.get("Value") == tag_value
+                        for t in tags
+                    ):
+                        return Model.get(model_name=model_name, region=self.region)
+                next_token = response.get("NextToken")
+                if not next_token:
+                    break
+        except Exception as e:
+            logger.warning("Could not search Models for reuse: %s", e)
+
+        return None
 
     def _find_reusable_endpoint(self, instance_type: Optional[str] = None) -> Optional[str]:
         """Return the name of an existing endpoint that can be reused, if any.
@@ -2040,7 +2083,13 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if not variants:
                 return True
             variant = variants[0]
-            model_desc = sagemaker_client.describe_model(ModelName=variant["ModelName"])
+            model_name = variant.get("ModelName")
+            if not model_name:
+                # IC-based endpoint — can't validate container config from the
+                # variant. Proceed with reuse (the Model was already matched by
+                # tag in _find_reusable_model).
+                return True
+            model_desc = sagemaker_client.describe_model(ModelName=model_name)
             # Check PrimaryContainer and fallback to Containers list if PrimaryContainer is empty
             container = model_desc.get("PrimaryContainer")
             if not container:
@@ -2960,9 +3009,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 )
 
             model_name = self.model_name or f"model-{uuid.uuid4().hex[:10]}"
-            # Create model
+            source_id = self._resolve_model_source_id()
+            model_tags = None
+            if source_id:
+                source_tag = build_source_tag(source_id)
+                model_tags = [{"key": source_tag["key"], "value": source_tag["value"]}]
             self.built_model = Model.create(
-                execution_role_arn=self.role_arn, model_name=model_name, containers=[container_def]
+                execution_role_arn=self.role_arn,
+                model_name=model_name,
+                containers=[container_def],
+                tags=model_tags,
             )
             return self.built_model
 
@@ -3890,32 +3946,24 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             self.inference_spec, (CustomOrchestrator, AsyncCustomOrchestrator)
         )
 
-        # Resource reuse: if an existing endpoint built from the same model source
-        # (with matching config) is found, skip creating any new resources — no
-        # Model, EndpointConfig, or Endpoint. The subsequent deploy() returns the
-        # existing endpoint.
+        # Resource reuse: if an existing Model built from the same source is
+        # found (by model-source tag), skip creating a new one. Also discover the
+        # endpoint for deploy() to reuse later.
         if reuse_resources and not is_inference_component_build:
             self.serve_settings = self._get_serve_setting()
-            reusable_endpoint = self._find_reusable_endpoint()
-            if reusable_endpoint:
-                # Only short-circuit if the backing Model can be resolved. An
-                # inference-component endpoint has no model on its production
-                # variant (the model lives in the IC), and a stale endpoint whose
-                # config was deleted also cannot be resolved. In those cases fall
-                # through and build the Model normally — an IC deploy references
-                # built_model.model_name and must have a real Model to deploy.
-                reused_model = self._get_model_for_endpoint(reusable_endpoint)
-                if reused_model is not None:
-                    logger.warning(
-                        "Reusing existing endpoint %r (matched model-source tag "
-                        "and deployment configuration). No new resources will be "
-                        "created. Pass reuse_resources=False to force new "
-                        "resources.",
-                        reusable_endpoint,
-                    )
+            reused_model = self._find_reusable_model()
+            if reused_model is not None:
+                reusable_endpoint = self._find_reusable_endpoint()
+                if reusable_endpoint:
                     self._reused_endpoint_name = reusable_endpoint
-                    self.built_model = reused_model
-                    return self.built_model
+                logger.warning(
+                    "Reusing existing Model %r (matched model-source tag). "
+                    "No new Model will be created. Pass reuse_resources=False "
+                    "to force a new Model.",
+                    reused_model.model_name,
+                )
+                self.built_model = reused_model
+                return self.built_model
 
         deployables = {}
 
@@ -4796,9 +4844,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if reuse_resources and is_inference_component_deploy:
             logger.warning(
                 "reuse_resources has no effect for inference component "
-                "deployments; inference components manage their own reuse by "
-                "name (a new component is added to the endpoint, or an existing "
-                "one is updated in place)."
+                "deployments. Inference components manage their own reuse by "
+                "endpoint_name (infrastructure reuse) and "
+                "inference_component_name (IC update). The flag is ignored."
             )
 
         # Resource reuse is opt-in per call. When requested, reuse an existing
@@ -4847,6 +4895,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if not self.instance_type and not instance_type:
                 self.instance_type = self._fetch_default_instance_type_for_custom_model()
 
+            # Ensure self.instance_type reflects the caller's intent so the
+            # endpoint config creation in _deploy_model_customization picks it up.
+            if instance_type:
+                self.instance_type = instance_type
+
             # Pass inference_config if it's ResourceRequirements
             inference_config_param = None
             if isinstance(inference_config, ResourceRequirements):
@@ -4854,7 +4907,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             return self._deploy_model_customization(
                 endpoint_name=endpoint_name,
-                instance_type=instance_type or self.instance_type,
                 initial_instance_count=initial_instance_count,
                 inference_component_name=kwargs.pop("inference_component_name", None),
                 wait=wait,
