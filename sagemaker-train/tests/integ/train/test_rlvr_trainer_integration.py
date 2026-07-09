@@ -92,6 +92,7 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     
     # Create training job
     training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
     
     # Manual wait loop to avoid resource_config issue
     max_wait_time = 3600  # 1 hour timeout
@@ -132,6 +133,7 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     )
     
     training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
     
     # Manual wait loop
     max_wait_time = 3600
@@ -169,11 +171,16 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
         validation_dataset="s3://sagemaker-us-east-1-784379639078/input_data/rlvr-nova/grpo-64-sample.jsonl",
         s3_output_path="s3://sagemaker-us-east-1-784379639078/output/",
         custom_reward_function="arn:aws:sagemaker:us-east-1:784379639078:hub-content/sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1",
+        # Can uncomment below reward function to test lambda arn flow as well.
+        # custom_reward_function="arn:aws:lambda:us-east-1:784379639078:function:rlvr-nova-reward-function",
         accept_eula=True,
         sagemaker_session=sagemaker_session_us_east_1,
         base_job_name=f"rlvr-nova-integ-{unique_id}",
     )
+    # Workaround: Hub spec has save_steps default=null but recipe template requires an integer
+    rlvr_trainer.hyperparameters.save_steps = 10
     training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
     
     # Manual wait loop
     max_wait_time = 10800  # 3 hour timeout (Nova training takes >1 hour)
@@ -214,6 +221,7 @@ def test_rlvr_trainer_with_lambda_arn_auto_creates_evaluator(sagemaker_session, 
     )
 
     training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
 
     # Manual wait loop
     max_wait_time = 3600
@@ -254,6 +262,8 @@ def test_rlvr_trainer_with_evaluator_object(sagemaker_session, evaluator):
     )
 
     training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
+
     # Manual wait loop
     max_wait_time = 3600
     poll_interval = 30

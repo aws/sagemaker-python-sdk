@@ -110,7 +110,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             # Both formats work - with or without 'Builtin.' prefix
             evaluator = LLMAsJudgeEvaluator(
                 base_model="llama-3-3-70b-instruct",
-                evaluator_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+                evaluator_model="anthropic.claude-sonnet-4-5-20250929-v1:0",
                 dataset="s3://my-bucket/my-dataset.jsonl",
                 builtin_metrics=["Correctness", "Helpfulness"],  # Prefix optional
                 mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server",
@@ -144,7 +144,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             # Example evaluating only custom model (skip base model)
             evaluator = LLMAsJudgeEvaluator(
                 base_model="llama-3-3-70b-instruct",
-                evaluator_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+                evaluator_model="anthropic.claude-sonnet-4-5-20250929-v1:0",
                 dataset="s3://my-bucket/my-dataset.jsonl",
                 builtin_metrics=["Correctness"],  # Prefix optional
                 evaluate_base_model=False,
@@ -776,7 +776,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             
                 evaluator = LLMAsJudgeEvaluator(
                     base_model="llama-3-3-70b-instruct",
-                    evaluator_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+                    evaluator_model="anthropic.claude-sonnet-4-5-20250929-v1:0",
                     dataset="s3://my-bucket/my-dataset.jsonl",
                     builtin_metrics=["Correctness", "Helpfulness"],
                     s3_output_path="s3://my-bucket/output"

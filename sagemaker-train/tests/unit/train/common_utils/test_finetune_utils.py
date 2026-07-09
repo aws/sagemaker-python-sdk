@@ -16,6 +16,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _get_default_s3_output_path,
     _extract_dataset_source,
     _extract_evaluator_arn,
+    _is_lambda_arn,
     _resolve_model_name,
     _resolve_model_package_arn,
     _get_fine_tuning_options_and_model_arn,
@@ -1332,3 +1333,32 @@ class TestGetHyperpodRecipePath:
                 fu.get_hyperpod_recipe_path(
                     "nova-lite", "SFT", "LORA", session, job_name="myjob"
                 )
+
+
+class TestIsLambdaArn:
+    """Regression coverage for _is_lambda_arn (the LAMBDA_ARN_REGEX constant
+    was previously undefined, raising NameError at call time)."""
+
+    def test_valid_lambda_arn(self):
+        assert _is_lambda_arn(
+            "arn:aws:lambda:us-west-2:123456789012:function:my-reward-fn"
+        ) is True
+
+    def test_valid_lambda_arn_aws_partition_variants(self):
+        assert _is_lambda_arn(
+            "arn:aws-us-gov:lambda:us-gov-west-1:123456789012:function:fn"
+        ) is True
+
+    def test_evaluator_hub_content_arn_is_not_lambda(self):
+        assert _is_lambda_arn(
+            "arn:aws:sagemaker:us-west-2:123456789012:hub-content/"
+            "SageMakerPublicHub/JsonDoc/my-evaluator/1.0"
+        ) is False
+
+    def test_arbitrary_string_is_not_lambda(self):
+        assert _is_lambda_arn("not-an-arn") is False
+
+    def test_uses_shared_regex_from_reward_verifier(self):
+        # Both call sites must share the same compiled pattern, not copies.
+        from sagemaker.train.common_utils import rlvr_reward_verifier
+        assert fu.LAMBDA_ARN_REGEX is rlvr_reward_verifier.LAMBDA_ARN_REGEX
