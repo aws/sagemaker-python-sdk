@@ -34,6 +34,7 @@ from botocore.exceptions import (
     ClientError,
     NoRegionError,
 )
+from sagemaker.core.apiutils._boto_functions import to_lower_camel_case
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.telemetry.resource_creation import get_resource_arn
@@ -83,26 +84,42 @@ STATUS_TO_CODE = {
 }
 
 
+# Exception type to error category mapping
+# Botocore exceptions: https://github.com/boto/botocore/blob/develop/botocore/exceptions.py
+# Python built-in exceptions: https://docs.python.org/3/library/exceptions.html
+_EXCEPTION_TYPE_MAP = {
+    "validation_error": (ParamValidationError, NoRegionError, ValueError, TypeError),
+    "auth_error": (NoCredentialsError, PartialCredentialsError),
+    "timeout_error": (ConnectTimeoutError, ReadTimeoutError, TimeoutError),
+    "network_error": (EndpointConnectionError, ConnectionClosedError, ConnectionError, OSError),
+}
+
+# HTTP status code to error category mapping
+# Reference: https://docs.aws.amazon.com/boto3/latest/guide/error-handling.html
+_HTTP_STATUS_MAP = {
+    400: "validation_error",
+    401: "auth_error",
+    403: "auth_error",
+    404: "resource_not_found",
+    408: "timeout_error",
+    429: "throttling_error",
+}
+
+
 def _classify_error(e: Exception) -> str:
     """Classify an exception into an actionable error category.
 
     Classification priority:
-    1. Botocore static exceptions (client-side errors with well-defined types)
-    2. AWS error code from ClientError response (service-side errors)
-    3. HTTP status code fallback
-    4. Message-based fallback for generic exceptions
+    1. Exception type matching (botocore + Python built-ins)
+    2. HTTP status code from AWS service response
+    3. Fallback to exception class name
     """
     # 1. Classify by exception type
     # Botocore static exceptions: https://github.com/boto/botocore/blob/develop/botocore/exceptions.py
     # Python built-in exceptions: https://docs.python.org/3/library/exceptions.html
-    if isinstance(e, (ParamValidationError, NoRegionError, ValueError, TypeError)):
-        return "validation_error"
-    if isinstance(e, (NoCredentialsError, PartialCredentialsError)):
-        return "auth_error"
-    if isinstance(e, (ConnectTimeoutError, ReadTimeoutError, TimeoutError)):
-        return "timeout_error"
-    if isinstance(e, (EndpointConnectionError, ConnectionClosedError, ConnectionError, OSError)):
-        return "network_error"
+    for category, exception_types in _EXCEPTION_TYPE_MAP.items():
+        if isinstance(e, exception_types):
+            return category
 
     # 2. Classify by HTTP status code from AWS service response
     # Reference: https://docs.aws.amazon.com/boto3/latest/guide/error-handling.html
@@ -110,30 +127,12 @@ def _classify_error(e: Exception) -> str:
     if hasattr(e, "response") and isinstance(e.response, dict):
         http_status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
 
-    if http_status == 400:
-        return "validation_error"
-    if http_status in (401, 403):
-        return "auth_error"
-    if http_status == 404:
-        return "resource_not_found"
-    if http_status == 408:
-        return "timeout_error"
-    if http_status == 429:
-        return "throttling_error"
+    if http_status in _HTTP_STATUS_MAP:
+        return _HTTP_STATUS_MAP[http_status]
     if 500 <= http_status < 600:
         return "service_error"
 
     return e.__class__.__name__.lower()
-
-
-def _attr_to_key(attr: str) -> str:
-    """Convert attribute name to camelCase telemetry key.
-
-    Examples: '_model_name' -> 'modelName', 'training_type' -> 'trainingType'
-    """
-    attr = attr.lstrip("_")
-    parts = attr.split("_")
-    return parts[0] + "".join(p.capitalize() for p in parts[1:])
 
 
 class TelemetryParamType:
@@ -215,7 +214,7 @@ def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
     T = TelemetryParamType
     for param in telemetry_params:
         name, kind = param[0], param[1]
-        key = _attr_to_key(name)
+        key = to_lower_camel_case(name.lstrip("_"))
         if kind == T.ATTR_VALUE:
             value = getattr(instance, name, None)
             if value is not None:

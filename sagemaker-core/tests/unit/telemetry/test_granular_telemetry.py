@@ -18,30 +18,24 @@ from unittest.mock import Mock, patch
 from sagemaker.core.telemetry.telemetry_logging import (
     TelemetryParamType,
     _extract_telemetry_params,
-    _attr_to_key,
     _classify_error,
     _telemetry_emitter,
 )
+from sagemaker.core.apiutils._boto_functions import to_lower_camel_case
 from sagemaker.core.telemetry.constants import Feature
 
 
-class TestAttrToKey(unittest.TestCase):
-    """Tests for _attr_to_key helper."""
+class TestToLowerCamelCase(unittest.TestCase):
+    """Tests for to_lower_camel_case helper."""
 
     def test_simple_attribute(self):
-        assert _attr_to_key("networking") == "networking"
+        assert to_lower_camel_case("networking") == "networking"
 
     def test_snake_case(self):
-        assert _attr_to_key("training_type") == "trainingType"
-
-    def test_leading_underscore(self):
-        assert _attr_to_key("_model_name") == "modelName"
+        assert to_lower_camel_case("training_type") == "trainingType"
 
     def test_multiple_underscores(self):
-        assert _attr_to_key("kms_key_id") == "kmsKeyId"
-
-    def test_double_leading_underscore(self):
-        assert _attr_to_key("__private_attr") == "privateAttr"
+        assert to_lower_camel_case("kms_key_id") == "kmsKeyId"
 
 
 class TestExtractTelemetryParams(unittest.TestCase):
