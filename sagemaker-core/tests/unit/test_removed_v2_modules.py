@@ -141,12 +141,26 @@ def test_uncovered_module_falls_back_to_guidance(module):
     assert any(issubclass(x.category, DeprecationWarning) for x in w)
 
 
-@pytest.mark.parametrize("module", ["sagemaker.core", "sagemaker.train", "sagemaker.serve"])
+@pytest.mark.parametrize(
+    "module",
+    [
+        "sagemaker.core",
+        "sagemaker.train",
+        "sagemaker.serve",
+        "sagemaker.mlops",
+        "sagemaker.lineage",
+    ],
+)
 def test_finder_does_not_shadow_real_v3_packages(module):
     import sagemaker.core  # noqa: F401  -- ensure finder registered
 
-    # Real v3 packages must import cleanly, untouched by the fallback finder.
-    _fresh_import(module)
+    # The fallback finder must not intercept real v3 packages: find_spec must
+    # return None (pass-through), regardless of whether the package happens to
+    # be installed in the current environment. (The sagemaker-core unit-test job
+    # installs core only, so sagemaker.train/serve/mlops are not importable
+    # there -- asserting find_spec pass-through avoids that false dependency.)
+    finder = _RemovedV2ModuleFinder()
+    assert finder.find_spec(module) is None
 
 
 def test_finder_ignores_non_sagemaker_and_nested():
