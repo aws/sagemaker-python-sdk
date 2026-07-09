@@ -1,8 +1,16 @@
 """SageMaker Core package for low-level resource management and SDK foundations."""
+
 from sagemaker.core.utils.utils import enable_textual_rich_console_and_traceback
+from sagemaker.core.deprecations import register_removed_module_finder
 
 
 enable_textual_rich_console_and_traceback()
+
+# Install the fallback finder that gives actionable migration guidance for v2
+# modules removed in v3 but not individually tombstoned. sagemaker-core is the
+# universal dependency of every v3 package, so registering here guarantees the
+# finder is active whenever the SDK is used.
+register_removed_module_finder()
 
 # Job management
 from sagemaker.core.job import _Job  # noqa: F401
