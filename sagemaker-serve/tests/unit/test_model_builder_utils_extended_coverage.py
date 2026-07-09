@@ -173,6 +173,24 @@ class TestDetectHuggingFaceImage(unittest.TestCase):
 
     @patch('sagemaker.core.image_uris.retrieve')
     @patch.object(_ModelBuilderUtils, 'get_huggingface_model_metadata')
+    def test_detect_hf_image_multimodal_text_routes_to_vllm(self, mock_metadata, mock_retrieve):
+        """Test image-text-to-text models resolve the vLLM framework."""
+        utils = _ModelBuilderUtils()
+        utils.model = "google/gemma-4-E2B-it"
+        utils.region = "us-west-2"
+        mock_metadata.return_value = {"pipeline_tag": "image-text-to-text"}
+        mock_retrieve.return_value = (
+            "763104351884.dkr.ecr.us-west-2.amazonaws.com/huggingface-vllm:latest"
+        )
+
+        utils._detect_huggingface_image()
+
+        self.assertIsNotNone(utils.image_uri)
+        self.assertEqual(utils.framework, Framework.HUGGINGFACE)
+        self.assertEqual(mock_retrieve.call_args.args[0], "huggingface-vllm")
+
+    @patch('sagemaker.core.image_uris.retrieve')
+    @patch.object(_ModelBuilderUtils, 'get_huggingface_model_metadata')
     def test_detect_hf_image_sglang(self, mock_metadata, mock_retrieve):
         """Test HF image detection resolves the huggingface-sglang framework for SGLang."""
         utils = _ModelBuilderUtils()

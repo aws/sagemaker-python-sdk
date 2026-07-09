@@ -139,6 +139,7 @@ from sagemaker.serve.constants import (
     LOCAL_MODES,
     SUPPORTED_MODEL_SERVERS,
     OMNI_TASKS,
+    VLLM_TASKS,
     Framework,
 )
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
@@ -2810,7 +2811,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     # Task-based auto-selection. SGLang is not auto-selected by task; it is
                     # opt-in only via model_server=ModelServer.SGLANG, which is handled earlier
                     # by the _build_for_model_server() short-circuit above.
-                    if model_task == "text-generation":
+                    if model_task in VLLM_TASKS:
                         self.built_model = self._build_for_vllm()
                         return self.built_model
                     elif model_task in OMNI_TASKS:
