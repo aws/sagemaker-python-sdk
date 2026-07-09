@@ -62,7 +62,11 @@ def raise_removed_in_v3(module, replacement=None, v3_import=None):
     msg += f"\nSee {V3_MIGRATION_URL} for the migration guide."
 
     warnings.warn(msg, DeprecationWarning, stacklevel=2)
-    logger.warning(msg)
+    # The raised ModuleNotFoundError below is the loud, authoritative signal
+    # (it stops execution and carries the full message). Log at debug only, to
+    # leave a breadcrumb for log-captured environments without duplicating the
+    # message at WARNING level.
+    logger.debug(msg)
     raise ModuleNotFoundError(msg, name=module)
 
 
@@ -99,7 +103,9 @@ class _RemovedV2ModuleFinder(importlib.abc.MetaPathFinder):
             f"\nSee {V3_MIGRATION_URL} for the migration guide."
         )
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
-        logger.warning(msg)
+        # See raise_removed_in_v3: the raised error is the loud signal; log at
+        # debug to avoid duplicating the message at WARNING level.
+        logger.debug(msg)
         raise ModuleNotFoundError(msg, name=fullname)
 
 
