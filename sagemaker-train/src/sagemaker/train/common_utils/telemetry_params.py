@@ -16,6 +16,7 @@ BASE_TRAINER_TELEMETRY_PARAMS = [
 # Common params for all evaluators
 BASE_EVALUATOR_TELEMETRY_PARAMS = [
     ("_base_model_name", TelemetryParamType.ATTR_VALUE),
+    ("compute", TelemetryParamType.ATTR_TYPE),
     ("networking", TelemetryParamType.ATTR_EXISTS),
     ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
     ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
