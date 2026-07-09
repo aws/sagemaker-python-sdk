@@ -1,4 +1,17 @@
 # Changelog
+## v1.15.1 (2026-07-09)
+
+### Bug Fixes
+
+- fix: refresh LLMAsJudgeEvaluator allowed evaluator models (#5987)
+- fix: define LAMBDA_ARN_REGEX in finetune_utils to fix RLVRTrainer NameError (#5988)
+- fix: RLVR validation bugfix (#6000)
+- fix: drop claude-sonnet-4-20250514 from evaluator allowlist (#6009)
+
+### Other
+
+- test: Fix/v3 tests (#5996)
+
 ## v1.15.0 (2026-06-22)
 
 ### New Features
