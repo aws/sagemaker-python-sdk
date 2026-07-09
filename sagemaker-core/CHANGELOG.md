@@ -1,4 +1,16 @@
 # Changelog
+## v2.15.1 (2026-07-09)
+
+### Bug Fixes
+
+- fix: Correct DJL-LMI ISO/ADC accounts + add THF/ISO-E (djl-lmi, huggingface-llm-neuronx) (#5980)
+- fix: ModelBuilder resolves private hub artifacts correctly (session_helper) (#5985)
+
+### Other
+
+- Add Triton Server v26.05 image URI config (#5999)
+- Add sklearn 1.4-2-py312 and xgboost 3.2-0 image URI configs (#6008)
+
 ## v2.15.0 (2026-06-22)
 
 ### New Features
