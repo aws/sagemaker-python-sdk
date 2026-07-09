@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.257.4 (2026-07-09)
+
+### Enhancements
+* Add v2 -> v3 runtime migration warnings (#5978)
+* Update SDK to use latest LMIv26 image for sdk v2.x (#5955)
+
+### Bug Fixes
+* Harden S3 download path handling (#5984)
+
+### Documentation Changes
+* Add noindex and canonical tags to deprecated V2 docs (#6001)
+* Add deprecation banner to V2 docs (#5991)
+* Add v2 -> v3 version lifecycle table to README (#5979)
+
+### Other Changes
+* Mark capacity-flaky GPU integ tests as slow_test (#5998)
+* Disable HF Xet/hf_transfer in serve integ tests (#5992)
+* Fix slow tests in v2 (#5944)
+* Fix canaries-v2 (#5932)
+
+
 ## v2.257.3 (2026-05-04)
 
 ### Bug Fixes
