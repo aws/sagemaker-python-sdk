@@ -166,20 +166,15 @@ def use_private_hub():
 
 @pytest.fixture(scope="module")
 def sagemaker_session():
-    region = os.environ.get("AWS_DEFAULT_REGION")
-    if not region:
-        os.environ["AWS_DEFAULT_REGION"] = DEFAULT_REGION
-        region_manual_set = True
-    else:
-        region_manual_set = True
-
-    boto_session = boto3.Session(region_name=os.environ["AWS_DEFAULT_REGION"])
-    sagemaker_session = Session(boto_session=boto_session)
-
-    yield sagemaker_session
-
-    if region_manual_set and "AWS_DEFAULT_REGION" in os.environ:
-        del os.environ["AWS_DEFAULT_REGION"]
+    # ensure_default_region (session-scoped, autouse) already guarantees
+    # AWS_DEFAULT_REGION is set. Do NOT delete it on teardown: under xdist a
+    # worker runs multiple modules, and clobbering the global region here made
+    # later tests that build a trainer/evaluator without an explicit session
+    # (SDK falls back to Session()) fail with "Must setup local AWS
+    # configuration with a region supported by SageMaker".
+    region = os.environ.get("AWS_DEFAULT_REGION", DEFAULT_REGION)
+    boto_session = boto3.Session(region_name=region)
+    return Session(boto_session=boto_session)
 
 
 @pytest.fixture(scope="module")
