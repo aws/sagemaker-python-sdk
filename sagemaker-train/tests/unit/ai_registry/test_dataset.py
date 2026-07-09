@@ -390,3 +390,107 @@ class TestDataSet:
         result = dataset.create_version("s3://bucket/new-data")
         
         assert result is False
+
+
+class TestDataSetCreateWithContentMetadata:
+    """Tests for DataSet.create() with content_metadata (Feature Store lineage)."""
+
+    @patch('sagemaker.train.defaults.resolve_and_validate_role', return_value="arn:aws:iam::123456789012:role/SageMakerRole")
+    @patch('sagemaker.core.helper.session_helper.Session')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
+    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    def test_create_skips_validation_when_content_metadata_provided(
+        self, mock_air_hub, mock_get_domain_id, mock_session, mock_resolve_role
+    ):
+        """DataSet.create() skips file/format validation when content_metadata is set."""
+        mock_get_domain_id.return_value = None
+        mock_session_instance = Mock()
+        mock_session_instance.get_caller_identity_arn.return_value = (
+            "arn:aws:iam::123456789012:role/SageMakerRole"
+        )
+        mock_session.return_value = mock_session_instance
+
+        mock_air_hub.get_hub_name.return_value = "test-hub"
+        mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
+        mock_air_hub.describe_hub_content.return_value = {
+            RESPONSE_KEY_HUB_CONTENT_ARN: "test-arn",
+            RESPONSE_KEY_HUB_CONTENT_VERSION: "1",
+            "CreationTime": "2024-01-01",
+            "LastModifiedTime": "2024-01-01",
+        }
+
+        with patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file') as mock_validate_file, \
+             patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format') as mock_validate_format, \
+             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+
+            DataSet.create(
+                name="fs-test-dataset",
+                source="s3://bucket/output/result.csv",
+                content_metadata={
+                    "SourceFeatureGroups": ["arn:aws:sagemaker:us-west-2:123:feature-group/fg1"],
+                    "ExtractionMethod": "FeatureStoreDatasetBuilder",
+                    "AthenaQueryExecutionId": "abc-123",
+                },
+                sagemaker_session=mock_session_instance,
+                wait=False,
+            )
+
+            # Validation should be skipped
+            mock_validate_file.assert_not_called()
+            mock_validate_format.assert_not_called()
+
+    @patch('sagemaker.train.defaults.resolve_and_validate_role', return_value="arn:aws:iam::123456789012:role/SageMakerRole")
+    @patch('sagemaker.core.helper.session_helper.Session')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
+    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    def test_create_passes_content_metadata_to_document(
+        self, mock_air_hub, mock_get_domain_id, mock_session, mock_resolve_role
+    ):
+        """DataSet.create() includes ContentMetadata in the hub content document."""
+        mock_get_domain_id.return_value = None
+        mock_session_instance = Mock()
+        mock_session_instance.get_caller_identity_arn.return_value = (
+            "arn:aws:iam::123456789012:role/SageMakerRole"
+        )
+        mock_session.return_value = mock_session_instance
+
+        mock_air_hub.get_hub_name.return_value = "test-hub"
+        mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
+        mock_air_hub.describe_hub_content.return_value = {
+            RESPONSE_KEY_HUB_CONTENT_ARN: "test-arn",
+            RESPONSE_KEY_HUB_CONTENT_VERSION: "1",
+            "CreationTime": "2024-01-01",
+            "LastModifiedTime": "2024-01-01",
+        }
+
+        with patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file'), \
+             patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format'), \
+             patch('sagemaker.ai_registry.dataset.DataSet.wait'):
+
+            metadata = {
+                "SourceFeatureGroups": [
+                    "arn:aws:sagemaker:us-west-2:123:feature-group/fg1",
+                    "arn:aws:sagemaker:us-west-2:123:feature-group/fg2",
+                ],
+                "ExtractionMethod": "FeatureStoreDatasetBuilder",
+                "AthenaQueryExecutionId": "query-xyz",
+            }
+
+            DataSet.create(
+                name="fs-test-dataset",
+                source="s3://bucket/output/result.csv",
+                content_metadata=metadata,
+                sagemaker_session=mock_session_instance,
+                wait=False,
+            )
+
+            # Verify import_hub_content was called with document containing ContentMetadata
+            mock_air_hub.import_hub_content.assert_called_once()
+            call_kwargs = mock_air_hub.import_hub_content.call_args[1]
+            document = json.loads(call_kwargs["hub_content_document"])
+            assert "ContentMetadata" in document
+            assert document["ContentMetadata"]["SourceFeatureGroups"] == [
+                "arn:aws:sagemaker:us-west-2:123:feature-group/fg1",
+                "arn:aws:sagemaker:us-west-2:123:feature-group/fg2",
+            ]
+            assert document["ContentMetadata"]["ExtractionMethod"] == "FeatureStoreDatasetBuilder"

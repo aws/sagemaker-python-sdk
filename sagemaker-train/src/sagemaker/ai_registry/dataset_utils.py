@@ -64,6 +64,7 @@ class DataSetHubContentDocument:
         conversation_id: Optional[str] = None,
         conversation_checkpoint_id: Optional[str] = None,
         dependencies: Optional[List[str]] = None,
+        content_metadata: Optional[dict] = None,
     ):
         self.dataset_type = dataset_type
         self.dataset_role_arn = dataset_role_arn
@@ -74,6 +75,7 @@ class DataSetHubContentDocument:
         self.conversation_id = conversation_id
         self.conversation_checkpoint_id = conversation_checkpoint_id
         self.dependencies = dependencies or []
+        self.content_metadata = content_metadata
     
     def to_json(self) -> str:
         """Convert to JSON string."""
@@ -93,6 +95,8 @@ class DataSetHubContentDocument:
         if self.conversation_checkpoint_id:
             content["ConversationCheckpointId"] = self.conversation_checkpoint_id
         content["Dependencies"] = self.dependencies
+        if self.content_metadata:
+            content["ContentMetadata"] = self.content_metadata
         return json.dumps(content)
 
 
