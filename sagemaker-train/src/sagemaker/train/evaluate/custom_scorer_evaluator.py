@@ -394,7 +394,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="CustomScorerEvaluator.evaluate",
         telemetry_params=[
-            ("evaluator", TelemetryParamType.ATTR_VALUE),
+            ("evaluator", TelemetryParamType.ATTR_EXISTS),
         ] + BASE_EVALUATOR_TELEMETRY_PARAMS,
     )
     def evaluate(self) -> EvaluationPipelineExecution:
