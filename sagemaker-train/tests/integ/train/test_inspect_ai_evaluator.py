@@ -109,10 +109,13 @@ def inspect_ai_resources(sagemaker_session_us_east_1):
     }
 
 
+@pytest.mark.us_east_1
 class TestInspectAIEvaluatorIntegration:
     """Integration tests for InspectAI evaluation with Bedrock inference."""
 
-    def test_inspect_ai_bedrock_evaluation(self, sagemaker_session_us_east_1, inspect_ai_resources):
+    def test_inspect_ai_bedrock_evaluation(
+        self, sagemaker_session_us_east_1, inspect_ai_resources
+    ):
         """Test InspectAI evaluation with Bedrock inference mode.
 
         Runs a BoolQ benchmark with Nova Lite via Bedrock inference.
@@ -158,7 +161,9 @@ class TestInspectAIEvaluatorIntegration:
         execution.show_results()
         logger.info("InspectAI Bedrock evaluation completed successfully.")
 
-    def test_inspect_ai_upload_benchmarks(self, sagemaker_session_us_east_1, inspect_ai_resources):
+    def test_inspect_ai_upload_benchmarks(
+        self, sagemaker_session_us_east_1, inspect_ai_resources
+    ):
         """Test uploading benchmarks to S3 via upload_benchmarks().
 
         Validates that local benchmark files are successfully uploaded and

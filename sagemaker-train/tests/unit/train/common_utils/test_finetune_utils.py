@@ -1359,7 +1359,6 @@ class TestIsLambdaArn:
         assert _is_lambda_arn("not-an-arn") is False
 
     def test_uses_shared_regex_from_reward_verifier(self):
-        # Both call sites must agree on what a Lambda ARN is; assert they
-        # share the same compiled pattern rather than diverging copies.
+        # Both call sites must share the same compiled pattern, not copies.
         from sagemaker.train.common_utils import rlvr_reward_verifier
         assert fu.LAMBDA_ARN_REGEX is rlvr_reward_verifier.LAMBDA_ARN_REGEX

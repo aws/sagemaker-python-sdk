@@ -847,9 +847,8 @@ def test_llm_as_judge_evaluator_with_mlflow_names(mock_artifact, mock_resolve):
 @patch('sagemaker.core.resources.Artifact')
 def test_llm_as_judge_evaluator_valid_evaluator_models(mock_artifact, mock_resolve):
     """Test LLMAsJudgeEvaluator with valid evaluator models."""
-    # Models available in us-west-2 per the regional allowlist. The Claude 3.5
-    # Sonnet v1/v2 models are intentionally omitted here — they are only allowed
-    # in ap-northeast-1 (see test_llm_as_judge_evaluator_region_restriction).
+    # us-west-2 models only; Claude 3.5 Sonnet v1/v2 are ap-northeast-1-only
+    # (covered by test_llm_as_judge_evaluator_region_restriction).
     valid_models = [
         "anthropic.claude-3-haiku-20240307-v1:0",
         "anthropic.claude-sonnet-4-20250514-v1:0",
