@@ -26,11 +26,8 @@ from sagemaker.core.shapes import StoppingCondition
 
 logger = logging.getLogger(__name__)
 
-S3_BUCKET = "mc-flows-sdk-testing-us-east-1-784379639078"
+S3_BUCKET_PREFIX = "mc-flows-sdk-testing"
 S3_PREFIX = "input_data"
-SFT_TRAIN_S3_KEY = f"{S3_PREFIX}/sft-nova/sft_200_samples.jsonl"
-SFT_TRAIN_S3_PATH = f"s3://{S3_BUCKET}/{SFT_TRAIN_S3_KEY}"
-S3_OUTPUT_PATH = f"s3://{S3_BUCKET}/output"
 
 
 @pytest.fixture(scope="module")
@@ -40,28 +37,42 @@ def region():
 
 
 @pytest.fixture(scope="module")
+def account_id(region):
+    """Resolve the AWS account ID from the caller's credentials."""
+    return boto3.Session(region_name=region).client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="module")
+def s3_bucket(region, account_id):
+    """Construct the S3 bucket name from region and account ID."""
+    return f"{S3_BUCKET_PREFIX}-{region}-{account_id}"
+
+
+@pytest.fixture(scope="module")
 def s3_client(region):
     """Create an S3 client in the correct region."""
     return boto3.client("s3", region_name=region)
 
 
 @pytest.fixture(scope="module")
-def verified_training_dataset(s3_client):
+def verified_training_dataset(s3_client, s3_bucket):
     """Verify the training dataset exists in S3 and return its path."""
+    s3_key = f"{S3_PREFIX}/sft-nova/sft_200_samples.jsonl"
+    s3_path = f"s3://{s3_bucket}/{s3_key}"
     try:
-        bucket_region = s3_client.get_bucket_location(Bucket=S3_BUCKET)[
+        bucket_region = s3_client.get_bucket_location(Bucket=s3_bucket)[
             "LocationConstraint"
         ] or "us-east-1"
         s3_regional_client = boto3.client("s3", region_name=bucket_region)
-        s3_regional_client.head_object(Bucket=S3_BUCKET, Key=SFT_TRAIN_S3_KEY)
+        s3_regional_client.head_object(Bucket=s3_bucket, Key=s3_key)
     except s3_client.exceptions.ClientError as e:
         if e.response["Error"]["Code"] in ("404", "NoSuchKey"):
             pytest.fail(
-                f"Training file not found in S3: {SFT_TRAIN_S3_PATH}"
+                f"Training file not found in S3: {s3_path}"
             )
         else:
             raise
-    return SFT_TRAIN_S3_PATH
+    return s3_path
 
 
 @pytest.fixture(scope="module")
@@ -78,10 +89,11 @@ def hyperpod_compute():
 @pytest.mark.gpu_intensive
 @pytest.mark.us_east_1
 def test_sft_trainer_nova_micro_hyperpod_lora(
-    verified_training_dataset, hyperpod_compute
+    verified_training_dataset, hyperpod_compute, s3_bucket
 ):
     """Test SFT training workflow with Nova Micro on HyperPod using LORA."""
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+    s3_output_path = f"s3://{s3_bucket}/output"
 
     stopping_condition = StoppingCondition(max_runtime_in_seconds=20800)
 
@@ -91,7 +103,7 @@ def test_sft_trainer_nova_micro_hyperpod_lora(
         compute=hyperpod_compute,
         base_job_name=f"hp-micro-sft-integ-{unique_id}",
         training_dataset=verified_training_dataset,
-        s3_output_path=S3_OUTPUT_PATH,
+        s3_output_path=s3_output_path,
         stopping_condition=stopping_condition,
         overrides={"recipes.training_config.optim_config.lr": 5e-6},
     )
@@ -114,7 +126,7 @@ def test_sft_trainer_nova_micro_hyperpod_lora(
     while time.time() - start_time < max_wait_time:
         checkpoint_path = BaseTrainer._resolve_checkpoint_from_manifest(
             job_name=job_name,
-            output_s3_path=S3_OUTPUT_PATH,
+            output_s3_path=s3_output_path,
         )
         if checkpoint_path:
             logger.info(f"Checkpoint resolved: {checkpoint_path}")
