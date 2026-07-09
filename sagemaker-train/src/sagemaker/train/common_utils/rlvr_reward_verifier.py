@@ -181,32 +181,34 @@ def verify_reward_function(
     # Determine if it's a Lambda ARN or local file
     is_lambda = bool(LAMBDA_ARN_REGEX.match(reward_function))
 
-    # Compute is required for Lambda ARNs with Nova models
-    if is_lambda and is_nova and compute is None:
-        raise ValueError(
-            "The 'compute' parameter is required for Nova models when using a Lambda ARN. "
-            "Please specify compute as a TrainingJobCompute or HyperPodCompute instance."
-        )
-
     # Validate Lambda ARN format for HyperPod compute
-    if is_nova and isinstance(compute, HyperPodCompute) and is_lambda:
-        # Extract function name from ARN: arn:aws[-*]:lambda:region:account:function:function-name
-        function_name_match = re.search(
-            r"arn:aws[a-zA-Z-]*:lambda:[^:]+:[^:]+:function:([^:]+)", reward_function
-        )
-        if function_name_match:
-            function_name = function_name_match.group(1)
-            # Check if function name contains 'SageMaker' (case-insensitive)
-            if not re.search(r"sagemaker", function_name, re.IGNORECASE):
+    if is_nova and isinstance(compute, HyperPodCompute):
+        if is_lambda:
+            # Extract function name from ARN: arn:aws[-*]:lambda:region:account:function:function-name
+            function_name_match = re.search(
+                r"arn:aws[a-zA-Z-]*:lambda:[^:]+:[^:]+:function:([^:]+)", reward_function
+            )
+            if function_name_match:
+                function_name = function_name_match.group(1)
+                # Check if function name contains 'SageMaker' (case-insensitive)
+                if not re.search(r"sagemaker", function_name, re.IGNORECASE):
+                    raise ValueError(
+                        f"Lambda ARN for HyperPod compute must contain 'SageMaker' in the function name for Nova models. "
+                        f"Current function name: '{function_name}'. "
+                        f"Expected format: 'arn:aws:lambda:*:*:function:*SageMaker*'"
+                    )
+            else:
                 raise ValueError(
-                    f"Lambda ARN for HyperPod compute must contain 'SageMaker' in the function name for Nova models. "
-                    f"Current function name: '{function_name}'. "
-                    f"Expected format: 'arn:aws:lambda:*:*:function:*SageMaker*'"
+                    f"Invalid Lambda ARN format: {reward_function}. "
+                    f"Expected format: 'arn:aws:lambda:region:account:function:function-name'"
                 )
         else:
-            raise ValueError(
-                f"Invalid Lambda ARN format: {reward_function}. "
-                f"Expected format: 'arn:aws:lambda:region:account:function:function-name'"
+            logger.warning(
+                f"Skipping Lambda function name validation because a local Python file is being used: "
+                f"'{reward_function}'. "
+                "For Nova RLVR jobs on HyperPod, ensure your reward function Lambda name "
+                "contains 'SageMaker' (case-insensitive). "
+                "Expected format: 'arn:aws:lambda:*:*:function:*SageMaker*'"
             )
 
     results = []

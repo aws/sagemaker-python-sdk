@@ -17,6 +17,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _get_fine_tuning_options_and_model_arn,
     _validate_and_resolve_model_package_group,
     _extract_evaluator_arn,
+    _get_lambda_arn_from_evaluator_arn,
     _is_lambda_arn,
     _is_nova_model,
     _resolve_model_and_name,
@@ -106,9 +107,9 @@ class RLVRTrainer(BaseTrainer):
             ARN, or ModelPackageGroup object. Required when model is not a ModelPackage.
         custom_reward_function (Optional[Union[str, Evaluator]]):
             The custom reward function evaluator. Can be an evaluator ARN string, a Lambda
-            function ARN string, or an Evaluator object. If a Lambda ARN is provided
+            function ARN string, or an Evaluator object. If a Lambda ARN is provided for serverless training
             (e.g., "arn:aws:lambda:us-east-1:123456789012:function:my-reward"), an Evaluator
-            will be automatically created in the AI Registry and used for training.
+            will be automatically created in the AI Registry.
             Required for RLVR training to provide reward signals.
         mlflow_resource_arn (Optional[Union[str, MlflowTrackingServer]]):
             The MLflow tracking server ARN for experiment tracking.
@@ -134,6 +135,9 @@ class RLVRTrainer(BaseTrainer):
         is_multimodal (Optional[bool]):
             Whether the training dataset contains multimodal data. If None (default),
             auto-detected from the training dataset at train time.
+        skip_reward_validation (bool):
+            If True, skips the reward function verification step before submitting
+            the training job. Defaults to False.
     """
 
     _customization_technique = CustomizationTechnique.RLVR.value
@@ -158,6 +162,7 @@ class RLVRTrainer(BaseTrainer):
         recipe: Optional[str] = None,
         overrides: Optional[dict] = None,
         is_multimodal: Optional[bool] = None,
+        skip_reward_validation: bool = False,
         base_model_name: Optional[str] = None,
         disable_output_compression: Optional[bool] = False,
         **kwargs,
@@ -197,6 +202,7 @@ class RLVRTrainer(BaseTrainer):
         self._recipe_resolver = None
         self._resolved_recipe_cache = None
         self.is_multimodal = is_multimodal
+        self.skip_reward_validation = skip_reward_validation
 
         # Initialize fine-tuning options with beta session fallback
         self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
@@ -289,19 +295,13 @@ class RLVRTrainer(BaseTrainer):
                 )
         elif isinstance(reward_function, str) and not _is_lambda_arn(reward_function):
             # It's a string but not a Lambda ARN — treat as an evaluator ARN,
-            # fetch the Evaluator object and extract the Lambda ARN from it.
-            # Evaluator Lambdas always use OSS format (statusCode/body envelope)
+            # fetch the Lambda ARN directly from the hub content entry.
+            # This bypasses AIRHub so it works for any hub name in the ARN.
             try:
-                # Parse evaluator name from the ARN
-                # ARN format: arn:aws:sagemaker:region:account:hub-content/hub/type/name/version
-                evaluator_name = reward_function.split("/")[-2]
-                evaluator = Evaluator.get(evaluator_name, sagemaker_session=TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session))
-                reward_function = evaluator.reference
-                if not reward_function:
-                    raise ValueError(
-                        f"Evaluator '{evaluator_name}' does not have a Lambda ARN reference. "
-                        "Verification requires a Lambda ARN."
-                    )
+                reward_function = _get_lambda_arn_from_evaluator_arn(
+                    reward_function,
+                    sagemaker_session=self.sagemaker_session,
+                )
                 logger.info(f"Resolved evaluator ARN to Lambda ARN: {reward_function}")
             except ValueError:
                 raise
@@ -440,7 +440,21 @@ class RLVRTrainer(BaseTrainer):
         )
 
         # Extract and validate evaluator ARN
-        evaluator_arn = _extract_evaluator_arn(self.custom_reward_function) if self.custom_reward_function else None
+        # If custom_reward_function is a Lambda ARN, create an Evaluator object first
+        if self.custom_reward_function and isinstance(self.custom_reward_function, str) and _is_lambda_arn(self.custom_reward_function):
+            lambda_arn = self.custom_reward_function
+            evaluator_name = _get_unique_name(f"rlvr-reward-{self._model_name}")
+            logger.info(f"Creating Evaluator from Lambda ARN: {lambda_arn}")
+            evaluator_obj = Evaluator.create(
+                name=evaluator_name,
+                type="RewardFunction",
+                source=lambda_arn,
+                sagemaker_session=sagemaker_session,
+            )
+            evaluator_arn = _extract_evaluator_arn(evaluator_obj)
+            logger.info(f"Created Evaluator with ARN: {evaluator_arn}")
+        else:
+            evaluator_arn = _extract_evaluator_arn(self.custom_reward_function) if self.custom_reward_function else None
         serverless_config = _create_serverless_config(model_arn=self._model_arn,
                                                      customization_technique=CustomizationTechnique.RLVR.value,
                                                      training_type=self.training_type,
@@ -475,7 +489,7 @@ class RLVRTrainer(BaseTrainer):
         )
 
         # Verify reward function before submitting training job
-        if self.custom_reward_function:
+        if self.custom_reward_function and not self.skip_reward_validation:
             effective_dataset = training_dataset or self.training_dataset
             if effective_dataset is not None:
                 logger.info("Verifying reward function before submitting training job...")

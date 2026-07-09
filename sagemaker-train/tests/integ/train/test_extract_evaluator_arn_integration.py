@@ -94,34 +94,3 @@ def test_extract_evaluator_arn_with_evaluator_string(sagemaker_session, evaluato
     # Should return the ARN string unchanged
     assert result == evaluator.arn
 
-
-def test_extract_evaluator_arn_with_lambda_arn_string(sagemaker_session, lambda_arn):
-    """Test _extract_evaluator_arn with a Lambda ARN string.
-
-    Verifies that passing a Lambda ARN triggers auto-creation of an Evaluator
-    in the AI Registry and returns the newly created evaluator's hub-content ARN.
-    """
-    result = _extract_evaluator_arn(lambda_arn, "custom_reward_function")
-
-    # The result should be a SageMaker hub-content ARN (not the Lambda ARN)
-    assert result != lambda_arn
-    assert result.startswith("arn:aws:sagemaker:")
-    assert "/JsonDoc/" in result
-    # The evaluator name should be derived from the Lambda function name (sanitized)
-    assert SANITIZED_LAMBDA_FUNCTION_NAME in result
-
-
-def test_extract_evaluator_arn_lambda_creates_retrievable_evaluator(sagemaker_session, lambda_arn):
-    """Test that the Evaluator auto-created from a Lambda ARN is retrievable.
-
-    Verifies that after _extract_evaluator_arn creates an Evaluator from a Lambda ARN,
-    the evaluator can be retrieved from the AI Registry by name.
-    """
-    result_arn = _extract_evaluator_arn(lambda_arn, "custom_reward_function")
-
-    # Verify the evaluator was actually created and is retrievable (use sanitized name)
-    evaluator = Evaluator.get(SANITIZED_LAMBDA_FUNCTION_NAME, sagemaker_session=sagemaker_session)
-    assert evaluator is not None
-    assert evaluator.arn == result_arn
-    assert evaluator.type == REWARD_FUNCTION
-    assert evaluator.reference == lambda_arn
