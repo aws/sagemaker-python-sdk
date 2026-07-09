@@ -99,7 +99,7 @@ class _RemovedV2ModuleFinder(importlib.abc.MetaPathFinder):
 
         msg = (
             f"`{fullname}` is not available in the SageMaker Python SDK v3. "
-            "It may have been removed or moved to a new location."
+            "It may have been removed."
             f"\nSee {V3_MIGRATION_URL} for the migration guide."
         )
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
