@@ -32,6 +32,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_hyperparameter_values,
     _get_smhp_replicas_enum,
 )
+from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
 from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.common_utils.cloudwatch_metrics import fetch_and_plot_metrics, _get_smhp_log_group
@@ -283,7 +284,11 @@ class BaseTrainer(ABC):
         start_time: Optional[Any] = None,
         end_time: Optional[Any] = None,
     ) -> Any:
-        """Plot training metrics extracted from CloudWatch logs using matplotlib.
+        """Plot training metrics from CloudWatch logs (Nova) or MLflow (OSS).
+
+        For Nova models, parses CloudWatch logs for training_loss, lr, and reward_score.
+        For non-Nova (OSS) models, pulls metrics from MLflow (requires mlflow_resource_arn
+        to be configured on the trainer or auto-resolved).
 
         Args:
             metrics: Optional list of metric names to plot. If None, plots all
@@ -298,22 +303,14 @@ class BaseTrainer(ABC):
                 defaults to now.
 
         Returns:
-            pandas.DataFrame containing the extracted metrics with columns
-            ["global_step", <metric_name>].
+            pandas.DataFrame containing the extracted metrics.
 
         Raises:
             NotImplementedError: If the training technique does not support metric
                 extraction (e.g., DPO).
-            ValueError: If no training job has been run yet, or no logs/metrics
-                are found.
+            ValueError: If no training job has been run yet, no logs/metrics
+                are found, or MLflow is not configured for OSS models.
         """
-        # Gate to Nova models only 
-        model_name = getattr(self, '_model_name', None)
-        if model_name and not _is_nova_model(model_name):
-            raise NotImplementedError(
-                "show_metrics() is currently only supported for Nova models. "
-            )
-
         # Validate that we have a training job to get metrics from
         if not hasattr(self, '_latest_training_job') or self._latest_training_job is None:
             raise ValueError(
@@ -321,7 +318,64 @@ class BaseTrainer(ABC):
                 "to view training metrics."
             )
 
-        # Resolve job ID
+        # Route based on model type
+        model_name = getattr(self, '_model_name', None)
+        is_nova = _is_nova_model(model_name) if model_name else False
+
+        if is_nova:
+            return self._show_metrics_cloudwatch(metrics, starting_step, ending_step, start_time, end_time)
+        else:
+            return self._show_metrics_mlflow(metrics, starting_step, ending_step)
+
+    def _show_metrics_mlflow(
+        self,
+        metrics: Optional[List[str]] = None,
+        starting_step: Optional[int] = None,
+        ending_step: Optional[int] = None,
+    ) -> None:
+        """Pull and plot training metrics from MLflow for non-Nova models."""
+        training_job = self._latest_training_job
+
+        # Resolve the TrainingJob object if it's a string
+        if isinstance(training_job, str):
+            logger.info(f"Resolving training job: {training_job}")
+            training_job = TrainingJob.get(training_job_name=training_job)
+
+        # Validate MLflow is configured
+        mlflow_config = getattr(training_job, 'mlflow_config', None)
+        if not mlflow_config or not getattr(mlflow_config, 'mlflow_resource_arn', None):
+            raise ValueError(
+                "show_metrics() for non-Nova models requires MLflow to be configured. "
+                "Either pass mlflow_resource_arn when creating the trainer, or ensure "
+                "your account has an MLflow app set up."
+            )
+
+        mlflow_details = getattr(training_job, 'mlflow_details', None)
+        if not mlflow_details or not getattr(mlflow_details, 'mlflow_run_id', None):
+            raise ValueError(
+                "No MLflow run ID found on the training job. "
+                "MLflow metrics are only available after the job completes. "
+                "If the job is still running, wait for it to finish and try again. "
+                f"MLflow app ARN: {mlflow_config.mlflow_resource_arn}"
+            )
+
+        logger.info(
+            f"Fetching metrics from MLflow app: {mlflow_config.mlflow_resource_arn}, "
+            f"run: {mlflow_details.mlflow_run_id}"
+        )
+
+        plot_training_metrics(training_job, metrics=metrics)
+
+    def _show_metrics_cloudwatch(
+        self,
+        metrics: Optional[List[str]] = None,
+        starting_step: Optional[int] = None,
+        ending_step: Optional[int] = None,
+        start_time: Optional[Any] = None,
+        end_time: Optional[Any] = None,
+    ) -> Any:
+        """Parse and plot training metrics from CloudWatch logs (Nova models)."""
+        
         training_job = self._latest_training_job
         if hasattr(training_job, 'training_job_name'):
             job_id = training_job.training_job_name
