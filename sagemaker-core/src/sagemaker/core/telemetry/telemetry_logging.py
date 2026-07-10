@@ -16,6 +16,7 @@ import logging
 import os
 import platform
 import sys
+import threading
 from time import perf_counter
 from typing import List
 import functools
@@ -23,6 +24,7 @@ import requests
 from urllib.parse import quote
 
 import boto3
+from botocore.config import Config
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.telemetry.resource_creation import get_resource_arn
@@ -64,6 +66,7 @@ FEATURE_TO_CODE = {
     str(Feature.PROCESSING): 18,
     str(Feature.MODEL_CUSTOMIZATION_NOVA): 19,
     str(Feature.MODEL_CUSTOMIZATION_OSS): 20,
+    str(Feature.DEPRECATED_V2_INTERFACE): 21,
 }
 
 STATUS_TO_CODE = {
@@ -139,9 +142,7 @@ def _telemetry_emitter(feature: str, func_name: str):
                                     FEATURE_TO_CODE[str(Feature.MODEL_CUSTOMIZATION_OSS)]
                                 )
                     except Exception:  # pylint: disable=W0703
-                        logger.debug(
-                            "Unable to determine NOVA/OSS model type for telemetry."
-                        )
+                        logger.debug("Unable to determine NOVA/OSS model type for telemetry.")
 
                 if (
                     hasattr(sagemaker_session, "sagemaker_config")
@@ -329,3 +330,145 @@ def _get_default_sagemaker_session():
     sagemaker_session = Session(boto_session=boto_session)
 
     return sagemaker_session
+
+
+# --- Session-less telemetry for removed v2 interfaces (import-time) ---
+#
+# This path resolves an AWS account id and emits a telemetry ping when a caller
+# imports a v2 interface that was removed in v3. It sends the same account-id
+# field to the same endpoint as the session-based emitter above (no new data
+# category), and honors the same TelemetryOptOut config. Because it runs at
+# IMPORT time (no sagemaker_session exists), it must be strictly best-effort and
+# must never block the import or change the error raised.
+
+# Additional env-var opt-out for the removed-interface telemetry. This is a
+# convenience fallback on top of the standard TelemetryOptOut SDK-defaults config
+# (which is honored session-lessly; see _deprecation_telemetry_opted_out).
+DEPRECATION_TELEMETRY_OPT_OUT_ENV_VAR = "SAGEMAKER_DEPRECATION_TELEMETRY_OPT_OUT"
+
+# Hard ceiling (seconds) on the entire emit so a slow credential/STS/S3 path can
+# never delay the ModuleNotFoundError the caller is about to receive.
+_DEPRECATION_TELEMETRY_BUDGET_SECONDS = 1.5
+
+# Emit at most once per removed module per process.
+_deprecation_telemetry_sent = set()
+
+
+def _deprecation_telemetry_opted_out():
+    """Return True if removed-interface telemetry is disabled.
+
+    Honors the same ``TelemetryOptOut`` SDK-defaults config the session-based
+    emitter uses, so a user who opted out of telemetry is opted out here too.
+    Because there is no ``sagemaker_session`` at import time, the config is
+    loaded session-lessly via ``load_sagemaker_config()`` and passed to
+    ``resolve_value_from_config`` through its ``sagemaker_config`` parameter.
+    The ``SAGEMAKER_DEPRECATION_TELEMETRY_OPT_OUT`` environment variable is
+    honored as an additional fallback (and short-circuit for environments where
+    loading the config is undesirable).
+    """
+    # Env var fallback first: cheap, and lets users opt out without any config
+    # file lookup on the import path.
+    if os.environ.get(DEPRECATION_TELEMETRY_OPT_OUT_ENV_VAR):
+        return True
+
+    try:
+        from sagemaker.core.config.config import load_sagemaker_config
+
+        sagemaker_config = load_sagemaker_config()
+        return bool(
+            resolve_value_from_config(
+                direct_input=None,
+                config_path=TELEMETRY_OPT_OUT_PATH,
+                default_value=False,
+                sagemaker_config=sagemaker_config,
+            )
+        )
+    except Exception:  # pylint: disable=W0703
+        # If the config cannot be loaded/resolved, do not block telemetry on it;
+        # fall back to "not opted out" (env var already checked above).
+        logger.debug("Removed-interface telemetry: could not resolve TelemetryOptOut config.")
+        return False
+
+
+def _resolve_account_and_region_sessionless():
+    """Best-effort account id + region without an existing session.
+
+    Builds a short-timeout boto3 session and calls STS. Any failure (no creds,
+    offline, IMDS timeout, STS error) yields ("NotAvailable", default region).
+    Kept small and defensive because it runs on a failing-import path.
+    """
+    account_id = "NotAvailable"
+    region = DEFAULT_AWS_REGION
+    try:
+        # Tight timeouts + no retries so a blocked IMDS/STS cannot stall us.
+        cfg = Config(connect_timeout=1, read_timeout=1, retries={"max_attempts": 0})
+        boto_session = boto3.Session()
+        region = boto_session.region_name or DEFAULT_AWS_REGION
+        sts = boto_session.client("sts", config=cfg)
+        account_id = sts.get_caller_identity().get("Account", "NotAvailable")
+    except Exception:  # pylint: disable=W0703
+        # No creds / offline / timeout / any error -> stay anonymous.
+        logger.debug("Removed-interface telemetry: account id unavailable.")
+    return account_id, region
+
+
+def _emit_removed_interface_telemetry_blocking(module):
+    """Resolve identity and send the telemetry request (runs in a worker)."""
+    account_id, region = _resolve_account_and_region_sessionless()
+    try:
+        Region(region)
+    except ValueError:
+        logger.debug("Removed-interface telemetry: unsupported region, skipping.")
+        return
+    extra = (
+        f"{module}"
+        f"&x-sdkVersion={SDK_VERSION}"
+        f"&x-env={PYTHON_VERSION}"
+        f"&x-sys={OS_NAME_VERSION}"
+    )
+    url = _construct_url(
+        accountId=account_id,
+        region=region,
+        status=str(STATUS_TO_CODE[str(Status.FAILURE)]),
+        feature=str(FEATURE_TO_CODE[str(Feature.DEPRECATED_V2_INTERFACE)]),
+        failure_reason=None,
+        failure_type=None,
+        extra_info=extra,
+    )
+    _requests_helper(url, 2)
+
+
+def emit_removed_interface_telemetry(module):
+    """Best-effort, time-bounded telemetry for importing a removed v2 module.
+
+    Emits at most once per module per process, honors
+    ``SAGEMAKER_DEPRECATION_TELEMETRY_OPT_OUT``, and is hard-capped by
+    ``_DEPRECATION_TELEMETRY_BUDGET_SECONDS`` via a worker thread so it can never
+    block or delay the caller's import. Never raises.
+
+    Args:
+        module (str): The removed v2 module path, e.g. ``"sagemaker.estimator"``.
+    """
+    try:
+        if _deprecation_telemetry_opted_out():
+            return
+        if module in _deprecation_telemetry_sent:
+            return
+        _deprecation_telemetry_sent.add(module)
+
+        def _guarded_worker():
+            # Never let a worker-thread exception surface (pytest and some
+            # runtimes report unhandled thread exceptions loudly).
+            try:
+                _emit_removed_interface_telemetry_blocking(module)
+            except Exception:  # pylint: disable=W0703
+                logger.debug("Removed-interface telemetry worker failed.")
+
+        worker = threading.Thread(target=_guarded_worker, daemon=True)
+        worker.start()
+        # Bound the wait; if the network/STS path is slow we return anyway and
+        # the daemon thread is abandoned (it dies with the process).
+        worker.join(timeout=_DEPRECATION_TELEMETRY_BUDGET_SECONDS)
+    except Exception:  # pylint: disable=W0703
+        # Telemetry must never interfere with the import/error path.
+        logger.debug("Removed-interface telemetry not emitted.")

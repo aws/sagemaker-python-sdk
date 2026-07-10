@@ -13,12 +13,126 @@
 """Module for deprecation abstractions."""
 from __future__ import absolute_import
 
+import importlib.abc
 import logging
+import sys
 import warnings
 
 logger = logging.getLogger(__name__)
 
 V2_URL = "https://sagemaker.readthedocs.io/en/stable/v2.html"
+
+# Migration guide for users moving from the v2 SDK to v3.
+V3_MIGRATION_URL = "https://github.com/aws/sagemaker-python-sdk/blob/master/migration.md"
+
+# Real top-level ``sagemaker.*`` names that ship in v3. The fallback finder must
+# never intercept these -- even when a package (e.g. sagemaker-train) is simply
+# not installed, its absence should surface the normal error, not a bogus
+# "removed in v3" message.
+_KNOWN_V3_TOPLEVEL = frozenset({"core", "train", "serve", "mlops", "lineage", "ai_registry"})
+
+
+def _emit_removed_telemetry(module):
+    """Best-effort telemetry that a removed v2 module was imported.
+
+    Imported lazily and fully guarded so that telemetry can never delay or break
+    the import/error path. See
+    ``sagemaker.core.telemetry.telemetry_logging.emit_removed_interface_telemetry``
+    for the time-bounded, opt-out-able implementation.
+    """
+    try:
+        from sagemaker.core.telemetry.telemetry_logging import (
+            emit_removed_interface_telemetry,
+        )
+
+        emit_removed_interface_telemetry(module)
+    except Exception:  # pylint: disable=W0703
+        logger.debug("Removed-interface telemetry hook failed; continuing.")
+
+
+def raise_removed_in_v3(module, replacement=None, v3_import=None):
+    """Warn and then raise an actionable error for a v2 module removed in v3.
+
+    The v2 SDK exposed top-level modules (e.g. ``sagemaker.estimator``) that no
+    longer exist in v3. Importing one would otherwise fail with a bare
+    ``ModuleNotFoundError: No module named 'sagemaker.estimator'`` that gives the
+    caller no path forward. This helper is called from lightweight "tombstone"
+    modules that stand in for those removed names: it emits a
+    ``DeprecationWarning`` and then raises a ``ModuleNotFoundError`` whose message
+    names the v3 replacement and links the migration guide.
+
+    Args:
+        module (str): The removed v2 module path, e.g. ``"sagemaker.estimator"``.
+        replacement (str): Human readable v3 replacement, e.g.
+            ``"ModelTrainer in the sagemaker-train package"``. Optional.
+        v3_import (str): The exact v3 import statement, e.g.
+            ``"from sagemaker.train import ModelTrainer"``. Quoted verbatim so the
+            caller can copy-paste it. Optional.
+
+    Raises:
+        ModuleNotFoundError: always, after emitting the deprecation warning.
+    """
+    msg = f"`{module}` was removed in the SageMaker Python SDK v3."
+    if replacement:
+        msg += f" Use {replacement}."
+    if v3_import:
+        msg += f" ({v3_import})"
+    msg += f"\nSee {V3_MIGRATION_URL} for the migration guide."
+
+    _emit_removed_telemetry(module)
+    warnings.warn(msg, DeprecationWarning, stacklevel=2)
+    logger.warning(msg)
+    raise ModuleNotFoundError(msg, name=module)
+
+
+class _RemovedV2ModuleFinder(importlib.abc.MetaPathFinder):
+    """Fallback finder that gives actionable guidance for removed v2 modules.
+
+    Curated removals ship as explicit "tombstone" modules (e.g.
+    ``sagemaker/estimator.py``) that raise a precise, per-module message. This
+    finder is the *catch-all* for every other ``sagemaker.<name>`` that existed
+    in v2 but was not individually tombstoned: instead of a bare
+    ``ModuleNotFoundError: No module named 'sagemaker.foo'``, the caller gets a
+    message that says the module is not available in v3 and points to the
+    migration guide.
+
+    It is registered by appending to ``sys.meta_path``, so it only runs *after*
+    the normal import machinery has failed to locate the module. That ordering
+    guarantees it never shadows:
+      - real v3 packages (``sagemaker.core``, ``sagemaker.train``, ...), and
+      - the curated tombstone modules, which resolve as ordinary files first.
+    """
+
+    def find_spec(self, fullname, path=None, target=None):
+        """Intercept only genuinely-missing top-level ``sagemaker.<name>`` imports."""
+        if not fullname.startswith("sagemaker."):
+            return None
+        leaf = fullname[len("sagemaker.") :]
+        # Only guard top-level names; never touch real v3 subpackages.
+        if "." in leaf or leaf in _KNOWN_V3_TOPLEVEL:
+            return None
+
+        msg = (
+            f"`{fullname}` is not available in the SageMaker Python SDK v3. "
+            "It may have been removed or moved to a new location."
+            f"\nSee {V3_MIGRATION_URL} for the migration guide."
+        )
+        _emit_removed_telemetry(fullname)
+        warnings.warn(msg, DeprecationWarning, stacklevel=2)
+        logger.warning(msg)
+        raise ModuleNotFoundError(msg, name=fullname)
+
+
+def register_removed_module_finder():
+    """Install the fallback finder for removed v2 modules (idempotent).
+
+    Appends a single ``_RemovedV2ModuleFinder`` to ``sys.meta_path`` so it acts
+    as a last resort. Safe to call multiple times -- it installs at most one
+    instance per process.
+    """
+    if any(isinstance(f, _RemovedV2ModuleFinder) for f in sys.meta_path):
+        return
+    sys.meta_path.append(_RemovedV2ModuleFinder())
 
 
 def _warn(msg, sdk_version=None):
