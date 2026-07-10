@@ -144,9 +144,35 @@ def test_uncovered_module_falls_back_to_guidance(module):
             _fresh_import(module)
     message = str(exc.value)
     assert module in message
-    assert "not available in the SageMaker Python SDK v3" in message
+    assert "was removed in the SageMaker Python SDK v3" in message
     assert V3_MIGRATION_URL in message
     assert any(issubclass(x.category, DeprecationWarning) for x in w)
+
+
+@pytest.mark.parametrize("module", ["sagemaker.foobar", "sagemaker.not_a_module", "sagemaker.zzz"])
+def test_unknown_name_gets_plain_error_not_guidance(module):
+    # Names that never existed in v2 (typos, hallucinated imports) must fall
+    # through to a plain ModuleNotFoundError -- no "was removed" claim, no
+    # migration-guide link, no deprecation warning.
+    import sagemaker.core  # noqa: F401  -- ensure finder registered
+
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        with pytest.raises(ModuleNotFoundError) as exc:
+            _fresh_import(module)
+    message = str(exc.value)
+    assert "was removed" not in message
+    assert V3_MIGRATION_URL not in message
+    assert not any(issubclass(x.category, DeprecationWarning) for x in w)
+
+
+def test_finder_passes_through_unknown_names():
+    import sagemaker.core  # noqa: F401
+
+    finder = _RemovedV2ModuleFinder()
+    # Known removed v2 module -> guarded (raises); unknown -> pass through (None).
+    assert finder.find_spec("sagemaker.foobar") is None
+    assert finder.find_spec("sagemaker.definitely_not_real") is None
 
 
 @pytest.mark.parametrize(

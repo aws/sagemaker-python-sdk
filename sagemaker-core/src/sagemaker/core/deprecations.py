@@ -31,6 +31,119 @@ V3_MIGRATION_URL = "https://github.com/aws/sagemaker-python-sdk/blob/master/migr
 # "removed in v3" message.
 _KNOWN_V3_TOPLEVEL = frozenset({"core", "train", "serve", "mlops", "lineage", "ai_registry"})
 
+# Top-level ``sagemaker.<name>`` modules that existed in v2 but were removed in
+# v3 (some relocated under ``sagemaker.core.*``). Derived from the v2 top-level
+# module surface (the ``master-v2`` branch), minus names that still exist in v3.
+# The fallback finder only emits migration guidance for THESE names, so a typo
+# or hallucinated import (e.g. ``sagemaker.foobar``) gets a plain
+# ``ModuleNotFoundError`` rather than a misleading "was removed" message. V2 is
+# in maintenance, so this surface is effectively frozen.
+_REMOVED_V2_MODULES = frozenset(
+    {
+        "_studio",
+        "accept_types",
+        "algorithm",
+        "amazon",
+        "amtviz",
+        "analytics",
+        "apiutils",
+        "async_inference",
+        "automl",
+        "aws_batch",
+        "base_deserializers",
+        "base_predictor",
+        "base_serializers",
+        "batch_inference",
+        "chainer",
+        "clarify",
+        "cli",
+        "collection",
+        "compute_resource_requirements",
+        "config",
+        "container_base_model",
+        "content_types",
+        "dataset_definition",
+        "debugger",
+        "deprecations",
+        "deserializers",
+        "djl_inference",
+        "drift_check_baselines",
+        "enums",
+        "environment_variables",
+        "estimator",
+        "exceptions",
+        "experiments",
+        "explainer",
+        "feature_store",
+        "fw_utils",
+        "git_utils",
+        "huggingface",
+        "hyperparameters",
+        "image_uri_config",
+        "image_uris",
+        "inference_recommender",
+        "inputs",
+        "instance_group",
+        "instance_types",
+        "instance_types_gpu_info",
+        "interactive_apps",
+        "iterators",
+        "job",
+        "jumpstart",
+        "lambda_helper",
+        "local",
+        "logs",
+        "metadata_properties",
+        "metric_definitions",
+        "mlflow",
+        "model",
+        "model_card",
+        "model_life_cycle",
+        "model_metrics",
+        "model_monitor",
+        "model_uris",
+        "modules",
+        "multidatamodel",
+        "mxnet",
+        "network",
+        "parameter",
+        "partner_app",
+        "payloads",
+        "pipeline",
+        "predictor",
+        "predictor_async",
+        "processing",
+        "pytorch",
+        "remote_function",
+        "resource_requirements",
+        "rl",
+        "s3",
+        "s3_utils",
+        "script_uris",
+        "serializer_utils",
+        "serializers",
+        "serverless",
+        "session",
+        "session_settings",
+        "sklearn",
+        "spark",
+        "sparkml",
+        "stabilityai",
+        "telemetry",
+        "tensorflow",
+        "training_compiler",
+        "transformer",
+        "tuner",
+        "user_agent",
+        "utilities",
+        "utils",
+        "vpc_utils",
+        "workflow",
+        "wrangler",
+        "xgboost",
+    }
+)
+
 
 def raise_removed_in_v3(module, replacement=None, v3_import=None, v3_docs=None):
     """Warn and then raise an actionable error for a v2 module removed in v3.
@@ -94,17 +207,22 @@ class _RemovedV2ModuleFinder(importlib.abc.MetaPathFinder):
     """
 
     def find_spec(self, fullname, path=None, target=None):
-        """Intercept only genuinely-missing top-level ``sagemaker.<name>`` imports."""
+        """Emit guidance only for known removed v2 top-level ``sagemaker`` modules."""
         if not fullname.startswith("sagemaker."):
             return None
         leaf = fullname[len("sagemaker.") :]
         # Only guard top-level names; never touch real v3 subpackages.
         if "." in leaf or leaf in _KNOWN_V3_TOPLEVEL:
             return None
+        # Only guard names that were actually v2 modules. Unknown names (typos,
+        # hallucinated imports) fall through to a plain ModuleNotFoundError so we
+        # never claim something "was removed" when it never existed.
+        if leaf not in _REMOVED_V2_MODULES:
+            return None
 
         msg = (
-            f"`{fullname}` is not available in the SageMaker Python SDK v3. "
-            "It may have been removed."
+            f"`{fullname}` was removed in the SageMaker Python SDK v3. "
+            "It may have moved to a new location."
             f"\nSee {V3_MIGRATION_URL} for the migration guide."
         )
         warnings.warn(msg, DeprecationWarning, stacklevel=2)
