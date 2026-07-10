@@ -280,7 +280,7 @@ class TestStreamLogs:
             mlflow_config=None,
             mlflow_details=None,
         ))
-        trainer._model_name = "meta-textgeneration-llama-3-2-1b-instruct"
+        trainer._model_name = "test-oss-model"
 
         with pytest.raises(ValueError, match="requires MLflow to be configured"):
             trainer.show_metrics()
@@ -290,11 +290,11 @@ class TestStreamLogs:
         """show_metrics() for OSS models with MLflow configured calls plot_training_metrics."""
         mock_job = MagicMock()
         mock_job.training_job_name = "oss-sft-job"
-        mock_job.mlflow_config.mlflow_resource_arn = "arn:aws:sagemaker:us-east-1:123:mlflow-app/app-123"
+        mock_job.mlflow_config.mlflow_resource_arn = "arn:aws:sagemaker:us-east-1:012345678910:mlflow-app/app-123"
         mock_job.mlflow_details.mlflow_run_id = "run-abc123"
 
         trainer = self._make_trainer(latest_job=mock_job)
-        trainer._model_name = "meta-textgeneration-llama-3-2-1b-instruct"
+        trainer._model_name = "test-oss-model"
 
         trainer.show_metrics(metrics=["loss"])
 
