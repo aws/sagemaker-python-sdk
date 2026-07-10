@@ -21,5 +21,7 @@ from sagemaker.core.deprecations import raise_removed_in_v3
 
 raise_removed_in_v3(
     module="sagemaker.tuner",
-    replacement="the hyperparameter tuning resources in the sagemaker-core package",
+    replacement="the `HyperParameterTuningJob` resource",
+    v3_import="from sagemaker.core.resources import HyperParameterTuningJob",
+    v3_docs="https://sagemaker.readthedocs.io/en/stable/api/generated/sagemaker.core.resources.html",
 )

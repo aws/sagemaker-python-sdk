@@ -21,6 +21,7 @@ from sagemaker.core.deprecations import raise_removed_in_v3
 
 raise_removed_in_v3(
     module="sagemaker.processing",
-    replacement="`DataProcessor` in the sagemaker-mlops package",
-    v3_import="from sagemaker.mlops.processing import DataProcessor",
+    replacement="the `ProcessingJob` resource",
+    v3_import="from sagemaker.core.resources import ProcessingJob",
+    v3_docs="https://sagemaker.readthedocs.io/en/stable/api/generated/sagemaker.core.resources.html",
 )

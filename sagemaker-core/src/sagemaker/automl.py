@@ -21,5 +21,7 @@ from sagemaker.core.deprecations import raise_removed_in_v3
 
 raise_removed_in_v3(
     module="sagemaker.automl",
-    replacement="the AutoML resources under sagemaker.core",
+    replacement="the `AutoMLJob` resource",
+    v3_import="from sagemaker.core.resources import AutoMLJob",
+    v3_docs="https://sagemaker.readthedocs.io/en/stable/api/generated/sagemaker.core.resources.html",
 )

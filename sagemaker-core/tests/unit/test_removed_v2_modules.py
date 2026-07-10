@@ -25,7 +25,9 @@ from sagemaker.core.deprecations import (
     V3_MIGRATION_URL,
 )
 
-# Removed v2 module -> a substring we expect in the guidance message.
+# Removed v2 module -> a substring expected in the guidance message. The values
+# are verified-importable v3 symbols (see the tombstone modules under
+# src/sagemaker/); the message also carries the exact import and a docs URL.
 REMOVED_MODULES = {
     "sagemaker.estimator": "ModelTrainer",
     "sagemaker.model": "ModelBuilder",
@@ -33,11 +35,11 @@ REMOVED_MODULES = {
     "sagemaker.base_predictor": "Endpoint",
     "sagemaker.predictor_async": "ModelBuilder",
     "sagemaker.transformer": "TransformJob",
-    "sagemaker.tuner": "hyperparameter tuning",
-    "sagemaker.processing": "DataProcessor",
+    "sagemaker.tuner": "HyperParameterTuningJob",
+    "sagemaker.processing": "ProcessingJob",
     "sagemaker.pipeline": "Pipeline",
     "sagemaker.multidatamodel": "ModelBuilder",
-    "sagemaker.automl": "AutoML",
+    "sagemaker.automl": "AutoMLJob",
     "sagemaker.algorithm": "ModelTrainer",
 }
 
@@ -60,6 +62,9 @@ def test_removed_module_raises_actionable_error(module, expected):
     assert module in message
     assert "removed in the SageMaker Python SDK v3" in message
     assert expected in message
+    # Every tombstone points at a copy-pasteable import and a docs URL.
+    assert "from sagemaker." in message
+    assert "sagemaker.readthedocs.io/en/stable/api/generated/" in message
     assert V3_MIGRATION_URL in message
 
 
@@ -72,17 +77,20 @@ def test_removed_module_emits_deprecation_warning(module):
     assert any(issubclass(x.category, DeprecationWarning) for x in w)
 
 
-def test_helper_includes_import_when_provided():
+def test_helper_includes_import_and_docs_when_provided():
+    docs = "https://sagemaker.readthedocs.io/en/stable/api/generated/sagemaker.train.model_trainer.html"
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         with pytest.raises(ModuleNotFoundError) as exc:
             raise_removed_in_v3(
                 module="sagemaker.estimator",
-                replacement="`ModelTrainer` in the sagemaker-train package",
+                replacement="`ModelTrainer`",
                 v3_import="from sagemaker.train import ModelTrainer",
+                v3_docs=docs,
             )
     message = str(exc.value)
     assert "from sagemaker.train import ModelTrainer" in message
+    assert docs in message
     # ModuleNotFoundError carries the module name for tooling.
     assert exc.value.name == "sagemaker.estimator"
 

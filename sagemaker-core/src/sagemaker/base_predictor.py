@@ -21,5 +21,7 @@ from sagemaker.core.deprecations import raise_removed_in_v3
 
 raise_removed_in_v3(
     module="sagemaker.base_predictor",
-    replacement="the Endpoint resource in the sagemaker-core package",
+    replacement="the `Endpoint` resource",
+    v3_import="from sagemaker.core.resources import Endpoint",
+    v3_docs="https://sagemaker.readthedocs.io/en/stable/api/generated/sagemaker.core.resources.html",
 )

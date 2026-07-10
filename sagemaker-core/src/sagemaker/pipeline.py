@@ -21,6 +21,7 @@ from sagemaker.core.deprecations import raise_removed_in_v3
 
 raise_removed_in_v3(
     module="sagemaker.pipeline",
-    replacement="`Pipeline` in the sagemaker-mlops package",
-    v3_import="from sagemaker.mlops.pipeline import Pipeline",
+    replacement="`Pipeline`",
+    v3_import="from sagemaker.mlops.workflow.pipeline import Pipeline",
+    v3_docs="https://sagemaker.readthedocs.io/en/stable/api/generated/sagemaker.mlops.workflow.pipeline.html",
 )

@@ -21,6 +21,7 @@ from sagemaker.core.deprecations import raise_removed_in_v3
 
 raise_removed_in_v3(
     module="sagemaker.multidatamodel",
-    replacement="`ModelBuilder` in the sagemaker-serve package",
+    replacement="`ModelBuilder`",
     v3_import="from sagemaker.serve import ModelBuilder",
+    v3_docs="https://sagemaker.readthedocs.io/en/stable/api/generated/sagemaker.serve.model_builder.html",
 )

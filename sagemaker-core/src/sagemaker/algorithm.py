@@ -21,6 +21,7 @@ from sagemaker.core.deprecations import raise_removed_in_v3
 
 raise_removed_in_v3(
     module="sagemaker.algorithm",
-    replacement="`ModelTrainer` in the sagemaker-train package",
+    replacement="`ModelTrainer`",
     v3_import="from sagemaker.train import ModelTrainer",
+    v3_docs="https://sagemaker.readthedocs.io/en/stable/api/generated/sagemaker.train.model_trainer.html",
 )

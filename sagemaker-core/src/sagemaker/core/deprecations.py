@@ -32,7 +32,7 @@ V3_MIGRATION_URL = "https://github.com/aws/sagemaker-python-sdk/blob/master/migr
 _KNOWN_V3_TOPLEVEL = frozenset({"core", "train", "serve", "mlops", "lineage", "ai_registry"})
 
 
-def raise_removed_in_v3(module, replacement=None, v3_import=None):
+def raise_removed_in_v3(module, replacement=None, v3_import=None, v3_docs=None):
     """Warn and then raise an actionable error for a v2 module removed in v3.
 
     The v2 SDK exposed top-level modules (e.g. ``sagemaker.estimator``) that no
@@ -41,15 +41,18 @@ def raise_removed_in_v3(module, replacement=None, v3_import=None):
     caller no path forward. This helper is called from lightweight "tombstone"
     modules that stand in for those removed names: it emits a
     ``DeprecationWarning`` and then raises a ``ModuleNotFoundError`` whose message
-    names the v3 replacement and links the migration guide.
+    names the exact v3 replacement, the import to copy-paste, and a direct link
+    to that replacement's API docs (plus the migration guide).
 
     Args:
         module (str): The removed v2 module path, e.g. ``"sagemaker.estimator"``.
-        replacement (str): Human readable v3 replacement, e.g.
-            ``"ModelTrainer in the sagemaker-train package"``. Optional.
+        replacement (str): Human readable v3 replacement, e.g. ``"ModelTrainer"``.
+            Optional.
         v3_import (str): The exact v3 import statement, e.g.
             ``"from sagemaker.train import ModelTrainer"``. Quoted verbatim so the
             caller can copy-paste it. Optional.
+        v3_docs (str): Direct URL to the v3 replacement's API documentation, e.g.
+            the generated ``sagemaker.train.model_trainer`` page. Optional.
 
     Raises:
         ModuleNotFoundError: always, after emitting the deprecation warning.
@@ -59,6 +62,8 @@ def raise_removed_in_v3(module, replacement=None, v3_import=None):
         msg += f" Use {replacement}."
     if v3_import:
         msg += f" ({v3_import})"
+    if v3_docs:
+        msg += f"\nDocs: {v3_docs}"
     msg += f"\nSee {V3_MIGRATION_URL} for the migration guide."
 
     warnings.warn(msg, DeprecationWarning, stacklevel=2)
