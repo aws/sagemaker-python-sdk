@@ -236,24 +236,45 @@ class BaseTrainer(ABC):
             if dotpath:
                 _set_nested_value(resolved, dotpath, value)
 
-    def _apply_recipe_to_hyperparameters(self, final_hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
+    def _apply_recipe_to_hyperparameters(
+        self,
+        final_hyperparameters: Dict[str, Any],
+        serverless: bool = False,
+    ) -> Dict[str, Any]:
         """Apply resolved recipe values to final_hyperparameters dict.
 
         If recipe/overrides were provided, or if the user set hyperparameters
         directly via ``.hyperparameters.*``, merges resolved recipe values into
-        the hyperparameters dict. All leaf values from the resolved recipe are
-        applied — including keys not in the Hub spec subset — enabling
-        power users to override any parameter in the full recipe.
-        Values are converted to strings (matching the SageMaker API
-        expectation for hyperparameter values).
+        the hyperparameters dict. Values are converted to strings (matching the
+        SageMaker API expectation for hyperparameter values).
+
+        By default (serverful SMTJ) every leaf value from the resolved recipe is
+        applied — including keys not in the Hub spec subset — because those
+        flattened values are rendered back into the recipe YAML that is handed to
+        ``ModelTrainer.from_recipe``.
+
+        When ``serverless`` is True the result becomes an *override map*: the Hub
+        spec-allowlisted keys plus any leaf the user explicitly changed (via the
+        overrides dict, a user recipe file, or direct ``.hyperparameters.*``
+        assignments). The recipe's unchanged non-spec defaults are dropped
+        because the base recipe is applied server-side. This is required because
+        ``CreateTrainingJob`` caps ``HyperParameters`` at 100 entries; flattening
+        the entire resolved recipe (200+ leaf keys such as KL/vLLM/LoRA settings)
+        blew past that limit and failed with a ``ValidationException`` — see
+        P467902218. Explicit user overrides are still forwarded so they are never
+        silently dropped.
 
         Args:
             final_hyperparameters: The hyperparameters dict from to_dict().
+            serverless: When True, emit a bounded override map (spec keys + user
+                deltas) instead of the fully flattened recipe, to stay within the
+                API's 100-entry HyperParameters limit.
 
         Returns:
             The updated hyperparameters dict with recipe values applied.
         """
-        if not hasattr(self, 'hyperparameters') or not isinstance(getattr(self.hyperparameters, '_specs', None), dict):
+        specs = getattr(self.hyperparameters, '_specs', None) if hasattr(self, 'hyperparameters') else None
+        if not isinstance(specs, dict):
             return final_hyperparameters
 
         try:
@@ -261,12 +282,57 @@ class BaseTrainer(ABC):
         except NoRecipeError:
             return final_hyperparameters
 
+        # For serverless, only spec-allowlisted keys and leaves the user
+        # explicitly changed are forwarded; everything else is applied
+        # server-side from the base recipe.
+        allowed = None
+        if serverless:
+            allowed = set(specs.keys()) | self._user_changed_recipe_keys()
+
         flat = flatten_resolved_recipe(resolved)
         for k, v in flat.items():
-            if v is not None:
-                final_hyperparameters[k] = str(v) if not isinstance(v, str) else v
+            if v is None:
+                continue
+            if allowed is not None and k not in allowed:
+                continue
+            final_hyperparameters[k] = str(v) if not isinstance(v, str) else v
 
         return final_hyperparameters
+
+    def _user_changed_recipe_keys(self) -> set:
+        """Return the set of leaf key names the user explicitly changed.
+
+        Combines keys from the programmatic overrides dict, the user recipe YAML,
+        and direct ``.hyperparameters.*`` assignments. Used by the serverless
+        path to decide which non-spec recipe leaves to forward (so explicit
+        overrides are never silently dropped) while excluding the recipe's
+        unchanged defaults.
+        """
+        changed = set()
+
+        # Direct hyperparameter assignments (.hyperparameters.x = val)
+        user_set = getattr(self.hyperparameters, '_user_set', None) if hasattr(self, 'hyperparameters') else None
+        if isinstance(user_set, set):
+            changed |= user_set
+
+        # Programmatic overrides dict (nested); collect its leaf key names.
+        overrides = getattr(self, '_overrides', None)
+        if isinstance(overrides, dict):
+            changed |= set(flatten_resolved_recipe(overrides).keys())
+
+        # User recipe YAML (local or S3); collect its leaf key names.
+        recipe_path = getattr(self, '_recipe_path', None)
+        if recipe_path:
+            try:
+                from sagemaker.train.recipe_resolver import _load_user_recipe
+                user_recipe = _load_user_recipe(recipe_path)
+                changed |= set(flatten_resolved_recipe(user_recipe).keys())
+            except Exception as e:  # pragma: no cover - defensive
+                logging.getLogger(__name__).debug(
+                    "Could not read user recipe to determine changed keys: %s", e
+                )
+
+        return changed
 
     def _validate_instance_count(self, instance_count, sagemaker_session):
         """Validate instance/node count against allowed values from SMHP recipe."""

@@ -354,8 +354,12 @@ class SFTTrainer(BaseTrainer):
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
-        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
-        final_hyperparameters = self._apply_recipe_to_hyperparameters(final_hyperparameters)
+        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults).
+        # Serverless HyperParameters is an override map capped at 100 entries by
+        # the API, so send only spec keys + user-changed leaves (P467902218).
+        final_hyperparameters = self._apply_recipe_to_hyperparameters(
+            final_hyperparameters, serverless=True
+        )
         # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
         if self.is_multimodal is None:
             effective_training_dataset = training_dataset or self.training_dataset

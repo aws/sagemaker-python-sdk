@@ -372,6 +372,100 @@ class TestApplyRecipeToHyperparameters:
 
         assert result == {"existing": "val"}
 
+    def test_serverless_drops_unchanged_non_spec_recipe_keys(self):
+        """Serverless path drops the recipe's unchanged non-spec defaults.
+
+        Regression test for P467902218 — flattening the full resolved recipe
+        (200+ leaf keys) into the serverless HyperParameters override map blew
+        past the API's 100-entry limit and failed with a ValidationException.
+        With serverless=True the unchanged non-spec recipe defaults are applied
+        server-side and must not be sent, keeping the map bounded.
+        """
+        trainer = _ConcreteTrainer()
+        trainer._recipe_path = None
+        trainer._overrides = None
+        trainer._resolved_recipe_cache = None
+
+        hp_mock = MagicMock()
+        hp_mock._specs = {"max_steps": {"type": "integer"}, "lr": {"type": "float"}}
+        # No direct hyperparameter assignments.
+        hp_mock._user_set = set()
+        trainer.hyperparameters = hp_mock
+
+        # A full recipe: two overridable spec keys plus 200 non-spec defaults
+        # (KL/vLLM/LoRA settings) that the user never changed.
+        training_config = {"max_steps": 50, "lr": 0.001}
+        training_config.update({f"internal_recipe_key_{i}": i for i in range(200)})
+        resolved = {"training_config": training_config}
+
+        with patch.object(trainer, "get_resolved_recipe", return_value=resolved):
+            result = trainer._apply_recipe_to_hyperparameters(
+                {"existing_key": "val"}, serverless=True
+            )
+
+        # Only the pre-existing key + the two spec keys survive; the 200 unchanged
+        # non-spec recipe leaves are dropped, keeping the map under the 100 limit.
+        assert result == {"existing_key": "val", "max_steps": "50", "lr": "0.001"}
+        assert len(result) < 100
+        assert not any(k.startswith("internal_recipe_key_") for k in result)
+
+    def test_serverless_forwards_explicit_user_overrides(self):
+        """Serverless path forwards non-spec keys the user explicitly overrode.
+
+        A user override of a non-spec recipe key (e.g. peft.lora_tuning.alpha)
+        must never be silently dropped — otherwise the job would train with the
+        wrong value. Only the recipe's *unchanged* defaults are pruned.
+        """
+        trainer = _ConcreteTrainer()
+        trainer._recipe_path = None
+        # User explicitly overrode a non-spec, deeply nested key.
+        trainer._overrides = {"training_config": {"peft": {"lora_tuning": {"alpha": 128}}}}
+        trainer._resolved_recipe_cache = None
+
+        hp_mock = MagicMock()
+        hp_mock._specs = {"max_steps": {"type": "integer"}}
+        hp_mock._user_set = set()
+        trainer.hyperparameters = hp_mock
+
+        resolved = {
+            "training_config": {
+                "max_steps": 50,
+                "peft": {"lora_tuning": {"alpha": 128, "rank": 16}},
+                "unchanged_default": "keepserverside",
+            }
+        }
+
+        with patch.object(trainer, "get_resolved_recipe", return_value=resolved):
+            result = trainer._apply_recipe_to_hyperparameters({}, serverless=True)
+
+        # Spec key + explicitly overridden non-spec key are forwarded...
+        assert result["max_steps"] == "50"
+        assert result["alpha"] == "128"
+        # ...but unchanged non-spec defaults (rank, unchanged_default) are dropped.
+        assert "rank" not in result
+        assert "unchanged_default" not in result
+
+    def test_serverful_applies_all_recipe_keys(self):
+        """Serverful path (serverless=False) still flattens the full recipe."""
+        trainer = _ConcreteTrainer()
+        trainer._recipe_path = None
+        trainer._overrides = None
+        trainer._resolved_recipe_cache = None
+
+        hp_mock = MagicMock()
+        hp_mock._specs = {"max_steps": {"type": "integer"}}
+        hp_mock._user_set = set()
+        trainer.hyperparameters = hp_mock
+
+        resolved = {"training_config": {"max_steps": 50, "internal_recipe_key": "megatron"}}
+
+        with patch.object(trainer, "get_resolved_recipe", return_value=resolved):
+            result = trainer._apply_recipe_to_hyperparameters({})
+
+        # Non-spec recipe keys are preserved for the serverful path, because
+        # they are rendered back into the recipe YAML.
+        assert result == {"max_steps": "50", "internal_recipe_key": "megatron"}
+
 
 # ---------------------------------------------------------------------------
 # Tests: disable_output_compression
