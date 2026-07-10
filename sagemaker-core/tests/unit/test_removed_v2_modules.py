@@ -115,6 +115,41 @@ def test_finder_is_registered_on_meta_path():
     assert any(isinstance(f, _RemovedV2ModuleFinder) for f in sys.meta_path)
 
 
+def test_finder_registered_on_bare_sagemaker_import():
+    import sys
+    import importlib
+
+    # The namespace package init registers the finder, so it is active even
+    # without importing sagemaker.core explicitly.
+    for name in [m for m in list(sys.modules) if m == "sagemaker" or m.startswith("sagemaker.")]:
+        pass  # (do not evict already-imported real modules; just assert state)
+    import sagemaker  # noqa: F401  -- runs the namespace __init__
+
+    importlib.import_module("sagemaker")
+    assert any(isinstance(f, _RemovedV2ModuleFinder) for f in sys.meta_path)
+
+
+def test_removed_module_guidance_on_first_import_in_fresh_process():
+    # Regression: a removed module as the VERY FIRST sagemaker import (before
+    # sagemaker.core is otherwise loaded) must still get guidance, not a bare
+    # error. Run in a fresh interpreter so import state cannot leak in, and
+    # capture the message from the exception itself (the console traceback
+    # formatter does not always write plain text to stderr).
+    import subprocess
+    import sys
+
+    code = (
+        "import sys\n"
+        "try:\n"
+        "    import sagemaker.estimator\n"
+        "except ModuleNotFoundError as e:\n"
+        "    sys.stdout.write(str(e))\n"
+    )
+    proc = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True)
+    assert "was removed in the SageMaker Python SDK v3" in proc.stdout
+    assert "from sagemaker.train import ModelTrainer" in proc.stdout
+
+
 def test_register_is_idempotent():
     import sys
 
