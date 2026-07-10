@@ -364,8 +364,7 @@ class BaseTrainer(ABC):
             f"run: {mlflow_details.mlflow_run_id}"
         )
 
-        from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics as _plot_mlflow_metrics
-        _plot_mlflow_metrics(training_job, metrics=metrics)
+        plot_training_metrics(training_job, metrics=metrics)
 
     def _show_metrics_cloudwatch(
         self,
@@ -376,9 +375,8 @@ class BaseTrainer(ABC):
         end_time: Optional[Any] = None,
     ) -> Any:
         """Parse and plot training metrics from CloudWatch logs (Nova models)."""
+        
         training_job = self._latest_training_job
-
-        # Resolve job ID
         if hasattr(training_job, 'training_job_name'):
             job_id = training_job.training_job_name
         elif isinstance(training_job, str):

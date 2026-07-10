@@ -285,7 +285,7 @@ class TestStreamLogs:
         with pytest.raises(ValueError, match="requires MLflow to be configured"):
             trainer.show_metrics()
 
-    @patch("sagemaker.train.common_utils.metrics_visualizer.plot_training_metrics")
+    @patch("sagemaker.train.base_trainer.plot_training_metrics")
     def test_show_metrics_oss_with_mlflow_delegates(self, mock_plot):
         """show_metrics() for OSS models with MLflow configured calls plot_training_metrics."""
         mock_job = MagicMock()
