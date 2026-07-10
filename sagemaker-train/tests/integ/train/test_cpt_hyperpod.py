@@ -123,6 +123,10 @@ def training_resources(sagemaker_session_us_east_1):
     }
 
 
+@pytest.mark.skip(
+    reason="Requires the hyperpod CLI and P5 capacity, neither of which is available "
+    "in the PySDK CI account (784379639078). Runs only in a Nova-owned account."
+)
 @pytest.mark.gpu_intensive
 @pytest.mark.us_east_1
 def test_cpt_trainer_nova_micro_hyperpod(
