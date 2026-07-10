@@ -1,4 +1,29 @@
 # Changelog
+## v3.15.1 (2026-07-09)
+
+### Bug Fixes
+
+- fix: ModelBuilder resolves private hub artifacts correctly (#5985)
+- fix: refresh LLMAsJudgeEvaluator allowed evaluator models (#5987)
+- fix: define LAMBDA_ARN_REGEX in finetune_utils to fix RLVRTrainer NameError (#5988)
+- fix: RLVR validation bugfix (#6000)
+- fix: drop claude-sonnet-4-20250514 from evaluator allowlist (#6009)
+- fix(serve): Invoke pip without shell in xgboost install_package (#5981)
+- fix: Correct DJL-LMI ISO/ADC accounts + add THF/ISO-E (djl-lmi, huggingface-llm-neuronx) (#5980)
+
+### Documentation
+
+- docs: Add AGENTS.md and llms.txt for AI agent v3 guidance (#5982)
+- docs: Add SDK-first guidance to AGENTS.md and llms.txt (#5997)
+- docs: Add Version Lifecycle page under Getting Started (#5994)
+- docs: serve robots.txt opting V2 docs out of AI training crawls (#6003)
+
+### Other
+
+- Add Triton Server v26.05 image URI config (#5999)
+- Add sklearn 1.4-2-py312 and xgboost 3.2-0 image URI configs (#6008)
+- test: Fix/v3 tests (#5996)
+
 ## v3.15.0 (2026-06-22)
 
 ### New Features

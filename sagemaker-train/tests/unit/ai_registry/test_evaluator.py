@@ -18,8 +18,15 @@ import json
 from sagemaker.ai_registry.evaluator import Evaluator, EvaluatorMethod
 from sagemaker.ai_registry.air_constants import (
     RESPONSE_KEY_HUB_CONTENT_VERSION, RESPONSE_KEY_HUB_CONTENT_ARN,
-    RESPONSE_KEY_CREATION_TIME, RESPONSE_KEY_LAST_MODIFIED_TIME, REWARD_FUNCTION
+    RESPONSE_KEY_CREATION_TIME, RESPONSE_KEY_LAST_MODIFIED_TIME,
+    REWARD_FUNCTION, REWARD_PROMPT
 )
+
+
+def _keywords_from_import_call(mock_air_hub):
+    """Extract the SearchKeyword strings passed to import_hub_content."""
+    tags = mock_air_hub.import_hub_content.call_args.kwargs["tags"]
+    return [f"{tag[0]}:{tag[1]}" for tag in tags]
 
 
 class TestEvaluator:
@@ -80,6 +87,59 @@ class TestEvaluator:
         mock_lambda_client.create_function.assert_called_once()
         call_kwargs = mock_lambda_client.create_function.call_args[1]
         assert call_kwargs["Handler"] == "lambda_function.lambda_handler"
+
+    @patch('sagemaker.ai_registry.evaluator.AIRHub')
+    def test_create_reward_function_always_sets_identity_keywords(self, mock_air_hub):
+        """RewardFunction evaluators must always carry the full identity keyword set."""
+        mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
+        mock_air_hub.describe_hub_content.return_value = {
+            RESPONSE_KEY_HUB_CONTENT_VERSION: "1.0.0",
+            RESPONSE_KEY_HUB_CONTENT_ARN: "test-arn",
+            RESPONSE_KEY_CREATION_TIME: "2024-01-01",
+            RESPONSE_KEY_LAST_MODIFIED_TIME: "2024-01-01"
+        }
+
+        Evaluator.create(
+            name="test-evaluator",
+            source="arn:aws:lambda:us-west-2:123456789012:function:test",
+            type=REWARD_FUNCTION,
+            wait=False
+        )
+
+        keywords = _keywords_from_import_call(mock_air_hub)
+        assert "@subtype:aws/evaluator" in keywords
+        assert "@evaluatortype:rewardfunction" in keywords
+        assert "@contenttype:byolambda" in keywords
+        assert "method:lambda" in keywords
+
+    @patch('sagemaker.ai_registry.evaluator.AIRHub')
+    def test_create_reward_prompt_always_sets_identity_keywords(self, mock_air_hub):
+        """RewardPrompt evaluators have no method but must still be Studio-visible.
+
+        Regression test for P467494019: identity keywords (@subtype/@evaluatortype/
+        @contenttype) were previously gated on ``method is not None``, so reward prompts
+        registered with no keywords and were invisible in Studio.
+        """
+        mock_air_hub.upload_to_s3.return_value = "s3://bucket/path/prompt.txt"
+        mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
+        mock_air_hub.describe_hub_content.return_value = {
+            RESPONSE_KEY_HUB_CONTENT_VERSION: "1.0.0",
+            RESPONSE_KEY_HUB_CONTENT_ARN: "test-arn",
+            RESPONSE_KEY_CREATION_TIME: "2024-01-01",
+            RESPONSE_KEY_LAST_MODIFIED_TIME: "2024-01-01"
+        }
+
+        Evaluator.create(
+            name="test-prompt-evaluator",
+            source="s3://bucket/path/prompt.txt",
+            type=REWARD_PROMPT,
+            wait=False
+        )
+
+        keywords = _keywords_from_import_call(mock_air_hub)
+        assert "@subtype:aws/evaluator" in keywords
+        assert "@evaluatortype:rewardprompt" in keywords
+        assert "@contenttype:byocode" in keywords
 
     @patch('sagemaker.ai_registry.evaluator.AIRHub')
     def test_get_all(self, mock_air_hub):

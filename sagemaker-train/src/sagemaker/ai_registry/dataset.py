@@ -230,13 +230,14 @@ class DataSet(AIRHubEntity):
         description: str = "",
         tags: Optional[List[Tuple[str, str]]] = None,
         role: Optional[str] = None,
+        domain_id: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
     ) -> "DataSet":
         """Create a new DataSet Hub AIR entity.
-        
+
         Creates a new version if entity already exists. This is the primary entry point
         for users. Uploads to S3 internally if local file input is provided.
-        
+
         Args:
             name: Name of the dataset
             source: S3 URI or local file path for the dataset
@@ -245,20 +246,27 @@ class DataSet(AIRHubEntity):
             description: Description of the dataset
             tags: Optional list of (key, value) tag tuples
             role: Optional IAM role ARN. If not provided, uses default execution role.
+            domain_id: Optional SageMaker Studio domain ID used to tag the dataset so it is
+                visible in Studio. If not provided, it is auto-detected from the Studio
+                environment; supply it explicitly when creating datasets outside Studio
+                (e.g. from a laptop or CI) so they still appear in the target domain.
             sagemaker_session: Optional SageMaker session. If not provided, uses default session.
-            
+
         Returns:
             DataSet: The created dataset instance
-            
+
         Raises:
             ValueError: If validation fails or required parameters are missing
         """
         # Get or create session for domain ID extraction
         if sagemaker_session is None:
             sagemaker_session = Session()
-        
-        # Extract domain ID if available (only works in Studio environments)
-        domain_id = _get_current_domain_id(sagemaker_session)
+
+        # Use the caller-provided domain ID when given; otherwise auto-detect it (only
+        # works in Studio environments). This keeps datasets discoverable in Studio even
+        # when created from environments where the domain cannot be inferred.
+        if domain_id is None:
+            domain_id = _get_current_domain_id(sagemaker_session)
         
         # Validate dataset file
         cls._validate_dataset_file(source)
