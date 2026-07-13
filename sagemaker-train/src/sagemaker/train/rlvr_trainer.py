@@ -476,7 +476,7 @@ class RLVRTrainer(BaseTrainer):
         # only forward the values the user explicitly overrode rather than the
         # entire resolved recipe template.
         final_hyperparameters = self._apply_recipe_to_hyperparameters(
-            final_hyperparameters, only_user_overrides=False
+            final_hyperparameters, only_user_overrides=True
         )
         # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
         if self.is_multimodal is None:
