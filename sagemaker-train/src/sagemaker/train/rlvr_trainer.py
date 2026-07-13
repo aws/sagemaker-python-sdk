@@ -471,8 +471,13 @@ class RLVRTrainer(BaseTrainer):
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
-        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
-        final_hyperparameters = self._apply_recipe_to_hyperparameters(final_hyperparameters)
+        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults).
+        # Serverless CreateTrainingJob limits HyperParameters to 100 members, so
+        # only forward the values the user explicitly overrode rather than the
+        # entire resolved recipe template.
+        final_hyperparameters = self._apply_recipe_to_hyperparameters(
+            final_hyperparameters, only_user_overrides=False
+        )
         # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
         if self.is_multimodal is None:
             effective_training_dataset = training_dataset or self.training_dataset
@@ -517,6 +522,8 @@ class RLVRTrainer(BaseTrainer):
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
+
+        logger.info("Final hyperparameters before submitting training job: %s", final_hyperparameters)
 
         try:
             training_job = TrainingJob.create(**create_args)

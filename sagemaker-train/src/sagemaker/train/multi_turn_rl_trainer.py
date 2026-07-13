@@ -289,8 +289,12 @@ class MultiTurnRLTrainer(BaseTrainer):
 
         self._final_hyperparameters = self.hyperparameters.to_dict()
 
-        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
-        self._final_hyperparameters = self._apply_recipe_to_hyperparameters(self._final_hyperparameters)
+        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults).
+        # Only forward the values the user explicitly overrode rather than the
+        # entire resolved recipe template.
+        final_hyperparameters = self._apply_recipe_to_hyperparameters(
+            final_hyperparameters, only_user_overrides=True
+        )
 
         _validate_hyperparameter_values(self._final_hyperparameters)
 
