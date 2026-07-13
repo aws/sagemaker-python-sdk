@@ -599,7 +599,13 @@ class TestFullRecipeTemplateResolution:
         self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
         mock_hyperparams_with_full_template
     ):
-        """Non-spec keys from full template are included in final training hyperparameters."""
+        """Explicitly overridden non-spec keys flow into serverless hyperparameters.
+
+        Serverless HyperParameters is a bounded override map (P467902218): a
+        non-spec key the user *overrode* (sequence_length) must be forwarded,
+        but the recipe's *unchanged* non-spec defaults (warmup_ratio) must be
+        dropped since they are applied server-side.
+        """
         mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
 
         from sagemaker.train.sft_trainer import SFTTrainer
@@ -633,12 +639,13 @@ class TestFullRecipeTemplateResolution:
             call_kwargs = mock_tj.create.call_args[1]
             final_hp = call_kwargs["hyper_parameters"]
 
-            # Non-spec key is now in final hyperparameters
+            # Explicitly overridden non-spec key is forwarded
             assert "sequence_length" in final_hp
             assert final_hp["sequence_length"] == "8192"
-            # Other full template keys also present
-            assert "warmup_ratio" in final_hp
-            assert final_hp["warmup_ratio"] == "0.1"
+            # Unchanged non-spec template defaults are NOT sent (applied
+            # server-side) — this is what keeps the map under the 100-entry limit.
+            assert "warmup_ratio" not in final_hp
+            assert "gradient_accumulation_steps" not in final_hp
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
@@ -648,7 +655,12 @@ class TestFullRecipeTemplateResolution:
         self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
         mock_hyperparams_with_full_template
     ):
-        """Nested recipe keys (lr_scheduler.warmup_steps) are flattened into final hyperparameters."""
+        """Overridden nested recipe keys (lr_scheduler.warmup_steps) flatten into serverless hyperparameters.
+
+        The overridden leaf (warmup_steps) is forwarded; the sibling unchanged
+        default (min_lr) is dropped since the base recipe applies it server-side
+        (P467902218).
+        """
         mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
 
         from sagemaker.train.sft_trainer import SFTTrainer
@@ -682,12 +694,11 @@ class TestFullRecipeTemplateResolution:
             call_kwargs = mock_tj.create.call_args[1]
             final_hp = call_kwargs["hyper_parameters"]
 
-            # Nested key overridden and flattened to leaf name
+            # Overridden nested key flattened to leaf name and forwarded
             assert "warmup_steps" in final_hp
             assert final_hp["warmup_steps"] == "30"
-            # Other nested leaf retains default from full template
-            assert "min_lr" in final_hp
-            assert final_hp["min_lr"] == "1e-06"
+            # Sibling unchanged nested default is dropped (applied server-side)
+            assert "min_lr" not in final_hp
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
@@ -696,7 +707,11 @@ class TestFullRecipeTemplateResolution:
     def test_deeply_nested_peft_keys_flow_into_hyperparameters(
         self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
     ):
-        """Deeply nested keys (peft.lora_tuning.alpha) flatten into hyperparameters."""
+        """Overridden deeply nested keys (peft.lora_tuning.alpha) flatten into serverless hyperparameters.
+
+        Only the explicitly overridden leaf (alpha) is forwarded; unchanged
+        deeply nested defaults (rank, peft_scheme) are dropped (P467902218).
+        """
         mock_hp = MagicMock()
         mock_hp._specs = {
             "learning_rate": {"default": 1e-4, "type": "float", "min": 1e-7, "max": 1.0},
@@ -747,12 +762,11 @@ class TestFullRecipeTemplateResolution:
             call_kwargs = mock_tj.create.call_args[1]
             final_hp = call_kwargs["hyper_parameters"]
 
-            # Deeply nested override flattened
+            # Deeply nested override flattened and forwarded
             assert final_hp["alpha"] == "128"
-            # Unchanged deeply nested default preserved
-            assert final_hp["rank"] == "16"
-            # String-only leaf that's deeply nested
-            assert final_hp["peft_scheme"] == "lora"
+            # Unchanged deeply nested defaults are dropped (applied server-side)
+            assert "rank" not in final_hp
+            assert "peft_scheme" not in final_hp
 
     @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
