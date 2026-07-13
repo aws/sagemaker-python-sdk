@@ -1,7 +1,9 @@
 # Changelog
 ## v1.15.1 (2026-07-09)
 
-- Update module dependencies
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
 
 ## v1.15.0 (2026-06-22)
 

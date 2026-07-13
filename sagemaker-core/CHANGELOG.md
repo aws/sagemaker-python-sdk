@@ -1,6 +1,10 @@
 # Changelog
 ## v2.15.1 (2026-07-09)
 
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
 ### Bug Fixes
 
 - fix: Correct DJL-LMI ISO/ADC accounts + add THF/ISO-E (djl-lmi, huggingface-llm-neuronx) (#5980)
