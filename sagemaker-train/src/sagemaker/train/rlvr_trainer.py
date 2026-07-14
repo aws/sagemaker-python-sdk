@@ -523,8 +523,6 @@ class RLVRTrainer(BaseTrainer):
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
 
-        logger.info("Final hyperparameters before submitting training job: %s", final_hyperparameters)
-
         try:
             training_job = TrainingJob.create(**create_args)
         except Exception as e:

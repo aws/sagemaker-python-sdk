@@ -340,7 +340,6 @@ class BaseTrainer(ABC):
             if v is None:
                 continue
             if allowed_keys is not None and k not in allowed_keys:
-                logger.info("Skipping recipe key '%s' (not user-provided).", k)
                 continue
             final_hyperparameters[k] = str(v) if not isinstance(v, str) else v
 
