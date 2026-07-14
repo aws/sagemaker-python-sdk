@@ -283,32 +283,23 @@ class BaseTrainer(ABC):
     def _apply_recipe_to_hyperparameters(
         self,
         final_hyperparameters: Dict[str, Any],
-        only_user_overrides: bool = False,
     ) -> Dict[str, Any]:
         """Apply resolved recipe values to final_hyperparameters dict.
 
         If recipe/overrides were provided, or if the user set hyperparameters
         directly via ``.hyperparameters.*``, merges resolved recipe values into
-        the hyperparameters dict. By default all leaf values from the resolved
-        recipe are applied — including keys not in the Hub spec subset. This is
-        used by the serverful/HyperPod paths, which render the values into a
-        recipe YAML file (no key-count limit).
-
+        the hyperparameters dict. All leaf values from the resolved recipe are
+        applied — including keys not in the Hub spec subset — enabling
+        power users to override any parameter in the full recipe.
         Values are converted to strings (matching the SageMaker API
         expectation for hyperparameter values).
 
+        For serverless training (``self.compute`` is None), only user-provided
+        keys (from .hyperparameters.*, recipe or overrides dict) are included because CreateTrainingJob limits HyperParameters to
+        100 members and the full resolved recipe can exceed that.
+
         Args:
             final_hyperparameters: The hyperparameters dict from to_dict().
-            only_user_overrides: When True, only apply resolved values for keys the
-                user explicitly provided — direct hyperparameter assignments, the
-                ``overrides`` dict, or a recipe file — instead of flattening the
-                entire resolved recipe. This is required for serverless SageMaker
-                training jobs, whose ``CreateTrainingJob`` ``HyperParameters`` map
-                is limited to 100 members by the CreateTrainingJob: the resolved full recipe
-                template can contain several hundred internal leaf keys the user
-                never touched. User-provided keys are not restricted to the Hub
-                spec — power users may override any recipe key, and validity is
-                enforced by ``get_resolved_recipe()``.
 
         Returns:
             The updated hyperparameters dict with recipe values applied.
@@ -319,13 +310,14 @@ class BaseTrainer(ABC):
         try:
             resolved = self.get_resolved_recipe()
         except NoRecipeError:
-            
+
             return final_hyperparameters
 
         flat = flatten_resolved_recipe(resolved)
 
+        # Serverless (compute is None) → only user-provided keys + defaults;
         allowed_keys = None
-        if only_user_overrides:
+        if getattr(self, 'compute', None) is None:
             try:
                 allowed_keys = self._get_user_provided_recipe_keys()
             except Exception as e:
