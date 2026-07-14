@@ -34,6 +34,7 @@ from sagemaker.train.common_utils.finetune_utils import (
 )
 from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
 from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
+from sagemaker.train.common_utils.notifications import enable_notifications, delete_notification_rules, list_notification_rules
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.common_utils.cloudwatch_metrics import fetch_and_plot_metrics, _get_smhp_log_group
 from sagemaker.train.defaults import TrainDefaults
@@ -102,6 +103,7 @@ class BaseTrainer(ABC):
         training_image: Optional[str] = None,
         base_model_name: Optional[str] = None,
         disable_output_compression: Optional[bool] = False,
+        notifications: Optional[Dict[str, Any]] = None,
     ):
         self.sagemaker_session = sagemaker_session
         self.role = role
@@ -114,6 +116,10 @@ class BaseTrainer(ABC):
         self.training_image = training_image
         self.base_model_name = base_model_name
         self.disable_output_compression = disable_output_compression
+
+        # Set up notifications if configured
+        if notifications:
+            self._setup_notifications(notifications)
         self._checkpoint_s3_uri = None
 
     def _is_nova_model_for_telemetry(self) -> bool:
@@ -431,6 +437,109 @@ class BaseTrainer(ABC):
             ending_step=ending_step,
             start_time=start_time_ms,
             end_time=end_time_ms,
+        )
+
+    def _setup_notifications(self, notifications: Optional[Dict[str, Any]]) -> Optional[str]:
+        """Set up EventBridge notifications for the training job.
+
+        Called internally by trainer.train() after job submission when a
+        notifications config is provided.
+
+        Args:
+            notifications: Notification configuration dict with keys:
+                - sns_topic_arn (str, required): ARN of the SNS topic.
+                - events (list[str], optional): Job statuses to notify on.
+                    Defaults to ["Completed", "Failed", "Stopped"].
+                - event_bus_arn (str, optional): EventBridge bus ARN.
+                    Defaults to the account's default bus.
+                - job_name_prefix (str, optional): Only notify for jobs
+                    with names matching this prefix.
+
+        Returns:
+            The EventBridge rule ARN if notifications were set up, None otherwise.
+
+        Raises:
+            NotImplementedError: If compute is HyperPodCompute.
+            ValueError: If the config is invalid.
+            PermissionError: If the caller lacks required permissions.
+        """
+        if not notifications:
+            return None
+
+        # Validate compute type
+        if isinstance(getattr(self, 'compute', None), HyperPodCompute):
+            raise NotImplementedError(
+                "Job notifications are not supported for HyperPod compute."
+            )
+
+        # Validate config
+        if not isinstance(notifications, dict):
+            raise ValueError(
+                "notifications must be a dict with at least 'sns_topic_arn'. "
+                "Example: {'sns_topic_arn': 'arn:aws:sns:us-east-1:123:my-topic'}"
+            )
+
+        sns_topic_arn = notifications.get("sns_topic_arn")
+        if not sns_topic_arn:
+            raise ValueError(
+                "notifications config requires 'sns_topic_arn'. "
+                "Example: {'sns_topic_arn': 'arn:aws:sns:us-east-1:123:my-topic'}"
+            )
+
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+
+        rule_arn = enable_notifications(
+            sns_topic_arn=sns_topic_arn,
+            sagemaker_session=sagemaker_session,
+            events=notifications.get("events"),
+            event_bus_arn=notifications.get("event_bus_arn"),
+            job_name_prefix=notifications.get("job_name_prefix"),
+        )
+
+        return rule_arn
+
+    def delete_notification_rules(
+        self,
+        rule_arn: str,
+        event_bus_arn: Optional[str] = None,
+    ) -> str:
+        """Delete an SDK-created EventBridge notification rule.
+
+        Args:
+            rule_arn: The ARN of the rule to delete.
+            event_bus_arn: Optional EventBridge bus ARN. Defaults to "default".
+
+        Returns:
+            The name of the deleted rule.
+        """
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+
+        return delete_notification_rules(
+            sagemaker_session=sagemaker_session,
+            rule_arn=rule_arn,
+            event_bus_arn=event_bus_arn,
+        )
+
+    def list_notification_rules(
+        self,
+        event_bus_arn: Optional[str] = None,
+    ) -> List[Dict[str, str]]:
+        """List all SDK-created EventBridge notification rules.
+
+        Returns:
+            List of dicts with 'name', 'arn', and 'state' for each rule.
+        """
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+
+        return list_notification_rules(
+            sagemaker_session=sagemaker_session,
+            event_bus_arn=event_bus_arn,
         )
 
     def stream_logs(self, poll: int = 5, start_time: Optional[Any] = None) -> None:
