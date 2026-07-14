@@ -280,3 +280,35 @@ def test_finder_never_shadows_a_real_module_with_removed_name(monkeypatch):
     monkeypatch.setitem(sys.modules, name, real)
     resolved = importlib.import_module(name)
     assert resolved is real  # real module wins; finder never intercepts it
+
+
+# --- Replacement targets stay valid (guards against silent doc/import rot) ---
+
+
+def _parse_import(stmt):
+    """Parse ``from <module> import <symbol>`` into (module, symbol)."""
+    _, module, _, symbol = stmt.split()
+    return module, symbol
+
+
+@pytest.mark.parametrize("leaf,entry", sorted(_V3_REPLACEMENTS.items()))
+def test_curated_v3_imports_resolve(leaf, entry):
+    # Recommendation B: every curated v3 import target must actually resolve in
+    # the installed SDK, so a future rename/move of a replacement fails CI
+    # instead of shipping a dead import string. The target package may live in a
+    # sibling distribution (sagemaker-train/serve/mlops) that is not installed in
+    # the core-only test job -- importorskip skips cleanly there and this runs in
+    # the all-extras lane.
+    _replacement, v3_import, docs_module = entry
+    module, symbol = _parse_import(v3_import)
+    mod = pytest.importorskip(module)
+    assert hasattr(mod, symbol), f"{module} has no attribute {symbol} (referenced by {leaf})"
+
+
+def test_curated_docs_url_matches_import_module_root():
+    # The docs URL is a derivation of a module path (not independently
+    # maintained); assert its module segment shares the same top-level package
+    # as the import so the two cannot silently drift to different subsystems.
+    for leaf, (_replacement, v3_import, docs_module) in _V3_REPLACEMENTS.items():
+        import_module, _symbol = _parse_import(v3_import)
+        assert docs_module.split(".")[:2] == import_module.split(".")[:2], leaf

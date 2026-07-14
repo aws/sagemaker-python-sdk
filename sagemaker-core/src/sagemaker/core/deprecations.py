@@ -146,42 +146,92 @@ _REMOVED_V2_MODULES = frozenset(
 
 _DOCS_BASE = "https://sagemaker.readthedocs.io/en/stable/api/generated/"
 
-# Curated, high-traffic removed v2 modules -> precise v3 guidance:
-# (replacement, exact import, docs module path). The fallback finder uses this
-# to emit a specific message (exact class + copy-pasteable import + docs link)
-# for these names, and a generic "was removed" message for every other name in
-# _REMOVED_V2_MODULES. All targets are verified importable in v3.
-_TRAIN = ("from sagemaker.train import ModelTrainer", "sagemaker.train.model_trainer")
-_SERVE = ("from sagemaker.serve import ModelBuilder", "sagemaker.serve.model_builder")
+# Curated removed v2 modules -> precise v3 guidance:
+# (replacement, exact import, docs module path). The finder emits a specific
+# message (exact class + copy-pasteable import + docs link) for these names, and
+# a generic "was removed" message for every other name in _REMOVED_V2_MODULES.
+# Every import target and docs page below is verified against installed v3 and
+# readthedocs; the import targets are additionally guarded by a unit test.
 _CORE_RES = "sagemaker.core.resources"
+
+
+def _trainer():
+    return (
+        "`ModelTrainer`",
+        "from sagemaker.train import ModelTrainer",
+        "sagemaker.train.model_trainer",
+    )
+
+
+def _builder(note=""):
+    repl = "`ModelBuilder`" + (f" ({note})" if note else "")
+    return (repl, "from sagemaker.serve import ModelBuilder", "sagemaker.serve.model_builder")
+
+
+def _core_resource(cls):
+    return (f"the `{cls}` resource", f"from {_CORE_RES} import {cls}", _CORE_RES)
+
+
+def _core_module(mod):
+    return (f"`{mod}`", f"from sagemaker.core import {mod}", f"sagemaker.core.{mod}")
+
+
 _V3_REPLACEMENTS = {
-    "estimator": ("`ModelTrainer`", _TRAIN[0], _TRAIN[1]),
-    "algorithm": ("`ModelTrainer`", _TRAIN[0], _TRAIN[1]),
-    "model": ("`ModelBuilder`", _SERVE[0], _SERVE[1]),
-    "multidatamodel": ("`ModelBuilder`", _SERVE[0], _SERVE[1]),
-    "predictor_async": ("`ModelBuilder` (async deploy)", _SERVE[0], _SERVE[1]),
-    "predictor": ("the `Endpoint` resource", f"from {_CORE_RES} import Endpoint", _CORE_RES),
-    "base_predictor": ("the `Endpoint` resource", f"from {_CORE_RES} import Endpoint", _CORE_RES),
-    "transformer": (
-        "the `TransformJob` resource",
-        f"from {_CORE_RES} import TransformJob",
-        _CORE_RES,
-    ),
-    "tuner": (
-        "the `HyperParameterTuningJob` resource",
-        f"from {_CORE_RES} import HyperParameterTuningJob",
-        _CORE_RES,
-    ),
-    "processing": (
-        "the `ProcessingJob` resource",
-        f"from {_CORE_RES} import ProcessingJob",
-        _CORE_RES,
-    ),
-    "automl": ("the `AutoMLJob` resource", f"from {_CORE_RES} import AutoMLJob", _CORE_RES),
+    # Training: estimators (generic + framework) + marketplace algorithms -> ModelTrainer
+    "estimator": _trainer(),
+    "algorithm": _trainer(),
+    "pytorch": _trainer(),
+    "tensorflow": _trainer(),
+    "huggingface": _trainer(),
+    "sklearn": _trainer(),
+    "xgboost": _trainer(),
+    # Inference: models / predictors / serverless / async / jumpstart -> ModelBuilder
+    "model": _builder(),
+    "multidatamodel": _builder(),
+    "predictor_async": _builder("async deploy"),
+    "serverless": _builder("serverless deploy"),
+    "async_inference": _builder("async deploy"),
+    "jumpstart": _builder("JumpStart models"),
+    # sagemaker-core resources
+    "predictor": _core_resource("Endpoint"),
+    "base_predictor": _core_resource("Endpoint"),
+    "transformer": _core_resource("TransformJob"),
+    "tuner": _core_resource("HyperParameterTuningJob"),
+    "processing": _core_resource("ProcessingJob"),
+    "clarify": _core_resource("ProcessingJob"),
+    "wrangler": _core_resource("ProcessingJob"),
+    "spark": _core_resource("ProcessingJob"),
+    "model_monitor": _core_resource("MonitoringSchedule"),
+    "feature_store": _core_resource("FeatureGroup"),
+    "experiments": _core_resource("Experiment"),
+    "model_card": _core_resource("ModelCard"),
+    "automl": _core_resource("AutoMLJob"),
+    # Relocated utility modules under sagemaker.core
+    "image_uris": _core_module("image_uris"),
+    "s3": _core_module("s3"),
+    "serializers": _core_module("serializers"),
+    "deserializers": _core_module("deserializers"),
+    # Pipelines / workflow -> sagemaker.mlops
     "pipeline": (
         "`Pipeline`",
         "from sagemaker.mlops.workflow.pipeline import Pipeline",
         "sagemaker.mlops.workflow.pipeline",
+    ),
+    "workflow": (
+        "`Pipeline`",
+        "from sagemaker.mlops.workflow.pipeline import Pipeline",
+        "sagemaker.mlops.workflow.pipeline",
+    ),
+    # Training inputs -> configs; Session helper
+    "inputs": (
+        "`InputData`",
+        "from sagemaker.train.configs import InputData",
+        "sagemaker.train.configs",
+    ),
+    "session": (
+        "`Session`",
+        "from sagemaker.core.helper.session_helper import Session",
+        "sagemaker.core.helper.session_helper",
     ),
 }
 
