@@ -308,8 +308,7 @@ class DPOTrainer(BaseTrainer):
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
-        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults).
-        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults).
+        # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
         final_hyperparameters = self._apply_recipe_to_hyperparameters(final_hyperparameters)
         # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
         if self.is_multimodal is None:
