@@ -22,12 +22,16 @@ from sagemaker.core.deprecations import (
     raise_removed_in_v3,
     register_removed_module_finder,
     _RemovedV2ModuleFinder,
+    _REMOVED_V2_MODULES,
+    _KNOWN_V3_TOPLEVEL,
+    _V3_REPLACEMENTS,
     V3_MIGRATION_URL,
 )
 
-# Removed v2 module -> a substring expected in the guidance message. The values
-# are verified-importable v3 symbols (see the tombstone modules under
-# src/sagemaker/); the message also carries the exact import and a docs URL.
+# Curated removed v2 module -> a substring expected in the precise guidance
+# message. The values are verified-importable v3 symbols; the message also
+# carries the exact import and a docs URL. These are served by the meta-path
+# finder via _V3_REPLACEMENTS (no per-module files).
 REMOVED_MODULES = {
     "sagemaker.estimator": "ModelTrainer",
     "sagemaker.model": "ModelBuilder",
@@ -62,7 +66,7 @@ def test_removed_module_raises_actionable_error(module, expected):
     assert module in message
     assert "removed in the SageMaker Python SDK v3" in message
     assert expected in message
-    # Every tombstone points at a copy-pasteable import and a docs URL.
+    # Every curated entry points at a copy-pasteable import and a docs URL.
     assert "from sagemaker." in message
     assert "sagemaker.readthedocs.io/en/stable/api/generated/" in message
     assert V3_MIGRATION_URL in message
@@ -105,7 +109,7 @@ def test_helper_without_replacement_still_actionable():
     assert V3_MIGRATION_URL in message
 
 
-# --- Fallback finder (catch-all for non-tombstoned removed modules) ---
+# --- Meta-path finder (handles all removed v2 modules) ---
 
 
 def test_finder_is_registered_on_meta_path():
@@ -160,8 +164,8 @@ def test_register_is_idempotent():
 
 
 def test_finder_is_appended_not_prepended():
-    # As a last resort it must sit at the end so real/tombstone modules resolve
-    # first. Being in the second half of meta_path is a sufficient proxy.
+    # As a last resort it must sit at the end so real modules resolve first.
+    # Being in the second half of meta_path is a sufficient proxy.
     import sys
 
     register_removed_module_finder()
@@ -242,3 +246,37 @@ def test_finder_ignores_non_sagemaker_and_nested():
     assert finder.find_spec("sagemaker.workflow.steps") is None
     # Real v3 top-level -> never guarded.
     assert finder.find_spec("sagemaker.train") is None
+
+
+# --- Name-set invariants (reviewer: what prevents a collision with a new module?) ---
+
+
+def test_removed_set_does_not_overlap_real_v3_packages():
+    # A removed-v2 name must never collide with a real v3 top-level package,
+    # otherwise the finder could claim a live package "was removed".
+    assert _REMOVED_V2_MODULES.isdisjoint(_KNOWN_V3_TOPLEVEL)
+
+
+def test_all_curated_replacements_are_in_removed_set():
+    # Every precisely-guided name must also be in the removed set (the finder
+    # checks membership there before dispatching to the curated message).
+    assert set(_V3_REPLACEMENTS).issubset(_REMOVED_V2_MODULES)
+
+
+def test_finder_never_shadows_a_real_module_with_removed_name(monkeypatch):
+    # Even if a real module exists under a name that is in the removed set, the
+    # appended finder must not shadow it: normal import machinery resolves the
+    # real module first, so find_spec is never consulted. Simulate by injecting
+    # a real module and importing it.
+    import sys
+    import types
+
+    import sagemaker.core  # noqa: F401  -- ensure finder registered
+
+    name = "sagemaker.inputs"  # a name present in _REMOVED_V2_MODULES
+    assert "inputs" in _REMOVED_V2_MODULES
+    real = types.ModuleType(name)
+    real.SENTINEL = object()
+    monkeypatch.setitem(sys.modules, name, real)
+    resolved = importlib.import_module(name)
+    assert resolved is real  # real module wins; finder never intercepts it

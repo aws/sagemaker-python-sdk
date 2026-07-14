@@ -144,6 +144,47 @@ _REMOVED_V2_MODULES = frozenset(
     }
 )
 
+_DOCS_BASE = "https://sagemaker.readthedocs.io/en/stable/api/generated/"
+
+# Curated, high-traffic removed v2 modules -> precise v3 guidance:
+# (replacement, exact import, docs module path). The fallback finder uses this
+# to emit a specific message (exact class + copy-pasteable import + docs link)
+# for these names, and a generic "was removed" message for every other name in
+# _REMOVED_V2_MODULES. All targets are verified importable in v3.
+_TRAIN = ("from sagemaker.train import ModelTrainer", "sagemaker.train.model_trainer")
+_SERVE = ("from sagemaker.serve import ModelBuilder", "sagemaker.serve.model_builder")
+_CORE_RES = "sagemaker.core.resources"
+_V3_REPLACEMENTS = {
+    "estimator": ("`ModelTrainer`", _TRAIN[0], _TRAIN[1]),
+    "algorithm": ("`ModelTrainer`", _TRAIN[0], _TRAIN[1]),
+    "model": ("`ModelBuilder`", _SERVE[0], _SERVE[1]),
+    "multidatamodel": ("`ModelBuilder`", _SERVE[0], _SERVE[1]),
+    "predictor_async": ("`ModelBuilder` (async deploy)", _SERVE[0], _SERVE[1]),
+    "predictor": ("the `Endpoint` resource", f"from {_CORE_RES} import Endpoint", _CORE_RES),
+    "base_predictor": ("the `Endpoint` resource", f"from {_CORE_RES} import Endpoint", _CORE_RES),
+    "transformer": (
+        "the `TransformJob` resource",
+        f"from {_CORE_RES} import TransformJob",
+        _CORE_RES,
+    ),
+    "tuner": (
+        "the `HyperParameterTuningJob` resource",
+        f"from {_CORE_RES} import HyperParameterTuningJob",
+        _CORE_RES,
+    ),
+    "processing": (
+        "the `ProcessingJob` resource",
+        f"from {_CORE_RES} import ProcessingJob",
+        _CORE_RES,
+    ),
+    "automl": ("the `AutoMLJob` resource", f"from {_CORE_RES} import AutoMLJob", _CORE_RES),
+    "pipeline": (
+        "`Pipeline`",
+        "from sagemaker.mlops.workflow.pipeline import Pipeline",
+        "sagemaker.mlops.workflow.pipeline",
+    ),
+}
+
 
 def raise_removed_in_v3(module, replacement=None, v3_import=None, v3_docs=None):
     """Warn and then raise an actionable error for a v2 module removed in v3.
@@ -151,11 +192,11 @@ def raise_removed_in_v3(module, replacement=None, v3_import=None, v3_docs=None):
     The v2 SDK exposed top-level modules (e.g. ``sagemaker.estimator``) that no
     longer exist in v3. Importing one would otherwise fail with a bare
     ``ModuleNotFoundError: No module named 'sagemaker.estimator'`` that gives the
-    caller no path forward. This helper is called from lightweight "tombstone"
-    modules that stand in for those removed names: it emits a
-    ``DeprecationWarning`` and then raises a ``ModuleNotFoundError`` whose message
-    names the exact v3 replacement, the import to copy-paste, and a direct link
-    to that replacement's API docs (plus the migration guide).
+    caller no path forward. This helper is called from ``_RemovedV2ModuleFinder``
+    for removed names: it emits a ``DeprecationWarning`` and then raises a
+    ``ModuleNotFoundError`` whose message names the exact v3 replacement, the
+    import to copy-paste, and a direct link to that replacement's API docs (plus
+    the migration guide).
 
     Args:
         module (str): The removed v2 module path, e.g. ``"sagemaker.estimator"``.
@@ -189,21 +230,22 @@ def raise_removed_in_v3(module, replacement=None, v3_import=None, v3_docs=None):
 
 
 class _RemovedV2ModuleFinder(importlib.abc.MetaPathFinder):
-    """Fallback finder that gives actionable guidance for removed v2 modules.
+    """Meta-path finder that gives actionable guidance for removed v2 modules.
 
-    Curated removals ship as explicit "tombstone" modules (e.g.
-    ``sagemaker/estimator.py``) that raise a precise, per-module message. This
-    finder is the *catch-all* for every other ``sagemaker.<name>`` that existed
-    in v2 but was not individually tombstoned: instead of a bare
-    ``ModuleNotFoundError: No module named 'sagemaker.foo'``, the caller gets a
-    message that says the module is not available in v3 and points to the
-    migration guide.
+    A single hook handles all removed top-level ``sagemaker.<name>`` modules:
+      - names in ``_V3_REPLACEMENTS`` get a **precise** message (exact v3 class,
+        copy-pasteable import, and API-docs link),
+      - other names in ``_REMOVED_V2_MODULES`` get a **generic** "was removed"
+        message, and
+      - any other name (typo, hallucinated import) falls through to Python's
+        plain ``ModuleNotFoundError`` -- we never claim something "was removed"
+        when it never existed.
 
-    It is registered by appending to ``sys.meta_path``, so it only runs *after*
-    the normal import machinery has failed to locate the module. That ordering
-    guarantees it never shadows:
-      - real v3 packages (``sagemaker.core``, ``sagemaker.train``, ...), and
-      - the curated tombstone modules, which resolve as ordinary files first.
+    It is registered by *appending* to ``sys.meta_path``, so it only runs after
+    the normal import machinery fails to locate the module. That ordering
+    guarantees it never shadows a real module: if v3 ever ships a top-level
+    module whose name matches a removed v2 one, the real module resolves first
+    and this finder is never consulted for it.
     """
 
     def find_spec(self, fullname, path=None, target=None):
@@ -220,6 +262,17 @@ class _RemovedV2ModuleFinder(importlib.abc.MetaPathFinder):
         if leaf not in _REMOVED_V2_MODULES:
             return None
 
+        if leaf in _V3_REPLACEMENTS:
+            # Curated, high-traffic module -> precise guidance.
+            replacement, v3_import, docs_module = _V3_REPLACEMENTS[leaf]
+            raise_removed_in_v3(
+                module=fullname,
+                replacement=replacement,
+                v3_import=v3_import,
+                v3_docs=f"{_DOCS_BASE}{docs_module}.html",
+            )
+
+        # Other removed v2 module -> generic guidance.
         msg = (
             f"`{fullname}` was removed in the SageMaker Python SDK v3. "
             "It may have moved to a new location."
@@ -242,6 +295,7 @@ def register_removed_module_finder():
     if any(isinstance(f, _RemovedV2ModuleFinder) for f in sys.meta_path):
         return
     sys.meta_path.append(_RemovedV2ModuleFinder())
+    logger.debug("Registered SageMaker v2 removed-module guidance finder on sys.meta_path.")
 
 
 def _warn(msg, sdk_version=None):
