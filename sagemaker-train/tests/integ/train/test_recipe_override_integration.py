@@ -27,6 +27,7 @@ from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
+from sagemaker.core.training.configs import TrainingJobCompute
 
 
 # Ensure bundled service model is available for botocore
@@ -1064,7 +1065,6 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
             result_hp = rlvr_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
 
             # Simulate serverful path (compute set): full recipe applied
-            from sagemaker.core.training.configs import TrainingJobCompute
             rlvr_trainer.compute = TrainingJobCompute(instance_type="ml.p5.48xlarge", instance_count=1)
             full_hp = rlvr_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
             rlvr_trainer.compute = None  # reset
@@ -1163,7 +1163,6 @@ class TestRLVRServerlessOnlyUserOverrideKeys:
         result_hp = sft_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
 
         # Simulate serverful path (compute set): full recipe applied
-        from sagemaker.core.training.configs import TrainingJobCompute
         sft_trainer.compute = TrainingJobCompute(instance_type="ml.p5.48xlarge", instance_count=1)
         full_hp = sft_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
         sft_trainer.compute = None  # reset
