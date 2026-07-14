@@ -47,6 +47,7 @@ dependencies = [
   "platformdirs",
   "protobuf>=3.12,<7.0",
   "psutil",
+  "pytz",
   "PyYAML>=6.0.1",
   "requests",
   "sagemaker-core>=1.0.71,<2.0.0",

@@ -13,7 +13,7 @@
 """Configuration for generating readthedocs docstrings."""
 from __future__ import absolute_import
 
-import pkg_resources
+from importlib.metadata import version as _get_distribution_version
 from datetime import datetime
 import sys
 import os
@@ -22,7 +22,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "."))
 from doc_utils.jumpstart_doc_utils import create_jumpstart_model_table  # noqa: E402
 
 project = "sagemaker"
-version = pkg_resources.require(project)[0].version
+version = _get_distribution_version(project)
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
