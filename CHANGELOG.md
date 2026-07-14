@@ -1,5 +1,11 @@
 # Changelog
 
+## v2.257.5 (2026-07-14)
+
+### Bug Fixes
+* Read the Docs build failure (#6023)
+
+
 ## v2.257.4 (2026-07-09)
 
 ### Enhancements
