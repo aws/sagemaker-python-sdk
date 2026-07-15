@@ -100,7 +100,7 @@ from sagemaker.train.templates import (
     INSTALL_AUTO_REQUIREMENTS,
     INSTALL_REQUIREMENTS,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train import logger
 from sagemaker.train.sm_recipes.utils import (
@@ -767,7 +767,19 @@ class ModelTrainer(BaseModel):
         return training_request
 
 
-    @_telemetry_emitter(feature=Feature.MODEL_TRAINER, func_name="model_trainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_TRAINER,
+        func_name="model_trainer.train",
+        telemetry_params=[
+            ("training_mode", TelemetryParamType.ATTR_VALUE),
+            ("training_input_mode", TelemetryParamType.ATTR_VALUE),
+            ("networking", TelemetryParamType.ATTR_EXISTS),
+            ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
+            ("distributed", TelemetryParamType.ATTR_EXISTS),
+            ("source_code", TelemetryParamType.ATTR_EXISTS),
+            ("checkpoint_config", TelemetryParamType.ATTR_EXISTS),
+        ],
+    )
     @runnable_by_pipeline
     @validate_call
     def train(

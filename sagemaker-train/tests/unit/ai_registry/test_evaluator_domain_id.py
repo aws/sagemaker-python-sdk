@@ -100,6 +100,44 @@ class TestEvaluatorDomainId:
         # Get the tags argument
         call_args = mock_air_hub.import_hub_content.call_args
         tags = call_args[1]['tags']
-        
+
         # Verify domain-id is NOT in tags
         assert not any(tag[0] == '@domain' for tag in tags)
+
+    @patch('sagemaker.core.helper.session_helper.Session')
+    @patch('sagemaker.ai_registry.evaluator._get_current_domain_id')
+    @patch('sagemaker.ai_registry.evaluator.AIRHub')
+    def test_explicit_domain_id_used_without_auto_detection(
+        self, mock_air_hub, mock_get_domain_id, mock_session
+    ):
+        """An explicit domain_id is tagged and auto-detection is not invoked.
+
+        Covers the non-Studio case (P467494019) where the domain cannot be inferred and
+        must be supplied by the caller.
+        """
+        mock_session.return_value = Mock()
+        mock_air_hub.import_hub_content = Mock()
+        mock_air_hub.describe_hub_content = Mock(return_value={
+            'HubContentName': 'test-evaluator',
+            'HubContentArn': 'arn:aws:sagemaker:us-west-2:123:hub-content/test',
+            'HubContentVersion': '1.0.0',
+            'HubContentStatus': 'Available',
+            'CreationTime': '2024-01-01',
+            'LastModifiedTime': '2024-01-01',
+            'HubContentDocument': '{"SubType": "AWS/Evaluator", "JsonContent": "{}"}'
+        })
+
+        with patch('sagemaker.ai_registry.evaluator.Evaluator.wait'):
+            with patch('sagemaker.ai_registry.evaluator.Evaluator._handle_reward_function', return_value=(EvaluatorMethod.LAMBDA, 'arn:aws:lambda:...')):
+                Evaluator.create(
+                    name="test-evaluator",
+                    type="RewardFunction",
+                    source="arn:aws:lambda:us-west-2:123:function:test",
+                    domain_id="d-explicit123",
+                )
+
+        # Auto-detection must be skipped when domain_id is explicitly provided.
+        mock_get_domain_id.assert_not_called()
+
+        tags = mock_air_hub.import_hub_content.call_args[1]['tags']
+        assert any(tag[0] == '@domain' and tag[1] == 'd-explicit123' for tag in tags)

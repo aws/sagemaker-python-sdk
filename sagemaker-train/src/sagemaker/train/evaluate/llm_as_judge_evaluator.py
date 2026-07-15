@@ -12,6 +12,8 @@ from typing import Any, Dict, List, Optional, Union
 from pydantic import root_validator, validator
 
 from .base_evaluator import BaseEvaluator
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_EVALUATOR_TELEMETRY_PARAMS
 from .constants import (
     EvalType,
     _get_inspect_ai_default_image_uri,
@@ -110,7 +112,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             # Both formats work - with or without 'Builtin.' prefix
             evaluator = LLMAsJudgeEvaluator(
                 base_model="llama-3-3-70b-instruct",
-                evaluator_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+                evaluator_model="anthropic.claude-sonnet-4-5-20250929-v1:0",
                 dataset="s3://my-bucket/my-dataset.jsonl",
                 builtin_metrics=["Correctness", "Helpfulness"],  # Prefix optional
                 mlflow_resource_arn="arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server",
@@ -144,7 +146,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             # Example evaluating only custom model (skip base model)
             evaluator = LLMAsJudgeEvaluator(
                 base_model="llama-3-3-70b-instruct",
-                evaluator_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+                evaluator_model="anthropic.claude-sonnet-4-5-20250929-v1:0",
                 dataset="s3://my-bucket/my-dataset.jsonl",
                 builtin_metrics=["Correctness"],  # Prefix optional
                 evaluate_base_model=False,
@@ -750,7 +752,14 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             'evaluate_base_model': self.evaluate_base_model,
         }
     
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="LLMAsJudgeEvaluator.evaluate")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="LLMAsJudgeEvaluator.evaluate",
+        telemetry_params=[
+            ("evaluator_model", TelemetryParamType.ATTR_VALUE),
+            ("custom_metrics", TelemetryParamType.ATTR_EXISTS),
+        ] + BASE_EVALUATOR_TELEMETRY_PARAMS,
+    )
     def evaluate(self):
         """Create and start an LLM-as-judge evaluation job.
         
@@ -776,7 +785,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             
                 evaluator = LLMAsJudgeEvaluator(
                     base_model="llama-3-3-70b-instruct",
-                    evaluator_model="anthropic.claude-3-5-sonnet-20240620-v1:0",
+                    evaluator_model="anthropic.claude-sonnet-4-5-20250929-v1:0",
                     dataset="s3://my-bucket/my-dataset.jsonl",
                     builtin_metrics=["Correctness", "Helpfulness"],
                     s3_output_path="s3://my-bucket/output"

@@ -13,6 +13,7 @@
 """Integration tests for recipe override feature (get_resolved_recipe)."""
 from __future__ import absolute_import
 
+import logging
 import os
 import tempfile
 import time
@@ -20,8 +21,13 @@ import time
 import pytest
 import yaml
 
+logger = logging.getLogger(__name__)
+
 from sagemaker.train.sft_trainer import SFTTrainer
+from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
+from sagemaker.train.recipe_resolver import flatten_resolved_recipe
+from sagemaker.core.training.configs import TrainingJobCompute
 
 
 # Ensure bundled service model is available for botocore
@@ -44,12 +50,15 @@ class TestSFTTrainerRecipeOverrideInteg:
 
     def test_sft_get_resolved_recipe_with_local_yaml(self):
         """Test that SFTTrainer.get_resolved_recipe() returns merged config from a local YAML."""
-        # Create a recipe file
+        # Real SFT recipe field names: hyperparameters nest under
+        # training_config.training_args (e.g. max_epochs, global_batch_size).
         recipe_content = {
             "training_config": {
-                "learning_rate": 1e-5,
-                "num_epochs": 3,
-                "batch_size": 8,
+                "training_args": {
+                    "learning_rate": 1e-5,
+                    "max_epochs": 3,
+                    "train_batch_size": 8,
+                }
             }
         }
         with tempfile.NamedTemporaryFile(
@@ -69,18 +78,19 @@ class TestSFTTrainerRecipeOverrideInteg:
                 overrides={
                     "training_config": {
                         "learning_rate": 2e-5,
-                        "num_epochs": 5,
+                        "max_epochs": 5,
                     }
                 },
             )
 
             resolved = sft_trainer.get_resolved_recipe()
 
+            training_args = resolved["training_config"]["training_args"]
             # Overrides win
-            assert resolved["training_config"]["learning_rate"] == 2e-5
-            assert resolved["training_config"]["num_epochs"] == 5
+            assert training_args["learning_rate"] == 2e-5
+            assert training_args["max_epochs"] == 5
             # Recipe file value preserved where no override
-            assert resolved["training_config"]["batch_size"] == 8
+            assert training_args["train_batch_size"] == 8
 
         finally:
             os.unlink(recipe_path)
@@ -102,10 +112,10 @@ class TestSFTTrainerRecipeOverrideInteg:
 
         resolved = sft_trainer.get_resolved_recipe()
 
-        # Override applied on top of Hub defaults
-        assert resolved["training_config"]["learning_rate"] == 3e-5
+        # Override applied; learning_rate lives under training_config.training_args.
+        assert resolved["training_config"]["training_args"]["learning_rate"] == 3e-5
 
-    def test_sft_get_resolved_recipe_no_recipe_raises(self):
+    def test_sft_get_resolved_recipe_no_recipe_raises(self, sagemaker_session):
         """Test that get_resolved_recipe() raises when no recipe or overrides provided."""
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -113,9 +123,10 @@ class TestSFTTrainerRecipeOverrideInteg:
             model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
+            sagemaker_session=sagemaker_session,
         )
 
-        with pytest.raises(ValueError, match="requires a 'recipe' or 'overrides'"):
+        with pytest.raises(ValueError, match=r"requires a 'recipe', 'overrides'"):
             sft_trainer.get_resolved_recipe()
 
     @pytest.mark.skip(reason="Skipping GPU resource intensive test - submits actual training job")
@@ -175,7 +186,13 @@ class TestSFTTrainerFullRecipeOverrideInteg:
     """Integration tests for SFTTrainer overriding non-spec keys via full recipe template."""
 
     def test_sft_override_non_spec_keys(self):
-        """Test that non-spec keys (max_length, save_top_k) can be overridden."""
+        """Test that non-spec keys can be overridden.
+
+        micro_train_batch_size and max_norm exist in the recipe's
+        training_config.training_args but are not exposed in the override spec.
+        They should still be overridable when the full recipe template is used
+        as the base layer.
+        """
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
             training_type=TrainingType.LORA,
@@ -184,8 +201,8 @@ class TestSFTTrainerFullRecipeOverrideInteg:
             accept_eula=True,
             overrides={
                 "training_config": {
-                    "max_length": 16384,
-                    "save_top_k": 3,
+                    "micro_train_batch_size": 4,
+                    "max_norm": 2.0,
                 }
             },
         )
@@ -193,8 +210,9 @@ class TestSFTTrainerFullRecipeOverrideInteg:
         resolved = sft_trainer.get_resolved_recipe()
 
         # Non-spec keys should be overridable when full recipe template is available
-        assert resolved["training_config"]["max_length"] == 16384
-        assert resolved["training_config"]["save_top_k"] == 3
+        training_args = resolved["training_config"]["training_args"]
+        assert training_args["micro_train_batch_size"] == 4
+        assert training_args["max_norm"] == 2.0
 
     def test_sft_override_nested_non_spec_keys(self):
         """Test that nested non-spec keys (training_args.max_len) can be overridden."""
@@ -213,12 +231,12 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
         resolved = sft_trainer.get_resolved_recipe()
 
-        # Nested non-spec key overridden (merged into resolved recipe as new key)
+        # Nested key overridden at training_config.training_args.max_len
         assert resolved["training_config"]["training_args"]["max_len"] == 8192
-        # Spec-level default preserved at training_config level (seed is a spec key)
-        assert resolved["training_config"]["seed"] == 42
+        # Spec-level default preserved (seed lives under training_args)
+        assert resolved["training_config"]["training_args"]["seed"] == 42
 
-    def test_sft_full_recipe_defaults_preserved(self):
+    def test_sft_full_recipe_defaults_preserved(self, sagemaker_session):
         """Test that full recipe defaults are present for keys not overridden."""
         sft_trainer = SFTTrainer(
             model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -226,6 +244,7 @@ class TestSFTTrainerFullRecipeOverrideInteg:
             model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
+            sagemaker_session=sagemaker_session,
             overrides={
                 "training_config": {
                     "learning_rate": 3e-5,
@@ -235,8 +254,8 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
         resolved = sft_trainer.get_resolved_recipe()
 
-        # Override applied
-        assert resolved["training_config"]["learning_rate"] == 3e-5
+        # Override applied (learning_rate lives under training_args)
+        assert resolved["training_config"]["training_args"]["learning_rate"] == 3e-5
         # Full recipe template keys are present (not just spec keys)
         training_config = resolved.get("training_config", {})
         assert len(training_config) > 3, (
@@ -245,10 +264,13 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
     def test_sft_full_recipe_with_recipe_file_and_overrides(self):
         """Test 3-level merge: full_template < recipe file < overrides with non-spec keys."""
+        # Recipe files aren't field-name remapped, so use the real nested path.
         recipe_content = {
             "training_config": {
-                "max_length": 8192,
-                "learning_rate": 1e-5,
+                "training_args": {
+                    "max_len": 8192,
+                    "learning_rate": 1e-5,
+                }
             }
         }
         with tempfile.NamedTemporaryFile(
@@ -274,10 +296,11 @@ class TestSFTTrainerFullRecipeOverrideInteg:
 
             resolved = sft_trainer.get_resolved_recipe()
 
+            training_args = resolved["training_config"]["training_args"]
             # Overrides win
-            assert resolved["training_config"]["learning_rate"] == 2e-5
+            assert training_args["learning_rate"] == 2e-5
             # Recipe file wins over full template default
-            assert resolved["training_config"]["max_length"] == 8192
+            assert training_args["max_len"] == 8192
 
         finally:
             os.unlink(recipe_path)
@@ -442,7 +465,7 @@ class TestBenchMarkEvaluatorRecipeOverrideInteg:
             s3_output_path="s3://mc-flows-sdk-testing/eval-output/",
         )
 
-        with pytest.raises(ValueError, match="requires a 'recipe' or 'overrides'"):
+        with pytest.raises(ValueError, match=r"requires a 'recipe', 'overrides'"):
             evaluator.get_resolved_recipe()
 
 
@@ -522,7 +545,8 @@ class TestSFTTrainerValidationFailuresInteg:
         with pytest.raises(ValueError, match="not in allowed values"):
             sft_trainer.get_resolved_recipe()
 
-    def test_sft_rejects_max_steps_below_minimum(self):
+    @pytest.mark.us_east_1
+    def test_sft_rejects_max_steps_below_minimum(self, sagemaker_session_us_east_1):
         """Test that max_steps below spec minimum raises ValueError."""
         sft_trainer = SFTTrainer(
             model="nova-textgeneration-lite-v2",
@@ -530,6 +554,7 @@ class TestSFTTrainerValidationFailuresInteg:
             model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
             training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
             accept_eula=True,
+            sagemaker_session=sagemaker_session_us_east_1,
             overrides={
                 "training_config": {
                     "max_steps": 1,
@@ -641,7 +666,7 @@ class TestSFTTrainerValidationFailuresInteg:
 
         # Should not raise
         resolved = sft_trainer.get_resolved_recipe()
-        assert resolved["training_config"]["learning_rate"] == 1e-5
+        assert resolved["training_config"]["training_args"]["learning_rate"] == 1e-5
 
     def test_sft_serverless_skips_instance_type_validation(self):
         """Test that serverless mode (no compute) skips instance_type validation."""
@@ -660,8 +685,14 @@ class TestSFTTrainerValidationFailuresInteg:
 
         # No compute = serverless, instance_type validation skipped
         resolved = sft_trainer.get_resolved_recipe()
-        assert resolved["training_config"]["learning_rate"] == 1e-5
+        assert resolved["training_config"]["training_args"]["learning_rate"] == 1e-5
 
+    @pytest.mark.skip(
+        reason="save_steps/max_steps are not part of the llama SFT recipe "
+        "(it trains by epochs, not steps), so the save_steps<=max_steps "
+        "boundary cannot be exercised against this model. Needs a recipe that "
+        "actually exposes step-based training to be meaningful."
+    )
     def test_sft_save_steps_equal_to_max_steps_passes(self):
         """Test that save_steps == max_steps is valid (boundary condition)."""
         sft_trainer = SFTTrainer(
@@ -685,9 +716,13 @@ class TestSFTTrainerValidationFailuresInteg:
 
     def test_sft_recipe_file_with_invalid_value_raises(self):
         """Test that validation catches errors from recipe file values."""
+        # Use the real nested path so the value is validated; 999.0 exceeds
+        # learning_rate's spec max of 1e-4.
         recipe_content = {
             "training_config": {
-                "learning_rate": 999.0,
+                "training_args": {
+                    "learning_rate": 999.0,
+                }
             }
         }
         with tempfile.NamedTemporaryFile(
@@ -711,11 +746,14 @@ class TestSFTTrainerValidationFailuresInteg:
         finally:
             os.unlink(recipe_path)
 
-    def test_sft_override_corrects_invalid_recipe_value(self):
+    def test_sft_override_corrects_invalid_recipe_value(self, sagemaker_session):
         """Test that a programmatic override can fix an invalid recipe file value."""
+        # Recipe value is invalid (>max); the override must win and pass validation.
         recipe_content = {
             "training_config": {
-                "learning_rate": 999.0,
+                "training_args": {
+                    "learning_rate": 999.0,
+                }
             }
         }
         with tempfile.NamedTemporaryFile(
@@ -731,6 +769,7 @@ class TestSFTTrainerValidationFailuresInteg:
                 model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
                 training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
                 accept_eula=True,
+                sagemaker_session=sagemaker_session,
                 recipe=recipe_path,
                 overrides={
                     "training_config": {
@@ -741,7 +780,7 @@ class TestSFTTrainerValidationFailuresInteg:
 
             # Override wins, fixing the bad recipe file value
             resolved = sft_trainer.get_resolved_recipe()
-            assert resolved["training_config"]["learning_rate"] == 1e-5
+            assert resolved["training_config"]["training_args"]["learning_rate"] == 1e-5
         finally:
             os.unlink(recipe_path)
 
@@ -792,12 +831,12 @@ class TestSFTTrainerValidationFailuresInteg:
         result2 = sft_trainer.get_resolved_recipe()
 
         assert result1 == result2
-        assert result1["training_config"]["learning_rate"] == 2e-5
+        assert result1["training_config"]["training_args"]["learning_rate"] == 2e-5
 
         # Mutating the returned dict doesn't affect cached result
-        result1["training_config"]["learning_rate"] = 999
+        result1["training_config"]["training_args"]["learning_rate"] = 999
         result3 = sft_trainer.get_resolved_recipe()
-        assert result3["training_config"]["learning_rate"] == 2e-5
+        assert result3["training_config"]["training_args"]["learning_rate"] == 2e-5
 
     def test_sft_invalid_yaml_content_raises(self):
         """Test that a YAML file with non-dict content raises ValueError."""
@@ -969,3 +1008,225 @@ class TestModelTrainerRecipeOverrideInteg:
 
         finally:
             os.unlink(recipe_path)
+
+
+class TestRLVRServerlessOnlyUserOverrideKeys:
+    """Integration tests for serverless path filtering (compute=None excludes non-overridden keys)."""
+
+    def test_rlvr_serverless_only_user_override_keys_applied(self, sagemaker_session):
+        """Test that serverless path (compute=None) excludes non-overridden recipe keys.
+
+        When compute is None, CreateTrainingJob limits HyperParameters to 100 members.
+        A full recipe template can have several hundred internal leaf keys. This test
+        verifies that after applying overrides, only the user-provided keys from
+        overrides/recipe/direct assignment appear — non-overridden recipe template
+        keys must NOT leak into the result.
+        """
+        recipe_content = {
+            "training_config": {
+                "data": {
+                    "max_prompt_length": 3070,
+                },
+            }
+        }
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(recipe_content, f)
+            recipe_path = f.name
+
+        try:
+            rlvr_trainer = RLVRTrainer(
+                model="huggingface-reasoning-nvidia-nemotron-3-nano-30b-a3b-bf16",
+                model_package_group="sdk-test-finetuned-models",
+                training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+                s3_output_path="s3://mc-flows-sdk-testing/output/",
+                sagemaker_session=sagemaker_session,
+                custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+                accept_eula=True,
+                base_job_name="rlvr-override-keys-integ",
+                overrides={
+                    "training_config": {
+                        "learning_rate": 2e-5,
+                        "max_epochs": 10,
+                        "train_val_split_ratio": 0.8,
+                        "temperature": 1.1,
+                    }
+                },
+                recipe=recipe_path,
+            )
+
+            rlvr_trainer.hyperparameters.use_kl_loss = True
+            rlvr_trainer.hyperparameters.kl_loss_coef = 0.05
+
+            # Get baseline hyperparameters (the Hub spec defaults)
+            baseline_hp = rlvr_trainer.hyperparameters.to_dict()
+
+            # Serverless path (compute=None): only user-provided keys applied
+            assert rlvr_trainer.compute is None
+            result_hp = rlvr_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+
+            # Simulate serverful path (compute set): full recipe applied
+            rlvr_trainer.compute = TrainingJobCompute(instance_type="ml.p5.48xlarge", instance_count=1)
+            full_hp = rlvr_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+            rlvr_trainer.compute = None  # reset
+
+            logger.info(f"Baseline HP keys: {len(baseline_hp)}")
+            logger.info(f"User-override-only HP keys: {len(result_hp)}")
+            logger.info(f"Full recipe HP keys: {len(full_hp)}")
+
+            # Keys the user explicitly provided
+            expected_override_keys = {"learning_rate", "max_epochs", "train_val_split_ratio", "temperature"}
+            expected_recipe_keys = {"max_prompt_length"}
+            expected_direct_hp_keys = {"use_kl_loss", "kl_loss_coef"}
+            all_user_keys = expected_override_keys | expected_recipe_keys | expected_direct_hp_keys
+
+            # All user-provided keys must be present in the user-override result
+            for key in all_user_keys:
+                assert key in result_hp, (
+                    f"User-provided key '{key}' missing from serverless (compute=None) result"
+                )
+
+            # Dynamically compute recipe keys NOT in the override spec by fetching
+            # the full resolved recipe and subtracting the spec keys + user-provided keys.
+            # Only consider keys with non-None values (None keys are skipped by _apply_recipe).
+            resolved_recipe = rlvr_trainer.get_resolved_recipe()
+            flat_recipe = flatten_resolved_recipe(resolved_recipe)
+            all_recipe_keys = {k for k, v in flat_recipe.items() if v is not None}
+            override_spec_keys = set(rlvr_trainer.hyperparameters._specs.keys())
+            recipe_internal_keys_not_in_spec = all_recipe_keys - override_spec_keys - all_user_keys
+
+            logger.info(f"All recipe keys from Hub ({len(all_recipe_keys)}): {sorted(all_recipe_keys)}")
+            logger.info(f"Override spec keys ({len(override_spec_keys)}): {sorted(override_spec_keys)}")
+            logger.info(
+                f"Recipe internal keys NOT in spec ({len(recipe_internal_keys_not_in_spec)}): "
+                f"{sorted(recipe_internal_keys_not_in_spec)}"
+            )
+
+            assert len(recipe_internal_keys_not_in_spec) > 0, (
+                "Expected recipe template to have keys beyond the override spec, but found none."
+            )
+
+            # These internal recipe keys must NOT appear in the serverless result
+            leaked_keys = recipe_internal_keys_not_in_spec & set(result_hp.keys())
+            assert not leaked_keys, (
+                f"Non-overridable recipe template keys leaked into the serverless hyperparameters: "
+                f"{sorted(leaked_keys)}. These keys are not in the override spec and should be "
+                f"excluded when compute=None (serverless)."
+            )
+
+            # The full recipe (compute set) MUST contain these internal keys
+            missing_from_full = recipe_internal_keys_not_in_spec - set(full_hp.keys())
+            assert not missing_from_full, (
+                f"Full recipe (compute set) is missing expected internal keys: "
+                f"{sorted(missing_from_full)}. The full recipe path should include all template keys."
+            )
+
+            # The user-override result should not exceed the 100-key CreateTrainingJob limit
+            assert len(result_hp) <= 100, (
+                f"Serverless hyperparameters have {len(result_hp)} keys, exceeding the "
+                f"CreateTrainingJob limit of 100. Non-overridden recipe keys are leaking through."
+            )
+
+        finally:
+            os.unlink(recipe_path)
+
+    def test_sft_nova_serverless_only_user_override_keys_applied(self, sagemaker_session_us_east_1):
+        """Test that Nova SFT serverless path (compute=None) excludes non-overridden recipe keys.
+
+        Same principle as the RLVR Nemotron test: when compute is None,
+        internal recipe template keys that the user never touched must not appear
+        in the hyperparameters sent to CreateTrainingJob.
+        """
+        sft_trainer = SFTTrainer(
+            model="nova-textgeneration-lite-v2",
+            training_type=TrainingType.LORA,
+            model_package_group="sdk-test-finetuned-models",
+            training_dataset="s3://sagemaker-us-east-1-784379639078/input_data/sft-nova/sft_200_samples.jsonl",
+            s3_output_path="s3://sagemaker-us-east-1-784379639078/output/",
+            sagemaker_session=sagemaker_session_us_east_1,
+            accept_eula=True,
+            base_job_name="sft-nova-override-keys-integ",
+            overrides={
+                "training_config": {
+                    "learning_rate": 3e-5,
+                    "max_steps": 50,
+                }
+            },
+        )
+
+        sft_trainer.hyperparameters.warmup_steps = 5
+        sft_trainer.hyperparameters.weight_decay = 0.01
+
+        baseline_hp = sft_trainer.hyperparameters.to_dict()
+
+        # Serverless path (compute=None): only user-provided keys applied
+        assert sft_trainer.compute is None
+        result_hp = sft_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+
+        # Simulate serverful path (compute set): full recipe applied
+        sft_trainer.compute = TrainingJobCompute(instance_type="ml.p5.48xlarge", instance_count=1)
+        full_hp = sft_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+        sft_trainer.compute = None  # reset
+
+        logger.info(f"Nova SFT — Baseline HP keys: {len(baseline_hp)}")
+        logger.info(f"Nova SFT — User-override-only HP keys: {len(result_hp)}")
+        logger.info(f"Nova SFT — Full recipe HP keys: {len(full_hp)}")
+
+        # Keys the user explicitly provided
+        expected_override_keys = {"learning_rate", "max_steps"}
+        expected_direct_hp_keys = {"warmup_steps", "weight_decay"}
+        all_user_keys = expected_override_keys | expected_direct_hp_keys
+
+        for key in all_user_keys:
+            assert key in result_hp, (
+                f"User-provided key '{key}' missing from serverless (compute=None) result"
+            )
+
+        # Full recipe should have more keys than the user-override-only result
+        full_only_keys = set(full_hp.keys()) - set(result_hp.keys())
+        assert len(full_only_keys) > 0, (
+            "Full recipe should contain additional keys beyond the user-override-only result."
+        )
+        logger.info(
+            f"Nova SFT — Keys excluded from serverless path: "
+            f"{len(full_only_keys)} keys — {sorted(list(full_only_keys))}"
+        )
+
+        # Dynamically compute recipe keys NOT in the override spec by fetching
+        # the full resolved recipe and subtracting the spec keys + user-provided keys.
+        # Only consider keys with non-None values (None keys are skipped by _apply_recipe).
+        resolved_recipe = sft_trainer.get_resolved_recipe()
+        flat_recipe = flatten_resolved_recipe(resolved_recipe)
+        all_recipe_keys = {k for k, v in flat_recipe.items() if v is not None}
+        override_spec_keys = set(sft_trainer.hyperparameters._specs.keys())
+        recipe_internal_keys_not_in_spec = all_recipe_keys - override_spec_keys - all_user_keys
+
+        logger.info(f"Nova SFT — All recipe keys from Hub ({len(all_recipe_keys)}): {sorted(all_recipe_keys)}")
+        logger.info(f"Nova SFT — Override spec keys ({len(override_spec_keys)}): {sorted(override_spec_keys)}")
+        logger.info(
+            f"Nova SFT — Recipe internal keys NOT in spec ({len(recipe_internal_keys_not_in_spec)}): "
+            f"{sorted(recipe_internal_keys_not_in_spec)}"
+        )
+
+        assert len(recipe_internal_keys_not_in_spec) > 0, (
+            "Expected Nova recipe template to have keys beyond the override spec, but found none."
+        )
+
+        # These internal recipe keys must NOT appear in the serverless result
+        leaked_keys = recipe_internal_keys_not_in_spec & set(result_hp.keys())
+        assert not leaked_keys, (
+            f"Non-overridable Nova recipe template keys leaked into serverless hyperparameters: "
+            f"{sorted(leaked_keys)}. These keys are not in the override spec and should be "
+            f"excluded when compute=None (serverless)."
+        )
+
+        # The full recipe (compute set) MUST contain these internal keys
+        missing_from_full = recipe_internal_keys_not_in_spec - set(full_hp.keys())
+        assert not missing_from_full, (
+            f"Full recipe (compute set) is missing expected internal keys: "
+            f"{sorted(missing_from_full)}. The full recipe path should include all template keys."
+        )
+
+        assert len(result_hp) <= 100, (
+            f"Serverless hyperparameters have {len(result_hp)} keys, exceeding the "
+            f"CreateTrainingJob limit of 100."
+        )
