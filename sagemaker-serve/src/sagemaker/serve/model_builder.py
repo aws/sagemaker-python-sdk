@@ -4427,12 +4427,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return self.built_model
 
     @_telemetry_emitter(
-        feature=Feature.MODEL_CUSTOMIZATION,
+        feature=Feature.INFERENCE_RECOMMENDER,
         func_name="ModelBuilder.generate_deployment_recommendations",
     )
     def generate_deployment_recommendations(
         self,
-        workload=None,
+        workload: Optional[Union["Workload", str]] = None,
         performance_target: Optional[Union[str, "PerformanceTarget"]] = None,
         *,
         output_path: Optional[str] = None,
