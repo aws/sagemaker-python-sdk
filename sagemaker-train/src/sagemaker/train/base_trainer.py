@@ -236,7 +236,54 @@ class BaseTrainer(ABC):
             if dotpath:
                 _set_nested_value(resolved, dotpath, value)
 
-    def _apply_recipe_to_hyperparameters(self, final_hyperparameters: Dict[str, Any]) -> Dict[str, Any]:
+    def _get_user_provided_recipe_keys(self) -> set:
+        """Return the set of leaf keys the user explicitly provided.
+
+        Collects keys from every source that represents an explicit user choice:
+
+        * direct hyperparameter assignments (``trainer.hyperparameters.x = val``),
+          tracked in ``hyperparameters._user_set``;
+        * the programmatic ``overrides`` dict passed at construction;
+        * the user recipe YAML file passed at construction.
+
+        These are the keys that should be forwarded to a serverless training job,
+        alongside the Hub override spec. Full recipe-template internal keys that
+        the user never touched are intentionally excluded.
+
+        Returns:
+            Set of leaf key names the user explicitly provided. Empty when the
+            user provided nothing beyond Hub defaults.
+        """
+        keys: set = set()
+
+        # Direct hyperparameter assignments (always members of the Hub spec).
+        user_set = getattr(getattr(self, 'hyperparameters', None), '_user_set', None)
+        if isinstance(user_set, set):
+            keys.update(user_set)
+
+        # Programmatic overrides dict (may contain non-spec recipe keys).
+        overrides = getattr(self, '_overrides', None)
+        if isinstance(overrides, dict) and overrides:
+            keys.update(flatten_resolved_recipe(overrides).keys())
+
+        # User recipe YAML file (may contain non-spec recipe keys).
+        recipe_path = getattr(self, '_recipe_path', None)
+        if recipe_path:
+            try:
+                from sagemaker.train.recipe_resolver import _load_user_recipe
+
+                user_recipe = _load_user_recipe(recipe_path)
+                keys.update(flatten_resolved_recipe(user_recipe).keys())
+            except Exception as e:  # pragma: no cover - best-effort key discovery
+                logger.debug("Could not load user recipe to collect keys: %s", e)
+
+        return keys
+
+
+    def _apply_recipe_to_hyperparameters(
+        self,
+        final_hyperparameters: Dict[str, Any],
+    ) -> Dict[str, Any]:
         """Apply resolved recipe values to final_hyperparameters dict.
 
         If recipe/overrides were provided, or if the user set hyperparameters
@@ -246,6 +293,10 @@ class BaseTrainer(ABC):
         power users to override any parameter in the full recipe.
         Values are converted to strings (matching the SageMaker API
         expectation for hyperparameter values).
+
+        For serverless training (``self.compute`` is None), only user-provided
+        keys (from .hyperparameters.*, recipe or overrides dict) are included because CreateTrainingJob limits HyperParameters to
+        100 members and the full resolved recipe can exceed that.
 
         Args:
             final_hyperparameters: The hyperparameters dict from to_dict().
@@ -259,12 +310,30 @@ class BaseTrainer(ABC):
         try:
             resolved = self.get_resolved_recipe()
         except NoRecipeError:
+
             return final_hyperparameters
 
         flat = flatten_resolved_recipe(resolved)
+
+        # Serverless (compute is None) → only user-provided keys + defaults;
+        allowed_keys = None
+        if getattr(self, 'compute', None) is None:
+            try:
+                allowed_keys = self._get_user_provided_recipe_keys()
+            except Exception as e:
+                logger.warning(
+                    "Failed to determine user-provided recipe keys (%s); "
+                    "falling back to submitting the full resolved recipe.",
+                    e,
+                )
+                allowed_keys = None
+
         for k, v in flat.items():
-            if v is not None:
-                final_hyperparameters[k] = str(v) if not isinstance(v, str) else v
+            if v is None:
+                continue
+            if allowed_keys is not None and k not in allowed_keys:
+                continue
+            final_hyperparameters[k] = str(v) if not isinstance(v, str) else v
 
         return final_hyperparameters
 

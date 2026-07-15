@@ -1,8 +1,13 @@
 # Changelog
 ## v3.15.1 (2026-07-09)
 
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
 ### Bug Fixes
 
+- fix: always apply evaluator identity keywords and allow explicit domain_id (#5989)
 - fix: ModelBuilder resolves private hub artifacts correctly (#5985)
 - fix: refresh LLMAsJudgeEvaluator allowed evaluator models (#5987)
 - fix: define LAMBDA_ARN_REGEX in finetune_utils to fix RLVRTrainer NameError (#5988)
@@ -23,6 +28,7 @@
 - Add Triton Server v26.05 image URI config (#5999)
 - Add sklearn 1.4-2-py312 and xgboost 3.2-0 image URI configs (#6008)
 - test: Fix/v3 tests (#5996)
+- test: wip nova hyperpod integ tests (#5990)
 
 ## v3.15.0 (2026-06-22)
 
