@@ -34,6 +34,9 @@ from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name
 
+logger = logging.getLogger(__name__)
+
+
 class BaseTrainer(ABC):
     """Abstract base class for all SageMaker training workflows.
 
@@ -156,7 +159,6 @@ class BaseTrainer(ABC):
 
         Returns None if the template can't be fetched (fallback to synthetic template).
         """
-        logger = logging.getLogger(__name__)
         frt = getattr(self.hyperparameters, '_full_recipe_template', None) if hasattr(self, 'hyperparameters') else None
         if isinstance(frt, dict):
             return frt
@@ -391,8 +393,6 @@ class BaseTrainer(ABC):
             _validate_hyperparameter_values,
         )
         from sagemaker.train.defaults import TrainDefaults
-
-        logger = logging.getLogger(__name__)
 
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
@@ -847,8 +847,6 @@ class BaseTrainer(ABC):
         using a recipe-based approach. Shared across trainers that support HyperPod
         (SFT, DPO, RLVR).
         """
-
-        logger = logging.getLogger(__name__)
 
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
