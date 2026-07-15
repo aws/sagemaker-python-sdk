@@ -31,6 +31,7 @@ from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.dpo_trainer import DPOTrainer
 from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
+from sagemaker.train.evaluate.benchmark_evaluator import BenchMarkEvaluator
 
 
 MODEL_PACKAGE_GROUP = (
@@ -168,3 +169,20 @@ class TestDryRunPassesWithValidInputs:
             MaxResults=1,
         )
         assert len(response.get("TrainingJobSummaries", [])) == 0
+
+
+class TestEvaluateDryRun:
+    """Verify evaluate(dry_run=True) validates without submitting."""
+
+    def test_benchmark_evaluate_dry_run_returns_none(self, sagemaker_session):
+        from sagemaker.train.evaluate import get_benchmarks
+        Benchmark = get_benchmarks()
+
+        evaluator = BenchMarkEvaluator(
+            benchmark=Benchmark.MMLU,
+            model=MODEL_ID,
+            s3_output_path=f"s3://{sagemaker_session.default_bucket()}/dry-run-eval-output/",
+        )
+
+        result = evaluator.evaluate(dry_run=True)
+        assert result is None

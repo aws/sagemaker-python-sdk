@@ -20,9 +20,11 @@ from .constants import (
 )
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.train.common_utils.data_utils import validate_data_path_exists
 from sagemaker.train.common_utils.model_aliases import NOVA_BEDROCK_MODEL_IDS
 from sagemaker.train.common_utils.recipe_utils import _is_nova_model
 from sagemaker.train.constants import _ALLOWED_EVALUATOR_MODELS
+from sagemaker.train.defaults import TrainDefaults
 
 _logger = logging.getLogger(__name__)
 
@@ -751,7 +753,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         }
     
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="LLMAsJudgeEvaluator.evaluate")
-    def evaluate(self):
+    def evaluate(self, dry_run: bool = False):
         """Create and start an LLM-as-judge evaluation job.
         
         This method initiates a 2-phase evaluation job:
@@ -764,9 +766,16 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         inference responses and writes them to S3. Phase 2 remains unchanged —
         the LLMAJEvaluation judging step evaluates those responses with the
         judge model.
-        
+
+        Args:
+            dry_run (bool):
+                If True, runs all validation (IAM, model resolution, data paths)
+                without submitting the evaluation. Returns None on success, raises
+                on validation failure. Defaults to False.
+
         Returns:
-            EvaluationPipelineExecution: The created LLM-as-judge evaluation execution
+            EvaluationPipelineExecution: The created LLM-as-judge evaluation execution,
+            or None if dry_run=True.
         
         Raises:
             ValueError: If invalid model, dataset, or metric configurations are provided
@@ -942,7 +951,20 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         
         # Render pipeline definition
         pipeline_definition = self._render_pipeline_definition(template_str, template_context)
-        
+
+        # Validate dataset path exists
+        if hasattr(self, 'dataset') and self.dataset and isinstance(self.dataset, str):
+            session = TrainDefaults.get_sagemaker_session(
+                sagemaker_session=self.sagemaker_session
+            )
+            validate_data_path_exists(
+                self.dataset, session, label="evaluation dataset"
+            )
+
+        if dry_run:
+            _logger.info("Dry-run validation passed. No evaluation submitted.")
+            return None
+
         # Start execution (name already generated earlier)
         return self._start_execution(
             eval_type=EvalType.LLM_AS_JUDGE,

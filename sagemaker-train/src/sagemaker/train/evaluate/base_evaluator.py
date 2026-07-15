@@ -1034,15 +1034,22 @@ class BaseEvaluator(BaseModel):
         object.__setattr__(self, '_resolved_recipe_cache', resolved)
         return copy.deepcopy(resolved)
 
-    def evaluate(self) -> Any:
+    def evaluate(self, dry_run: bool = False) -> Any:
         """Create and start an evaluation execution.
 
         This method must be implemented by subclasses to define the specific
         evaluation logic for different evaluation types (benchmark, custom scorer,
         LLM-as-judge, etc.).
 
+        Args:
+            dry_run (bool):
+                If True, runs all validation (IAM, model resolution, data paths)
+                without submitting the evaluation. Returns None on success, raises
+                on validation failure. Defaults to False.
+
         Returns:
-            EvaluationPipelineExecution: The created evaluation execution object.
+            EvaluationPipelineExecution: The created evaluation execution object,
+            or None if dry_run=True.
 
         Raises:
             NotImplementedError: This is an abstract method that must be implemented by subclasses.

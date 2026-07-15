@@ -197,7 +197,6 @@ def _validate_dataset_arn_exists(
     Raises:
         ValueError: If the dataset ARN cannot be described.
     """
-    import re
 
     pattern = (
         r"^arn:aws:sagemaker:([^:]+):(\d+):hub-content/"

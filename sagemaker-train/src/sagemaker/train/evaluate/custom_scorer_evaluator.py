@@ -16,7 +16,9 @@ from .constants import EvalType
 from .execution import EvaluationPipelineExecution
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
+from sagemaker.train.common_utils.data_utils import validate_data_path_exists
 from sagemaker.train.constants import get_sagemaker_hub_name
+from sagemaker.train.defaults import TrainDefaults
 
 _logger = logging.getLogger(__name__)
 
@@ -390,7 +392,7 @@ class CustomScorerEvaluator(BaseEvaluator):
             return fallback_params
     
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="CustomScorerEvaluator.evaluate")
-    def evaluate(self) -> EvaluationPipelineExecution:
+    def evaluate(self, dry_run: bool = False) -> EvaluationPipelineExecution:
         """Create and start a custom scorer evaluation job.
         
         Supports multiple compute backends via the ``compute`` parameter set at
@@ -398,9 +400,16 @@ class CustomScorerEvaluator(BaseEvaluator):
         - **Serverless** (default): Runs via SageMaker Pipelines.
         - **SMTJ**: Runs on user-managed instances via ModelTrainer.
         - **HyperPod**: Submits to a HyperPod cluster via the HyperPod CLI.
-        
+
+        Args:
+            dry_run (bool):
+                If True, runs all validation (IAM, model resolution, data paths)
+                without submitting the evaluation. Returns None on success, raises
+                on validation failure. Defaults to False.
+
         Returns:
-            EvaluationPipelineExecution: The created custom scorer evaluation execution
+            EvaluationPipelineExecution: The created custom scorer evaluation execution,
+            or None if dry_run=True.
         
         Example:
             .. code:: python
@@ -487,7 +496,20 @@ class CustomScorerEvaluator(BaseEvaluator):
         
         # Generate execution name
         name = self.base_eval_name or f"custom-scorer-eval"
-        
+
+        # Validate dataset path exists
+        if hasattr(self, 'dataset') and self.dataset and isinstance(self.dataset, str):
+            session = TrainDefaults.get_sagemaker_session(
+                sagemaker_session=self.sagemaker_session
+            )
+            validate_data_path_exists(
+                self.dataset, session, label="evaluation dataset"
+            )
+
+        if dry_run:
+            _logger.info("Dry-run validation passed. No evaluation submitted.")
+            return None
+
         # Start execution
         return self._start_execution(
             eval_type=EvalType.CUSTOM_SCORER,
