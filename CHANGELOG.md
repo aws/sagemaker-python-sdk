@@ -1,4 +1,22 @@
 # Changelog
+## v3.16.0 (2026-07-15)
+
+### New Features
+
+- feat: actionable guidance for removed v2 interfaces (#6004)
+- feat(serve): add SageMaker GenAI inference benchmarking and recommendation (#5874)
+- feat(feature-store): add BatchWriteRecord and ListRecords to FeatureGroup (#5983)
+
+### Bug Fixes
+
+- fix(iam): scope repo-level ECR actions to prevent false deny in preflight validation (#6024)
+- fix: filter full recipe template from serverless train() (#6021)
+- Fix sm-train unit tests + use single logger in base trainer (#6030)
+
+### Tests
+
+- test(mlops): Skip non-PEP440 version keys in sklearn_latest_version (#6022)
+
 ## v3.15.1 (2026-07-09)
 
 ### New Features

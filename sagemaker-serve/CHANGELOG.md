@@ -1,4 +1,10 @@
 # Changelog
+## v1.16.0 (2026-07-15)
+
+### New Features
+
+- feat(serve): add SageMaker GenAI inference benchmarking and recommendation (#5874)
+
 ## v1.15.1 (2026-07-09)
 
 ### New Features
