@@ -13,6 +13,7 @@
 """Integration tests for recipe override feature (get_resolved_recipe)."""
 from __future__ import absolute_import
 
+import logging
 import os
 import tempfile
 import time
@@ -20,8 +21,13 @@ import time
 import pytest
 import yaml
 
+logger = logging.getLogger(__name__)
+
 from sagemaker.train.sft_trainer import SFTTrainer
+from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
+from sagemaker.train.recipe_resolver import flatten_resolved_recipe
+from sagemaker.core.training.configs import TrainingJobCompute
 
 
 # Ensure bundled service model is available for botocore
@@ -1002,3 +1008,225 @@ class TestModelTrainerRecipeOverrideInteg:
 
         finally:
             os.unlink(recipe_path)
+
+
+class TestRLVRServerlessOnlyUserOverrideKeys:
+    """Integration tests for serverless path filtering (compute=None excludes non-overridden keys)."""
+
+    def test_rlvr_serverless_only_user_override_keys_applied(self, sagemaker_session):
+        """Test that serverless path (compute=None) excludes non-overridden recipe keys.
+
+        When compute is None, CreateTrainingJob limits HyperParameters to 100 members.
+        A full recipe template can have several hundred internal leaf keys. This test
+        verifies that after applying overrides, only the user-provided keys from
+        overrides/recipe/direct assignment appear — non-overridden recipe template
+        keys must NOT leak into the result.
+        """
+        recipe_content = {
+            "training_config": {
+                "data": {
+                    "max_prompt_length": 3070,
+                },
+            }
+        }
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump(recipe_content, f)
+            recipe_path = f.name
+
+        try:
+            rlvr_trainer = RLVRTrainer(
+                model="huggingface-reasoning-nvidia-nemotron-3-nano-30b-a3b-bf16",
+                model_package_group="sdk-test-finetuned-models",
+                training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+                s3_output_path="s3://mc-flows-sdk-testing/output/",
+                sagemaker_session=sagemaker_session,
+                custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+                accept_eula=True,
+                base_job_name="rlvr-override-keys-integ",
+                overrides={
+                    "training_config": {
+                        "learning_rate": 2e-5,
+                        "max_epochs": 10,
+                        "train_val_split_ratio": 0.8,
+                        "temperature": 1.1,
+                    }
+                },
+                recipe=recipe_path,
+            )
+
+            rlvr_trainer.hyperparameters.use_kl_loss = True
+            rlvr_trainer.hyperparameters.kl_loss_coef = 0.05
+
+            # Get baseline hyperparameters (the Hub spec defaults)
+            baseline_hp = rlvr_trainer.hyperparameters.to_dict()
+
+            # Serverless path (compute=None): only user-provided keys applied
+            assert rlvr_trainer.compute is None
+            result_hp = rlvr_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+
+            # Simulate serverful path (compute set): full recipe applied
+            rlvr_trainer.compute = TrainingJobCompute(instance_type="ml.p5.48xlarge", instance_count=1)
+            full_hp = rlvr_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+            rlvr_trainer.compute = None  # reset
+
+            logger.info(f"Baseline HP keys: {len(baseline_hp)}")
+            logger.info(f"User-override-only HP keys: {len(result_hp)}")
+            logger.info(f"Full recipe HP keys: {len(full_hp)}")
+
+            # Keys the user explicitly provided
+            expected_override_keys = {"learning_rate", "max_epochs", "train_val_split_ratio", "temperature"}
+            expected_recipe_keys = {"max_prompt_length"}
+            expected_direct_hp_keys = {"use_kl_loss", "kl_loss_coef"}
+            all_user_keys = expected_override_keys | expected_recipe_keys | expected_direct_hp_keys
+
+            # All user-provided keys must be present in the user-override result
+            for key in all_user_keys:
+                assert key in result_hp, (
+                    f"User-provided key '{key}' missing from serverless (compute=None) result"
+                )
+
+            # Dynamically compute recipe keys NOT in the override spec by fetching
+            # the full resolved recipe and subtracting the spec keys + user-provided keys.
+            # Only consider keys with non-None values (None keys are skipped by _apply_recipe).
+            resolved_recipe = rlvr_trainer.get_resolved_recipe()
+            flat_recipe = flatten_resolved_recipe(resolved_recipe)
+            all_recipe_keys = {k for k, v in flat_recipe.items() if v is not None}
+            override_spec_keys = set(rlvr_trainer.hyperparameters._specs.keys())
+            recipe_internal_keys_not_in_spec = all_recipe_keys - override_spec_keys - all_user_keys
+
+            logger.info(f"All recipe keys from Hub ({len(all_recipe_keys)}): {sorted(all_recipe_keys)}")
+            logger.info(f"Override spec keys ({len(override_spec_keys)}): {sorted(override_spec_keys)}")
+            logger.info(
+                f"Recipe internal keys NOT in spec ({len(recipe_internal_keys_not_in_spec)}): "
+                f"{sorted(recipe_internal_keys_not_in_spec)}"
+            )
+
+            assert len(recipe_internal_keys_not_in_spec) > 0, (
+                "Expected recipe template to have keys beyond the override spec, but found none."
+            )
+
+            # These internal recipe keys must NOT appear in the serverless result
+            leaked_keys = recipe_internal_keys_not_in_spec & set(result_hp.keys())
+            assert not leaked_keys, (
+                f"Non-overridable recipe template keys leaked into the serverless hyperparameters: "
+                f"{sorted(leaked_keys)}. These keys are not in the override spec and should be "
+                f"excluded when compute=None (serverless)."
+            )
+
+            # The full recipe (compute set) MUST contain these internal keys
+            missing_from_full = recipe_internal_keys_not_in_spec - set(full_hp.keys())
+            assert not missing_from_full, (
+                f"Full recipe (compute set) is missing expected internal keys: "
+                f"{sorted(missing_from_full)}. The full recipe path should include all template keys."
+            )
+
+            # The user-override result should not exceed the 100-key CreateTrainingJob limit
+            assert len(result_hp) <= 100, (
+                f"Serverless hyperparameters have {len(result_hp)} keys, exceeding the "
+                f"CreateTrainingJob limit of 100. Non-overridden recipe keys are leaking through."
+            )
+
+        finally:
+            os.unlink(recipe_path)
+
+    def test_sft_nova_serverless_only_user_override_keys_applied(self, sagemaker_session_us_east_1):
+        """Test that Nova SFT serverless path (compute=None) excludes non-overridden recipe keys.
+
+        Same principle as the RLVR Nemotron test: when compute is None,
+        internal recipe template keys that the user never touched must not appear
+        in the hyperparameters sent to CreateTrainingJob.
+        """
+        sft_trainer = SFTTrainer(
+            model="nova-textgeneration-lite-v2",
+            training_type=TrainingType.LORA,
+            model_package_group="sdk-test-finetuned-models",
+            training_dataset="s3://sagemaker-us-east-1-784379639078/input_data/sft-nova/sft_200_samples.jsonl",
+            s3_output_path="s3://sagemaker-us-east-1-784379639078/output/",
+            sagemaker_session=sagemaker_session_us_east_1,
+            accept_eula=True,
+            base_job_name="sft-nova-override-keys-integ",
+            overrides={
+                "training_config": {
+                    "learning_rate": 3e-5,
+                    "max_steps": 50,
+                }
+            },
+        )
+
+        sft_trainer.hyperparameters.warmup_steps = 5
+        sft_trainer.hyperparameters.weight_decay = 0.01
+
+        baseline_hp = sft_trainer.hyperparameters.to_dict()
+
+        # Serverless path (compute=None): only user-provided keys applied
+        assert sft_trainer.compute is None
+        result_hp = sft_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+
+        # Simulate serverful path (compute set): full recipe applied
+        sft_trainer.compute = TrainingJobCompute(instance_type="ml.p5.48xlarge", instance_count=1)
+        full_hp = sft_trainer._apply_recipe_to_hyperparameters(baseline_hp.copy())
+        sft_trainer.compute = None  # reset
+
+        logger.info(f"Nova SFT — Baseline HP keys: {len(baseline_hp)}")
+        logger.info(f"Nova SFT — User-override-only HP keys: {len(result_hp)}")
+        logger.info(f"Nova SFT — Full recipe HP keys: {len(full_hp)}")
+
+        # Keys the user explicitly provided
+        expected_override_keys = {"learning_rate", "max_steps"}
+        expected_direct_hp_keys = {"warmup_steps", "weight_decay"}
+        all_user_keys = expected_override_keys | expected_direct_hp_keys
+
+        for key in all_user_keys:
+            assert key in result_hp, (
+                f"User-provided key '{key}' missing from serverless (compute=None) result"
+            )
+
+        # Full recipe should have more keys than the user-override-only result
+        full_only_keys = set(full_hp.keys()) - set(result_hp.keys())
+        assert len(full_only_keys) > 0, (
+            "Full recipe should contain additional keys beyond the user-override-only result."
+        )
+        logger.info(
+            f"Nova SFT — Keys excluded from serverless path: "
+            f"{len(full_only_keys)} keys — {sorted(list(full_only_keys))}"
+        )
+
+        # Dynamically compute recipe keys NOT in the override spec by fetching
+        # the full resolved recipe and subtracting the spec keys + user-provided keys.
+        # Only consider keys with non-None values (None keys are skipped by _apply_recipe).
+        resolved_recipe = sft_trainer.get_resolved_recipe()
+        flat_recipe = flatten_resolved_recipe(resolved_recipe)
+        all_recipe_keys = {k for k, v in flat_recipe.items() if v is not None}
+        override_spec_keys = set(sft_trainer.hyperparameters._specs.keys())
+        recipe_internal_keys_not_in_spec = all_recipe_keys - override_spec_keys - all_user_keys
+
+        logger.info(f"Nova SFT — All recipe keys from Hub ({len(all_recipe_keys)}): {sorted(all_recipe_keys)}")
+        logger.info(f"Nova SFT — Override spec keys ({len(override_spec_keys)}): {sorted(override_spec_keys)}")
+        logger.info(
+            f"Nova SFT — Recipe internal keys NOT in spec ({len(recipe_internal_keys_not_in_spec)}): "
+            f"{sorted(recipe_internal_keys_not_in_spec)}"
+        )
+
+        assert len(recipe_internal_keys_not_in_spec) > 0, (
+            "Expected Nova recipe template to have keys beyond the override spec, but found none."
+        )
+
+        # These internal recipe keys must NOT appear in the serverless result
+        leaked_keys = recipe_internal_keys_not_in_spec & set(result_hp.keys())
+        assert not leaked_keys, (
+            f"Non-overridable Nova recipe template keys leaked into serverless hyperparameters: "
+            f"{sorted(leaked_keys)}. These keys are not in the override spec and should be "
+            f"excluded when compute=None (serverless)."
+        )
+
+        # The full recipe (compute set) MUST contain these internal keys
+        missing_from_full = recipe_internal_keys_not_in_spec - set(full_hp.keys())
+        assert not missing_from_full, (
+            f"Full recipe (compute set) is missing expected internal keys: "
+            f"{sorted(missing_from_full)}. The full recipe path should include all template keys."
+        )
+
+        assert len(result_hp) <= 100, (
+            f"Serverless hyperparameters have {len(result_hp)} keys, exceeding the "
+            f"CreateTrainingJob limit of 100."
+        )
