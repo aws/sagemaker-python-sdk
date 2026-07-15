@@ -62,6 +62,7 @@ def test_model_builder_negative_path(sagemaker_session):
         model_builder.build(sagemaker_session=sagemaker_session)
 
 
+@pytest.mark.slow_test
 @pytest.mark.skipif(
     PYTHON_VERSION_IS_NOT_310,
     reason="Testing Schema Builder Simplification feature - Local Schema",
@@ -92,6 +93,13 @@ def test_model_builder_happy_path_with_task_provided_local_schema_mode(
         model_metadata={"HF_TASK": task_provided},
         instance_type=instance_type_provided,
         sagemaker_session=sagemaker_session,
+        env_vars={
+            # Force plain HTTPS model download in the container. HF Hub repos are now
+            # backed by Xet storage, and the DLC's hf_transfer path returns 403 against
+            # the Xet CDN, so the container fails the ping health check on startup.
+            "HF_HUB_ENABLE_HF_TRANSFER": "0",
+            "HF_HUB_DISABLE_XET": "1",
+        },
     )
 
     model = model_builder.build(sagemaker_session=sagemaker_session)
@@ -169,6 +177,13 @@ def test_model_builder_happy_path_with_task_provided_remote_schema_mode(
         model_metadata={"HF_TASK": task_provided},
         instance_type=instance_type_provided,
         sagemaker_session=sagemaker_session,
+        env_vars={
+            # Force plain HTTPS model download in the container. HF Hub repos are now
+            # backed by Xet storage, and the DLC's hf_transfer path returns 403 against
+            # the Xet CDN, so the container fails the ping health check on startup.
+            "HF_HUB_ENABLE_HF_TRANSFER": "0",
+            "HF_HUB_DISABLE_XET": "1",
+        },
     )
     model = model_builder.build(sagemaker_session=sagemaker_session)
 

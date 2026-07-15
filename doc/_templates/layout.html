@@ -1,0 +1,10 @@
+{# Theme layout override for the deprecated V2 docs build. #}
+{# Injects <meta name="robots" content="noindex"> into every page's <head> so #}
+{# search engines drop these V2 pages from their results. The canonical link is #}
+{# emitted automatically by Sphinx from html_baseurl in conf.py, so do NOT add a #}
+{# <link rel="canonical"> here (duplicate canonicals are a defect). #}
+{% extends "!layout.html" %}
+{% block extrahead %}
+  {{ super() }}
+  <meta name="robots" content="noindex">
+{% endblock %}

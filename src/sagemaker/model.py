@@ -53,6 +53,7 @@ from sagemaker.model_card.helpers import _hash_content_str
 from sagemaker.model_card.schema_constraints import ModelApprovalStatusEnum
 from sagemaker.session import Session
 from sagemaker.container_base_model import ContainerBaseModel
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.model_metrics import ModelMetrics
 from sagemaker.drift_check_baselines import DriftCheckBaselines
 from sagemaker.explainer import ExplainerConfig
@@ -340,6 +341,14 @@ class Model(ModelBase, InferenceRecommenderMixin):
                 content (default: None).
 
         """
+        # Reports the concrete subclass name (Model, MultiDataModel,
+        # JumpStartModel, framework models, ...) since they route through
+        # Model.__init__.
+        warn_v2_deprecation(
+            feature=type(self).__name__,
+            v3_replacement="ModelBuilder",
+            v3_import="from sagemaker.serve import ModelBuilder",
+        )
         self.model_data = model_data
         self.additional_model_data_sources = additional_model_data_sources
         self.image_uri = image_uri

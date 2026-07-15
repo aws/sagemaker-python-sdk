@@ -26,6 +26,7 @@ from botocore.exceptions import ClientError, WaiterError
 
 from sagemaker import s3, LocalSession
 from sagemaker._studio import _append_project_tags
+from sagemaker.deprecations import warn_v2_deprecation
 from sagemaker.config import PIPELINE_ROLE_ARN_PATH, PIPELINE_TAGS_PATH
 from sagemaker.remote_function.core.serialization import deserialize_obj_from_s3
 from sagemaker.remote_function.core.stored_function import RESULTS_FOLDER
@@ -115,6 +116,11 @@ class Pipeline:
                 the workflow customizes the pipeline definition using the configurations
                 specified. By default, custom job-prefixing is turned off.
         """
+        warn_v2_deprecation(
+            feature="Pipeline",
+            v3_replacement="Pipeline",
+            v3_import="from sagemaker.mlops.pipeline import Pipeline",
+        )
         self.name = name
         self.parameters = parameters if parameters else []
         self.pipeline_experiment_config = pipeline_experiment_config

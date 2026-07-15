@@ -134,6 +134,7 @@ def test_jumpstart_hub_estimator_with_session(setup, add_model_references):
     assert response is not None
 
 
+@pytest.mark.slow_test
 def test_jumpstart_hub_gated_estimator_with_eula(setup, add_model_references):
 
     model_id, model_version = "meta-textgeneration-llama-2-7b", "*"
