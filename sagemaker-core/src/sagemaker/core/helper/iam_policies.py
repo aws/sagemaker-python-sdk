@@ -49,15 +49,26 @@ IAM_POLICY_CONFIG = {
                 "Version": "2012-10-17",
                 "Statement": [
                     {
+                        # GetAuthorizationToken is an account-level action that
+                        # does not target a specific repository — Resource: "*" is
+                        # correct and safe to simulate without ResourceArns.
+                        "Effect": "Allow",
+                        "Action": ["ecr:GetAuthorizationToken"],
+                        "Resource": "*",
+                    },
+                    {
+                        # These are repository-level actions. Scoping to
+                        # repository/* prevents false implicitDeny results from
+                        # SimulatePrincipalPolicy when the customer's real policy
+                        # correctly scopes them to specific repo ARNs.
                         "Effect": "Allow",
                         "Action": [
                             "ecr:GetDownloadUrlForLayer",
                             "ecr:BatchGetImage",
                             "ecr:BatchCheckLayerAvailability",
-                            "ecr:GetAuthorizationToken",
                         ],
-                        "Resource": "*",
-                    }
+                        "Resource": "arn:aws:ecr:*:*:repository/*",
+                    },
                 ],
             },
             "cloudwatch_logs_policy": {
@@ -343,14 +354,18 @@ IAM_POLICY_CONFIG = {
                 "Statement": [
                     {
                         "Effect": "Allow",
+                        "Action": ["ecr:GetAuthorizationToken"],
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
                         "Action": [
                             "ecr:GetDownloadUrlForLayer",
                             "ecr:BatchGetImage",
                             "ecr:BatchCheckLayerAvailability",
-                            "ecr:GetAuthorizationToken",
                         ],
-                        "Resource": "*",
-                    }
+                        "Resource": "arn:aws:ecr:*:*:repository/*",
+                    },
                 ],
             },
             "cloudwatch_logs_policy": {
@@ -517,14 +532,18 @@ IAM_POLICY_CONFIG = {
                 "Statement": [
                     {
                         "Effect": "Allow",
+                        "Action": ["ecr:GetAuthorizationToken"],
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
                         "Action": [
                             "ecr:GetDownloadUrlForLayer",
                             "ecr:BatchGetImage",
                             "ecr:BatchCheckLayerAvailability",
-                            "ecr:GetAuthorizationToken",
                         ],
-                        "Resource": "*",
-                    }
+                        "Resource": "arn:aws:ecr:*:*:repository/*",
+                    },
                 ],
             },
             "cloudwatch_logs_policy": {
