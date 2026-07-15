@@ -230,5 +230,72 @@ class TestIsMultimodalData(unittest.TestCase):
         )
 
 
+class TestValidateDataPathExists(unittest.TestCase):
+    """Tests for validate_data_path_exists utility."""
+
+    def _make_session(self):
+        from unittest.mock import Mock
+        session = Mock()
+        self.s3 = Mock()
+        session.boto_session.client.return_value = self.s3
+        from botocore.exceptions import ClientError
+        self.s3.exceptions.ClientError = ClientError
+        return session
+
+    def test_object_exists(self):
+        from sagemaker.train.common_utils.data_utils import validate_data_path_exists
+
+        session = self._make_session()
+        self.s3.list_objects_v2.return_value = {"KeyCount": 1}
+
+        validate_data_path_exists("s3://my-bucket/data/train.jsonl", session, label="training")
+        self.s3.list_objects_v2.assert_called_once_with(
+            Bucket="my-bucket", Prefix="data/train.jsonl", MaxKeys=1
+        )
+
+    def test_prefix_exists(self):
+        from sagemaker.train.common_utils.data_utils import validate_data_path_exists
+
+        session = self._make_session()
+        self.s3.list_objects_v2.return_value = {"KeyCount": 3}
+
+        validate_data_path_exists("s3://my-bucket/data/prefix/", session, label="training")
+
+    def test_path_does_not_exist_raises(self):
+        from sagemaker.train.common_utils.data_utils import validate_data_path_exists
+
+        session = self._make_session()
+        self.s3.list_objects_v2.return_value = {"KeyCount": 0}
+
+        with self.assertRaises(ValueError) as ctx:
+            validate_data_path_exists(
+                "s3://my-bucket/bad/path.jsonl", session, label="training dataset"
+            )
+        self.assertIn("does not exist", str(ctx.exception))
+
+    def test_access_denied_warns_not_raises(self):
+        from sagemaker.train.common_utils.data_utils import validate_data_path_exists
+        from botocore.exceptions import ClientError
+
+        session = self._make_session()
+        self.s3.list_objects_v2.side_effect = ClientError(
+            {"Error": {"Code": "403", "Message": "Forbidden"}}, "ListObjectsV2"
+        )
+
+        # Should not raise — caller may lack access but execution role might have it
+        validate_data_path_exists("s3://locked-bucket/data.jsonl", session, label="data")
+
+    def test_unrecognized_format_raises(self):
+        from sagemaker.train.common_utils.data_utils import validate_data_path_exists
+        from unittest.mock import Mock
+
+        session = Mock()
+        with self.assertRaises(ValueError) as ctx:
+            validate_data_path_exists(
+                "arn:aws:sagemaker:us-east-1:123:dataset/foo", session
+            )
+        self.assertIn("Invalid", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()

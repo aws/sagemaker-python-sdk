@@ -621,3 +621,54 @@ class TestDPOTrainerBaseModelName:
                 compute=HyperPodCompute(cluster_name="my-cluster", node_count=4),
                 training_dataset="s3://bucket/train.jsonl",
             )
+
+
+class TestDPOTrainerDryRun:
+    """Tests for DPOTrainer.train(dry_run=True)."""
+
+    @patch('sagemaker.train.dpo_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.dpo_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.dpo_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.dpo_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.dpo_trainer._get_unique_name')
+    @patch('sagemaker.train.dpo_trainer._create_input_data_config')
+    @patch('sagemaker.train.dpo_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.dpo_trainer._create_output_config')
+    @patch('sagemaker.train.dpo_trainer._create_serverless_config')
+    @patch('sagemaker.train.dpo_trainer._create_mlflow_config')
+    @patch('sagemaker.train.dpo_trainer._create_model_package_config')
+    @patch('sagemaker.train.dpo_trainer._validate_hyperparameter_values')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    @patch('sagemaker.train.common_utils.data_utils.validate_data_path_exists')
+    def test_dry_run_returns_none_without_submitting(
+        self, mock_validate_s3, mock_create, mock_validate_hp, mock_model_pkg,
+        mock_mlflow, mock_serverless, mock_output, mock_channels, mock_input,
+        mock_name, mock_session, mock_role, mock_options, mock_group,
+    ):
+        mock_group.return_value = "test-group"
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_hp._specs = {}
+        mock_options.return_value = (mock_hp, "model-arn", False)
+
+        sess = Mock()
+        sess.boto_session.region_name = "us-east-1"
+        mock_session.return_value = sess
+        mock_role.return_value = "test-role"
+        mock_name.return_value = "job-name"
+        mock_input.return_value = [Mock()]
+        mock_channels.return_value = [Mock()]
+        mock_output.return_value = Mock()
+        mock_serverless.return_value = Mock()
+        mock_mlflow.return_value = Mock()
+        mock_model_pkg.return_value = Mock()
+
+        trainer = DPOTrainer(
+            model="test-model", model_package_group="test-group",
+            training_dataset="s3://bucket/train.jsonl",
+        )
+        trainer.train(dry_run=True)
+
+        mock_create.assert_not_called()
+        mock_role.assert_called_once()
+        mock_validate_hp.assert_called_once()
