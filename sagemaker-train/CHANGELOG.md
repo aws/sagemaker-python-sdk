@@ -1,4 +1,11 @@
 # Changelog
+## v1.16.0 (2026-07-15)
+
+### Bug Fixes
+
+- fix: filter full recipe template from serverless train() (#6021)
+- Fix sm-train unit tests + use single logger in base trainer (#6030)
+
 ## v1.15.1 (2026-07-09)
 
 ### New Features
