@@ -389,8 +389,8 @@ def _deploy_and_assert_hub_access_config(
         ):
             try:
                 op(**kwargs)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("Cleanup failed for %s: %s", kwargs, e)
 
 
 @pytest.mark.slow_test
@@ -401,8 +401,10 @@ def test_deploy_with_no_s3_execution_role(
     S3 permissions. Passes only when the SDK attaches HubAccessConfig to
     the CreateModel call (SageMaker brokers artifact access via the hub).
 
-    On v3.16.0 this fails at CreateModel with a ValidationException:
-    'Could not access model data at s3://jumpstart-cache-prod-...'.
+    Verified against the v3.16.0 baseline: fails at the HubAccessConfig
+    assertion (the created Model resource has no
+    S3DataSource.HubAccessConfig, so artifact access is not brokered and
+    the endpoint cannot serve without public-bucket S3 permissions).
     """
     _deploy_and_assert_hub_access_config(
         hub_name=private_hub,
