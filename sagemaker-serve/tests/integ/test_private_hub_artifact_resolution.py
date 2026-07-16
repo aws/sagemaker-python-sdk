@@ -204,3 +204,226 @@ def test_build_resolves_artifacts_via_private_hub(private_hub, execution_role, s
         f"{model_data_str}. Expected private hub artifact resolution."
     )
     logger.info("Model data resolved to: %s", model_data_str)
+
+
+ALIASED_CONTENT_NAME = "sdk-integ-aliased-phi4-mini"
+NO_S3_ROLE_PREFIX = "sdk-integ-no-s3-role"
+
+_NO_S3_ROLE_POLICY = {
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Action": [
+                "ecr:GetAuthorizationToken",
+                "ecr:BatchCheckLayerAvailability",
+                "ecr:GetDownloadUrlForLayer",
+                "ecr:BatchGetImage",
+            ],
+            "Resource": "*",
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogGroup",
+                "logs:CreateLogStream",
+                "logs:PutLogEvents",
+            ],
+            "Resource": "*",
+        },
+        {
+            "Effect": "Allow",
+            "Action": [
+                "sagemaker:DescribeHub",
+                "sagemaker:DescribeHubContent",
+                "sagemaker:ListHubContents",
+                "sagemaker:ListHubContentVersions",
+            ],
+            "Resource": "*",
+        },
+    ],
+}
+
+
+@pytest.fixture(scope="module")
+def no_s3_execution_role():
+    """Create an execution role with NO S3 permissions whatsoever.
+
+    This encodes the customer-visible contract of private hub brokered
+    access: with HubAccessConfig in the CreateModel call, SageMaker
+    brokers model data access through the hub content reference, so the
+    execution role needs no s3:GetObject on the public JumpStart cache.
+    """
+    import json
+
+    iam = boto3.client("iam", region_name=TEST_REGION)
+    role_name = f"{NO_S3_ROLE_PREFIX}-{uuid.uuid4().hex[:8]}"
+    trust = {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Principal": {"Service": "sagemaker.amazonaws.com"},
+                "Action": "sts:AssumeRole",
+            }
+        ],
+    }
+    try:
+        resp = iam.create_role(
+            RoleName=role_name,
+            AssumeRolePolicyDocument=json.dumps(trust),
+            Description="SDK integ test: private hub deploy with zero S3 access",
+        )
+        iam.put_role_policy(
+            RoleName=role_name,
+            PolicyName="minimal-no-s3",
+            PolicyDocument=json.dumps(_NO_S3_ROLE_POLICY),
+        )
+    except ClientError as e:
+        pytest.skip(f"Cannot create IAM role (likely missing permissions): {e}")
+
+    time.sleep(15)  # IAM propagation
+    yield resp["Role"]["Arn"]
+
+    try:
+        iam.delete_role_policy(RoleName=role_name, PolicyName="minimal-no-s3")
+        iam.delete_role(RoleName=role_name)
+    except Exception as e:
+        logger.warning("Role cleanup failed: %s", e)
+
+
+@pytest.fixture(scope="module")
+def aliased_model_reference(private_hub):
+    """Add a ModelReference whose HubContentName differs from the model_id."""
+    sm = boto3.client("sagemaker", region_name=TEST_REGION)
+    public_arn = (
+        f"arn:aws:sagemaker:{TEST_REGION}:aws:hub-content/"
+        f"SageMakerPublicHub/Model/{TEST_MODEL_ID}"
+    )
+    try:
+        sm.create_hub_content_reference(
+            HubName=private_hub,
+            SageMakerPublicHubContentArn=public_arn,
+            HubContentName=ALIASED_CONTENT_NAME,
+        )
+    except ClientError as e:
+        pytest.skip(f"Cannot create aliased hub content reference: {e}")
+
+    for _ in range(60):
+        try:
+            contents = sm.list_hub_contents(
+                HubName=private_hub, HubContentType="ModelReference"
+            )
+            if any(
+                s["HubContentName"] == ALIASED_CONTENT_NAME
+                and s.get("HubContentStatus") == "Available"
+                for s in contents.get("HubContentSummaries", [])
+            ):
+                break
+        except Exception:
+            pass
+        time.sleep(3)
+    else:
+        pytest.skip(f"Aliased reference {ALIASED_CONTENT_NAME} not available")
+
+    yield ALIASED_CONTENT_NAME
+    # Teardown handled by the private_hub fixture (deletes all references).
+
+
+def _deploy_and_assert_hub_access_config(
+    hub_name, role_arn, sagemaker_session, hub_content_name=None
+):
+    """Build + deploy with the given role; assert HubAccessConfig on the model.
+
+    Returns after cleaning up the endpoint, endpoint config, and model.
+    """
+    suffix = uuid.uuid4().hex[:8]
+    endpoint_name = f"sdk-integ-private-hub-{suffix}"
+    from sagemaker.train.configs import Compute
+
+    config_kwargs = dict(
+        model_id=TEST_MODEL_ID,
+        model_version=TEST_MODEL_VERSION,
+        hub_name=hub_name,
+        accept_eula=True,
+    )
+    if hub_content_name:
+        config_kwargs["hub_content_name"] = hub_content_name
+
+    mb = ModelBuilder.from_jumpstart_config(
+        jumpstart_config=JumpStartConfig(**config_kwargs),
+        compute=Compute(instance_type=TEST_INSTANCE_TYPE),
+        sagemaker_session=sagemaker_session,
+        role_arn=role_arn,
+    )
+
+    sm = boto3.client("sagemaker", region_name=TEST_REGION)
+    try:
+        mb.build(sagemaker_session=sagemaker_session)
+        # deploy(wait=False): CreateModel is the call under test. It fails
+        # synchronously without HubAccessConfig when the role has no S3 access.
+        mb.deploy(endpoint_name=endpoint_name, wait=False)
+
+        # Assert the created Model resource carries HubAccessConfig
+        endpoint = sm.describe_endpoint(EndpointName=endpoint_name)
+        ep_config = sm.describe_endpoint_config(
+            EndpointConfigName=endpoint["EndpointConfigName"]
+        )
+        model_name = ep_config["ProductionVariants"][0]["ModelName"]
+        model = sm.describe_model(ModelName=model_name)
+        container = model.get("PrimaryContainer") or model["Containers"][0]
+        hub_access = (
+            container.get("ModelDataSource", {})
+            .get("S3DataSource", {})
+            .get("HubAccessConfig")
+        )
+        assert hub_access is not None, (
+            "CreateModel succeeded but the model has no "
+            "S3DataSource.HubAccessConfig; private hub access was not brokered"
+        )
+        assert hub_name in hub_access["HubContentArn"]
+    finally:
+        for op, kwargs in (
+            (sm.delete_endpoint, {"EndpointName": endpoint_name}),
+            (sm.delete_endpoint_config, {"EndpointConfigName": endpoint_name}),
+        ):
+            try:
+                op(**kwargs)
+            except Exception:
+                pass
+
+
+@pytest.mark.slow_test
+def test_deploy_with_no_s3_execution_role(
+    private_hub, no_s3_execution_role, sagemaker_session
+):
+    """E2E: deploy from a private hub with an execution role that has ZERO
+    S3 permissions. Passes only when the SDK attaches HubAccessConfig to
+    the CreateModel call (SageMaker brokers artifact access via the hub).
+
+    On v3.16.0 this fails at CreateModel with a ValidationException:
+    'Could not access model data at s3://jumpstart-cache-prod-...'.
+    """
+    _deploy_and_assert_hub_access_config(
+        hub_name=private_hub,
+        role_arn=no_s3_execution_role,
+        sagemaker_session=sagemaker_session,
+    )
+
+
+@pytest.mark.slow_test
+def test_deploy_with_aliased_hub_content_name(
+    private_hub, aliased_model_reference, no_s3_execution_role, sagemaker_session
+):
+    """E2E: deploy a ModelReference whose HubContentName differs from the
+    public model_id, using JumpStartConfig.hub_content_name.
+
+    On v3.16.0 this fails at hub content resolution with ResourceNotFound
+    because the SDK only looks up hub content by model_id.
+    """
+    _deploy_and_assert_hub_access_config(
+        hub_name=private_hub,
+        role_arn=no_s3_execution_role,
+        sagemaker_session=sagemaker_session,
+        hub_content_name=aliased_model_reference,
+    )
