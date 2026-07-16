@@ -18,21 +18,51 @@ from sagemaker.train.common_utils.notifications import (
 
 class TestRuleNaming:
 
-    def test_deterministic_from_arn(self):
-        """Same ARN always produces the same rule name."""
+    def test_deterministic_from_same_config(self):
+        """Same config always produces the same rule name."""
         arn = "arn:aws:sns:us-east-1:123456789:my-topic"
-        assert _get_rule_name(arn) == _get_rule_name(arn)
+        events = ["Completed", "Failed"]
+        assert _get_rule_name(arn, events) == _get_rule_name(arn, events)
 
     def test_different_arns_different_names(self):
         """Different ARNs produce different rule names."""
+        events = ["Completed", "Failed"]
         arn1 = "arn:aws:sns:us-east-1:123456789:topic-a"
         arn2 = "arn:aws:sns:us-east-1:123456789:topic-b"
-        assert _get_rule_name(arn1) != _get_rule_name(arn2)
+        assert _get_rule_name(arn1, events) != _get_rule_name(arn2, events)
+
+    def test_same_topic_different_events_different_names(self):
+        """Same topic with different events produces different rule names."""
+        arn = "arn:aws:sns:us-east-1:123456789:my-topic"
+        assert _get_rule_name(arn, ["Completed"]) != _get_rule_name(arn, ["Completed", "Failed"])
+
+    def test_same_topic_different_prefix_different_names(self):
+        """Same topic with different job_name_prefix produces different rule names."""
+        arn = "arn:aws:sns:us-east-1:123456789:my-topic"
+        events = ["Completed", "Failed"]
+        assert _get_rule_name(arn, events, "team-a-") != _get_rule_name(arn, events, "team-b-")
+
+    def test_same_topic_same_prefix_same_name(self):
+        """Same topic + same events + same prefix = same rule (idempotent)."""
+        arn = "arn:aws:sns:us-east-1:123456789:my-topic"
+        events = ["Completed", "Failed"]
+        assert _get_rule_name(arn, events, "my-prefix-") == _get_rule_name(arn, events, "my-prefix-")
+
+    def test_event_order_does_not_matter(self):
+        """Events are sorted internally, so order doesn't affect the hash."""
+        arn = "arn:aws:sns:us-east-1:123456789:my-topic"
+        assert _get_rule_name(arn, ["Failed", "Completed"]) == _get_rule_name(arn, ["Completed", "Failed"])
 
     def test_prefix_present(self):
         """Rule name starts with the SDK prefix."""
-        name = _get_rule_name("arn:aws:sns:us-east-1:123:topic")
+        name = _get_rule_name("arn:aws:sns:us-east-1:123:topic", ["Completed"])
         assert name.startswith("sm-pysdk-job-notif-")
+
+    def test_no_prefix_vs_none_prefix_same(self):
+        """No prefix and None prefix produce the same rule."""
+        arn = "arn:aws:sns:us-east-1:123:topic"
+        events = ["Completed"]
+        assert _get_rule_name(arn, events) == _get_rule_name(arn, events, None)
 
 
 class TestNormalizeEvents:

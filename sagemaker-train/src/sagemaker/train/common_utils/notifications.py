@@ -16,25 +16,28 @@ logger = logging.getLogger(__name__)
 
 # Rule name prefix used to identify SDK-created rules
 _RULE_NAME_PREFIX = "sm-pysdk-job-notif"
-
-# Default events to notify on
 _DEFAULT_EVENTS = ["Completed", "Failed", "Stopped"]
-
-# Valid event status values
 _VALID_EVENTS = {"Completed", "Failed", "Stopped", "InProgress"}
 
 
-def _get_rule_name(sns_topic_arn: str) -> str:
-    """Generate a deterministic rule name from the SNS topic ARN.
+def _get_rule_name(sns_topic_arn: str, events: List[str], job_name_prefix: Optional[str] = None) -> str:
+    """Generate a deterministic rule name from the full notification config.
+
+    Hashes the topic ARN + events + prefix so that:
+    - Identical configs -> same rule name
+    - Any config difference -> different rule name
 
     Args:
         sns_topic_arn: The SNS topic ARN.
+        events: Normalized list of event statuses.
+        job_name_prefix: Optional job name prefix filter.
 
     Returns:
         Rule name like "sm-pysdk-job-notif-a3f8b2c1".
     """
-    arn_hash = hashlib.sha256(sns_topic_arn.encode()).hexdigest()[:8]
-    return f"{_RULE_NAME_PREFIX}-{arn_hash}"
+    config_str = f"{sns_topic_arn}|{','.join(sorted(events))}|{job_name_prefix or ''}"
+    config_hash = hashlib.sha256(config_str.encode()).hexdigest()[:8]
+    return f"{_RULE_NAME_PREFIX}-{config_hash}"
 
 
 def _normalize_events(events: Optional[List[str]]) -> List[str]:
@@ -184,7 +187,7 @@ def enable_notifications(
     _validate_sns_topic(sns_client, sns_topic_arn)
 
     normalized_events = _normalize_events(events)
-    rule_name = _get_rule_name(sns_topic_arn)
+    rule_name = _get_rule_name(sns_topic_arn, normalized_events, job_name_prefix)
     event_pattern = _build_event_pattern(normalized_events, job_name_prefix)
 
     put_rule_kwargs = {
@@ -202,7 +205,7 @@ def enable_notifications(
 
     # Add SNS topic as target with formatted message
     target_id = f"{rule_name}-sns-target"
-    # Use a JSON object template — SNS renders JSON objects with line breaks
+    # Use a JSON object template
     input_template = (
         '{"Job": "<job_name>",'
         ' "Status": "<status>",'
