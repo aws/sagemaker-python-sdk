@@ -995,13 +995,6 @@ class _ModelBuilderServers(object):
                 init_kwargs_params["model_id"] = hub_content_name
         init_kwargs = get_init_kwargs(**init_kwargs_params)
 
-        # Propagate the hub model reference ARN so the container definition
-        # includes S3DataSource.HubAccessConfig.HubContentArn. Without this,
-        # CreateModel requires the execution role to have s3:GetObject on the
-        # public JumpStart cache bucket, defeating private hub brokered access.
-        if getattr(init_kwargs, "model_reference_arn", None):
-            self.model_reference_arn = init_kwargs.model_reference_arn
-
         # Configure image URI and environment variables
         self.image_uri = self.image_uri or init_kwargs.image_uri
 
@@ -1014,6 +1007,12 @@ class _ModelBuilderServers(object):
             and getattr(init_kwargs, "enable_network_isolation", None) is not None
         ):
             self._enable_network_isolation = init_kwargs.enable_network_isolation
+
+        # Propagate model_reference_arn from init_kwargs so that
+        # _prepare_container_def_base can attach HubAccessConfig to the
+        # CreateModel request (required for private hub brokered access).
+        if getattr(init_kwargs, "model_reference_arn", None):
+            self.model_reference_arn = init_kwargs.model_reference_arn
 
         # Handle model artifacts for fine-tuned models
         if hasattr(init_kwargs, "model_data") and init_kwargs.model_data:
