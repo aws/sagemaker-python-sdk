@@ -568,5 +568,69 @@ class TestHubContentNameSupport(unittest.TestCase):
         )
 
 
+class TestCreateModelContainerDefinition(unittest.TestCase):
+    """Full-chain test: after a private hub build, the container definition
+    that the SDK sends to the CreateModel API must carry
+    S3DataSource.HubAccessConfig.HubContentArn.
+
+    This exercises the real path end to end at the unit level:
+    _build_for_jumpstart -> self.model_reference_arn ->
+    _prepare_container_def_base -> container_def -> CreateModel payload.
+    No individual link is mocked between the builder attribute and the
+    final dict. This is the payload-shape assertion that, had it existed,
+    would have caught the regression that shipped in v3.15.1-v3.16.0.
+    """
+
+    def setUp(self):
+        self.mock_session = _mock_session()
+        # _prepare_container_def_base consults session config lookups that
+        # iterate the config object; a bare Mock is not iterable.
+        self.mock_session.config = None
+
+    def _container_def_after_build(self, model_reference_arn, hub_arn=MOCK_HUB_ARN):
+        helper = TestModelReferenceArnPropagation()
+        helper.mock_session = self.mock_session
+        builder, _ = helper._build(
+            model_reference_arn=model_reference_arn, hub_arn=hub_arn
+        )
+        # A JumpStart hub deploy has no custom inference code to upload;
+        # ensure the code-upload branch (which would call S3) is not taken.
+        builder.source_dir = None
+        builder.dependencies = None
+        builder.entry_point = None
+        builder.git_config = None
+        # _prepare_container_def_base builds the exact container definition
+        # dict passed to the CreateModel API as PrimaryContainer/Containers.
+        return builder._prepare_container_def_base()
+
+    def test_create_model_container_def_includes_hub_access_config(self):
+        """Private hub build: CreateModel payload must include HubAccessConfig."""
+        c_def = self._container_def_after_build(
+            model_reference_arn=MOCK_MODEL_REFERENCE_ARN
+        )
+
+        self.assertIn("ModelDataSource", c_def)
+        s3_data_source = c_def["ModelDataSource"]["S3DataSource"]
+        self.assertEqual(
+            s3_data_source.get("HubAccessConfig"),
+            {"HubContentArn": MOCK_MODEL_REFERENCE_ARN},
+            "The container definition sent to CreateModel is missing "
+            "HubAccessConfig; the execution role would need s3:GetObject on "
+            "the public JumpStart cache bucket, defeating private hub "
+            "brokered access.",
+        )
+
+    def test_create_model_container_def_no_hub_access_config_for_public(self):
+        """Public catalog build: CreateModel payload must NOT include HubAccessConfig."""
+        c_def = self._container_def_after_build(
+            model_reference_arn=None, hub_arn=None
+        )
+
+        self.assertIn("ModelDataSource", c_def)
+        self.assertNotIn(
+            "HubAccessConfig", c_def["ModelDataSource"]["S3DataSource"]
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
