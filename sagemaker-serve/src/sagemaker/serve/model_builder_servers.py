@@ -988,7 +988,19 @@ class _ModelBuilderServers(object):
         hub_arn = getattr(self, "hub_arn", None)
         if hub_arn:
             init_kwargs_params["hub_arn"] = hub_arn
+            # When the private hub content reference is named differently from
+            # the public model_id, resolve hub content by its actual name.
+            hub_content_name = getattr(self, "hub_content_name", None)
+            if hub_content_name:
+                init_kwargs_params["model_id"] = hub_content_name
         init_kwargs = get_init_kwargs(**init_kwargs_params)
+
+        # Propagate the hub model reference ARN so the container definition
+        # includes S3DataSource.HubAccessConfig.HubContentArn. Without this,
+        # CreateModel requires the execution role to have s3:GetObject on the
+        # public JumpStart cache bucket, defeating private hub brokered access.
+        if getattr(init_kwargs, "model_reference_arn", None):
+            self.model_reference_arn = init_kwargs.model_reference_arn
 
         # Configure image URI and environment variables
         self.image_uri = self.image_uri or init_kwargs.image_uri
