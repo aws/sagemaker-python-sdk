@@ -398,6 +398,46 @@ def _init_kwargs_mock(model_reference_arn):
     return mock_init_kwargs
 
 
+def _build_jumpstart_builder(
+    sagemaker_session, model_reference_arn, hub_arn=MOCK_HUB_ARN, hub_content_name=None
+):
+    """Run _build_for_jumpstart on a ModelBuilder with get_init_kwargs mocked.
+
+    Returns (builder, mock_get_kwargs). Only the factory resolution and
+    model creation are mocked; the builder attribute plumbing under test
+    runs for real.
+    """
+    with _PATCH_IS_JS, patch(
+        "sagemaker.core.jumpstart.utils.validate_model_id_and_get_type",
+        return_value=None,
+    ), patch(
+        "sagemaker.core.jumpstart.factory.utils.get_init_kwargs"
+    ) as mock_get_kwargs, patch(
+        "sagemaker.serve.model_builder.ModelBuilder._create_model"
+    ) as mock_create, patch(
+        "sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode"
+    ):
+        mock_get_kwargs.return_value = _init_kwargs_mock(model_reference_arn)
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID,
+            role_arn=MOCK_ROLE_ARN,
+            sagemaker_session=sagemaker_session,
+            mode=Mode.SAGEMAKER_ENDPOINT,
+        )
+        builder._optimizing = False
+        builder.model_version = MOCK_MODEL_VERSION
+        if hub_arn:
+            builder.hub_name = MOCK_HUB_NAME
+            builder.hub_arn = hub_arn
+        if hub_content_name:
+            builder.hub_content_name = hub_content_name
+
+        builder._build_for_jumpstart()
+        return builder, mock_get_kwargs
+
+
 class TestModelReferenceArnPropagation(unittest.TestCase):
     """Regression tests: model_reference_arn resolved by get_init_kwargs must be
     propagated onto the builder so the container definition attaches
@@ -411,37 +451,6 @@ class TestModelReferenceArnPropagation(unittest.TestCase):
     def setUp(self):
         self.mock_session = _mock_session()
 
-    def _build(self, model_reference_arn, hub_arn=MOCK_HUB_ARN, hub_content_name=None):
-        with _PATCH_IS_JS, patch(
-            "sagemaker.core.jumpstart.utils.validate_model_id_and_get_type",
-            return_value=None,
-        ), patch(
-            "sagemaker.core.jumpstart.factory.utils.get_init_kwargs"
-        ) as mock_get_kwargs, patch(
-            "sagemaker.serve.model_builder.ModelBuilder._create_model"
-        ) as mock_create, patch(
-            "sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode"
-        ):
-            mock_get_kwargs.return_value = _init_kwargs_mock(model_reference_arn)
-            mock_create.return_value = Mock()
-
-            builder = ModelBuilder(
-                model=MOCK_MODEL_ID,
-                role_arn=MOCK_ROLE_ARN,
-                sagemaker_session=self.mock_session,
-                mode=Mode.SAGEMAKER_ENDPOINT,
-            )
-            builder._optimizing = False
-            builder.model_version = MOCK_MODEL_VERSION
-            if hub_arn:
-                builder.hub_name = MOCK_HUB_NAME
-                builder.hub_arn = hub_arn
-            if hub_content_name:
-                builder.hub_content_name = hub_content_name
-
-            builder._build_for_jumpstart()
-            return builder, mock_get_kwargs
-
     def test_model_reference_arn_propagated_from_init_kwargs(self):
         """The ARN resolved by the factory must land on the builder instance.
 
@@ -449,7 +458,9 @@ class TestModelReferenceArnPropagation(unittest.TestCase):
         hub_arn was forwarded to get_init_kwargs (PR #5985), but the resulting
         model_reference_arn was dropped, so CreateModel never got HubAccessConfig.
         """
-        builder, _ = self._build(model_reference_arn=MOCK_MODEL_REFERENCE_ARN)
+        builder, _ = _build_jumpstart_builder(
+            self.mock_session, model_reference_arn=MOCK_MODEL_REFERENCE_ARN
+        )
 
         self.assertEqual(
             getattr(builder, "model_reference_arn", None),
@@ -461,7 +472,9 @@ class TestModelReferenceArnPropagation(unittest.TestCase):
 
     def test_model_reference_arn_absent_for_public_catalog(self):
         """No private hub: model_reference_arn must remain unset (public path unchanged)."""
-        builder, _ = self._build(model_reference_arn=None, hub_arn=None)
+        builder, _ = _build_jumpstart_builder(
+            self.mock_session, model_reference_arn=None, hub_arn=None
+        )
 
         self.assertIsNone(getattr(builder, "model_reference_arn", None))
 
@@ -520,9 +533,8 @@ class TestHubContentNameSupport(unittest.TestCase):
 
     def test_hub_content_name_used_as_lookup_model_id(self):
         """When hub_content_name is set, get_init_kwargs must receive it as model_id."""
-        helper = TestModelReferenceArnPropagation()
-        helper.mock_session = self.mock_session
-        _, mock_get_kwargs = helper._build(
+        _, mock_get_kwargs = _build_jumpstart_builder(
+            self.mock_session,
             model_reference_arn=MOCK_MODEL_REFERENCE_ARN,
             hub_content_name=MOCK_HUB_CONTENT_NAME,
         )
@@ -532,9 +544,9 @@ class TestHubContentNameSupport(unittest.TestCase):
 
     def test_model_id_used_when_no_hub_content_name(self):
         """Without hub_content_name, the model_id is used for the hub lookup."""
-        helper = TestModelReferenceArnPropagation()
-        helper.mock_session = self.mock_session
-        _, mock_get_kwargs = helper._build(model_reference_arn=MOCK_MODEL_REFERENCE_ARN)
+        _, mock_get_kwargs = _build_jumpstart_builder(
+            self.mock_session, model_reference_arn=MOCK_MODEL_REFERENCE_ARN
+        )
 
         call_kwargs = mock_get_kwargs.call_args.kwargs
         self.assertEqual(call_kwargs.get("model_id"), MOCK_MODEL_ID)
@@ -588,10 +600,8 @@ class TestCreateModelContainerDefinition(unittest.TestCase):
         self.mock_session.config = None
 
     def _container_def_after_build(self, model_reference_arn, hub_arn=MOCK_HUB_ARN):
-        helper = TestModelReferenceArnPropagation()
-        helper.mock_session = self.mock_session
-        builder, _ = helper._build(
-            model_reference_arn=model_reference_arn, hub_arn=hub_arn
+        builder, _ = _build_jumpstart_builder(
+            self.mock_session, model_reference_arn=model_reference_arn, hub_arn=hub_arn
         )
         # A JumpStart hub deploy has no custom inference code to upload;
         # ensure the code-upload branch (which would call S3) is not taken.
