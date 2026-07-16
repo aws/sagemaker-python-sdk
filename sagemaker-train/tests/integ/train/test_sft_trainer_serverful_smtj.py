@@ -40,14 +40,9 @@ from sagemaker.train import SFTTrainer
 from sagemaker.train.common import TrainingType
 from sagemaker.core.training.configs import TrainingJobCompute
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(levelname)s - %(name)s - %(message)s",
-)
 logger = logging.getLogger(__name__)
 
 # Test configuration
-REGION = "us-east-1"
 DATA_PREFIX = "sft-smtj-integ"
 DATA_S3_KEY = f"{DATA_PREFIX}/sft_smtj_sample_data.jsonl"
 
@@ -91,7 +86,7 @@ def training_resources(sagemaker_session_us_east_1):
         - bucket_name: the default bucket name
     """
     bucket_name = sagemaker_session_us_east_1.default_bucket()
-    s3_client = sagemaker_session_us_east_1.boto_session.client("s3", region_name=REGION)
+    s3_client = sagemaker_session_us_east_1.boto_session.client("s3")
     training_dataset = _ensure_training_data(s3_client, bucket_name)
 
     return {
@@ -121,21 +116,29 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
         s3_output_path=training_resources["s3_output_path"],
         compute=TrainingJobCompute(
             instance_type="ml.p5.48xlarge",
-            instance_count=2,
+            instance_count=4,
         ),
         sagemaker_session=sagemaker_session_us_east_1,
-        overrides={"training_config": {"learning_rate": 5e-6, "max_epochs": 5}},
+        overrides={"training_config": {"learning_rate": 5e-6, "max_steps": 5, "save_steps": 5}},
         base_job_name=f"sft-smtj-integ-{unique_id}",
     )
 
     # Verify recipe overrides are resolved correctly
     resolved = sft_trainer.get_resolved_recipe()
-    training_args = resolved["training_config"]["training_args"]
-    assert training_args["learning_rate"] == 5e-6
-    assert training_args["max_epochs"] == 5
+    training_config = resolved["training_config"]
+    logger.info(f"Resolved training_config keys: {list(training_config.keys())}")
+
+    # Nova recipes map override fields to their recipe-native names:
+    #   learning_rate → optim_config.lr
+    #   max_steps → max_steps (direct)
+    assert training_config["optim_config"]["lr"] == 5e-6, (
+        f"Expected optim_config.lr=5e-6, got: {training_config['optim_config']}"
+    )
+    assert training_config["max_steps"] == 5, (
+        f"Expected max_steps=5, got: {training_config.get('max_steps')}"
+    )
 
     # Set additional hyperparameters
-    sft_trainer.hyperparameters.max_steps = 50
     sft_trainer.hyperparameters.global_batch_size = 32
 
     # Submit (non-blocking)
