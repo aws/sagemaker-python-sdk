@@ -26,7 +26,7 @@ import uuid
 import platform
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union, Set
+from typing import Any, Dict, List, Optional, TYPE_CHECKING, Union, Set
 from botocore.exceptions import ClientError
 import packaging.version
 
@@ -82,7 +82,7 @@ from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.core.inference_config import ResourceRequirements
 from sagemaker.serve.inference_recommendation_mixin import _InferenceRecommenderMixin
-from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
+from sagemaker.serve.model_builder_utils import _ModelBuilderUtils, SPECULATIVE_DRAFT_MODEL
 from sagemaker.serve.model_builder_servers import _ModelBuilderServers
 from sagemaker.serve.validations.optimization import _validate_optimization_configuration
 from sagemaker.core.enums import Tag
@@ -142,6 +142,12 @@ from sagemaker.serve.constants import (
     Framework,
 )
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
+
+if TYPE_CHECKING:
+    from sagemaker.serve.ai_inference_recommender._constants import (
+        InferenceFramework,
+        PerformanceTarget,
+    )
 from sagemaker.core import fw_utils
 from sagemaker.core.helper.session_helper import container_def
 from sagemaker.core.workflow import is_pipeline_variable
@@ -3904,6 +3910,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         mb_instance.resource_requirements = resource_requirements
         mb_instance.model_kms_key = model_kms_key
         mb_instance.hub_name = jumpstart_config.hub_name
+        mb_instance.hub_content_name = getattr(jumpstart_config, "hub_content_name", None)
         if mb_instance.hub_name and not getattr(mb_instance, "hub_arn", None):
             from sagemaker.core.jumpstart.hub.utils import (
                 generate_hub_arn_for_init_kwargs,
@@ -4122,7 +4129,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         kms_key: Optional[str] = None,
         image_uri: Optional[str] = None,
         max_runtime_in_sec: Optional[int] = 36000,
-    ) -> Model:
+    ):
         """Create an optimized deployable ``Model`` instance with ``ModelBuilder``.
 
         Runs a SageMaker model optimization job to quantize, compile, or shard the model
@@ -4183,10 +4190,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             ...     instance_type="ml.g5.xlarge",
             ...     quantization_config={'OverrideEnvironment': {'OPTION_QUANTIZE': 'awq'}}
             ... )
-            >>> endpoint = model_builder.deploy()  # Deploy the optimized model
+            >>> endpoint = model_builder.deploy()
             >>> result = endpoint.invoke(data=input_data)
-        """
 
+        For deployment recommendations across candidate instance types and
+        optimization variants, see :meth:`generate_deployment_recommendations`.
+        """
         # Update parameters if provided
         if region and region != self.region:
             logger.warning(
@@ -4420,6 +4429,467 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="ModelBuilder.generate_deployment_recommendations",
+    )
+    def generate_deployment_recommendations(
+        self,
+        workload=None,
+        performance_target: Optional[Union[str, "PerformanceTarget"]] = None,
+        *,
+        output_path: Optional[str] = None,
+        role_arn: Optional[str] = None,
+        instance_types: Optional[List[str]] = None,
+        capacity_reservation_arns: Optional[List[str]] = None,
+        advanced_optimization: bool = True,
+        framework: Optional[Union[str, "InferenceFramework"]] = None,
+        model_package_group: Optional[str] = None,
+        tags: Optional[Tags] = None,
+        job_name: Optional[str] = None,
+        workload_config_name: Optional[str] = None,
+        wait: bool = True,
+        **workload_kwargs: Any,
+    ):
+        """Run an ``AIRecommendationJob`` for the model on this builder.
+
+        The service explores deployment configurations across the candidate
+        instance types and ranks them against ``performance_target``.
+        Inspect ranked rows via ``self.recommendations``; deploy a row with
+        ``self.deploy(role=role)`` (top recommendation) or
+        ``self.deploy(role=role, recommendation_index=N)``.
+
+        Args:
+            workload: Optional. A ``Workload`` instance, or the name/ARN of
+                an existing ``AIWorkloadConfig``. Omit and pass workload
+                keyword arguments inline (``tokenizer=``, ``concurrency=``,
+                etc.) to construct a synthetic workload on the fly.
+                ``tokenizer`` defaults to the model configured on this builder.
+            performance_target: Required. A ``PerformanceTarget`` member
+                (``THROUGHPUT``, ``TTFT_MS``, ``COST``) or the equivalent string.
+            output_path: ``s3://`` URI for recommendation output. Defaults
+                to the session's default bucket.
+            role_arn: IAM execution role ARN. Defaults to the role configured
+                on this builder, then to the session's execution role.
+            instance_types: Up to 3 candidate instance types to evaluate.
+            capacity_reservation_arns: Optional list of ML reservation ARNs.
+            advanced_optimization: If ``True`` (default), let the service
+                explore optimization variants (speculative decoding, kernel
+                tuning) on top of the candidate instance types.
+            framework: An ``InferenceFramework`` member (``LMI``, ``VLLM``) or
+                the equivalent string.
+            model_package_group: Optional model package group identifier.
+            tags: Optional resource tags.
+            job_name: Optional job name. Auto-generated if omitted.
+            workload_config_name: Optional name for the auto-created
+                workload config. Auto-generated if omitted.
+            wait: If ``True`` (default), block until the job reaches a
+                terminal state.
+            **workload_kwargs: Inline workload parameters, only used when
+                ``workload`` is omitted. Forwarded to
+                :meth:`Workload.synthetic`.
+
+        Returns:
+            The created ``AIRecommendationJob``. When ``wait=True``, the job
+            is in a terminal state on return; ``self.recommendations`` is
+            populated.
+        """
+        from sagemaker.serve.ai_inference_recommender import Workload
+        from sagemaker.serve.ai_inference_recommender._model_builder_methods import (
+            run_recommendation_job,
+        )
+
+        if performance_target is None:
+            raise ValueError(
+                "performance_target is required. "
+                "Use 'throughput', 'ttft-ms', or 'cost'."
+            )
+
+        if workload is None:
+            if not workload_kwargs:
+                raise ValueError(
+                    "generate_deployment_recommendations requires either a "
+                    "workload= argument or inline workload keyword "
+                    "arguments (e.g. tokenizer=...)."
+                )
+            if "tokenizer" not in workload_kwargs:
+                inferred = self._infer_tokenizer()
+                if inferred is None:
+                    raise ValueError(
+                        "Could not infer a tokenizer from this builder; pass "
+                        "tokenizer=... explicitly."
+                    )
+                workload_kwargs["tokenizer"] = inferred
+            workload = Workload.synthetic(**workload_kwargs)
+        elif workload_kwargs:
+            raise ValueError(
+                "generate_deployment_recommendations accepts either workload= "
+                "or inline workload keyword arguments, not both."
+            )
+
+        job = run_recommendation_job(
+            self,
+            workload=workload,
+            performance_target=performance_target,
+            output_path=output_path,
+            role_arn=role_arn,
+            instance_types=instance_types,
+            capacity_reservation_arns=capacity_reservation_arns,
+            advanced_optimization=advanced_optimization,
+            framework=framework,
+            model_package_group=model_package_group,
+            tags=tags,
+            name=job_name,
+            workload_config_name=workload_config_name,
+            wait=wait,
+        )
+        self._recommendation_job = job
+        return job
+
+    def _infer_tokenizer(self) -> Optional[str]:
+        """Resolve a HuggingFace tokenizer id for the model on this builder.
+
+        Returns the HuggingFace id for the configured model, or ``None`` if one
+        cannot be determined.
+        """
+        mapping = getattr(self, "_jumpstart_mapping", None) or {}
+        current = getattr(self, "model", None)
+        if isinstance(current, str):
+            for hf_id, meta in mapping.items():
+                if meta.get("jumpstart-model-id") == current:
+                    return hf_id
+            if "/" in current:
+                return current
+        return None
+
+    @property
+    def recommendations(self):
+        """Recommendation rows from the most recent ``generate_deployment_recommendations`` call.
+
+        Returns a list-like view; ``repr()`` renders a comparative table across
+        rows, and ``.best`` is a shortcut for the top-ranked row. Each row
+        forwards attribute access to the underlying service shape (e.g.,
+        ``rec.deployment_configuration.instance_type``).
+
+        Deploy via ``self.deploy(recommendation_index=N)`` or
+        ``self.deploy(recommendation_spec_name="...")``.
+
+        Empty if no recommendation job has been run, or if the job has not
+        produced recommendations yet.
+        """
+        from sagemaker.serve.ai_inference_recommender._recommendation_view import (
+            _RecommendationView,
+            _RecommendationsView,
+        )
+
+        job = getattr(self, "_recommendation_job", None)
+        if job is None:
+            return _RecommendationsView()
+        rows = list(job.recommendations or [])
+        return _RecommendationsView(
+            _RecommendationView(row, index=i) for i, row in enumerate(rows)
+        )
+
+    @classmethod
+    def from_recommendation_job(
+        cls,
+        recommendation_job,
+        *,
+        sagemaker_session: Optional[Session] = None,
+    ) -> "ModelBuilder":
+        """Create a ``ModelBuilder`` from an existing ``AIRecommendationJob``.
+
+        Use this to deploy a recommendation from a job that this Python
+        process didn't run (e.g. a job kicked off in a notebook last week,
+        or owned by a teammate). After construction, call
+        :meth:`deploy` with ``recommendation_index=`` or
+        ``recommendation_spec_name=`` as you would after ``generate_deployment_recommendations``.
+
+        Args:
+            recommendation_job: Either the name of an existing
+                ``AIRecommendationJob`` or an ``AIRecommendationJob`` resource.
+            sagemaker_session: Optional SageMaker session. Used only when
+                ``recommendation_job`` is a name and we have to ``.get()`` it.
+
+        Returns:
+            A ``ModelBuilder`` ready for ``.deploy(...)``.
+
+        Example:
+            >>> mb = ModelBuilder.from_recommendation_job("my-rec-job")
+            >>> endpoint = mb.deploy(role=role, recommendation_index=0)
+        """
+        from sagemaker.core.resources import AIRecommendationJob
+
+        if isinstance(recommendation_job, str):
+            job = AIRecommendationJob.get(
+                ai_recommendation_job_name=recommendation_job,
+                session=sagemaker_session,
+            )
+        else:
+            job = recommendation_job
+
+        builder = cls(sagemaker_session=sagemaker_session) if sagemaker_session else cls()
+        builder._recommendation_job = job
+        return builder
+
+    def _deploy_recommendation(
+        self,
+        *,
+        recommendation_index: int,
+        recommendation_spec_name: Optional[str],
+        endpoint_name: Optional[str],
+        model_name: Optional[str],
+        endpoint_config_name: Optional[str],
+        role: Optional[str],
+        instance_type: Optional[str],
+        initial_instance_count: Optional[int],
+        tags: Optional[List[Dict[str, str]]],
+        wait: bool,
+        auto_approve: bool = False,
+    ) -> Endpoint:
+        """Deploy a row from ``self._recommendation_job`` to a live endpoint.
+
+        ModelPackage path only: every recommendation row carries a
+        ``ModelPackageArn`` per the AI inference recommender API contract.
+        The package must be Approved before deploy (``CreateModel`` requires
+        it); pass ``auto_approve=True`` to approve it in place instead of
+        raising. Model + EndpointConfig + Endpoint are created from the package.
+
+        Row selection: ``recommendation_spec_name`` wins over
+        ``recommendation_index`` when both are given.
+        """
+        import time as _time
+        import uuid as _uuid
+        from sagemaker.core.shapes.shapes import (
+            AdditionalModelDataSource as _AdditionalModelDataSource,
+            ContainerDefinition as _ContainerDefinition,
+            ModelDataSource as _ModelDataSource,
+            ProductionVariant as _ProductionVariant,
+            ProductionVariantRoutingConfig as _ProductionVariantRoutingConfig,
+            S3ModelDataSource as _S3ModelDataSource,
+        )
+
+        role = role or self.role_arn
+        if role is None:
+            raise ValueError(
+                "deploy() requires role (IAM execution role ARN) when "
+                "deploying a recommendation. The role is used as the "
+                "ExecutionRoleArn on the new Model."
+            )
+
+        rows = (self._recommendation_job.recommendations or [])
+        if not rows:
+            self._recommendation_job.refresh()
+            rows = (self._recommendation_job.recommendations or [])
+        if not rows:
+            status = self._recommendation_job.ai_recommendation_job_status
+            failure_reason = getattr(self._recommendation_job, "failure_reason", None)
+            raise RuntimeError(
+                f"AIRecommendationJob has no recommendations (status={status}). "
+                f"{'Job failed: ' + str(failure_reason) if status == 'Failed' else 'Call job.wait() before deploy.'}"
+            )
+
+        if recommendation_spec_name is not None:
+            matches = [
+                row for row in rows
+                if getattr(getattr(row, "model_details", None), "inference_specification_name", None)
+                == recommendation_spec_name
+            ]
+            if not matches:
+                available = sorted({
+                    name for name in (
+                        getattr(getattr(row, "model_details", None), "inference_specification_name", None)
+                        for row in rows
+                    )
+                    if name
+                })
+                raise ValueError(
+                    f"No recommendation row matches recommendation_spec_name="
+                    f"{recommendation_spec_name!r}. "
+                    f"Available: {available or '(none reported)'}."
+                )
+            if len(matches) > 1:
+                logger.warning(
+                    "recommendation_spec_name=%r matched %d recommendations; "
+                    "deploying the first. Use recommendation_index to pick a "
+                    "specific one.",
+                    recommendation_spec_name,
+                    len(matches),
+                )
+            rec = matches[0]
+        else:
+            if not 0 <= recommendation_index < len(rows):
+                raise ValueError(
+                    f"recommendation_index={recommendation_index} is out of range; "
+                    f"the recommendation job returned {len(rows)} recommendation(s) "
+                    f"(valid indices 0..{len(rows) - 1})."
+                )
+            rec = rows[recommendation_index]
+        model_details = getattr(rec, "model_details", None)
+        deployment_config = getattr(rec, "deployment_configuration", None)
+
+        model_package_arn = getattr(model_details, "model_package_arn", None) if model_details else None
+        if not model_package_arn:
+            raise ValueError(
+                "Recommendation has no ModelPackageArn; cannot deploy. "
+                f"Raw recommendation: {rec}"
+            )
+        inference_specification_name = (
+            getattr(model_details, "inference_specification_name", None) if model_details else None
+        )
+
+        # Thread the builder's session through the create calls so they use the
+        # same region/account as the ModelPackage below, not the SDK default.
+        boto_session = getattr(self.sagemaker_session, "boto_session", None)
+
+        # CreateModel(ModelPackageName=...) requires an Approved package.
+        # Approval is a governance gate the caller owns, so require it by
+        # default and only approve in place when auto_approve is set.
+        sm_client = self.sagemaker_session.sagemaker_client
+        described = sm_client.describe_model_package(ModelPackageName=model_package_arn)
+        approval_status = described.get("ModelApprovalStatus")
+        if approval_status != "Approved":
+            if not auto_approve:
+                raise ValueError(
+                    f"ModelPackage {model_package_arn} has approval status "
+                    f"{approval_status!r} and cannot be deployed. Approve it "
+                    "first (e.g. sagemaker_client.update_model_package("
+                    "ModelPackageArn=..., ModelApprovalStatus='Approved')), or "
+                    "pass auto_approve=True to approve it as part of deploy."
+                )
+            logger.warning(
+                "Auto-approving ModelPackage %s (status was %s) before deploy; "
+                "this bypasses any manual-approval governance on its model "
+                "package group.",
+                model_package_arn,
+                approval_status,
+            )
+            sm_client.update_model_package(
+                ModelPackageArn=model_package_arn,
+                ModelApprovalStatus="Approved",
+                ApprovalDescription="Approved by ModelBuilder recommendation deploy",
+            )
+
+        suffix = _uuid.uuid4().hex[:8]
+        ts = int(_time.time())
+        resolved_model_name = model_name or f"sm-rec-model-{ts}-{suffix}"
+        resolved_endpoint_config_name = (
+            endpoint_config_name or f"sm-rec-config-{ts}-{suffix}"
+        )
+        resolved_endpoint_name = endpoint_name or f"sm-rec-endpoint-{ts}-{suffix}"
+
+        # Optimized recommendations put the base weights (and any draft model)
+        # in additional model data sources with an empty primary source. Promote
+        # base_model to the primary source, and keep any draft channel attached
+        # so OPTION_SPECULATIVE_DRAFT_MODEL points at a populated path.
+        pkg_container = (
+            described.get("InferenceSpecification", {}).get("Containers", [{}]) or [{}]
+        )[0]
+        additional_sources = pkg_container.get("AdditionalModelDataSources") or []
+        by_channel = {s.get("ChannelName"): s for s in additional_sources}
+        base_source = by_channel.get("base_model")
+
+        primary_model_dir = "/opt/ml/model"
+        if base_source:
+            base_s3 = base_source.get("S3DataSource", {})
+            base_channel_path = f"{SPECULATIVE_DRAFT_MODEL}/base_model"
+            # Repoint env vars (e.g. HF_MODEL_ID) that referenced the old
+            # channel path to the primary mount now holding the base weights.
+            env = {
+                k: (primary_model_dir if v == base_channel_path else v)
+                for k, v in (pkg_container.get("Environment") or {}).items()
+            }
+            # Keep any draft channel attached and point the env var at its mount.
+            draft_sources = []
+            for channel_name, source in by_channel.items():
+                if channel_name == "base_model":
+                    continue
+                draft_s3 = source.get("S3DataSource", {})
+                draft_sources.append(
+                    _AdditionalModelDataSource(
+                        channel_name=channel_name,
+                        s3_data_source=_S3ModelDataSource(
+                            s3_uri=draft_s3.get("S3Uri"),
+                            s3_data_type=draft_s3.get("S3DataType", "S3Prefix"),
+                            compression_type=draft_s3.get("CompressionType", "None"),
+                        ),
+                    )
+                )
+                env["OPTION_SPECULATIVE_DRAFT_MODEL"] = (
+                    f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"
+                )
+            primary_container = _ContainerDefinition(
+                image=pkg_container.get("Image"),
+                model_data_source=_ModelDataSource(
+                    s3_data_source=_S3ModelDataSource(
+                        s3_uri=base_s3.get("S3Uri"),
+                        s3_data_type=base_s3.get("S3DataType", "S3Prefix"),
+                        compression_type=base_s3.get("CompressionType", "None"),
+                    )
+                ),
+                additional_model_data_sources=draft_sources or None,
+                environment=env,
+            )
+        else:
+            container_def_kwargs = {"model_package_name": model_package_arn}
+            if inference_specification_name:
+                container_def_kwargs[
+                    "inference_specification_name"
+                ] = inference_specification_name
+            primary_container = _ContainerDefinition(**container_def_kwargs)
+
+        Model.create(
+            model_name=resolved_model_name,
+            primary_container=primary_container,
+            execution_role_arn=role,
+            tags=tags,
+            session=boto_session,
+        )
+
+        rec_instance_type = getattr(deployment_config, "instance_type", None) if deployment_config else None
+        rec_instance_count = getattr(deployment_config, "instance_count", None) if deployment_config else None
+        rec_copy_count = (
+            getattr(deployment_config, "copy_count_per_instance", None)
+            if deployment_config
+            else None
+        )
+
+        # The recommendation's instance count wins over deploy()'s default of 1;
+        # an explicit initial_instance_count > 1 still overrides it.
+        resolved_instance_count = rec_instance_count or 1
+        if initial_instance_count and initial_instance_count > 1:
+            resolved_instance_count = initial_instance_count
+
+        variant_kwargs: Dict[str, Any] = {
+            "variant_name": "AllTraffic",
+            "model_name": resolved_model_name,
+            "instance_type": instance_type or rec_instance_type,
+            "initial_instance_count": resolved_instance_count,
+        }
+        if rec_copy_count and rec_copy_count > 1:
+            variant_kwargs["inference_ami_version"] = "al2-ami-sagemaker-inference-gpu-2"
+            variant_kwargs["routing_config"] = _ProductionVariantRoutingConfig(
+                routing_strategy="LEAST_OUTSTANDING_REQUESTS"
+            )
+        production_variant = _ProductionVariant(**variant_kwargs)
+
+        EndpointConfig.create(
+            endpoint_config_name=resolved_endpoint_config_name,
+            production_variants=[production_variant],
+            tags=tags,
+            session=boto_session,
+        )
+
+        endpoint = Endpoint.create(
+            endpoint_name=resolved_endpoint_name,
+            endpoint_config_name=resolved_endpoint_config_name,
+            tags=tags,
+            session=boto_session,
+        )
+        if wait:
+            endpoint.wait_for_status(target_status="InService")
+        return endpoint
+
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
         func_name="model_builder.deploy",
         telemetry_params=[
             ("mode", TelemetryParamType.ATTR_VALUE),
@@ -4448,6 +4918,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         ] = None,
         custom_orchestrator_instance_type: str = None,
         custom_orchestrator_initial_instance_count: int = None,
+        # Recommendation-mode kwargs. These take effect only on the
+        # recommendation deploy path (a recommendation job is attached and
+        # use_recommendation is not False); they are ignored when deploying a
+        # normally-built model. That path is taken when
+        # generate_deployment_recommendations was called previously, or when
+        # this builder was hydrated via ModelBuilder.from_recommendation_job(...).
+        use_recommendation: Optional[bool] = None,
+        recommendation_index: int = 0,
+        recommendation_spec_name: Optional[str] = None,
+        auto_approve: bool = False,
+        role: Optional[str] = None,
+        model_name: Optional[str] = None,
+        endpoint_config_name: Optional[str] = None,
         **kwargs,
     ) -> Union[Endpoint, LocalEndpoint, Transformer]:
         """Deploy the built model to an ``Endpoint``.
@@ -4481,6 +4964,28 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 orchestrator deployment. (Default: None).
             custom_orchestrator_initial_instance_count (int, optional): Initial instance count
                 for custom orchestrator deployment. (Default: None).
+            use_recommendation (bool, optional): Controls the recommendation deploy path.
+                None (default) deploys the recommendation when a recommendation job is
+                attached, else the built model. False forces the built-model path even if a
+                job is attached. True requires an attached job and errors otherwise.
+            recommendation_index (int): Recommendation deploy only. Index of the recommendation
+                row to deploy. (Default: 0, the top-ranked row). Ignored when deploying a
+                normally-built model.
+            recommendation_spec_name (str, optional): Recommendation deploy only. Deploy the row
+                with this inference specification name instead of by index. Ignored when
+                deploying a normally-built model.
+            auto_approve (bool): Recommendation deploy only. If True, approve the recommendation's
+                ModelPackage in place when it is not already Approved (bypassing manual-approval
+                governance on its model package group); if False (default), an unapproved package
+                raises. Ignored when deploying a normally-built model.
+            role (str, optional): Recommendation deploy only. Execution role ARN for the Model
+                created from the recommendation's ModelPackage; defaults to the builder's role_arn.
+                Ignored when deploying a normally-built model (that path uses the builder's role).
+            model_name (str, optional): Recommendation deploy only. Name for the created Model;
+                auto-generated if omitted. Ignored when deploying a normally-built model.
+            endpoint_config_name (str, optional): Recommendation deploy only. Name for the created
+                EndpointConfig; auto-generated if omitted. Ignored when deploying a normally-built
+                model.
         Returns:
             Union[Endpoint, LocalEndpoint, Transformer]: A ``sagemaker.core.resources.Endpoint``
                 resource representing the deployed endpoint, a ``LocalEndpoint`` for local mode,
@@ -4499,6 +5004,36 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "Please create a new ModelBuilder instance for additional deployments."
             )
         self._deployed = True
+
+        # Recommendation-mode deploy: when a recommendation job is attached
+        # (from a prior generate_deployment_recommendations call, or because the
+        # builder was hydrated via ModelBuilder.from_recommendation_job), deploy
+        # the recommended config from its ModelPackage instead of a built model
+        # (this skips the build() requirement). Precedence: use_recommendation
+        # defaults to auto (use the recommendation when one is attached);
+        # use_recommendation=False forces the built-model path even if a job is
+        # attached; use_recommendation=True requires a job and errors otherwise.
+        has_recommendation = getattr(self, "_recommendation_job", None) is not None
+        if use_recommendation and not has_recommendation:
+            raise ValueError(
+                "use_recommendation=True but no recommendation job is attached. "
+                "Call generate_deployment_recommendations(...) or build via "
+                "ModelBuilder.from_recommendation_job(...) first."
+            )
+        if has_recommendation and use_recommendation is not False:
+            return self._deploy_recommendation(
+                recommendation_index=recommendation_index,
+                recommendation_spec_name=recommendation_spec_name,
+                endpoint_name=endpoint_name,
+                model_name=model_name,
+                endpoint_config_name=endpoint_config_name,
+                role=role,
+                instance_type=instance_type,
+                initial_instance_count=initial_instance_count,
+                tags=kwargs.get("tags"),
+                wait=wait,
+                auto_approve=auto_approve,
+            )
 
         if not hasattr(self, "built_model") and not hasattr(self, "_deployables"):
             raise ValueError("Model needs to be built before deploying")

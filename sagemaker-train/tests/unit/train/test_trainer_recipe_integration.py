@@ -611,6 +611,9 @@ class TestFullRecipeTemplateResolution:
             overrides={"training_config": {"sequence_length": 8192}},
         )
 
+        # For serverless (ie compute=None): Non-spec keys that aren't overridden don't flow to hyperparams
+        trainer.compute = MagicMock()
+
         with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
              patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
              patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input, \
@@ -644,6 +647,54 @@ class TestFullRecipeTemplateResolution:
     @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
     @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
     @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
+    def test_serverless_non_spec_keys_dont_flow_into_train_hyperparameters(
+        self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
+        mock_hyperparams_with_full_template
+    ):
+        """Non-spec keys from full template are included in final training hyperparameters."""
+        mock_get_options.return_value = (mock_hyperparams_with_full_template, "model-arn", False)
+
+        from sagemaker.train.sft_trainer import SFTTrainer
+
+        trainer = SFTTrainer(
+            model="nova-lite-v2",
+            model_package_group="my-group",
+            training_dataset="s3://bucket/train.jsonl",
+            overrides={"training_config": {"sequence_length": 8191}},
+        )
+
+        with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
+             patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
+             patch("sagemaker.train.sft_trainer._create_input_data_config") as mock_input, \
+             patch("sagemaker.train.sft_trainer._convert_input_data_to_channels", return_value=[]), \
+             patch("sagemaker.train.sft_trainer._create_output_config", return_value=MagicMock()), \
+             patch("sagemaker.train.sft_trainer._create_serverless_config", return_value=MagicMock()), \
+             patch("sagemaker.train.sft_trainer._create_mlflow_config", return_value=None), \
+             patch("sagemaker.train.sft_trainer._create_model_package_config", return_value=None), \
+             patch("sagemaker.train.sft_trainer._validate_hyperparameter_values"), \
+             patch("sagemaker.train.sft_trainer._get_jumpstart_tags", return_value=[]):
+
+            mock_session = MagicMock()
+            mock_session.boto_session.region_name = "us-west-2"
+            mock_defaults.get_sagemaker_session.return_value = mock_session
+            mock_defaults.get_role.return_value = "arn:aws:iam::123:role/Role"
+            mock_tj.create.return_value = MagicMock()
+
+            trainer.train(wait=False)
+
+            call_kwargs = mock_tj.create.call_args[1]
+            final_hp = call_kwargs["hyper_parameters"]
+
+            # Non-spec key is now in final hyperparameters
+            assert "sequence_length" in final_hp
+            assert final_hp["sequence_length"] == "8191"
+            # Other full template keys also present
+            assert "warmup_ratio" not in final_hp
+
+    @patch("sagemaker.train.sft_trainer._validate_eula_for_gated_model", return_value=False)
+    @patch("sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn")
+    @patch("sagemaker.train.sft_trainer._validate_and_resolve_model_package_group", return_value="my-group")
+    @patch("sagemaker.train.sft_trainer._resolve_model_and_name", return_value=("model_obj", "nova-lite-v2"))
     def test_nested_keys_flow_into_train_hyperparameters(
         self, mock_resolve, mock_validate_group, mock_get_options, mock_eula,
         mock_hyperparams_with_full_template
@@ -659,6 +710,9 @@ class TestFullRecipeTemplateResolution:
             training_dataset="s3://bucket/train.jsonl",
             overrides={"training_config": {"lr_scheduler": {"warmup_steps": 30}}},
         )
+
+        # For serverless (ie compute=None): Non-spec keys that aren't overridden don't flow to hyperparams
+        trainer.compute = MagicMock()
 
         with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
              patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
@@ -725,6 +779,9 @@ class TestFullRecipeTemplateResolution:
             overrides={"training_config": {"peft": {"lora_tuning": {"alpha": 128}}}},
         )
 
+        # For serverless (ie compute=None): Non-spec keys that aren't overridden don't flow to hyperparams
+        trainer.compute = MagicMock()
+        
         with patch("sagemaker.train.sft_trainer.TrainingJob") as mock_tj, \
              patch("sagemaker.train.sft_trainer.TrainDefaults") as mock_defaults, \
              patch("sagemaker.train.sft_trainer._create_input_data_config"), \
