@@ -1003,6 +1003,12 @@ class _ModelBuilderServers(object):
         ):
             self._enable_network_isolation = init_kwargs.enable_network_isolation
 
+        # Propagate model_reference_arn from init_kwargs so that
+        # _prepare_container_def_base can attach HubAccessConfig to the
+        # CreateModel request (required for private hub brokered access).
+        if getattr(init_kwargs, "model_reference_arn", None):
+            self.model_reference_arn = init_kwargs.model_reference_arn
+
         # Handle model artifacts for fine-tuned models
         if hasattr(init_kwargs, "model_data") and init_kwargs.model_data:
             if (

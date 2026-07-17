@@ -367,5 +367,96 @@ class TestEndToEndPrivateHubFlow(unittest.TestCase):
         self.assertNotIn("jumpstart-cache-prod", mb.s3_model_data_url)
 
 
+class TestModelReferenceArnPropagation(unittest.TestCase):
+    """Test that _build_for_jumpstart propagates model_reference_arn to self.
+
+    This is the fix for V2271554863: without propagation, _prepare_container_def_base
+    cannot attach HubAccessConfig to the CreateModel request, causing SageMaker to
+    fall back to direct S3 access on jumpstart-cache-prod-* → AccessDenied.
+    """
+
+    MOCK_MODEL_REFERENCE_ARN = (
+        "arn:aws:sagemaker:us-east-1:123456789012:hub-content/"
+        "my-private-hub/ModelReference/huggingface-llm-phi-4-mini-instruct/1.1.0"
+    )
+
+    def setUp(self):
+        self.mock_session = _mock_session()
+
+    @_PATCH_IS_JS
+    @patch("sagemaker.core.jumpstart.utils.validate_model_id_and_get_type", return_value=None)
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._create_model")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode")
+    def test_model_reference_arn_propagated_to_builder(
+        self, mock_prepare, mock_create, mock_get_kwargs, mock_validate, mock_is_js
+    ):
+        """model_reference_arn from get_init_kwargs must be set on self."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = (
+            "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.27.0-lmi10.0.0-cu124"
+        )
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = {
+            "S3DataSource": {
+                "S3Uri": "s3://my-private-hub-bucket/artifacts/model.tar.gz",
+                "S3DataType": "S3Prefix",
+                "CompressionType": "None",
+            }
+        }
+        mock_init_kwargs.enable_network_isolation = None
+        mock_init_kwargs.model_reference_arn = self.MOCK_MODEL_REFERENCE_ARN
+        mock_get_kwargs.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID,
+            role_arn=MOCK_ROLE_ARN,
+            sagemaker_session=self.mock_session,
+            mode=Mode.SAGEMAKER_ENDPOINT,
+        )
+        builder._optimizing = False
+        builder.hub_name = MOCK_HUB_NAME
+        builder.hub_arn = MOCK_HUB_ARN
+        builder.model_version = MOCK_MODEL_VERSION
+
+        builder._build_for_jumpstart()
+
+        self.assertEqual(builder.model_reference_arn, self.MOCK_MODEL_REFERENCE_ARN)
+
+    @_PATCH_IS_JS
+    @patch("sagemaker.core.jumpstart.utils.validate_model_id_and_get_type", return_value=None)
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._create_model")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode")
+    def test_model_reference_arn_stays_none_without_hub(
+        self, mock_prepare, mock_create, mock_get_kwargs, mock_validate, mock_is_js
+    ):
+        """Without a private hub, model_reference_arn should remain None."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = (
+            "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.27.0-lmi10.0.0-cu124"
+        )
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://jumpstart-cache-prod-us-east-1/model.tar.gz"
+        mock_init_kwargs.enable_network_isolation = None
+        mock_init_kwargs.model_reference_arn = None
+        mock_get_kwargs.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            model=MOCK_MODEL_ID,
+            role_arn=MOCK_ROLE_ARN,
+            sagemaker_session=self.mock_session,
+            mode=Mode.SAGEMAKER_ENDPOINT,
+        )
+        builder._optimizing = False
+        builder.model_version = MOCK_MODEL_VERSION
+
+        builder._build_for_jumpstart()
+
+        self.assertIsNone(getattr(builder, "model_reference_arn", None))
+
+
 if __name__ == "__main__":
     unittest.main()
