@@ -1129,6 +1129,29 @@ class FrameworkProcessor(ScriptProcessor):
             self.sagemaker_session.default_bucket_prefix or "",
         )
 
+    @staticmethod
+    def _is_s3_uri(path: Optional[str]) -> bool:
+        """Check whether the given path is an S3 URI."""
+        return bool(path) and path.lower().startswith("s3://")
+
+    def _resolve_s3_source_dir(self, source_dir: str) -> str:
+        """Resolve an S3 source_dir to a sourcedir.tar.gz URI.
+
+        If the URI already points to a .tar.gz file, return it unchanged.
+        Otherwise treat it as an S3 prefix and append sourcedir.tar.gz.
+        """
+        if source_dir.lower().endswith(".tar.gz"):
+            return source_dir
+        return source_dir.rstrip("/") + "/sourcedir.tar.gz"
+
+    def _resolve_helper_scripts_prefix(self, job_name: str) -> str:
+        """Return an S3 prefix for uploading helper scripts (runproc.sh, install_requirements.py)."""
+        return s3.s3_path_join(
+            self._s3_code_prefix(),
+            job_name,
+            "source",
+        )
+
     def _package_code(
         self,
         entry_point,
@@ -1137,9 +1160,19 @@ class FrameworkProcessor(ScriptProcessor):
         job_name,
         kms_key,
     ):
-        """Package and upload code to S3."""
+        """Package and upload code to S3.
+
+        If source_dir is an S3 URI, it is used directly as the code payload
+        (no local packaging or upload is performed). The S3 URI should point to
+        either a tar.gz archive or an S3 prefix containing the source code.
+        """
         import tarfile
         import tempfile
+
+        # S3 source_dir: use it directly without local packaging.
+        # This restores v2 behavior where S3 paths with tar.gz archives were supported.
+        if self._is_s3_uri(source_dir):
+            return self._resolve_s3_source_dir(source_dir)
 
         # If source_dir is not provided, use the directory containing entry_point
         if source_dir is None:
@@ -1158,12 +1191,10 @@ class FrameworkProcessor(ScriptProcessor):
         # Create tar.gz with source_dir contents
         with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
             with tarfile.open(tmp.name, "w:gz") as tar:
-                # Add all files from source_dir to the root of the tar
                 for item in os.listdir(source_dir):
                     item_path = os.path.join(source_dir, item)
                     tar.add(item_path, arcname=item)
 
-            # Upload to S3
             s3_uri = s3.s3_path_join(
                 self._s3_code_prefix(),
                 job_name,
@@ -1171,7 +1202,6 @@ class FrameworkProcessor(ScriptProcessor):
                 "sourcedir.tar.gz",
             )
 
-            # Upload the tar file directly to S3
             s3.S3Uploader.upload_string_as_file_body(
                 body=open(tmp.name, "rb").read(),
                 desired_s3_uri=s3_uri,
@@ -1283,12 +1313,20 @@ class FrameworkProcessor(ScriptProcessor):
 
         inputs = self._patch_inputs_with_payload(inputs, s3_payload)
 
-        entrypoint_s3_uri = s3_payload.replace("sourcedir.tar.gz", "runproc.sh")
+        # Determine where to upload helper scripts.
+        # When source_dir is S3, s3_payload points to the user's existing location,
+        # so helpers go to a separate managed prefix.
+        if self._is_s3_uri(source_dir):
+            helper_prefix = self._resolve_helper_scripts_prefix(job_name)
+            entrypoint_s3_uri = s3.s3_path_join(helper_prefix, "runproc.sh")
+            install_req_s3_uri = s3.s3_path_join(helper_prefix, "install_requirements.py")
+        else:
+            entrypoint_s3_uri = s3_payload.replace("sourcedir.tar.gz", "runproc.sh")
+            install_req_s3_uri = s3_payload.replace("sourcedir.tar.gz", "install_requirements.py")
 
-        # Upload the CodeArtifact-aware install_requirements script alongside the source code
+        # Upload install_requirements helper
         import sagemaker.core.utils.install_requirements as _ir_mod
 
-        install_req_s3_uri = s3_payload.replace("sourcedir.tar.gz", "install_requirements.py")
         evaluated_kms_key = kms_key if kms_key else self.output_kms_key
         s3.S3Uploader.upload_string_as_file_body(
             body=open(_ir_mod.__file__, "r").read(),
@@ -1298,7 +1336,6 @@ class FrameworkProcessor(ScriptProcessor):
         )
 
         script = os.path.basename(code)
-        evaluated_kms_key = kms_key if kms_key else self.output_kms_key
         s3_runproc_sh = self._create_and_upload_runproc(
             script, evaluated_kms_key, entrypoint_s3_uri, entry_point, source_dir
         )
@@ -1428,6 +1465,44 @@ class FrameworkProcessor(ScriptProcessor):
         Returns:
             str: The generated script content
         """
+        # When source_dir is an S3 URI, we cannot read the entry_point file locally.
+        # Instead, generate a script that executes the entry_point from the extracted
+        # source bundle on the container.
+        if self._is_s3_uri(source_dir):
+            return dedent(
+                """\
+                #!/bin/bash
+
+                # Exit on any error. SageMaker uses error code to mark failed job.
+                set -e
+
+                cd /opt/ml/processing/input/code/
+
+                # Extract source code
+                if [ -f sourcedir.tar.gz ]; then
+                    tar -xzf sourcedir.tar.gz
+                else
+                    echo "ERROR: sourcedir.tar.gz not found!"
+                    exit 1
+                fi
+
+                if [[ -f 'requirements.txt' ]]; then
+                    pip uninstall --yes typing
+                    python3 /opt/ml/processing/input/code/install_requirements.py requirements.txt
+                fi
+
+                # Execute custom entrypoint
+                chmod +x {entry_point}
+                ./{entry_point}
+
+                {entry_point_command} {user_script} "$@"
+            """
+            ).format(
+                entry_point=entry_point,
+                entry_point_command=" ".join(self.command),
+                user_script=user_script,
+            )
+
         # Resolve the full path to the entry_point file
         if source_dir and not os.path.isabs(entry_point):
             full_entry_point_path = os.path.join(source_dir, entry_point)
