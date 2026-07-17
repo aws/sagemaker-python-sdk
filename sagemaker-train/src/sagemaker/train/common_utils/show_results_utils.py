@@ -677,6 +677,11 @@ def _show_llmaj_results(
         pipeline_execution, "EvaluateBaseModelMetrics"
     )
 
+    if not custom_job_name and not base_job_name:
+        custom_job_name = _extract_training_job_name_from_steps(
+            pipeline_execution, "EvaluateWithJudge"
+        )
+
     # Handle single-model evaluation scenarios
     if not custom_job_name and not base_job_name:
         raise ValueError(
