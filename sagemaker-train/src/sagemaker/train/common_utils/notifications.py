@@ -251,7 +251,7 @@ def enable_notifications(
     return rule_arn
 
 
-def delete_notification_rules(
+def delete_notification_rule(
     sagemaker_session,
     rule_arn: str,
     event_bus_arn: Optional[str] = None,
@@ -293,7 +293,7 @@ def delete_notification_rules(
             raise ValueError(
                 f"Rule '{rule_name}' not found on event bus '{event_bus_name}'. "
                 "If the rule was created on a custom event bus, pass the same "
-                "event_bus_arn to delete_notification_rules()."
+                "event_bus_arn to delete_notification_rule()."
             ) from e
         logger.warning(f"Failed to delete rule {rule_name}: {e}")
 

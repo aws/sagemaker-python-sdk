@@ -34,7 +34,7 @@ from sagemaker.train.common_utils.finetune_utils import (
 )
 from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
 from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
-from sagemaker.train.common_utils.notifications import enable_notifications, delete_notification_rules, list_notification_rules
+from sagemaker.train.common_utils.notifications import enable_notifications, delete_notification_rule, list_notification_rules
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.common_utils.cloudwatch_metrics import fetch_and_plot_metrics, _get_smhp_log_group
 from sagemaker.train.defaults import TrainDefaults
@@ -476,23 +476,19 @@ class BaseTrainer(ABC):
         if not isinstance(notifications, dict):
             raise ValueError(
                 "notifications must be a dict with at least 'sns_topic_arn'. "
-                "Example: {'sns_topic_arn': 'arn:aws:sns:us-east-1:123:my-topic'}"
+                "Example: {'sns_topic_arn': 'arn:aws:sns:us-east-1:123456789012:my-topic'}"
             )
 
         sns_topic_arn = notifications.get("sns_topic_arn")
         if not sns_topic_arn:
             raise ValueError(
                 "notifications config requires 'sns_topic_arn'. "
-                "Example: {'sns_topic_arn': 'arn:aws:sns:us-east-1:123:my-topic'}"
+                "Example: {'sns_topic_arn': 'arn:aws:sns:us-east-1:123456789012:my-topic'}"
             )
-
-        sagemaker_session = TrainDefaults.get_sagemaker_session(
-            sagemaker_session=self.sagemaker_session
-        )
 
         rule_arn = enable_notifications(
             sns_topic_arn=sns_topic_arn,
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
             events=notifications.get("events"),
             event_bus_arn=notifications.get("event_bus_arn"),
             job_name_prefix=notifications.get("job_name_prefix"),
@@ -500,7 +496,7 @@ class BaseTrainer(ABC):
 
         return rule_arn
 
-    def delete_notification_rules(
+    def delete_notification_rule(
         self,
         rule_arn: str,
         event_bus_arn: Optional[str] = None,
@@ -514,12 +510,8 @@ class BaseTrainer(ABC):
         Returns:
             The name of the deleted rule.
         """
-        sagemaker_session = TrainDefaults.get_sagemaker_session(
-            sagemaker_session=self.sagemaker_session
-        )
-
-        return delete_notification_rules(
-            sagemaker_session=sagemaker_session,
+        return delete_notification_rule(
+            sagemaker_session=TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
             rule_arn=rule_arn,
             event_bus_arn=event_bus_arn,
         )
@@ -533,12 +525,8 @@ class BaseTrainer(ABC):
         Returns:
             List of dicts with 'name', 'arn', and 'state' for each rule.
         """
-        sagemaker_session = TrainDefaults.get_sagemaker_session(
-            sagemaker_session=self.sagemaker_session
-        )
-
         return list_notification_rules(
-            sagemaker_session=sagemaker_session,
+            sagemaker_session=TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
             event_bus_arn=event_bus_arn,
         )
 
