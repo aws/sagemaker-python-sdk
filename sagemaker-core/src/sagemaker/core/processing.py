@@ -1156,6 +1156,7 @@ class FrameworkProcessor(ScriptProcessor):
         self,
         entry_point,
         source_dir,
+        dependencies,
         requirements,
         job_name,
         kms_key,
@@ -1165,6 +1166,15 @@ class FrameworkProcessor(ScriptProcessor):
         If source_dir is an S3 URI, it is used directly as the code payload
         (no local packaging or upload is performed). The S3 URI should point to
         either a tar.gz archive or an S3 prefix containing the source code.
+
+        Args:
+            entry_point (str): Path to the entry point script.
+            source_dir (str): Local directory, S3 URI, or None.
+            dependencies (list[str]): Additional local directories to include
+                in the tar.gz bundle (default: None). Not supported with S3 source_dir.
+            requirements (str): Path to requirements.txt relative to source_dir.
+            job_name (str): Processing job name (used in S3 key).
+            kms_key (str): KMS key for S3 upload encryption.
         """
         import tarfile
         import tempfile
@@ -1172,6 +1182,11 @@ class FrameworkProcessor(ScriptProcessor):
         # S3 source_dir: use it directly without local packaging.
         # This restores v2 behavior where S3 paths with tar.gz archives were supported.
         if self._is_s3_uri(source_dir):
+            if dependencies:
+                raise ValueError(
+                    "dependencies is not supported when source_dir is an S3 URI. "
+                    "Bundle dependencies into the S3 tar.gz archive instead."
+                )
             return self._resolve_s3_source_dir(source_dir)
 
         # If source_dir is not provided, use the directory containing entry_point
@@ -1188,12 +1203,21 @@ class FrameworkProcessor(ScriptProcessor):
         if not os.path.exists(source_dir):
             raise ValueError(f"source_dir does not exist: {source_dir}")
 
-        # Create tar.gz with source_dir contents
+        # Create tar.gz with source_dir contents + dependencies
         with tempfile.NamedTemporaryFile(suffix=".tar.gz", delete=False) as tmp:
             with tarfile.open(tmp.name, "w:gz") as tar:
+                # Add all files from source_dir
                 for item in os.listdir(source_dir):
                     item_path = os.path.join(source_dir, item)
                     tar.add(item_path, arcname=item)
+
+                # Add dependency directories at the root of the archive
+                for dep_path in (dependencies or []):
+                    if not os.path.isabs(dep_path):
+                        dep_path = os.path.abspath(dep_path)
+                    if not os.path.exists(dep_path):
+                        raise ValueError(f"Dependency path does not exist: {dep_path}")
+                    tar.add(dep_path, arcname=os.path.basename(dep_path))
 
             s3_uri = s3.s3_path_join(
                 self._s3_code_prefix(),
@@ -1218,6 +1242,7 @@ class FrameworkProcessor(ScriptProcessor):
         self,
         code: str,
         source_dir: Optional[str] = None,
+        dependencies: Optional[List[str]] = None,
         requirements: Optional[str] = None,
         inputs: Optional[List[ProcessingInput]] = None,
         outputs: Optional[List["ProcessingOutput"]] = None,
@@ -1236,7 +1261,13 @@ class FrameworkProcessor(ScriptProcessor):
                 framework script to run.
             source_dir (str): Path (absolute, relative or an S3 URI) to a directory
                 with any other processing source code dependencies aside from the entry
-                point file (default: None).
+                point file (default: None). If ``source_dir`` is an S3 URI, it must
+                point to a tar.gz file named ``sourcedir.tar.gz``.
+            dependencies (list[str]): A list of paths to directories (absolute or
+                relative) with any additional libraries that will be exported to the
+                container (default: None). The library folders are copied into the
+                same tar.gz bundle as source_dir. Not supported when source_dir is
+                an S3 URI.
             requirements (str): Path to a requirements.txt file relative to source_dir
                 (default: None).
             inputs (list[:class:`~sagemaker.processing.ProcessingInput`]): Input files for
@@ -1265,6 +1296,7 @@ class FrameworkProcessor(ScriptProcessor):
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
             code,
             source_dir,
+            dependencies,
             requirements,
             job_name,
             inputs,
@@ -1289,6 +1321,7 @@ class FrameworkProcessor(ScriptProcessor):
         self,
         code,
         source_dir,
+        dependencies,
         requirements,
         job_name,
         inputs,
@@ -1306,6 +1339,7 @@ class FrameworkProcessor(ScriptProcessor):
         s3_payload = self._package_code(
             entry_point=code,
             source_dir=source_dir,
+            dependencies=dependencies,
             requirements=requirements,
             job_name=job_name,
             kms_key=kms_key,
