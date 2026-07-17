@@ -36,6 +36,16 @@ coverage:
         target: 70%
         threshold: 1%
 
+# Post coverage results as GitHub Checks (visible on the PR "Checks" tab), not only
+# as legacy commit statuses. Checks are Codecov's default, but making it explicit
+# documents the intent and re-enables line annotations once the Codecov GitHub App
+# has "Checks: read & write" permission on the repo. NOTE: this yaml alone is not
+# sufficient — if Codecov posts only commit statuses (visible under the PR
+# "Conversation" merge box but NOT the "Checks" tab), the Codecov GitHub App has lost
+# its Checks permission and an org/repo admin must re-authorize it.
+github_checks:
+  annotations: true
+
 comment:
   layout: "header, diff, flags, components"
   require_changes: true
