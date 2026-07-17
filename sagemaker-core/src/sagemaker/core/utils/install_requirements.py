@@ -114,18 +114,19 @@ def _login_awscli(region, account, domain, repo):
 
 def _redact_url_credentials(value):
     """Redact credentials embedded in a URL for safe logging."""
-    parts = urlsplit(value)
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return "<redacted-url>" if "@" in value else value
+
     if not parts.scheme or not parts.netloc:
         return value
-    if parts.username is None and parts.password is None:
+
+    _, separator, hostinfo = parts.netloc.rpartition("@")
+    if not separator:
         return value
 
-    host = parts.hostname or ""
-    if parts.port is not None:
-        host = f"{host}:{parts.port}"
-
-    netloc = f"****@{host}"
-
+    netloc = f"****@{hostinfo}"
     return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
