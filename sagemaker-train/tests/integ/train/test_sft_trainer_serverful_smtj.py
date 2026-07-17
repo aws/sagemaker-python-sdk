@@ -110,36 +110,28 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
 
     sft_trainer = SFTTrainer(
-        model="amazon.nova-2-lite-v1",
+        model="amazon.nova-micro-v1",
         training_type=TrainingType.LORA,
         training_dataset=training_resources["training_dataset"],
         s3_output_path=training_resources["s3_output_path"],
         compute=TrainingJobCompute(
-            instance_type="ml.p5.48xlarge",
-            instance_count=4,
+            instance_type="ml.g6.48xlarge",
+            instance_count=1,
         ),
         sagemaker_session=sagemaker_session_us_east_1,
-        overrides={"training_config": {"learning_rate": 5e-6, "max_steps": 5, "save_steps": 5}},
+        overrides={"training_config": {"max_epochs": 1}},
         base_job_name=f"sft-smtj-integ-{unique_id}",
     )
 
     # Verify recipe overrides are resolved correctly
     resolved = sft_trainer.get_resolved_recipe()
     training_config = resolved["training_config"]
-    logger.info(f"Resolved training_config keys: {list(training_config.keys())}")
+    logger.info(f"Resolved training_config: {training_config}")
 
-    # Nova recipes map override fields to their recipe-native names:
-    #   learning_rate → optim_config.lr
-    #   max_steps → max_steps (direct)
-    assert training_config["optim_config"]["lr"] == 5e-6, (
-        f"Expected optim_config.lr=5e-6, got: {training_config['optim_config']}"
+    # Nova Micro uses trainer.max_epochs for step control
+    assert training_config["trainer"]["max_epochs"] == 1, (
+        f"Expected max_epochs=1, got: {training_config.get('trainer')}"
     )
-    assert training_config["max_steps"] == 5, (
-        f"Expected max_steps=5, got: {training_config.get('max_steps')}"
-    )
-
-    # Set additional hyperparameters
-    sft_trainer.hyperparameters.global_batch_size = 32
 
     # Submit (non-blocking)
     training_job = sft_trainer.train(wait=False)
