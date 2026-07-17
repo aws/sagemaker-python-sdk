@@ -219,6 +219,20 @@ class TestInstallRequirements:
         assert "username-only-token" not in logged_cmd
         assert "https://****@example.com/simple/" in logged_cmd
 
+    def test_url_host_details_are_preserved_in_logged_command(self):
+        logged_cmd = _format_pip_cmd_for_log(
+            ["https://username:password@[2001:db8::1]:8443/simple/"]
+        )
+
+        assert logged_cmd == "https://****@[2001:db8::1]:8443/simple/"
+
+    def test_malformed_url_does_not_leak_credentials(self):
+        logged_cmd = _format_pip_cmd_for_log(
+            ["https://username:password@[invalid/simple/"]
+        )
+
+        assert logged_cmd == "<redacted-url>"
+
     def test_with_cli_fallback_no_index_flag(self):
         with mock.patch(f"{_MODULE}.configure_pip", return_value=None):
             with mock.patch("subprocess.check_call") as mock_call:
