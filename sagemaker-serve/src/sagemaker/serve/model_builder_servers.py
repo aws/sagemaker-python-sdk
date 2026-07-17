@@ -988,6 +988,11 @@ class _ModelBuilderServers(object):
         hub_arn = getattr(self, "hub_arn", None)
         if hub_arn:
             init_kwargs_params["hub_arn"] = hub_arn
+            # When the private hub content reference is named differently from
+            # the public model_id, resolve hub content by its actual name.
+            hub_content_name = getattr(self, "hub_content_name", None)
+            if hub_content_name:
+                init_kwargs_params["model_id"] = hub_content_name
         init_kwargs = get_init_kwargs(**init_kwargs_params)
 
         # Configure image URI and environment variables
