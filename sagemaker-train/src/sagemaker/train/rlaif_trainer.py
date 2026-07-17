@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
@@ -118,6 +118,10 @@ class RLAIFTrainer(BaseTrainer):
         is_multimodal (Optional[bool]):
             Whether the training dataset contains multimodal data. If None (default),
             auto-detected from the training dataset at train time.
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
     """
 
     def __init__(
@@ -140,9 +144,10 @@ class RLAIFTrainer(BaseTrainer):
         accept_eula: bool = False,
         stopping_condition: Optional[StoppingCondition] = None,
         is_multimodal: Optional[bool] = None,
+        notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(notifications=notifications, **kwargs)
 
         # Resolve model and model name
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)

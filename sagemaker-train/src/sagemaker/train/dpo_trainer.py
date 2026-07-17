@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.train.base_trainer import BaseTrainer
@@ -107,6 +107,10 @@ class DPOTrainer(BaseTrainer):
         is_multimodal (Optional[bool]):
             Whether the training dataset contains multimodal data. If None (default),
             auto-detected from the training dataset at train time.
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
     """
 
     _customization_technique = CustomizationTechnique.DPO.value
@@ -132,9 +136,10 @@ class DPOTrainer(BaseTrainer):
             is_multimodal: Optional[bool] = None,
             base_model_name: Optional[str] = None,
         disable_output_compression: Optional[bool] = False,
+        notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, **kwargs)
+        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, notifications=notifications, **kwargs)
 
         self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
             model, self.base_model_name, compute, self.sagemaker_session,

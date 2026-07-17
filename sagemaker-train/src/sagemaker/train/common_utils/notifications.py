@@ -10,6 +10,7 @@ from __future__ import absolute_import
 import hashlib
 import json
 import logging
+import re
 from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
@@ -173,7 +174,7 @@ def enable_notifications(
         ValueError: If sns_topic_arn is invalid or topic doesn't exist.
         PermissionError: If caller lacks required permissions.
     """
-    if not sns_topic_arn or not sns_topic_arn.startswith("arn:aws:sns:"):
+    if not sns_topic_arn or not re.match(r"^arn:aws[a-z\-]*:sns:[a-z0-9\-]+:\d{12}:.+$", sns_topic_arn):
         raise ValueError(
             f"Invalid SNS topic ARN: '{sns_topic_arn}'. "
             "Must be a valid ARN like 'arn:aws:sns:us-east-1:012345678910:my-topic'."

@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
@@ -136,6 +136,10 @@ class SFTTrainer(BaseTrainer):
             Whether to disable compression of model output artifacts. When True,
             model artifacts are stored uncompressed in S3 (compression_type="NONE").
             Recommended for large model outputs. Defaults to False (gzip compression).
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
     """
 
     _customization_technique = CustomizationTechnique.SFT.value
@@ -162,9 +166,10 @@ class SFTTrainer(BaseTrainer):
         data_mixing_config: Optional[DataMixingConfig] = None,
         base_model_name: Optional[str] = None,
         disable_output_compression: Optional[bool] = False,
+        notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, **kwargs)
+        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, notifications=notifications, **kwargs)
 
         self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
             model, self.base_model_name, compute, self.sagemaker_session,

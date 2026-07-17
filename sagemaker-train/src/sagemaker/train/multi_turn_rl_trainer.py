@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import boto3
 
@@ -167,6 +167,10 @@ class MultiTurnRLTrainer(BaseTrainer):
         kms_key_arn: KMS key ID for output encryption (optional).
         accept_eula: Boolean for EULA acceptance (optional).
         **kwargs: Passed to BaseTrainer (sagemaker_session, role, base_job_name, tags).
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
     """
 
     def __init__(
@@ -187,9 +191,10 @@ class MultiTurnRLTrainer(BaseTrainer):
         accept_eula: bool = False,
         recipe: Optional[str] = None,
         overrides: Optional[dict] = None,
+        notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(notifications=notifications, **kwargs)
         self._recipe_path = recipe
         self._overrides = overrides
         self._resolved_recipe_cache = None
