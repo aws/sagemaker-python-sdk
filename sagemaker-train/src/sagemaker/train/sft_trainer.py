@@ -416,11 +416,11 @@ class SFTTrainer(BaseTrainer):
         # Validate data paths exist before submission
         effective_training = training_dataset or self.training_dataset
         effective_validation = validation_dataset or self.validation_dataset
-        if effective_training and isinstance(effective_training, str):
+        if effective_training:
             validate_data_path_exists(
                 effective_training, sagemaker_session, label="training dataset"
             )
-        if effective_validation and isinstance(effective_validation, str):
+        if effective_validation:
             validate_data_path_exists(
                 effective_validation, sagemaker_session, label="validation dataset"
             )

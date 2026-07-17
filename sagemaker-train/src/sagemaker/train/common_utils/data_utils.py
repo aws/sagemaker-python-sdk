@@ -95,60 +95,29 @@ def load_file_content(
 
 
 def validate_data_path_exists(
-    data_path: str,
+    data_path: Union[str, "DataSet"],
     sagemaker_session,
     label: str = "data",
 ) -> None:
-    """Validate that a data path (S3 URI or dataset ARN) exists and is accessible.
+    """Validate that a data path (S3 URI, dataset ARN, or DataSet object) exists and is accessible.
 
     Called inline during dry_run to catch bad paths before job submission.
 
     Args:
-        data_path: S3 URI or SageMaker hub-content DataSet ARN to validate.
+        data_path: S3 URI, SageMaker hub-content DataSet ARN, or DataSet object to validate.
         sagemaker_session: SageMaker session (provides boto_session).
         label: Human-readable label for error messages.
 
     Raises:
         ValueError: If the path does not exist or is inaccessible.
     """
+    # Handle DataSet objects — extract the ARN for validation
+    if isinstance(data_path, DataSet):
+        data_path = data_path.arn
+
     # Handle SageMaker hub-content DataSet ARNs
     if data_path.startswith("arn:aws:sagemaker:") and "/DataSet/" in data_path:
-        pattern = (
-            r"^arn:aws:sagemaker:([^:]+):(\d+):hub-content/"
-            r"([^/]+)/DataSet/([^/]+)/([\d\.]+)$"
-        )
-        match = re.match(pattern, data_path)
-        if not match:
-            raise ValueError(
-                f"Invalid {label} DataSet ARN format: {data_path}"
-            )
-
-        _, _, hub_name, content_name, content_version = match.groups()
-        sm_client = sagemaker_session.sagemaker_client
-
-        try:
-            sm_client.describe_hub_content(
-                HubName=hub_name,
-                HubContentType="DataSet",
-                HubContentName=content_name,
-                HubContentVersion=content_version,
-            )
-        except ClientError as e:
-            code = e.response["Error"]["Code"]
-            if code == "ResourceNotFound" or "does not exist" in str(e).lower():
-                raise ValueError(
-                    f"{label.capitalize()} DataSet does not exist: {data_path}"
-                )
-            elif "AccessDenied" in str(e):
-                logger.warning(
-                    "Cannot verify %s DataSet %s from caller identity "
-                    "(AccessDenied). The execution role may still have access.",
-                    label, data_path,
-                )
-            else:
-                raise ValueError(
-                    f"Error validating {label} DataSet {data_path}: {e}"
-                )
+        _validate_dataset_arn_exists(data_path, sagemaker_session, label=label)
         return
 
     # Handle S3 URIs
@@ -225,13 +194,15 @@ def _validate_dataset_arn_exists(
                 f"{label.capitalize()} DataSet does not exist: {dataset_arn}"
             )
         elif code == "AccessDeniedException" or "AccessDenied" in str(e):
-            raise ValueError(
-                f"Access denied for {label} DataSet: {dataset_arn}. "
-                "Check IAM permissions for sagemaker:DescribeHubContent."
+            logger.warning(
+                "Cannot verify %s DataSet %s from caller identity "
+                "(AccessDenied). The execution role may still have access.",
+                label, dataset_arn,
             )
-        raise ValueError(
-            f"Error validating {label} DataSet {dataset_arn}: {e}"
-        )
+        else:
+            raise ValueError(
+                f"Error validating {label} DataSet {dataset_arn}: {e}"
+            )
 
 
 def _has_multimodal_content(record: dict) -> bool:

@@ -498,7 +498,7 @@ class CustomScorerEvaluator(BaseEvaluator):
         name = self.base_eval_name or f"custom-scorer-eval"
 
         # Validate dataset path exists
-        if hasattr(self, 'dataset') and self.dataset and isinstance(self.dataset, str):
+        if hasattr(self, 'dataset') and self.dataset:
             session = TrainDefaults.get_sagemaker_session(
                 sagemaker_session=self.sagemaker_session
             )

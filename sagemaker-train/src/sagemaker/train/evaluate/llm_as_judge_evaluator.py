@@ -953,7 +953,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         pipeline_definition = self._render_pipeline_definition(template_str, template_context)
 
         # Validate dataset path exists
-        if hasattr(self, 'dataset') and self.dataset and isinstance(self.dataset, str):
+        if hasattr(self, 'dataset') and self.dataset:
             session = TrainDefaults.get_sagemaker_session(
                 sagemaker_session=self.sagemaker_session
             )

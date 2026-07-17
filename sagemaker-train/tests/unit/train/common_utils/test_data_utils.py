@@ -296,6 +296,53 @@ class TestValidateDataPathExists(unittest.TestCase):
             )
         self.assertIn("Invalid", str(ctx.exception))
 
+    def test_dataset_object_extracts_arn(self):
+        """Validate that DataSet objects are handled by extracting the ARN."""
+        from sagemaker.train.common_utils.data_utils import validate_data_path_exists
+        from unittest.mock import Mock, patch
+
+        session = Mock()
+        sm_client = Mock()
+        session.sagemaker_client = sm_client
+
+        # Create a mock DataSet object to avoid API calls during construction
+        from sagemaker.ai_registry.dataset import DataSet
+        dataset = Mock(spec=DataSet)
+        dataset.arn = "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/my-dataset/1.0.0"
+
+        # describe_hub_content succeeds — validation passes
+        sm_client.describe_hub_content.return_value = {}
+        validate_data_path_exists(dataset, session, label="training dataset")
+        sm_client.describe_hub_content.assert_called_once_with(
+            HubName="MyHub",
+            HubContentType="DataSet",
+            HubContentName="my-dataset",
+            HubContentVersion="1.0.0",
+        )
+
+    def test_dataset_object_not_found_raises(self):
+        """Validate that DataSet objects with nonexistent ARNs raise ValueError."""
+        from sagemaker.train.common_utils.data_utils import validate_data_path_exists
+        from botocore.exceptions import ClientError
+        from unittest.mock import Mock
+
+        session = Mock()
+        sm_client = Mock()
+        session.sagemaker_client = sm_client
+
+        from sagemaker.ai_registry.dataset import DataSet
+        dataset = Mock(spec=DataSet)
+        dataset.arn = "arn:aws:sagemaker:us-west-2:123456789012:hub-content/MyHub/DataSet/bad-dataset/1.0.0"
+
+        sm_client.describe_hub_content.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFound", "Message": "Not found"}},
+            "DescribeHubContent",
+        )
+
+        with self.assertRaises(ValueError) as ctx:
+            validate_data_path_exists(dataset, session, label="training dataset")
+        self.assertIn("does not exist", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
