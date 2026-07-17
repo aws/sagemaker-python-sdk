@@ -428,6 +428,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             logger.setLevel(self.log_level)
 
         self._warn_about_deprecated_parameters(warnings)
+        self._initialize_region()
         self._initialize_compute_config()
         self._initialize_network_config()
         self._initialize_defaults()
@@ -496,17 +497,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if not hasattr(self, "_enable_network_isolation"):
                 self._enable_network_isolation = False
 
-    def _initialize_defaults(self) -> None:
-        """Initialize default values for unset parameters."""
-        if not hasattr(self, "model_name") or self.model_name is None:
-            self.model_name = "model-" + str(uuid.uuid4())[:8]
+    def _initialize_region(self) -> None:
+        """Resolve the region before any spec lookups that depend on it.
 
-        if not hasattr(self, "mode") or self.mode is None:
-            self.mode = Mode.SAGEMAKER_ENDPOINT
-
-        if not hasattr(self, "env_vars") or self.env_vars is None:
-            self.env_vars = {}
-
+        Must run before _initialize_compute_config: JumpStart default
+        instance type resolution requires self.region to exist.
+        """
         # Set region with priority: user input > sagemaker session > AWS account region > default
         if not hasattr(self, "region") or not self.region:
             if self.sagemaker_session and self.sagemaker_session.boto_region_name:
@@ -519,6 +515,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     self.region = boto3.Session().region_name or None
                 except Exception:
                     self.region = None  # Default fallback
+
+    def _initialize_defaults(self) -> None:
+        """Initialize default values for unset parameters."""
+        if not hasattr(self, "model_name") or self.model_name is None:
+            self.model_name = "model-" + str(uuid.uuid4())[:8]
+
+        if not hasattr(self, "mode") or self.mode is None:
+            self.mode = Mode.SAGEMAKER_ENDPOINT
+
+        if not hasattr(self, "env_vars") or self.env_vars is None:
+            self.env_vars = {}
+
+        # Region is resolved earlier in _initialize_region(); re-run for safety
+        # in case callers invoke _initialize_defaults directly.
+        self._initialize_region()
 
         # At construction, only resolve a default role when none was supplied (so
         # building a ModelBuilder does no IAM work when a role is given). The
