@@ -76,6 +76,12 @@ class BaseTrainer(ABC):
         training_image (Optional[str]):
             Custom training container image URI. If not provided, the image is
             auto-resolved from the model's recipe metadata in SageMaker Hub.
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
+        notification_rule_arn (str):
+            String of the EventBridge rule that is set up when enabling job notifications.
     """
     
     # Class-level attributes with default values
@@ -116,10 +122,11 @@ class BaseTrainer(ABC):
         self.training_image = training_image
         self.base_model_name = base_model_name
         self.disable_output_compression = disable_output_compression
+        self.notification_rule_arn = None
 
         # Set up notifications if configured
         if notifications:
-            self._setup_notifications(notifications)
+            self.notification_rule_arn = self._setup_notifications(notifications)
         self._checkpoint_s3_uri = None
 
     def _is_nova_model_for_telemetry(self) -> bool:
@@ -494,6 +501,7 @@ class BaseTrainer(ABC):
             job_name_prefix=notifications.get("job_name_prefix"),
         )
 
+        logger.debug("Notification rule ARN: %s", rule_arn)
         return rule_arn
 
     def delete_notification_rule(

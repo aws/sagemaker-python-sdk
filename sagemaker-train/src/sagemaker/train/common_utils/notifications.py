@@ -12,6 +12,7 @@ import json
 import logging
 import re
 from typing import Dict, List, Optional
+from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +111,7 @@ def _validate_notifications_permissions(events_client) -> None:
     """
     try:
         events_client.list_rules(NamePrefix=_RULE_NAME_PREFIX, Limit=1)
-    except events_client.exceptions.ClientError as e:
+    except ClientError as e:
         error_code = e.response.get("Error", {}).get("Code", "")
         if error_code in ("AccessDeniedException", "AccessDenied"):
             raise PermissionError(
