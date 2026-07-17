@@ -116,7 +116,7 @@ def validate_data_path_exists(
         data_path = data_path.arn
 
     # Handle SageMaker hub-content DataSet ARNs
-    if data_path.startswith("arn:aws:sagemaker:") and "/DataSet/" in data_path:
+    if re.match(r"^arn:aws(?:-[a-z]+)*:sagemaker:.+/DataSet/", data_path):
         _validate_dataset_arn_exists(data_path, sagemaker_session, label=label)
         return
 
@@ -168,7 +168,7 @@ def _validate_dataset_arn_exists(
     """
 
     pattern = (
-        r"^arn:aws:sagemaker:([^:]+):(\d+):hub-content/"
+        r"^arn:aws(?:-[a-z]+)*:sagemaker:([^:]+):(\d+):hub-content/"
         r"([^/]+)/DataSet/([^/]+)/([\d\.]+)$"
     )
     match = re.match(pattern, dataset_arn)
