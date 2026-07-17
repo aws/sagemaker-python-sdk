@@ -13,4 +13,5 @@ Adapt Amazon Nova foundation models to your specific use cases through fine-tuni
    :caption: Nova Customization Guides
 
    nova_data_mixing
+      CPT Training on HyperPod <../../v3-examples/model-customization-examples/cpt_data_mixing_hyperpod>
    ../../v3-examples/model-customization-examples/sm-studio-nova-training-job-sample-notebook
