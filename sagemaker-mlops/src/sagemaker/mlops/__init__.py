@@ -15,6 +15,10 @@ Key components:
 Example usage:
     from sagemaker.mlops import ModelBuilder
     from sagemaker.mlops.workflow import Pipeline, TrainingStep
+
+Note:
+    No-op docstring line added only to trigger CI for a Codecov config
+    verification (DO NOT MERGE).
 """
 from __future__ import absolute_import
 
