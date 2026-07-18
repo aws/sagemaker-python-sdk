@@ -31,3 +31,4 @@ __all__ = [
     "ModelBuilder",
     "workflow",  # Submodule
 ]
+# No-op line to trigger CI for a Codecov config verification (DO NOT MERGE).
