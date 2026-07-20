@@ -14,6 +14,7 @@ from sagemaker.core.helper.iam_role_resolver import (
     HYPERPOD_CLI_CONNECT_ACTIONS,
     _load_policy_config,
     _get_required_actions,
+    _get_smoke_test_actions,
     _replace_placeholders,
     _get_boto_session,
     _simulate_denied_actions,
@@ -262,6 +263,10 @@ class TestResolveAndValidateRole:
         assert not any(a.startswith("sagemaker-mlflow:") for a in simulated)
         assert "sagemaker:DescribeHubContent" not in simulated
         assert "s3:GetObject" not in simulated  # S3 is scoped to S3_PLACEHOLDER
+        # Repository-level ECR actions are scoped and excluded from the gate.
+        assert "ecr:BatchGetImage" not in simulated
+        assert "ecr:GetDownloadUrlForLayer" not in simulated
+        assert "ecr:BatchCheckLayerAvailability" not in simulated
         # ...but *-resource smoke-test actions are included.
         assert "cloudwatch:PutMetricData" in simulated
         assert "ecr:GetAuthorizationToken" in simulated
@@ -632,6 +637,137 @@ class TestPolicyConfig:
                 condition.get("StringEquals", {}).get("aws:SourceAccount")
                 == "ACCOUNT_PLACEHOLDER"
             ), f"{role_type} trust policy missing aws:SourceAccount placeholder"
+
+
+class TestEcrPolicyScopedCorrectly:
+    """Regression tests for ECR policy scoping (V2287033493).
+
+    Repository-level ECR actions (BatchGetImage, GetDownloadUrlForLayer,
+    BatchCheckLayerAvailability) must be scoped to repository ARNs, NOT
+    Resource: "*". Only GetAuthorizationToken is account-level and belongs
+    under "*". When all four are under "*", _get_smoke_test_actions includes
+    the repo-level ones and SimulatePrincipalPolicy (called without ResourceArns)
+    returns implicitDeny for roles with least-privilege ECR policies — a false
+    positive that blocks deploys/training/pipelines.
+    """
+
+    ECR_REPO_ACTIONS = {
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:BatchGetImage",
+        "ecr:BatchCheckLayerAvailability",
+    }
+
+    @pytest.mark.parametrize("role_type", ["training", "serving", "hyperpod"])
+    def test_ecr_repo_actions_not_in_smoke_test(self, role_type):
+        """Repository-level ECR actions must NOT appear in the smoke test set."""
+        smoke_actions = set(_get_smoke_test_actions(role_type))
+        overlap = smoke_actions & self.ECR_REPO_ACTIONS
+        assert not overlap, (
+            f"role_type={role_type}: repo-level ECR actions {overlap} should not be "
+            f"in smoke test (would cause false implicitDeny)"
+        )
+
+    @pytest.mark.parametrize("role_type", ["training", "serving", "hyperpod"])
+    def test_ecr_get_authorization_token_in_smoke_test(self, role_type):
+        """GetAuthorizationToken is account-level and SHOULD be in the smoke test."""
+        smoke_actions = set(_get_smoke_test_actions(role_type))
+        assert "ecr:GetAuthorizationToken" in smoke_actions
+
+    @pytest.mark.parametrize("role_type", ["training", "serving", "hyperpod"])
+    def test_ecr_repo_actions_scoped_to_repository_arn(self, role_type):
+        """Repository-level ECR actions must have a repository/* resource scope."""
+        config = _load_policy_config()
+        ecr_stmts = config[role_type]["policies"]["ecr_policy"]["Statement"]
+        # Find the statement containing BatchGetImage
+        repo_stmt = None
+        for stmt in ecr_stmts:
+            actions = stmt.get("Action", [])
+            if isinstance(actions, str):
+                actions = [actions]
+            if "ecr:BatchGetImage" in actions:
+                repo_stmt = stmt
+                break
+        assert repo_stmt is not None, "No statement with ecr:BatchGetImage found"
+        resource = repo_stmt["Resource"]
+        assert resource == "arn:aws:ecr:*:*:repository/*", (
+            f"Expected repository/* scope, got: {resource}"
+        )
+
+    @pytest.mark.parametrize("role_type", ["training", "serving", "hyperpod"])
+    def test_ecr_get_authorization_token_resource_is_wildcard(self, role_type):
+        """GetAuthorizationToken must remain under Resource: '*'."""
+        config = _load_policy_config()
+        ecr_stmts = config[role_type]["policies"]["ecr_policy"]["Statement"]
+        auth_stmt = None
+        for stmt in ecr_stmts:
+            actions = stmt.get("Action", [])
+            if isinstance(actions, str):
+                actions = [actions]
+            if "ecr:GetAuthorizationToken" in actions:
+                auth_stmt = stmt
+                break
+        assert auth_stmt is not None, "No statement with ecr:GetAuthorizationToken found"
+        assert auth_stmt["Resource"] == "*"
+
+    @pytest.mark.parametrize("role_type", ["training", "serving", "hyperpod"])
+    def test_all_ecr_actions_still_in_required_actions(self, role_type):
+        """All four ECR actions must remain in the full required actions list."""
+        all_actions = set(_get_required_actions(role_type))
+        expected = self.ECR_REPO_ACTIONS | {"ecr:GetAuthorizationToken"}
+        assert expected.issubset(all_actions), (
+            f"Missing ECR actions from required set: {expected - all_actions}"
+        )
+
+    def test_least_privilege_ecr_role_passes_validation(self):
+        """A role with ECR permissions scoped to specific repos must not be blocked.
+
+        This is the actual customer scenario from V2287033493: the customer's role
+        grants BatchGetImage/GetDownloadUrlForLayer/BatchCheckLayerAvailability on
+        specific repository ARNs, not '*'. The smoke test should only simulate
+        GetAuthorizationToken (which the customer grants on '*'), so the validation
+        should pass.
+        """
+        mock_session, mock_iam, _ = _make_session(
+            "arn:aws:sts::123456789012:assumed-role/MyTrainingRole/sess"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {
+                "Arn": "arn:aws:iam::123456789012:role/MyTrainingRole",
+                "AssumeRolePolicyDocument": _trusted_doc(),
+            }
+        }
+
+        # Simulate: all smoke-test actions are allowed (customer has them on *)
+        captured = {}
+
+        def paginate(**kwargs):
+            captured["actions"] = kwargs.get("ActionNames", [])
+            return [
+                {
+                    "EvaluationResults": [
+                        {"EvalActionName": a, "EvalDecision": "allowed"}
+                        for a in kwargs["ActionNames"]
+                    ]
+                }
+            ]
+
+        paginator = MagicMock()
+        paginator.paginate.side_effect = paginate
+        mock_iam.get_paginator.return_value = paginator
+
+        # Should succeed without raising
+        result = resolve_and_validate_role(
+            provided_role=None, role_type="training", sagemaker_session=mock_session
+        )
+        assert result == "arn:aws:iam::123456789012:role/MyTrainingRole"
+
+        # Verify repo-level ECR actions were NOT simulated
+        simulated = set(captured["actions"])
+        assert "ecr:BatchGetImage" not in simulated
+        assert "ecr:GetDownloadUrlForLayer" not in simulated
+        assert "ecr:BatchCheckLayerAvailability" not in simulated
+        # But GetAuthorizationToken WAS simulated
+        assert "ecr:GetAuthorizationToken" in simulated
 
 
 class TestReplacePlaceholders:

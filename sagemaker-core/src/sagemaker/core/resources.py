@@ -12393,6 +12393,122 @@ class FeatureGroup(Base):
         transformed_response = transform(response, "BatchGetRecordResponse")
         return BatchGetRecordResponse(**transformed_response)
 
+    @Base.add_validate_call
+    def batch_write_record(
+        self,
+        entries: List[BatchWriteRecordEntry],
+        ttl_duration: Optional[TtlDuration] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[str] = None,
+    ) -> Optional[BatchWriteRecordResponse]:
+        """
+        Writes a batch of Records to one or more FeatureGroups.
+
+        Parameters:
+            entries: A list of records to write. Each entry specifies the FeatureGroup, the record data, and optionally target stores and a TTL duration.
+            ttl_duration: Time to live duration applied to all entries in the batch that do not specify their own TtlDuration; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            BatchWriteRecordResponse
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            AccessForbidden: You do not have permission to perform an action.
+            InternalFailure: An internal failure occurred. Try your request again. If the problem persists, contact Amazon Web Services customer support.
+            ResourceNotFound: Resource being access is not found.
+            ServiceUnavailable: The service is currently unavailable.
+            ValidationError: There was an error validating your request.
+        """
+
+        operation_input_args = {
+            "Entries": entries,
+            "TtlDuration": ttl_duration,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker-featurestore-runtime"
+        )
+
+        logger.debug(f"Calling batch_write_record API")
+        response = client.batch_write_record(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        transformed_response = transform(response, "BatchWriteRecordResponse")
+        return BatchWriteRecordResponse(**transformed_response)
+
+    @Base.add_validate_call
+    def list_records(
+        self,
+        max_results: Optional[int] = Unassigned(),
+        next_token: Optional[StrPipeVar] = Unassigned(),
+        include_soft_deleted_records: Optional[bool] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[str] = None,
+    ) -> Optional[ListRecordsResponse]:
+        """
+        Lists the RecordIdentifier values of all records stored in a FeatureGroup's OnlineStore.
+
+        Parameters:
+            max_results: The maximum number of record identifiers to return in a single page of results. For the InMemory tier, this value is a hint and not a strict requirement. The response may contain more or fewer results than the specified MaxResults.
+            next_token: A token to resume pagination of ListRecords results.
+            include_soft_deleted_records: If set to true, the result includes records that have been soft deleted.
+            session: Boto3 session.
+            region: Region name.
+
+        Returns:
+            ListRecordsResponse
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            AccessForbidden: You do not have permission to perform an action.
+            InternalFailure: An internal failure occurred. Try your request again. If the problem persists, contact Amazon Web Services customer support.
+            ResourceNotFound: Resource being access is not found.
+            ServiceUnavailable: The service is currently unavailable.
+            ValidationError: There was an error validating your request.
+        """
+
+        operation_input_args = {
+            "FeatureGroupName": self.feature_group_name,
+            "MaxResults": max_results,
+            "NextToken": next_token,
+            "IncludeSoftDeletedRecords": include_soft_deleted_records,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker-featurestore-runtime"
+        )
+
+        logger.debug(f"Calling list_records API")
+        response = client.list_records(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+        transformed_response = transform(response, "ListRecordsResponse")
+        return ListRecordsResponse(**transformed_response)
+
 
 class FeatureMetadata(Base):
     """

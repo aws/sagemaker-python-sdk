@@ -25,7 +25,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_hyperparameter_values
 )
 from sagemaker.train.common_utils.data_utils import is_multimodal_data
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
 
@@ -217,7 +218,13 @@ class DPOTrainer(BaseTrainer):
                 delattr(self.hyperparameters, 'validation_data_path')
                 self.hyperparameters._specs.pop('validation_data_path', None)
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="DPOTrainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="DPOTrainer.train",
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ],
+    )
     def train(self,
               training_dataset: Optional[Union[str, DataSet]] = None,
               validation_dataset: Optional[Union[str, DataSet]] = None,

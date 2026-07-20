@@ -1597,6 +1597,51 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "BatchWriteRecordEntries": {
+        "member_shape": "BatchWriteRecordEntry",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "BatchWriteRecordEntry": {
+        "members": [
+            {"name": "FeatureGroupName", "shape": "FeatureGroupNameOrArn", "type": "string"},
+            {"name": "Record", "shape": "Record", "type": "list"},
+            {"name": "TargetStores", "shape": "TargetStores", "type": "list"},
+            {"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"},
+        ],
+        "type": "structure",
+    },
+    "BatchWriteRecordError": {
+        "members": [
+            {"name": "Entry", "shape": "BatchWriteRecordEntry", "type": "structure"},
+            {"name": "ErrorCode", "shape": "ValueAsString", "type": "string"},
+            {"name": "ErrorMessage", "shape": "Message", "type": "string"},
+        ],
+        "type": "structure",
+    },
+    "BatchWriteRecordErrors": {
+        "member_shape": "BatchWriteRecordError",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "BatchWriteRecordRequest": {
+        "members": [
+            {"name": "Entries", "shape": "BatchWriteRecordEntries", "type": "list"},
+            {"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"},
+        ],
+        "type": "structure",
+    },
+    "BatchWriteRecordResponse": {
+        "members": [
+            {"name": "Errors", "shape": "BatchWriteRecordErrors", "type": "list"},
+            {
+                "name": "UnprocessedEntries",
+                "shape": "UnprocessedBatchWriteRecordEntries",
+                "type": "list",
+            },
+        ],
+        "type": "structure",
+    },
     "BedrockCustomModelDeploymentMetadata": {
         "members": [{"name": "Arn", "shape": "String1024", "type": "string"}],
         "type": "structure",
@@ -12221,6 +12266,22 @@ SHAPE_DAG = {
         ],
         "type": "structure",
     },
+    "ListRecordsRequest": {
+        "members": [
+            {"name": "FeatureGroupName", "shape": "FeatureGroupNameOrArn", "type": "string"},
+            {"name": "MaxResults", "shape": "ListRecordsMaxResults", "type": "integer"},
+            {"name": "NextToken", "shape": "ListRecordsNextToken", "type": "string"},
+            {"name": "IncludeSoftDeletedRecords", "shape": "Boolean", "type": "boolean"},
+        ],
+        "type": "structure",
+    },
+    "ListRecordsResponse": {
+        "members": [
+            {"name": "RecordIdentifiers", "shape": "RecordIdentifierList", "type": "list"},
+            {"name": "NextToken", "shape": "ListRecordsNextToken", "type": "string"},
+        ],
+        "type": "structure",
+    },
     "ListResourceCatalogsRequest": {
         "members": [
             {"name": "NameContains", "shape": "ResourceCatalogName", "type": "string"},
@@ -15583,6 +15644,11 @@ SHAPE_DAG = {
         "type": "structure",
     },
     "Record": {"member_shape": "FeatureValue", "member_type": "structure", "type": "list"},
+    "RecordIdentifierList": {
+        "member_shape": "ValueAsString",
+        "member_type": "string",
+        "type": "list",
+    },
     "RecordIdentifiers": {"member_shape": "ValueAsString", "member_type": "string", "type": "list"},
     "RedshiftDatasetDefinition": {
         "members": [
@@ -17743,6 +17809,11 @@ SHAPE_DAG = {
             },
         ],
         "type": "structure",
+    },
+    "UnprocessedBatchWriteRecordEntries": {
+        "member_shape": "BatchWriteRecordEntry",
+        "member_type": "structure",
+        "type": "list",
     },
     "UnprocessedIdentifiers": {
         "member_shape": "BatchGetRecordIdentifier",

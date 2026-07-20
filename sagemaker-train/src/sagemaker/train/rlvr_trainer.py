@@ -31,6 +31,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_eula_for_gated_model,
     _validate_hyperparameter_values
 )
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
 from sagemaker.train.common_utils.data_utils import is_multimodal_data, load_file_content
 from sagemaker.train.common_utils.rlvr_reward_verifier import verify_reward_function
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
@@ -247,6 +249,14 @@ class RLVRTrainer(BaseTrainer):
                 delattr(self.hyperparameters, 'output_path')
                 self.hyperparameters._specs.pop('output_path', None)
 
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="RLVRTrainer.train",
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+            ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ],
+    )
     def _verify_reward_function(
         self,
         sample_count: int = 3,

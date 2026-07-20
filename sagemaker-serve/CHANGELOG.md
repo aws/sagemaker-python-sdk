@@ -1,4 +1,21 @@
 # Changelog
+## v1.16.0 (2026-07-15)
+
+### New Features
+
+- feat(serve): add SageMaker GenAI inference benchmarking and recommendation (#5874)
+
+## v1.15.1 (2026-07-09)
+
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
+### Bug Fixes
+
+- fix: ModelBuilder resolves private hub artifacts correctly (#5985)
+- fix(serve): Invoke pip without shell in xgboost install_package (#5981)
+
 ## v1.15.0 (2026-06-22)
 
 ### New Features

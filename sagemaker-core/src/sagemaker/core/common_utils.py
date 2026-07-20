@@ -62,6 +62,7 @@ ALTERNATE_DOMAINS = {
     "us-isof-south-1": "csp.hci.ic.gov",
     "us-isof-east-1": "csp.hci.ic.gov",
     "eu-isoe-west-1": "cloud.adc-e.uk",
+    "eusc-de-east-1": "amazonaws.eu",
 }
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"

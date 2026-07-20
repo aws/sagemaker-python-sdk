@@ -35,7 +35,8 @@ from sagemaker.train.common_utils.data_mixing_utils import (
     resolve_hyperpod_datamix_context,
     build_hyperpod_datamix_recipe_from_context,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
@@ -178,7 +179,14 @@ class CPTTrainer(BaseTrainer):
         self._model_arn = None
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, False)
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="CPTTrainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="CPTTrainer.train",
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+            ("compute", TelemetryParamType.ATTR_TYPE),
+            ("data_mixing_config", TelemetryParamType.ATTR_EXISTS),
+        ],
+    )
     def train(
         self,
         training_dataset: Optional[Union[str, DataSet]] = None,

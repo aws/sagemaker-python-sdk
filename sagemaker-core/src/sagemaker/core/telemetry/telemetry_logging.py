@@ -23,6 +23,18 @@ import requests
 from urllib.parse import quote
 
 import boto3
+from botocore.exceptions import (
+    ParamValidationError,
+    NoCredentialsError,
+    PartialCredentialsError,
+    ConnectTimeoutError,
+    ReadTimeoutError,
+    EndpointConnectionError,
+    ConnectionClosedError,
+    ClientError,
+    NoRegionError,
+)
+from sagemaker.core.apiutils._boto_functions import to_lower_camel_case
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.telemetry.resource_creation import get_resource_arn
@@ -72,7 +84,166 @@ STATUS_TO_CODE = {
 }
 
 
-def _telemetry_emitter(feature: str, func_name: str):
+# Exception type to error category mapping
+# Botocore exceptions: https://github.com/boto/botocore/blob/develop/botocore/exceptions.py
+# Python built-in exceptions: https://docs.python.org/3/library/exceptions.html
+_EXCEPTION_TYPE_MAP = {
+    "validation_error": (ParamValidationError, NoRegionError, ValueError, TypeError),
+    "auth_error": (NoCredentialsError, PartialCredentialsError),
+    "timeout_error": (ConnectTimeoutError, ReadTimeoutError, TimeoutError),
+    "network_error": (EndpointConnectionError, ConnectionClosedError, ConnectionError, OSError),
+}
+
+# HTTP status code to error category mapping
+# Reference: https://docs.aws.amazon.com/boto3/latest/guide/error-handling.html
+_HTTP_STATUS_MAP = {
+    400: "validation_error",
+    401: "auth_error",
+    403: "auth_error",
+    404: "resource_not_found",
+    408: "timeout_error",
+    429: "throttling_error",
+}
+
+
+def _classify_error(e: Exception) -> str:
+    """Classify an exception into an actionable error category.
+
+    Classification priority:
+    1. Exception type matching (botocore + Python built-ins)
+    2. HTTP status code from AWS service response
+    3. Fallback to exception class name
+    """
+    # 1. Classify by exception type
+    # Botocore static exceptions: https://github.com/boto/botocore/blob/develop/botocore/exceptions.py
+    # Python built-in exceptions: https://docs.python.org/3/library/exceptions.html
+    for category, exception_types in _EXCEPTION_TYPE_MAP.items():
+        if isinstance(e, exception_types):
+            return category
+
+    # 2. Classify by HTTP status code from AWS service response
+    # Reference: https://docs.aws.amazon.com/boto3/latest/guide/error-handling.html
+    http_status = 0
+    if hasattr(e, "response") and isinstance(e.response, dict):
+        http_status = e.response.get("ResponseMetadata", {}).get("HTTPStatusCode", 0)
+
+    if http_status in _HTTP_STATUS_MAP:
+        return _HTTP_STATUS_MAP[http_status]
+    if 500 <= http_status < 600:
+        return "service_error"
+
+    return e.__class__.__name__.lower()
+
+
+class TelemetryParamType:
+    """Constants for telemetry parameter extraction types.
+
+    Used in the `telemetry_params` list passed to @_telemetry_emitter decorator.
+    Each entry in telemetry_params is a tuple of (name, type) or (name, type, value).
+
+    To add a new telemetry signal to any class:
+    1. Identify what you want to track (instance attribute, method return, or kwarg).
+    2. Pick the appropriate type constant below.
+    3. Add a tuple to the `telemetry_params` list on the decorator.
+
+    Example:
+        @_telemetry_emitter(
+            feature=Feature.MODEL_CUSTOMIZATION,
+            func_name="MyClass.my_method",
+            telemetry_params=[
+                ("model_name", TelemetryParamType.ATTR_VALUE),       # emits x-modelName=<value>
+                ("networking", TelemetryParamType.ATTR_EXISTS),       # emits x-hasNetworking=true/false
+                ("_is_fine_tuned", TelemetryParamType.ATTR_CALL),    # emits x-isFineTuned=True/False
+                ("instance_type", TelemetryParamType.KWARG_VALUE),   # emits x-instanceType=<kwarg value>
+                ("kms_key_id", TelemetryParamType.KWARG_EXISTS),     # emits x-hasKmsKeyId=true/false
+            ],
+        )
+    """
+
+    # Reads self.<name> and emits the actual value.
+    # Use for: model names, training types, modes — values useful for analytics.
+    # Emits nothing if the attribute is None.
+    ATTR_VALUE = "attr_value"
+
+    # Reads self.<name> and emits true/false based on whether it's set (not None).
+    # Use for: sensitive configs (KMS, VPC, MLflow) where you only need to know
+    # if the customer configured it, without exposing the actual value.
+    ATTR_EXISTS = "attr_exists"
+
+    # Calls self.<name>() and emits the return value.
+    # Use for: computed/derived values like _is_model_customization(), _is_nova_model().
+    ATTR_CALL = "attr_call"
+
+    # Reads kwargs[<name>] from the decorated method's keyword arguments and emits the value.
+    # Use for: method parameters not stored on self (e.g., instance_type passed to deploy()).
+    # Emits nothing if the kwarg is None or not provided.
+    KWARG_VALUE = "kwarg_value"
+
+    # Reads kwargs[<name>] and emits true/false based on whether it's provided and truthy.
+    # Use for: optional method parameters where you only need presence info
+    # (e.g., update_endpoint, imported_model_kms_key_id).
+    KWARG_EXISTS = "kwarg_exists"
+
+    # Reads type(self.<name>).__name__ and emits the class name of the attribute.
+    # Use for: polymorphic attributes where the subclass determines the code path
+    # (e.g., compute → "HyperPodCompute"/"TrainingJobCompute", distributed → "Torchrun"/"MPI").
+    # Emits nothing if the attribute is None.
+    ATTR_TYPE = "attr_type"
+
+
+def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
+    """Extract telemetry params from instance/kwargs based on telemetry_params list.
+
+    Args:
+        instance: The class instance (args[0]).
+        kwargs: The kwargs dict from the decorated function call.
+        telemetry_params: List of tuples defining what to extract.
+            - ("attr_name", ATTR_VALUE) → emit self.attr value
+            - ("attr_name", ATTR_EXISTS) → emit true/false
+            - ("method_name", ATTR_CALL) → call self.method(), emit return value
+            - ("kwarg_name", KWARG_VALUE) → emit kwargs value
+            - ("kwarg_name", KWARG_EXISTS) → emit true/false
+            - ("attr_name", ATTR_TYPE) → emit type(self.attr).__name__
+
+    Returns:
+        str: URL query params string.
+    """
+    if not telemetry_params:
+        return ""
+    parts = []
+    T = TelemetryParamType
+    for param in telemetry_params:
+        name, kind = param[0], param[1]
+        key = to_lower_camel_case(name.lstrip("_"))
+        if kind == T.ATTR_VALUE:
+            value = getattr(instance, name, None)
+            if value is not None:
+                parts.append(f"&x-{key}={value}")
+        elif kind == T.ATTR_EXISTS:
+            value = getattr(instance, name, None)
+            parts.append(f"&x-has{key[0].upper()}{key[1:]}={'true' if value else 'false'}")
+        elif kind == T.ATTR_CALL:
+            method = getattr(instance, name, None)
+            if callable(method):
+                try:
+                    parts.append(f"&x-{key}={method()}")
+                except Exception:
+                    pass
+        elif kind == T.KWARG_VALUE:
+            value = kwargs.get(name) if kwargs else None
+            if value is not None:
+                parts.append(f"&x-{key}={value}")
+        elif kind == T.KWARG_EXISTS:
+            value = kwargs.get(name) if kwargs else None
+            parts.append(f"&x-has{key[0].upper()}{key[1:]}={'true' if value else 'false'}")
+        elif kind == T.ATTR_TYPE:
+            value = getattr(instance, name, None)
+            if value is not None:
+                parts.append(f"&x-{key}Type={type(value).__name__}")
+    return "".join(parts)
+
+
+def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
     """Telemetry Emitter
 
     Decorator to emit telemetry logs for SageMaker Python SDK functions. This class needs
@@ -80,6 +251,12 @@ def _telemetry_emitter(feature: str, func_name: str):
     in this repo. When collecting telemetry for classes using sagemaker-core Session object,
     we should be aware of its differences, such as sagemaker_session.sagemaker_config does not
     exist in new Session class.
+
+    Args:
+        feature: The Feature enum value for this telemetry event.
+        func_name: Human-readable function name for tracking.
+        telemetry_params: Optional list of tuples defining granular params to extract.
+            See TelemetryParamType for available types.
     """
 
     def decorator(func):
@@ -175,6 +352,10 @@ def _telemetry_emitter(feature: str, func_name: str):
                 if created_by:
                     extra += f"&x-createdBy={quote(created_by, safe='')}"
 
+                # Extract granular telemetry params from the instance
+                if telemetry_params and len(args) > 0:
+                    extra += _extract_telemetry_params(args[0], kwargs, telemetry_params)
+
                 start_timer = perf_counter()
                 try:
                     # Call the original function
@@ -200,6 +381,7 @@ def _telemetry_emitter(feature: str, func_name: str):
                     stop_timer = perf_counter()
                     elapsed = stop_timer - start_timer
                     extra += f"&x-latency={round(elapsed, 2)}"
+                    extra += f"&x-errorCategory={_classify_error(e)}"
                     if not telemetry_opt_out_flag:
                         _send_telemetry_request(
                             STATUS_TO_CODE[str(Status.FAILURE)],
