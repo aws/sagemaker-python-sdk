@@ -120,3 +120,4 @@ def __getattr__(name):
         from sagemaker.core.training.configs import HyperPodCompute
         return HyperPodCompute
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+# No-op line to trigger CI for a Codecov verification (DO NOT MERGE).
