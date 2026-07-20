@@ -25,7 +25,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_eula_for_gated_model,
     _validate_hyperparameter_values
 )
-from sagemaker.train.common_utils.data_utils import is_multimodal_data
+from sagemaker.train.common_utils.data_utils import is_multimodal_data, validate_data_path_exists
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name, _ALLOWED_REWARD_MODEL_IDS
@@ -203,7 +203,7 @@ class RLAIFTrainer(BaseTrainer):
         
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLAIFTrainer.train")
-    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
+    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
         """Execute the RLAIF training job.
 
         Parameters:
@@ -220,9 +220,13 @@ class RLAIFTrainer(BaseTrainer):
                 If None, uses the default timeout from the wait utility.
             poll (int):
                 Polling interval in seconds for checking training job status. Defaults to 5.
+            dry_run (bool):
+                If True, runs all validation (IAM, hyperparameters, infrastructure, data paths)
+                without submitting a job. Returns None on success, raises on validation failure.
+                Defaults to False.
 
         Returns:
-            TrainingJob: The SageMaker training job object.
+            TrainingJob: The SageMaker training job object, or None if dry_run=True.
         """
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
@@ -301,6 +305,22 @@ class RLAIFTrainer(BaseTrainer):
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
+
+        # Validate data paths exist before submission
+        effective_training = training_dataset or self.training_dataset
+        effective_validation = validation_dataset or self.validation_dataset
+        if effective_training:
+            validate_data_path_exists(
+                effective_training, sagemaker_session, label="training dataset"
+            )
+        if effective_validation:
+            validate_data_path_exists(
+                effective_validation, sagemaker_session, label="validation dataset"
+            )
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
 
         try:
             training_job = TrainingJob.create(**create_args)

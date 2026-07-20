@@ -186,6 +186,7 @@ class CPTTrainer(BaseTrainer):
         wait: bool = True,
         wait_timeout: Optional[int] = None,
         poll: int = 5,
+        dry_run: bool = False,
     ):
         """Execute the CPT training job on HyperPod.
 
@@ -200,9 +201,13 @@ class CPTTrainer(BaseTrainer):
                 Maximum time in seconds to wait.
             poll (int):
                 Polling interval in seconds. Defaults to 5.
+            dry_run (bool):
+                If True, runs validation without submitting a job. 
+                Returns None on success, raises on validation failure.
+                Defaults to False.
 
         Returns:
-            str: The HyperPod job name.
+            str: The HyperPod job name, or None if dry_run=True.
 
         Raises:
             ValueError: If compute is not configured or recipe is missing.
@@ -252,4 +257,5 @@ class CPTTrainer(BaseTrainer):
             wait=wait,
             wait_timeout=wait_timeout,
             poll=poll,
+            dry_run=dry_run,
         )
