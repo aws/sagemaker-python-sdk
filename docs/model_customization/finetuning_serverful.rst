@@ -131,51 +131,6 @@ Monitor the Job
    print(f"Status: {job.training_job_status}")
    print(f"Secondary Status: {job.secondary_status}")
 
-show_metrics()
-~~~~~~~~~~~~~~
-
-Plot training metrics after a job completes. For Nova models, metrics are parsed from
-CloudWatch logs. For open-weight models, metrics are pulled from MLflow if set up.
-
-.. code-block:: python
-
-   # Plot all available metrics
-   df = trainer.show_metrics()
-
-   # Plot specific metrics
-   df = trainer.show_metrics(metrics=["training_loss", "lr"])
-
-   # Filter by step range
-   df = trainer.show_metrics(starting_step=20, ending_step=100)
-
-   # Filter by time window
-   from datetime import datetime
-   df = trainer.show_metrics(
-       start_time=datetime(2026, 1, 1, 1, 0, 0),
-       end_time=datetime(2026, 1, 1, 2, 0, 0),
-   )
-
-   # After a kernel restart, use the standalone function with job name
-   from sagemaker.train import plot_training_metrics
-   plot_training_metrics("my-sft-job")
-
-
-stream_logs()
-~~~~~~~~~~~~~
-
-Stream CloudWatch logs in real-time while a job is running:
-
-.. code-block:: python
-
-   # Start training non-blocking
-   job = trainer.train(wait=False)
-
-   # Stream logs directly to the terminal (blocking)
-   trainer.stream_logs()
-
-   # Custom polling interval (seconds)
-   trainer.stream_logs(poll=10)
-
 
 Interactive Notebook
 ---------------------

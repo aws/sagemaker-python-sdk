@@ -92,6 +92,77 @@ Key Features
   - IAM permissions: ``events:PutRule``, ``events:PutTargets``, ``events:ListRules``,
     ``events:RemoveTargets``, ``events:DeleteRule``
 
+**Monitoring: show_metrics()**
+  Plot training metrics after a job completes. Works across all compute types.
+
+  - **Nova models**: Metrics parsed from CloudWatch logs.
+  - **OSS models**: Metrics pulled from MLflow.
+
+  .. code-block:: python
+
+    # Plot all available metrics
+    df = trainer.show_metrics()
+
+    # Plot specific metrics
+    df = trainer.show_metrics(metrics=["training_loss", "lr"])
+
+    # Filter by step range
+    df = trainer.show_metrics(starting_step=10, ending_step=100)
+
+    # Filter by time window
+    from datetime import datetime
+    df = trainer.show_metrics(
+        start_time=datetime(2026, 1, 1, 10, 0, 0),
+        end_time=datetime(2026, 1, 1, 12, 0, 0),
+    )
+
+  **After a kernel restart:**
+
+  .. code-block:: python
+
+    # Standalone (SMTJ)
+    from sagemaker.train import plot_training_metrics
+    plot_training_metrics("my-sft-job")
+
+    # Re-attach (HyperPod — needs cluster name for log group resolution)
+    from sagemaker.train import SFTTrainer
+    from sagemaker.core.training.configs import HyperPodCompute
+
+    trainer = SFTTrainer(
+        model="nova-textgeneration-micro",
+        training_dataset="s3://unused",
+        compute=HyperPodCompute(cluster_name="my-cluster", instance_type="ml.p5.48xlarge")
+    )
+    trainer._latest_training_job = "my-hp-job"
+    df = trainer.show_metrics()
+
+**Monitoring: stream_logs()**
+  Stream CloudWatch logs in real-time while a job is running.
+
+  .. code-block:: python
+
+    # Start training non-blocking
+    job = trainer.train(wait=False)
+
+    # Stream logs (blocks until job completes or Ctrl+C)
+    trainer.stream_logs()
+
+    # Custom polling interval (seconds)
+    trainer.stream_logs(poll=10)
+
+    # Stream from a specific start time - providing this will speed up execution.
+    from datetime import datetime
+    trainer.stream_logs(start_time=datetime(2026, 1, 1, 15, 0, 0))
+
+  .. note::
+
+    - **SMTJ**: Streaming auto-stops when the job reaches a terminal state.
+    - **HyperPod**: Streaming runs until you press Ctrl+C. Logs may take a few minutes
+      to propagate to CloudWatch on first run.
+
+
+----
+
 
 .. toctree::
    :maxdepth: 1
