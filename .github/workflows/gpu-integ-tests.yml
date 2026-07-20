@@ -1,12 +1,12 @@
 name: GPU Integ Tests
 on:
   schedule:
-    # US Pacific (PST, UTC-8): 10:00 PM / 1:00 AM / 4:00 AM -> 06/09/12 UTC.
+    # US Pacific (PST, UTC-8): 0:00 AM / 3:00 AM / 6:00 AM -> 08/11/14 UTC.
     # All three fire within the same UTC day so the run-level CloudWatch metric
     # (GpuIntegRunFailure) aggregates correctly per day.
-    - cron: "0 6 * * *"
-    - cron: "0 9 * * *"
-    - cron: "0 12 * * *"
+    - cron: "0 8 * * *"
+    - cron: "0 11 * * *"
+    - cron: "0 14 * * *"
   workflow_dispatch:
 
 permissions:
