@@ -157,7 +157,7 @@ CloudWatch logs. For open-weight models, metrics are pulled from MLflow if set u
 
    # After a kernel restart, use the standalone function with job name
    from sagemaker.train import plot_training_metrics
-   plot_training_metrics("my-sft-job-20260101195119")
+   plot_training_metrics("my-sft-job")
 
 
 stream_logs()

@@ -213,7 +213,7 @@ Plot training metrics parsed from CloudWatch logs for your HyperPod cluster:
    )
 
    # Set the job name manually
-   trainer._latest_training_job = "my-hp-job-20260716153000"
+   trainer._latest_training_job = "my-hp-job"
 
    # Now show_metrics works — it uses compute.cluster_name to find logs
    df = trainer.show_metrics()
