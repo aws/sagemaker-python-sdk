@@ -171,6 +171,80 @@ Set Hyperparameters and Submit
    print(f"HyperPod job submitted: {sft_job}")
 
 
+Monitor the Job
+----------------
+show_metrics()
+~~~~~~~~~~~~~~
+
+Plot training metrics parsed from CloudWatch logs for your HyperPod cluster:
+
+.. code-block:: python
+
+   # After training completes
+   df = trainer.show_metrics()
+
+   # Plot specific metrics
+   df = trainer.show_metrics(metrics=["training_loss", "reward_score"])
+
+   # Filter by step range
+   df = trainer.show_metrics(starting_step=50, ending_step=200)
+
+   # Filter by time window, this can help speed up completion
+   from datetime import datetime
+   df = trainer.show_metrics(
+       start_time=datetime(2026, 7, 1, 10, 0, 0),
+       end_time=datetime(2026, 7, 2, 12, 0, 0),
+   )
+
+.. code-block:: python
+
+   # After a kernel restart, set up a trainer with the compute config to retrieve metrics.
+   from sagemaker.train import SFTTrainer
+   from sagemaker.core.training.configs import HyperPodCompute
+
+   # Create trainer with the same compute config (not used for training)
+   trainer = SFTTrainer(
+      model="nova-textgeneration-micro",
+      training_dataset="s3://dataset-unused-for-metrics",  # not used for metrics
+      compute=HyperPodCompute(
+         cluster_name="my-cluster", 
+         instance_type="ml.p5.48xlarge",
+      )
+   )
+
+   # Set the job name manually
+   trainer._latest_training_job = "my-hp-job-20260716153000"
+
+   # Now show_metrics works — it uses compute.cluster_name to find logs
+   df = trainer.show_metrics()
+
+
+stream_logs()
+~~~~~~~~~~~~~
+
+Stream CloudWatch logs from the HyperPod cluster in real-time:
+
+.. code-block:: python
+
+   # Start training
+   job = trainer.train(wait=False)
+
+   # Stream logs (blocks until user manually runs Ctrl+C)
+   trainer.stream_logs()
+
+   # Custom polling interval in seconds
+   trainer.stream_logs(poll=10)
+
+   # Stream from a specific start time
+   trainer.stream_logs(start_time=datetime(2026, 1, 1, 15, 0, 0))
+
+.. note::
+
+   HyperPod log streaming runs until you press Ctrl+C (unlike SMTJ which
+   auto-stops when the job reaches a terminal state). Logs may take a few
+   minutes to propagate to CloudWatch.
+
+
 Interactive Notebook
 ---------------------
 
