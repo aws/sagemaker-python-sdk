@@ -81,7 +81,7 @@ def _map_service_error(error: Exception) -> Exception:
 
 
 @_telemetry_emitter(
-    feature=Feature.MODEL_CUSTOMIZATION, func_name="ai_inference_recommender.start_benchmark"
+    feature=Feature.INFERENCE_RECOMMENDER, func_name="ai_inference_recommender.start_benchmark"
 )
 def start_benchmark(
     endpoint: Union[Endpoint, str],
