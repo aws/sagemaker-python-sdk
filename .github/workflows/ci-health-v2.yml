@@ -1,14 +1,15 @@
-name: CI Health
+name: CI Health V2
 on:
   schedule:
-    - cron: "0 */3 * * *"
+    # Once a day at 05:00 UTC (9pm PDT / 10pm PST).
+    - cron: "0 5 * * *"
   workflow_dispatch:
-    
+
 permissions:
     id-token: write # This is required for requesting the JWT
 
 jobs:
-  canaries-v3:
+  canaries-v2-master:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
@@ -17,12 +18,12 @@ jobs:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
           aws-region: us-west-2
           role-duration-seconds: 10800
-      - name: Run Canaries V3
+      - name: Run Canaries V2 (master)
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: sagemaker-python-sdk-ci-health-canaries-v3
-          source-version-override: refs/heads/master
-  canaries-v2:
+          project-name: sagemaker-python-sdk-ci-health-canaries-v2-master
+          source-version-override: refs/heads/master-v2
+  canaries-v2-release:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
@@ -31,10 +32,10 @@ jobs:
           role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
           aws-region: us-west-2
           role-duration-seconds: 10800
-      - name: Run Canaries V2
+      - name: Run Canaries V2 (release)
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: sagemaker-python-sdk-ci-health-canaries-v2
+          project-name: sagemaker-python-sdk-ci-health-canaries-v2-release
           source-version-override: refs/heads/master-v2
   unit-tests-v2:
     runs-on: ubuntu-latest
@@ -86,25 +87,3 @@ jobs:
         with:
           project-name: sagemaker-python-sdk-ci-health-localmode-tests
           source-version-override: refs/heads/master-v2
-  unit-test-v3:
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        submodule: [sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops]
-    steps:
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
-          aws-region: us-west-2
-          role-duration-seconds: 10800
-      - name: Run Unit Tests V3 for ${{ matrix.submodule }}
-        uses: aws-actions/aws-codebuild-run-build@v1
-        with:
-          project-name: sagemaker-python-sdk-ci-health-unit-test-v3
-          source-version-override: refs/heads/master
-          env-vars-for-codebuild: |
-            SUBMODULE
-        env:
-          SUBMODULE: ${{ matrix.submodule }}
