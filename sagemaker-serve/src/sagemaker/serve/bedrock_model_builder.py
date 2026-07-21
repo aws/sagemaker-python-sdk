@@ -103,9 +103,8 @@ class BedrockModelBuilder:
         tags each custom model it creates with the model source and, on a
         subsequent deploy of the same source, reuses the existing custom model
         (and its active deployment if present) instead of creating duplicates,
-        logging a warning rather than raising. This matters because Bedrock
-        custom-model import is slow and consumes the limited imported-model
-        quota per account/region.
+        logging a warning rather than raising. To avoid redeploying the same
+        model artifacts, opt into resource reuse with ``reuse_resources=True``.
 
     Args:
         model: The model to deploy. Can be a ModelTrainer, MultiTurnRLTrainer,

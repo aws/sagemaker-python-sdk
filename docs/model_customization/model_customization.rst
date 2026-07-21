@@ -53,6 +53,33 @@ Key Features
   with clear precedence. Use ``get_resolved_recipe()`` to inspect the merged configuration
   before job submission. See :doc:`finetuning_serverful` and :doc:`finetuning_hyperpod` for examples.
 
+**Dry-Run Validation**
+  Pass ``dry_run=True`` to ``train()`` to run the validation steps without submitting a job 
+  or consuming compute. Returns ``None`` on success, raises ``ValueError`` on validation failure.
+
+  Supported on all trainers (SFT, DPO, RLVR, RLAIF, CPT) and ``ModelTrainer.train()``.
+  Works across serverless, serverful (``TrainingJobCompute``), and HyperPod
+  (``HyperPodCompute``) compute modes. Validates S3 URIs, DataSet ARNs, and ``DataSet``
+  objects.
+
+  Also available on evaluators — see :doc:`evaluation` for details.
+
+  .. code-block:: python
+
+     from sagemaker.train import SFTTrainer
+     from sagemaker.train.common import TrainingType
+
+     trainer = SFTTrainer(
+         model="meta-textgeneration-llama-3-2-1b-instruct",
+         training_type=TrainingType.LORA,
+         model_package_group="my-finetuned-models",
+         training_dataset="s3://my-bucket/train.jsonl",
+         accept_eula=True,
+     )
+
+     # Validate without submitting — returns None on success
+     trainer.train(dry_run=True)
+
 **Job Notifications**
   Receive SNS notifications when training jobs complete, fail, or stop. Uses EventBridge
   rules to route SageMaker Training Job status changes to your SNS topic. 
