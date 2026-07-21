@@ -93,25 +93,39 @@ class TestValidateLengthConstraints:
         msg = str(exc.value)
         assert "400000" in msg and "262144" in msg
 
-    def test_sft_max_length_within_sequence_length_passes(self):
-        opts = FineTuningOptions(
-            {"max_length": {"type": "integer", "default": 4096, "min": 4096, "max": 131072}},
-            sequence_length=131072,
-        )
-        opts.max_length = 65536
-        opts.validate_length_constraints()  # no raise
-
-    def test_sft_max_length_exceeds_sequence_length_raises(self):
-        opts = FineTuningOptions(
-            {"max_length": {"type": "integer", "default": 4096, "min": 4096, "max": 131072}},
-            sequence_length=131072,
-        )
-        # max is 131072, so set via _specs bypass to test the sum-guard directly
-        object.__setattr__(opts, "max_length", 200000)
-        with pytest.raises(ValueError) as exc:
-            opts.validate_length_constraints()
-        assert "131072" in str(exc.value)
-
     def test_no_sequence_length_is_noop(self):
         opts = self._rl_options(prompt=200000, response=200000, sequence_length=None)
+        opts.validate_length_constraints()  # unknown ceiling -> no raise
+
+    # verl/llmft SFT/DPO recipes vend the single-example ceiling as
+    # "dataset_max_len". Validation must enforce it so the ceiling is not
+    # silently unenforced for these frameworks.
+    def test_sft_dataset_max_len_within_sequence_length_passes(self):
+        opts = FineTuningOptions(
+            {"dataset_max_len": {"type": "integer", "default": 4096, "min": 4096, "max": 131072}},
+            sequence_length=131072,
+        )
+        opts.dataset_max_len = 65536
+        opts.validate_length_constraints()  # no raise
+
+    def test_sft_dataset_max_len_exceeds_sequence_length_raises(self):
+        opts = FineTuningOptions(
+            {"dataset_max_len": {"type": "integer", "default": 4096, "min": 4096, "max": 131072}},
+            sequence_length=131072,
+        )
+        # Bypass the per-field max so the sequence-length guard is what raises.
+        object.__setattr__(opts, "dataset_max_len", 200000)
+        with pytest.raises(ValueError) as exc:
+            opts.validate_length_constraints()
+        msg = str(exc.value)
+        assert "dataset_max_len" in msg and "131072" in msg
+
+    def test_framework_agnostic_gated_on_sequence_length_metadata_only(self):
+        # No sequence_length metadata (e.g. a recipe that does not vend it) -> the
+        # ceiling is unknown and validation is a no-op regardless of param name.
+        opts = FineTuningOptions(
+            {"dataset_max_len": {"type": "integer", "default": 4096, "min": 4096}},
+            sequence_length=None,
+        )
+        object.__setattr__(opts, "dataset_max_len", 999999)
         opts.validate_length_constraints()  # unknown ceiling -> no raise

@@ -36,15 +36,22 @@ class FineTuningOptions:
             super().__setattr__(key, default_value)
         self._initialized = True
 
+    # SFT/DPO recipes express the single-example length ceiling as
+    # "dataset_max_len" (verl and llmft templates). It maps to the recipe's
+    # sequence-length ceiling, so validation checks it.
+    _MAX_LENGTH_PARAMS = ("dataset_max_len",)
+
     def validate_length_constraints(self):
         """Enforce that selected lengths fit the recipe's sequence_length.
 
         For RL recipes: max_prompt_length + max_response_length must not exceed
-        sequence_length. For SFT/DPO: max_length must not exceed it. Per-field
-        min/max are already enforced on assignment; this adds the cross-field
-        sum check that a per-field max cannot express.
+        sequence_length. For SFT/DPO: the single-example length (dataset_max_len)
+        must not exceed it. Per-field min/max are already enforced on assignment;
+        this adds the cross-field sum check that a per-field max cannot express.
 
-        No-op if sequence_length is unknown or the relevant params are absent.
+        Framework-agnostic: gated only on the recipe's sequence_length metadata,
+        not on the model family. No-op if sequence_length is unknown or the
+        relevant params are absent.
         """
         if self._sequence_length is None:
             return
@@ -61,13 +68,14 @@ class FineTuningOptions:
                     f"max_response_length so their sum is within {self._sequence_length}."
                 )
 
-        max_length = getattr(self, "max_length", None)
-        if max_length is not None and max_length > self._sequence_length:
-            raise ValueError(
-                f"max_length ({max_length}) exceeds the recipe's supported sequence "
-                f"length ({self._sequence_length}). Set max_length to "
-                f"{self._sequence_length} or lower."
-            )
+        for param in self._MAX_LENGTH_PARAMS:
+            max_length = getattr(self, param, None)
+            if max_length is not None and max_length > self._sequence_length:
+                raise ValueError(
+                    f"{param} ({max_length}) exceeds the recipe's supported sequence "
+                    f"length ({self._sequence_length}). Set {param} to "
+                    f"{self._sequence_length} or lower."
+                )
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert back to dictionary for hyperparameters with string values."""
