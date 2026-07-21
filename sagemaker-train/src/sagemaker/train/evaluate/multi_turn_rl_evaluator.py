@@ -537,11 +537,19 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="MultiTurnRLEvaluator.evaluate",
     )
-    def evaluate(self) -> 'MTRLEvaluationExecution':
+    def evaluate(self, dry_run: bool = False) -> Optional['MTRLEvaluationExecution']:
         """Render the MTRL pipeline and start a non-blocking execution.
 
+        Args:
+            dry_run (bool):
+                If True, runs all validation (IAM, agent resolution, model
+                resolution, template rendering) without submitting the
+                evaluation. Returns None on success, raises on validation
+                failure. Defaults to False.
+
         Returns:
-            MTRLEvaluationExecution: The started pipeline execution.
+            MTRLEvaluationExecution: The started pipeline execution, or None
+            if dry_run=True.
             Call ``.wait()`` to block until completion and ``.show_results()``
             to render the aggregate report.
 
@@ -552,6 +560,9 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 execution = evaluator.evaluate()
                 execution.wait()
                 execution.show_results()
+
+                # Validate without submitting:
+                evaluator.evaluate(dry_run=True)
         """
         # 1. Trainer-sourced resolution (no-op if model is not a trainer).
         self._resolve_trainer_defaults()
@@ -589,6 +600,10 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         # 5. Template selection + render.
         template_str = self._select_mtrl_template()
         pipeline_definition = self._render_pipeline_definition(template_str, template_context)
+
+        if dry_run:
+            _logger.info("Dry-run validation passed. No evaluation submitted.")
+            return None
 
         # Dump the pipeline definition to a local JSON file for debugging.
         import json as _json_mod

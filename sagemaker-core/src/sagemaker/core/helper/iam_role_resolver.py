@@ -42,6 +42,39 @@ HYPERPOD_CLI_CONNECT_ACTIONS = (
     "eks:AccessKubernetesApi",
 )
 
+# Actions the *caller* must have to orchestrate Pipeline-based evaluations
+# directly. These actions must be held by whoever calls evaluator.evaluate(),
+# NOT by the job execution role (which is covered by role_type="training").
+# See verify_evaluation_caller_permissions().
+EVALUATION_CALLER_ACTIONS = (
+    # Pipeline orchestration
+    "sagemaker:CreatePipeline",
+    "sagemaker:UpdatePipeline",
+    "sagemaker:DescribePipeline",
+    "sagemaker:ListPipelines",
+    "sagemaker:StartPipelineExecution",
+    "sagemaker:DescribePipelineExecution",
+    "sagemaker:ListPipelineExecutionSteps",
+    "sagemaker:StopPipelineExecution",
+    "sagemaker:ListTags",
+    "sagemaker:AddTags",
+    "sagemaker:DescribeTrainingJob",
+    "iam:PassRole",
+    # Model resolution (DescribeHubContent called at construction time under caller creds)
+    "sagemaker:DescribeHubContent",
+    "sagemaker:ListHubContents",
+    "sagemaker:DescribeHub",
+    "sagemaker:ListHubs",
+    # Lineage (artifact creation/lookup runs under caller before pipeline starts)
+    "sagemaker:CreateArtifact",
+    "sagemaker:ListArtifacts",
+    "sagemaker:DescribeArtifact",
+    # S3 access (config/benchmark upload + output path validation)
+    "s3:PutObject",
+    "s3:GetObject",
+    "s3:ListBucket",
+)
+
 
 class RoleValidationError(Exception):
     """Raised when the resolved IAM role lacks the permissions/trust an operation needs.
@@ -673,6 +706,81 @@ def verify_hyperpod_connect_permissions(
 
     logger.info(
         "Caller '%s' has the HyperPod CLI connect permissions.", caller_role_arn
+    )
+    return True
+
+
+def verify_evaluation_caller_permissions(
+    sagemaker_session=None,
+) -> Optional[bool]:
+    """Verify the caller can orchestrate SageMaker Pipeline-based evaluations.
+
+    The evaluate module submits work via SageMaker Pipelines — creating, updating,
+    starting, and describing pipelines and their executions. These actions run under
+    the *caller's* credentials (the notebook user, Lambda, or CI role), NOT under
+    the job execution role passed to the pipeline. This function simulates the
+    required pipeline-orchestration actions on the caller identity and raises
+    :class:`RoleValidationError` when they are missing.
+
+    Args:
+        sagemaker_session: SageMaker session (used to get the boto session).
+
+    Returns:
+        True  — all evaluation caller actions are allowed.
+        None  — could not be determined (caller is not a role, or cannot simulate).
+
+    Raises:
+        RoleValidationError: If permissions are definitively denied.
+    """
+    boto_session = _get_boto_session(sagemaker_session)
+    sts_client = boto_session.client("sts")
+    iam_client = boto_session.client("iam")
+
+    caller_identity = sts_client.get_caller_identity()
+    caller_arn = caller_identity["Arn"]
+    account_id = caller_identity["Account"]
+    partition = _partition_from_arn(caller_arn)
+
+    caller_role_arn = _resolve_caller_role_arn(iam_client, caller_arn, account_id, partition)
+    if not caller_role_arn:
+        logger.info(
+            "Could not resolve a caller role to verify evaluation pipeline "
+            "permissions; errors will surface at pipeline creation time."
+        )
+        return None
+
+    try:
+        denied = _simulate_denied_actions(
+            iam_client, caller_role_arn, list(EVALUATION_CALLER_ACTIONS)
+        )
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code in ("AccessDenied", "AccessDeniedException"):
+            logger.info(
+                "Cannot simulate evaluation caller permissions for '%s' (access "
+                "denied to iam:SimulatePrincipalPolicy); errors will surface at "
+                "pipeline creation time.",
+                caller_role_arn,
+            )
+            return None
+        raise
+
+    if denied:
+        message = (
+            f"Your identity '{caller_role_arn}' is missing IAM permissions required "
+            f"to orchestrate SageMaker Pipeline-based evaluations: "
+            f"{', '.join(denied)}. "
+            f"The evaluation execution role was resolved successfully, but creating "
+            f"and starting the evaluation pipeline runs as YOUR credentials. "
+            f"Grant these actions to your identity (scoped to "
+            f"arn:{partition}:sagemaker:*:{account_id}:pipeline/*) or use the "
+            f"AmazonSageMakerFullAccess managed policy."
+        )
+        raise RoleValidationError(message)
+
+    logger.info(
+        "Caller '%s' has the evaluation pipeline orchestration permissions.",
+        caller_role_arn,
     )
     return True
 

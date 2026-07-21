@@ -14,7 +14,10 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, validator
 
 from sagemaker.core.common_utils import TagsDict
-from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
+from sagemaker.core.helper.iam_role_resolver import (
+    resolve_and_validate_role,
+    verify_evaluation_caller_permissions,
+)
 from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.core.training.configs import Compute, HyperPodCompute
@@ -720,7 +723,13 @@ class BaseEvaluator(BaseModel):
     
     def _get_aws_execution_context(self) -> Dict[str, str]:
         """Get AWS execution context (role ARN, region, account ID).
-        
+
+        Validates both the *execution* role (what the pipeline assumes to run
+        training jobs) and the *caller* role (what your identity needs to
+        create/start the pipeline). The execution role is validated via
+        :func:`resolve_and_validate_role` with ``role_type="training"``. The
+        caller role is validated via :func:`verify_evaluation_caller_permissions`.
+
         Returns:
             dict: Dictionary containing:
                 - role_arn (str): IAM role ARN for execution
@@ -738,6 +747,15 @@ class BaseEvaluator(BaseModel):
         role_arn = resolve_and_validate_role(
             provided_role=self.role,
             role_type="training",
+            sagemaker_session=self.sagemaker_session,
+        )
+
+        # Verify the caller's own identity has the pipeline-orchestration
+        # permissions required to create/start evaluations. This is separate from
+        # the execution role validation above (which checks what the pipeline can
+        # do once running). Always raise on denial so the user gets a clear error
+        # before hitting an opaque AccessDenied from CreatePipeline.
+        verify_evaluation_caller_permissions(
             sagemaker_session=self.sagemaker_session,
         )
         
