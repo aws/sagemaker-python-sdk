@@ -1361,6 +1361,9 @@ def _extract_recipe_from_helm_template(template_content: str) -> str:
     with ``---`` separators). The HyperPod CLI expects a single-document recipe YAML.
     This function extracts just the ``config.yaml`` content section.
 
+    For RFT/RLVR recipes, also strips the ``task_type: storm_rbs`` field from the
+    Hub template. 
+
     Args:
         template_content: Raw Helm chart template string from S3.
 
@@ -1388,7 +1391,13 @@ def _extract_recipe_from_helm_template(template_content: str) -> str:
             "The template format may have changed."
         )
 
-    return textwrap.dedent(recipe_match.group(1)).strip()
+    result = textwrap.dedent(recipe_match.group(1)).strip()
+
+    # Strip task_type: storm_rbs from RFT/RLVR recipes - including it causes service validation failures.
+    result = re.sub(r"^\s*task_type:\s*storm_rbs\s*$", "", result, flags=re.MULTILINE)
+    result = textwrap.dedent(result)
+
+    return result
 
 
 def _render_recipe_placeholders(recipe_content: str, override_spec: dict) -> str:

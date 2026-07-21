@@ -1279,6 +1279,10 @@ class BaseTrainer(ABC):
                     sagemaker_session=sagemaker_session,
                 )
 
+        # RFT/RLVR on HyperPod requires the TRAIN-specific image tag. 
+        if training_image and "SM-HP-RFT-" in training_image and "TRAIN" not in training_image:
+            training_image = training_image.replace("SM-HP-RFT-", "SM-HP-RFT-TRAIN-")
+
         if not training_image:
             raise ValueError(
                 "training_image is required for HyperPod compute but could not be resolved "
