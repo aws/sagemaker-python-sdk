@@ -196,6 +196,73 @@ class TestHyperPodComputeMapping:
     @patch("sagemaker.train.base_trainer.TrainDefaults.get_sagemaker_session")
     @patch("sagemaker.train.base_trainer.get_hyperpod_recipe_path", return_value="recipes/test")
     @patch("sagemaker.train.base_trainer.flatten_resolved_recipe", return_value={})
+    def test_rft_image_tag_corrected_to_train(
+        self, mock_flatten, mock_get_recipe_path, mock_get_session,
+        mock_validate, mock_verify, mock_subprocess
+    ):
+        """SM-HP-RFT-V2-latest should be rewritten to SM-HP-RFT-TRAIN-V2-latest."""
+        mock_get_session.return_value = MagicMock()
+        mock_subprocess.run.return_value = SimpleNamespace(
+            stdout="NAME: rft-job-123\n", stderr=""
+        )
+
+        trainer = _make_hyperpod_trainer(node_count=2)
+        # Simulate Hub resolving the wrong RFT image tag
+        trainer.training_image = (
+            "012345678910.dkr.ecr.us-east-1.amazonaws.com/test-repo:SM-HP-RFT-TEST"
+        )
+
+        with patch(
+            "sagemaker.train.common_utils.finetune_utils.get_training_image",
+            return_value=None,
+        ), patch.object(trainer, "get_resolved_recipe", return_value={"training_config": {}}):
+            trainer._train_hyperpod(wait=False)
+
+        start_cmd = mock_subprocess.run.call_args_list[-1].args[0]
+        overrides = json.loads(start_cmd[start_cmd.index("--override-parameters") + 1])
+        assert overrides["container"] == (
+            "012345678910.dkr.ecr.us-east-1.amazonaws.com/test-repo:SM-HP-RFT-TRAIN-TEST"
+        )
+
+    @patch("sagemaker.train.base_trainer.subprocess")
+    @patch("sagemaker.train.base_trainer.TrainDefaults.verify_hyperpod_caller_permissions")
+    @patch("sagemaker.train.base_trainer.validate_hyperpod_compute")
+    @patch("sagemaker.train.base_trainer.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.base_trainer.get_hyperpod_recipe_path", return_value="recipes/test")
+    @patch("sagemaker.train.base_trainer.flatten_resolved_recipe", return_value={})
+    def test_rft_train_image_not_double_replaced(
+        self, mock_flatten, mock_get_recipe_path, mock_get_session,
+        mock_validate, mock_verify, mock_subprocess
+    ):
+        """SM-HP-RFT-TRAIN-V2-latest should NOT be modified (already correct)."""
+        mock_get_session.return_value = MagicMock()
+        mock_subprocess.run.return_value = SimpleNamespace(
+            stdout="NAME: rft-job-123\n", stderr=""
+        )
+
+        trainer = _make_hyperpod_trainer(node_count=2)
+        trainer.training_image = (
+            "012345678910.dkr.ecr.us-east-1.amazonaws.com/test-repo:SM-HP-RFT-TRAIN"
+        )
+
+        with patch(
+            "sagemaker.train.common_utils.finetune_utils.get_training_image",
+            return_value=None,
+        ), patch.object(trainer, "get_resolved_recipe", return_value={"training_config": {}}):
+            trainer._train_hyperpod(wait=False)
+
+        start_cmd = mock_subprocess.run.call_args_list[-1].args[0]
+        overrides = json.loads(start_cmd[start_cmd.index("--override-parameters") + 1])
+        assert overrides["container"] == (
+            "012345678910.dkr.ecr.us-east-1.amazonaws.com/test-repo:SM-HP-RFT-TRAIN"
+        )
+
+    @patch("sagemaker.train.base_trainer.subprocess")
+    @patch("sagemaker.train.base_trainer.TrainDefaults.verify_hyperpod_caller_permissions")
+    @patch("sagemaker.train.base_trainer.validate_hyperpod_compute")
+    @patch("sagemaker.train.base_trainer.TrainDefaults.get_sagemaker_session")
+    @patch("sagemaker.train.base_trainer.get_hyperpod_recipe_path", return_value="recipes/test")
+    @patch("sagemaker.train.base_trainer.flatten_resolved_recipe", return_value={})
     @patch("sagemaker.train.base_trainer._get_smhp_replicas_enum", return_value=[4, 8])
     def test_model_source_passed_as_override_parameter(
         self, mock_replicas, mock_flatten, mock_get_recipe_path, mock_get_session,
