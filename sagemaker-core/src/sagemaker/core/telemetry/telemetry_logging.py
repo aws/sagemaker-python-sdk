@@ -76,6 +76,7 @@ FEATURE_TO_CODE = {
     str(Feature.PROCESSING): 18,
     str(Feature.MODEL_CUSTOMIZATION_NOVA): 19,
     str(Feature.MODEL_CUSTOMIZATION_OSS): 20,
+    str(Feature.INFERENCE_RECOMMENDER): 21,
 }
 
 STATUS_TO_CODE = {

@@ -3910,6 +3910,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         mb_instance.resource_requirements = resource_requirements
         mb_instance.model_kms_key = model_kms_key
         mb_instance.hub_name = jumpstart_config.hub_name
+        mb_instance.hub_content_name = getattr(jumpstart_config, "hub_content_name", None)
         if mb_instance.hub_name and not getattr(mb_instance, "hub_arn", None):
             from sagemaker.core.jumpstart.hub.utils import (
                 generate_hub_arn_for_init_kwargs,
@@ -4427,12 +4428,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         return self.built_model
 
     @_telemetry_emitter(
-        feature=Feature.MODEL_CUSTOMIZATION,
+        feature=Feature.INFERENCE_RECOMMENDER,
         func_name="ModelBuilder.generate_deployment_recommendations",
     )
     def generate_deployment_recommendations(
         self,
-        workload=None,
+        workload: Optional[Union["Workload", str]] = None,
         performance_target: Optional[Union[str, "PerformanceTarget"]] = None,
         *,
         output_path: Optional[str] = None,
