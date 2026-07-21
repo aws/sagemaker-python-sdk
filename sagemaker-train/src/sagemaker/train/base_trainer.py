@@ -210,7 +210,10 @@ class BaseTrainer(ABC):
                 hp_uri = recipe_entry["HpEksPayloadTemplateS3Uri"]
                 bucket, key = hp_uri.replace("s3://", "").split("/", 1)
                 raw = s3_client.get_object(Bucket=bucket, Key=key)["Body"].read().decode("utf-8")
-                return yaml.safe_load(_extract_recipe_from_helm_template(raw))
+                return yaml.safe_load(_extract_recipe_from_helm_template(
+                    raw,
+                    customization_technique=self._customization_technique if _is_nova_model(self._model_name) else None,
+                ))
             else:
                 smtj_uri = resolve_s3_uri_placeholders(recipe_entry["SmtjRecipeTemplateS3Uri"], sagemaker_session)
                 uri_path = smtj_uri.replace("s3://", "")

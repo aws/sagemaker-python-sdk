@@ -1145,7 +1145,7 @@ class TestExtractRecipeFromHelmTemplate:
             "---\n"
         )
 
-        extracted = fu._extract_recipe_from_helm_template(template)
+        extracted = fu._extract_recipe_from_helm_template(template, customization_technique="RLVR")
 
         assert "task_type" not in extracted
         assert "storm_rbs" not in extracted
@@ -1170,6 +1170,25 @@ class TestExtractRecipeFromHelmTemplate:
         extracted = fu._extract_recipe_from_helm_template(template)
 
         assert "task_type: OTHER_TASK" in extracted
+
+    def test_does_not_strip_task_type_for_non_rlvr(self):
+        """task_type: storm_rbs is preserved when technique is not RLVR/RFT."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      task_type: storm_rbs\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template, customization_technique="SFT")
+
+        assert "task_type: storm_rbs" in extracted
 
 
 class TestGetRecipeS3Uri:
