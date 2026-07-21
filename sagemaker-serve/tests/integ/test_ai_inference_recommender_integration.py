@@ -25,7 +25,6 @@ from sagemaker.core.resources import (
     AIBenchmarkJob,
     AIRecommendationJob,
     AIWorkloadConfig,
-    EndpointConfig,
     Model,
     ModelPackage,
 )
@@ -35,6 +34,8 @@ from sagemaker.serve.ai_inference_recommender import (
 )
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.train.configs import Compute
+
+from cleanup_helpers import cleanup_by_name, delete_quietly
 
 logger = logging.getLogger(__name__)
 
@@ -78,16 +79,18 @@ def test_benchmark_workflow_end_to_end():
     role = get_execution_role(sagemaker_session=Session())
     bench_job_name = f"air-bench-job-{unique_id}"
     workload_config_name = f"air-bench-wl-{unique_id}"
-    core_model = None
-    core_endpoint = None
+    # Names are generated up front so cleanup can run by name even if build()
+    # or deploy() raises or is killed before returning a resource handle.
+    model_name = f"air-bench-model-{unique_id}"
+    endpoint_name = f"air-bench-ep-{unique_id}"
 
     try:
         model_builder = _build_jumpstart_model_builder(role_arn=role)
-        core_model = model_builder.build(model_name=f"air-bench-model-{unique_id}")
+        core_model = model_builder.build(model_name=model_name)
         logger.info(f"Model created: {core_model.model_name}")
 
         core_endpoint = model_builder.deploy(
-            endpoint_name=f"air-bench-ep-{unique_id}"
+            endpoint_name=endpoint_name
         )
         logger.info(f"Endpoint InService: {core_endpoint.endpoint_name}")
 
@@ -117,14 +120,17 @@ def test_benchmark_workflow_end_to_end():
         logger.info(f"Parsed {len(result.metrics.all_metrics)} benchmark metrics")
 
     finally:
-        if core_endpoint and core_model:
-            cleanup_resources(core_model, core_endpoint)
-        _delete_quietly(
-            lambda: AIBenchmarkJob.get(ai_benchmark_job_name=bench_job_name),
+        # Best-effort cleanup by name; runs even if deploy() failed/hung so a
+        # Failed or half-created endpoint is still torn down.
+        cleanup_by_name(endpoint_name=endpoint_name, model_name=model_name)
+        delete_quietly(
+            lambda: AIBenchmarkJob.get(ai_benchmark_job_name=bench_job_name).delete(),
             f"AIBenchmarkJob {bench_job_name}",
         )
-        _delete_quietly(
-            lambda: AIWorkloadConfig.get(ai_workload_config_name=workload_config_name),
+        delete_quietly(
+            lambda: AIWorkloadConfig.get(
+                ai_workload_config_name=workload_config_name
+            ).delete(),
             f"AIWorkloadConfig {workload_config_name}",
         )
 
@@ -139,16 +145,15 @@ def test_recommendation_workflow_end_to_end():
     rec_job_name = f"air-rec-job-{unique_id}"
     workload_config_name = f"air-rec-wl-{unique_id}"
     rec_endpoint_config_name = f"air-rec-cfg-{unique_id}"
+    rec_endpoint_name = f"air-rec-ep-{unique_id}"
     rec_model_name = f"air-rec-model-{unique_id}"
+    source_model_name = f"air-rec-source-{unique_id}"
 
-    source_model = None
-    rec_model = None
-    rec_endpoint = None
     rec_model_package_arn = None
 
     try:
         model_builder = _build_jumpstart_model_builder(role_arn=role)
-        source_model = model_builder.build(model_name=f"air-rec-source-{unique_id}")
+        model_builder.build(model_name=source_model_name)
 
         recommendation_job = model_builder.generate_deployment_recommendations(
             workload=_build_synthetic_workload(),
@@ -192,7 +197,7 @@ def test_recommendation_workflow_end_to_end():
         # The recommendation's ModelPackage is unapproved; opt in to approving
         # it as part of deploy for this end-to-end test.
         rec_endpoint = model_builder.deploy(
-            endpoint_name=f"air-rec-ep-{unique_id}",
+            endpoint_name=rec_endpoint_name,
             model_name=rec_model_name,
             endpoint_config_name=rec_endpoint_config_name,
             role=role,
@@ -203,51 +208,39 @@ def test_recommendation_workflow_end_to_end():
         assert rec_endpoint.endpoint_status == "InService", (
             f"Endpoint did not reach InService: {rec_endpoint.endpoint_status}"
         )
-        rec_model = Model.get(model_name=rec_model_name)
 
     finally:
-        if rec_endpoint and rec_model:
-            cleanup_resources(rec_model, rec_endpoint, rec_endpoint_config_name)
-        if source_model:
-            source_model.delete()
-        _delete_quietly(
-            lambda: AIRecommendationJob.get(ai_recommendation_job_name=rec_job_name),
+        # Best-effort cleanup by name; runs even if deploy() failed/hung so a
+        # Failed or half-created endpoint is still torn down. The
+        # recommendation path uses a distinct endpoint-config name, so it is
+        # passed explicitly rather than defaulting to the endpoint name.
+        cleanup_by_name(
+            endpoint_name=rec_endpoint_name,
+            endpoint_config_name=rec_endpoint_config_name,
+            model_name=rec_model_name,
+        )
+        delete_quietly(
+            lambda: Model.get(model_name=source_model_name).delete(),
+            f"Model {source_model_name}",
+        )
+        delete_quietly(
+            lambda: AIRecommendationJob.get(
+                ai_recommendation_job_name=rec_job_name
+            ).delete(),
             f"AIRecommendationJob {rec_job_name}",
         )
-        _delete_quietly(
-            lambda: AIWorkloadConfig.get(ai_workload_config_name=workload_config_name),
+        delete_quietly(
+            lambda: AIWorkloadConfig.get(
+                ai_workload_config_name=workload_config_name
+            ).delete(),
             f"AIWorkloadConfig {workload_config_name}",
         )
         # The recommendation job publishes (and this test approves) a
         # ModelPackage; delete it so repeated runs don't accumulate packages.
         if rec_model_package_arn:
-            _delete_quietly(
-                lambda: ModelPackage.get(model_package_name=rec_model_package_arn),
+            delete_quietly(
+                lambda: ModelPackage.get(
+                    model_package_name=rec_model_package_arn
+                ).delete(),
                 f"ModelPackage {rec_model_package_arn}",
             )
-
-
-def cleanup_resources(core_model, core_endpoint, endpoint_config_name=None):
-    """Delete the model, endpoint, and endpoint config in reverse order of creation.
-
-    ``endpoint_config_name`` defaults to ``core_endpoint.endpoint_name`` for the
-    benchmark-test path where ``ModelBuilder.deploy()`` uses a single name for
-    both. Must be passed explicitly for the recommendation-test path, where
-    ``ModelBuilder.deploy(recommendation_index=N)`` generates a distinct
-    endpoint-config name.
-    """
-    config_name = endpoint_config_name or core_endpoint.endpoint_name
-    _delete_quietly(lambda: core_model, f"Model {core_model.model_name}")
-    _delete_quietly(lambda: core_endpoint, f"Endpoint {core_endpoint.endpoint_name}")
-    _delete_quietly(
-        lambda: EndpointConfig.get(endpoint_config_name=config_name),
-        f"EndpointConfig {config_name}",
-    )
-
-
-def _delete_quietly(resource_factory, label):
-    """Best-effort delete; log and continue on any failure."""
-    try:
-        resource_factory().delete()
-    except Exception as exc:
-        logger.warning("Failed to delete %s: %s", label, exc)
