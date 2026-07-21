@@ -720,10 +720,16 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             except Exception as e:
                 logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
 
+        # Supported-context ceiling: the recipe's SequenceLength ("<n>K") is the
+        # single source of truth. Parse it to an int so we can validate that
+        # max_prompt_length + max_response_length (or max_length) stays within
+        # what the recipe's hardware can serve. 0 if absent/unparseable (no-op).
+        context_length = _parse_context_length(recipe.get("SequenceLength")) or None
+
         if options_dict:
-            return FineTuningOptions(options_dict), model_arn, is_gated_model
+            return FineTuningOptions(options_dict, context_length=context_length), model_arn, is_gated_model
         else:
-            return FineTuningOptions({}), model_arn, is_gated_model
+            return FineTuningOptions({}, context_length=context_length), model_arn, is_gated_model
             
     except Exception as e:
         logger.debug("Exception getting fine-tuning options: %s", e)

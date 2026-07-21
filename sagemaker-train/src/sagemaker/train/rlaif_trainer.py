@@ -280,6 +280,9 @@ class RLAIFTrainer(BaseTrainer):
             mlflow_run_name=self.mlflow_run_name,
         )
 
+        # Enforce prompt + response fit the recipe's supported context length.
+        self.hyperparameters.validate_length_constraints()
+
         final_hyperparameters = self.hyperparameters.to_dict()
 
         # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
