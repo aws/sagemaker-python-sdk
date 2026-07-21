@@ -47,6 +47,13 @@ from sagemaker.mlops.workflow.clarify_check_step import ClarifyCheckStep
 from sagemaker.mlops.workflow.condition_step import ConditionStep
 from sagemaker.mlops.workflow.emr_step import EMRStep, EMRStepConfig
 from sagemaker.mlops.workflow.fail_step import FailStep
+from sagemaker.mlops.workflow.for_each_step import (
+    ForEachStep,
+    ForEachSelector,
+    ForEachSelectorPickType,
+    CurrentItem,
+    ChildOutput,
+)
 from sagemaker.mlops.workflow.lambda_step import LambdaStep, LambdaOutput
 from sagemaker.mlops.workflow.model_step import ModelStep
 from sagemaker.mlops.workflow.monitor_batch_transform_step import MonitorBatchTransformStep
@@ -99,6 +106,11 @@ __all__ = [
     "EMRStep",
     "EMRStepConfig",
     "FailStep",
+    "ForEachStep",
+    "ForEachSelector",
+    "ForEachSelectorPickType",
+    "CurrentItem",
+    "ChildOutput",
     "LambdaStep",
     "LambdaOutput",
     "ModelStep",

@@ -24,6 +24,7 @@ from sagemaker.mlops.workflow._steps_compiler import (
 )
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum, PropertyFile
 from sagemaker.mlops.workflow.condition_step import ConditionStep
+from sagemaker.mlops.workflow.for_each_step import ForEachStep
 from sagemaker.core.workflow.step_outputs import StepOutput
 
 
@@ -413,7 +414,7 @@ class TestStepsCompiler:
             assert "more than once" in str(exc_info.value)
 
     def test_flatten_condition_step(self, mock_session):
-        """Test _flatten_condition_step flattens nested condition steps."""
+        """Test _flatten_compound_step flattens nested condition steps."""
         step1 = Mock(spec=Step)
         step1.name = "step1"
 
@@ -428,10 +429,31 @@ class TestStepsCompiler:
             steps=[condition_step],
         )
 
-        result = compiler._flatten_condition_step(condition_step)
+        result = compiler._flatten_compound_step(condition_step)
 
         assert len(result) >= 1
         assert condition_step in result
+
+    def test_flatten_compound_step_for_each(self, mock_session):
+        """Test _flatten_compound_step flattens ForEach steps."""
+        body_step = Mock(spec=Step)
+        body_step.name = "body-step"
+
+        for_each_step = Mock(spec=ForEachStep)
+        for_each_step.name = "for-each"
+        for_each_step.for_each_body = [body_step]
+
+        compiler = StepsCompiler(
+            pipeline_name="test-pipeline",
+            sagemaker_session=mock_session,
+            steps=[for_each_step],
+        )
+
+        result = compiler._flatten_compound_step(for_each_step)
+
+        assert len(result) == 2
+        assert for_each_step in result
+        assert body_step in result
 
     def test_push_to_build_queue(self, mock_session, mock_step):
         """Test _push_to_build_queue adds steps to queue."""

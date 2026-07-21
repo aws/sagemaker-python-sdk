@@ -75,6 +75,7 @@ from sagemaker.mlops.workflow.selective_execution_config import SelectiveExecuti
 from sagemaker.core.workflow.step_outputs import StepOutput
 from sagemaker.mlops.workflow.steps import Step
 from sagemaker.mlops.workflow.condition_step import ConditionStep
+from sagemaker.mlops.workflow.for_each_step import ForEachStep
 from sagemaker.mlops.workflow.triggers import (
     PipelineSchedule,
     Trigger,
@@ -965,11 +966,13 @@ def _generate_step_map(steps: Sequence[Step], step_map: dict):
         if step.name in step_map:
             raise ValueError(
                 "Pipeline steps cannot have duplicate names. In addition, steps added in "
-                "the ConditionStep cannot be added in the Pipeline steps list."
+                "the ConditionStep or ForEachStep cannot be added in the Pipeline steps list."
             )
         step_map[step.name] = step
         if isinstance(step, ConditionStep):
             _generate_step_map(step.if_steps + step.else_steps, step_map)
+        if isinstance(step, ForEachStep):
+            _generate_step_map(step.for_each_body, step_map)
 
 
 @attr.s
@@ -1246,6 +1249,11 @@ class PipelineGraph:
 
             if isinstance(step, ConditionStep):
                 for child_step in step.if_steps + step.else_steps:
+                    if isinstance(child_step, Step):
+                        dependency_list[child_step.name].add(step.name)
+
+            if isinstance(step, ForEachStep):
+                for child_step in step.for_each_body:
                     if isinstance(child_step, Step):
                         dependency_list[child_step.name].add(step.name)
 

@@ -62,6 +62,7 @@ class StepTypeEnum(Enum):
     EMR_SERVERLESS = "EMRServerless"
     FAIL = "Fail"
     AUTOML = "AutoML"
+    FOR_EACH = "ForEach"
 
 
 class Step(Entity):
