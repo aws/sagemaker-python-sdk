@@ -568,8 +568,8 @@ def _resolve_model_package_arn(model_package) -> Optional[str]:
         return None
 
 
-def _parse_context_length(value) -> int:
-    """Parse a context length value like '8K', '32K', '128K' into an integer (e.g., 8192)."""
+def _parse_sequence_length(value) -> int:
+    """Parse a sequence length value like '8K', '32K', '128K' into an integer (e.g., 8192)."""
     if not value:
         return 0
     value = str(value).strip().upper()
@@ -641,19 +641,21 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         if not recipes_with_template:
             raise ValueError(f"No recipes found with {platform_label} for technique: {customization_technique}")
 
-        # Filter by SequenceLength before recipe selection if sequence_length is requested
+        # Filter by SequenceLength before recipe selection if sequence_length is requested.
+        # Multiple recipes may share the same SequenceLength (e.g. LORA and FULL
+        # variants); keep every exact match so _select_recipe_by_training_type can
+        # pick the right one for the requested training type.
         if sequence_length:
-            requested = _parse_context_length(sequence_length)
-            candidates_with_context = [r for r in recipes_with_template if r.get("SequenceLength")]
-            if candidates_with_context:
-                filtered = [r for r in candidates_with_context if _parse_context_length(r.get("SequenceLength")) >= requested]
+            requested = _parse_sequence_length(sequence_length)
+            candidates_with_sequence = [r for r in recipes_with_template if r.get("SequenceLength")]
+            if candidates_with_sequence:
+                filtered = [r for r in candidates_with_sequence if _parse_sequence_length(r.get("SequenceLength")) == requested]
                 if filtered:
-                    filtered.sort(key=lambda r: _parse_context_length(r.get("SequenceLength")))
                     recipes_with_template = filtered
                 else:
-                    available = sorted(set(r.get("SequenceLength") for r in candidates_with_context))
+                    available = sorted(set(r.get("SequenceLength") for r in candidates_with_sequence))
                     raise ValueError(
-                        f"No recipes found with SequenceLength >= {sequence_length}. "
+                        f"No recipes found with SequenceLength == {sequence_length}. "
                         f"Available sequence lengths: {available}"
                     )
             else:
@@ -720,16 +722,16 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             except Exception as e:
                 logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
 
-        # Supported-context ceiling: the recipe's SequenceLength ("<n>K") is the
-        # single source of truth. Parse it to an int so we can validate that
+        # Supported sequence-length ceiling: the recipe's SequenceLength ("<n>K")
+        # is the single source of truth. Parse it to an int so we can validate that
         # max_prompt_length + max_response_length (or max_length) stays within
         # what the recipe's hardware can serve. 0 if absent/unparseable (no-op).
-        context_length = _parse_context_length(recipe.get("SequenceLength")) or None
+        sequence_length_ceiling = _parse_sequence_length(recipe.get("SequenceLength")) or None
 
         if options_dict:
-            return FineTuningOptions(options_dict, context_length=context_length), model_arn, is_gated_model
+            return FineTuningOptions(options_dict, sequence_length=sequence_length_ceiling), model_arn, is_gated_model
         else:
-            return FineTuningOptions({}, context_length=context_length), model_arn, is_gated_model
+            return FineTuningOptions({}, sequence_length=sequence_length_ceiling), model_arn, is_gated_model
             
     except Exception as e:
         logger.debug("Exception getting fine-tuning options: %s", e)

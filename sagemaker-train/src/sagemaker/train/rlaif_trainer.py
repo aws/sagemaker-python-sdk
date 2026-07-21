@@ -280,7 +280,7 @@ class RLAIFTrainer(BaseTrainer):
             mlflow_run_name=self.mlflow_run_name,
         )
 
-        # Enforce prompt + response fit the recipe's supported context length.
+        # Enforce prompt + response fit the recipe's supported sequence length.
         self.hyperparameters.validate_length_constraints()
 
         final_hyperparameters = self.hyperparameters.to_dict()

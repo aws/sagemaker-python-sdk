@@ -568,7 +568,7 @@ class BaseTrainer(ABC):
                 if hp_value is not None:
                     _set_spec_default(override_spec, hp_key, _yaml_safe_default(hp_value))
 
-        # Enforce selected sequence lengths fit the recipe's supported context.
+        # Enforce selected lengths fit the recipe's supported sequence length.
         if hasattr(self.hyperparameters, "validate_length_constraints"):
             self.hyperparameters.validate_length_constraints()
 
