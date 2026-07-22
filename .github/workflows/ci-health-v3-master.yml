@@ -1,0 +1,145 @@
+name: CI Health V3 Master
+on:
+  schedule:
+    # Once a day at 05:00 UTC (9pm PDT / 10pm PST).
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+permissions:
+    id-token: write # This is required for requesting the JWT
+
+jobs:
+  unit-test-v3:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        submodule: [sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops]
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Unit Tests V3 for ${{ matrix.submodule }}
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-unit-test-v3
+          source-version-override: refs/heads/master
+          env-vars-for-codebuild: |
+            SUBMODULE
+        env:
+          SUBMODULE: ${{ matrix.submodule }}
+  canaries-v3-master:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        submodule: [sagemaker-core, sagemaker-train, sagemaker-serve, sagemaker-mlops]
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Canaries V3 master for ${{ matrix.submodule }}
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-canaries-v3-master
+          source-version-override: refs/heads/master
+          env-vars-for-codebuild: |
+            SUBMODULE
+        env:
+          SUBMODULE: ${{ matrix.submodule }}
+  # GPU integ tests against the master source. Two region jobs trigger the same
+  # CodeBuild project name (deployed in both regions); only the region/creds and
+  # the region-override buildspec differ. Their results are AND-ed with
+  # import-model in report-result into a single per-run pass/fail metric.
+  gpu-integ-tests-master:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run GPU Integ Tests (master)
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests-master
+          source-version: refs/heads/master
+  gpu-integ-tests-master-us-east-1:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials (us-east-1)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_US_EAST_1_ARN }}
+          aws-region: us-east-1
+          role-duration-seconds: 10800
+      - name: Run GPU Integ Tests (master, us-east-1)
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-gpu-integ-tests-master
+          source-version: refs/heads/master
+  # Bedrock model-import integ tests. Run serially (concurrency 1) in their own
+  # CodeBuild project because the "Concurrent model import jobs" Bedrock quota is
+  # fixed at 1 and not raisable; running them in parallel (as PR checks did)
+  # makes them collide and flake. us-west-2 only (no us_east_1-marked tests).
+  # Folded into the master run-level pass/fail metric alongside the GPU jobs.
+  import-model-integ-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+      - name: Run Bedrock Model-Import Integ Tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: sagemaker-python-sdk-ci-health-import-model-integ-tests
+          source-version: refs/heads/master
+  # Run-level result: the master GPU run is successful only if the us-west-2,
+  # us-east-1, and import-model jobs all succeeded. Emits GpuIntegMasterRunFailure
+  # = 1 (failed) / 0 (succeeded) to CloudWatch in us-west-2. The CDK alarm
+  # (GpuIntegMasterRunAlarm) sums this over a UTC day; it is folded into
+  # CIHealthCompositeAlarm-V3, which owns ticketing. Only scheduled runs emit the
+  # metric (manual workflow_dispatch runs are excluded).
+  report-result:
+    needs: [gpu-integ-tests-master, gpu-integ-tests-master-us-east-1, import-model-integ-tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.MONITORING_ROLE_ARN }}
+          aws-region: us-west-2
+      - name: Emit run-level pass/fail metric
+        run: |
+          # Manual (workflow_dispatch) runs must not contribute to the daily
+          # GpuIntegMasterRunFailure count that drives GpuIntegMasterRunAlarm;
+          # only scheduled runs count.
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Not a scheduled run (${{ github.event_name }}); skipping metric emission."
+            exit 0
+          fi
+          if [ "${{ needs.gpu-integ-tests-master.result }}" == "success" ] && \
+             [ "${{ needs.gpu-integ-tests-master-us-east-1.result }}" == "success" ] && \
+             [ "${{ needs.import-model-integ-tests.result }}" == "success" ]; then
+            value=0
+            echo "All master GPU/import jobs succeeded; emitting GpuIntegMasterRunFailure=0"
+          else
+            value=1
+            echo "At least one master GPU/import job did not succeed; emitting GpuIntegMasterRunFailure=1"
+          fi
+          aws cloudwatch put-metric-data \
+            --namespace GpuIntegRunMetrics \
+            --metric-name GpuIntegMasterRunFailure \
+            --value "$value" \
+            --unit Count
