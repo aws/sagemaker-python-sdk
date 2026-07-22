@@ -78,6 +78,9 @@ _ALLOWED_EVALUATOR_MODELS = {
     "anthropic.claude-3-5-sonnet-20241022-v2:0": ["ap-northeast-1"],
 }
 
+SM_DEPENDENCIES = "sm_dependencies"
+SM_DEPENDENCIES_CONTAINER_PATH = "/opt/ml/input/data/sm_dependencies"
+
 SM_RECIPE = "recipe"
 SM_RECIPE_YAML = "recipe.yaml"
 SM_RECIPE_CONTAINER_PATH = f"/opt/ml/input/data/recipe/{SM_RECIPE_YAML}"
