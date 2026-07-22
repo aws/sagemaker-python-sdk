@@ -787,6 +787,7 @@ class ModelTrainer(BaseModel):
         input_data_config: Optional[List[Union[Channel, InputData]]] = None,
         wait: Optional[bool] = True,
         logs: Optional[bool] = True,
+        dry_run: bool = False,
     ):
         """Train a model using AWS SageMaker.
 
@@ -802,9 +803,17 @@ class ModelTrainer(BaseModel):
             logs (Optional[bool]):
                 Whether to display the training container logs while training.
                 Defaults to True.
+            dry_run (bool):
+                If True, runs all validation (configuration, input resolution, hyperparameters)
+                without submitting a job. Returns None on success, raises on validation failure.
+                Defaults to False.
         """
         training_request = self._create_training_job_args(input_data_config=input_data_config)
-            
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
+
         # Handle PipelineSession
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
             if isinstance(self.sagemaker_session, PipelineSession):

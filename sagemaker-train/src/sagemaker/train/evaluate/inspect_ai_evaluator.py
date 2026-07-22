@@ -700,15 +700,23 @@ class InspectAIEvaluator(BaseEvaluator):
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION, func_name="InspectAIEvaluator.evaluate"
     )
-    def evaluate(self) -> EvaluationPipelineExecution:
+    def evaluate(self, dry_run: bool = False) -> Optional[EvaluationPipelineExecution]:
         """Create and start an InspectAI evaluation job.
 
         Serializes the InspectAI configuration to YAML, uploads it to S3, and
         launches a single-step SageMaker Pipeline with the InspectAI container.
 
+        Args:
+            dry_run (bool):
+                If True, runs all validation (IAM, model resolution, config
+                building, template rendering) without uploading config to S3 or
+                submitting the evaluation. Returns None on success, raises on
+                validation failure. Defaults to False.
+
         Returns:
             EvaluationPipelineExecution: The started evaluation execution with
-                ``.wait()``, ``.refresh()``, and ``.show_results()`` methods.
+                ``.wait()``, ``.refresh()``, and ``.show_results()`` methods,
+                or None if dry_run=True.
 
         Example:
             .. code:: python
@@ -722,15 +730,17 @@ class InspectAIEvaluator(BaseEvaluator):
                 execution = evaluator.evaluate()
                 execution.wait()
                 execution.show_results()
+
+                # Validate without submitting:
+                evaluator.evaluate(dry_run=True)
         """
-        # Get AWS execution context
+        # Get AWS execution context (validates execution role + caller permissions)
         aws_context = self._get_aws_execution_context()
         region = aws_context["region"]
         role_arn = aws_context["role_arn"]
 
-        # Build and upload YAML config
+        # Build YAML config (validates config structure)
         yaml_config = self._build_yaml_config(region)
-        config_s3_prefix = self._upload_yaml_config(yaml_config, region)
 
         # Resolve container image URI
         resolved_image_uri = self.image_uri or _get_inspect_ai_default_image_uri(region)
@@ -738,6 +748,13 @@ class InspectAIEvaluator(BaseEvaluator):
         # Build job name prefix (keep total under 63 chars after pipeline exec ID appended)
         base_name = self.base_eval_name or "inspectai-eval"
         job_name_prefix = base_name[:26]
+
+        # Upload config to S3 (skip in dry_run)
+        if dry_run:
+            config_s3_prefix = f"s3://{self.s3_output_path.rstrip('/')}/inspectai-config/dry-run-placeholder"
+            _logger.info("Dry-run: skipping config upload to S3.")
+        else:
+            config_s3_prefix = self._upload_yaml_config(yaml_config, region)
 
         # Build template context
         template_context = {
@@ -757,10 +774,14 @@ class InspectAIEvaluator(BaseEvaluator):
             template_context["vpc_security_group_ids"] = self.networking.security_group_ids
             template_context["vpc_subnets"] = self.networking.subnets
 
-        # Render pipeline definition
+        # Render pipeline definition (validates template)
         pipeline_definition = self._render_pipeline_definition(
             INSPECT_AI_TEMPLATE, template_context
         )
+
+        if dry_run:
+            _logger.info("Dry-run validation passed. No evaluation submitted.")
+            return None
 
         # Start execution
         name = self.base_eval_name or "inspectai-eval"

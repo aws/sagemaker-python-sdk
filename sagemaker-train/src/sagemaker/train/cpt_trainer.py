@@ -12,7 +12,7 @@
 # language governing permissions and limitations under the License.
 """CPTTrainer — Continued Pre-Training on foundation models using SageMaker HyperPod."""
 
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import logging
 
 from sagemaker.train.base_trainer import BaseTrainer
@@ -107,6 +107,10 @@ class CPTTrainer(BaseTrainer):
             Programmatic overrides dict.
         training_image (Optional[str]):
             Custom training container image URI. If not provided, auto-resolved from Hub.
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
     """
 
     _customization_technique = CustomizationTechnique.CPT.value
@@ -132,9 +136,10 @@ class CPTTrainer(BaseTrainer):
         data_mixing_config: Optional[DataMixingConfig] = None,
         base_model_name: Optional[str] = None,
         disable_output_compression: Optional[bool] = False,
+        notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(training_image=training_image, base_model_name=base_model_name, disable_output_compression=disable_output_compression, **kwargs)
+        super().__init__(training_image=training_image, base_model_name=base_model_name, disable_output_compression=disable_output_compression, notifications=notifications, **kwargs)
 
         self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
             model, self.base_model_name, compute, self.sagemaker_session,
@@ -194,6 +199,7 @@ class CPTTrainer(BaseTrainer):
         wait: bool = True,
         wait_timeout: Optional[int] = None,
         poll: int = 5,
+        dry_run: bool = False,
     ):
         """Execute the CPT training job on HyperPod.
 
@@ -208,9 +214,13 @@ class CPTTrainer(BaseTrainer):
                 Maximum time in seconds to wait.
             poll (int):
                 Polling interval in seconds. Defaults to 5.
+            dry_run (bool):
+                If True, runs validation without submitting a job. 
+                Returns None on success, raises on validation failure.
+                Defaults to False.
 
         Returns:
-            str: The HyperPod job name.
+            str: The HyperPod job name, or None if dry_run=True.
 
         Raises:
             ValueError: If compute is not configured or recipe is missing.
@@ -260,4 +270,5 @@ class CPTTrainer(BaseTrainer):
             wait=wait,
             wait_timeout=wait_timeout,
             poll=poll,
+            dry_run=dry_run,
         )

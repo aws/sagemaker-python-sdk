@@ -598,7 +598,7 @@ class BenchMarkEvaluator(BaseEvaluator):
             ("benchmark", TelemetryParamType.ATTR_VALUE),
         ] + BASE_EVALUATOR_TELEMETRY_PARAMS,
     )
-    def evaluate(self, subtask: Optional[Union[str, List[str]]] = None) -> EvaluationPipelineExecution:
+    def evaluate(self, subtask: Optional[Union[str, List[str]]] = None, dry_run: bool = False) -> EvaluationPipelineExecution:
         """Create and start a benchmark evaluation job.
         
         Supports multiple compute backends via the ``compute`` parameter set at
@@ -608,12 +608,17 @@ class BenchMarkEvaluator(BaseEvaluator):
         - **HyperPod**: Submits to a HyperPod cluster via the HyperPod CLI.
         
         Args:
-            subtask (Optional[Union[str, list[str]]]): Optional subtask(s) to evaluate. If not provided, 
-                uses the subtasks from constructor. Can be a single subtask string, a list of 
-                subtasks, or 'ALL' to run all subtasks.
+            subtask (Optional[Union[str, list[str]]]): Optional subtask(s) to evaluate.
+                If not provided, uses the subtasks from constructor. Can be a single
+                subtask string, a list of subtasks, or 'ALL' to run all subtasks.
+            dry_run (bool):
+                If True, runs all validation (IAM, model resolution, data paths)
+                without submitting the evaluation. Returns None on success, raises
+                on validation failure. Defaults to False.
         
         Returns:
-            EvaluationPipelineExecution: The created benchmark evaluation execution.
+            EvaluationPipelineExecution: The created benchmark evaluation execution,
+            or None if dry_run=True.
             
         Example:
         
@@ -671,6 +676,10 @@ class BenchMarkEvaluator(BaseEvaluator):
         
         # Get AWS execution context (role ARN, region, account ID)
         aws_context = self._get_aws_execution_context()
+
+        if dry_run:
+            _logger.info("Dry-run validation passed. No evaluation submitted.")
+            return None
         
         # Resolve model artifacts
         artifacts = self._resolve_model_artifacts(aws_context['region'])
@@ -709,7 +718,11 @@ class BenchMarkEvaluator(BaseEvaluator):
         
         # Generate execution name
         name = self.base_eval_name or f"benchmark-eval-{self.benchmark.value}"
-        
+
+        if dry_run:
+            _logger.info("Dry-run validation passed. No evaluation submitted.")
+            return None
+
         # Start execution
         return self._start_execution(
             eval_type=EvalType.BENCHMARK,

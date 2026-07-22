@@ -68,6 +68,7 @@ notebook = [
     "ipywidgets>=8.0.0",
     "rich>=13.0.0",
     "matplotlib>=3.5.0",
+    "pandas",
 ]
 
 [tool.setuptools.packages.find]

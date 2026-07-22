@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
@@ -25,7 +25,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_eula_for_gated_model,
     _validate_hyperparameter_values
 )
-from sagemaker.train.common_utils.data_utils import is_multimodal_data
+from sagemaker.train.common_utils.data_utils import is_multimodal_data, validate_data_path_exists
 from sagemaker.train.common_utils.data_mixing_utils import (
     validate_data_mixing_model,
     validate_data_mixing_categories,
@@ -137,6 +137,10 @@ class SFTTrainer(BaseTrainer):
             Whether to disable compression of model output artifacts. When True,
             model artifacts are stored uncompressed in S3 (compression_type="NONE").
             Recommended for large model outputs. Defaults to False (gzip compression).
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
     """
 
     _customization_technique = CustomizationTechnique.SFT.value
@@ -163,9 +167,10 @@ class SFTTrainer(BaseTrainer):
         data_mixing_config: Optional[DataMixingConfig] = None,
         base_model_name: Optional[str] = None,
         disable_output_compression: Optional[bool] = False,
+        notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, **kwargs)
+        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, notifications=notifications, **kwargs)
 
         self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
             model, self.base_model_name, compute, self.sagemaker_session,
@@ -250,7 +255,7 @@ class SFTTrainer(BaseTrainer):
             ("compute", TelemetryParamType.ATTR_TYPE),
         ],
     )
-    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
+    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
         """Execute the SFT training job.
 
         Parameters:
@@ -267,9 +272,13 @@ class SFTTrainer(BaseTrainer):
                 If None, uses the default timeout from the wait utility.
             poll (int):
                 Polling interval in seconds for checking training job status. Defaults to 5.
+            dry_run (bool):
+                If True, runs all validation (IAM, hyperparameters, infrastructure, data paths)
+                without submitting a job. Returns None on success, raises on validation failure.
+                Defaults to False.
 
         Returns:
-            TrainingJob: The SageMaker training job object.
+            TrainingJob: The SageMaker training job object, or None if dry_run=True.
         """
         # Dispatch based on compute type
         if isinstance(self.compute, HyperPodCompute):
@@ -306,6 +315,7 @@ class SFTTrainer(BaseTrainer):
                 wait=wait,
                 wait_timeout=wait_timeout,
                 poll=poll,
+                dry_run=dry_run,
             )
         elif isinstance(self.compute, TrainingJobCompute):
             if self.data_mixing_config is not None:
@@ -316,6 +326,7 @@ class SFTTrainer(BaseTrainer):
                 wait=wait,
                 wait_timeout=wait_timeout,
                 poll=poll,
+                dry_run=dry_run,
             )
 
         # Default: serverless compute (None)
@@ -413,6 +424,22 @@ class SFTTrainer(BaseTrainer):
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
+
+        # Validate data paths exist before submission
+        effective_training = training_dataset or self.training_dataset
+        effective_validation = validation_dataset or self.validation_dataset
+        if effective_training:
+            validate_data_path_exists(
+                effective_training, sagemaker_session, label="training dataset"
+            )
+        if effective_validation:
+            validate_data_path_exists(
+                effective_validation, sagemaker_session, label="validation dataset"
+            )
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
 
         try:
             training_job = TrainingJob.create(**create_args)
