@@ -1,8 +1,8 @@
 name: CI Health V3 Release
 on:
   schedule:
-    # Once a day at 05:00 UTC (9pm PDT / 10pm PST).
-    - cron: "0 5 * * *"
+    # Once a day at 10:00 UTC (2am PDT / 3am PST).
+    - cron: "0 10 * * *"
   workflow_dispatch:
 
 permissions:
