@@ -676,6 +676,10 @@ class BenchMarkEvaluator(BaseEvaluator):
         
         # Get AWS execution context (role ARN, region, account ID)
         aws_context = self._get_aws_execution_context()
+
+        if dry_run:
+            _logger.info("Dry-run validation passed. No evaluation submitted.")
+            return None
         
         # Resolve model artifacts
         artifacts = self._resolve_model_artifacts(aws_context['region'])

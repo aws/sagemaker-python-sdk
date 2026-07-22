@@ -924,6 +924,10 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 LLMAJ_INSPECTAI_TEMPLATE, template_context
             )
 
+            if dry_run:
+                _logger.info("Dry-run validation passed. No evaluation submitted.")
+                return None
+
             return self._start_execution(
                 eval_type=EvalType.LLM_AS_JUDGE,
                 name=name,
