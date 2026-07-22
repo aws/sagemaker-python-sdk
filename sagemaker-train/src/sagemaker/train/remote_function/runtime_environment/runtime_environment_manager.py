@@ -298,7 +298,7 @@ class RuntimeEnvironmentManager:
         """Install requirements.txt file"""
         # Validate path to prevent command injection
         validated_path = self._validate_path(local_path)
-        cmd = [python_executable, "-m", "pip", "install", "-r", validated_path, "-U"]
+        cmd = [python_executable, "-m", "pip", "install", "-r", validated_path]
         logger.info("Running command: '%s' in the dir: '%s' ", " ".join(cmd), os.getcwd())
         _run_shell_cmd(cmd)
         logger.info("Command %s ran successfully", " ".join(cmd))
@@ -320,7 +320,7 @@ class RuntimeEnvironmentManager:
         self._validate_env_name(env_name)
         validated_path = self._validate_path(local_path)
 
-        cmd = [self._get_conda_exe(), "run", "-n", env_name, "pip", "install", "-r", validated_path, "-U"]
+        cmd = [self._get_conda_exe(), "run", "-n", env_name, "pip", "install", "-r", validated_path]
         logger.info("Activating conda env and installing requirements: %s", " ".join(cmd))
         _run_shell_cmd(cmd)
         logger.info("Requirements installed successfully in conda env %s", env_name)
