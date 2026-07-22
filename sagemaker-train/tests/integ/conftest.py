@@ -1,3 +1,4 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
 # may not use this file except in compliance with the License. A copy of
@@ -9,31 +10,32 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Shared pytest configuration for sagemaker-serve integration tests.
+"""Shared pytest configuration for sagemaker-train integration tests.
 
-These tests run under ``pytest -n auto`` (dozens of xdist workers). Several of
-them resolve/validate an IAM execution role during ``ModelBuilder.build()`` /
-``.deploy()``, which internally calls the low-TPS ``iam:SimulatePrincipalPolicy``
-API. With many workers hitting it at once IAM throttles the request, surfacing as
-``ClientError: (Throttling) ... Rate exceeded`` and failing the build.
+These tests run under ``pytest -n auto`` (dozens of xdist workers). Many of them
+resolve/validate an IAM execution role via ``TrainDefaults.get_role`` ->
+``resolve_and_validate_role``, which internally calls the low-TPS
+``iam:SimulatePrincipalPolicy`` API. With many workers hitting it at once IAM
+throttles the request, surfacing as ``ClientError: (Throttling) ... Rate
+exceeded`` and failing the test during setup.
 
-This is purely a test-harness concurrency problem, so the mitigation lives here in
-the test layer rather than in SDK source. It is intentionally identical to the
-block in ``sagemaker-train`` / ``sagemaker-mlops`` integ conftests:
+This is purely a test-harness concurrency problem, so the mitigation lives here
+in the test layer rather than in SDK source. It is intentionally identical to the
+block in ``sagemaker-serve`` / ``sagemaker-mlops`` integ conftests:
 
 * ``_configure_boto_adaptive_retries`` (autouse) — set adaptive retries via the
-  ``AWS_RETRY_MODE`` / ``AWS_MAX_ATTEMPTS`` environment variables. Env vars apply
-  to *every* boto3 client created in the worker, so the internal IAM calls ride
-  out transient throttling whether the resolver falls back to the default session
-  or builds its client from an explicitly-passed ``Session`` (several serve tests
-  pass their own session, whose IAM client would otherwise carry botocore's
-  default 4-attempt retry policy). ``adaptive`` mode also adds client-side rate
-  limiting to smooth bursts.
+  ``AWS_RETRY_MODE`` / ``AWS_MAX_ATTEMPTS`` environment variables. Unlike setting
+  a retry ``Config`` on a single boto session, env vars apply to *every* boto3
+  client created in the worker — including the IAM clients the role resolver
+  builds from an explicitly-passed ``Session`` (which carries no retry config of
+  its own). ``adaptive`` mode adds client-side rate limiting so bursts of
+  ``SimulatePrincipalPolicy`` calls ride out transient throttling.
 
 * ``pytest_runtest_makereport`` — a belt-and-suspenders fallback. If a residual
   ``SimulatePrincipalPolicy`` throttling error still escapes after the adaptive
   retries, convert the failure into a skip so a transient rate limit never reds
-  the build. Genuine failures are untouched.
+  the build. Genuine failures (and throttling on any other operation) are
+  untouched.
 """
 from __future__ import absolute_import
 
