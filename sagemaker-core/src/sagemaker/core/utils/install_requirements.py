@@ -40,6 +40,7 @@ import os
 import re
 import subprocess
 import sys
+from urllib.parse import urlsplit, urlunsplit
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,28 @@ def _login_awscli(region, account, domain, repo):
             region,
         ]
     )
+
+
+def _redact_url_credentials(value):
+    """Redact credentials embedded in a URL for safe logging."""
+    try:
+        parts = urlsplit(value)
+    except ValueError:
+        return "<redacted-url>" if "@" in value else value
+
+    if not parts.scheme or not parts.netloc:
+        return value
+
+    _, separator, hostinfo = parts.netloc.rpartition("@")
+    if not separator:
+        return value
+
+    netloc = f"****@{hostinfo}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
+
+
+def _format_pip_cmd_for_log(pip_cmd):
+    return " ".join(_redact_url_credentials(arg) for arg in pip_cmd)
 
 
 def configure_pip(auth_method=CodeArtifactAuthMethod.AUTO):
@@ -185,7 +208,7 @@ def install_requirements(
     index = configure_pip(auth_method=auth_method)
     if index:
         pip_cmd.extend(["-i", index])
-    logger.info("Running: %s", " ".join(pip_cmd))
+    logger.info("Running: %s", _format_pip_cmd_for_log(pip_cmd))
     subprocess.check_call(pip_cmd)
 
 
