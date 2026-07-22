@@ -46,34 +46,7 @@ HYPERPOD_CLI_CONNECT_ACTIONS = (
 # directly. These actions must be held by whoever calls evaluator.evaluate(),
 # NOT by the job execution role (which is covered by role_type="training").
 # See verify_evaluation_caller_permissions().
-EVALUATION_CALLER_ACTIONS = (
-    # Pipeline orchestration
-    "sagemaker:CreatePipeline",
-    "sagemaker:UpdatePipeline",
-    "sagemaker:DescribePipeline",
-    "sagemaker:ListPipelines",
-    "sagemaker:StartPipelineExecution",
-    "sagemaker:DescribePipelineExecution",
-    "sagemaker:ListPipelineExecutionSteps",
-    "sagemaker:StopPipelineExecution",
-    "sagemaker:ListTags",
-    "sagemaker:AddTags",
-    "sagemaker:DescribeTrainingJob",
-    "iam:PassRole",
-    # Model resolution (DescribeHubContent called at construction time under caller creds)
-    "sagemaker:DescribeHubContent",
-    "sagemaker:ListHubContents",
-    "sagemaker:DescribeHub",
-    "sagemaker:ListHubs",
-    # Lineage (artifact creation/lookup runs under caller before pipeline starts)
-    "sagemaker:CreateArtifact",
-    "sagemaker:ListArtifacts",
-    "sagemaker:DescribeArtifact",
-    # S3 access (config/benchmark upload + output path validation)
-    "s3:PutObject",
-    "s3:GetObject",
-    "s3:ListBucket",
-)
+from sagemaker.core.helper.iam_policies import EVALUATION_CALLER_ACTIONS
 
 
 class RoleValidationError(Exception):
