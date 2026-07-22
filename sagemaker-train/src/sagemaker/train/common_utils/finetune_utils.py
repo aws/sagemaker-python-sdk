@@ -1418,15 +1418,21 @@ def _get_smhp_replicas_enum(model_name: str, customization_technique: str, train
     return None
 
 
-def _extract_recipe_from_helm_template(template_content: str) -> str:
+def _extract_recipe_from_helm_template(template_content: str, customization_technique: str = None) -> str:
     """Extract the training config YAML from a HyperPod Helm chart template.
 
     The HpEksPayloadTemplateS3Uri contains a full Helm chart (multi-document YAML
     with ``---`` separators). The HyperPod CLI expects a single-document recipe YAML.
     This function extracts just the ``config.yaml`` content section.
 
+    For RFT/RLVR recipes, also strips the ``task_type: storm_rbs`` field from the
+    Hub template. 
+
     Args:
         template_content: Raw Helm chart template string from S3.
+        customization_technique: The training technique (e.g. "RLVR", "RFT", "SFT").
+            When set to "RLVR" or "RFT", strips ``task_type: storm_rbs`` from the
+            extracted config.
 
     Returns:
         str: Single-document recipe YAML content.
@@ -1452,7 +1458,14 @@ def _extract_recipe_from_helm_template(template_content: str) -> str:
             "The template format may have changed."
         )
 
-    return textwrap.dedent(recipe_match.group(1)).strip()
+    result = textwrap.dedent(recipe_match.group(1)).strip()
+
+    # Strip task_type: storm_rbs from RFT/RLVR recipes - including it causes service validation failures.
+    if customization_technique and customization_technique.upper() in ("RLVR", "RFT"):
+        result = re.sub(r"^\s*task_type:\s*storm_rbs\s*$", "", result, flags=re.MULTILINE)
+        result = textwrap.dedent(result)
+
+    return result
 
 
 def _render_recipe_placeholders(recipe_content: str, override_spec: dict) -> str:
@@ -1563,7 +1576,9 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
     recipe_content = response["Body"].read().decode("utf-8")
 
     # Extract the training config from the Helm chart template
-    recipe_content = _extract_recipe_from_helm_template(recipe_content)
+    # Only pass customization_technique for Nova models (task_type stripping is Nova RLVR/RFT specific)
+    technique_for_extraction = customization_technique if _is_nova_model(model_name) else None
+    recipe_content = _extract_recipe_from_helm_template(recipe_content, customization_technique=technique_for_extraction)
 
     # Inject additional overrides into spec before rendering
     if additional_overrides:

@@ -210,7 +210,10 @@ class BaseTrainer(ABC):
                 hp_uri = recipe_entry["HpEksPayloadTemplateS3Uri"]
                 bucket, key = hp_uri.replace("s3://", "").split("/", 1)
                 raw = s3_client.get_object(Bucket=bucket, Key=key)["Body"].read().decode("utf-8")
-                return yaml.safe_load(_extract_recipe_from_helm_template(raw))
+                return yaml.safe_load(_extract_recipe_from_helm_template(
+                    raw,
+                    customization_technique=self._customization_technique if _is_nova_model(self._model_name) else None,
+                ))
             else:
                 smtj_uri = resolve_s3_uri_placeholders(recipe_entry["SmtjRecipeTemplateS3Uri"], sagemaker_session)
                 uri_path = smtj_uri.replace("s3://", "")
@@ -1325,23 +1328,29 @@ class BaseTrainer(ABC):
             )
 
         # Resolve training image
+        # Try SMHP image first (since we're in _train_hyperpod), then fall back
+        # to SMTJ image with tag replacement as a fallback.
         training_image = self.training_image
         if not training_image:
-            smtj_image = get_training_image(
+            training_image = get_hyperpod_training_image(
                 model_name=self._model_name,
                 customization_technique=self._customization_technique,
                 training_type=self.training_type,
                 sagemaker_session=sagemaker_session,
             )
-            if smtj_image:
-                training_image = smtj_image.replace("SM-TJ-", "SM-HP-")
-            else:
-                training_image = get_hyperpod_training_image(
+            if not training_image:
+                smtj_image = get_training_image(
                     model_name=self._model_name,
                     customization_technique=self._customization_technique,
                     training_type=self.training_type,
                     sagemaker_session=sagemaker_session,
                 )
+                if smtj_image:
+                    training_image = smtj_image.replace("SM-TJ-", "SM-HP-")
+
+        # RFT/RLVR on HyperPod requires the TRAIN-specific image tag. 
+        if training_image and "SM-HP-RFT-" in training_image and "TRAIN" not in training_image:
+            training_image = training_image.replace("SM-HP-RFT-", "SM-HP-RFT-TRAIN-")
 
         if not training_image:
             raise ValueError(

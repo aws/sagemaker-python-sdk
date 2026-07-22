@@ -1127,6 +1127,69 @@ class TestExtractRecipeFromHelmTemplate:
         with pytest.raises(ValueError, match="template format may have changed"):
             fu._extract_recipe_from_helm_template(template)
 
+    def test_strips_task_type_storm_rbs(self):
+        """task_type: storm_rbs is internal RFT metadata and should be stripped."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      peft_scheme: lora\n"
+            "      lora_tuning:\n"
+            "        alpha: 32\n"
+            "      task_type: storm_rbs\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template, customization_technique="RLVR")
+
+        assert "task_type" not in extracted
+        assert "storm_rbs" not in extracted
+        assert "peft_scheme: lora" in extracted
+
+    def test_preserves_non_storm_rbs_task_type(self):
+        """task_type: other task types (used by OSS) should NOT be stripped."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      lora_tuning:\n"
+            "        task_type: OTHER_TASK\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template)
+
+        assert "task_type: OTHER_TASK" in extracted
+
+    def test_does_not_strip_task_type_for_non_rlvr(self):
+        """task_type: storm_rbs is preserved when technique is not RLVR/RFT."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      task_type: storm_rbs\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template, customization_technique="SFT")
+
+        assert "task_type: storm_rbs" in extracted
+
 
 class TestGetRecipeS3Uri:
     @patch(f"{_MOD}._normalize_model_name", side_effect=lambda m: m)
