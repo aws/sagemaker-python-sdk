@@ -629,14 +629,19 @@ class _ModelBuilderUtils:
             ValueError: If image URI cannot be determined or JumpStart lookup fails.
         """
         try:
-            init_kwargs = get_init_kwargs(
+            detect_kwargs = dict(
                 model_id=self.model,
                 model_version=getattr(self, "model_version", None) or "*",
                 region=self.region,
                 instance_type=getattr(self, "instance_type", None),
+                sagemaker_session=getattr(self, "sagemaker_session", None),
                 tolerate_vulnerable_model=getattr(self, "tolerate_vulnerable_model", None),
                 tolerate_deprecated_model=getattr(self, "tolerate_deprecated_model", None),
             )
+            hub_arn = getattr(self, "hub_arn", None)
+            if hub_arn:
+                detect_kwargs["hub_arn"] = hub_arn
+            init_kwargs = get_init_kwargs(**detect_kwargs)
 
             self.image_uri = init_kwargs.get("image_uri")
             if not self.image_uri:

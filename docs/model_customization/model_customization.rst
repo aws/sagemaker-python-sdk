@@ -24,8 +24,9 @@ Trainer Classes
 **SFTTrainer (Supervised Fine-Tuning)**
   Traditional fine-tuning with labeled datasets for task-specific adaptation
 
-**CPTTrainer (Continued Pre-Training)**
-  Continue pre-training on a raw corpus to extend model knowledge in a specific domain
+**CPTTrainer (Continued Pre-Training)** *(Nova models only)*
+  Continue pre-training on a raw corpus to extend model knowledge in a specific domain.
+  See the :doc:`Nova section <nova>` for CPT examples.
 
 **DPOTrainer (Direct Preference Optimization)**
   Fine-tune models using human preference data without reinforcement learning complexity
@@ -199,6 +200,5 @@ Key Features
    DPOTrainer Finetuning <../../v3-examples/model-customization-examples/dpo_trainer_example_notebook_v3_prod>
    RLAIF Finetuning <../../v3-examples/model-customization-examples/rlaif_finetuning_example_notebook_v3_prod>
    RLVR Finetuning <../../v3-examples/model-customization-examples/rlvr_finetuning_example_notebook_v3_prod>
-   CPT Training on HyperPod <../../v3-examples/model-customization-examples/cpt_data_mixing_hyperpod>
    Fine-Tuning with Serverful Training Jobs <finetuning_serverful>
    Fine-Tuning with HyperPod <finetuning_hyperpod>

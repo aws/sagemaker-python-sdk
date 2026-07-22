@@ -31,7 +31,7 @@ DEFAULT_MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-s
 DEFAULT_MODEL_PACKAGE_GROUP_ARN = "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/test-group"
 DEFAULT_BASE_MODEL_ARN = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/llama3-2-1b-instruct/1.0.0"
 DEFAULT_ARTIFACT_ARN = "arn:aws:sagemaker:us-west-2:123456789012:artifact/test-artifact"
-DEFAULT_EVALUATOR_MODEL = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+DEFAULT_EVALUATOR_MODEL = "anthropic.claude-sonnet-4-5-20250929-v1:0"
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
@@ -847,13 +847,19 @@ def test_llm_as_judge_evaluator_with_mlflow_names(mock_artifact, mock_resolve):
 @patch('sagemaker.core.resources.Artifact')
 def test_llm_as_judge_evaluator_valid_evaluator_models(mock_artifact, mock_resolve):
     """Test LLMAsJudgeEvaluator with valid evaluator models."""
+    # us-west-2 models only; Claude 3.5 Sonnet v1/v2 are ap-northeast-1-only
+    # (covered by test_llm_as_judge_evaluator_region_restriction).
     valid_models = [
-        "anthropic.claude-3-5-sonnet-20240620-v1:0",
-        "anthropic.claude-3-5-sonnet-20241022-v2:0",
         "anthropic.claude-3-haiku-20240307-v1:0",
-        "anthropic.claude-3-5-haiku-20241022-v1:0",
+        "anthropic.claude-haiku-4-5-20251001-v1:0",
+        "anthropic.claude-sonnet-4-5-20250929-v1:0",
+        "anthropic.claude-opus-4-5-20251101-v1:0",
         "meta.llama3-1-70b-instruct-v1:0",
         "mistral.mistral-large-2402-v1:0",
+        "amazon.nova-pro-v1:0",
+        "amazon.nova-2-lite-v1:0",
+        "amazon.nova-micro-v1:0",
+        "amazon.nova-premier-v1:0",
     ]
     
     mock_info = Mock()

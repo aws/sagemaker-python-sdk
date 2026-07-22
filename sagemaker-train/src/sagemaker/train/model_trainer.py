@@ -100,7 +100,7 @@ from sagemaker.train.templates import (
     INSTALL_AUTO_REQUIREMENTS,
     INSTALL_REQUIREMENTS,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train import logger
 from sagemaker.train.sm_recipes.utils import (
@@ -331,7 +331,7 @@ class ModelTrainer(BaseModel):
         if not self.networking:
             if default_enable_network_isolation is not None or default_vpc_config is not None:
                 self.networking = Networking(
-                    default_enable_network_isolation=default_enable_network_isolation,
+                    enable_network_isolation=default_enable_network_isolation,
                     subnets=self.config_mgr.resolve_value_from_config(
                         config_path=TRAINING_JOB_SUBNETS_PATH
                     ),
@@ -347,8 +347,8 @@ class ModelTrainer(BaseModel):
                     config_path=TRAINING_JOB_SUBNETS_PATH
                 )
             if self.networking.security_group_ids is None:
-                self.networking.subnets = self.config_mgr.resolve_value_from_config(
-                    config_path=TRAINING_JOB_SUBNETS_PATH
+                self.networking.security_group_ids = self.config_mgr.resolve_value_from_config(
+                    config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
                 )
 
         if not self.output_data_config:
@@ -767,7 +767,19 @@ class ModelTrainer(BaseModel):
         return training_request
 
 
-    @_telemetry_emitter(feature=Feature.MODEL_TRAINER, func_name="model_trainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_TRAINER,
+        func_name="model_trainer.train",
+        telemetry_params=[
+            ("training_mode", TelemetryParamType.ATTR_VALUE),
+            ("training_input_mode", TelemetryParamType.ATTR_VALUE),
+            ("networking", TelemetryParamType.ATTR_EXISTS),
+            ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
+            ("distributed", TelemetryParamType.ATTR_EXISTS),
+            ("source_code", TelemetryParamType.ATTR_EXISTS),
+            ("checkpoint_config", TelemetryParamType.ATTR_EXISTS),
+        ],
+    )
     @runnable_by_pipeline
     @validate_call
     def train(

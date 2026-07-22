@@ -26,7 +26,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_hyperparameter_values
 )
 from sagemaker.train.common_utils.data_utils import is_multimodal_data, validate_data_path_exists
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name, _ALLOWED_REWARD_MODEL_IDS
 
@@ -206,8 +207,13 @@ class RLAIFTrainer(BaseTrainer):
         
         return reward_model_id
         
-
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLAIFTrainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="RLAIFTrainer.train",
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+            ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
+        ],
+    )
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
         """Execute the RLAIF training job.
 

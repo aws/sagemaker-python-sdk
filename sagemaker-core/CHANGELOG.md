@@ -1,4 +1,31 @@
 # Changelog
+## v2.16.0 (2026-07-15)
+
+### New Features
+
+- feat: actionable guidance for removed v2 interfaces (#6004)
+- feat(feature-store): add BatchWriteRecord and ListRecords to FeatureGroup (#5983)
+
+### Bug Fixes
+
+- fix(iam): scope repo-level ECR actions to prevent false deny in preflight validation (#6024)
+
+## v2.15.1 (2026-07-09)
+
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
+### Bug Fixes
+
+- fix: Correct DJL-LMI ISO/ADC accounts + add THF/ISO-E (djl-lmi, huggingface-llm-neuronx) (#5980)
+- fix: ModelBuilder resolves private hub artifacts correctly (session_helper) (#5985)
+
+### Other
+
+- Add Triton Server v26.05 image URI config (#5999)
+- Add sklearn 1.4-2-py312 and xgboost 3.2-0 image URI configs (#6008)
+
 ## v2.15.0 (2026-06-22)
 
 ### New Features

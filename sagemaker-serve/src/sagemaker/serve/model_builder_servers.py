@@ -975,15 +975,25 @@ class _ModelBuilderServers(object):
         self.secret_key = ""
 
         # Get JumpStart model configuration
-        init_kwargs = get_init_kwargs(
+        init_kwargs_params = dict(
             model_id=self.model,
             model_version=self.model_version or "*",
             region=self.region,
             instance_type=self.instance_type,
+            sagemaker_session=self.sagemaker_session,
             tolerate_vulnerable_model=getattr(self, "tolerate_vulnerable_model", None),
             tolerate_deprecated_model=getattr(self, "tolerate_deprecated_model", None),
             config_name=getattr(self, "config_name", None),
         )
+        hub_arn = getattr(self, "hub_arn", None)
+        if hub_arn:
+            init_kwargs_params["hub_arn"] = hub_arn
+            # When the private hub content reference is named differently from
+            # the public model_id, resolve hub content by its actual name.
+            hub_content_name = getattr(self, "hub_content_name", None)
+            if hub_content_name:
+                init_kwargs_params["model_id"] = hub_content_name
+        init_kwargs = get_init_kwargs(**init_kwargs_params)
 
         # Configure image URI and environment variables
         self.image_uri = self.image_uri or init_kwargs.image_uri
@@ -997,6 +1007,12 @@ class _ModelBuilderServers(object):
             and getattr(init_kwargs, "enable_network_isolation", None) is not None
         ):
             self._enable_network_isolation = init_kwargs.enable_network_isolation
+
+        # Propagate model_reference_arn from init_kwargs so that
+        # _prepare_container_def_base can attach HubAccessConfig to the
+        # CreateModel request (required for private hub brokered access).
+        if getattr(init_kwargs, "model_reference_arn", None):
+            self.model_reference_arn = init_kwargs.model_reference_arn
 
         # Handle model artifacts for fine-tuned models
         if hasattr(init_kwargs, "model_data") and init_kwargs.model_data:

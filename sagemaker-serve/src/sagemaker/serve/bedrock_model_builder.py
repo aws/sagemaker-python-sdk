@@ -41,7 +41,7 @@ from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.agent_rft_job import AgentRFTJob
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
@@ -248,7 +248,14 @@ class BedrockModelBuilder:
         except Exception:
             return False
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="BedrockModelBuilder.deploy")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BedrockModelBuilder.deploy",
+        telemetry_params=[
+            ("model_package", TelemetryParamType.ATTR_EXISTS),
+            ("imported_model_kms_key_id", TelemetryParamType.KWARG_EXISTS),
+        ],
+    )
     def deploy(
         self,
         job_name: Optional[str] = None,

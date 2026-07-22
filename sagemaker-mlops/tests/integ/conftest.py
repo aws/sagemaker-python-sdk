@@ -166,12 +166,30 @@ def test_code_dir():
 
 @pytest.fixture(scope="module")
 def sklearn_latest_version():
-    """Return the latest SKLearn framework version available."""
-    from packaging.version import Version
+    """Return the latest SKLearn framework version available.
+
+    Some image_uri config version keys are not PEP 440 compliant (for
+    example "1.4-2-py312", which encodes a Python scope in the version
+    string). Those keys cannot be parsed by ``packaging.version.Version``
+    and would raise ``InvalidVersion`` during sorting, so they are skipped.
+    """
+    from packaging.version import InvalidVersion, Version
+
     config = image_uris.config_for_framework("sklearn")
     if "versions" not in config:
         config = next(iter(config.values()))
-    return sorted(config["versions"].keys(), key=lambda v: Version(v))[-1]
+
+    parseable_versions = []
+    for version in config["versions"].keys():
+        try:
+            parseable_versions.append((Version(version), version))
+        except InvalidVersion:
+            continue
+
+    if not parseable_versions:
+        raise ValueError("No PEP 440 compliant SKLearn versions found in config")
+
+    return max(parseable_versions, key=lambda item: item[0])[1]
 
 
 # ---------------------------------------------------------------------------

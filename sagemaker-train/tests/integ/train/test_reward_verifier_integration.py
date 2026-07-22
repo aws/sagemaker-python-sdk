@@ -414,16 +414,16 @@ class TestNovaRemoteLambda:
         assert result["total_samples"] == 2
         assert result["successful_samples"] == 2
 
-    def test_lambda_nova_requires_compute(self, nova_sample_data, nova_lambda_arn):
-        """Test that Nova Lambda ARN requires compute parameter."""
-        with pytest.raises(ValueError, match="compute.*required"):
-            verify_reward_function(
-                reward_function=nova_lambda_arn,
-                sample_data=nova_sample_data,
-                validate_format=True,
-                is_nova=True,
-            )
-
+    def test_lambda_nova_serverless_compute(self, nova_sample_data, nova_lambda_arn):
+        result = verify_reward_function(
+            reward_function=nova_lambda_arn,
+            sample_data=nova_sample_data,
+            validate_format=True,
+            is_nova=True,
+        )
+        assert result["success"] is True
+        assert result["total_samples"] == 2
+        assert result["successful_samples"] == 2
 
 # ---------------------------------------------------------------------------
 # Test class: OSS Remote Lambda (is_nova=False)
@@ -533,16 +533,6 @@ class TestErrorHandling:
                 is_nova=True,
             )
 
-    def test_lambda_arn_without_compute_raises_error(self, nova_sample_data, nova_lambda_arn):
-        """Test that Lambda ARN without compute raises ValueError."""
-        with pytest.raises(ValueError, match="compute.*required"):
-            verify_reward_function(
-                reward_function=nova_lambda_arn,
-                sample_data=nova_sample_data,
-                validate_format=True,
-                compute=None,
-                is_nova=True,
-            )
 
     def test_hyperpod_compute_requires_sagemaker_in_function_name(
         self, nova_sample_data, nova_lambda_arn

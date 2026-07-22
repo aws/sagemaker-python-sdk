@@ -1,4 +1,53 @@
 # Changelog
+## v3.16.0 (2026-07-15)
+
+### New Features
+
+- feat: actionable guidance for removed v2 interfaces (#6004)
+- feat(serve): add SageMaker GenAI inference benchmarking and recommendation (#5874)
+- feat(feature-store): add BatchWriteRecord and ListRecords to FeatureGroup (#5983)
+
+### Bug Fixes
+
+- fix(iam): scope repo-level ECR actions to prevent false deny in preflight validation (#6024)
+- fix: filter full recipe template from serverless train() (#6021)
+- Fix sm-train unit tests + use single logger in base trainer (#6030)
+
+### Tests
+
+- test(mlops): Skip non-PEP440 version keys in sklearn_latest_version (#6022)
+
+## v3.15.1 (2026-07-09)
+
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
+### Bug Fixes
+
+- fix: always apply evaluator identity keywords and allow explicit domain_id (#5989)
+- fix: ModelBuilder resolves private hub artifacts correctly (#5985)
+- fix: refresh LLMAsJudgeEvaluator allowed evaluator models (#5987)
+- fix: define LAMBDA_ARN_REGEX in finetune_utils to fix RLVRTrainer NameError (#5988)
+- fix: RLVR validation bugfix (#6000)
+- fix: drop claude-sonnet-4-20250514 from evaluator allowlist (#6009)
+- fix(serve): Invoke pip without shell in xgboost install_package (#5981)
+- fix: Correct DJL-LMI ISO/ADC accounts + add THF/ISO-E (djl-lmi, huggingface-llm-neuronx) (#5980)
+
+### Documentation
+
+- docs: Add AGENTS.md and llms.txt for AI agent v3 guidance (#5982)
+- docs: Add SDK-first guidance to AGENTS.md and llms.txt (#5997)
+- docs: Add Version Lifecycle page under Getting Started (#5994)
+- docs: serve robots.txt opting V2 docs out of AI training crawls (#6003)
+
+### Other
+
+- Add Triton Server v26.05 image URI config (#5999)
+- Add sklearn 1.4-2-py312 and xgboost 3.2-0 image URI configs (#6008)
+- test: Fix/v3 tests (#5996)
+- test: wip nova hyperpod integ tests (#5990)
+
 ## v3.15.0 (2026-06-22)
 
 ### New Features
