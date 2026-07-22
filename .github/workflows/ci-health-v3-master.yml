@@ -1,8 +1,8 @@
 name: CI Health V3 Master
 on:
   schedule:
-    # Once a day at 05:00 UTC (9pm PDT / 10pm PST).
-    - cron: "0 5 * * *"
+    # Once a day at 07:00 UTC (11pm PDT / 12pm PST).
+    - cron: "0 7 * * *"
   workflow_dispatch:
 
 permissions:
