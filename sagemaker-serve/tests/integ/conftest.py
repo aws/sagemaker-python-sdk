@@ -20,17 +20,17 @@ API. With many workers hitting it at once IAM throttles the request, surfacing a
 This is purely a test-harness concurrency problem, so the mitigation lives here in
 the test layer rather than in SDK source:
 
-* ``_configure_default_boto_retries`` (autouse) — approach "A": set an adaptive
-  retry policy on boto3's *default* session. The role resolver, when no explicit
-  session is passed, falls back to ``sagemaker.core...Session()`` whose boto
-  session is ``boto3.DEFAULT_SESSION`` (see session_helper._initialize). Clients
-  created from it therefore inherit these retries, letting the internal IAM calls
-  ride out transient throttling without any source change.
+* ``_configure_default_boto_retries`` (autouse) — set an adaptive retry policy on
+  boto3's *default* session. The role resolver, when no explicit session is
+  passed, falls back to ``sagemaker.core...Session()`` whose boto session is
+  ``boto3.DEFAULT_SESSION`` (see session_helper._initialize). Clients created from
+  it therefore inherit these retries, letting the internal IAM calls ride out
+  transient throttling without any source change.
 
-* ``pytest_runtest_makereport`` — approach "C": a belt-and-suspenders fallback. If
-  a residual ``SimulatePrincipalPolicy`` throttling error still escapes after the
-  adaptive retries, convert the failure into an xfail so a transient rate limit
-  never reds the build. Genuine failures are untouched.
+Throttling that still exhausts the adaptive retry budget is deliberately left to
+fail the test loudly (rather than being converted to a skip), so a persistent
+rate-limit regression stays visible instead of silently disappearing from the
+results.
 """
 from __future__ import absolute_import
 
@@ -41,11 +41,6 @@ from botocore.config import Config
 # Adaptive retry budget for throttling-prone IAM validation calls.
 _ADAPTIVE_RETRY_CONFIG = Config(retries={"max_attempts": 10, "mode": "adaptive"})
 
-# Only tolerate throttling on the IAM permission simulation used during role
-# validation, so unrelated throttling still fails loudly.
-_THROTTLE_ERROR_CODES = ("Throttling", "ThrottlingException", "RequestLimitExceeded")
-_SIMULATE_OP = "SimulatePrincipalPolicy"
-
 
 @pytest.fixture(autouse=True, scope="session")
 def _configure_default_boto_retries():
@@ -54,36 +49,3 @@ def _configure_default_boto_retries():
     boto3.setup_default_session()
     boto3.DEFAULT_SESSION._session.set_default_client_config(_ADAPTIVE_RETRY_CONFIG)
     yield
-
-
-def _is_simulate_policy_throttle(exc):
-    """Return True if ``exc`` is a SimulatePrincipalPolicy throttling ClientError."""
-    from botocore.exceptions import ClientError
-
-    if not isinstance(exc, ClientError):
-        return False
-    error_code = exc.response.get("Error", {}).get("Code", "")
-    operation = getattr(exc, "operation_name", "") or ""
-    return error_code in _THROTTLE_ERROR_CODES and operation == _SIMULATE_OP
-
-
-@pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    """Skip (rather than fail) on residual SimulatePrincipalPolicy throttling that
-    survives the adaptive retries under heavy concurrency."""
-    outcome = yield
-    report = outcome.get_result()
-
-    if report.when != "call" or not report.failed:
-        return
-
-    exc = call.excinfo.value if call.excinfo else None
-    # Walk the exception chain so a wrapped ClientError is still detected.
-    while exc is not None:
-        if _is_simulate_policy_throttle(exc):
-            report.outcome = "skipped"
-            report.wasxfail = (
-                "iam:SimulatePrincipalPolicy throttled under concurrent test load"
-            )
-            break
-        exc = exc.__cause__ or exc.__context__
