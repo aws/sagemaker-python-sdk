@@ -18,14 +18,17 @@ API. With many workers hitting it at once IAM throttles the request, surfacing a
 ``ClientError: (Throttling) ... Rate exceeded`` and failing the build.
 
 This is purely a test-harness concurrency problem, so the mitigation lives here in
-the test layer rather than in SDK source:
+the test layer rather than in SDK source. It is intentionally identical to the
+block in ``sagemaker-train`` / ``sagemaker-mlops`` integ conftests:
 
-* ``_configure_default_boto_retries`` (autouse) — set an adaptive retry policy on
-  boto3's *default* session. The role resolver, when no explicit session is
-  passed, falls back to ``sagemaker.core...Session()`` whose boto session is
-  ``boto3.DEFAULT_SESSION`` (see session_helper._initialize). Clients created from
-  it therefore inherit these retries, letting the internal IAM calls ride out
-  transient throttling without any source change.
+* ``_configure_boto_adaptive_retries`` (autouse) — set adaptive retries via the
+  ``AWS_RETRY_MODE`` / ``AWS_MAX_ATTEMPTS`` environment variables. Env vars apply
+  to *every* boto3 client created in the worker, so the internal IAM calls ride
+  out transient throttling whether the resolver falls back to the default session
+  or builds its client from an explicitly-passed ``Session`` (several serve tests
+  pass their own session, whose IAM client would otherwise carry botocore's
+  default 4-attempt retry policy). ``adaptive`` mode also adds client-side rate
+  limiting to smooth bursts.
 
 Throttling that still exhausts the adaptive retry budget is deliberately left to
 fail the test loudly (rather than being converted to a skip), so a persistent
@@ -57,3 +60,8 @@ def _configure_boto_adaptive_retries():
     os.environ["AWS_RETRY_MODE"] = _RETRY_MODE
     os.environ["AWS_MAX_ATTEMPTS"] = _MAX_ATTEMPTS
     yield
+    for key, value in previous.items():
+        if value is None:
+            os.environ.pop(key, None)
+        else:
+            os.environ[key] = value
