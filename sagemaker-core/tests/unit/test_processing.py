@@ -14,7 +14,7 @@
 import pytest
 import os
 import tempfile
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 from sagemaker.core.processing import (
     Processor,
     ScriptProcessor,
@@ -48,9 +48,6 @@ def mock_session():
 
 class TestProcessorNormalizeArgs:
     def test_normalize_args_with_pipeline_variable_code(self, mock_session):
-        from sagemaker.core.workflow.pipeline_context import PipelineSession
-        from sagemaker.core.workflow import is_pipeline_variable
-
         processor = Processor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
@@ -236,8 +233,6 @@ class TestProcessorNormalizeOutputs:
 
         with pytest.raises(TypeError, match="must be provided as ProcessingOutput objects"):
             processor._normalize_outputs(["invalid"])
-
-
 
 
 class TestBugConditionFileUriReplacedInLocalMode:
@@ -444,7 +439,9 @@ class TestPreservationNonLocalFileBehavior:
             [{"key": "value"}],
         ],
     )
-    def test_non_processing_output_raises_type_error(self, invalid_output, session_local_mode_false):
+    def test_non_processing_output_raises_type_error(
+        self, invalid_output, session_local_mode_false
+    ):
         """Non-ProcessingOutput objects must raise TypeError.
 
         **Validates: Requirements 3.4**
@@ -882,9 +879,7 @@ class TestFrameworkProcessor:
             entry_point_path = f.name
 
         try:
-            script = processor._generate_framework_script(
-                "train.py", entry_point=entry_point_path
-            )
+            script = processor._generate_framework_script("train.py", entry_point=entry_point_path)
             assert custom_script_content in script
             assert "python3 train.py" in script
             assert "tar -xzf sourcedir.tar.gz" not in script
@@ -1042,7 +1037,7 @@ class TestProcessorStartNewWithSubmit:
             },
         ):
             with patch("sagemaker.core.processing.serialize", return_value={}):
-                with patch("sagemaker.core.processing.ProcessingJob") as mock_job:
+                with patch("sagemaker.core.processing.ProcessingJob"):
                     with patch(
                         "sagemaker.core.utils.code_injection.codec.transform",
                         return_value={"processing_job_name": "test-job"},
@@ -1219,7 +1214,6 @@ class TestFrameworkProcessorPackageCode:
                 job_name="test-job",
                 kms_key=None,
             )
-
 
     def test_package_code_with_code_location(self, mock_session):
         processor = FrameworkProcessor(
@@ -1477,8 +1471,6 @@ class TestProcessorGenerateJobName:
 
 class TestProcessorWithPipelineVariable:
     def test_get_process_args_with_pipeline_variable_role(self, mock_session):
-        from sagemaker.core.workflow import is_pipeline_variable
-
         role_var = Mock()
 
         with patch("sagemaker.core.processing.is_pipeline_variable", return_value=True):
@@ -1524,11 +1516,17 @@ class TestProcessorStartNewWithTags:
                 "tags": [{"Key": "Key", "Value": "Value"}],
             },
         ):
-            with patch("sagemaker.core.processing.serialize", return_value={"tags": [{"Key": "Key", "Value": "Value"}]}):
+            with patch(
+                "sagemaker.core.processing.serialize",
+                return_value={"tags": [{"Key": "Key", "Value": "Value"}]},
+            ):
                 with patch("sagemaker.core.processing.ProcessingJob") as mock_job_class:
                     with patch(
                         "sagemaker.core.utils.code_injection.codec.transform",
-                        return_value={"processing_job_name": "test-job", "tags": [{"Key": "Key", "Value": "Value"}]},
+                        return_value={
+                            "processing_job_name": "test-job",
+                            "tags": [{"Key": "Key", "Value": "Value"}],
+                        },
                     ):
                         processor._start_new([], [], None)
                         # Verify ProcessingJob was called without tags

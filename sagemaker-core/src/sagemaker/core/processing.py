@@ -489,7 +489,10 @@ class Processor(object):
                 # If the output's s3_uri is not an s3_uri, create one.
                 parse_result = urlparse(output.s3_output.s3_uri)
                 if parse_result.scheme != "s3":
-                    if getattr(self.sagemaker_session, "local_mode", False) and parse_result.scheme == "file":
+                    if (
+                        getattr(self.sagemaker_session, "local_mode", False)
+                        and parse_result.scheme == "file"
+                    ):
                         normalized_outputs.append(output)
                         continue
                     if _pipeline_config:
@@ -1156,10 +1159,10 @@ class FrameworkProcessor(ScriptProcessor):
         self,
         entry_point,
         source_dir,
-        dependencies,
         requirements,
         job_name,
         kms_key,
+        dependencies=None,
     ):
         """Package and upload code to S3.
 
@@ -1212,7 +1215,7 @@ class FrameworkProcessor(ScriptProcessor):
                     tar.add(item_path, arcname=item)
 
                 # Add dependency directories at the root of the archive
-                for dep_path in (dependencies or []):
+                for dep_path in dependencies or []:
                     if not os.path.isabs(dep_path):
                         dep_path = os.path.abspath(dep_path)
                     if not os.path.exists(dep_path):
@@ -1252,7 +1255,7 @@ class FrameworkProcessor(ScriptProcessor):
         job_name: Optional[str] = None,
         experiment_config: Optional[Dict[str, str]] = None,
         kms_key: Optional[str] = None,
-        entry_point: Optional[str] = None
+        entry_point: Optional[str] = None,
     ):
         """Runs a processing job.
 
@@ -1296,12 +1299,12 @@ class FrameworkProcessor(ScriptProcessor):
         s3_runproc_sh, inputs, job_name = self._pack_and_upload_code(
             code,
             source_dir,
-            dependencies,
             requirements,
             job_name,
             inputs,
             kms_key,
-            entry_point
+            entry_point,
+            dependencies=dependencies,
         )
 
         # Submit a processing job.
@@ -1321,12 +1324,12 @@ class FrameworkProcessor(ScriptProcessor):
         self,
         code,
         source_dir,
-        dependencies,
         requirements,
         job_name,
         inputs,
         kms_key=None,
-        entry_point=None
+        entry_point=None,
+        dependencies=None,
     ):
         """Pack local code bundle and upload to Amazon S3."""
         if code.startswith("s3://"):
@@ -1409,7 +1412,9 @@ class FrameworkProcessor(ScriptProcessor):
         )
         self.entrypoint = self.framework_entrypoint_command + [user_script_location]
 
-    def _create_and_upload_runproc(self, user_script, kms_key, entrypoint_s3_uri, entry_point=None, source_dir=None):
+    def _create_and_upload_runproc(
+        self, user_script, kms_key, entrypoint_s3_uri, entry_point=None, source_dir=None
+    ):
         """Create runproc shell script and upload to S3 bucket."""
         from sagemaker.core.workflow.utilities import _pipeline_config, hash_object
 
@@ -1439,7 +1444,9 @@ class FrameworkProcessor(ScriptProcessor):
 
         return s3_runproc_sh
 
-    def _generate_framework_script(self, user_script: str, entry_point: str = None, source_dir: str = None) -> str:
+    def _generate_framework_script(
+        self, user_script: str, entry_point: str = None, source_dir: str = None
+    ) -> str:
         """Generate the framework entrypoint file (as text) for a processing job."""
         if entry_point:
             return self._generate_custom_framework_script(user_script, entry_point, source_dir)
@@ -1548,11 +1555,13 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point_content = f.read()
 
         # Generate the script with embedded entry_point content
-        return dedent("""\
+        return dedent(
+            """\
             {entry_point_content}
 
             {entry_point_command} {entry_point} "$@"
-            """).format(
+            """
+        ).format(
             entry_point_content=entry_point_content,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
