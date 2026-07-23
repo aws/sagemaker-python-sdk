@@ -701,7 +701,12 @@ class BaseTrainer(ABC):
     def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None) -> None:
         """Stream logs for a HyperPod job using filter_log_events polling."""
 
-        job_id = training_job if isinstance(training_job, str) else str(training_job)
+        if isinstance(training_job, str):
+            job_id = training_job
+        elif hasattr(training_job, 'training_job_name'):
+            job_id = training_job.training_job_name
+        else:
+            job_id = str(training_job)
 
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
