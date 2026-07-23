@@ -529,9 +529,11 @@ class BedrockModelBuilder:
         """
         elapsed = 0
         status = None
+        print(f"\nWaiting for model to become active: {model_arn}", flush=True)
         while elapsed < max_wait:
             resp = self._get_bedrock_client().get_custom_model(modelIdentifier=model_arn)
             status = resp.get("modelStatus")
+            print(f"[{elapsed}s] Model status: {status}", flush=True)
             logger.info("Custom model status: %s (elapsed %ds)", status, elapsed)
             if status == "Active":
                 return
@@ -561,13 +563,16 @@ class BedrockModelBuilder:
         """
         elapsed = 0
         status = None
+        print(f"Waiting for deployment to become active: {deployment_arn}", flush=True)
         while elapsed < max_wait:
             resp = self._get_bedrock_client().get_custom_model_deployment(
                 customModelDeploymentIdentifier=deployment_arn
             )
             status = resp.get("status")
+            print(f"[{elapsed}s] Deployment status: {status}", flush=True)
             logger.info("Deployment status: %s (elapsed %ds)", status, elapsed)
             if status == "Active":
+                print(f"\n✓ Deployment active: {deployment_arn}", flush=True)
                 return
             if status == "Failed":
                 raise RuntimeError(
