@@ -301,7 +301,7 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                 logger.debug("TelemetryOptOut flag is set to: %s", telemetry_opt_out_flag)
 
                 if not telemetry_opt_out_flag and not _telemetry_msg_shown:
-                    logger.info(TELEMETRY_OPT_OUT_MESSAGING)
+                    logger.warning(TELEMETRY_OPT_OUT_MESSAGING)
                     _telemetry_msg_shown = True
 
                 # Construct the feature list to track feature combinations
