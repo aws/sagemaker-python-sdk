@@ -9,11 +9,6 @@ name: Notebook Tests (v3 examples)
 #      `notebook-test-engine` CodeBuild project against this PR's notebooks.
 #   3. Poll the build to completion; this job's pass/fail IS the PR check, and a
 #      failing notebook is attached as a downloadable `failing-notebooks` artifact.
-#
-# Required repo configuration:
-#   - Secret NOTEBOOK_TEST_ENGINE_ROLE_ARN: the engine's GitHub Actions role ARN.
-#   - Secret COLLAB_CHECK_TOKEN and the auto-approve / manual-approval environments
-#     (shared with pr-checks-master.yml).
 # ---------------------------------------------------------------------------
 
 on:
