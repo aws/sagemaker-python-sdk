@@ -71,28 +71,61 @@ jobs:
     runs-on: ubuntu-latest
     needs: [wait-for-approval]
     steps:
+      # SECURITY: this job runs in the trusted pull_request_target context (it
+      # holds the Bedrock role + secrets). We therefore check out the BASE repo
+      # at the PR's base branch — never the fork's head code — so untrusted PR
+      # code is never executed here ("pwn request" prevention). The PR contents
+      # are pulled in as a read-only diff below, not as an executable tree.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.sha }}
           fetch-depth: 1
 
+      # Fetch the PR diff via the API (does not execute any fork code) and store
+      # it as a static file. This is the ground truth Claude reviews.
+      - name: Fetch PR diff
+        id: diff
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/pulls/$PR_NUMBER" \
+            -H "Accept: application/vnd.github.v3.diff" > /tmp/pr.diff
+          BYTES=$(wc -c < /tmp/pr.diff)
+          echo "bytes=$BYTES" >> "$GITHUB_OUTPUT"
+          echo "PR diff: $BYTES bytes"
+
       - name: Configure AWS Credentials
+        if: steps.diff.outputs.bytes != '0'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.CODE_REVIEW_ROLE }}
           aws-region: us-west-2
 
       - uses: anthropics/claude-code-action@v1
+        if: steps.diff.outputs.bytes != '0'
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           use_bedrock: "true"
           track_progress: true
+          # Bash is intentionally NOT allowed. The PR diff at /tmp/pr.diff is the
+          # only ground truth; the model reads it and uses Read/Grep/Glob against
+          # the trusted base checkout for context. It must not execute commands
+          # (which could run untrusted PR content) nor re-run git.
           claude_args: |
             --model us.anthropic.claude-opus-4-8
-            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+            --allowedTools "Read Grep Glob mcp__github_inline_comment__create_inline_comment"
           prompt: |
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
+
+            The complete PR diff is at `/tmp/pr.diff` — read it first with the
+            Read tool. That file is the ground truth for what this PR changes; do
+            not run git or any shell commands. For context (callers of changed
+            functions, existing patterns, project conventions), use Read/Grep/Glob
+            against the checked-out base repository.
 
             Review this pull request for the SageMaker Python SDK. Focus on:
             - Correctness: bugs, incorrect API/argument usage, breaking changes
@@ -102,5 +135,7 @@ jobs:
             - Performance considerations
             - Missing or inadequate tests for changed behavior
 
-            Post specific issues as inline comments. Skip nits and style the
-            linters already enforce. If the PR looks clean, say so briefly.
+            Post specific issues as inline comments via the
+            mcp__github_inline_comment__create_inline_comment tool. Skip nits and
+            style the linters already enforce. If the PR looks clean, say so
+            briefly.
