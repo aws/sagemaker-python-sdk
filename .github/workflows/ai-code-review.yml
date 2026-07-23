@@ -1,0 +1,106 @@
+name: AI Code Review (Claude on Bedrock)
+
+# Automated PR review using Anthropic's Claude Code Action running on Amazon
+# Bedrock (inference stays in-account, CloudTrail-audited, no external API key).
+#
+# Fork safety: this uses pull_request_target (needed to access the Bedrock role
+# and post comments), so it reuses the same collaborator gate as
+# pr-checks-master.yml. Collaborator PRs -> `auto-approve` env (runs immediately).
+# Fork/external PRs -> `manual-approval` env (a maintainer must approve the run
+# before any secret or the Bedrock role is exposed).
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, ready_for_review, reopened]
+    branches:
+      - "master"
+    # Scope to the same product directories the other PR checks use, so pure
+    # docs/example PRs don't trigger a model review. Remove this block to
+    # review every PR.
+    paths:
+      - 'sagemaker-train/**'
+      - 'sagemaker-serve/**'
+      - 'sagemaker-mlops/**'
+      - 'sagemaker-core/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write        # OIDC federation to assume the Bedrock role
+  pull-requests: write   # post inline review comments and a summary
+  contents: read
+
+jobs:
+  # Identical gate to pr-checks-master.yml: collaborators auto-approve,
+  # everyone else requires manual approval via the `manual-approval` environment.
+  collab-check:
+    runs-on: ubuntu-latest
+    outputs:
+      approval-env: ${{ steps.collab-check.outputs.result }}
+    steps:
+      - name: Collaborator Check
+        uses: actions/github-script@v7
+        id: collab-check
+        with:
+          github-token: ${{ secrets.COLLAB_CHECK_TOKEN }}
+          result-encoding: string
+          script: |
+            try {
+              const res = await github.rest.repos.checkCollaborator({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: "${{ github.event.pull_request.user.login }}",
+              });
+              console.log("Verified ${{ github.event.pull_request.user.login }} is a repo collaborator. Auto approving AI review.")
+              return res.status == "204" ? "auto-approve" : "manual-approval"
+            } catch (error) {
+              console.log("${{ github.event.pull_request.user.login }} is not a collaborator. Requiring manual approval to run AI review.")
+              return "manual-approval"
+            }
+
+  wait-for-approval:
+    runs-on: ubuntu-latest
+    needs: [collab-check]
+    environment: ${{ needs.collab-check.outputs.approval-env }}
+    steps:
+      - run: echo "Approved — starting AI code review."
+
+  review:
+    runs-on: ubuntu-latest
+    needs: [wait-for-approval]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 1
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CODE_REVIEW_ROLE }}
+          aws-region: us-west-2
+
+      - uses: anthropics/claude-code-action@v1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          use_bedrock: "true"
+          track_progress: true
+          claude_args: |
+            --model us.anthropic.claude-opus-4-8
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
+            Review this pull request for the SageMaker Python SDK. Focus on:
+            - Correctness: bugs, incorrect API/argument usage, breaking changes
+              to public interfaces, backward-incompatibility for SDK consumers
+            - Python best practices and readability
+            - Security implications (credential handling, input validation)
+            - Performance considerations
+            - Missing or inadequate tests for changed behavior
+
+            Post specific issues as inline comments. Skip nits and style the
+            linters already enforce. If the PR looks clean, say so briefly.
