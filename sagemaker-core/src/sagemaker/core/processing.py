@@ -1028,6 +1028,14 @@ class FrameworkProcessor(ScriptProcessor):
 
     framework_entrypoint_command = ["/bin/bash"]
 
+    # Container path where the source bundle is extracted. For a local ``source_dir`` the
+    # managed code prefix (which also holds ``install_requirements.py``) is mounted here.
+    _SOURCE_CODE_CONTAINER_DIR = "/opt/ml/processing/input/code"
+    # Container path where helper scripts are mounted when ``source_dir`` is an S3 URI. In
+    # that case ``/input/code`` maps to the user's (possibly read-only) S3 location, so the
+    # managed ``install_requirements.py`` must be mounted from a separate input instead.
+    _AUX_CONTAINER_DIR = "/opt/ml/processing/input/aux"
+
     def __init__(
         self,
         image_uri: Union[str, PipelineVariable],
@@ -1350,23 +1358,42 @@ class FrameworkProcessor(ScriptProcessor):
 
         inputs = self._patch_inputs_with_payload(inputs, s3_payload)
 
-        # Determine where to upload helper scripts.
-        # When source_dir is S3, s3_payload points to the user's existing location,
-        # so helpers go to a separate managed prefix.
+        # Determine where to upload helper scripts and where install_requirements.py will be
+        # available inside the container. When source_dir is S3, s3_payload points to the
+        # user's existing (possibly read-only) location, so helpers go to a separate managed
+        # prefix which is mounted at a dedicated aux path rather than /input/code.
         if self._is_s3_uri(source_dir):
             helper_prefix = self._resolve_helper_scripts_prefix(job_name)
             entrypoint_s3_uri = s3.s3_path_join(helper_prefix, "runproc.sh")
             install_req_s3_uri = s3.s3_path_join(helper_prefix, "install_requirements.py")
+            install_requirements_dir = self._AUX_CONTAINER_DIR
+            # Mount the managed helper so install_requirements.py is present in the container.
+            inputs = (inputs or []) + [
+                ProcessingInput(
+                    input_name="aux",
+                    s3_input=ProcessingS3Input(
+                        s3_uri=install_req_s3_uri,
+                        local_path=self._AUX_CONTAINER_DIR,
+                        s3_data_type="S3Prefix",
+                        s3_input_mode="File",
+                    ),
+                )
+            ]
         else:
             entrypoint_s3_uri = s3_payload.replace("sourcedir.tar.gz", "runproc.sh")
             install_req_s3_uri = s3_payload.replace("sourcedir.tar.gz", "install_requirements.py")
+            # For a local source_dir the managed code prefix (with install_requirements.py) is
+            # mounted at /input/code alongside the extracted bundle.
+            install_requirements_dir = self._SOURCE_CODE_CONTAINER_DIR
 
         # Upload install_requirements helper
         import sagemaker.core.utils.install_requirements as _ir_mod
 
         evaluated_kms_key = kms_key if kms_key else self.output_kms_key
+        with open(_ir_mod.__file__, "r") as _ir_file:
+            _ir_body = _ir_file.read()
         s3.S3Uploader.upload_string_as_file_body(
-            body=open(_ir_mod.__file__, "r").read(),
+            body=_ir_body,
             desired_s3_uri=install_req_s3_uri,
             kms_key=evaluated_kms_key,
             sagemaker_session=self.sagemaker_session,
@@ -1374,7 +1401,12 @@ class FrameworkProcessor(ScriptProcessor):
 
         script = os.path.basename(code)
         s3_runproc_sh = self._create_and_upload_runproc(
-            script, evaluated_kms_key, entrypoint_s3_uri, entry_point, source_dir
+            script,
+            evaluated_kms_key,
+            entrypoint_s3_uri,
+            entry_point,
+            source_dir,
+            install_requirements_dir,
         )
 
         return s3_runproc_sh, inputs, job_name
@@ -1413,13 +1445,21 @@ class FrameworkProcessor(ScriptProcessor):
         self.entrypoint = self.framework_entrypoint_command + [user_script_location]
 
     def _create_and_upload_runproc(
-        self, user_script, kms_key, entrypoint_s3_uri, entry_point=None, source_dir=None
+        self,
+        user_script,
+        kms_key,
+        entrypoint_s3_uri,
+        entry_point=None,
+        source_dir=None,
+        install_requirements_dir=None,
     ):
         """Create runproc shell script and upload to S3 bucket."""
         from sagemaker.core.workflow.utilities import _pipeline_config, hash_object
 
         if _pipeline_config and _pipeline_config.pipeline_name:
-            runproc_file_str = self._generate_framework_script(user_script, entry_point, source_dir)
+            runproc_file_str = self._generate_framework_script(
+                user_script, entry_point, source_dir, install_requirements_dir
+            )
             runproc_file_hash = hash_object(runproc_file_str)
             s3_uri = s3.s3_path_join(
                 self._s3_code_prefix(),
@@ -1436,7 +1476,9 @@ class FrameworkProcessor(ScriptProcessor):
             )
         else:
             s3_runproc_sh = s3.S3Uploader.upload_string_as_file_body(
-                self._generate_framework_script(user_script, entry_point, source_dir),
+                self._generate_framework_script(
+                    user_script, entry_point, source_dir, install_requirements_dir
+                ),
                 desired_s3_uri=entrypoint_s3_uri,
                 kms_key=kms_key,
                 sagemaker_session=self.sagemaker_session,
@@ -1445,25 +1487,33 @@ class FrameworkProcessor(ScriptProcessor):
         return s3_runproc_sh
 
     def _generate_framework_script(
-        self, user_script: str, entry_point: str = None, source_dir: str = None
+        self,
+        user_script: str,
+        entry_point: str = None,
+        source_dir: str = None,
+        install_requirements_dir: str = None,
     ) -> str:
         """Generate the framework entrypoint file (as text) for a processing job."""
         if entry_point:
-            return self._generate_custom_framework_script(user_script, entry_point, source_dir)
+            return self._generate_custom_framework_script(
+                user_script, entry_point, source_dir, install_requirements_dir
+            )
+
+        install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
 
         return dedent(
             """\
             #!/bin/bash
-            
+
             # Exit on any error. SageMaker uses error code to mark failed job.
             set -e
 
             cd /opt/ml/processing/input/code/
-            
+
             # Debug: List files before extraction
             echo "Files in /opt/ml/processing/input/code/ before extraction:"
             ls -la
-            
+
             # Extract source code
             if [ -f sourcedir.tar.gz ]; then
                 tar -xzf sourcedir.tar.gz
@@ -1478,18 +1528,23 @@ class FrameworkProcessor(ScriptProcessor):
                 # Some py3 containers has typing, which may breaks pip install
                 pip uninstall --yes typing
 
-                python3 /opt/ml/processing/input/code/install_requirements.py requirements.txt
+                python3 {install_requirements_dir}/install_requirements.py requirements.txt
             fi
 
             {entry_point_command} {entry_point} "$@"
         """
         ).format(
+            install_requirements_dir=install_requirements_dir,
             entry_point_command=" ".join(self.command),
             entry_point=user_script,
         )
 
     def _generate_custom_framework_script(
-        self, user_script: str, entry_point: str, source_dir: str = None
+        self,
+        user_script: str,
+        entry_point: str,
+        source_dir: str = None,
+        install_requirements_dir: str = None,
     ) -> str:
         """
         Generate a custom framework script with a user-provided entrypoint embedded.
@@ -1502,6 +1557,8 @@ class FrameworkProcessor(ScriptProcessor):
             entry_point (str): Path to the custom entrypoint script file
             source_dir (str): Path to the source directory. If provided and entry_point
                 is relative, it will be combined with source_dir.
+            install_requirements_dir (str): Container directory that holds
+                ``install_requirements.py`` (default: the extracted source code dir).
 
         Returns:
             str: The generated script content
@@ -1510,6 +1567,7 @@ class FrameworkProcessor(ScriptProcessor):
         # Instead, generate a script that executes the entry_point from the extracted
         # source bundle on the container.
         if self._is_s3_uri(source_dir):
+            install_requirements_dir = install_requirements_dir or self._SOURCE_CODE_CONTAINER_DIR
             return dedent(
                 """\
                 #!/bin/bash
@@ -1529,7 +1587,7 @@ class FrameworkProcessor(ScriptProcessor):
 
                 if [[ -f 'requirements.txt' ]]; then
                     pip uninstall --yes typing
-                    python3 /opt/ml/processing/input/code/install_requirements.py requirements.txt
+                    python3 {install_requirements_dir}/install_requirements.py requirements.txt
                 fi
 
                 # Execute custom entrypoint
@@ -1539,6 +1597,7 @@ class FrameworkProcessor(ScriptProcessor):
                 {entry_point_command} {user_script} "$@"
             """
             ).format(
+                install_requirements_dir=install_requirements_dir,
                 entry_point=entry_point,
                 entry_point_command=" ".join(self.command),
                 user_script=user_script,

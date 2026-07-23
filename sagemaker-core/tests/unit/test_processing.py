@@ -1910,11 +1910,19 @@ class TestFrameworkProcessorS3SourceDir:
                 kms_key=None,
             )
 
-            # Should have a 'code' input pointing to the S3 source dir
-            assert len(result_inputs) == 1
-            code_input = result_inputs[0]
-            assert code_input.input_name == "code"
+            # Should have a 'code' input pointing to the S3 source dir plus an 'aux' input
+            # that mounts the managed install_requirements.py helper into the container.
+            assert len(result_inputs) == 2
+            inputs_by_name = {i.input_name: i for i in result_inputs}
+
+            code_input = inputs_by_name["code"]
             assert "s3://my-bucket/code/" in code_input.s3_input.s3_uri
+
+            aux_input = inputs_by_name["aux"]
+            assert aux_input.s3_input.local_path == "/opt/ml/processing/input/aux"
+            assert aux_input.s3_input.s3_uri.endswith("install_requirements.py")
+            # The helper must NOT come from the user's (possibly read-only) S3 location.
+            assert not aux_input.s3_input.s3_uri.startswith("s3://my-bucket/code/")
 
     # --- _generate_custom_framework_script with S3 source_dir ---
 
@@ -1932,6 +1940,39 @@ class TestFrameworkProcessorS3SourceDir:
         assert "chmod +x setup.sh" in script
         assert "./setup.sh" in script
         assert "python train.py" in script
+
+    def test_s3_source_dir_script_references_mounted_install_requirements(self, mock_session):
+        """The install_requirements.py path in the generated script must match the aux mount.
+
+        For an S3 source_dir, /opt/ml/processing/input/code maps to the user's location and
+        does NOT contain install_requirements.py; the helper is mounted at the aux path. The
+        generated script must invoke it from there, not from the code dir.
+        """
+        processor = self._make_processor(mock_session)
+        aux_dir = FrameworkProcessor._AUX_CONTAINER_DIR
+
+        # Both the plain framework script and the custom-entrypoint script must point at
+        # the aux mount when told the helper lives there.
+        plain = processor._generate_framework_script(
+            user_script="train.py",
+            source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+            install_requirements_dir=aux_dir,
+        )
+        custom = processor._generate_custom_framework_script(
+            user_script="train.py",
+            entry_point="setup.sh",
+            source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+            install_requirements_dir=aux_dir,
+        )
+        for script in (plain, custom):
+            assert f"{aux_dir}/install_requirements.py" in script
+            assert "/opt/ml/processing/input/code/install_requirements.py" not in script
+
+    def test_local_source_dir_script_references_code_dir_install_requirements(self, mock_session):
+        """For a local source_dir the helper is co-located under /input/code (unchanged)."""
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(user_script="train.py")
+        assert "/opt/ml/processing/input/code/install_requirements.py" in script
 
     def test_generate_custom_framework_script_with_local_source_dir(self, mock_session):
         processor = self._make_processor(mock_session)
