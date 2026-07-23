@@ -57,3 +57,4 @@ __all__ = [
     "WorkloadValidationError",
     "start_benchmark",
 ]
+# No-op line to trigger CI for a Codecov verification (DO NOT MERGE).
