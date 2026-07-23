@@ -1748,7 +1748,11 @@ def _is_bad_path(path, base):
         bool: True if the path is not rooted under the base directory, False otherwise.
     """
     # joinpath will ignore base if path is absolute
-    return not _get_resolved_path(joinpath(base, path)).startswith(base)
+    resolved = _get_resolved_path(joinpath(base, path))
+    try:
+        return os.path.commonpath([resolved, base]) != base
+    except ValueError:
+        return True
 
 
 def _is_bad_link(info, base):
@@ -1768,22 +1772,23 @@ def _is_bad_link(info, base):
     return _is_bad_path(info.linkname, base=tip)
 
 
-def _get_safe_members(members):
+def _get_safe_members(members, base):
     """A generator that yields members that are safe to extract.
 
     It filters out bad paths and bad links.
 
     Args:
         members (list): A list of members to check.
+        base (str): The base directory for extraction.
 
     Yields:
         tarfile.TarInfo: The tar file info.
     """
-    base = _get_resolved_path("")
-
     for file_info in members:
         if _is_bad_path(file_info.name, base):
             logger.error("%s is blocked (illegal path)", file_info.name)
+        elif file_info.isdev() or file_info.isfifo():
+            logger.error("%s is blocked: special file", file_info.name)
         elif file_info.issym() and _is_bad_link(file_info, base):
             logger.error("%s is blocked: Symlink to %s", file_info.name, file_info.linkname)
         elif file_info.islnk() and _is_bad_link(file_info, base):
@@ -1811,7 +1816,11 @@ def _validate_extracted_paths(extract_path):
         for dir_name in dirs:
             dir_path = os.path.join(root, dir_name)
             resolved = _get_resolved_path(dir_path)
-            if not resolved.startswith(base):
+            try:
+                is_within_base = os.path.commonpath([resolved, base]) == base
+            except ValueError:
+                is_within_base = False
+            if not is_within_base:
                 logger.error("Extracted directory escaped extraction path: %s", dir_path)
                 raise ValueError(f"Extracted path outside expected directory: {dir_path}")
 
@@ -1819,7 +1828,11 @@ def _validate_extracted_paths(extract_path):
         for file_name in files:
             file_path = os.path.join(root, file_name)
             resolved = _get_resolved_path(file_path)
-            if not resolved.startswith(base):
+            try:
+                is_within_base = os.path.commonpath([resolved, base]) == base
+            except ValueError:
+                is_within_base = False
+            if not is_within_base:
                 logger.error("Extracted file escaped extraction path: %s", file_path)
                 raise ValueError(f"Extracted path outside expected directory: {file_path}")
 
@@ -1843,7 +1856,8 @@ def custom_extractall_tarfile(tar, extract_path):
     if hasattr(tarfile, "data_filter"):
         tar.extractall(path=extract_path, filter="data")
     else:
-        tar.extractall(path=extract_path, members=_get_safe_members(tar))
+        base = _get_resolved_path(extract_path)
+        tar.extractall(path=extract_path, members=_get_safe_members(tar.getmembers(), base))
         # Re-validate extracted paths to catch symlink race conditions
         _validate_extracted_paths(extract_path)
 
