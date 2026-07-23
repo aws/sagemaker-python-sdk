@@ -1,0 +1,163 @@
+name: Notebook Tests (v3 examples)
+
+# ---------------------------------------------------------------------------
+# THIS FILE LIVES IN aws/sagemaker-python-sdk, NOT in this CDK package.
+# Copy it to .github/workflows/notebook-tests.yml in that repo. It is kept here
+# under version control alongside the infra it drives. See README.md next to it.
+#
+# What it does: on a PR that touches the v3 example notebooks, assume an AWS role
+# in the Notebook Test Engine account via GitHub OIDC (no stored AWS keys), start
+# the `notebook-test-engine` CodeBuild project with the PR's notebooks checked out
+# (via a secondary-source version override), and poll the build to completion.
+# THIS JOB'S pass/fail IS the PR check — no GitHub token, no webhook, no endpoint.
+#
+# One-time setup in the aws/sagemaker-python-sdk repo settings:
+#   Secrets:
+#     NOTEBOOK_TEST_ENGINE_ROLE_ARN =
+#       arn:aws:iam::674622101542:role/NotebookTestEngine-GithubActionsRole
+#     COLLAB_CHECK_TOKEN  — PAT with repo collaborator read (already used by
+#       pr-checks-master.yml) for the collaborator gate below.
+#   Environment:
+#     "manual-approval" with required reviewers (already used by
+#       pr-checks-master.yml) — blocks fork / non-collaborator PRs behind a human
+#       approval BEFORE any AWS role is assumed.
+# ---------------------------------------------------------------------------
+
+on:
+  pull_request_target:
+    branches:
+      - master
+    paths:
+      - 'v3-examples/**'
+
+# Only the newest commit of a PR runs; a new push cancels the older run.
+concurrency:
+  group: notebook-tests-${{ github.event.pull_request.number || github.head_ref }}
+  cancel-in-progress: true
+
+permissions:
+  id-token: write   # required to mint the GitHub OIDC token for AWS
+  contents: read
+
+jobs:
+  # 1) Collaborator? -> auto-approve. Otherwise -> manual-approval (gated below).
+  collab-check:
+    runs-on: ubuntu-latest
+    outputs:
+      approval-env: ${{ steps.collab-check.outputs.result }}
+    steps:
+      - name: Collaborator check
+        uses: actions/github-script@v7
+        id: collab-check
+        with:
+          github-token: ${{ secrets.COLLAB_CHECK_TOKEN }}
+          result-encoding: string
+          script: |
+            try {
+              const res = await github.rest.repos.checkCollaborator({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                username: "${{ github.event.pull_request.user.login }}",
+              });
+              return res.status == 204 ? "auto-approve" : "manual-approval";
+            } catch (error) {
+              return "manual-approval";
+            }
+
+  # 2) Non-collaborators block on the "manual-approval" environment's required
+  #    reviewers. Collaborators pass straight through the "auto-approve" env.
+  wait-for-approval:
+    runs-on: ubuntu-latest
+    needs: [collab-check]
+    environment: ${{ needs.collab-check.outputs.approval-env }}
+    steps:
+      - run: echo "Approved — starting notebook tests."
+
+  # 3) Assume the engine role via OIDC, start the build against the PR's notebooks,
+  #    and poll to completion. This job's result is the PR check.
+  notebook-tests:
+    runs-on: ubuntu-latest
+    needs: [wait-for-approval]
+    # GitHub hard-caps hosted jobs at 360 min; the CodeBuild project times out at
+    # 300 min, so 350 leaves margin for start + poll overhead.
+    timeout-minutes: 350
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.NOTEBOOK_TEST_ENGINE_ROLE_ARN }}
+          aws-region: us-west-2
+          # 6h session so the poll below outlasts the longest possible (5h) build.
+          role-duration-seconds: 21600
+
+      - name: Start CodeBuild and wait
+        id: build
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_BRANCH: ${{ github.event.pull_request.head.ref }}
+          PR_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_REPO_FULL: ${{ github.event.pull_request.base.repo.full_name }}
+          PR_ARTIFACTS_BUCKET: notebook-test-engine-pr-674622101542-us-west-2
+        run: |
+          set -euo pipefail
+          PROJECT=notebook-test-engine
+
+          # Check out the PR head of the 'sdk' secondary source. refs/pull/<N>/head
+          # resolves in the BASE repo even for fork PRs; ^{<sha>} pins the exact commit.
+          SDK_VERSION="refs/pull/${PR_NUMBER}/head^{${PR_SHA}}"
+
+          BUILD_ID=$(aws codebuild start-build \
+            --project-name "$PROJECT" \
+            --secondary-sources-version-override "[{\"sourceIdentifier\":\"sdk\",\"sourceVersion\":\"${SDK_VERSION}\"}]" \
+            --environment-variables-override \
+              "name=TEST_MODE,value=pr_check,type=PLAINTEXT" \
+              "name=PR_NUMBER,value=${PR_NUMBER},type=PLAINTEXT" \
+              "name=PR_BRANCH,value=${PR_BRANCH},type=PLAINTEXT" \
+              "name=PR_REPO,value=${PR_REPO},type=PLAINTEXT" \
+              "name=PR_SHA,value=${PR_SHA},type=PLAINTEXT" \
+              "name=PR_REPO_FULL,value=${PR_REPO_FULL},type=PLAINTEXT" \
+            --query 'build.id' --output text)
+
+          echo "Started build: $BUILD_ID"
+          echo "Console: https://us-west-2.console.aws.amazon.com/codesuite/codebuild/projects/${PROJECT}/build/${BUILD_ID//:/%3A}/log"
+
+          # Poll until the build leaves IN_PROGRESS.
+          STATUS=IN_PROGRESS
+          while [ "$STATUS" = "IN_PROGRESS" ]; do
+            sleep 300
+            STATUS=$(aws codebuild batch-get-builds --ids "$BUILD_ID" \
+              --query 'builds[0].buildStatus' --output text 2>/dev/null || echo IN_PROGRESS)
+            echo "Build status: $STATUS"
+          done
+
+          echo "Final build status: $STATUS"
+          echo "status=$STATUS" >> "$GITHUB_OUTPUT"
+
+          # On any non-success, pull the engine-rendered failing-notebook HTML/ipynb
+          # (written under pr/<PR#>/<run_ts>/) so the next step can attach it to this run.
+          if [ "$STATUS" != "SUCCEEDED" ]; then
+            echo "Build did not succeed; fetching this run's failing-notebook artifacts..."
+            # Only the NEWEST run-timestamp folder -- not every historical render for
+            # this PR -- so the artifact holds just this run's notebook(s).
+            LATEST=$(aws s3 ls "s3://${PR_ARTIFACTS_BUCKET}/pr/${PR_NUMBER}/" 2>/dev/null | awk '{print $NF}' | grep '/$' | sort | tail -1 || true)
+            if [ -n "$LATEST" ]; then
+              aws s3 cp --recursive "s3://${PR_ARTIFACTS_BUCKET}/pr/${PR_NUMBER}/${LATEST}" pr-artifacts/ || true
+            fi
+          fi
+
+      - name: Upload failing notebook(s)
+        if: steps.build.outputs.status != 'SUCCEEDED'
+        uses: actions/upload-artifact@v4
+        with:
+          name: failing-notebooks
+          path: pr-artifacts/
+          if-no-files-found: ignore
+
+      - name: Reflect build result as the check
+        if: always()
+        run: |
+          echo "CodeBuild final status: ${{ steps.build.outputs.status }}"
+          # Anything other than SUCCEEDED (FAILED / FAULT / TIMED_OUT / STOPPED)
+          # fails this job -> red PR check.
+          [ "${{ steps.build.outputs.status }}" = "SUCCEEDED" ]
