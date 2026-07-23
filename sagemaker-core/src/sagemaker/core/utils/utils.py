@@ -371,8 +371,8 @@ class SageMakerClient(metaclass=SingletonMeta):
         # Read region from environment variable, default to us-west-2
         import os
         env_region = os.environ.get('SAGEMAKER_REGION', region_name)
-        env_stage = os.environ.get('SAGEMAKER_STAGE', 'prod')  # default to gamma
-        logger.info(f"Runs on sagemaker {env_stage}, region:{env_region}")
+        env_stage = os.environ.get('SAGEMAKER_STAGE', 'prod')
+        logger.debug(f"Runs on sagemaker {env_stage}, region:{env_region}")
 
         endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
         runtime_endpoint_url = os.environ.get('SAGEMAKER_RUNTIME_ENDPOINT')
@@ -384,7 +384,6 @@ class SageMakerClient(metaclass=SingletonMeta):
         # service-2.json, this custom loader is unnecessary and the standard
         # session.client("sagemaker", endpoint_url=...) path will work.
         import botocore.loaders
-        import botocore.session as bc_session_mod
         import pathlib
 
         # Look for bundled service model inside the package first,
@@ -392,15 +391,15 @@ class SageMakerClient(metaclass=SingletonMeta):
         _bundled = pathlib.Path(__file__).resolve().parent.parent / "data" / "sample"
         _source_tree = pathlib.Path(__file__).resolve().parent.parent.parent.parent.parent / "sample"
         sample_model_dir = str(_bundled if _bundled.exists() else _source_tree)
-        bc_session = bc_session_mod.get_session()
         loader = botocore.loaders.Loader(
             extra_search_paths=[sample_model_dir],
             include_default_search_paths=True,
         )
-        bc_session.register_component('data_loader', loader)
-        custom_session = Session(botocore_session=bc_session, region_name=env_region)
+        # Register the loader on the caller's session so the client below
+        # signs with the caller's credentials.
+        session._session.register_component('data_loader', loader)
 
-        self.sagemaker_client = custom_session.client(
+        self.sagemaker_client = session.client(
             "sagemaker",
             region_name=env_region,
             endpoint_url=endpoint_url,
