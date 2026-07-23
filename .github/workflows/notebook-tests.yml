@@ -1,26 +1,19 @@
 name: Notebook Tests (v3 examples)
 
 # ---------------------------------------------------------------------------
-# THIS FILE LIVES IN aws/sagemaker-python-sdk, NOT in this CDK package.
-# Copy it to .github/workflows/notebook-tests.yml in that repo. It is kept here
-# under version control alongside the infra it drives. See README.md next to it.
+# Runs the SageMaker v3 example notebooks on real SageMaker infrastructure when a
+# PR touches v3-examples/**. Flow:
+#   1. Collaborator check -> collaborators auto-approve; fork / non-collaborator
+#      PRs are gated behind the manual-approval environment.
+#   2. Assume an AWS role via GitHub OIDC (no stored AWS keys) and start the
+#      `notebook-test-engine` CodeBuild project against this PR's notebooks.
+#   3. Poll the build to completion; this job's pass/fail IS the PR check, and a
+#      failing notebook is attached as a downloadable `failing-notebooks` artifact.
 #
-# What it does: on a PR that touches the v3 example notebooks, assume an AWS role
-# in the Notebook Test Engine account via GitHub OIDC (no stored AWS keys), start
-# the `notebook-test-engine` CodeBuild project with the PR's notebooks checked out
-# (via a secondary-source version override), and poll the build to completion.
-# THIS JOB'S pass/fail IS the PR check — no GitHub token, no webhook, no endpoint.
-#
-# One-time setup in the aws/sagemaker-python-sdk repo settings:
-#   Secrets:
-#     NOTEBOOK_TEST_ENGINE_ROLE_ARN =
-#       arn:aws:iam::674622101542:role/NotebookTestEngine-GithubActionsRole
-#     COLLAB_CHECK_TOKEN  — PAT with repo collaborator read (already used by
-#       pr-checks-master.yml) for the collaborator gate below.
-#   Environment:
-#     "manual-approval" with required reviewers (already used by
-#       pr-checks-master.yml) — blocks fork / non-collaborator PRs behind a human
-#       approval BEFORE any AWS role is assumed.
+# Required repo configuration:
+#   - Secret NOTEBOOK_TEST_ENGINE_ROLE_ARN: the engine's GitHub Actions role ARN.
+#   - Secret COLLAB_CHECK_TOKEN and the auto-approve / manual-approval environments
+#     (shared with pr-checks-master.yml).
 # ---------------------------------------------------------------------------
 
 on:
