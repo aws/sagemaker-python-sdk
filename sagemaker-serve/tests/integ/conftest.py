@@ -34,18 +34,26 @@ results.
 """
 from __future__ import absolute_import
 
-import boto3
-import pytest
-from botocore.config import Config
+import os
 
-# Adaptive retry budget for throttling-prone IAM validation calls.
-_ADAPTIVE_RETRY_CONFIG = Config(retries={"max_attempts": 10, "mode": "adaptive"})
+import pytest
+
+# botocore adaptive retry settings for throttling-prone IAM validation calls.
+# Applied via env vars so every client in the worker inherits them, regardless of
+# which boto session the SDK ends up using to build its IAM client.
+_RETRY_MODE = "adaptive"
+_MAX_ATTEMPTS = "10"
 
 
 @pytest.fixture(autouse=True, scope="session")
-def _configure_default_boto_retries():
-    """Give boto3's default session adaptive retries so IAM clients built by the
-    role resolver absorb transient SimulatePrincipalPolicy throttling."""
-    boto3.setup_default_session()
-    boto3.DEFAULT_SESSION._session.set_default_client_config(_ADAPTIVE_RETRY_CONFIG)
+def _configure_boto_adaptive_retries():
+    """Give every boto3 client in this xdist worker adaptive retries so the IAM
+    clients built by the role resolver absorb transient SimulatePrincipalPolicy
+    throttling. Restores any pre-existing values on teardown."""
+    previous = {
+        "AWS_RETRY_MODE": os.environ.get("AWS_RETRY_MODE"),
+        "AWS_MAX_ATTEMPTS": os.environ.get("AWS_MAX_ATTEMPTS"),
+    }
+    os.environ["AWS_RETRY_MODE"] = _RETRY_MODE
+    os.environ["AWS_MAX_ATTEMPTS"] = _MAX_ATTEMPTS
     yield
