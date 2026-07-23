@@ -473,14 +473,12 @@ class _ModelResolver:
     def _resolve_base_model_hub(
         self, hub_content_name: str, hub_content_version: str, region: str
     ) -> str:
-        """Pick the hub that actually contains the base model's hub content.
+        """Pick the hub that backs the base model's hub content.
 
-        Prefers the hub from ``SAGEMAKER_HUB_NAME`` (defaults to
+        Returns the hub from ``SAGEMAKER_HUB_NAME`` (defaults to
         ``SageMakerPublicHub``). When a non-public hub is configured but does
-        not contain the base model, falls back to ``SageMakerPublicHub`` since
-        base models are always published there. This keeps evaluation working
-        when a private/custom hub never mirrored the base model (or its
-        ModelReference was cleaned up).
+        not contain the base model, returns ``SageMakerPublicHub`` instead,
+        since base models are always published there.
 
         Args:
             hub_content_name: Base model hub content name.
