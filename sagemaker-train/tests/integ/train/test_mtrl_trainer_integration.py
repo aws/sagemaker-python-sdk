@@ -60,7 +60,7 @@ ACCOUNT_CONFIGS = {
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
-        "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
+        "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/mock-oss-test-mtrl-mpg",
     },
     # PREPROD — Staging account (391266019386)
     "391266019386": {
