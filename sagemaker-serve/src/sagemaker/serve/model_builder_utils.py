@@ -322,8 +322,13 @@ class _ModelBuilderUtils:
             if hasattr(deploy_kwargs, "instance_type") and deploy_kwargs.instance_type:
                 return deploy_kwargs.instance_type
 
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "Failed to retrieve JumpStart default instance type for model '%s': %s. "
+                "Falling back to generic instance type detection.",
+                self.model,
+                e,
+            )
 
         return None
 
