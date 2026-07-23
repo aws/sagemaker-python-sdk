@@ -7,6 +7,7 @@ This module provides common functionality for resolving model metadata from:
 """
 
 import json
+import logging
 import boto3
 from typing import Union, Optional, Dict, Any
 from dataclasses import dataclass
@@ -15,6 +16,8 @@ import re
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.core.utils.utils import Unassigned
+
+_logger = logging.getLogger(__name__)
 
 
 class _ModelType(Enum):
@@ -368,7 +371,10 @@ class _ModelResolver:
                         # integ-test hub) resolve correctly. Public-hub content is
                         # account-less ("aws"); private-hub content lives under the
                         # model package's own account.
-                        hub_name = get_sagemaker_hub_name()
+                        #
+                        hub_name = self._resolve_base_model_hub(
+                            hub_content_name, hub_content_version, region
+                        )
                         hub_account = "aws" if hub_name == "SageMakerPublicHub" else account
                         base_model_arn = f"arn:aws:sagemaker:{region}:{hub_account}:hub-content/{hub_name}/Model/{hub_content_name}/{hub_content_version}"
         
@@ -464,6 +470,52 @@ class _ModelResolver:
             )
         return True
     
+    def _resolve_base_model_hub(
+        self, hub_content_name: str, hub_content_version: str, region: str
+    ) -> str:
+        """Pick the hub that backs the base model's hub content.
+
+        Returns the hub from ``SAGEMAKER_HUB_NAME`` (defaults to
+        ``SageMakerPublicHub``). When a non-public hub is configured but does
+        not contain the base model, returns ``SageMakerPublicHub`` instead,
+        since base models are always published there.
+
+        Args:
+            hub_content_name: Base model hub content name.
+            hub_content_version: Base model hub content version.
+            region: AWS region of the model package.
+
+        Returns:
+            The hub name whose content should back the base model ARN.
+        """
+        hub_name = get_sagemaker_hub_name()
+        if hub_name == "SageMakerPublicHub":
+            return hub_name
+
+        from sagemaker.core.resources import HubContent
+
+        try:
+            session = self._get_session()
+            HubContent.get(
+                hub_name=hub_name,
+                hub_content_type="Model",
+                hub_content_name=hub_content_name,
+                hub_content_version=hub_content_version,
+                session=session.boto_session,
+                region=region,
+            )
+            return hub_name
+        except Exception as e:
+            _logger.info(
+                "Base model '%s' (v%s) not found in hub '%s' (%s); "
+                "falling back to SageMakerPublicHub.",
+                hub_content_name,
+                hub_content_version,
+                hub_name,
+                e,
+            )
+            return "SageMakerPublicHub"
+
     def _get_session(self):
         """
         Get or create SageMaker session.

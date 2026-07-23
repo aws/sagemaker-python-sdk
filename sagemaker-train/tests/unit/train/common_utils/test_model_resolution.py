@@ -440,18 +440,22 @@ class TestResolveModelPackageArn:
         assert result.base_model_name == "base-model"
         assert result.hub_content_name == "base-model"
 
+    @patch('sagemaker.core.resources.HubContent')
     @patch('sagemaker.core.resources.ModelPackage')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._validate_model_package_arn')
-    def test_resolve_arn_construct_hub_content_arn_private_hub(self, mock_validate, mock_get_session, mock_model_package_class):
-        """When SAGEMAKER_HUB_NAME points at a private hub, the reconstructed
-        base-model ARN targets that hub under the model package's own account
-        (not the account-less public hub)."""
+    def test_resolve_arn_construct_hub_content_arn_private_hub(self, mock_validate, mock_get_session, mock_model_package_class, mock_hub_content_class):
+        """When SAGEMAKER_HUB_NAME points at a private hub that DOES contain the
+        base model, the reconstructed base-model ARN targets that hub under the
+        model package's own account (not the account-less public hub)."""
         arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model/1"
 
         mock_session = MagicMock()
         mock_session.boto_session.region_name = 'us-west-2'
         mock_get_session.return_value = mock_session
+
+        # Private hub contains the base model, so verification succeeds.
+        mock_hub_content_class.get.return_value = MagicMock()
 
         # Mock ModelPackage without hub_content_arn (needs to be constructed)
         mock_package = MagicMock()
@@ -475,6 +479,54 @@ class TestResolveModelPackageArn:
 
         # Private hub: uses the model package's account (123456789012), not "aws"
         expected_arn = "arn:aws:sagemaker:us-west-2:123456789012:hub-content/sdktest/Model/mock-oss-test/0.0.1"
+        assert result.base_model_arn == expected_arn
+        assert result.base_model_name == "mock-oss-test"
+        assert result.hub_content_name == "mock-oss-test"
+
+    @patch('sagemaker.core.resources.HubContent')
+    @patch('sagemaker.core.resources.ModelPackage')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._validate_model_package_arn')
+    def test_resolve_arn_construct_hub_content_arn_private_hub_fallback_public(self, mock_validate, mock_get_session, mock_model_package_class, mock_hub_content_class):
+        """When SAGEMAKER_HUB_NAME points at a private hub that does NOT contain
+        the base model (e.g. it never mirrored it or was cleaned up), the
+        reconstructed base-model ARN falls back to the account-less public hub.
+
+        Regression test: without this fallback the server-side CreateTrainingJob
+        fails with 'Hub content ... does not exist' during evaluation."""
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model/1"
+
+        mock_session = MagicMock()
+        mock_session.boto_session.region_name = 'us-west-2'
+        mock_get_session.return_value = mock_session
+
+        # Private hub does NOT contain the base model -> verification raises.
+        mock_hub_content_class.get.side_effect = Exception(
+            "Hub content with name mock-oss-test does not exist."
+        )
+
+        # Mock ModelPackage without hub_content_arn (needs to be constructed)
+        mock_package = MagicMock()
+        mock_package.model_package_arn = arn
+
+        mock_container = MagicMock()
+        mock_base_model = MagicMock()
+        mock_base_model.hub_content_name = 'mock-oss-test'
+        mock_base_model.hub_content_version = '0.0.1'
+        mock_base_model.hub_content_arn = None  # Not provided, needs construction
+        mock_container.base_model = mock_base_model
+
+        mock_package.inference_specification = MagicMock()
+        mock_package.inference_specification.containers = [mock_container]
+
+        mock_model_package_class.get.return_value = mock_package
+
+        resolver = _ModelResolver()
+        with patch.dict(os.environ, {"SAGEMAKER_HUB_NAME": "sdktest"}):
+            result = resolver._resolve_model_package_arn(arn)
+
+        # Fell back to the account-less public hub since the private hub lacks it.
+        expected_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/mock-oss-test/0.0.1"
         assert result.base_model_arn == expected_arn
         assert result.base_model_name == "mock-oss-test"
         assert result.hub_content_name == "mock-oss-test"
