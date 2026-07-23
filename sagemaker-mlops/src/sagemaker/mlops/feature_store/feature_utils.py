@@ -478,6 +478,7 @@ def ingest_dataframe(
     max_processes: int = 1,
     wait: bool = True,
     timeout: Union[int, float] = None,
+    use_batch_write_record: bool = False,
 ):
     """Ingest a pandas DataFrame to a FeatureGroup.
 
@@ -488,6 +489,10 @@ def ingest_dataframe(
         max_processes: Number of processes (default: 1).
         wait: Wait for ingestion to complete (default: True).
         timeout: Timeout in seconds (default: None).
+        use_batch_write_record: If True, use BatchWriteRecord API (25 records per
+            call) instead of PutRecord (1 record per call) for significantly better
+            throughput. Requires both ``sagemaker:BatchWriteRecord`` AND
+            ``sagemaker:PutRecord`` IAM permissions. Default: False.
 
     Returns:
         IngestionManagerPandas instance.
@@ -518,9 +523,49 @@ def ingest_dataframe(
         feature_definitions=feature_definitions,
         max_workers=max_workers,
         max_processes=max_processes,
+        use_batch_write_record=use_batch_write_record,
     )
     manager.run(data_frame=data_frame, wait=wait, timeout=timeout)
     return manager
+
+
+def list_records(
+    feature_group_name: str,
+    max_results: int = None,
+    next_token: str = None,
+    include_soft_deleted_records: bool = False,
+    region: str = None,
+):
+    """List record identifiers from a FeatureGroup's OnlineStore.
+
+    Returns a single page of results. Use ``next_token`` from the response
+    to fetch subsequent pages.
+
+    Args:
+        feature_group_name: Name of the FeatureGroup.
+        max_results: Maximum number of record identifiers per page (1-100).
+        next_token: Pagination token from a previous response.
+        include_soft_deleted_records: If True, include soft-deleted records.
+        region: AWS region name.
+
+    Returns:
+        ListRecordsResponse with ``record_identifiers`` (List[str]) and
+        ``next_token`` (str or None).
+    """
+    fg = CoreFeatureGroup.get(feature_group_name=feature_group_name, region=region)
+
+    kwargs = {}
+    if max_results is not None:
+        kwargs["max_results"] = max_results
+    if next_token is not None:
+        kwargs["next_token"] = next_token
+    if include_soft_deleted_records:
+        kwargs["include_soft_deleted_records"] = include_soft_deleted_records
+    if region is not None:
+        kwargs["region"] = region
+
+    return fg.list_records(**kwargs)
+
 
 @_telemetry_emitter(Feature.FEATURE_STORE, "get_feature_group_as_dataframe")
 def get_feature_group_as_dataframe(
