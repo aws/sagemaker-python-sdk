@@ -135,6 +135,29 @@ def test_predict_call_with_inference_id():
     assert result == RETURN_VALUE
 
 
+def test_predict_call_with_target_container_hostname():
+    sagemaker_session = empty_sagemaker_session()
+    predictor = Predictor(ENDPOINT, sagemaker_session)
+
+    data = "untouched"
+    result = predictor.predict(data, target_container_hostname="test_target_container_hostname")
+
+    assert sagemaker_session.sagemaker_runtime_client.invoke_endpoint.called
+
+    expected_request_args = {
+        "Accept": DEFAULT_ACCEPT,
+        "Body": data,
+        "ContentType": DEFAULT_CONTENT_TYPE,
+        "EndpointName": ENDPOINT,
+        "TargetContainerHostname": "test_target_container_hostname",
+    }
+
+    _, kwargs = sagemaker_session.sagemaker_runtime_client.invoke_endpoint.call_args
+    assert kwargs == expected_request_args
+
+    assert result == RETURN_VALUE
+
+
 def test_multi_model_predict_call():
     sagemaker_session = empty_sagemaker_session()
     predictor = Predictor(ENDPOINT, sagemaker_session)
