@@ -20,6 +20,7 @@ from sagemaker.serve.ai_inference_recommender import (
     BenchmarkMetric,
     BenchmarkMetrics,
     BenchmarkResult,
+    BenchmarkSearchResult,
 )
 
 
@@ -284,6 +285,150 @@ class TestBenchmarkResultMetadataFields:
             return BenchmarkResult.from_s3(
                 "s3://b/p/", session=_SessionStub()
             )
+
+
+# A concurrency search writes search_history.json at the artifact root. Schema
+# per aiperf v0.11.0 (docs/sweeping/search-recipes.md): boundary_summary carries
+# the winning (feasible_max) and first-breaching (infeasible_min) swept values.
+SAMPLE_SEARCH_HISTORY = {
+    "aiperf_version": "0.11.0",
+    "boundary_summary": {
+        "swept_dim_path": "phases.profiling.concurrency",
+        "feasible_max": {"value": 256, "iteration_idx": 0, "objective_value": 4172.3},
+        "infeasible_min": {
+            "value": 512,
+            "first_breach": {
+                "metric_tag": "time_to_first_token",
+                "stat": "p95",
+                "op": "lt",
+                "threshold": 200.0,
+                "observed": 213.4,
+            },
+        },
+    },
+}
+
+
+def _make_search_archive(history=None, include_per_trial_profile=True) -> bytes:
+    """Build an output.tar.gz for a sweep run.
+
+    Mirrors what the benchmark container ships: search_history.json at the root
+    and (optionally) a per-trial profile_export_aiperf.json nested in a swept
+    level's subdir — the exact shape that would trip a naive suffix match.
+    """
+    history_bytes = json.dumps(history or SAMPLE_SEARCH_HISTORY).encode("utf-8")
+    buf = io.BytesIO()
+    with tarfile.open(fileobj=buf, mode="w:gz") as tar:
+        info = tarfile.TarInfo(name="search_history.json")
+        info.size = len(history_bytes)
+        tar.addfile(info, io.BytesIO(history_bytes))
+        if include_per_trial_profile:
+            # A per-level export shares the single-run profile filename; it must
+            # NOT be mistaken for the headline profile.
+            trial = json.dumps({"request_throughput": {"avg": 999.0}}).encode("utf-8")
+            tinfo = tarfile.TarInfo(
+                name="search_iter_0000/profile_runs/run_0000/profile_export_aiperf.json"
+            )
+            tinfo.size = len(trial)
+            tar.addfile(tinfo, io.BytesIO(trial))
+    return buf.getvalue()
+
+
+def _parse_archive_from_s3(archive_bytes: bytes) -> BenchmarkResult:
+    s3_client = boto3.session.Session(region_name="us-east-1").client("s3")
+    with Stubber(s3_client) as stub:
+        stub.add_response(
+            "list_objects_v2",
+            {
+                "Contents": [{"Key": "p/output.tar.gz", "Size": len(archive_bytes)}],
+                "KeyCount": 1,
+            },
+            expected_params={"Bucket": "b", "Prefix": "p/"},
+        )
+        stub.add_response(
+            "get_object",
+            {"Body": _StreamingBody(archive_bytes)},
+            expected_params={"Bucket": "b", "Key": "p/output.tar.gz"},
+        )
+
+        class _SessionStub:
+            def client(self, name):
+                return s3_client
+
+        return BenchmarkResult.from_s3("s3://b/p/", session=_SessionStub())
+
+
+class TestBenchmarkSearchResultFromHistory:
+    def test_winner_and_boundary_parsed(self):
+        result = BenchmarkSearchResult.from_history_json(SAMPLE_SEARCH_HISTORY)
+        assert result.swept_dim == "phases.profiling.concurrency"
+        assert result.winner == 256.0
+        assert result.winner_objective == 4172.3
+        assert result.infeasible_min == 512.0
+        assert result.first_breach["metric_tag"] == "time_to_first_token"
+        assert result.raw == SAMPLE_SEARCH_HISTORY
+
+    def test_no_infeasible_min_when_no_sla_breach(self):
+        # No SLA filter → nothing breaches → infeasible_min is null, winner is
+        # the highest swept value.
+        history = {
+            "boundary_summary": {
+                "swept_dim_path": "phases.profiling.concurrency",
+                "feasible_max": {"value": 1024},
+                "infeasible_min": None,
+            }
+        }
+        result = BenchmarkSearchResult.from_history_json(history)
+        assert result.winner == 1024.0
+        assert result.infeasible_min is None
+        assert result.first_breach is None
+
+    def test_null_boundary_summary_yields_no_winner(self):
+        # Multi-dim search (or one that never resolved a boundary) → null block.
+        # We keep the raw history but report no winner rather than fabricating one.
+        history = {"boundary_summary": None, "iterations": []}
+        result = BenchmarkSearchResult.from_history_json(history)
+        assert result.winner is None
+        assert result.swept_dim is None
+        assert result.raw == history
+
+    def test_missing_boundary_summary_key(self):
+        result = BenchmarkSearchResult.from_history_json({"iterations": []})
+        assert result.winner is None
+        assert result.raw == {"iterations": []}
+
+
+class TestBenchmarkResultFromS3Search:
+    def test_search_run_parsed_from_history_not_per_trial_profile(self):
+        result = _parse_archive_from_s3(_make_search_archive())
+        # The result must reflect the search, NOT the stray per-trial profile
+        # (request_throughput avg 999.0) that shares the single-run filename.
+        assert result.is_search is True
+        assert result.search is not None
+        assert result.search.winner == 256.0
+        assert result.metrics.all_metrics == {}
+        assert result.metrics.request_throughput is None
+        assert result.profile == SAMPLE_SEARCH_HISTORY
+        assert result.tool_version == "0.11.0"
+
+    def test_search_history_preferred_even_without_per_trial_profile(self):
+        result = _parse_archive_from_s3(_make_search_archive(include_per_trial_profile=False))
+        assert result.is_search is True
+        assert result.search.swept_dim == "phases.profiling.concurrency"
+
+    def test_single_run_still_not_flagged_as_search(self):
+        # Regression guard: the single-run path must be untouched.
+        result = _parse_archive_from_s3(_make_output_archive())
+        assert result.is_search is False
+        assert result.search is None
+        assert result.metrics.request_throughput.avg == 12.5
+
+    def test_str_renders_search_summary(self):
+        result = _parse_archive_from_s3(_make_search_archive())
+        text = str(result)
+        assert "BenchmarkResult (search)" in text
+        assert "phases.profiling.concurrency" in text
+        assert "256" in text
 
 
 class TestFindObjectPagination:

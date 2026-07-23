@@ -24,6 +24,10 @@ import boto3
 
 PROFILE_EXPORT_FILENAME = "profile_export_aiperf.json"
 OUTPUT_ARCHIVE_FILENAME = "output.tar.gz"
+# A concurrency search / magic-list sweep writes this at the artifact root
+# instead of a single top-level profile_export_aiperf.json. Its presence in the
+# archive is how we tell a sweep run apart from a single run.
+SEARCH_HISTORY_FILENAME = "search_history.json"
 
 
 @dataclass
@@ -125,8 +129,90 @@ _KEY_METRIC_FIELDS = (
 
 
 @dataclass
+class BenchmarkSearchResult:
+    """Outcome of a concurrency search / magic-list sweep benchmark.
+
+    A search run does not produce a single ``profile_export_aiperf.json``; it
+    sweeps a dimension (typically concurrency) and records the outcome in
+    ``search_history.json``. This captures the parts callers care about: which
+    swept value won, and the raw history for anything deeper.
+
+    Attributes:
+        swept_dim: dotted path of the swept dimension, e.g.
+            ``"phases.profiling.concurrency"``.
+        winner: the largest feasible swept value (``boundary_summary.feasible_max.value``).
+            ``None`` if no feasible point was found (e.g. every level breached the SLA).
+        winner_objective: the objective value at the winning point, when reported.
+        infeasible_min: the smallest swept value that breached a constraint, if any.
+        first_breach: details of the constraint the ``infeasible_min`` level breached
+            (metric tag / stat / threshold / observed), if reported.
+        raw: the full parsed ``search_history.json`` for callers who need more.
+    """
+
+    swept_dim: Optional[str] = None
+    winner: Optional[float] = None
+    winner_objective: Optional[float] = None
+    infeasible_min: Optional[float] = None
+    first_breach: Optional[Dict[str, Any]] = None
+    raw: Dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_history_json(cls, history: Dict[str, Any]) -> "BenchmarkSearchResult":
+        # boundary_summary is present for a single-dimension search with a
+        # resolved boundary; it is null/absent for a multi-dim search or one
+        # that never ran, in which case we still return a result carrying the
+        # raw history rather than fabricating a winner.
+        boundary = history.get("boundary_summary")
+        if not isinstance(boundary, dict):
+            return cls(raw=history)
+        feasible_max = boundary.get("feasible_max")
+        if not isinstance(feasible_max, dict):
+            feasible_max = {}
+        infeasible = boundary.get("infeasible_min")
+        if not isinstance(infeasible, dict):
+            infeasible = {}
+        first_breach = infeasible.get("first_breach")
+        return cls(
+            swept_dim=boundary.get("swept_dim_path"),
+            winner=_as_float(feasible_max.get("value")),
+            winner_objective=_as_float(feasible_max.get("objective_value")),
+            infeasible_min=_as_float(infeasible.get("value")),
+            first_breach=first_breach if isinstance(first_breach, dict) else None,
+            raw=history,
+        )
+
+    def __str__(self) -> str:
+        breach = ""
+        if self.infeasible_min is not None:
+            metric = (self.first_breach or {}).get("metric_tag", "?")
+            breach = f"\n  first_breach:       {metric} at {self.infeasible_min}"
+        return (
+            f"BenchmarkSearchResult\n"
+            f"  swept_dim:          {self.swept_dim or '-'}\n"
+            f"  winner:             {_fmt_number(self.winner)}\n"
+            f"  winner_objective:   {_fmt_number(self.winner_objective)}"
+            f"{breach}\n"
+            f"  raw history available via .raw"
+        )
+
+    def __repr__(self) -> str:
+        return f"BenchmarkSearchResult(swept_dim={self.swept_dim!r}, winner={self.winner!r})"
+
+    def _repr_pretty_(self, p, cycle):
+        # Render the full summary in notebooks (Jupyter uses this hook).
+        p.text("..." if cycle else str(self))
+
+
+@dataclass
 class BenchmarkResult:
-    """Parsed result of a completed benchmark job."""
+    """Parsed result of a completed benchmark job.
+
+    For a single run, ``metrics``/``profile`` carry the AIPerf profile export
+    and ``search`` is ``None``. For a concurrency search / magic-list sweep,
+    ``search`` carries the sweep outcome (the winning level); ``metrics`` is
+    empty and ``profile`` holds the raw ``search_history.json`` — a sweep has
+    no single headline profile to report.
+    """
 
     metrics: BenchmarkMetrics
     s3_output_location: str
@@ -134,8 +220,25 @@ class BenchmarkResult:
     workload_config: Optional[str] = None
     tool_version: Optional[str] = None
     profile: Dict[str, Any] = field(default_factory=dict)
+    search: Optional[BenchmarkSearchResult] = None
+
+    @property
+    def is_search(self) -> bool:
+        """True if this result came from a concurrency search / sweep run."""
+        return self.search is not None
 
     def __str__(self) -> str:
+        # A search/sweep run has no single headline profile; render the sweep
+        # outcome (winning level) instead of an (empty) metrics table.
+        if self.search is not None:
+            return (
+                f"BenchmarkResult (search)\n"
+                f"  endpoint:           {self.endpoint or '-'}\n"
+                f"  workload_config:    {self.workload_config or '-'}\n"
+                f"  tool_version:       {self.tool_version or '-'}\n"
+                f"  s3_output_location: {self.s3_output_location}\n"
+                f"  search:\n{_indent(str(self.search), '    ')}"
+            )
         # Order: well-known headline metrics first, then everything else
         # alphabetized, then HTTP-level transport metrics last (they're
         # noise for most readers, useful only for debugging).
@@ -267,10 +370,31 @@ class BenchmarkResult:
         archive_key = _find_object(s3, bucket, prefix, OUTPUT_ARCHIVE_FILENAME)
         body = s3.get_object(Bucket=bucket, Key=archive_key)["Body"].read()
 
+        # A concurrency search / magic-list sweep writes search_history.json at
+        # the artifact root and NO top-level profile_export_aiperf.json (each
+        # swept level has its own per-trial profile export nested in a subdir).
+        # Check for the search history FIRST: those per-trial exports share the
+        # profile_export_aiperf.json name, so a plain suffix match would
+        # otherwise silently return one arbitrary level's metrics as if they
+        # were the whole benchmark.
+        history_bytes = _read_member_from_tar_gz(body, SEARCH_HISTORY_FILENAME)
+        if history_bytes is not None:
+            history = json.loads(history_bytes.decode("utf-8"))
+            return cls(
+                metrics=BenchmarkMetrics.from_profile_json({}),
+                s3_output_location=s3_output_location,
+                endpoint=endpoint,
+                workload_config=workload_config,
+                tool_version=_extract_tool_version(history),
+                profile=history,
+                search=BenchmarkSearchResult.from_history_json(history),
+            )
+
         profile_bytes = _read_member_from_tar_gz(body, PROFILE_EXPORT_FILENAME)
         if profile_bytes is None:
             raise FileNotFoundError(
-                f"{PROFILE_EXPORT_FILENAME} not found in s3://{bucket}/{archive_key}"
+                f"Neither {PROFILE_EXPORT_FILENAME} nor {SEARCH_HISTORY_FILENAME} "
+                f"found in s3://{bucket}/{archive_key}"
             )
         profile = json.loads(profile_bytes.decode("utf-8"))
         return cls(

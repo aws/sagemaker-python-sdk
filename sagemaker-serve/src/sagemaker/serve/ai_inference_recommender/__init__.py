@@ -29,6 +29,7 @@ from sagemaker.serve.ai_inference_recommender.result import (
     BenchmarkMetric,
     BenchmarkMetrics,
     BenchmarkResult,
+    BenchmarkSearchResult,
 )
 from sagemaker.serve.ai_inference_recommender.secrets import Secret
 from sagemaker.serve.ai_inference_recommender.workload import Workload
@@ -42,6 +43,7 @@ __all__ = [
     "BenchmarkMetric",
     "BenchmarkMetrics",
     "BenchmarkResult",
+    "BenchmarkSearchResult",
     "FeatureGatedError",
     "InferenceFramework",
     "PerformanceTarget",
