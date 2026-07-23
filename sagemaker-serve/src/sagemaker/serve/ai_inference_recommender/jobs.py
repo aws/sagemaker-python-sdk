@@ -34,7 +34,7 @@ class BenchmarkJob(AIBenchmarkJob):
     """
 
     @_telemetry_emitter(
-        feature=Feature.MODEL_CUSTOMIZATION, func_name="BenchmarkJob.show_result"
+        feature=Feature.INFERENCE_RECOMMENDER, func_name="BenchmarkJob.show_result"
     )
     def show_result(self):
         """Download the benchmark output from S3 and return a parsed result.
@@ -58,7 +58,7 @@ class RecommendationJob(AIRecommendationJob):
     """
 
     @_telemetry_emitter(
-        feature=Feature.MODEL_CUSTOMIZATION, func_name="RecommendationJob.show_result"
+        feature=Feature.INFERENCE_RECOMMENDER, func_name="RecommendationJob.show_result"
     )
     def show_result(self) -> "_RecommendationsView":
         """Return the ranked recommendations produced by the job.

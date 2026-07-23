@@ -13,6 +13,8 @@
 """Unit tests for data mixing utility functions."""
 from __future__ import absolute_import
 
+import os
+
 import pytest
 
 from sagemaker.train.data_mixing_config import DataMixingConfig
@@ -823,8 +825,12 @@ class TestBuildHyperPodDatamixRecipeFromContext:
         assert parsed["data_mixing"]["sources"]["nova_data"]["en-entertainment"] == 20
         assert parsed["data_mixing"]["sources"]["nova_data"]["en-scientific"] == 10
 
-    def test_return_value_is_relative_path_and_image_uri(self):
-        """Return value should be (relative_path_without_extension, image_uri)."""
+    def test_return_value_is_absolute_recipe_path_and_image_uri(self):
+        """Return value should be (absolute_recipe_path_with_extension, image_uri).
+
+        The path must be a loadable filesystem path (absolute, .yaml extension
+        intact) because the recipe resolver opens it as a user recipe file.
+        """
         from unittest.mock import patch, MagicMock, mock_open
 
         from sagemaker.train.common_utils.data_mixing_utils import (
@@ -843,12 +849,14 @@ class TestBuildHyperPodDatamixRecipeFromContext:
                 with patch("builtins.open", m_open):
                     result = build_hyperpod_datamix_recipe_from_context(context, config)
 
-        relative_path, image_uri = result
+        recipe_path, image_uri = result
 
-        # relative_path should not end with .yaml
-        assert not relative_path.endswith(".yaml")
-        # relative_path should contain fine-tuning/nova
-        assert "fine-tuning/nova" in relative_path
+        # recipe_path must be an absolute filesystem path
+        assert os.path.isabs(recipe_path)
+        # recipe_path must retain the .yaml extension so it can be opened
+        assert recipe_path.endswith(".yaml")
+        # recipe_path should live under the HyperPod CLI recipes fine-tuning/nova dir
+        assert "fine-tuning/nova" in recipe_path
         # image_uri should match the context
         assert image_uri == self.IMAGE_URI
 

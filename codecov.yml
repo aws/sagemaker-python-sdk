@@ -1,0 +1,54 @@
+# Codecov configuration for the sagemaker-python-sdk (v3) monorepo.
+# https://docs.codecov.com/docs/codecovyml-reference
+#
+# Why this file exists:
+#   CI runs `pytest --cov=sagemaker` per sub-package and uploads to Codecov. Because
+#   coverage is not scoped to the `src/` product code, executed test-support scripts
+#   (notably `*/tests/data/*.py` training entry-scripts and model definitions) are
+#   recorded and uploaded. With no ignore list these dominated the report — recent
+#   commits show ~98% of the measured files/lines were test files, not product code,
+#   which inflates the reported coverage and makes the number meaningless.
+#
+# The `ignore:` list below scopes the Codecov report to product code only.
+
+codecov:
+  # Wait for all four sub-package unit-test jobs to upload before finalizing, so the
+  # project % is computed over the complete report rather than whichever job lands first.
+  notify:
+    after_n_builds: 4
+    wait_for_ci: true
+
+coverage:
+  status:
+    project:
+      default:
+        # Explicit floor (not `auto`) so the one-time baseline reset from the old
+        # test-file-inflated ~90% down to the true product-only number does not read
+        # as a regression. Verified product-only coverage is ~70.7% (real CI union run,
+        # 2026-07-16); 65% leaves headroom while still guarding against real drops.
+        target: 65%
+        threshold: 1%
+    patch:
+      default:
+        # Coverage required on new/changed product lines. Kept at the current baseline
+        # (~70%) rather than an aspirational 80% so contributors are not blocked while
+        # overall coverage sits at ~71%; raise as coverage improves.
+        target: 70%
+        threshold: 1%
+
+comment:
+  layout: "header, diff, flags, components"
+  require_changes: true
+
+# Paths excluded from coverage measurement/reporting. These are test code, test
+# fixtures/data scripts, and build/codegen helpers — not shippable product code.
+ignore:
+  - "**/tests/**"
+  - "**/test_*.py"
+  - "**/conftest.py"
+  - "sagemaker-*/test_script.py"
+  - "**/workflow_helper/**"
+  - "**/tools/*_codegen.py"
+  - "**/setup.py"
+  - "docs/**"
+  - "v3-examples/**"

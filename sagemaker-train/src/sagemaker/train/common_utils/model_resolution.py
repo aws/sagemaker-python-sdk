@@ -357,12 +357,20 @@ class _ModelResolver:
                 model_pkg_arn = getattr(model_package, 'model_package_arn', None)
                 
                 if hub_content_name and hub_content_version and model_pkg_arn:
-                    # Extract region from model package ARN
+                    # Extract region and account from model package ARN
                     arn_parts = model_pkg_arn.split(':')
-                    if len(arn_parts) >= 4:
+                    if len(arn_parts) >= 5:
                         region = arn_parts[3]
-                        # Base model always lives in SageMakerPublicHub (SAGEMAKER_HUB_NAME is for training recipes only)
-                        base_model_arn = f"arn:aws:sagemaker:{region}:aws:hub-content/SageMakerPublicHub/Model/{hub_content_name}/{hub_content_version}"
+                        account = arn_parts[4]
+                        # Reconstruct the base-model hub-content ARN in the hub the
+                        # model was customized against. Defaults to SageMakerPublicHub
+                        # but honors SAGEMAKER_HUB_NAME so private/custom hubs (e.g. an
+                        # integ-test hub) resolve correctly. Public-hub content is
+                        # account-less ("aws"); private-hub content lives under the
+                        # model package's own account.
+                        hub_name = get_sagemaker_hub_name()
+                        hub_account = "aws" if hub_name == "SageMakerPublicHub" else account
+                        base_model_arn = f"arn:aws:sagemaker:{region}:{hub_account}:hub-content/{hub_name}/Model/{hub_content_name}/{hub_content_version}"
         
         # If we couldn't extract or construct base model ARN, this is not a supported model package
         if not base_model_arn:
