@@ -130,6 +130,7 @@ def test_benchmark_workflow_end_to_end():
 
 
 @pytest.mark.slow_test
+@pytest.mark.gpu_intensive
 def test_recommendation_workflow_end_to_end():
     """Run an AI recommendation via generate_deployment_recommendations and deploy the top recommendation."""
     logger.info("Starting AI inference recommender recommendation integration test...")
