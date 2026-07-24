@@ -110,6 +110,9 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           use_bedrock: "true"
           track_progress: true
+          # Don't append "Fix this" deep-links (which open Claude Code) to review
+          # comments — external contributors can't use them and they add noise.
+          include_fix_links: false
           # Bash is intentionally NOT allowed. The PR diff at /tmp/pr.diff is the
           # only ground truth; the model reads it and uses Read/Grep/Glob against
           # the trusted base checkout for context. It must not execute commands
