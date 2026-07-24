@@ -82,7 +82,7 @@ from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
 from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
 from sagemaker.core.inference_config import ResourceRequirements
 from sagemaker.serve.inference_recommendation_mixin import _InferenceRecommenderMixin
-from sagemaker.serve.model_builder_utils import _ModelBuilderUtils, SPECULATIVE_DRAFT_MODEL
+from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
 from sagemaker.serve.model_builder_servers import _ModelBuilderServers
 from sagemaker.serve.validations.optimization import _validate_optimization_configuration
 from sagemaker.core.enums import Tag
@@ -5120,12 +5120,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         import time as _time
         import uuid as _uuid
         from sagemaker.core.shapes.shapes import (
-            AdditionalModelDataSource as _AdditionalModelDataSource,
             ContainerDefinition as _ContainerDefinition,
-            ModelDataSource as _ModelDataSource,
             ProductionVariant as _ProductionVariant,
             ProductionVariantRoutingConfig as _ProductionVariantRoutingConfig,
-            S3ModelDataSource as _S3ModelDataSource,
         )
 
         role = role or self.role_arn
@@ -5237,65 +5234,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         )
         resolved_endpoint_name = endpoint_name or f"sm-rec-endpoint-{ts}-{suffix}"
 
-        # Optimized recommendations put the base weights (and any draft model)
-        # in additional model data sources with an empty primary source. Promote
-        # base_model to the primary source, and keep any draft channel attached
-        # so OPTION_SPECULATIVE_DRAFT_MODEL points at a populated path.
-        pkg_container = (
-            described.get("InferenceSpecification", {}).get("Containers", [{}]) or [{}]
-        )[0]
-        additional_sources = pkg_container.get("AdditionalModelDataSources") or []
-        by_channel = {s.get("ChannelName"): s for s in additional_sources}
-        base_source = by_channel.get("base_model")
-
-        primary_model_dir = "/opt/ml/model"
-        if base_source:
-            base_s3 = base_source.get("S3DataSource", {})
-            base_channel_path = f"{SPECULATIVE_DRAFT_MODEL}/base_model"
-            # Repoint env vars (e.g. HF_MODEL_ID) that referenced the old
-            # channel path to the primary mount now holding the base weights.
-            env = {
-                k: (primary_model_dir if v == base_channel_path else v)
-                for k, v in (pkg_container.get("Environment") or {}).items()
-            }
-            # Keep any draft channel attached and point the env var at its mount.
-            draft_sources = []
-            for channel_name, source in by_channel.items():
-                if channel_name == "base_model":
-                    continue
-                draft_s3 = source.get("S3DataSource", {})
-                draft_sources.append(
-                    _AdditionalModelDataSource(
-                        channel_name=channel_name,
-                        s3_data_source=_S3ModelDataSource(
-                            s3_uri=draft_s3.get("S3Uri"),
-                            s3_data_type=draft_s3.get("S3DataType", "S3Prefix"),
-                            compression_type=draft_s3.get("CompressionType", "None"),
-                        ),
-                    )
-                )
-                env["OPTION_SPECULATIVE_DRAFT_MODEL"] = (
-                    f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"
-                )
-            primary_container = _ContainerDefinition(
-                image=pkg_container.get("Image"),
-                model_data_source=_ModelDataSource(
-                    s3_data_source=_S3ModelDataSource(
-                        s3_uri=base_s3.get("S3Uri"),
-                        s3_data_type=base_s3.get("S3DataType", "S3Prefix"),
-                        compression_type=base_s3.get("CompressionType", "None"),
-                    )
-                ),
-                additional_model_data_sources=draft_sources or None,
-                environment=env,
-            )
-        else:
-            container_def_kwargs = {"model_package_name": model_package_arn}
-            if inference_specification_name:
-                container_def_kwargs[
-                    "inference_specification_name"
-                ] = inference_specification_name
-            primary_container = _ContainerDefinition(**container_def_kwargs)
+        # Deploy directly from the recommendation's ModelPackage. Optimized
+        # recommendations (kernel tuning / speculative decoding) carry the base
+        # weights and any draft model as AdditionalModelDataSources on the
+        # package; the hosting stack resolves those channels itself, so no
+        # client-side collapsing is needed.
+        container_def_kwargs = {"model_package_name": model_package_arn}
+        if inference_specification_name:
+            container_def_kwargs["inference_specification_name"] = inference_specification_name
+        primary_container = _ContainerDefinition(**container_def_kwargs)
 
         Model.create(
             model_name=resolved_model_name,
