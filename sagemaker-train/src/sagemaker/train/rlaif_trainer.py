@@ -276,6 +276,7 @@ class RLAIFTrainer(BaseTrainer):
             mlflow_resource_arn=self.mlflow_resource_arn,
             mlflow_experiment_name=self.mlflow_experiment_name,
             mlflow_run_name=self.mlflow_run_name,
+            dry_run=dry_run,
         )
 
         final_hyperparameters = self.hyperparameters.to_dict()

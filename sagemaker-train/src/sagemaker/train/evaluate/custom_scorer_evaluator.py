@@ -787,5 +787,5 @@ class CustomScorerEvaluator(BaseEvaluator):
 
         return self._submit_hyperpod_eval_job(
             override_parameters=override_parameters,
-            base_job_name="custom-eval",
+            base_job_name=self.base_eval_name or "custom-eval",
         )
