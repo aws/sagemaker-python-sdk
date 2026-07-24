@@ -379,12 +379,13 @@ ANALYSIS_CONFIG_SCHEMA_V1_0 = Schema(
                     "image/jpeg",
                     "image/png",
                     "application/x-npy",
+                    "application/x-parquet",
                 ),
             ),
             SchemaOptional("accept_type"): And(
                 str,
                 Use(str.lower),
-                lambda s: s in ("text/csv", "application/jsonlines", "application/json"),
+                lambda s: s in ("text/csv", "application/jsonlines", "application/json", "application/x-parquet"),
             ),
             SchemaOptional("label"): Or(str, int),
             SchemaOptional("probability"): Or(str, int),
@@ -1020,11 +1021,13 @@ class ModelConfig:
                 Must be set with ``instance_count``, ``model_name``
             accept_type (str): The model output format to be used for getting inferences with the
                 shadow endpoint. Valid values are ``"text/csv"`` for CSV,
-                ``"application/jsonlines"`` for JSON Lines, and ``"application/json"`` for JSON.
+                ``"application/jsonlines"`` for JSON Lines, ``"application/json"`` for JSON, and
+                ``"application/x-parquet"`` for Parquet.
                 Default is the same as ``content_type``.
             content_type (str): The model input format to be used for getting inferences with the
                 shadow endpoint. Valid values are ``"text/csv"`` for CSV,
-                ``"application/jsonlines"`` for JSON Lines, and ``"application/json"`` for JSON.
+                ``"application/jsonlines"`` for JSON Lines, ``"application/json"`` for JSON, and
+                ``"application/x-parquet"`` for Parquet.
                 Default is the same as ``dataset_format``.
             content_template (str): A template string to be used to construct the model input from
                 dataset instances. It is only used, and required, when ``model_content_type`` is
@@ -1160,10 +1163,10 @@ class ModelConfig:
                 )
             self.predictor_config["endpoint_name_prefix"] = endpoint_name_prefix
         if accept_type is not None:
-            if accept_type not in ["text/csv", "application/jsonlines", "application/json"]:
+            if accept_type not in ["text/csv", "application/jsonlines", "application/json", "application/x-parquet"]:
                 raise ValueError(
                     f"Invalid accept_type {accept_type}."
-                    f" Please choose text/csv or application/jsonlines."
+                    f" Please choose text/csv, application/jsonlines, application/json, or application/x-parquet."
                 )
             if time_series_model_config and accept_type == "text/csv":
                 raise ValueError(
@@ -1179,10 +1182,11 @@ class ModelConfig:
                 "image/jpg",
                 "image/png",
                 "application/x-npy",
+                "application/x-parquet",
             ]:
                 raise ValueError(
                     f"Invalid content_type {content_type}."
-                    f" Please choose text/csv or application/jsonlines."
+                    f" Please choose a valid content_type."
                 )
             if content_type == "application/jsonlines":
                 if content_template is None:
