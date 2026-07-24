@@ -1,4 +1,10 @@
 # Changelog
+## v1.16.0 (2026-07-15)
+
+### Tests
+
+- test(mlops): Skip non-PEP440 version keys in sklearn_latest_version (#6022)
+
 ## v1.15.1 (2026-07-09)
 
 ### New Features

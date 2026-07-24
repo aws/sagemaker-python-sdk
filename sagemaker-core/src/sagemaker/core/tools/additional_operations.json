@@ -474,6 +474,23 @@
             "return_type": "BatchGetRecordResponse",
             "method_type": "object",
             "service_name": "sagemaker-featurestore-runtime"
+        },
+        "BatchWriteRecord": {
+            "operation_name": "BatchWriteRecord",
+            "resource_name": "FeatureGroup",
+            "method_name": "batch_write_record",
+            "return_type": "BatchWriteRecordResponse",
+            "method_type": "object",
+            "service_name": "sagemaker-featurestore-runtime"
+        },
+        "ListRecords": {
+            "operation_name": "ListRecords",
+            "resource_name": "FeatureGroup",
+            "method_name": "list_records",
+            "return_type": "ListRecordsResponse",
+            "method_type": "object",
+            "service_name": "sagemaker-featurestore-runtime",
+            "exclude_resource_attributes": ["next_token"]
         }
     }
 }

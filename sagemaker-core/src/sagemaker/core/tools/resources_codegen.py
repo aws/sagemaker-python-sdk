@@ -1493,13 +1493,23 @@ class ResourcesCodeGen:
         else:
             decorator = ""
             method_args = add_indent("self,\n", 4)
+            # Allow operations to exclude specific resource attributes from self-mapping
+            # This is needed when a resource attribute name collides with an unrelated
+            # operation input (e.g., FeatureGroup.next_token vs ListRecords.NextToken)
+            exclude_resource_attrs_override = getattr(method, "exclude_resource_attributes", [])
+            effective_resource_attributes = [
+                attr for attr in resource_attributes if attr not in exclude_resource_attrs_override
+            ]
             method_args += (
-                self._generate_method_args(operation_input_shape_name, resource_attributes) + "\n"
+                self._generate_method_args(
+                    operation_input_shape_name, effective_resource_attributes
+                )
+                + "\n"
             )
             operation_input_args = self._generate_operation_input_args_updated(
-                operation_metadata, False, resource_attributes
+                operation_metadata, False, effective_resource_attributes
             )
-            exclude_resource_attrs = resource_attributes
+            exclude_resource_attrs = effective_resource_attributes
         method_args += add_indent("session: Optional[Session] = None,\n", 4)
         method_args += add_indent("region: Optional[str] = None,", 4)
 
