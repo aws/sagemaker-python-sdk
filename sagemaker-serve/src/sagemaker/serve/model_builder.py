@@ -2931,7 +2931,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         "Cannot deploy LORA adapter without base model artifacts."
                     )
                 accept_eula = getattr(self, "accept_eula", None)
-                if not accept_eula:
+                # Only models that declare a hosting EULA (gated models such as
+                # Meta Llama) require explicit acceptance. Ungated models
+                # (Apache-2.0, MIT, etc.) carry no HostingEulaUri and must deploy
+                # without the flag. See HubContentDocument.HostingEulaUri.
+                requires_eula = bool(hub_document.get("HostingEulaUri"))
+                if requires_eula and not accept_eula:
                     raise ValueError(
                         "accept_eula must be set to True to deploy this model. "
                         "Please set accept_eula=True on the ModelBuilder instance to confirm "
@@ -2945,7 +2950,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                             "s3_uri": hosting_artifact_uri,
                             "s3_data_type": "S3Prefix",
                             "compression_type": "None",
-                            "model_access_config": {"accept_eula": accept_eula},
+                            # accept_eula may be None (default); coerce so the
+                            # config never carries null for an ungated model.
+                            "model_access_config": {"accept_eula": bool(accept_eula)},
                         }
                     },
                 )
