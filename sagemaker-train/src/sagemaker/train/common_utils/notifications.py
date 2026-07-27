@@ -150,6 +150,85 @@ def _validate_sns_topic(sns_client, topic_arn: str) -> None:
         raise
 
 
+def _build_topic_policy(topic_arn: str, account_id: str) -> str:
+    """Build the SNS topic access policy for EventBridge notifications.
+
+    Includes the default owner statement (standard SNS actions scoped to the
+    topic's own account via ``AWS:SourceAccount``) plus an explicit statement
+    granting the EventBridge service principal ``SNS:Publish``.
+
+    Args:
+        topic_arn: The ARN of the SNS topic.
+        account_id: The AWS account ID that owns the topic.
+
+    Returns:
+        JSON string of the topic access policy.
+    """
+    policy = {
+        "Version": "2008-10-17",
+        "Id": "__default_policy_ID",
+        "Statement": [
+            {
+                "Sid": "__default_statement_ID",
+                "Effect": "Allow",
+                "Principal": {"AWS": "*"},
+                "Action": [
+                    "SNS:Publish",
+                    "SNS:RemovePermission",
+                    "SNS:SetTopicAttributes",
+                    "SNS:DeleteTopic",
+                    "SNS:ListSubscriptionsByTopic",
+                    "SNS:GetTopicAttributes",
+                    "SNS:AddPermission",
+                    "SNS:Subscribe",
+                ],
+                "Resource": topic_arn,
+                "Condition": {"StringEquals": {"AWS:SourceAccount": account_id}},
+            },
+            {
+                "Sid": "AllowEventBridgePublish",
+                "Effect": "Allow",
+                "Principal": {"Service": "events.amazonaws.com"},
+                "Action": "SNS:Publish",
+                "Resource": topic_arn,
+                "Condition": {"StringEquals": {"AWS:SourceAccount": account_id}},
+            },
+        ],
+    }
+    return json.dumps(policy)
+
+
+def create_notification_topic(topic_name: str, sagemaker_session) -> str:
+    """Create an SNS topic configured for EventBridge notifications.
+
+    Creates a new SNS topic and sets an access policy that allows EventBridge
+    in the same account to publish to it. The returned ARN can be passed
+    straight to :func:`enable_notifications`.
+
+    Args:
+        topic_name: Name of the SNS topic to create.
+        sagemaker_session: SageMaker session (provides boto_session).
+
+    Returns:
+        The ARN of the created SNS topic.
+    """
+    region_name = sagemaker_session.boto_session.region_name
+    sns_client = sagemaker_session.boto_session.client("sns", region_name=region_name)
+
+    response = sns_client.create_topic(Name=topic_name)
+    topic_arn = response["TopicArn"]
+    # topic ARN: arn:aws:sns:<region>:<account_id>:<name>
+    account_id = topic_arn.split(":")[4]
+
+    policy = _build_topic_policy(topic_arn, account_id)
+    sns_client.set_topic_attributes(
+        TopicArn=topic_arn, AttributeName="Policy", AttributeValue=policy
+    )
+
+    logger.info(f"Created SNS topic with EventBridge publish policy: {topic_arn}")
+    return topic_arn
+
+
 def enable_notifications(
     sns_topic_arn: str,
     sagemaker_session,
@@ -240,14 +319,14 @@ def enable_notifications(
 
     try:
         events_client.put_targets(**put_targets_kwargs)
-    except Exception as e:
-        raise ValueError(
-            f"Failed to attach SNS topic to EventBridge rule. "
-            f"Ensure your SNS topic has a resource policy allowing "
-            f"EventBridge to publish to it. Add this to the topic's access policy:\n"
-            f'{{"Effect": "Allow", "Principal": {{"Service": "events.amazonaws.com"}}, '
-            f'"Action": "sns:Publish", "Resource": "{sns_topic_arn}"}}'
-        ) from e
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code in ("AccessDeniedException", "AccessDenied"):
+            raise PermissionError(
+                "Missing permission events:PutTargets to attach the SNS topic "
+                "to the EventBridge rule."
+            ) from e
+        raise
 
     logger.info(f"Notifications enabled: {normalized_events} -> {sns_topic_arn}")
     return rule_arn
