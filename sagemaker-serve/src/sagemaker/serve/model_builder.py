@@ -1879,6 +1879,44 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         self.secret_key = ""
 
+        # Resolve the trained model artifact URI (if any). It may arrive either
+        # directly as an S3 ``model_path`` or via ``s3_model_data_url``. A
+        # ModelTrainer / TrainingJob is normalized to ``model_path`` earlier in
+        # the build flow.
+        model_artifact_uri = None
+        if self.model_path and str(self.model_path).startswith("s3://"):
+            model_artifact_uri = self.model_path
+        elif isinstance(self.s3_model_data_url, str) and self.s3_model_data_url.startswith(
+            "s3://"
+        ):
+            model_artifact_uri = self.s3_model_data_url
+
+        has_source_code = bool(
+            getattr(self, "entry_point", None) and getattr(self, "source_dir", None)
+        )
+
+        # When custom inference source code is supplied alongside a model
+        # artifact, this is not a pure image-only passthrough: honor the
+        # source code by repacking it into the model tarball (mirroring the
+        # classic v2 ``Model`` + ``_RepackModelStep`` behavior) so that
+        # ``build()`` produces a self-contained ``model.tar.gz`` (code under
+        # ``code/``) that is safe to ``register()``.
+        if has_source_code and model_artifact_uri:
+            if not (
+                isinstance(self.s3_model_data_url, str)
+                and self.s3_model_data_url.startswith("s3://")
+            ):
+                # Bridge model_path -> s3_model_data_url so the repack path in
+                # _upload_code(repack=True) can locate the original artifact.
+                self.s3_model_data_url = model_artifact_uri
+            # Let the repacked artifact drive the container ModelDataUrl.
+            self.s3_upload_path = None
+
+            if self.mode in LOCAL_MODES:
+                self._prepare_for_mode()
+
+            return self._create_model()
+
         if self.model_path and self.model_path.startswith("s3://"):
             self.s3_upload_path = self.model_path
         else:
@@ -2282,6 +2320,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     script_name=os.path.basename(self.entry_point),
                 )
 
+            # ``script_dependencies`` (derived from SourceCode.requirements) is a
+            # list of paths; ``self.dependencies`` is the deprecated auto-detect
+            # dict ({"auto": True}) and must not be passed to repack_model, which
+            # iterates dependencies as filesystem paths.
+            repack_dependencies = self.script_dependencies or []
+
             logger.info(
                 "Repacking model artifact (%s), script artifact "
                 "(%s), and dependencies (%s) "
@@ -2289,14 +2333,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "This may take some time depending on model size...",
                 self.s3_model_data_url,
                 self.source_dir,
-                self.dependencies,
+                repack_dependencies,
                 repacked_model_data,
             )
 
             repack_model(
                 inference_script=self.entry_point,
                 source_directory=self.source_dir,
-                dependencies=self.dependencies,
+                dependencies=repack_dependencies,
                 model_uri=self.s3_model_data_url,
                 repacked_model_uri=repacked_model_data,
                 sagemaker_session=self.sagemaker_session,
