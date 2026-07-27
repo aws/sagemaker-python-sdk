@@ -2853,6 +2853,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         self.serve_settings = self._get_serve_setting()
 
+        # Validate BaseTrainer has a completed training job before proceeding
+        if isinstance(self.model, BaseTrainer):
+            if not hasattr(self.model, "_latest_training_job") or self.model._latest_training_job is None:
+                raise ValueError(
+                    "The trainer passed to ModelBuilder does not have a completed training job. "
+                    "Either call trainer.train() first, or manually set "
+                    "trainer._latest_training_job = TrainingJob.get(training_job_name='<job-name>') "
+                    "to attach a previously completed job."
+                )
+
         # Handle model customization (fine-tuned models)
         if self._is_model_customization():
             if mode is not None and mode != Mode.SAGEMAKER_ENDPOINT:
@@ -2900,6 +2910,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 base_model = model_package.inference_specification.containers[0].base_model
                 if base_model is not None:
                     self._fetch_and_cache_recipe_config()
+            else:
+                # No model package available (e.g. serverful SMTJ training job).
+                # Validate required fields that would normally be auto-resolved.
+                missing_fields = []
+                if not self.image_uri:
+                    missing_fields.append("image_uri")
+                if isinstance(self.model, BaseTrainer) and not self.model.base_model_name:
+                    missing_fields.append("trainer.base_model_name")
+                if missing_fields:
+                    raise ValueError(
+                        f"When deploying a model from an S3 checkpoint (e.g. a serverful SMTJ "
+                        f"training job), the following must be provided because no model package "
+                        f"is available to auto-resolve them: {', '.join(missing_fields)}. "
+                        f"Set these on the ModelBuilder or trainer before calling build()."
+                    )
 
             # Nova models use a completely different deployment architecture
             if self._is_nova_model():
