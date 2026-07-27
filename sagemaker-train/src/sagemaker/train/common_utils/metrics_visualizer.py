@@ -1,7 +1,10 @@
 """MLflow metrics visualization utilities for SageMaker training jobs."""
 
+import io
+import base64
 import logging
 from typing import Optional, List, Dict, Any
+
 from sagemaker.core.resources import TrainingJob
 
 logger = logging.getLogger(__name__)
@@ -209,7 +212,6 @@ def plot_training_metrics(
     import mlflow
     from mlflow.tracking import MlflowClient
     from IPython.display import display
-    import logging
     
     logging.getLogger('botocore.credentials').setLevel(logging.WARNING)
     
@@ -242,9 +244,6 @@ def plot_training_metrics(
     # calling display(fig) directly we render to an in-memory PNG and embed
     # it inside a scrollable HTML <div>. This lets the notebook display all
     # metrics without choking on pixel-count limits.
-    import io
-    import base64
-
     rows = (num_metrics + 1) // 2
     fig, axes = plt.subplots(rows, 2, figsize=(figsize[0], figsize[1] * rows), squeeze=False)
     axes = axes.flatten()
