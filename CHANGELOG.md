@@ -1,4 +1,35 @@
 # Changelog
+
+## v3.17.0 (2026-07-24)
+
+### New Features
+
+- feat: update SDK to use latest LMI v27 image for sdk v3.x (#5976)
+- feat(serve): support fine-tuned models in deployment-config API (#6041)
+- feat: Wire BatchWriteRecord and ListRecords into ingest_dataframe (#6026)
+
+### Bug Fixes
+
+- fix: Fix source_dir in FrameworkProcessor (#6047)
+- fix(train): correct Networking field names in ModelTrainer intelligent defaults (#6064)
+- fix: resolve MTRL eval base-model ARN against the configured hub (#6040)
+- fix(train): Fall back to public hub when private hub lacks base model (#6092)
+- fix: datamixing recipe path fix (#6073)
+- fix: Fix private hub (#6036)
+- fix(serve): support aliased hub content names in private hub deploys (#6039)
+- fix(serve): dedicated INFERENCE_RECOMMENDER telemetry feature + type workload param (#6028)
+- fix: Fixing EULA check, relying on HostingEulaUri field (#6077)
+
+### Tests
+
+- test: Doc update and added SFT integ test (#6018)
+- test: Fix role issue in mtrl integ tests (#6070)
+- test: Fix gpu integ test failure due to outdated MPG (#6097)
+- test: move two tests in serve to gpu-integ-tests (#6096)
+- test(feature-processor): Isolate pipeline names to fix flaky integ tests (#6095)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
 ## v3.16.0 (2026-07-15)
 
 ### New Features
