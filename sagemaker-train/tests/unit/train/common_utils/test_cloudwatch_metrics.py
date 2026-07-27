@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 
 import pandas
 import pytest
+from botocore.exceptions import ClientError
 
 from sagemaker.core.training.configs import Compute, HyperPodCompute
 from sagemaker.train.base_trainer import BaseTrainer
@@ -35,6 +36,24 @@ FAKE_RLVR_SMHP_LOGS = [
     {"message": "global_step: 1 train_rm_score: 0.55"},
     {"message": "global_step: 2 train_rm_score: 0.72"},
 ]
+
+AUTH_ERROR_CODES = [
+    "AccessDenied",
+    "AccessDeniedException",
+    "ExpiredToken",
+    "ExpiredTokenException",
+    "InvalidClientTokenId",
+    "UnauthorizedOperation",
+    "UnrecognizedClientException",
+]
+
+
+def _client_error(code, operation):
+    """Build a botocore ClientError with the given error code."""
+    return ClientError(
+        {"Error": {"Code": code, "Message": f"simulated {code}"}},
+        operation,
+    )
 
 
 class TestParseMetrics:
@@ -121,6 +140,75 @@ class TestFetchLogs:
         assert '"hp-job-123"' in call_kwargs["filterPattern"]
 
 
+class TestFetchLogsAuthErrors:
+    """Credential/permission failures must surface, not degrade to an empty log list."""
+
+    @pytest.mark.parametrize("error_code", AUTH_ERROR_CODES)
+    def test_smtj_describe_streams_auth_error_raises(self, error_code):
+        mock_client = MagicMock()
+        mock_client.describe_log_streams.side_effect = _client_error(
+            error_code, "DescribeLogStreams"
+        )
+
+        with pytest.raises(PermissionError, match="credentials"):
+            _fetch_smtj_logs("my-job", mock_client, "/aws/sagemaker/TrainingJobs")
+
+    def test_smtj_expired_token_message_has_job_and_code(self):
+        mock_client = MagicMock()
+        mock_client.describe_log_streams.side_effect = _client_error(
+            "ExpiredTokenException", "DescribeLogStreams"
+        )
+
+        with pytest.raises(PermissionError) as exc_info:
+            _fetch_smtj_logs("my-job", mock_client, "/aws/sagemaker/TrainingJobs")
+
+        message = str(exc_info.value)
+        assert "my-job" in message
+        assert "ExpiredTokenException" in message
+
+    def test_smtj_missing_log_group_returns_empty(self):
+        """A genuinely absent log group is not an auth failure — degrade to []."""
+        mock_client = MagicMock()
+        mock_client.describe_log_streams.side_effect = _client_error(
+            "ResourceNotFoundException", "DescribeLogStreams"
+        )
+
+        events = _fetch_smtj_logs("my-job", mock_client, "/aws/sagemaker/TrainingJobs")
+        assert events == []
+
+    def test_smtj_get_log_events_auth_error_raises(self):
+        """Auth failure part-way through pagination surfaces as PermissionError."""
+        mock_client = MagicMock()
+        mock_client.describe_log_streams.return_value = {
+            "logStreams": [{"logStreamName": "my-job/algo-1"}]
+        }
+        mock_client.get_log_events.side_effect = _client_error(
+            "ExpiredTokenException", "GetLogEvents"
+        )
+
+        with pytest.raises(PermissionError, match="credentials"):
+            _fetch_smtj_logs("my-job", mock_client, "/aws/sagemaker/TrainingJobs")
+
+    @pytest.mark.parametrize("error_code", AUTH_ERROR_CODES)
+    def test_smhp_filter_events_auth_error_raises(self, error_code):
+        mock_client = MagicMock()
+        mock_client.filter_log_events.side_effect = _client_error(
+            error_code, "FilterLogEvents"
+        )
+
+        with pytest.raises(PermissionError, match="credentials"):
+            _fetch_smhp_logs("hp-job-123", mock_client, "/aws/sagemaker/Clusters/c/id")
+
+    def test_smhp_missing_log_group_returns_empty(self):
+        mock_client = MagicMock()
+        mock_client.filter_log_events.side_effect = _client_error(
+            "ResourceNotFoundException", "FilterLogEvents"
+        )
+
+        events = _fetch_smhp_logs("hp-job-123", mock_client, "/aws/sagemaker/Clusters/c/id")
+        assert events == []
+
+
 class TestFetchAndPlotMetrics:
 
     def _session(self):
@@ -172,6 +260,32 @@ class TestFetchAndPlotMetrics:
             fetch_and_plot_metrics(
                 "missing-job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
                 "SFT", self._session(),
+            )
+
+    def test_job_without_logs_yet_still_raises_no_logs_found(self):
+        """A just-started job with no log stream keeps reporting "No CloudWatch logs found"."""
+        session = self._session()
+        session.boto_session.client.return_value.describe_log_streams.return_value = {
+            "logStreams": []
+        }
+
+        with pytest.raises(ValueError, match="No CloudWatch logs found"):
+            fetch_and_plot_metrics(
+                "just-started-job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+                "SFT", session,
+            )
+
+    def test_expired_credentials_raises_instead_of_no_logs_found(self):
+        """Expired credentials must not be reported as a job with no logs."""
+        session = self._session()
+        session.boto_session.client.return_value.describe_log_streams.side_effect = (
+            _client_error("ExpiredTokenException", "DescribeLogStreams")
+        )
+
+        with pytest.raises(PermissionError, match="credentials"):
+            fetch_and_plot_metrics(
+                "my-job", Compute(instance_type="ml.p5.48xlarge", instance_count=1),
+                "SFT", session,
             )
 
     @patch("sagemaker.train.common_utils.cloudwatch_metrics.plot_metrics")
