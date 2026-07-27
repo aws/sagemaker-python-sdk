@@ -1,4 +1,24 @@
 # Changelog
+
+## v1.17.0 (2026-07-24)
+
+### New Features
+
+- feat(serve): support fine-tuned models in deployment-config API (#6041)
+
+### Bug Fixes
+
+- fix: Fix private hub (#6036)
+- fix(serve): support aliased hub content names in private hub deploys (#6039)
+- fix(serve): dedicated INFERENCE_RECOMMENDER telemetry feature + type workload param (#6028)
+- fix: Fixing EULA check, relying on HostingEulaUri field (#6077)
+
+### Tests
+
+- test: move two tests in serve to gpu-integ-tests (#6096)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
 ## v1.16.0 (2026-07-15)
 
 ### New Features

@@ -54,7 +54,7 @@
                 "us-isof-south-1": "454834333376"
             },
             "repository": "djl-inference",
-            "tag_prefix": "0.36.0-lmi26.0.0-cu130"
+            "tag_prefix": "0.36.0-lmi27.0.0-cu130"
         },
         "0.35.0": {
             "registries": {

@@ -40,6 +40,10 @@ def _get_test_config():
     """Build test configuration lazily (only when tests actually run)."""
     boto_session = boto3.Session(region_name=_REGION)
     account_id = boto_session.client("sts").get_caller_identity()["Account"]
+    from sagemaker.core.helper.session_helper import Session
+    from sagemaker.train.defaults import TrainDefaults
+    sagemaker_session = Session(boto_session=boto_session)
+    role_arn = TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
     return {
         "base_model": "mock-oss-test",
         "agent_arn": f"arn:aws:bedrock-agentcore:{_REGION}:{account_id}:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
@@ -47,7 +51,7 @@ def _get_test_config():
         "s3_output_path": f"s3://sagemaker-{_REGION}-{account_id}/model-evaluation/output-artifacts/",
         "mlflow_resource_arn": f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
         "model_package_group": f"arn:aws:sagemaker:{_REGION}:{account_id}:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
-        "role": f"arn:aws:iam::{account_id}:role/Admin",
+        "role": role_arn,
         "region": _REGION,
         "account_id": account_id,
     }
@@ -172,7 +176,6 @@ class TestMTRLEvaluatorJobConfigDocument:
             dataset=test_config["dataset"],
             s3_output_path=f'{test_config["s3_output_path"]}integ-fields-bedrock/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             agent_config=test_config["agent_arn"],
             agent_qualifier="PROD",
@@ -182,8 +185,7 @@ class TestMTRLEvaluatorJobConfigDocument:
         evaluator._resolve_agent_arn()
 
         ctx = evaluator._build_template_context(
-            aws_context={"region": test_config["region"], "account_id": test_config["account_id"],
-                         "role_arn": test_config["role"]},
+            aws_context={"region": test_config["region"], "account_id": test_config["account_id"], "role_arn": test_config["role"]},
             artifacts={},
             model_package_group_arn=test_config["model_package_group"],
         )
@@ -208,7 +210,6 @@ class TestMTRLEvaluatorJobConfigDocument:
             dataset=test_config["dataset"],
             s3_output_path=f'{test_config["s3_output_path"]}integ-fields-lambda/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             agent_config=lambda_arn,
         )
@@ -217,8 +218,7 @@ class TestMTRLEvaluatorJobConfigDocument:
         evaluator._resolve_agent_arn()
 
         ctx = evaluator._build_template_context(
-            aws_context={"region": test_config["region"], "account_id": test_config["account_id"],
-                         "role_arn": test_config["role"]},
+            aws_context={"region": test_config["region"], "account_id": test_config["account_id"], "role_arn": test_config["role"]},
             artifacts={},
             model_package_group_arn=test_config["model_package_group"],
         )
@@ -239,7 +239,6 @@ class TestMTRLEvaluatorJobConfigDocument:
             dataset=test_config["dataset"],
             s3_output_path=f'{test_config["s3_output_path"]}integ-fields-mpc/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             agent_config=test_config["agent_arn"],
         )
@@ -248,8 +247,7 @@ class TestMTRLEvaluatorJobConfigDocument:
         evaluator._resolve_agent_arn()
 
         ctx = evaluator._build_template_context(
-            aws_context={"region": test_config["region"], "account_id": test_config["account_id"],
-                         "role_arn": test_config["role"]},
+            aws_context={"region": test_config["region"], "account_id": test_config["account_id"], "role_arn": test_config["role"]},
             artifacts={},
             model_package_group_arn=test_config["model_package_group"],
         )
@@ -280,7 +278,6 @@ class TestMTRLEvaluatorIntegration:
             dataset=test_config["dataset"],
             s3_output_path=f'{test_config["s3_output_path"]}integ-construct/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             agent_config=test_config["agent_arn"],
         )
@@ -298,7 +295,6 @@ class TestMTRLEvaluatorIntegration:
             s3_output_path=f'{test_config["s3_output_path"]}integ-base/',
             agent_config=test_config["agent_arn"],
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
         )
 

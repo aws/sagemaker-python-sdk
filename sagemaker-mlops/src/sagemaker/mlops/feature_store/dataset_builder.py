@@ -3,8 +3,9 @@
 """Dataset Builder for FeatureStore."""
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 import datetime
+import logging
 
 import pandas as pd
 
@@ -17,6 +18,8 @@ from sagemaker.mlops.feature_store.feature_utils import (
     download_csv_from_s3,
     run_athena_query,
 )
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_CATALOG = "AwsDataCatalog"
 _DEFAULT_DATABASE = "sagemaker_featurestore"
@@ -258,6 +261,8 @@ class DatasetBuilder:
     _event_time_starting_timestamp: datetime.datetime = field(default=None, init=False)
     _event_time_ending_timestamp: datetime.datetime = field(default=None, init=False)
     _feature_groups_to_be_merged: List[FeatureGroupToBeMerged] = field(default_factory=list, init=False)
+    _register_as_dataset: bool = False
+    _source_feature_groups: List = field(default_factory=list)
 
     @classmethod
     def create(
@@ -269,6 +274,7 @@ class DatasetBuilder:
         event_time_identifier_feature_name: str = None,
         included_feature_names: List[str] = None,
         kms_key_id: str = None,
+        register_as_dataset: bool = False,
     ) -> "DatasetBuilder":
         """Create a DatasetBuilder for generating a Dataset.
 
@@ -298,6 +304,7 @@ class DatasetBuilder:
             _event_time_identifier_feature_name=event_time_identifier_feature_name,
             _included_feature_names=included_feature_names,
             _kms_key_id=kms_key_id,
+            _register_as_dataset=register_as_dataset,
         )
 
     def with_feature_group(
@@ -336,6 +343,7 @@ class DatasetBuilder:
                 feature_name_in_target, join_comparator, join_type,
             )
         )
+        self._source_feature_groups.append(feature_group)
         return self
 
     def point_in_time_accurate_join(self) -> "DatasetBuilder":
@@ -779,3 +787,86 @@ class DatasetBuilder:
             )
 
         return join
+
+    def _collect_source_feature_group_arns(self) -> List[str]:
+        """Collect and deduplicate Feature Group ARNs from base and merged FGs."""
+        arns = []
+        # Base FG
+        if isinstance(self._base, FeatureGroup):
+            base_arn = getattr(self._base, "feature_group_arn", None)
+            if base_arn:
+                arns.append(base_arn)
+        # Merged FGs
+        for fg in self._source_feature_groups:
+            fg_arn = getattr(fg, "feature_group_arn", None)
+            if fg_arn and fg_arn not in arns:
+                arns.append(fg_arn)
+        return arns
+
+    def _register_as_hub_content_dataset(
+        self, csv_path: str, query_execution_id: Optional[str] = None
+    ) -> None:
+        """Register the output CSV as a SM Dataset (HubContent) for lineage tracking.
+
+        This is a best-effort operation: if it fails due to missing permissions
+        (AccessDeniedException), a warning is logged and the method returns without
+        raising — the primary workflow (returning the CSV) is not affected.
+
+        Args:
+            csv_path: S3 path of the generated CSV file.
+            query_execution_id: Athena query execution ID (for provenance tracking).
+        """
+        source_fg_arns = self._collect_source_feature_group_arns()
+        if not source_fg_arns:
+            logger.warning(
+                "register_as_dataset=True but no Feature Group ARNs found. "
+                "Skipping dataset registration."
+            )
+            return
+
+        # Generate a dataset name from the base FG name + timestamp
+        base_name = ""
+        if isinstance(self._base, FeatureGroup):
+            base_name = getattr(self._base, "feature_group_name", "dataset")
+        else:
+            base_name = "dataframe-dataset"
+        timestamp = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+        dataset_name = f"fs-{base_name}-{timestamp}"
+
+        try:
+            from sagemaker.ai_registry.dataset import DataSet
+
+            DataSet.create(
+                name=dataset_name,
+                source=csv_path,
+                content_metadata={
+                    "SourceFeatureGroups": source_fg_arns,
+                    "ExtractionMethod": "FeatureStoreDatasetBuilder",
+                    "AthenaQueryExecutionId": query_execution_id or "",
+                },
+                description=f"Dataset extracted from Feature Groups: {', '.join(source_fg_arns)}",
+                sagemaker_session=self._sagemaker_session,
+                wait=False,
+            )
+            logger.info(
+                "Registered dataset '%s' as SM Dataset (HubContent) with source FGs: %s",
+                dataset_name,
+                source_fg_arns,
+            )
+        except Exception as e:
+            # Graceful fallback: log warning, don't block the primary workflow
+            error_msg = str(e)
+            if "AccessDenied" in error_msg or "not authorized" in error_msg.lower():
+                logger.warning(
+                    "Unable to register dataset as HubContent due to missing permissions "
+                    "(sagemaker:ImportHubContent). Lineage will not be created for this "
+                    "dataset extraction. To enable lineage, add sagemaker:ImportHubContent "
+                    "permission to your execution role. Error: %s",
+                    error_msg,
+                )
+            else:
+                logger.warning(
+                    "Failed to register dataset as HubContent. Lineage will not be created. "
+                    "Error: %s",
+                    error_msg,
+                )

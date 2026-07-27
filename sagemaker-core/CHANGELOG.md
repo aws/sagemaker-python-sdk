@@ -1,4 +1,15 @@
 # Changelog
+
+## v2.17.0 (2026-07-24)
+
+### New Features
+
+- feat: update SDK to use latest LMI v27 image for sdk v3.x (#5976)
+
+### Bug Fixes
+
+- fix: Fix source_dir in FrameworkProcessor (#6047)
+
 ## v2.16.0 (2026-07-15)
 
 ### New Features

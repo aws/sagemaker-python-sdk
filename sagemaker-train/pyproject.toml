@@ -32,7 +32,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.16.0",
+    "sagemaker-core>=2.17.0",
     "graphene>=3,<4",
     "typing_extensions>=4.9.0",
     "tblib>=1.7.0",

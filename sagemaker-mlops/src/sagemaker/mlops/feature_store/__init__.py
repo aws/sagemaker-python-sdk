@@ -54,6 +54,7 @@ from sagemaker.mlops.feature_store.feature_utils import (
     create_athena_query,
     get_session_from_role,
     ingest_dataframe,
+    list_records,
     load_feature_definitions_from_dataframe,
 )
 
@@ -116,6 +117,7 @@ __all__ = [
     "create_athena_query",
     "get_session_from_role",
     "ingest_dataframe",
+    "list_records",
     "load_feature_definitions_from_dataframe",
     # Classes
     "AthenaQuery",

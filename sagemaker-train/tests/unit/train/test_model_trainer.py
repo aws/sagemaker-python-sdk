@@ -34,10 +34,15 @@ from sagemaker.core.config.config_schema import (
     MODEL_TRAINER,
     _simple_path,
     TRAINING_JOB_RESOURCE_CONFIG_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_VPC_CONFIG_PATH,
+    TRAINING_JOB_SUBNETS_PATH,
+    TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
     SAGEMAKER,
     PYTHON_SDK,
     MODULES,
 )
+from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.model_trainer import ModelTrainer, Mode
 from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE
@@ -1756,3 +1761,113 @@ def test_resolve_staging_bucket_returns_default_on_iam_error(model_trainer):
 
     assert bucket == DEFAULT_BUCKET
     assert prefix is None
+
+
+# Networking intelligent defaults from the Training Job config space. These guard the two
+# bugs fixed in _populate_intelligent_defaults_from_training_job_space: (1) the Networking
+# constructor must be given `enable_network_isolation` (not the non-existent
+# `default_enable_network_isolation`), and (2) an existing Networking object with an unset
+# `security_group_ids` must be filled from the security-group-ids path, not the subnets path.
+
+NETWORKING_DEFAULT_SUBNETS = ["subnet-000000000000"]
+NETWORKING_DEFAULT_SECURITY_GROUP_IDS = ["sg-000000000000"]
+
+
+def _make_config_mgr(values):
+    """Return a real SageMakerConfig whose resolve_value_from_config is keyed by config_path.
+
+    A real instance (rather than a bare MagicMock) is required because ModelTrainer validates
+    that config_mgr is a SageMakerConfig on assignment.
+    """
+    config_mgr = SageMakerConfig()
+    config_mgr.resolve_value_from_config = MagicMock(
+        side_effect=lambda **kwargs: values.get(kwargs["config_path"])
+    )
+    return config_mgr
+
+
+def test_networking_intelligent_defaults_creates_networking(model_trainer):
+    """A VpcConfig in the config space builds a valid Networking with the correct fields.
+
+    Regression for Bug 1: passing `default_enable_network_isolation` to Networking() raised
+    a pydantic ValidationError because that field does not exist.
+    """
+    model_trainer.networking = None
+    model_trainer.config_mgr = _make_config_mgr(
+        {
+            TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH: True,
+            TRAINING_JOB_VPC_CONFIG_PATH: {
+                "subnets": NETWORKING_DEFAULT_SUBNETS,
+                "security_group_ids": NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+            },
+            TRAINING_JOB_SUBNETS_PATH: NETWORKING_DEFAULT_SUBNETS,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH: NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+        }
+    )
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    assert model_trainer.networking is not None
+    assert model_trainer.networking.enable_network_isolation is True
+    assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
+    assert model_trainer.networking.security_group_ids == NETWORKING_DEFAULT_SECURITY_GROUP_IDS
+
+
+def test_networking_intelligent_defaults_no_vpc_config_leaves_networking_unset(model_trainer):
+    """No network isolation and no VpcConfig means Networking is not created."""
+    model_trainer.networking = None
+    model_trainer.config_mgr = _make_config_mgr({})
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    assert model_trainer.networking is None
+
+
+def test_networking_intelligent_defaults_fills_security_group_ids_on_existing(model_trainer):
+    """An existing Networking with unset security_group_ids is filled from the SG path.
+
+    Regression for Bug 2: the missing security_group_ids branch mistakenly assigned to
+    `subnets` using the subnets path, so security_group_ids was never populated.
+    """
+    model_trainer.networking = Networking(
+        enable_network_isolation=False,
+        subnets=["subnet-preexisting"],
+        security_group_ids=None,
+    )
+    model_trainer.config_mgr = _make_config_mgr(
+        {
+            TRAINING_JOB_SUBNETS_PATH: NETWORKING_DEFAULT_SUBNETS,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH: NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+        }
+    )
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    # security_group_ids is filled from the security-group-ids path...
+    assert model_trainer.networking.security_group_ids == NETWORKING_DEFAULT_SECURITY_GROUP_IDS
+    # ...and the pre-existing subnets are preserved (not overwritten).
+    assert model_trainer.networking.subnets == ["subnet-preexisting"]
+    model_trainer.config_mgr.resolve_value_from_config.assert_any_call(
+        config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
+    )
+
+
+def test_networking_intelligent_defaults_fills_subnets_on_existing(model_trainer):
+    """An existing Networking with unset subnets is filled from the subnets path."""
+    model_trainer.networking = Networking(
+        enable_network_isolation=False,
+        subnets=None,
+        security_group_ids=["sg-preexisting"],
+    )
+    model_trainer.config_mgr = _make_config_mgr(
+        {
+            TRAINING_JOB_SUBNETS_PATH: NETWORKING_DEFAULT_SUBNETS,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH: NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+        }
+    )
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
+    # pre-existing security_group_ids are preserved.
+    assert model_trainer.networking.security_group_ids == ["sg-preexisting"]
