@@ -350,6 +350,56 @@ class MultiTurnRLTrainer(BaseTrainer):
             return self._latest_job.output_model_package_arn
         return None
 
+    def stream_logs(self, poll: int = 5, start_time=None) -> None:
+        """Stream CloudWatch logs for the latest MTRL training job.
+
+        Polls the correct log group (``/aws/sagemaker/Job/AgentRFT``) and
+        checks job status via the Job API.
+
+        :param poll: Seconds between CloudWatch polling cycles (1-300).
+        :param start_time: Stream from this timestamp. Accepts datetime or
+            epoch milliseconds (int). If None, streams from the beginning.
+        :raises ValueError: If no training job has been launched yet or poll
+            is out of range.
+        """
+        from sagemaker.core.resources import Job
+
+        from sagemaker.train.common_utils.log_streamer import (
+            AGENT_RFT_LOG_GROUP,
+            LogStreamer,
+            _resolve_start_time_ms,
+            _validate_poll,
+            stream_log_loop,
+        )
+
+        if self._latest_job is None:
+            raise ValueError(
+                "No training job found. Call .train(wait=False) first, "
+                "then call .stream_logs() to stream logs in real-time."
+            )
+        _validate_poll(poll)
+
+        job_name = self._latest_job.job_name
+        start_ms = _resolve_start_time_ms(start_time)
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+
+        streamer = LogStreamer(
+            log_group=AGENT_RFT_LOG_GROUP,
+            job_name=job_name,
+            sagemaker_session=sagemaker_session,
+            start_time_ms=start_ms,
+        )
+
+        logger.info("Streaming logs for job: %s", job_name)
+        logger.info("Log group: %s", AGENT_RFT_LOG_GROUP)
+
+        def _get_status() -> str:
+            return Job.get(job_name=job_name, job_category=JOB_CATEGORY).job_status
+
+        stream_log_loop(streamer, poll, _get_status)
+
     @classmethod
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION, func_name="MultiTurnRLTrainer.attach"

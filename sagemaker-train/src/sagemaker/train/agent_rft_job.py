@@ -108,6 +108,46 @@ class AgentRFTJob:
 
         _job_wait(self._job, poll=poll, timeout=timeout, description=self.description, max_log_lines=max_log_lines)
 
+    def stream_logs(self, poll: int = 5, start_time=None) -> None:
+        """Stream CloudWatch logs for this job in real-time.
+
+        Polls ``/aws/sagemaker/Job/AgentRFT`` and exits when the job
+        reaches a terminal status or the user interrupts with Ctrl+C.
+
+        :param poll: Seconds between CloudWatch polling cycles (1-300).
+        :param start_time: Stream from this timestamp. Accepts datetime or
+            epoch milliseconds (int). If None, streams from the beginning.
+        :raises ValueError: If poll is out of range.
+        """
+        from sagemaker.train.common_utils.log_streamer import (
+            AGENT_RFT_LOG_GROUP,
+            LogStreamer,
+            _resolve_start_time_ms,
+            _validate_poll,
+            stream_log_loop,
+        )
+        from sagemaker.train.defaults import TrainDefaults
+
+        _validate_poll(poll)
+        start_ms = _resolve_start_time_ms(start_time)
+        sagemaker_session = self.sagemaker_session or TrainDefaults.get_sagemaker_session()
+
+        streamer = LogStreamer(
+            log_group=AGENT_RFT_LOG_GROUP,
+            job_name=self.job_name,
+            sagemaker_session=sagemaker_session,
+            start_time_ms=start_ms,
+        )
+
+        logger.info("Streaming logs for job: %s", self.job_name)
+        logger.info("Log group: %s", AGENT_RFT_LOG_GROUP)
+
+        def _get_status() -> str:
+            self._job.refresh()
+            return self._job.job_status
+
+        stream_log_loop(streamer, poll, _get_status)
+
     def stop(self):
         """Stop the job via StopJob API."""
         self._job.stop()

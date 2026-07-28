@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 import yaml
 import boto3
+from botocore.exceptions import ClientError
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig, HyperPodCompute
@@ -735,6 +736,7 @@ class BaseTrainer(ABC):
             last_timestamp = int(time.time() * 1000)
         seen_event_ids = set()
 
+        empty_cycles = 0
         while True:
             try:
                 params = {
@@ -746,6 +748,8 @@ class BaseTrainer(ABC):
                 response = logs_client.filter_log_events(**params)
                 events = response.get("events", [])
 
+                if events:
+                    empty_cycles = 0
                 for event in events:
                     event_id = event.get("eventId", "")
                     if event_id not in seen_event_ids:
@@ -756,11 +760,32 @@ class BaseTrainer(ABC):
                         ts = event.get("timestamp", 0)
                         if ts > last_timestamp:
                             last_timestamp = ts
+                if not events:
+                    empty_cycles += 1
+                    if empty_cycles == 3:
+                        logger.info("No log events yet, still waiting...")
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "")
+                if error_code == "AccessDeniedException":
+                    raise
+                if error_code == "ResourceNotFoundException":
+                    empty_cycles += 1
+                    if empty_cycles == 1:
+                        logger.info("Waiting for log group to become available...")
+                    elif empty_cycles >= 60:
+                        logger.warning(
+                            "Log group %s still not found after %d attempts. "
+                            "Check IAM permissions for logs:FilterLogEvents.",
+                            log_group,
+                            empty_cycles,
+                        )
+                else:
+                    logger.debug(f"Error fetching HP logs: {e}")
             except Exception as e:
                 logger.debug(f"Error fetching HP logs: {e}")
 
-            # Note: HyperPod jobs don't have a simple status API to poll for completion.
-            # This polls till the user interrupts with Ctrl+C. 
+            # HyperPod jobs don't have a simple status API to poll for completion.
+            # This polls till the user interrupts with Ctrl+C.
             try:
                 time.sleep(poll)
             except KeyboardInterrupt:
