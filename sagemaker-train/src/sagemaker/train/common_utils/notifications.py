@@ -166,10 +166,10 @@ def _build_topic_policy(topic_arn: str, account_id: str) -> str:
     """
     policy = {
         "Version": "2008-10-17",
-        "Id": "__default_policy_ID",
+        "Id": "SageMakerNotificationsTopicPolicy",
         "Statement": [
             {
-                "Sid": "__default_statement_ID",
+                "Sid": "SNSTopicAdministration",
                 "Effect": "Allow",
                 "Principal": {"AWS": "*"},
                 "Action": [
