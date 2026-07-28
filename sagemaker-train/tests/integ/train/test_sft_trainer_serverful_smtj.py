@@ -210,12 +210,12 @@ def test_sft_trainer_serverful_smtj_invalid_instance_count_raises(
     invalid_instance_count = 9
 
     sft_trainer = SFTTrainer(
-        model="amazon.nova-micro-v1",
+        model="nova-textgeneration-lite-v2",
         training_type=TrainingType.LORA,
         training_dataset=training_resources["training_dataset"],
         s3_output_path=training_resources["s3_output_path"],
         compute=TrainingJobCompute(
-            instance_type="ml.g5.12xlarge",  # valid so count check is reached
+            instance_type="ml.p4d.24xlarge",  # valid so count check is reached
             instance_count=invalid_instance_count,
         ),
         sagemaker_session=sagemaker_session_us_east_1,
