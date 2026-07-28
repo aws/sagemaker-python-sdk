@@ -23,6 +23,7 @@ from sagemaker.core.serializers import NumpySerializer, TorchTensorSerializer
 from sagemaker.core.deserializers import JSONDeserializer, TorchTensorDeserializer
 from sagemaker.serve.constants import Framework
 from sagemaker.serve.mode.function_pointers import Mode
+from sagemaker.core.training.configs import SourceCode
 
 
 class TestModelBuilderSimpleMethods:
@@ -453,6 +454,81 @@ class TestBuildForPassthroughS3PathPreservation:
         builder._build_for_passthrough()
 
         assert builder.s3_upload_path is None
+
+
+class TestBuildForPassthroughSourceCodeRepack:
+    """Tests for _build_for_passthrough() repacking source_code into the model artifact.
+
+    When source_code is supplied together with a model artifact, build() must repack
+    the code into the artifact instead of dropping it.
+    """
+
+    def _make_mock_session(self):
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.config = {}
+        mock_session.boto_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        return mock_session
+
+    def _make_builder(self, **kwargs):
+        return ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.SAGEMAKER_ENDPOINT,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            source_code=SourceCode(source_dir="./code", entry_script="inference.py"),
+            sagemaker_session=self._make_mock_session(),
+            **kwargs,
+        )
+
+    @patch.object(ModelBuilder, "_create_model")
+    def test_repacks_and_preserves_script_mode_vars_with_s3_model_data_url(self, mock_create):
+        """source_code + s3_model_data_url artifact -> repack path, script-mode vars kept."""
+        mock_create.return_value = Mock()
+
+        builder = self._make_builder(s3_model_data_url="s3://bucket/model.tar.gz")
+
+        builder._build_for_passthrough()
+
+        # script-mode vars must NOT be cleared (that would skip repack)
+        assert builder.entry_point == "inference.py"
+        assert builder.source_dir == "./code"
+        assert builder.s3_upload_path is None
+        mock_create.assert_called_once()
+
+    @patch.object(ModelBuilder, "_create_model")
+    def test_bridges_model_path_to_s3_model_data_url(self, mock_create):
+        """When only model_path (S3) is given, it is bridged to s3_model_data_url for repack."""
+        mock_create.return_value = Mock()
+
+        builder = self._make_builder()
+        builder.model_path = "s3://bucket/model.tar.gz"
+
+        builder._build_for_passthrough()
+
+        assert builder.s3_model_data_url == "s3://bucket/model.tar.gz"
+        assert builder.entry_point == "inference.py"
+        assert builder.source_dir == "./code"
+        mock_create.assert_called_once()
+
+    @patch.object(ModelBuilder, "_create_model")
+    def test_pure_image_passthrough_without_source_code_still_clears_vars(self, mock_create):
+        """No source_code -> pure image passthrough clears script-mode vars (unchanged)."""
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.SAGEMAKER_ENDPOINT,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            s3_model_data_url="s3://bucket/model.tar.gz",
+            sagemaker_session=self._make_mock_session(),
+        )
+
+        builder._build_for_passthrough()
+
+        assert builder.entry_point is None
+        assert builder.source_dir is None
+        mock_create.assert_called_once()
 
 
 class TestGetDockerClient:
