@@ -40,7 +40,6 @@ from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY
 from sagemaker.core.telemetry.constants import Feature
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class CPTTrainer(BaseTrainer):

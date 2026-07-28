@@ -361,7 +361,7 @@ class BedrockModelBuilder:
                         self._get_bedrock_client(), model_arn
                     )
                     if existing_deployment:
-                        logger.warning(
+                        logger.info(
                             "Reusing existing custom model %s and deployment %s "
                             "(matched model-source tag). No new resources were created. "
                             "Pass reuse_resources=False to force new resources.",
@@ -372,7 +372,7 @@ class BedrockModelBuilder:
                             "modelArn": model_arn,
                             "customModelDeploymentArn": existing_deployment,
                         }
-                    logger.warning(
+                    logger.info(
                         "Reusing existing custom model %s (matched model-source tag); "
                         "creating a new deployment on it. Pass reuse_resources=False to "
                         "force a new model.",

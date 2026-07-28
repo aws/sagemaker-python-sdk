@@ -31,7 +31,6 @@ from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class DPOTrainer(BaseTrainer):
