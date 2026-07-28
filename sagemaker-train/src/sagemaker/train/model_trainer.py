@@ -594,11 +594,7 @@ class ModelTrainer(BaseModel):
 
             final_input_data_config = list(existing_channels.values()) + new_channels
 
-        # Heterogeneous clusters: SageMaker enforces an all-or-nothing rule -- if any
-        # channel is assigned to instance groups, every channel must be. The SDK-managed
-        # channels (recipe/code/sm_drivers) are not user-configurable, so when a user
-        # assigns instance groups to any of their channels we assign the managed channels
-        # to the full set of instance groups to satisfy the rule.
+        # Assign SDK-managed channels to instance groups when the user uses them (see helper).
         managed_channel_instance_group_names = self._resolve_managed_channel_instance_groups(
             final_input_data_config
         )
@@ -927,8 +923,7 @@ class ModelTrainer(BaseModel):
             return None
 
         def _channel_has_instance_groups(channel: Union[Channel, InputData]) -> bool:
-            # A Channel wraps its S3DataSource in a DataSource; an InputData may hold an
-            # S3DataSource directly on its data_source attribute.
+            # Channel nests its S3DataSource under data_source; InputData may hold it directly.
             s3_data_source = None
             if isinstance(channel, Channel):
                 if channel.data_source:
@@ -976,9 +971,7 @@ class ModelTrainer(BaseModel):
         """
         from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
-        # Only pass instance_group_names through when provided so that channels built without
-        # heterogeneous-cluster assignment keep the field unset (Unassigned), matching the
-        # prior default behavior.
+        # Pass the field only when provided, so it stays unset (Unassigned) by default.
         instance_group_kwargs = (
             {"instance_group_names": instance_group_names}
             if instance_group_names is not None
