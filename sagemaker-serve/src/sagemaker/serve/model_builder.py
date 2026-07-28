@@ -2284,10 +2284,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     script_name=os.path.basename(self.entry_point),
                 )
 
-            # ``script_dependencies`` (derived from SourceCode.requirements) is a
-            # list of paths; ``self.dependencies`` is the deprecated auto-detect
-            # dict ({"auto": True}) and must not be passed to repack_model, which
-            # iterates dependencies as filesystem paths.
+            # Use script_dependencies (a list); self.dependencies is the
+            # deprecated auto-detect dict, which repack_model would iterate as paths.
             repack_dependencies = self.script_dependencies or []
 
             logger.info(

@@ -100,10 +100,8 @@ class _ModelBuilderServers(object):
         if self.model_metadata:
             mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
 
-        # A model artifact supplied via s3_model_data_url (e.g. a completed
-        # training job's artifact) together with source_code is a valid input:
-        # the code is repacked into the artifact and served by the chosen model
-        # server. Accept it as sufficient alongside model/MLflow/inference_spec.
+        # s3_model_data_url (e.g. a trained artifact) with source_code is valid:
+        # the code is repacked into the artifact and served by the model server.
         if (
             not self.model
             and not mlflow_path
