@@ -76,62 +76,24 @@ class _ForEachPropertyReference(PipelineVariable):
         return self._refs
 
 
-class _TerminalPropertyReference(_ForEachPropertyReference):
-    """A property reference that rejects further drilling.
-
-    Used for paths that are at their maximum allowed depth (e.g. a single-level
-    CurrentItem field like ``ForEach.CurrentItem.name``).
-    """
-
-    def __getattr__(self, name: str) -> "_ForEachPropertyReference":
-        """Reject further attribute access."""
-        if name.startswith("_"):
-            raise AttributeError(name)
-        raise AttributeError(
-            f"Cannot drill deeper into '{self._path}'. The service only "
-            f"supports one level of field access on CurrentItem "
-            f"(e.g. CurrentItem().name, not CurrentItem().a.b)."
-        )
-
-    def __getitem__(self, item: Union[int, str]) -> "_ForEachPropertyReference":
-        """Reject indexing on a terminal reference."""
-        raise TypeError(
-            f"Cannot drill deeper into '{self._path}'. The service only "
-            f"supports one level of field access on CurrentItem."
-        )
-
-
 class CurrentItem(_ForEachPropertyReference):
     """Reference to the current iteration item inside a ForEach body step.
 
     Valid ONLY within the steps of a ``ForEachStep``'s ``for_each_body``.
     The bare reference resolves to the whole item (for scalar items). For
-    JSON-object items, drill one level into a top-level field::
+    JSON-object items, drill into fields via attribute access or bracket
+    indexing to any depth::
 
         item = CurrentItem()
-        item.expr             # {"Get": "ForEach.CurrentItem"}
-        item.name.expr        # {"Get": "ForEach.CurrentItem.name"}
-
-    Only one level of field access is supported. Deeper paths
-    (``item.a.b``) and bracket indexing (``item["score"]``) are rejected.
+        item.expr                 # {"Get": "ForEach.CurrentItem"}
+        item.name.expr            # {"Get": "ForEach.CurrentItem.name"}
+        item.a.b.c.expr           # {"Get": "ForEach.CurrentItem.a.b.c"}
+        item["score"].expr        # {"Get": "ForEach.CurrentItem['score']"}
     """
 
     def __init__(self):
         """Initialize a CurrentItem reference."""
         super().__init__(_CURRENT_ITEM_PATH)
-
-    def __getattr__(self, name: str) -> "_ForEachPropertyReference":
-        """Allow one level of field access, returning a terminal reference."""
-        if name.startswith("_"):
-            raise AttributeError(name)
-        return _TerminalPropertyReference(f"{self._path}.{name}", self._refs)
-
-    def __getitem__(self, item: Union[int, str]) -> "_ForEachPropertyReference":
-        """Reject indexing; the CurrentItem grammar only supports dot paths."""
-        raise TypeError(
-            f"CurrentItem does not support indexing ('[{item!r}]'). Use attribute "
-            f"access instead, e.g. CurrentItem().{item} for field access."
-        )
 
 
 class ChildOutput(_ForEachPropertyReference):

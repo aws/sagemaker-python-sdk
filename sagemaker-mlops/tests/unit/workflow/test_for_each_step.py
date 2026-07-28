@@ -115,19 +115,15 @@ def test_current_item_bare_expr():
 
 def test_current_item_drilled_expr():
     assert CurrentItem().name.expr == {"Get": "ForEach.CurrentItem.name"}
+    assert CurrentItem().a.b.c.expr == {"Get": "ForEach.CurrentItem.a.b.c"}
 
 
-def test_current_item_multi_level_drill_rejected():
-    # the service only supports one level of field access
-    ref = CurrentItem().a
-    with pytest.raises(AttributeError, match="Cannot drill deeper"):
-        ref.b
-
-
-def test_current_item_indexing_rejected():
-    # the CurrentItem grammar only supports dot paths, not bracket indexing
-    with pytest.raises(TypeError, match="does not support indexing"):
-        CurrentItem()["score"]
+def test_current_item_bracket_indexing():
+    assert CurrentItem()["score"].expr == {"Get": "ForEach.CurrentItem['score']"}
+    assert CurrentItem().items[0].expr == {"Get": "ForEach.CurrentItem.items[0]"}
+    assert CurrentItem()["nested"]["key"].expr == {
+        "Get": "ForEach.CurrentItem['nested']['key']"
+    }
 
 
 def test_current_item_has_no_referenced_steps():
