@@ -281,13 +281,14 @@ class TestCustomScorerEvaluatorWithMTRLTrainer:
 class TestEvaluateSubmissionWithMTRLTrainer:
     """Test that evaluate() can be called successfully when model is an MTRLTrainer."""
 
+    @patch('sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role', side_effect=lambda provided_role, **kwargs: provided_role)
     @patch('sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn')
     @patch('sagemaker.train.evaluate.base_evaluator.BaseEvaluator._get_or_create_artifact_arn')
     @patch('sagemaker.train.evaluate.execution.EvaluationPipelineExecution.start')
     @patch('sagemaker.train.evaluate.benchmark_evaluator.BenchMarkEvaluator.hyperparameters', new_callable=PropertyMock)
     def test_benchmark_evaluate_submission_with_mtrl_trainer(
-        self, mock_hyperparams, mock_start, mock_artifact, mock_resolve_mp, mock_mlflow
+        self, mock_hyperparams, mock_start, mock_artifact, mock_resolve_mp, mock_mlflow, mock_role
     ):
         """BenchMarkEvaluator.evaluate() should successfully submit when model is MTRLTrainer."""
         from sagemaker.train.evaluate import BenchMarkEvaluator, get_benchmarks
@@ -325,13 +326,14 @@ class TestEvaluateSubmissionWithMTRLTrainer:
         assert execution.arn is not None
         mock_start.assert_called_once()
 
+    @patch('sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role', side_effect=lambda provided_role, **kwargs: provided_role)
     @patch('sagemaker.train.evaluate.base_evaluator._resolve_mlflow_resource_arn')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._resolve_model_package_arn')
     @patch('sagemaker.train.evaluate.base_evaluator.BaseEvaluator._get_or_create_artifact_arn')
     @patch('sagemaker.train.evaluate.execution.EvaluationPipelineExecution.start')
     @patch('sagemaker.train.evaluate.custom_scorer_evaluator.CustomScorerEvaluator.hyperparameters', new_callable=PropertyMock)
     def test_custom_scorer_evaluate_submission_with_mtrl_trainer(
-        self, mock_hyperparams, mock_start, mock_artifact, mock_resolve_mp, mock_mlflow
+        self, mock_hyperparams, mock_start, mock_artifact, mock_resolve_mp, mock_mlflow, mock_role
     ):
         """CustomScorerEvaluator.evaluate() should successfully submit when model is MTRLTrainer."""
         from sagemaker.train.evaluate import CustomScorerEvaluator

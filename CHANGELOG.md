@@ -1,4 +1,122 @@
 # Changelog
+
+## v3.17.0 (2026-07-24)
+
+### New Features
+
+- feat: update SDK to use latest LMI v27 image for sdk v3.x (#5976)
+- feat(serve): support fine-tuned models in deployment-config API (#6041)
+- feat: Wire BatchWriteRecord and ListRecords into ingest_dataframe (#6026)
+
+### Bug Fixes
+
+- fix: Fix source_dir in FrameworkProcessor (#6047)
+- fix(train): correct Networking field names in ModelTrainer intelligent defaults (#6064)
+- fix: resolve MTRL eval base-model ARN against the configured hub (#6040)
+- fix(train): Fall back to public hub when private hub lacks base model (#6092)
+- fix: datamixing recipe path fix (#6073)
+- fix: Fix private hub (#6036)
+- fix(serve): support aliased hub content names in private hub deploys (#6039)
+- fix(serve): dedicated INFERENCE_RECOMMENDER telemetry feature + type workload param (#6028)
+- fix: Fixing EULA check, relying on HostingEulaUri field (#6077)
+
+### Tests
+
+- test: Doc update and added SFT integ test (#6018)
+- test: Fix role issue in mtrl integ tests (#6070)
+- test: Fix gpu integ test failure due to outdated MPG (#6097)
+- test: move two tests in serve to gpu-integ-tests (#6096)
+- test(feature-processor): Isolate pipeline names to fix flaky integ tests (#6095)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
+## v3.16.0 (2026-07-15)
+
+### New Features
+
+- feat: actionable guidance for removed v2 interfaces (#6004)
+- feat(serve): add SageMaker GenAI inference benchmarking and recommendation (#5874)
+- feat(feature-store): add BatchWriteRecord and ListRecords to FeatureGroup (#5983)
+
+### Bug Fixes
+
+- fix(iam): scope repo-level ECR actions to prevent false deny in preflight validation (#6024)
+- fix: filter full recipe template from serverless train() (#6021)
+- Fix sm-train unit tests + use single logger in base trainer (#6030)
+
+### Tests
+
+- test(mlops): Skip non-PEP440 version keys in sklearn_latest_version (#6022)
+
+## v3.15.1 (2026-07-09)
+
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
+### Bug Fixes
+
+- fix: always apply evaluator identity keywords and allow explicit domain_id (#5989)
+- fix: ModelBuilder resolves private hub artifacts correctly (#5985)
+- fix: refresh LLMAsJudgeEvaluator allowed evaluator models (#5987)
+- fix: define LAMBDA_ARN_REGEX in finetune_utils to fix RLVRTrainer NameError (#5988)
+- fix: RLVR validation bugfix (#6000)
+- fix: drop claude-sonnet-4-20250514 from evaluator allowlist (#6009)
+- fix(serve): Invoke pip without shell in xgboost install_package (#5981)
+- fix: Correct DJL-LMI ISO/ADC accounts + add THF/ISO-E (djl-lmi, huggingface-llm-neuronx) (#5980)
+
+### Documentation
+
+- docs: Add AGENTS.md and llms.txt for AI agent v3 guidance (#5982)
+- docs: Add SDK-first guidance to AGENTS.md and llms.txt (#5997)
+- docs: Add Version Lifecycle page under Getting Started (#5994)
+- docs: serve robots.txt opting V2 docs out of AI training crawls (#6003)
+
+### Other
+
+- Add Triton Server v26.05 image URI config (#5999)
+- Add sklearn 1.4-2-py312 and xgboost 3.2-0 image URI configs (#6008)
+- test: Fix/v3 tests (#5996)
+- test: wip nova hyperpod integ tests (#5990)
+
+## v3.15.0 (2026-06-22)
+
+### New Features
+
+- **feat: Training — Recipes** - Add 3-level recipe override support with `get_resolved_recipe()`
+- **feat: Training — Recipes** - Recipe override handling
+- **feat: Training — Recipes** - Add Nova-specific recipe validations
+- **feat: Training — Recipes** - Auto-resolve HyperPod recipe from Hub
+- **feat: Training — Compute/Infra** - Add Serverless / SMTJ / HyperPod support to trainers and evaluators
+- **feat: Training — Compute/Infra** - Add infra validation
+- **feat: Training — Methods & Data** - Enable Data Mixing for Nova models
+- **feat: Training — Methods & Data** - Add `is_multimodal` utils function (multimodal data auto-detection)
+- **feat: Training — Methods & Data** - RLVRTrainer Lambda ARN support
+- **feat: Training — Methods & Data** - RLVR reward Lambda validation
+- **feat: Evaluation** - InspectAI evaluator
+- **feat: Evaluation** - Add Nova as a target for LLM-as-a-Judge (LLMAJ)
+- **feat: Evaluation** - Support serverful training job checkpoint resolution in InspectAI evaluator
+- **feat: Deploy/Setup/Validation** - Add Nova SMI config bounds validation to ModelBuilder
+- **feat: Deploy/Setup/Validation** - IAM role creation (auto-create least-privilege execution roles, SDK-wide)
+- **feat: Deploy/Setup/Validation** - HyperPod IAM creation
+
+### Bug Fixes
+
+- fix: Reject unknown recipe overrides (serverless + serverful) and untrusted IAM roles
+- fix: Apply recipe overrides to hyperparameters in SMTJ serverful path
+- fix: Recipe override errors in evaluator
+- fix: Hub-content IAM perms, recipe dataset paths, and log markup escaping
+- fix: Harden auto-created IAM roles and protect curated recipe keys
+- fix: Add HyperPod validation in train and evaluate
+- fix: Evaluation on HyperPod
+- fix: Resolve HyperPod training image from EKS payload template
+- fix: Skip `model_package_group` validation when HyperPod compute is provided in CPTTrainer
+- fix: Use compute param in get fine-tuning utils
+- fix: Set Converse as S3DataType for Nova models in SMTJ Serverful for SFT and DPO
+- fix: Use Converse S3DataType for Nova SFT/DPO in serverless flow
+- fix: MLflow error causing OSS model eval to fail
+- fix: RLVR setup and reward Lambda handling
+
 ## v3.14.0 (2026-06-18)
 
 ### Other

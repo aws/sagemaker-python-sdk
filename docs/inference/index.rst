@@ -508,6 +508,12 @@ V3 Package Structure
      - Pipelines, processing, model registry, monitoring, Clarify
 
 
+.. toctree::
+   :maxdepth: 2
+
+   deploy_finetuned
+
+
 Inference Examples
 -----------------
 

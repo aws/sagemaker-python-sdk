@@ -1,4 +1,40 @@
 # Changelog
+
+## v1.17.0 (2026-07-24)
+
+### New Features
+
+- feat: Wire BatchWriteRecord and ListRecords into ingest_dataframe (#6026)
+
+### Tests
+
+- test(feature-processor): Isolate pipeline names to fix flaky integ tests (#6095)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
+## v1.16.0 (2026-07-15)
+
+### Tests
+
+- test(mlops): Skip non-PEP440 version keys in sklearn_latest_version (#6022)
+
+## v1.15.1 (2026-07-09)
+
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
+## v1.15.0 (2026-06-22)
+
+### New Features
+
+- feat: IAM role creation — auto-create least-privilege execution roles, SDK-wide (#2041)
+
+### Bug Fixes
+
+- fix(iam): Validate roles by default, opt-in creation, and add MLflow perms (#2080)
+- fix: Resolve MLflow app discovery issues (#5924)
+
 ## v1.14.0 (2026-06-18)
 
 ### Other

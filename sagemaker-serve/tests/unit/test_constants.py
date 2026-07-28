@@ -44,6 +44,10 @@ class TestSupportedModelServers(unittest.TestCase):
             ModelServer.TGI,
             ModelServer.TEI,
             ModelServer.SMD,
+            ModelServer.VLLM,
+            ModelServer.SGLANG,
+            ModelServer.VLLM_OMNI,
+            ModelServer.LLAMACPP,
         }
         self.assertEqual(SUPPORTED_MODEL_SERVERS, expected_servers)
 

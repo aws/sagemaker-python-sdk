@@ -14,38 +14,44 @@
 from __future__ import absolute_import
 
 import json
-import pytest
 import time
 from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch, ANY, PropertyMock
-from botocore.exceptions import ClientError
+from unittest.mock import ANY, MagicMock, Mock, PropertyMock, patch
 
+import pytest
+from botocore.exceptions import ClientError
 from sagemaker.core.resources import Pipeline, PipelineExecution
 from sagemaker.core.utils.exceptions import FailedStatusError, TimeoutExceededError
-
+from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
+from sagemaker.train.evaluate.constants import (
+    EvalType,
+    _get_pipeline_name,
+    _get_pipeline_name_prefix,
+)
 from sagemaker.train.evaluate.execution import (
-    EvaluationPipelineExecution,
     BenchmarkEvaluationExecution,
+    EvaluationPipelineExecution,
+    InspectAIEvaluationExecution,
     LLMAJEvaluationExecution,
-    StepDetail,
     PipelineExecutionStatus,
-    _create_evaluation_pipeline,
-    _clean_unassigned_value,
+    StepDetail,
     _clean_unassigned_from_dict,
+    _clean_unassigned_value,
+    _create_evaluation_pipeline,
+    _create_execution_from_pipeline_execution,
     _extract_eval_type_from_arn,
+    _extract_output_s3_location_from_steps,
     _get_or_create_pipeline,
     _start_pipeline_execution,
-    _create_execution_from_pipeline_execution,
-    _extract_output_s3_location_from_steps,
 )
-from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
-from sagemaker.train.evaluate.constants import EvalType, _get_pipeline_name, _get_pipeline_name_prefix
 
 # Test constants
 DEFAULT_REGION = "us-west-2"
 DEFAULT_ROLE = "arn:aws:iam::123456789012:role/test-role"
 DEFAULT_PIPELINE_NAME = "SagemakerEvaluation-BenchmarkEvaluation-test-uuid-123"
-DEFAULT_PIPELINE_ARN = f"arn:aws:sagemaker:{DEFAULT_REGION}:123456789012:pipeline/{DEFAULT_PIPELINE_NAME}"
+DEFAULT_PIPELINE_ARN = (
+    f"arn:aws:sagemaker:{DEFAULT_REGION}:123456789012:pipeline/{DEFAULT_PIPELINE_NAME}"
+)
 DEFAULT_EXECUTION_ARN = f"{DEFAULT_PIPELINE_ARN}/execution/test-execution-123"
 DEFAULT_S3_OUTPUT_PATH = "s3://test-bucket/evaluation/output"
 DEFAULT_PIPELINE_DEFINITION = json.dumps({"Version": "2020-12-01", "Steps": []})
@@ -53,6 +59,7 @@ DEFAULT_PIPELINE_DEFINITION = json.dumps({"Version": "2020-12-01", "Steps": []})
 
 class MockUnassigned:
     """Mock class to simulate sagemaker_core Unassigned objects."""
+
     pass
 
 
@@ -60,15 +67,15 @@ class MockUnassigned:
 def mock_session():
     """Mock SageMaker session that passes isinstance checks."""
     from sagemaker.core.helper.session_helper import Session
-    
+
     # Create a mock that will pass isinstance(obj, Session) checks
     session = MagicMock()
     session.boto_region_name = DEFAULT_REGION
     session.client.return_value = MagicMock()
-    
+
     # Make isinstance check pass
-    session.__class__ = type('MockSession', (Session,), {})
-    
+    session.__class__ = type("MockSession", (Session,), {})
+
     return session
 
 
@@ -94,10 +101,6 @@ def mock_pipeline_execution():
     return pe
 
 
-# ============================================================================
-# Tests for Helper Functions
-# ============================================================================
-
 class TestCreateEvaluationPipeline:
     """Tests for _create_evaluation_pipeline function."""
 
@@ -108,19 +111,22 @@ class TestCreateEvaluationPipeline:
         mock_get_name.return_value = DEFAULT_PIPELINE_NAME
         mock_pipeline = MagicMock()
         mock_pipeline_class.create.return_value = mock_pipeline
-        
+
         result = _create_evaluation_pipeline(
             eval_type=EvalType.BENCHMARK,
             role_arn=DEFAULT_ROLE,
             pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
             session=mock_session,
-            region=DEFAULT_REGION
+            region=DEFAULT_REGION,
         )
-        
+
         mock_pipeline_class.create.assert_called_once()
         assert mock_pipeline_class.create.call_args.kwargs["pipeline_name"] == DEFAULT_PIPELINE_NAME
         assert mock_pipeline_class.create.call_args.kwargs["role_arn"] == DEFAULT_ROLE
-        assert mock_pipeline_class.create.call_args.kwargs["pipeline_definition"] == DEFAULT_PIPELINE_DEFINITION
+        assert (
+            mock_pipeline_class.create.call_args.kwargs["pipeline_definition"]
+            == DEFAULT_PIPELINE_DEFINITION
+        )
         assert result == mock_pipeline
 
     @patch("sagemaker.train.evaluate.execution.Pipeline")
@@ -128,19 +134,17 @@ class TestCreateEvaluationPipeline:
         """Test that pipeline waits for active status."""
         mock_pipeline = MagicMock()
         mock_pipeline_class.create.return_value = mock_pipeline
-        
+
         _create_evaluation_pipeline(
             eval_type=EvalType.BENCHMARK,
             role_arn=DEFAULT_ROLE,
             pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
             session=mock_session,
-            region=DEFAULT_REGION
+            region=DEFAULT_REGION,
         )
-        
+
         mock_pipeline.wait_for_status.assert_called_once_with(
-            target_status="Active",
-            poll=5,
-            timeout=300
+            target_status="Active", poll=5, timeout=300
         )
 
     @patch("sagemaker.train.evaluate.execution.Pipeline")
@@ -149,15 +153,15 @@ class TestCreateEvaluationPipeline:
         mock_pipeline = MagicMock()
         mock_pipeline.wait_for_status.side_effect = Exception("Timeout")
         mock_pipeline_class.create.return_value = mock_pipeline
-        
+
         result = _create_evaluation_pipeline(
             eval_type=EvalType.BENCHMARK,
             role_arn=DEFAULT_ROLE,
             pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
             session=mock_session,
-            region=DEFAULT_REGION
+            region=DEFAULT_REGION,
         )
-        
+
         # Should still return the pipeline even if wait fails
         assert result == mock_pipeline
 
@@ -184,23 +188,15 @@ class TestCleanUnassignedFromDict:
     def test_clean_dict_with_failure_reason(self):
         """Test cleaning dict with Unassigned failure_reason."""
         unassigned = MockUnassigned()
-        data = {
-            "status": {
-                "failure_reason": unassigned
-            }
-        }
-        
+        data = {"status": {"failure_reason": unassigned}}
+
         result = _clean_unassigned_from_dict(data)
         assert result["status"]["failure_reason"] is None
 
     def test_clean_dict_without_failure_reason(self):
         """Test cleaning dict without failure_reason."""
-        data = {
-            "status": {
-                "other_field": "value"
-            }
-        }
-        
+        data = {"status": {"other_field": "value"}}
+
         result = _clean_unassigned_from_dict(data)
         assert result == data
 
@@ -208,29 +204,25 @@ class TestCleanUnassignedFromDict:
 class TestExtractEvalTypeFromArn:
     """Tests for _extract_eval_type_from_arn function."""
 
-    @pytest.mark.parametrize("eval_type", [
-        EvalType.BENCHMARK,
-        EvalType.CUSTOM_SCORER,
-        EvalType.LLM_AS_JUDGE
-    ])
+    @pytest.mark.parametrize(
+        "eval_type", [EvalType.BENCHMARK, EvalType.CUSTOM_SCORER, EvalType.LLM_AS_JUDGE]
+    )
     def test_extract_from_pipeline_arn(self, eval_type):
         """Test extracting eval type from pipeline ARN."""
         pipeline_name = _get_pipeline_name(eval_type, unique_id="test-uuid")
         arn = f"arn:aws:sagemaker:{DEFAULT_REGION}:123456789012:pipeline/{pipeline_name}"
-        
+
         result = _extract_eval_type_from_arn(arn)
         assert result == eval_type
 
-    @pytest.mark.parametrize("eval_type", [
-        EvalType.BENCHMARK,
-        EvalType.CUSTOM_SCORER,
-        EvalType.LLM_AS_JUDGE
-    ])
+    @pytest.mark.parametrize(
+        "eval_type", [EvalType.BENCHMARK, EvalType.CUSTOM_SCORER, EvalType.LLM_AS_JUDGE]
+    )
     def test_extract_from_execution_arn(self, eval_type):
         """Test extracting eval type from execution ARN."""
         pipeline_name = _get_pipeline_name(eval_type, unique_id="test-uuid")
         arn = f"arn:aws:sagemaker:{DEFAULT_REGION}:123456789012:pipeline/{pipeline_name}/execution/exec-123"
-        
+
         result = _extract_eval_type_from_arn(arn)
         assert result == eval_type
 
@@ -257,28 +249,30 @@ class TestGetOrCreatePipeline:
 
     @patch("sagemaker.train.evaluate.execution.ResourceTag")
     @patch("sagemaker.train.evaluate.execution.Pipeline")
-    def test_get_existing_pipeline_and_update(self, mock_pipeline_class, mock_tag_class, mock_session):
+    def test_get_existing_pipeline_and_update(
+        self, mock_pipeline_class, mock_tag_class, mock_session
+    ):
         """Test getting and updating existing pipeline via Pipeline.get_all with prefix."""
         # Mock pipeline with matching tag
         mock_pipeline = MagicMock()
         mock_pipeline.pipeline_name = DEFAULT_PIPELINE_NAME
         mock_pipeline.pipeline_arn = DEFAULT_PIPELINE_ARN
         mock_pipeline_class.get_all.return_value = iter([mock_pipeline])
-        
+
         # Mock tags
         mock_tag = MagicMock()
         mock_tag.key = "SagemakerModelEvaluation"
         mock_tag.value = "true"
         mock_tag_class.get_all.return_value = iter([mock_tag])
-        
+
         result = _get_or_create_pipeline(
             eval_type=EvalType.BENCHMARK,
             pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
             role_arn=DEFAULT_ROLE,
             session=mock_session,
-            region=DEFAULT_REGION
+            region=DEFAULT_REGION,
         )
-        
+
         # Should call get_all with prefix
         mock_pipeline_class.get_all.assert_called_once()
         # Should update the found pipeline
@@ -293,51 +287,53 @@ class TestGetOrCreatePipeline:
         mock_pipeline_class.get.side_effect = ClientError(error_response, "DescribePipeline")
         mock_pipeline = MagicMock()
         mock_create.return_value = mock_pipeline
-        
-        result = _get_or_create_pipeline(
-            eval_type=EvalType.BENCHMARK,
-            pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
-            role_arn=DEFAULT_ROLE,
-            session=mock_session,
-            region=DEFAULT_REGION
-        )
-        
-        mock_create.assert_called_once_with(
-            EvalType.BENCHMARK,
-            DEFAULT_ROLE,
-            DEFAULT_PIPELINE_DEFINITION,
-            mock_session,
-            DEFAULT_REGION,
-            []
-        )
-        assert result == mock_pipeline
 
-    @patch("sagemaker.train.evaluate.execution._create_evaluation_pipeline")
-    @patch("sagemaker.train.evaluate.execution.Pipeline")
-    def test_create_pipeline_when_not_found_with_jumpstart_tags(self, mock_pipeline_class, mock_create, mock_session):
-        """Test creating pipeline when it doesn't exist."""
-        error_response = {"Error": {"Code": "ResourceNotFound"}}
-        mock_pipeline_class.get.side_effect = ClientError(error_response, "DescribePipeline")
-        mock_pipeline = MagicMock()
-        mock_create.return_value = mock_pipeline
-        create_tags = [{"key": "sagemaker-sdk:jumpstart-model-id", "value": "dummy-js-model-id"}]
-        
         result = _get_or_create_pipeline(
             eval_type=EvalType.BENCHMARK,
             pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
             role_arn=DEFAULT_ROLE,
             session=mock_session,
             region=DEFAULT_REGION,
-            create_tags=create_tags
         )
-        
+
         mock_create.assert_called_once_with(
             EvalType.BENCHMARK,
             DEFAULT_ROLE,
             DEFAULT_PIPELINE_DEFINITION,
             mock_session,
             DEFAULT_REGION,
-            create_tags
+            [],
+        )
+        assert result == mock_pipeline
+
+    @patch("sagemaker.train.evaluate.execution._create_evaluation_pipeline")
+    @patch("sagemaker.train.evaluate.execution.Pipeline")
+    def test_create_pipeline_when_not_found_with_jumpstart_tags(
+        self, mock_pipeline_class, mock_create, mock_session
+    ):
+        """Test creating pipeline when it doesn't exist."""
+        error_response = {"Error": {"Code": "ResourceNotFound"}}
+        mock_pipeline_class.get.side_effect = ClientError(error_response, "DescribePipeline")
+        mock_pipeline = MagicMock()
+        mock_create.return_value = mock_pipeline
+        create_tags = [{"key": "sagemaker-sdk:jumpstart-model-id", "value": "dummy-js-model-id"}]
+
+        result = _get_or_create_pipeline(
+            eval_type=EvalType.BENCHMARK,
+            pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
+            role_arn=DEFAULT_ROLE,
+            session=mock_session,
+            region=DEFAULT_REGION,
+            create_tags=create_tags,
+        )
+
+        mock_create.assert_called_once_with(
+            EvalType.BENCHMARK,
+            DEFAULT_ROLE,
+            DEFAULT_PIPELINE_DEFINITION,
+            mock_session,
+            DEFAULT_REGION,
+            create_tags,
         )
         assert result == mock_pipeline
 
@@ -348,15 +344,15 @@ class TestGetOrCreatePipeline:
         mock_pipeline_class.get.side_effect = Exception("Generic error")
         mock_pipeline = MagicMock()
         mock_create.return_value = mock_pipeline
-        
+
         result = _get_or_create_pipeline(
             eval_type=EvalType.BENCHMARK,
             pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
             role_arn=DEFAULT_ROLE,
             session=mock_session,
-            region=DEFAULT_REGION
+            region=DEFAULT_REGION,
         )
-        
+
         mock_create.assert_called_once()
         assert result == mock_pipeline
 
@@ -372,19 +368,16 @@ class TestStartPipelineExecution:
         mock_client.start_pipeline_execution.return_value = {
             "PipelineExecutionArn": DEFAULT_EXECUTION_ARN
         }
-        
+
         result = _start_pipeline_execution(
             pipeline_name=DEFAULT_PIPELINE_NAME,
             name="test-execution",
             session=None,
-            region=DEFAULT_REGION
+            region=DEFAULT_REGION,
         )
-        
+
         assert result == DEFAULT_EXECUTION_ARN
-        mock_boto3_client.assert_called_once_with(
-            'sagemaker',
-            region_name=DEFAULT_REGION
-        )
+        mock_boto3_client.assert_called_once_with("sagemaker", region_name=DEFAULT_REGION)
         mock_client.start_pipeline_execution.assert_called_once()
 
     def test_start_execution_with_session(self, mock_session):
@@ -394,14 +387,14 @@ class TestStartPipelineExecution:
         mock_client.start_pipeline_execution.return_value = {
             "PipelineExecutionArn": DEFAULT_EXECUTION_ARN
         }
-        
+
         result = _start_pipeline_execution(
             pipeline_name=DEFAULT_PIPELINE_NAME,
             name="test-execution",
             session=mock_session,
-            region=DEFAULT_REGION
+            region=DEFAULT_REGION,
         )
-        
+
         assert result == DEFAULT_EXECUTION_ARN
         mock_client.start_pipeline_execution.assert_called_once()
 
@@ -412,10 +405,9 @@ class TestCreateExecutionFromPipelineExecution:
     def test_create_execution_basic(self, mock_pipeline_execution):
         """Test creating execution from pipeline execution."""
         result = _create_execution_from_pipeline_execution(
-            pe=mock_pipeline_execution,
-            eval_type=EvalType.BENCHMARK
+            pe=mock_pipeline_execution, eval_type=EvalType.BENCHMARK
         )
-        
+
         assert isinstance(result, EvaluationPipelineExecution)
         assert result.arn == DEFAULT_EXECUTION_ARN
         assert result.status.overall_status == "Executing"
@@ -428,9 +420,9 @@ class TestCreateExecutionFromPipelineExecution:
         pe.pipeline_execution_status = "Failed"
         pe.failure_reason = MockUnassigned()
         pe.last_modified_time = datetime.now()
-        
+
         result = _create_execution_from_pipeline_execution(pe, EvalType.BENCHMARK)
-        
+
         assert result.status.failure_reason is None
 
 
@@ -443,21 +435,19 @@ class TestExtractOutputS3LocationFromSteps:
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_client.describe_training_job.return_value = {
-            "OutputDataConfig": {
-                "S3OutputPath": DEFAULT_S3_OUTPUT_PATH
-            }
+            "OutputDataConfig": {"S3OutputPath": DEFAULT_S3_OUTPUT_PATH}
         }
-        
+
         mock_step = MagicMock()
         mock_step.step_name = "EvaluateCustomModel"
-        mock_step.metadata.training_job.arn = "arn:aws:sagemaker:us-west-2:123456789012:training-job/test-job"
-        
-        result = _extract_output_s3_location_from_steps(
-            raw_steps=[mock_step],
-            session=None,
-            region=DEFAULT_REGION
+        mock_step.metadata.training_job.arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:training-job/test-job"
         )
-        
+
+        result = _extract_output_s3_location_from_steps(
+            raw_steps=[mock_step], session=None, region=DEFAULT_REGION
+        )
+
         assert result == DEFAULT_S3_OUTPUT_PATH
 
     @patch("boto3.client")
@@ -466,34 +456,30 @@ class TestExtractOutputS3LocationFromSteps:
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_client.describe_training_job.return_value = {
-            "OutputDataConfig": {
-                "S3OutputPath": DEFAULT_S3_OUTPUT_PATH
-            }
+            "OutputDataConfig": {"S3OutputPath": DEFAULT_S3_OUTPUT_PATH}
         }
-        
+
         mock_step = MagicMock()
         mock_step.step_name = "EvaluateBaseModel"
-        mock_step.metadata.training_job.arn = "arn:aws:sagemaker:us-west-2:123456789012:training-job/test-job"
-        
-        result = _extract_output_s3_location_from_steps(
-            raw_steps=[mock_step],
-            session=None,
-            region=DEFAULT_REGION
+        mock_step.metadata.training_job.arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:training-job/test-job"
         )
-        
+
+        result = _extract_output_s3_location_from_steps(
+            raw_steps=[mock_step], session=None, region=DEFAULT_REGION
+        )
+
         assert result == DEFAULT_S3_OUTPUT_PATH
 
     def test_extract_no_evaluation_steps(self):
         """Test extracting when no evaluation steps exist."""
         mock_step = MagicMock()
         mock_step.step_name = "OtherStep"
-        
+
         result = _extract_output_s3_location_from_steps(
-            raw_steps=[mock_step],
-            session=None,
-            region=DEFAULT_REGION
+            raw_steps=[mock_step], session=None, region=DEFAULT_REGION
         )
-        
+
         assert result is None
 
     @patch("boto3.client")
@@ -502,18 +488,20 @@ class TestExtractOutputS3LocationFromSteps:
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         error_response = {"Error": {"Code": "ResourceNotFound"}}
-        mock_client.describe_training_job.side_effect = ClientError(error_response, "DescribeTrainingJob")
-        
+        mock_client.describe_training_job.side_effect = ClientError(
+            error_response, "DescribeTrainingJob"
+        )
+
         mock_step = MagicMock()
         mock_step.step_name = "EvaluateCustomModel"
-        mock_step.metadata.training_job.arn = "arn:aws:sagemaker:us-west-2:123456789012:training-job/test-job"
-        
-        result = _extract_output_s3_location_from_steps(
-            raw_steps=[mock_step],
-            session=None,
-            region=DEFAULT_REGION
+        mock_step.metadata.training_job.arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:training-job/test-job"
         )
-        
+
+        result = _extract_output_s3_location_from_steps(
+            raw_steps=[mock_step], session=None, region=DEFAULT_REGION
+        )
+
         assert result is None
 
     @patch("boto3.client")
@@ -522,17 +510,17 @@ class TestExtractOutputS3LocationFromSteps:
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_client.describe_training_job.side_effect = Exception("Unexpected error")
-        
+
         mock_step = MagicMock()
         mock_step.step_name = "EvaluateCustomModel"
-        mock_step.metadata.training_job.arn = "arn:aws:sagemaker:us-west-2:123456789012:training-job/test-job"
-        
-        result = _extract_output_s3_location_from_steps(
-            raw_steps=[mock_step],
-            session=None,
-            region=DEFAULT_REGION
+        mock_step.metadata.training_job.arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:training-job/test-job"
         )
-        
+
+        result = _extract_output_s3_location_from_steps(
+            raw_steps=[mock_step], session=None, region=DEFAULT_REGION
+        )
+
         assert result is None
 
     @patch("boto3.client")
@@ -542,19 +530,13 @@ class TestExtractOutputS3LocationFromSteps:
         mock_step.step_name = "EvaluateCustomModel"
         # Make metadata.training_job.arn raise an exception
         type(mock_step).metadata = PropertyMock(side_effect=Exception("Attribute error"))
-        
+
         result = _extract_output_s3_location_from_steps(
-            raw_steps=[mock_step],
-            session=None,
-            region=DEFAULT_REGION
+            raw_steps=[mock_step], session=None, region=DEFAULT_REGION
         )
-        
+
         assert result is None
 
-
-# ============================================================================
-# Tests for Pydantic Models
-# ============================================================================
 
 class TestStepDetail:
     """Tests for StepDetail model."""
@@ -567,20 +549,17 @@ class TestStepDetail:
             start_time="2024-01-01T00:00:00Z",
             end_time="2024-01-01T00:01:00Z",
             display_name="Test Step",
-            failure_reason=None
+            failure_reason=None,
         )
-        
+
         assert step.name == "TestStep"
         assert step.status == "Completed"
         assert step.start_time == "2024-01-01T00:00:00Z"
 
     def test_create_step_detail_minimal(self):
         """Test creating StepDetail with minimal fields."""
-        step = StepDetail(
-            name="TestStep",
-            status="Waiting"
-        )
-        
+        step = StepDetail(name="TestStep", status="Waiting")
+
         assert step.name == "TestStep"
         assert step.status == "Waiting"
         assert step.start_time is None
@@ -593,29 +572,20 @@ class TestPipelineExecutionStatus:
     def test_create_status(self):
         """Test creating PipelineExecutionStatus."""
         status = PipelineExecutionStatus(
-            overall_status="Executing",
-            step_details=[],
-            failure_reason=None
+            overall_status="Executing", step_details=[], failure_reason=None
         )
-        
+
         assert status.overall_status == "Executing"
         assert len(status.step_details) == 0
 
     def test_create_status_with_steps(self):
         """Test creating status with step details."""
         step = StepDetail(name="Step1", status="Completed")
-        status = PipelineExecutionStatus(
-            overall_status="Executing",
-            step_details=[step]
-        )
-        
+        status = PipelineExecutionStatus(overall_status="Executing", step_details=[step])
+
         assert len(status.step_details) == 1
         assert status.step_details[0].name == "Step1"
 
-
-# ============================================================================
-# Tests for EvaluationPipelineExecution Class
-# ============================================================================
 
 class TestEvaluationPipelineExecutionStart:
     """Tests for EvaluationPipelineExecution.start() method."""
@@ -630,12 +600,12 @@ class TestEvaluationPipelineExecutionStart:
         mock_pipeline = MagicMock()
         mock_get_pipeline.return_value = mock_pipeline
         mock_start.return_value = DEFAULT_EXECUTION_ARN
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Executing"
         mock_pe.creation_time = datetime.now()
         mock_pe_class.get.return_value = mock_pe
-        
+
         execution = EvaluationPipelineExecution.start(
             eval_type=EvalType.BENCHMARK,
             name="test-evaluation",
@@ -643,9 +613,9 @@ class TestEvaluationPipelineExecutionStart:
             role_arn=DEFAULT_ROLE,
             s3_output_path=DEFAULT_S3_OUTPUT_PATH,
             session=mock_session,
-            region=DEFAULT_REGION
+            region=DEFAULT_REGION,
         )
-        
+
         assert execution.arn == DEFAULT_EXECUTION_ARN
         assert execution.eval_type == EvalType.BENCHMARK
         assert execution.s3_output_path == DEFAULT_S3_OUTPUT_PATH
@@ -660,28 +630,26 @@ class TestEvaluationPipelineExecutionStart:
                 name="test-evaluation",
                 pipeline_definition="invalid json",
                 role_arn=DEFAULT_ROLE,
-                session=mock_session
+                session=mock_session,
             )
 
     @patch("sagemaker.train.evaluate.execution._start_pipeline_execution")
     @patch("sagemaker.train.evaluate.execution._get_or_create_pipeline")
-    def test_start_execution_client_error(
-        self, mock_get_pipeline, mock_start, mock_session
-    ):
+    def test_start_execution_client_error(self, mock_get_pipeline, mock_start, mock_session):
         """Test handling ClientError during start."""
         mock_pipeline = MagicMock()
         mock_get_pipeline.return_value = mock_pipeline
         error_response = {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}
         mock_start.side_effect = ClientError(error_response, "StartPipelineExecution")
-        
+
         execution = EvaluationPipelineExecution.start(
             eval_type=EvalType.BENCHMARK,
             name="test-evaluation",
             pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
             role_arn=DEFAULT_ROLE,
-            session=mock_session
+            session=mock_session,
         )
-        
+
         assert execution.status.overall_status == "Failed"
         assert "Access denied" in execution.status.failure_reason
 
@@ -695,15 +663,15 @@ class TestEvaluationPipelineExecutionStart:
         mock_pipeline = MagicMock()
         mock_get_pipeline.return_value = mock_pipeline
         mock_start.side_effect = Exception("Unexpected error")
-        
+
         execution = EvaluationPipelineExecution.start(
             eval_type=EvalType.BENCHMARK,
             name="test-evaluation",
             pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
             role_arn=DEFAULT_ROLE,
-            session=mock_session
+            session=mock_session,
         )
-        
+
         assert execution.status.overall_status == "Failed"
         assert "Unexpected error" in execution.status.failure_reason
 
@@ -722,13 +690,11 @@ class TestEvaluationPipelineExecutionGet:
         mock_pe.last_modified_time = datetime.now()
         mock_pe.get_all_steps.return_value = iter([])
         mock_pe_class.get.return_value = mock_pe
-        
+
         execution = EvaluationPipelineExecution.get(
-            arn=DEFAULT_EXECUTION_ARN,
-            session=mock_session,
-            region=DEFAULT_REGION
+            arn=DEFAULT_EXECUTION_ARN, session=mock_session, region=DEFAULT_REGION
         )
-        
+
         assert execution.arn == DEFAULT_EXECUTION_ARN
         assert execution.status.overall_status == "Succeeded"
         assert execution.eval_type == EvalType.BENCHMARK
@@ -738,12 +704,9 @@ class TestEvaluationPipelineExecutionGet:
         """Test handling ClientError when getting execution."""
         error_response = {"Error": {"Code": "ResourceNotFound", "Message": "Not found"}}
         mock_pe_class.get.side_effect = ClientError(error_response, "DescribePipelineExecution")
-        
-        execution = EvaluationPipelineExecution.get(
-            arn=DEFAULT_EXECUTION_ARN,
-            session=mock_session
-        )
-        
+
+        execution = EvaluationPipelineExecution.get(arn=DEFAULT_EXECUTION_ARN, session=mock_session)
+
         assert execution.status.overall_status == "Error"
         assert "Not found" in execution.status.failure_reason
 
@@ -751,12 +714,9 @@ class TestEvaluationPipelineExecutionGet:
     def test_get_execution_generic_exception(self, mock_pe_class, mock_session):
         """Test handling generic exception when getting execution."""
         mock_pe_class.get.side_effect = Exception("Unexpected error")
-        
-        execution = EvaluationPipelineExecution.get(
-            arn=DEFAULT_EXECUTION_ARN,
-            session=mock_session
-        )
-        
+
+        execution = EvaluationPipelineExecution.get(arn=DEFAULT_EXECUTION_ARN, session=mock_session)
+
         assert execution.status.overall_status == "Error"
         assert "Unexpected error" in execution.status.failure_reason
 
@@ -767,20 +727,22 @@ class TestEvaluationPipelineExecutionGetAll:
     @patch("sagemaker.train.evaluate.execution.ResourceTag")
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
-    def test_get_all_executions(self, mock_pe_class, mock_pipeline_class, mock_tag_class, mock_session):
+    def test_get_all_executions(
+        self, mock_pe_class, mock_pipeline_class, mock_tag_class, mock_session
+    ):
         """Test getting all executions."""
         # Mock pipeline with correct name and ARN
         mock_pipeline = MagicMock()
         mock_pipeline.pipeline_name = DEFAULT_PIPELINE_NAME
         mock_pipeline.pipeline_arn = DEFAULT_PIPELINE_ARN
         mock_pipeline_class.get_all.return_value = iter([mock_pipeline])
-        
+
         # Mock tags with required tag
         mock_tag = MagicMock()
         mock_tag.key = "SagemakerModelEvaluation"
         mock_tag.value = "true"
         mock_tag_class.get_all.return_value = iter([mock_tag])
-        
+
         # Mock pipeline execution
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_arn = DEFAULT_EXECUTION_ARN
@@ -788,18 +750,18 @@ class TestEvaluationPipelineExecutionGetAll:
         mock_pe.failure_reason = None
         mock_pe.last_modified_time = datetime.now()
         mock_pe.get_all_steps.return_value = iter([])
-        
+
         mock_pe_class.get_all.return_value = iter([mock_pe])
-        
-        executions = list(EvaluationPipelineExecution.get_all(
-            eval_type=EvalType.BENCHMARK,
-            session=mock_session,
-            region=DEFAULT_REGION
-        ))
-        
+
+        executions = list(
+            EvaluationPipelineExecution.get_all(
+                eval_type=EvalType.BENCHMARK, session=mock_session, region=DEFAULT_REGION
+            )
+        )
+
         assert len(executions) == 1
         assert executions[0].arn == DEFAULT_EXECUTION_ARN
-        
+
         # Verify Pipeline.get_all was called with prefix
         mock_pipeline_class.get_all.assert_called_once()
         # Verify Tag.get_all was called to validate pipeline
@@ -810,28 +772,30 @@ class TestEvaluationPipelineExecutionGetAll:
     @patch("sagemaker.train.evaluate.execution.ResourceTag")
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
-    def test_get_all_multiple_eval_types(self, mock_pe_class, mock_pipeline_class, mock_tag_class, mock_session):
+    def test_get_all_multiple_eval_types(
+        self, mock_pe_class, mock_pipeline_class, mock_tag_class, mock_session
+    ):
         """Test getting all executions for multiple eval types."""
         # Mock pipeline for BENCHMARK type
         mock_pipeline = MagicMock()
         mock_pipeline.pipeline_name = DEFAULT_PIPELINE_NAME
         mock_pipeline.pipeline_arn = DEFAULT_PIPELINE_ARN
-        
+
         # Pipeline.get_all called 4 times (once per eval type)
         # Return pipeline for BENCHMARK, empty for others
         mock_pipeline_class.get_all.side_effect = [
             iter([mock_pipeline]),  # BENCHMARK - found
-            iter([]),              # CUSTOM_SCORER - not found
-            iter([]),              # LLM_AS_JUDGE - not found
-            iter([]),              # MTRL - not found
+            iter([]),  # CUSTOM_SCORER - not found
+            iter([]),  # LLM_AS_JUDGE - not found
+            iter([]),  # MTRL - not found
         ]
-        
+
         # Mock tags with required tag (only called for BENCHMARK since others have no pipelines)
         mock_tag = MagicMock()
         mock_tag.key = "SagemakerModelEvaluation"
         mock_tag.value = "true"
         mock_tag_class.get_all.return_value = iter([mock_tag])
-        
+
         # Mock pipeline execution for BENCHMARK
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_arn = DEFAULT_EXECUTION_ARN
@@ -839,28 +803,24 @@ class TestEvaluationPipelineExecutionGetAll:
         mock_pe.failure_reason = None
         mock_pe.last_modified_time = datetime.now()
         mock_pe.get_all_steps.return_value = iter([])
-        
+
         mock_pe_class.get_all.return_value = iter([mock_pe])
-        
-        executions = list(EvaluationPipelineExecution.get_all(
-            eval_type=None,
-            session=mock_session
-        ))
-        
+
+        executions = list(EvaluationPipelineExecution.get_all(eval_type=None, session=mock_session))
+
         assert len(executions) == 1
-        assert mock_pipeline_class.get_all.call_count == 4  # Called for each eval type
+        assert mock_pipeline_class.get_all.call_count == len(EvalType)  # Called for each eval type
 
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
     def test_get_all_pipeline_not_found(self, mock_pe_class, mock_session):
         """Test get_all when pipeline doesn't exist."""
         error_response = {"Error": {"Code": "ResourceNotFound"}}
         mock_pe_class.get_all.side_effect = ClientError(error_response, "ListPipelineExecutions")
-        
-        executions = list(EvaluationPipelineExecution.get_all(
-            eval_type=EvalType.BENCHMARK,
-            session=mock_session
-        ))
-        
+
+        executions = list(
+            EvaluationPipelineExecution.get_all(eval_type=EvalType.BENCHMARK, session=mock_session)
+        )
+
         assert len(executions) == 0
 
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
@@ -868,12 +828,11 @@ class TestEvaluationPipelineExecutionGetAll:
         """Test get_all with ValidationException."""
         error_response = {"Error": {"Code": "ValidationException", "Message": "Invalid input"}}
         mock_pe_class.get_all.side_effect = ClientError(error_response, "ListPipelineExecutions")
-        
-        executions = list(EvaluationPipelineExecution.get_all(
-            eval_type=EvalType.BENCHMARK,
-            session=mock_session
-        ))
-        
+
+        executions = list(
+            EvaluationPipelineExecution.get_all(eval_type=EvalType.BENCHMARK, session=mock_session)
+        )
+
         # Should continue and return empty list
         assert len(executions) == 0
 
@@ -881,32 +840,32 @@ class TestEvaluationPipelineExecutionGetAll:
     def test_get_all_with_generic_exception(self, mock_pe_class, mock_session):
         """Test get_all handles generic exceptions."""
         mock_pe_class.get_all.side_effect = Exception("Unexpected error")
-        
-        executions = list(EvaluationPipelineExecution.get_all(
-            eval_type=EvalType.BENCHMARK,
-            session=mock_session
-        ))
-        
+
+        executions = list(
+            EvaluationPipelineExecution.get_all(eval_type=EvalType.BENCHMARK, session=mock_session)
+        )
+
         # Should handle exception and return empty list
         assert len(executions) == 0
 
     @patch("sagemaker.train.evaluate.execution._create_execution_from_pipeline_execution")
     @patch("sagemaker.train.evaluate.execution.PipelineExecution")
-    def test_get_all_with_exception_during_enrichment(self, mock_pe_class, mock_create_exec, mock_session):
+    def test_get_all_with_exception_during_enrichment(
+        self, mock_pe_class, mock_create_exec, mock_session
+    ):
         """Test get_all handles exceptions during execution enrichment."""
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_arn = DEFAULT_EXECUTION_ARN
         mock_pe_class.get_all.return_value = iter([mock_pe])
-        
+
         # Make _create_execution_from_pipeline_execution raise an exception
         mock_create_exec.side_effect = Exception("Enrichment error")
-        
+
         # Should catch the exception and continue
-        executions = list(EvaluationPipelineExecution.get_all(
-            eval_type=EvalType.BENCHMARK,
-            session=mock_session
-        ))
-        
+        executions = list(
+            EvaluationPipelineExecution.get_all(eval_type=EvalType.BENCHMARK, session=mock_session)
+        )
+
         # Should return empty list due to exception
         assert len(executions) == 0
 
@@ -917,29 +876,27 @@ class TestEvaluationPipelineExecutionRefresh:
     def test_refresh_execution(self):
         """Test refreshing execution status."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Succeeded"
         mock_pe.failure_reason = None
         mock_pe.last_modified_time = datetime.now()
         mock_pe.get_all_steps.return_value = iter([])
-        
+
         execution._pipeline_execution = mock_pe
         execution.refresh()
-        
+
         assert execution.status.overall_status == "Succeeded"
         mock_pe.refresh.assert_called_once()
 
     def test_refresh_without_pipeline_execution(self):
         """Test refresh when no pipeline execution is set."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Unknown")
+            name="test", status=PipelineExecutionStatus(overall_status="Unknown")
         )
-        
+
         # Should not raise an error
         execution.refresh()
         assert execution.status.overall_status == "Unknown"
@@ -947,31 +904,29 @@ class TestEvaluationPipelineExecutionRefresh:
     def test_refresh_with_client_error(self):
         """Test refresh handling ClientError."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_pe = MagicMock()
         error_response = {"Error": {"Code": "ResourceNotFound", "Message": "Not found"}}
         mock_pe.refresh.side_effect = ClientError(error_response, "DescribePipelineExecution")
-        
+
         execution._pipeline_execution = mock_pe
-        
+
         # Should not raise, just log error
         execution.refresh()
 
     def test_refresh_with_generic_exception(self):
         """Test refresh handling generic exception."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_pe = MagicMock()
         mock_pe.refresh.side_effect = Exception("Unexpected error")
-        
+
         execution._pipeline_execution = mock_pe
-        
+
         # Should not raise, just log error
         execution.refresh()
 
@@ -985,12 +940,12 @@ class TestEvaluationPipelineExecutionStop:
         execution = EvaluationPipelineExecution(
             arn=DEFAULT_EXECUTION_ARN,
             name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            status=PipelineExecutionStatus(overall_status="Executing"),
         )
-        
+
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Stopping"
         mock_pe.failure_reason = None
@@ -998,19 +953,18 @@ class TestEvaluationPipelineExecutionStop:
         mock_pe.get_all_steps.return_value = iter([])
         mock_pe._session = MagicMock()
         mock_pe._session.boto_session.client.return_value = mock_client
-        
+
         execution._pipeline_execution = mock_pe
         execution.stop()
-        
+
         assert execution.status.overall_status == "Stopping"
 
     def test_stop_without_arn(self):
         """Test stop when no ARN is set."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         # Should not raise an error
         execution.stop()
 
@@ -1020,14 +974,16 @@ class TestEvaluationPipelineExecutionStop:
         execution = EvaluationPipelineExecution(
             arn=DEFAULT_EXECUTION_ARN,
             name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            status=PipelineExecutionStatus(overall_status="Executing"),
         )
-        
+
         mock_client = MagicMock()
         error_response = {"Error": {"Code": "AccessDenied", "Message": "Access denied"}}
-        mock_client.stop_pipeline_execution.side_effect = ClientError(error_response, "StopPipelineExecution")
+        mock_client.stop_pipeline_execution.side_effect = ClientError(
+            error_response, "StopPipelineExecution"
+        )
         mock_boto3_client.return_value = mock_client
-        
+
         # Should not raise, just log error
         execution.stop()
 
@@ -1037,13 +993,13 @@ class TestEvaluationPipelineExecutionStop:
         execution = EvaluationPipelineExecution(
             arn=DEFAULT_EXECUTION_ARN,
             name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            status=PipelineExecutionStatus(overall_status="Executing"),
         )
-        
+
         mock_client = MagicMock()
         mock_client.stop_pipeline_execution.side_effect = Exception("Unexpected error")
         mock_boto3_client.return_value = mock_client
-        
+
         # Should not raise, just log error
         execution.stop()
 
@@ -1053,12 +1009,12 @@ class TestEvaluationPipelineExecutionStop:
         execution = EvaluationPipelineExecution(
             arn=DEFAULT_EXECUTION_ARN,
             name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            status=PipelineExecutionStatus(overall_status="Executing"),
         )
-        
+
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Stopping"
         mock_pe.failure_reason = None
@@ -1066,12 +1022,12 @@ class TestEvaluationPipelineExecutionStop:
         mock_pe.get_all_steps.return_value = iter([])
         mock_pe._session = MagicMock()
         # Session without boto_session attribute
-        delattr(mock_pe._session, 'boto_session')
+        delattr(mock_pe._session, "boto_session")
         mock_pe._session.client.return_value = mock_client
-        
+
         execution._pipeline_execution = mock_pe
         execution.stop()
-        
+
         assert execution.status.overall_status == "Stopping"
 
 
@@ -1081,36 +1037,34 @@ class TestEvaluationPipelineExecutionWait:
     def test_wait_reaches_target_status(self):
         """Test wait method when target status is reached."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Succeeded")
+            name="test", status=PipelineExecutionStatus(overall_status="Succeeded")
         )
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Succeeded"
         mock_pe.failure_reason = None
         mock_pe.last_modified_time = datetime.now()
         mock_pe.get_all_steps.return_value = iter([])
-        
+
         execution._pipeline_execution = mock_pe
-        
+
         # Should return immediately since already at target status
         execution.wait(target_status="Succeeded", poll=1)
 
     def test_wait_fails_on_failed_status(self):
         """Test wait raises exception when execution fails."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Failed"
         mock_pe.failure_reason = "Test failure"
         mock_pe.last_modified_time = datetime.now()
         mock_pe.get_all_steps.return_value = iter([])
-        
+
         execution._pipeline_execution = mock_pe
-        
+
         with pytest.raises(FailedStatusError):
             execution.wait(target_status="Succeeded", poll=1)
 
@@ -1118,29 +1072,29 @@ class TestEvaluationPipelineExecutionWait:
     def test_wait_timeout_exceeded(self, mock_time):
         """Test wait raises exception on timeout."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Executing"
         mock_pe.failure_reason = None
         mock_pe.last_modified_time = datetime.now()
         mock_pe.get_all_steps.return_value = iter([])
-        
+
         execution._pipeline_execution = mock_pe
-        
+
         # Mock time.time() to simulate timeout - use a counter that always exceeds timeout
         # First call sets start_time=0, second call returns value >= timeout (5)
         call_count = {"n": 0}
+
         def time_side_effect():
             val = call_count["n"] * 10
             call_count["n"] += 1
             return val
-        
+
         mock_time.time.side_effect = time_side_effect
         mock_time.sleep = MagicMock()  # no-op sleep
-        
+
         with pytest.raises(TimeoutExceededError, match="EvaluationJob") as exc_info:
             execution.wait(target_status="Succeeded", poll=1, timeout=5)
         assert "still running" in str(exc_info.value)
@@ -1149,10 +1103,9 @@ class TestEvaluationPipelineExecutionWait:
     def test_wait_without_pipeline_execution(self):
         """Test wait when no pipeline execution is set."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         # Should return immediately without error
         execution.wait()
 
@@ -1165,11 +1118,11 @@ class TestEvaluationPipelineExecutionConvertToSubclass:
         execution = EvaluationPipelineExecution(
             name="test",
             status=PipelineExecutionStatus(overall_status="Succeeded"),
-            eval_type=EvalType.BENCHMARK
+            eval_type=EvalType.BENCHMARK,
         )
-        
+
         result = execution._convert_to_subclass(EvalType.BENCHMARK)
-        
+
         assert isinstance(result, BenchmarkEvaluationExecution)
         assert result.name == "test"
 
@@ -1178,11 +1131,11 @@ class TestEvaluationPipelineExecutionConvertToSubclass:
         execution = EvaluationPipelineExecution(
             name="test",
             status=PipelineExecutionStatus(overall_status="Succeeded"),
-            eval_type=EvalType.CUSTOM_SCORER
+            eval_type=EvalType.CUSTOM_SCORER,
         )
-        
+
         result = execution._convert_to_subclass(EvalType.CUSTOM_SCORER)
-        
+
         assert isinstance(result, BenchmarkEvaluationExecution)
 
     def test_convert_to_llmaj(self):
@@ -1190,11 +1143,11 @@ class TestEvaluationPipelineExecutionConvertToSubclass:
         execution = EvaluationPipelineExecution(
             name="test",
             status=PipelineExecutionStatus(overall_status="Succeeded"),
-            eval_type=EvalType.LLM_AS_JUDGE
+            eval_type=EvalType.LLM_AS_JUDGE,
         )
-        
+
         result = execution._convert_to_subclass(EvalType.LLM_AS_JUDGE)
-        
+
         assert isinstance(result, LLMAJEvaluationExecution)
 
     def test_convert_preserves_pipeline_execution(self):
@@ -1202,14 +1155,14 @@ class TestEvaluationPipelineExecutionConvertToSubclass:
         execution = EvaluationPipelineExecution(
             name="test",
             status=PipelineExecutionStatus(overall_status="Succeeded"),
-            eval_type=EvalType.BENCHMARK
+            eval_type=EvalType.BENCHMARK,
         )
-        
+
         mock_pe = MagicMock()
         execution._pipeline_execution = mock_pe
-        
+
         result = execution._convert_to_subclass(EvalType.BENCHMARK)
-        
+
         assert result._pipeline_execution == mock_pe
 
 
@@ -1219,10 +1172,9 @@ class TestEvaluationPipelineExecutionUpdateStepDetails:
     def test_update_step_details_from_steps(self):
         """Test updating step details from raw steps."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_step = MagicMock()
         mock_step.step_name = "TestStep"
         mock_step.step_status = "Completed"
@@ -1230,9 +1182,9 @@ class TestEvaluationPipelineExecutionUpdateStepDetails:
         mock_step.end_time = datetime.now()
         mock_step.step_display_name = "Test Step Display"
         mock_step.failure_reason = None
-        
+
         execution._update_step_details_from_raw_steps([mock_step])
-        
+
         assert len(execution.status.step_details) == 1
         assert execution.status.step_details[0].name == "TestStep"
         assert execution.status.step_details[0].status == "Completed"
@@ -1240,10 +1192,9 @@ class TestEvaluationPipelineExecutionUpdateStepDetails:
     def test_update_step_details_handles_unassigned(self):
         """Test updating step details with Unassigned objects."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_step = MagicMock()
         mock_step.step_name = "TestStep"
         mock_step.step_status = "Completed"
@@ -1251,9 +1202,9 @@ class TestEvaluationPipelineExecutionUpdateStepDetails:
         mock_step.end_time = None
         mock_step.step_display_name = MockUnassigned()
         mock_step.failure_reason = MockUnassigned()
-        
+
         execution._update_step_details_from_raw_steps([mock_step])
-        
+
         assert len(execution.status.step_details) == 1
         assert execution.status.step_details[0].display_name is None
         assert execution.status.step_details[0].failure_reason is None
@@ -1261,16 +1212,15 @@ class TestEvaluationPipelineExecutionUpdateStepDetails:
     def test_update_step_details_handles_errors(self):
         """Test updating step details handles errors gracefully."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_step = MagicMock()
         mock_step.step_name.side_effect = Exception("Error")
-        
+
         # Should not raise, just skip the problematic step
         execution._update_step_details_from_raw_steps([mock_step])
-        
+
         assert len(execution.status.step_details) == 0
 
 
@@ -1281,10 +1231,9 @@ class TestEvaluationPipelineExecutionEnrichWithStepDetails:
     def test_enrich_with_step_details(self, mock_extract):
         """Test enriching execution with step details."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_pe = MagicMock()
         mock_step = MagicMock()
         mock_step.step_name = "TestStep"
@@ -1293,23 +1242,22 @@ class TestEvaluationPipelineExecutionEnrichWithStepDetails:
         mock_step.end_time = None
         mock_step.step_display_name = "Test Step"
         mock_step.failure_reason = None
-        
+
         mock_pe.get_all_steps.return_value = iter([mock_step])
         mock_extract.return_value = DEFAULT_S3_OUTPUT_PATH
-        
+
         execution._pipeline_execution = mock_pe
         execution._enrich_with_step_details()
-        
+
         assert len(execution.status.step_details) == 1
         assert execution.s3_output_path == DEFAULT_S3_OUTPUT_PATH
 
     def test_enrich_without_pipeline_execution(self):
         """Test enrich when no pipeline execution is set."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         # Should not raise an error
         execution._enrich_with_step_details()
 
@@ -1317,22 +1265,17 @@ class TestEvaluationPipelineExecutionEnrichWithStepDetails:
     def test_enrich_with_exception(self, mock_extract):
         """Test enrich handles exceptions gracefully."""
         execution = EvaluationPipelineExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_pe = MagicMock()
         mock_pe.get_all_steps.side_effect = Exception("Unexpected error")
-        
+
         execution._pipeline_execution = mock_pe
-        
+
         # Should not raise, just log warning
         execution._enrich_with_step_details()
 
-
-# ============================================================================
-# Tests for Subclasses
-# ============================================================================
 
 class TestBenchmarkEvaluationExecution:
     """Tests for BenchmarkEvaluationExecution subclass."""
@@ -1344,18 +1287,17 @@ class TestBenchmarkEvaluationExecution:
     def test_show_results_not_succeeded(self):
         """Test show_results raises error when not succeeded."""
         execution = BenchmarkEvaluationExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Executing")
+            name="test", status=PipelineExecutionStatus(overall_status="Executing")
         )
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Executing"
         mock_pe.failure_reason = None
         mock_pe.last_modified_time = datetime.now()
         mock_pe.get_all_steps.return_value = iter([])
-        
+
         execution._pipeline_execution = mock_pe
-        
+
         with pytest.raises(ValueError, match="Cannot show results"):
             execution.show_results()
 
@@ -1370,18 +1312,17 @@ class TestLLMAJEvaluationExecution:
     def test_show_results_not_succeeded(self):
         """Test show_results raises error when not succeeded."""
         execution = LLMAJEvaluationExecution(
-            name="test",
-            status=PipelineExecutionStatus(overall_status="Failed")
+            name="test", status=PipelineExecutionStatus(overall_status="Failed")
         )
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Failed"
         mock_pe.failure_reason = "Test failure"
         mock_pe.last_modified_time = datetime.now()
         mock_pe.get_all_steps.return_value = iter([])
-        
+
         execution._pipeline_execution = mock_pe
-        
+
         with pytest.raises(ValueError, match="Cannot show results"):
             execution.show_results()
 
@@ -1389,10 +1330,6 @@ class TestLLMAJEvaluationExecution:
         """Test show_results with default parameters - skipped (tests external dependency)."""
         pytest.skip("Skipping test for external show_results_utils module")
 
-
-# ============================================================================
-# Integration-style Tests
-# ============================================================================
 
 class TestEvaluationPipelineExecutionIntegration:
     """Integration-style tests for complete workflows."""
@@ -1408,13 +1345,13 @@ class TestEvaluationPipelineExecutionIntegration:
         mock_pipeline = MagicMock()
         mock_get_pipeline.return_value = mock_pipeline
         mock_start.return_value = DEFAULT_EXECUTION_ARN
-        
+
         mock_pe = MagicMock()
         mock_pe.pipeline_execution_status = "Executing"
         mock_pe.creation_time = datetime.now()
         mock_pe.pipeline_execution_arn = DEFAULT_EXECUTION_ARN
         mock_pe_class.get.return_value = mock_pe
-        
+
         # Start execution
         execution = EvaluationPipelineExecution.start(
             eval_type=EvalType.LLM_AS_JUDGE,
@@ -1422,17 +1359,17 @@ class TestEvaluationPipelineExecutionIntegration:
             pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
             role_arn=DEFAULT_ROLE,
             session=mock_session,
-            region=DEFAULT_REGION
+            region=DEFAULT_REGION,
         )
-        
+
         # Verify correct subclass was created
         assert isinstance(execution, LLMAJEvaluationExecution)
         assert execution.arn == DEFAULT_EXECUTION_ARN
         assert execution.eval_type == EvalType.LLM_AS_JUDGE
-        
+
         # Verify pipeline was created/updated
         mock_get_pipeline.assert_called_once()
-        
+
         # Verify execution was started
         mock_start.assert_called_once()
 
@@ -1446,7 +1383,7 @@ class TestEvaluationPipelineExecutionIntegration:
         mock_pe.pipeline_arn = DEFAULT_PIPELINE_ARN
         mock_pe.failure_reason = None
         mock_pe.last_modified_time = datetime.now()
-        
+
         mock_step = MagicMock()
         mock_step.step_name = "EvaluateCustomModel"
         mock_step.step_status = "Succeeded"
@@ -1454,33 +1391,25 @@ class TestEvaluationPipelineExecutionIntegration:
         mock_step.end_time = datetime.now()
         mock_step.step_display_name = "Evaluate Custom Model"
         mock_step.failure_reason = None
-        
+
         mock_pe.get_all_steps.return_value = iter([mock_step])
         mock_pe_class.get.return_value = mock_pe
-        
+
         # Get execution
-        execution = EvaluationPipelineExecution.get(
-            arn=DEFAULT_EXECUTION_ARN,
-            session=mock_session
-        )
-        
+        execution = EvaluationPipelineExecution.get(arn=DEFAULT_EXECUTION_ARN, session=mock_session)
+
         # Verify execution was retrieved
         assert execution.arn == DEFAULT_EXECUTION_ARN
         assert execution.status.overall_status == "Succeeded"
         assert execution.eval_type == EvalType.BENCHMARK
-        
+
         # Verify steps were populated
         assert len(execution.status.step_details) == 1
         assert execution.status.step_details[0].name == "EvaluateCustomModel"
 
 
-
 # Additional tests for improved coverage - removed as they don't add significant value
 
-
-# ============================================================================
-# Tests for MLflow Link Functions
-# ============================================================================
 
 MOCK_MLFLOW_ARN = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/test-server"
 MOCK_PRESIGNED_URL = "https://mlflow.example.com/auth?authToken=abc123"
@@ -1509,7 +1438,10 @@ class TestGetMlflowExperimentUrl:
 
             result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
 
-        assert result == f"https://mlflow.example.com/auth?authToken=abc123#/experiments/42?workspace=default"
+        assert (
+            result
+            == f"https://mlflow.example.com/auth?authToken=abc123#/experiments/42?workspace=default"
+        )
 
     @patch("sagemaker.core.utils.utils.SageMakerClient")
     def test_returns_base_url_when_no_experiment_name(self, mock_sm_client_cls):
@@ -1533,9 +1465,13 @@ class TestGetMlflowExperimentUrl:
         }
         mock_sm_client_cls.return_value = mock_client
 
-        with patch("mlflow.set_tracking_uri"), \
-             patch("mlflow.tracking.MlflowClient") as mock_mlflow_client:
-            mock_mlflow_client.return_value.get_experiment_by_name.side_effect = Exception("connection error")
+        with (
+            patch("mlflow.set_tracking_uri"),
+            patch("mlflow.tracking.MlflowClient") as mock_mlflow_client,
+        ):
+            mock_mlflow_client.return_value.get_experiment_by_name.side_effect = Exception(
+                "connection error"
+            )
 
             result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
 
@@ -1550,8 +1486,10 @@ class TestGetMlflowExperimentUrl:
         }
         mock_sm_client_cls.return_value = mock_client
 
-        with patch("mlflow.set_tracking_uri"), \
-             patch("mlflow.tracking.MlflowClient") as mock_mlflow_client:
+        with (
+            patch("mlflow.set_tracking_uri"),
+            patch("mlflow.tracking.MlflowClient") as mock_mlflow_client,
+        ):
             mock_mlflow_client.return_value.get_experiment_by_name.return_value = None
 
             result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "nonexistent")
@@ -1562,7 +1500,9 @@ class TestGetMlflowExperimentUrl:
     def test_returns_none_when_presigned_url_fails(self, mock_sm_client_cls):
         """Test returns None when create_presigned_mlflow_app_url raises."""
         mock_client = MagicMock()
-        mock_client.sagemaker_client.create_presigned_mlflow_app_url.side_effect = Exception("access denied")
+        mock_client.sagemaker_client.create_presigned_mlflow_app_url.side_effect = Exception(
+            "access denied"
+        )
         mock_sm_client_cls.return_value = mock_client
 
         result = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, "my-experiment")
@@ -1596,8 +1536,13 @@ class TestGetCachedMlflowUrl:
         mlflow_link_cache = {"url": None, "timestamp": 0}
 
         def get_cached(current_time):
-            if mlflow_link_cache["url"] is None or (current_time - mlflow_link_cache["timestamp"]) > 240:
-                mlflow_link_cache["url"] = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
+            if (
+                mlflow_link_cache["url"] is None
+                or (current_time - mlflow_link_cache["timestamp"]) > 240
+            ):
+                mlflow_link_cache["url"] = get_presigned_mlflow_experiment_url(
+                    MOCK_MLFLOW_ARN, None
+                )
                 mlflow_link_cache["timestamp"] = current_time
             return mlflow_link_cache["url"]
 
@@ -1623,8 +1568,13 @@ class TestGetCachedMlflowUrl:
         mlflow_link_cache = {"url": None, "timestamp": 0}
 
         def get_cached(current_time):
-            if mlflow_link_cache["url"] is None or (current_time - mlflow_link_cache["timestamp"]) > 240:
-                mlflow_link_cache["url"] = get_presigned_mlflow_experiment_url(MOCK_MLFLOW_ARN, None)
+            if (
+                mlflow_link_cache["url"] is None
+                or (current_time - mlflow_link_cache["timestamp"]) > 240
+            ):
+                mlflow_link_cache["url"] = get_presigned_mlflow_experiment_url(
+                    MOCK_MLFLOW_ARN, None
+                )
                 mlflow_link_cache["timestamp"] = current_time
             return mlflow_link_cache["url"]
 
@@ -1656,3 +1606,33 @@ class TestGetCachedMlflowUrl:
 
         assert not _is_unassigned_attribute(mock_mlflow_cfg)
         assert _is_unassigned_attribute(mock_mlflow_cfg.mlflow_resource_arn)
+
+
+class TestInspectAIEvaluationExecution:
+    """Test InspectAIEvaluationExecution subclass."""
+
+    def test_convert_to_subclass_routes_inspect_ai(self):
+        """Test _convert_to_subclass returns InspectAIEvaluationExecution for INSPECT_AI."""
+        execution = EvaluationPipelineExecution(
+            name="test-inspect",
+            eval_type=EvalType.INSPECT_AI,
+            status=PipelineExecutionStatus(overall_status="Succeeded"),
+        )
+        execution._pipeline_execution = Mock()
+
+        result = execution._convert_to_subclass(EvalType.INSPECT_AI)
+        assert isinstance(result, InspectAIEvaluationExecution)
+        assert result.name == "test-inspect"
+
+    def test_show_results_raises_when_not_succeeded(self):
+        """Test show_results raises ValueError when execution hasn't succeeded."""
+        execution = InspectAIEvaluationExecution(
+            name="test-inspect",
+            eval_type=EvalType.INSPECT_AI,
+            status=PipelineExecutionStatus(overall_status="Executing"),
+        )
+        execution._pipeline_execution = Mock()
+        execution._pipeline_execution.pipeline_execution_status = "Executing"
+
+        with pytest.raises(ValueError, match="Cannot show results"):
+            execution.show_results()

@@ -100,7 +100,7 @@ from sagemaker.train.templates import (
     INSTALL_AUTO_REQUIREMENTS,
     INSTALL_REQUIREMENTS,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train import logger
 from sagemaker.train.sm_recipes.utils import (
@@ -331,7 +331,7 @@ class ModelTrainer(BaseModel):
         if not self.networking:
             if default_enable_network_isolation is not None or default_vpc_config is not None:
                 self.networking = Networking(
-                    default_enable_network_isolation=default_enable_network_isolation,
+                    enable_network_isolation=default_enable_network_isolation,
                     subnets=self.config_mgr.resolve_value_from_config(
                         config_path=TRAINING_JOB_SUBNETS_PATH
                     ),
@@ -347,8 +347,8 @@ class ModelTrainer(BaseModel):
                     config_path=TRAINING_JOB_SUBNETS_PATH
                 )
             if self.networking.security_group_ids is None:
-                self.networking.subnets = self.config_mgr.resolve_value_from_config(
-                    config_path=TRAINING_JOB_SUBNETS_PATH
+                self.networking.security_group_ids = self.config_mgr.resolve_value_from_config(
+                    config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
                 )
 
         if not self.output_data_config:
@@ -767,7 +767,19 @@ class ModelTrainer(BaseModel):
         return training_request
 
 
-    @_telemetry_emitter(feature=Feature.MODEL_TRAINER, func_name="model_trainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_TRAINER,
+        func_name="model_trainer.train",
+        telemetry_params=[
+            ("training_mode", TelemetryParamType.ATTR_VALUE),
+            ("training_input_mode", TelemetryParamType.ATTR_VALUE),
+            ("networking", TelemetryParamType.ATTR_EXISTS),
+            ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
+            ("distributed", TelemetryParamType.ATTR_EXISTS),
+            ("source_code", TelemetryParamType.ATTR_EXISTS),
+            ("checkpoint_config", TelemetryParamType.ATTR_EXISTS),
+        ],
+    )
     @runnable_by_pipeline
     @validate_call
     def train(
@@ -830,6 +842,54 @@ class ModelTrainer(BaseModel):
         if self._temp_code_dir is not None:
             self._temp_code_dir.cleanup()
 
+    def _resolve_staging_bucket(self) -> tuple[str,str]:
+        """Resolve the S3 bucket and key prefix for staging training artifacts.
+
+        Uses iam:SimulatePrincipalPolicy to check whether the training role
+        can access the default SageMaker bucket. If not, falls back to the
+        s3_output_path bucket and prefix.
+
+        Returns:
+            tuple: (bucket_name, prefix_override) where prefix_override is None
+                   when using the default bucket, or the output path prefix when
+                   falling back.
+        """
+        default_bucket = self.sagemaker_session.default_bucket()
+
+        if not self.role:
+            logger.debug(
+                "No training role specified; skipping bucket access check. "
+                "Using default bucket '%s' for artifact staging.", default_bucket
+            )
+            return default_bucket, None
+
+        try:
+            iam_client = self.sagemaker_session.boto_session.client("iam")
+            result = iam_client.simulate_principal_policy(
+                PolicySourceArn=self.role,
+                ActionNames=["s3:PutObject"],
+                ResourceArns=[f"arn:aws:s3:::{default_bucket}/*"],
+            )
+            decisions = result.get("EvaluationResults", [])
+            if decisions and decisions[0].get("EvalDecision") != "allowed":
+                # Training role can't access default bucket — fall back to output path
+                if self.output_data_config and hasattr(self.output_data_config, 's3_output_path'):
+                    output_path = self.output_data_config.s3_output_path
+                    if output_path and output_path.startswith("s3://"):
+                        from urllib.parse import urlparse
+                        parsed = urlparse(output_path)
+                        if parsed.netloc:
+                            prefix = parsed.path.strip("/")
+                            logger.info(
+                                f"Training role '{self.role}' cannot access default bucket "
+                                f"'{default_bucket}'. Using output path bucket "
+                                f"'{parsed.netloc}/{prefix}' for artifact staging."
+                            )
+                            return parsed.netloc, prefix
+        except Exception as e:
+            logger.debug(f"Could not verify role access to default bucket: {e}")
+
+        return default_bucket, None
 
     def create_input_data_channel(
         self,
@@ -904,6 +964,9 @@ class ModelTrainer(BaseModel):
                     )
                     if self.sagemaker_session.default_bucket_prefix:
                         key_prefix = f"{self.sagemaker_session.default_bucket_prefix}/{key_prefix}"
+                    # Resolve staging bucket based on training role permissions
+                    staging_bucket, staging_prefix = self._resolve_staging_bucket()
+                    effective_prefix = f"{staging_prefix}/{key_prefix}" if staging_prefix else key_prefix
                     if ignore_patterns and _is_valid_path(data_source, path_type="Directory"):
                         tmp_dir = TemporaryDirectory()
                         copied_path = os.path.join(
@@ -917,14 +980,14 @@ class ModelTrainer(BaseModel):
                         )
                         s3_uri = self.sagemaker_session.upload_data(
                             path=copied_path,
-                            bucket=self.sagemaker_session.default_bucket(),
-                            key_prefix=key_prefix,
+                            bucket=staging_bucket,
+                            key_prefix=effective_prefix,
                         )
                     else:
                         s3_uri = self.sagemaker_session.upload_data(
                             path=data_source,
-                            bucket=self.sagemaker_session.default_bucket(),
-                            key_prefix=key_prefix,
+                            bucket=staging_bucket,
+                            key_prefix=effective_prefix,
                         )
                     channel = Channel(
                         channel_name=channel_name,
@@ -1268,7 +1331,60 @@ class ModelTrainer(BaseModel):
         model_trainer._is_nova_recipe = is_nova
         model_trainer._is_llmft_recipe = is_llmft
         model_trainer._temp_recipe_train_dir = tmp_dir
+        model_trainer._resolved_recipe_cache = None
+        model_trainer._training_recipe = training_recipe
+        model_trainer._recipe_overrides = recipe_overrides
         return model_trainer
+
+    def get_resolved_recipe(self) -> Dict[str, Any]:
+        """Return the fully resolved recipe configuration.
+
+        Shows the final merged result of base recipe + recipe_overrides after
+        OmegaConf interpolation resolution. Callable before or after train().
+        Works for all recipe types (Nova, LLMFT, general).
+
+        Returns:
+            Dict[str, Any]: Deep copy of the resolved recipe configuration.
+
+        Raises:
+            ValueError: If recipe resolution fails.
+            AttributeError: If called on a ModelTrainer not created via from_recipe().
+        """
+        if not hasattr(self, '_training_recipe'):
+            raise AttributeError(
+                "get_resolved_recipe() is only available on ModelTrainer instances "
+                "created via ModelTrainer.from_recipe()."
+            )
+
+        if self._resolved_recipe_cache is not None:
+            import copy
+            return copy.deepcopy(self._resolved_recipe_cache)
+
+        from omegaconf import OmegaConf
+        from sagemaker.train.sm_recipes.utils import (
+            _load_base_recipe,
+            _register_custom_resolvers,
+        )
+        import copy
+
+        recipe = _load_base_recipe(
+            training_recipe=self._training_recipe,
+            recipe_overrides=self._recipe_overrides,
+        )
+
+        _register_custom_resolvers()
+
+        try:
+            OmegaConf.resolve(recipe)
+        except Exception as e:
+            logger.warning(
+                f"Could not fully resolve recipe interpolations: {e}. "
+                f"Returning partially resolved recipe."
+            )
+
+        resolved = OmegaConf.to_container(recipe, resolve=True)
+        self._resolved_recipe_cache = resolved
+        return copy.deepcopy(resolved)
 
     @classmethod
     def from_jumpstart_config(

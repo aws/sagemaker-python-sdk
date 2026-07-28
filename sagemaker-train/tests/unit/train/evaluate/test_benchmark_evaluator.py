@@ -309,6 +309,8 @@ def test_benchmark_evaluator_evaluate_invalid_subtask_override(mock_artifact, mo
     mock_info.base_model_name = DEFAULT_MODEL
     mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
     mock_info.source_model_package_arn = None
+    mock_info.model_type = None
+    mock_info.s3_model_path = None
     mock_resolve.return_value = mock_info
     
     mock_artifact.get_all.return_value = iter([])

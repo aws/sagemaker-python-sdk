@@ -40,6 +40,12 @@ def __getattr__(name):
     elif name == "RLAIFTrainer":
         from sagemaker.train.rlaif_trainer import RLAIFTrainer
         return RLAIFTrainer
+    elif name == "CPTTrainer":
+        from sagemaker.train.cpt_trainer import CPTTrainer
+        return CPTTrainer
+    elif name == "DataMixingConfig":
+        from sagemaker.train.data_mixing_config import DataMixingConfig
+        return DataMixingConfig
     elif name == "TrainingType":
         from sagemaker.train.common import TrainingType
         return TrainingType
@@ -107,4 +113,10 @@ def __getattr__(name):
     elif name == "get_mlflow_url":
         from sagemaker.train.common_utils.trainer_wait import get_mlflow_url
         return get_mlflow_url
+    elif name == "Compute":
+        from sagemaker.core.training.configs import Compute
+        return Compute
+    elif name == "HyperPodCompute":
+        from sagemaker.core.training.configs import HyperPodCompute
+        return HyperPodCompute
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

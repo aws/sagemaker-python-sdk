@@ -3,103 +3,102 @@ Utility functions for displaying evaluation results.
 Supports both Benchmark and LLM As Judge evaluation types.
 """
 
-import logging
 import json
+import logging
+from typing import Any, Dict, List, Optional
+
 import boto3
-from typing import Optional, Dict, Any, List
 
 logger = logging.getLogger(__name__)
 
 
-# ============================================================================
-# Common Utilities
-# ============================================================================
-
-def _extract_training_job_name_from_steps(pipeline_execution, step_name_pattern: str = 'Evaluate') -> Optional[str]:
+def _extract_training_job_name_from_steps(
+    pipeline_execution, step_name_pattern: str = "Evaluate"
+) -> Optional[str]:
     """Extract training job name from pipeline step metadata
-    
+
     For LLMAJ evaluations, prioritizes EvaluateCustomModelMetrics over EvaluateBaseModelMetrics.
     For other evaluations, searches for steps matching the pattern.
-    
+
     Args:
         pipeline_execution: EvaluationPipelineExecution instance
         step_name_pattern: Pattern to match in step name (default: 'Evaluate')
-    
+
     Returns:
         Training job name if found, None otherwise
     """
     if not pipeline_execution._pipeline_execution:
         return None
-    
+
     try:
         # Collect all matching steps
         matching_steps = []
         steps_iterator = pipeline_execution._pipeline_execution.get_all_steps()
-        
+
         for step in steps_iterator:
-            step_name = getattr(step, 'step_name', '')
+            step_name = getattr(step, "step_name", "")
             if step_name_pattern in step_name:
-                metadata = getattr(step, 'metadata', None)
-                if metadata and hasattr(metadata, 'training_job'):
+                metadata = getattr(step, "metadata", None)
+                if metadata and hasattr(metadata, "training_job"):
                     training_job = metadata.training_job
-                    if hasattr(training_job, 'arn'):
-                        job_name = training_job.arn.split('/')[-1]
+                    if hasattr(training_job, "arn"):
+                        job_name = training_job.arn.split("/")[-1]
                         matching_steps.append((step_name, job_name))
-        
+
         # Priority order: EvaluateCustomModelMetrics > EvaluateBaseModelMetrics > any other match
         for step_name, job_name in matching_steps:
-            if 'EvaluateCustomModelMetrics' in step_name:
-                logger.info(f"Extracted training job name: {job_name} from step: {step_name} (priority: Custom)")
+            if "EvaluateCustomModelMetrics" in step_name:
+                logger.info(
+                    f"Extracted training job name: {job_name} from step: {step_name} (priority: Custom)"
+                )
                 return job_name
-        
+
         for step_name, job_name in matching_steps:
-            if 'EvaluateBaseModelMetrics' in step_name:
-                logger.info(f"Extracted training job name: {job_name} from step: {step_name} (priority: Base)")
+            if "EvaluateBaseModelMetrics" in step_name:
+                logger.info(
+                    f"Extracted training job name: {job_name} from step: {step_name} (priority: Base)"
+                )
                 return job_name
-        
+
         # Return first match if no priority steps found
         if matching_steps:
             step_name, job_name = matching_steps[0]
             logger.info(f"Extracted training job name: {job_name} from step: {step_name}")
             return job_name
-            
+
     except Exception as e:
         logger.warning(f"Failed to extract training job name: {e}")
-    
+
     return None
 
-
-# ============================================================================
-# Benchmark Evaluation Results Display
-# ============================================================================
 
 def _extract_metrics_from_results(results_dict: Dict[str, Any]) -> Dict[str, float]:
     """
     Extract metrics from results dictionary.
-    
+
     Tries to get metrics from results["all"] first (standard case for benchmarks like MMLU).
     Falls back to finding metrics in nested keys like "custom|gen_qa_gen_qa|0" (gen_qa case).
-    
+
     Args:
         results_dict: Full results dictionary from results_*.json
-        
+
     Returns:
         Dict of metric names to values
     """
-    results = results_dict.get('results', {})
-    
+    results = results_dict.get("results", {})
+
     # Try standard "all" key first (used by standard benchmarks like MMLU, BBH, etc.)
-    if 'all' in results and results['all']:
+    if "all" in results and results["all"]:
         logger.info("Using metrics from 'all' key (standard benchmark format)")
-        return results['all']
-    
+        return results["all"]
+
     # Fallback: Look for task-specific keys (gen_qa and custom_scorer case)
     # Pattern: "custom|task_name_strategy|0" or similar
     for key, value in results.items():
         if isinstance(value, dict) and value:  # Non-empty dict
             logger.info(f"Using metrics from key: '{key}' (gen_qa or custom_scorer format)")
             return value
-    
+
     # No metrics found
     logger.warning("No metrics found in results dictionary")
     return {}
@@ -108,7 +107,7 @@ def _extract_metrics_from_results(results_dict: Dict[str, Any]) -> Dict[str, flo
 def _show_benchmark_results(pipeline_execution):
     """
     Display benchmark evaluation results by downloading from S3 and showing with Rich tables.
-    
+
     This simplified implementation:
     1. Extracts training job names from pipeline step metadata
     2. Downloads results JSON directly from S3
@@ -121,129 +120,140 @@ def _show_benchmark_results(pipeline_execution):
             "[PySDK Error] Cannot download results: s3_output_path is not set. "
             "Ensure the evaluation job was started with an s3_output_path."
         )
-    
+
     # Parse S3 location
     s3_path = pipeline_execution.s3_output_path[5:]  # Remove 's3://'
-    bucket_name = s3_path.split('/')[0]
-    s3_prefix = '/'.join(s3_path.split('/')[1:]).rstrip('/')
-    
+    bucket_name = s3_path.split("/")[0]
+    s3_prefix = "/".join(s3_path.split("/")[1:]).rstrip("/")
+
     logger.info(f"S3 bucket: {bucket_name}, prefix: {s3_prefix}")
-    
+
     # Get S3 client
-    s3_client = boto3.client('s3')
-    
+    s3_client = boto3.client("s3")
+
     # Extract training job names using common utility
-    custom_job_name = _extract_training_job_name_from_steps(pipeline_execution, 'EvaluateCustomModel')
-    base_job_name = _extract_training_job_name_from_steps(pipeline_execution, 'EvaluateBaseModel')
-    
+    custom_job_name = _extract_training_job_name_from_steps(
+        pipeline_execution, "EvaluateCustomModel"
+    )
+    base_job_name = _extract_training_job_name_from_steps(pipeline_execution, "EvaluateBaseModel")
+
     if not custom_job_name and not base_job_name:
         raise ValueError(
             "[PySDK Error] Could not extract training job name from pipeline steps. "
             "Unable to locate evaluation results."
         )
-    
+
     # Helper to download and parse results JSON
     def download_results_json(training_job_name: str) -> Dict[str, Any]:
         """Download and parse results JSON from S3 by searching recursively"""
         # Search recursively under output/output/ for results_*.json
         search_prefix = f"{s3_prefix}/{training_job_name}/output/output/"
-        
+
         logger.info(f"Searching for results_*.json in s3://{bucket_name}/{search_prefix}")
-        
+
         # List all files recursively (list_objects_v2 returns all keys with this prefix)
         response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=search_prefix)
-        
-        if 'Contents' not in response:
+
+        if "Contents" not in response:
             raise FileNotFoundError(
                 f"[PySDK Error] No files found at s3://{bucket_name}/{search_prefix}. "
                 f"Evaluation results may not have been generated yet."
             )
-        
+
         # Find results_*.json file
         results_file_key = None
-        for obj in response['Contents']:
-            key = obj['Key']
+        for obj in response["Contents"]:
+            key = obj["Key"]
             # Check if filename matches results_*.json pattern
-            filename = key.split('/')[-1]
-            if filename.startswith('results_') and filename.endswith('.json'):
+            filename = key.split("/")[-1]
+            if filename.startswith("results_") and filename.endswith(".json"):
                 results_file_key = key
                 logger.info(f"Found results file: {key}")
                 break
-        
+
         if not results_file_key:
             raise FileNotFoundError(
                 f"[PySDK Error] No results_*.json file found in s3://{bucket_name}/{search_prefix}. "
                 f"Evaluation results may not have been generated yet."
             )
-        
+
         # Download and parse
         obj = s3_client.get_object(Bucket=bucket_name, Key=results_file_key)
-        content = obj['Body'].read().decode('utf-8')
+        content = obj["Body"].read().decode("utf-8")
         return json.loads(content)
-    
+
     # Download results
     custom_results_full = download_results_json(custom_job_name) if custom_job_name else None
     base_results_full = download_results_json(base_job_name) if base_job_name else None
-    
+
     # Extract metrics (handles both standard benchmark "all" key and gen_qa nested keys)
-    custom_metrics = _extract_metrics_from_results(custom_results_full) if custom_results_full else None
+    custom_metrics = (
+        _extract_metrics_from_results(custom_results_full) if custom_results_full else None
+    )
     base_metrics = _extract_metrics_from_results(base_results_full) if base_results_full else None
-    
+
     # Construct full S3 paths for display
     s3_paths = {
-        'custom': f"s3://{bucket_name}/{s3_prefix}/{custom_job_name}/output/output/None/eval_results/",
-        'base': f"s3://{bucket_name}/{s3_prefix}/{base_job_name}/output/output/None/eval_results/" if base_job_name else None
+        "custom": f"s3://{bucket_name}/{s3_prefix}/{custom_job_name}/output/output/None/eval_results/",
+        "base": (
+            f"s3://{bucket_name}/{s3_prefix}/{base_job_name}/output/output/None/eval_results/"
+            if base_job_name
+            else None
+        ),
     }
-    
+
     # Display with Rich
     _display_metrics_tables(custom_metrics, base_metrics, s3_paths)
 
 
-def _display_metrics_tables(custom_metrics: Dict[str, float], 
-                            base_metrics: Optional[Dict[str, float]], 
-                            s3_paths: Dict[str, Optional[str]]):
+def _display_metrics_tables(
+    custom_metrics: Dict[str, float],
+    base_metrics: Optional[Dict[str, float]],
+    s3_paths: Dict[str, Optional[str]],
+):
     """Display metrics in Rich tables with detailed S3 paths"""
-    
+
     # Detect Jupyter
     is_jupyter = False
     try:
         from IPython import get_ipython
+
         ipython = get_ipython()
-        if ipython is not None and 'IPKernelApp' in ipython.config:
+        if ipython is not None and "IPKernelApp" in ipython.config:
             is_jupyter = True
     except:
         pass
-    
+
     # Display with Rich
-    from rich.console import Console
-    from rich.table import Table
-    from rich.panel import Panel
-    from rich.text import Text
     from rich.box import ROUNDED
-    
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.table import Table
+    from rich.text import Text
+
     console = Console(force_jupyter=is_jupyter) if is_jupyter else Console()
-    
+
     if custom_metrics:
         # Create custom model table
         custom_table = Table(
-            show_header=True, 
+            show_header=True,
             header_style="bold green",
             title="[bold green]Custom Model Results[/bold green]",
-            box=ROUNDED
+            box=ROUNDED,
         )
         custom_table.add_column("Metric", style="cyan", width=30)
         custom_table.add_column("Value", style="white", justify="right", width=15)
-        
+
         for metric_name, value in sorted(custom_metrics.items()):
             # Format value as percentage if it's between 0 and 1
-            if 0 <= value <= 1 and 'stderr' not in metric_name.lower():
+            if 0 <= value <= 1 and "stderr" not in metric_name.lower():
                 formatted_value = f"{value * 100:.2f}%"
             else:
                 formatted_value = f"{value:.4f}"
             custom_table.add_row(metric_name, formatted_value)
-        
+
         console.print(custom_table)
-    
+
     # Create base model table if available
     if base_metrics:
         console.print("")  # Empty line
@@ -251,20 +261,20 @@ def _display_metrics_tables(custom_metrics: Dict[str, float],
             show_header=True,
             header_style="bold yellow",
             title="[bold yellow]Base Model Results[/bold yellow]",
-            box=ROUNDED
+            box=ROUNDED,
         )
         base_table.add_column("Metric", style="cyan", width=30)
         base_table.add_column("Value", style="white", justify="right", width=15)
-        
+
         for metric_name, value in sorted(base_metrics.items()):
-            if 0 <= value <= 1 and 'stderr' not in metric_name.lower():
+            if 0 <= value <= 1 and "stderr" not in metric_name.lower():
                 formatted_value = f"{value * 100:.2f}%"
             else:
                 formatted_value = f"{value:.4f}"
             base_table.add_row(metric_name, formatted_value)
-        
+
         console.print(base_table)
-    
+
     # Add S3 location info
     console.print("")
     message = Text()
@@ -272,48 +282,46 @@ def _display_metrics_tables(custom_metrics: Dict[str, float],
     message.append("Full evaluation artifacts available at:\n\n", style="bold")
     message.append("Custom Model:\n", style="bold green")
     message.append(f"  {s3_paths['custom']}\n", style="cyan")
-    
-    if s3_paths.get('base'):
+
+    if s3_paths.get("base"):
         message.append("\nBase Model:\n", style="bold yellow")
         message.append(f"  {s3_paths['base']}", style="cyan")
-    
-    console.print(Panel(
-        message,
-        title="[bold blue]Result Artifacts Location[/bold blue]",
-        border_style="blue",
-        padding=(1, 2)
-    ))
 
+    console.print(
+        Panel(
+            message,
+            title="[bold blue]Result Artifacts Location[/bold blue]",
+            border_style="blue",
+            padding=(1, 2),
+        )
+    )
 
-# ============================================================================
-# LLM As Judge Evaluation Results Display
-# ============================================================================
 
 def _download_bedrock_aggregate_json(pipeline_execution, training_job_name: str) -> tuple:
     """Download bedrock_llm_judge_results.json and extract bedrock job name"""
     import re
-    
+
     if not pipeline_execution.s3_output_path:
         raise ValueError("[PySDK Error] s3_output_path is not set")
-    
+
     s3_path = pipeline_execution.s3_output_path[5:]
-    bucket_name = s3_path.split('/')[0]
-    s3_prefix = '/'.join(s3_path.split('/')[1:]).rstrip('/')
-    s3_client = boto3.client('s3')
-    
+    bucket_name = s3_path.split("/")[0]
+    s3_prefix = "/".join(s3_path.split("/")[1:]).rstrip("/")
+    s3_client = boto3.client("s3")
+
     summary_prefix = f"{s3_prefix}/{training_job_name}/output/output/"
     response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=summary_prefix, MaxKeys=1000)
-    
-    if 'Contents' not in response:
+
+    if "Contents" not in response:
         raise FileNotFoundError(f"[PySDK Error] No files at s3://{bucket_name}/{summary_prefix}")
-    
-    for obj in response['Contents']:
-        if 'bedrock_llm_judge_results.json' in obj['Key']:
-            match = re.search(r'/output/output/([^/]+)/', obj['Key'])
+
+    for obj in response["Contents"]:
+        if "bedrock_llm_judge_results.json" in obj["Key"]:
+            match = re.search(r"/output/output/([^/]+)/", obj["Key"])
             if match:
-                obj_data = s3_client.get_object(Bucket=bucket_name, Key=obj['Key'])
-                return (json.loads(obj_data['Body'].read().decode('utf-8')), match.group(1))
-    
+                obj_data = s3_client.get_object(Bucket=bucket_name, Key=obj["Key"])
+                return (json.loads(obj_data["Body"].read().decode("utf-8")), match.group(1))
+
     raise FileNotFoundError(f"[PySDK Error] bedrock_llm_judge_results.json not found")
 
 
@@ -321,8 +329,8 @@ def _parse_prompt(prompt_str: str) -> str:
     """Parse prompt from format: "[{'role': 'user', 'content': '...'}]" """
     try:
         parsed = json.loads(prompt_str.replace("'", '"'))
-        if isinstance(parsed, list) and len(parsed) > 0 and 'content' in parsed[0]:
-            return parsed[0]['content']
+        if isinstance(parsed, list) and len(parsed) > 0 and "content" in parsed[0]:
+            return parsed[0]["content"]
         return prompt_str
     except Exception:
         return prompt_str
@@ -340,7 +348,7 @@ def _parse_response(response_str: str) -> str:
 
 
 def _format_score(score: float) -> str:
-    """Format score as percentage: 0.8333 -> '83.3%' """
+    """Format score as percentage: 0.8333 -> '83.3%'"""
     if score is None:
         return "N/A"
     return f"{score * 100:.1f}%"
@@ -350,19 +358,18 @@ def _truncate_text(text: str, max_length: int = 100) -> str:
     """Truncate text to max_length with ellipsis if needed"""
     if len(text) <= max_length:
         return text
-    return text[:max_length-3] + "..."
+    return text[: max_length - 3] + "..."
 
 
 def _download_llmaj_results_from_s3(
-    pipeline_execution,
-    bedrock_job_name: str
+    pipeline_execution, bedrock_job_name: str
 ) -> List[Dict[str, Any]]:
     """Download LLM As Judge evaluation results JSONL from S3
-    
+
     Args:
         pipeline_execution: EvaluationPipelineExecution instance
         bedrock_job_name: Bedrock job name (required). Must be discovered by caller.
-    
+
     Returns:
         List of evaluation result dictionaries (one per JSONL line)
     """
@@ -371,65 +378,61 @@ def _download_llmaj_results_from_s3(
             "[PySDK Error] Cannot download results: s3_output_path is not set. "
             "Ensure the evaluation job was started with an s3_output_path."
         )
-    
+
     # Parse S3 location
     s3_path = pipeline_execution.s3_output_path[5:]  # Remove 's3://'
-    bucket_name = s3_path.split('/')[0]
-    s3_prefix = '/'.join(s3_path.split('/')[1:]).rstrip('/')
-    
+    bucket_name = s3_path.split("/")[0]
+    s3_prefix = "/".join(s3_path.split("/")[1:]).rstrip("/")
+
     logger.info(f"S3 bucket: {bucket_name}, prefix: {s3_prefix}")
     logger.info(f"Using bedrock job name: {bedrock_job_name}")
-    
+
     # Get S3 client (DO NOT use SageMaker endpoint for S3)
-    s3_client = boto3.client('s3')
-    
+    s3_client = boto3.client("s3")
+
     # Search for JSONL file using provided bedrock_job_name
     search_prefix = f"{s3_prefix}/{bedrock_job_name}/"
-    
+
     logger.info(f"Searching for JSONL in s3://{bucket_name}/{search_prefix}")
-    
-    response = s3_client.list_objects_v2(
-        Bucket=bucket_name,
-        Prefix=search_prefix,
-        MaxKeys=1000
-    )
-    
-    if 'Contents' not in response:
+
+    response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix=search_prefix, MaxKeys=1000)
+
+    if "Contents" not in response:
         raise FileNotFoundError(
             f"[PySDK Error] No results found at s3://{bucket_name}/{search_prefix}. "
             f"Evaluation results may not have been generated yet."
         )
-    
+
     # Find _output.jsonl file
     jsonl_key = None
-    for obj in response['Contents']:
-        if obj['Key'].endswith('_output.jsonl'):
-            jsonl_key = obj['Key']
+    for obj in response["Contents"]:
+        if obj["Key"].endswith("_output.jsonl"):
+            jsonl_key = obj["Key"]
             logger.info(f"Found JSONL: {jsonl_key}")
             break
-    
+
     if not jsonl_key:
         raise FileNotFoundError(
             f"[PySDK Error] No _output.jsonl file found in s3://{bucket_name}/{search_prefix}. "
             f"Evaluation results may not have been generated yet."
         )
-    
+
     logger.info(f"Found results file: {jsonl_key}")
-    
+
     # Download and parse JSONL
     obj = s3_client.get_object(Bucket=bucket_name, Key=jsonl_key)
-    content = obj['Body'].read().decode('utf-8')
-    
+    content = obj["Body"].read().decode("utf-8")
+
     # Parse JSONL (one JSON per line)
     results = []
-    for line in content.strip().split('\n'):
+    for line in content.strip().split("\n"):
         if line.strip():
             try:
                 results.append(json.loads(line))
             except json.JSONDecodeError as e:
                 logger.warning(f"Failed to parse JSONL line: {e}")
                 continue
-    
+
     logger.info(f"Loaded {len(results)} evaluation results")
     return results
 
@@ -438,28 +441,39 @@ def _calculate_win_rates(custom_results: List[Dict], base_results: List[Dict]) -
     """Calculate win rates by comparing custom vs base model scores per example"""
     custom_wins = base_wins = ties = 0
     total = min(len(custom_results), len(base_results))
-    
+
     for i in range(total):
-        custom_scores = {s['metricName']: s.get('result', 0.0) 
-                        for s in custom_results[i].get('automatedEvaluationResult', {}).get('scores', [])}
-        base_scores = {s['metricName']: s.get('result', 0.0) 
-                      for s in base_results[i].get('automatedEvaluationResult', {}).get('scores', [])}
-        
-        custom_metric_wins = sum(1 for m in custom_scores if m in base_scores and custom_scores[m] > base_scores[m])
-        base_metric_wins = sum(1 for m in base_scores if m in custom_scores and base_scores[m] > custom_scores[m])
-        
+        custom_scores = {
+            s["metricName"]: s.get("result", 0.0)
+            for s in custom_results[i].get("automatedEvaluationResult", {}).get("scores", [])
+        }
+        base_scores = {
+            s["metricName"]: s.get("result", 0.0)
+            for s in base_results[i].get("automatedEvaluationResult", {}).get("scores", [])
+        }
+
+        custom_metric_wins = sum(
+            1 for m in custom_scores if m in base_scores and custom_scores[m] > base_scores[m]
+        )
+        base_metric_wins = sum(
+            1 for m in base_scores if m in custom_scores and base_scores[m] > custom_scores[m]
+        )
+
         if custom_metric_wins > base_metric_wins:
             custom_wins += 1
         elif base_metric_wins > custom_metric_wins:
             base_wins += 1
         else:
             ties += 1
-    
+
     return {
-        'custom_wins': custom_wins, 'base_wins': base_wins, 'ties': ties, 'total': total,
-        'custom_win_rate': custom_wins / total if total > 0 else 0.0,
-        'base_win_rate': base_wins / total if total > 0 else 0.0,
-        'tie_rate': ties / total if total > 0 else 0.0
+        "custom_wins": custom_wins,
+        "base_wins": base_wins,
+        "ties": ties,
+        "total": total,
+        "custom_win_rate": custom_wins / total if total > 0 else 0.0,
+        "base_win_rate": base_wins / total if total > 0 else 0.0,
+        "tie_rate": ties / total if total > 0 else 0.0,
     }
 
 
@@ -467,51 +481,65 @@ def _display_win_rates(win_rates: Dict[str, Any], console) -> None:
     """Display win rates in Rich panel"""
     from rich.panel import Panel
     from rich.text import Text
-    
+
     message = Text()
     message.append("\n🏆 Model Comparison Results:\n\n", style="bold")
     message.append("Base Model:\n", style="bold yellow")
-    message.append(f"  {_format_score(win_rates['base_win_rate'])} ({win_rates['base_wins']} wins)\n\n", style="yellow")
+    message.append(
+        f"  {_format_score(win_rates['base_win_rate'])} ({win_rates['base_wins']} wins)\n\n",
+        style="yellow",
+    )
     message.append("Custom Model:\n", style="bold green")
-    message.append(f"  {_format_score(win_rates['custom_win_rate'])} ({win_rates['custom_wins']} wins)\n\n", style="green")
+    message.append(
+        f"  {_format_score(win_rates['custom_win_rate'])} ({win_rates['custom_wins']} wins)\n\n",
+        style="green",
+    )
     message.append("Ties:\n", style="bold white")
-    message.append(f"  {_format_score(win_rates['tie_rate'])} ({win_rates['ties']} ties)", style="white")
-    
-    console.print(Panel(message, title="[bold cyan]Win Rates[/bold cyan]", border_style="cyan", padding=(1, 2)))
+    message.append(
+        f"  {_format_score(win_rates['tie_rate'])} ({win_rates['ties']} ties)", style="white"
+    )
+
+    console.print(
+        Panel(
+            message, title="[bold cyan]Win Rates[/bold cyan]", border_style="cyan", padding=(1, 2)
+        )
+    )
 
 
-def _display_aggregate_metrics(custom_aggregate: Dict, base_aggregate: Optional[Dict], console) -> None:
+def _display_aggregate_metrics(
+    custom_aggregate: Dict, base_aggregate: Optional[Dict], console
+) -> None:
     """Display aggregate metrics for custom and base models"""
-    from rich.table import Table
     from rich.box import ROUNDED
-    
-    custom_results = custom_aggregate.get('results', {})
-    base_results = base_aggregate.get('results', {}) if base_aggregate else {}
-    
+    from rich.table import Table
+
+    custom_results = custom_aggregate.get("results", {})
+    base_results = base_aggregate.get("results", {}) if base_aggregate else {}
+
     if base_aggregate:
         # Combined comparison table when both models exist
         comparison_table = Table(
-            show_header=True, 
+            show_header=True,
             header_style="bold cyan",
-            title="[bold cyan]Model Comparison - Aggregate Metrics[/bold cyan]", 
-            box=ROUNDED
+            title="[bold cyan]Model Comparison - Aggregate Metrics[/bold cyan]",
+            box=ROUNDED,
         )
         comparison_table.add_column("Metric", style="cyan", width=25)
         comparison_table.add_column("Custom Model", style="green", justify="right", width=15)
         comparison_table.add_column("Base Model", style="yellow", justify="right", width=15)
         comparison_table.add_column("Difference", style="white", justify="right", width=15)
-        
+
         # Get all unique metrics from both models
         all_metrics = sorted(set(custom_results.keys()) | set(base_results.keys()))
-        
+
         for metric_name in all_metrics:
             custom_data = custom_results.get(metric_name, {})
             base_data = base_results.get(metric_name, {})
-            
-            custom_score = custom_data.get('score', 0.0)
-            base_score = base_data.get('score', 0.0)
+
+            custom_score = custom_data.get("score", 0.0)
+            base_score = base_data.get("score", 0.0)
             diff = custom_score - base_score
-            
+
             # Format difference with color
             if diff > 0:
                 diff_str = f"[green]+{_format_score(diff)}[/green]"
@@ -519,51 +547,44 @@ def _display_aggregate_metrics(custom_aggregate: Dict, base_aggregate: Optional[
                 diff_str = f"[red]{_format_score(diff)}[/red]"
             else:
                 diff_str = "0.0%"
-            
+
             comparison_table.add_row(
-                metric_name,
-                _format_score(custom_score),
-                _format_score(base_score),
-                diff_str
+                metric_name, _format_score(custom_score), _format_score(base_score), diff_str
             )
-        
+
         console.print(comparison_table)
     else:
         # Single model table when only custom model exists
         single_table = Table(
-            show_header=True, 
+            show_header=True,
             header_style="bold green",
-            title="[bold green]Aggregate Metrics[/bold green]", 
-            box=ROUNDED
+            title="[bold green]Aggregate Metrics[/bold green]",
+            box=ROUNDED,
         )
         single_table.add_column("Metric", style="cyan", width=25)
         single_table.add_column("Score", style="white", justify="right", width=12)
         single_table.add_column("Std Dev", style="white", justify="right", width=12)
         single_table.add_column("Evaluations", style="white", justify="right", width=12)
-        
+
         for metric_name, metric_data in sorted(custom_results.items()):
-            score = metric_data.get('score', 0.0)
-            std_dev = metric_data.get('std_deviation')
-            
+            score = metric_data.get("score", 0.0)
+            std_dev = metric_data.get("std_deviation")
+
             single_table.add_row(
                 metric_name,
                 _format_score(score),
                 "-" if std_dev is None else f"{std_dev:.2f}",
-                str(metric_data.get('total_evaluations', 0))
+                str(metric_data.get("total_evaluations", 0)),
             )
-        
+
         console.print(single_table)
 
 
 def _display_single_llmaj_evaluation(
-    result: Dict[str, Any],
-    index: int,
-    total: int,
-    console,
-    show_explanations: bool = False
+    result: Dict[str, Any], index: int, total: int, console, show_explanations: bool = False
 ):
     """Display a single LLM As Judge evaluation result
-    
+
     Args:
         result: Single evaluation result dict from JSONL
         index: Current evaluation index (0-based)
@@ -571,66 +592,60 @@ def _display_single_llmaj_evaluation(
         console: Rich Console instance
         show_explanations: Whether to show judge explanations (default: False for brevity)
     """
+    from rich.box import SIMPLE
     from rich.table import Table
     from rich.text import Text
-    from rich.box import SIMPLE
-    
+
     # Extract data
-    input_record = result.get('inputRecord', {})
-    scores = result.get('automatedEvaluationResult', {}).get('scores', [])
-    
-    prompt = _parse_prompt(input_record.get('prompt', 'N/A'))
-    model_responses = result.get('modelResponses', [])
-    response = _parse_response(model_responses[0]['response']) if model_responses else 'N/A'
-    
+    input_record = result.get("inputRecord", {})
+    scores = result.get("automatedEvaluationResult", {}).get("scores", [])
+
+    prompt = _parse_prompt(input_record.get("prompt", "N/A"))
+    model_responses = result.get("modelResponses", [])
+    response = _parse_response(model_responses[0]["response"]) if model_responses else "N/A"
+
     # Create header
     header = Text()
     header.append(f"\n═══ Evaluation {index + 1} of {total} ═══\n", style="bold cyan")
     console.print(header)
-    
+
     # Prompt and Response
     console.print(f"[bold]Prompt:[/bold] {_truncate_text(prompt, 200)}")
     console.print(f"[bold]Model Response:[/bold] {_truncate_text(response, 200)}")
     console.print()
-    
+
     # Scores table
-    scores_table = Table(
-        show_header=True,
-        header_style="bold magenta",
-        box=SIMPLE,
-        padding=(0, 1)
-    )
+    scores_table = Table(show_header=True, header_style="bold magenta", box=SIMPLE, padding=(0, 1))
     scores_table.add_column("Metric", style="cyan", width=30)
     scores_table.add_column("Score", style="green", justify="right", width=10)
-    
+
     if show_explanations:
         scores_table.add_column("Explanation", style="white", width=50)
-    
+
     for score in scores:
-        metric_name = score.get('metricName', 'Unknown')
-        score_value = score.get('result', 0.0)
-        
+        metric_name = score.get("metricName", "Unknown")
+        score_value = score.get("result", 0.0)
+
         row_data = [metric_name, _format_score(score_value)]
-        
+
         if show_explanations:
-            evaluator_details = score.get('evaluatorDetails', [])
-            explanation = evaluator_details[0].get('explanation', 'N/A') if evaluator_details else 'N/A'
+            evaluator_details = score.get("evaluatorDetails", [])
+            explanation = (
+                evaluator_details[0].get("explanation", "N/A") if evaluator_details else "N/A"
+            )
             row_data.append(_truncate_text(explanation, 80))
-        
+
         scores_table.add_row(*row_data)
-    
+
     console.print(scores_table)
     console.print()
 
 
 def _show_llmaj_results(
-    pipeline_execution,
-    limit: int = 5,
-    offset: int = 0,
-    show_explanations: bool = False
+    pipeline_execution, limit: int = 5, offset: int = 0, show_explanations: bool = False
 ):
     """Display LLM As Judge evaluation results with pagination
-    
+
     Args:
         pipeline_execution: EvaluationPipelineExecution instance
         limit: Number of evaluations to display (default: 5, None for all)
@@ -641,40 +656,43 @@ def _show_llmaj_results(
     is_jupyter = False
     try:
         from IPython import get_ipython
+
         ipython = get_ipython()
-        if ipython is not None and 'IPKernelApp' in ipython.config:
+        if ipython is not None and "IPKernelApp" in ipython.config:
             is_jupyter = True
     except:
         pass
-    
+
     from rich.console import Console
     from rich.panel import Panel
     from rich.text import Text
-    
+
     console = Console(force_jupyter=is_jupyter) if is_jupyter else Console()
-    
+
     # Extract training job names for both custom and base models
     custom_job_name = _extract_training_job_name_from_steps(
-        pipeline_execution, 'EvaluateCustomModelMetrics'
+        pipeline_execution, "EvaluateCustomModelMetrics"
     )
     base_job_name = _extract_training_job_name_from_steps(
-        pipeline_execution, 'EvaluateBaseModelMetrics'
+        pipeline_execution, "EvaluateBaseModelMetrics"
     )
-    
+
     # Handle single-model evaluation scenarios
     if not custom_job_name and not base_job_name:
         raise ValueError(
             "[PySDK Error] Could not extract training job name from pipeline steps. "
             "Unable to locate evaluation results. Ensure the pipeline has completed successfully."
         )
-    
+
     # If only base model exists, treat it as the primary model for display
     primary_job_name = custom_job_name if custom_job_name else base_job_name
     is_single_model = not (custom_job_name and base_job_name)
-    
+
     if is_single_model:
-        logger.info(f"Single model evaluation detected - displaying results for: {primary_job_name}")
-    
+        logger.info(
+            f"Single model evaluation detected - displaying results for: {primary_job_name}"
+        )
+
     # Download primary model aggregate results
     custom_aggregate = None
     bedrock_job_name = None
@@ -685,18 +703,22 @@ def _show_llmaj_results(
         logger.info(f"Successfully downloaded primary model aggregate results")
     except FileNotFoundError as e:
         # Parse S3 path for detailed error message
-        s3_path = pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+        s3_path = (
+            pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+        )
         logger.warning(
             f"Primary model aggregate results not found at {s3_path}. "
             f"Reason: {str(e)}. Skipping aggregate metrics display."
         )
     except Exception as e:
-        s3_path = pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+        s3_path = (
+            pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+        )
         logger.error(
             f"Failed to download primary model aggregate results from {s3_path}. "
             f"Reason: {str(e)}"
         )
-    
+
     # Download base model aggregate results if both models exist
     base_aggregate = None
     base_bedrock_job_name = None
@@ -708,92 +730,120 @@ def _show_llmaj_results(
             logger.info(f"Successfully downloaded base model aggregate results")
         except FileNotFoundError as e:
             # Parse S3 path for detailed error message
-            s3_path = pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+            s3_path = (
+                pipeline_execution.s3_output_path
+                if pipeline_execution.s3_output_path
+                else "unknown"
+            )
             logger.info(
                 f"Base model aggregate results not found at {s3_path}. "
                 f"Reason: {str(e)}. Displaying custom model results only."
             )
         except Exception as e:
-            s3_path = pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+            s3_path = (
+                pipeline_execution.s3_output_path
+                if pipeline_execution.s3_output_path
+                else "unknown"
+            )
             logger.warning(
                 f"Failed to download base model aggregate results from {s3_path}. "
                 f"Reason: {str(e)}"
             )
-    
+
     # Validate bedrock_job_name before proceeding with per-example results
     if bedrock_job_name is None:
         logger.warning(
             "Could not extract bedrock job name from aggregate results. "
             "Attempting to download per-example results without aggregate data."
         )
-    
+
     # Show S3 location first
     if pipeline_execution.s3_output_path:
         # Parse S3 to construct detailed path
         s3_path = pipeline_execution.s3_output_path[5:]
-        bucket_name = s3_path.split('/')[0]
-        s3_prefix = '/'.join(s3_path.split('/')[1:]).rstrip('/')
-        
+        bucket_name = s3_path.split("/")[0]
+        s3_prefix = "/".join(s3_path.split("/")[1:]).rstrip("/")
+
         # Get job name using common utility
         job_name = custom_job_name or "unknown"
-        
+
         s3_full_path = f"s3://{bucket_name}/{s3_prefix}/{job_name}/"
-        
+
         message = Text()
         message.append("\n📦 ", style="bold blue")
         message.append("Full evaluation artifacts available at:\n", style="bold")
         message.append(f"  {s3_full_path}\n", style="cyan")
-        
-        console.print(Panel(
-            message,
-            title="[bold blue]Result Artifacts Location[/bold blue]",
-            border_style="blue",
-            padding=(1, 2)
-        ))
+
+        console.print(
+            Panel(
+                message,
+                title="[bold blue]Result Artifacts Location[/bold blue]",
+                border_style="blue",
+                padding=(1, 2),
+            )
+        )
         console.print()
-    
+
     # Download per-example results using bedrock_job_name
     custom_results = None
     base_results = None
-    
+
     try:
         if bedrock_job_name:
             custom_results = _download_llmaj_results_from_s3(pipeline_execution, bedrock_job_name)
-            logger.info(f"Successfully downloaded {len(custom_results)} custom model per-example results")
+            logger.info(
+                f"Successfully downloaded {len(custom_results)} custom model per-example results"
+            )
         else:
             logger.warning("Skipping per-example results download: bedrock_job_name not available")
     except FileNotFoundError as e:
         # Parse S3 path for detailed error message
-        s3_path = pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+        s3_path = (
+            pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+        )
         logger.warning(
             f"Custom model per-example results not found at {s3_path}. "
             f"Reason: {str(e)}. Skipping per-example results display."
         )
     except Exception as e:
-        s3_path = pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+        s3_path = (
+            pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+        )
         logger.error(
             f"Failed to download custom model per-example results from {s3_path}. "
             f"Reason: {str(e)}. Skipping per-example results display."
         )
-    
+
     # Download base model per-example results if base_job_name exists
     if base_job_name and base_bedrock_job_name:
         try:
-            base_results = _download_llmaj_results_from_s3(pipeline_execution, base_bedrock_job_name)
-            logger.info(f"Successfully downloaded {len(base_results)} base model per-example results")
+            base_results = _download_llmaj_results_from_s3(
+                pipeline_execution, base_bedrock_job_name
+            )
+            logger.info(
+                f"Successfully downloaded {len(base_results)} base model per-example results"
+            )
         except FileNotFoundError as e:
-            s3_path = pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+            s3_path = (
+                pipeline_execution.s3_output_path
+                if pipeline_execution.s3_output_path
+                else "unknown"
+            )
             logger.info(
                 f"Base model per-example results not found at {s3_path}. "
                 f"Reason: {str(e)}. Displaying custom model results only."
             )
         except Exception as e:
-            s3_path = pipeline_execution.s3_output_path if pipeline_execution.s3_output_path else "unknown"
+            s3_path = (
+                pipeline_execution.s3_output_path
+                if pipeline_execution.s3_output_path
+                else "unknown"
+            )
             logger.warning(
                 f"Failed to download base model per-example results from {s3_path}. "
                 f"Reason: {str(e)}. Displaying custom model results only."
             )
-    
+
     # Calculate and display win rates if both custom_results and base_results exist
     if custom_results and base_results:
         try:
@@ -805,7 +855,7 @@ def _show_llmaj_results(
                 f"Failed to calculate or display win rates. "
                 f"Reason: {str(e)}. Continuing with remaining results display."
             )
-    
+
     # Display aggregate metrics
     if custom_aggregate:
         try:
@@ -816,45 +866,114 @@ def _show_llmaj_results(
                 f"Failed to display aggregate metrics. "
                 f"Reason: {str(e)}. Continuing with per-example results display."
             )
-    
+
     # Display per-example results
     if custom_results:
         total = len(custom_results)
-        
+
         # Apply pagination
         if limit is None:
             limit = total
-        
+
         start_idx = offset
         end_idx = min(offset + limit, total)
-        
+
         if start_idx >= total:
             console.print(f"[yellow]Offset {offset} is beyond total {total} evaluations[/yellow]")
             return
-        
+
         # Display evaluations
         for i in range(start_idx, end_idx):
             _display_single_llmaj_evaluation(
-                custom_results[i],
-                i,
-                total,
-                console,
-                show_explanations=show_explanations
+                custom_results[i], i, total, console, show_explanations=show_explanations
             )
-        
+
         # Show pagination info
         console.print("═" * 70)
-        console.print(f"[bold cyan]Showing evaluations {start_idx + 1}-{end_idx} of {total}[/bold cyan]\n")
-        
+        console.print(
+            f"[bold cyan]Showing evaluations {start_idx + 1}-{end_idx} of {total}[/bold cyan]\n"
+        )
+
         if end_idx < total:
             console.print("[dim]To see more:[/dim]")
-            console.print(f"  [cyan]job.show_results(limit={limit}, offset={end_idx})[/cyan]  # Next {limit}")
+            console.print(
+                f"  [cyan]job.show_results(limit={limit}, offset={end_idx})[/cyan]  # Next {limit}"
+            )
             if limit != total:
                 console.print(f"  [cyan]job.show_results(limit=None)[/cyan]  # Show all {total}")
-        
+
         console.print("═" * 70)
     else:
         console.print("[yellow]No per-example results available to display[/yellow]")
 
 
+def _show_inspect_ai_results(execution) -> None:
+    """Display InspectAI evaluation results.
 
+    Extracts the training job output from S3 and displays task-level metrics.
+
+    Args:
+        execution: InspectAIEvaluationExecution instance
+    """
+    from rich.console import Console
+    from rich.table import Table
+
+    is_jupyter = False
+    try:
+        from IPython import get_ipython
+
+        if get_ipython() is not None and "IPKernelApp" in get_ipython().config:
+            is_jupyter = True
+    except (ImportError, AttributeError):
+        pass
+
+    console = Console(force_jupyter=is_jupyter) if is_jupyter else Console()
+
+    # Find the InspectAI training job
+    job_name = _extract_training_job_name_from_steps(execution, step_name_pattern="InspectAI")
+
+    if not job_name:
+        console.print("[yellow]Could not extract training job name from pipeline steps.[/yellow]")
+        if execution.s3_output_path:
+            console.print(f"[dim]Check S3 output at: {execution.s3_output_path}[/dim]")
+        return
+
+    try:
+        sm_client = boto3.client("sagemaker")
+        response = sm_client.describe_training_job(TrainingJobName=job_name)
+        s3_output = response.get("OutputDataConfig", {}).get("S3OutputPath", "")
+        model_artifacts = response.get("ModelArtifacts", {}).get("S3ModelArtifacts", "")
+
+        console.print(f"\n[bold]InspectAI Evaluation Results[/bold]")
+        console.print("═" * 70)
+
+        table = Table(show_header=True, header_style="bold")
+        table.add_column("Property")
+        table.add_column("Value")
+        table.add_row("Training Job", job_name)
+        table.add_row("Status", response.get("TrainingJobStatus", "Unknown"))
+        table.add_row("S3 Output", s3_output)
+        if model_artifacts:
+            table.add_row("Model Artifacts", model_artifacts)
+
+        # Show training duration if available
+        start_time = response.get("TrainingStartTime")
+        end_time = response.get("TrainingEndTime")
+        if start_time and end_time:
+            duration = end_time - start_time
+            table.add_row("Duration", str(duration))
+
+        console.print(table)
+        console.print("═" * 70)
+
+        # Point user to full results
+        if s3_output:
+            console.print(
+                f"\n[dim]Full InspectAI evaluation logs available at:[/dim]\n"
+                f"  [cyan]{s3_output}/{job_name}/output/[/cyan]"
+            )
+
+    except Exception as e:
+        logger.warning(f"Error retrieving InspectAI results: {e}")
+        console.print(f"[yellow]Could not retrieve full results: {e}[/yellow]")
+        console.print(f"[dim]Training job: {job_name}[/dim]")

@@ -19,6 +19,7 @@ import json
 import re
 import shutil
 import tempfile
+from collections.abc import Mapping
 from urllib.request import urlretrieve
 from typing import Dict, Any, Optional, Tuple, Union
 
@@ -67,6 +68,55 @@ def _load_recipes_cfg() -> str:
     return training_recipes_cfg
 
 
+def _drop_unknown_recipe_overrides(
+    overrides: Dict[str, Any],
+    base_recipe: Any,
+    _path: str = "",
+) -> Dict[str, Any]:
+    """Drop override keys that don't exist in the base recipe, warning on each.
+
+    Recipe overrides may only modify parameters that already exist in the base
+    recipe. A key with no counterpart in the recipe (e.g. ``max_steps`` for a
+    model whose recipe has no such field) is dropped instead of being injected
+    unvalidated, and a warning naming the dropped key is logged.
+
+    Walks the override dict and the base recipe in parallel so the comparison
+    respects structure: an override key is "known" only if a key of the same
+    name exists at the same location in the base recipe. Returns a new dict
+    containing only the known keys (the input is not mutated).
+
+    Args:
+        overrides: The user-supplied recipe overrides dict.
+        base_recipe: The loaded base recipe (dict or OmegaConf mapping).
+        _path: Internal dotpath accumulator used for warning messages.
+
+    Returns:
+        A filtered copy of ``overrides`` with unknown keys removed.
+    """
+    if not isinstance(overrides, dict):
+        return overrides
+
+    filtered: Dict[str, Any] = {}
+    for key, value in overrides.items():
+        dotpath = f"{_path}.{key}" if _path else key
+        base_has_key = isinstance(base_recipe, Mapping) and key in base_recipe
+        if not base_has_key:
+            logger.warning(
+                "Recipe override key '%s' does not exist in the recipe and will "
+                "be dropped.",
+                dotpath,
+            )
+            continue
+        base_value = base_recipe[key]
+        # Recurse into nested mappings so unknown nested keys are dropped while
+        # known sibling keys are preserved.
+        if isinstance(value, dict) and isinstance(base_value, Mapping):
+            filtered[key] = _drop_unknown_recipe_overrides(value, base_value, dotpath)
+        else:
+            filtered[key] = value
+    return filtered
+
+
 def _load_base_recipe(
     training_recipe: str,
     recipe_overrides: Optional[Dict[str, Any]] = None,
@@ -111,6 +161,9 @@ def _load_base_recipe(
 
     recipe = OmegaConf.load(temp_local_recipe)
     os.unlink(temp_local_recipe)
+    # Overrides may only modify keys that already exist in the recipe; drop any
+    # unknown keys (with a warning) so bogus overrides are never injected.
+    recipe_overrides = _drop_unknown_recipe_overrides(recipe_overrides, recipe)
     recipe = OmegaConf.merge(recipe, recipe_overrides)
     return recipe
 
@@ -344,7 +397,7 @@ def _get_args_from_recipe(
     if recipe.get("evaluation", {}):
         processor = recipe.get("processor", {})
         lambda_arn = processor.get("lambda_arn", "")
-        if lambda_arn:
+        if lambda_arn and "{{" not in str(lambda_arn):
             hyperparameters["lambda_arn"] = lambda_arn
     
     args.update(
@@ -438,7 +491,7 @@ def _get_args_from_nova_recipe(
     if recipe.get("evaluation", {}):
         processor = recipe.get("processor", {})
         lambda_arn = processor.get("lambda_arn", "")
-        if lambda_arn:
+        if lambda_arn and "{{" not in str(lambda_arn):
             args["hyperparameters"]["eval_lambda_arn"] = lambda_arn
 
     # Handle reward lambda configuration
@@ -490,10 +543,14 @@ def _is_llmft_recipe(
 ) -> bool:
     """Check if the recipe is a LLMFT recipe.
 
-    A recipe is considered a LLMFT recipe if it meets the following conditions:
-        1. Having a run section
-        2. The model_type in run is llm_finetuning_aws or verl
-        3. Having a training_config section
+    A recipe is considered a LLMFT recipe if either:
+
+    1. (Training) It has a ``run`` section whose ``model_type`` is
+       ``llm_finetuning_aws`` or ``verl`` and it has a ``training_config``
+       section, OR
+    2. (Evaluation) It is an open-source SMTJ evaluation recipe: it has an
+       ``evaluation`` section, no ``trainer``/``training_config``, and is not a
+       Nova recipe. These share the LLMFT submission/packaging path.
 
     Args:
         recipe (DictConfig): The loaded recipe configuration
@@ -502,10 +559,27 @@ def _is_llmft_recipe(
         bool: True if the recipe is a LLMFT recipe, False otherwise
     """
     run_config = recipe.get("run", {})
-    model_type = run_config.get("model_type", "").lower()
+    model_type = (run_config.get("model_type") or "").lower()
     has_llmft_model = model_type == "llm_finetuning_aws"
     has_verl_model = model_type == "verl"
-    return (bool(has_llmft_model) or bool(has_verl_model)) and bool(recipe.get("training_config"))
+    is_llmft_training = (
+        (bool(has_llmft_model) or bool(has_verl_model)) and bool(recipe.get("training_config"))
+    )
+
+    # Open-source SMTJ *evaluation* recipes share the LLMFT submission path but
+    # have a different shape: an ``evaluation`` section instead of
+    # ``training_config``, and no ``model_type``/``trainer``. Route them through
+    # the LLMFT packaging so the recipe is mounted as the ``recipe`` channel for
+    # the evaluation container. Nova eval recipes are excluded here because they
+    # carry ``run.model_type = amazon.nova`` and are handled by the Nova path.
+    is_oss_eval_recipe = (
+        bool(recipe.get("evaluation"))
+        and "trainer" not in recipe
+        and not recipe.get("training_config")
+        and not _is_nova_recipe(recipe)
+    )
+
+    return is_llmft_training or is_oss_eval_recipe
 
 def _get_args_from_llmft_recipe(
     recipe: dictconfig.DictConfig,

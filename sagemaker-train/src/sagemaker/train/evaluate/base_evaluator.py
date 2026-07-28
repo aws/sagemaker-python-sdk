@@ -14,16 +14,26 @@ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 from pydantic import BaseModel, validator
 
 from sagemaker.core.common_utils import TagsDict
+from sagemaker.core.helper.iam_role_resolver import resolve_and_validate_role
 from sagemaker.core.resources import ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
+from sagemaker.core.training.configs import Compute, HyperPodCompute
+from sagemaker.core.utils.utils import Unassigned
 
 if TYPE_CHECKING:
     from sagemaker.core.helper.session_helper import Session
 
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.agent_rft_job import AgentRFTJob
-from sagemaker.train.common_utils.finetune_utils import _resolve_mlflow_resource_arn
-# Module-level logger
+from sagemaker.train.common_utils.finetune_utils import (
+    _resolve_mlflow_resource_arn,
+    _is_nova_model,
+)
+from sagemaker.train.common_utils.recipe_utils import resolve_recipe, get_resolved_recipe_from_context
+from sagemaker.train.common_utils.validator import validate_hyperpod_compute
+from sagemaker.train.defaults import TrainDefaults
+from sagemaker.train.recipe_resolver import flatten_resolved_recipe
+
 _logger = logging.getLogger(__name__)
 
 # Regex patterns for ARN validation
@@ -39,6 +49,24 @@ _MODEL_PACKAGE_ARN_PATTERN = (
 )
 _HUB_CONTENT_DATASET_ARN_PATTERN = r'arn:.*:hub-content/.*/DataSet/.*'
 _S3_URI_PATTERN = r's3://.*'
+
+# Fallback types for well-known numeric eval recipe fields.
+# The eval container validates these fields strictly (e.g. ``max_model_len``
+# must be an int, not the string "12000"). The preferred source of truth is the
+# recipe's Hub override spec (``SmtjOverrideParamsS3Uri``), but some recipes
+# (notably the OSS custom-scorer recipe) ship without that spec or omit a
+# declared ``type`` for these fields. In that case the stringified default from
+# the hyperparameters object would reach the container unchanged and trigger a
+# ConfigTypeError, so we coerce these fields to their conventional types as a
+# safety net. ``temperature``/``top_p`` use ``float`` to avoid truncating
+# fractional values (e.g. ``int(0.7) == 0``).
+_DEFAULT_EVAL_FIELD_TYPES = {
+    "max_model_len": "integer",
+    "max_new_tokens": "integer",
+    "top_k": "integer",
+    "top_p": "float",
+    "temperature": "float",
+}
 
 
 class BaseEvaluator(BaseModel):
@@ -61,7 +89,11 @@ class BaseEvaluator(BaseModel):
             - JumpStart model ID (str): e.g., 'llama3-2-1b-instruct'
             - ModelPackage object: A fine-tuned model package
             - ModelPackage ARN (str): e.g., 'arn:aws:sagemaker:region:account:model-package/name/version'
+            - S3 checkpoint path (str): e.g., 's3://bucket/path/to/checkpoint' (for HyperPod outputs)
             - BaseTrainer object: A completed training job (i.e., it must have _latest_training_job with output_model_package_arn populated)
+        base_model_name (Optional[str]): Base model name for recipe lookup when using S3 checkpoint
+            paths. Required when model is an S3 URI. E.g., 'amazon.nova-lite-v2' or
+            'nova-textgeneration-lite-v2'.
         base_eval_name (Optional[str]): Optional base name for evaluation jobs. This name is used
             as the PipelineExecutionDisplayName when creating the SageMaker pipeline execution.
             The actual display name will be "{base_eval_name}-{timestamp}". This parameter can
@@ -97,6 +129,7 @@ class BaseEvaluator(BaseModel):
     role: Optional[str] = None
     sagemaker_session: Optional[Any] = None
     model: Union[str, BaseTrainer, AgentRFTJob, ModelPackage]
+    base_model_name: Optional[str] = None
     base_eval_name: Optional[str] = None
     s3_output_path: str
     mlflow_resource_arn: Optional[str] = None
@@ -105,6 +138,10 @@ class BaseEvaluator(BaseModel):
     networking: Optional[VpcConfig] = None
     kms_key_id: Optional[str] = None
     model_package_group: Optional[Union[str, ModelPackageGroup]] = None
+    compute: Optional[Union[Compute, HyperPodCompute]] = None
+    training_image: Optional[str] = None
+    recipe: Optional[str] = None
+    overrides: Optional[Dict[str, Any]] = None
     
     class Config:
         arbitrary_types_allowed = True
@@ -220,7 +257,7 @@ class BaseEvaluator(BaseModel):
                 if not region and session:
                     region = (session.boto_region_name 
                              if hasattr(session, 'boto_region_name') 
-                             else 'us-west-2')
+                             else boto3.Session().region_name)
                 
                 # Fetch the object
                 obj = ModelPackageGroup.get(
@@ -310,8 +347,25 @@ class BaseEvaluator(BaseModel):
         import os
         
         try:
-            # Get the session for resolution (may not be created yet due to validator order)
+            # Get the session for resolution. Due to pydantic v2 compat layer issues
+            # with v1-style @validator, the session may be None or scoped to wrong region
+            # (e.g., region="us-east-1" passed by user but session created with us-west-2).
+            # TODO: Migrate from v1-style @validator to pydantic v2 @model_validator to
+            # guarantee field ordering and eliminate the ARN-region fallback below.
             session = values.get('sagemaker_session')
+            
+            # If the model is an ARN, ensure the session region matches the ARN region
+            if isinstance(v, str) and v.startswith("arn:aws:sagemaker:"):
+                import boto3
+                from sagemaker.core.helper.session_helper import Session
+                arn_parts = v.split(":")
+                if len(arn_parts) >= 4:
+                    arn_region = arn_parts[3]
+                    # Create/override session if it's None or scoped to wrong region
+                    if session is None or session.boto_session.region_name != arn_region:
+                        boto_session = boto3.Session(region_name=arn_region)
+                        sm_client = boto_session.client('sagemaker')
+                        session = Session(boto_session=boto_session, sagemaker_client=sm_client)
             
             # Resolve model information
             model_info = _resolve_base_model(
@@ -320,8 +374,10 @@ class BaseEvaluator(BaseModel):
             )
             
             # If model is a ModelPackage object or ARN (has source_model_package_arn),
-            # validate that the resolved base_model_arn is a hub content ARN
-            if model_info.source_model_package_arn:
+            # validate that the resolved base_model_arn is a hub content ARN.
+            # Skip this validation for S3 checkpoint paths.
+            from sagemaker.train.common_utils.model_resolution import _ModelType
+            if model_info.source_model_package_arn and model_info.model_type != _ModelType.S3_CHECKPOINT:
                 # Check if base_model_arn is a hub content ARN
                 # Format: arn:aws:sagemaker:region:aws:hub-content/...
                 if not model_info.base_model_arn or ':hub-content/' not in model_info.base_model_arn:
@@ -356,7 +412,7 @@ class BaseEvaluator(BaseModel):
             import boto3
             from sagemaker.core.helper.session_helper import Session
 
-            region = values.get('region') or os.environ.get('SAGEMAKER_REGION') or os.environ.get('AWS_REGION', 'us-west-2')
+            region = values.get('region') or os.environ.get('SAGEMAKER_REGION') or os.environ.get('AWS_REGION') or boto3.Session().region_name
 
             boto_session = boto3.Session(region_name=region)
             sm_client = boto_session.client('sagemaker')
@@ -390,7 +446,13 @@ class BaseEvaluator(BaseModel):
     
     @property
     def _base_model_name(self) -> Optional[str]:
-        """Get the resolved base model name."""
+        """Get the resolved base model name.
+        
+        Uses the explicit base_model_name field if provided (e.g., for S3 checkpoint paths),
+        otherwise falls back to the resolved model info.
+        """
+        if self.base_model_name:
+            return self.base_model_name
         info = self._get_resolved_model_info()
         return info.base_model_name if info else None
     
@@ -411,6 +473,38 @@ class BaseEvaluator(BaseModel):
         from ..common_utils.recipe_utils import _is_nova_model
         base_model_name = self._base_model_name
         return _is_nova_model(base_model_name) if base_model_name else False
+
+    def _resolve_model_name_for_recipe(self) -> str:
+        """Resolve the model name for recipe lookup in SageMaker Hub.
+
+        Uses the already-resolved base model name from model info. This name
+        is used to find the appropriate evaluation recipe via get_recipe_s3_uri.
+
+        Returns:
+            str: The base model name (e.g., 'amazon-nova-lite-v2')
+
+        Raises:
+            ValueError: If the model name cannot be resolved.
+        """
+        model_name = self._base_model_name
+        if not model_name:
+            raise ValueError(
+                "Could not resolve model name for recipe lookup. "
+                "Ensure the 'model' parameter is a valid JumpStart model ID, "
+                "ModelPackage ARN, or a completed BaseTrainer."
+            )
+        return model_name
+
+    def _get_eval_recipe_display_name_filter(self) -> Optional[str]:
+        """Return a display name filter for selecting the appropriate evaluation recipe.
+
+        Subclasses override this to prefer specific recipe types (e.g., "benchmark"
+        for BenchMarkEvaluator, "custom" for CustomScorerEvaluator).
+
+        Returns:
+            Optional[str]: Filter string to match against recipe DisplayName, or None.
+        """
+        return None
 
     @property
     def _is_jumpstart_model(self) -> bool:
@@ -633,18 +727,24 @@ class BaseEvaluator(BaseModel):
                 - region (str): AWS region
                 - account_id (str): AWS account ID
         """
-        # Get role ARN
-        if self.role:
-            role_arn = self.role
-        else:
-            role_arn = (self.sagemaker_session.get_caller_identity_arn()
-                       if hasattr(self.sagemaker_session, 'get_caller_identity_arn')
-                       else self.sagemaker_session.expand_role())
+        # Get role ARN. Resolution order (see resolve_and_validate_role):
+        #   1. self.role, if explicitly provided.
+        #   2. Otherwise the caller's own identity role.
+        # The resolved role is validated (read-only) for the required permissions.
+        # This is the job execution role for the
+        # serverless / SMTJ evaluation backends. The HyperPod backend submits via
+        # the CLI under the caller's own credentials (see _submit_hyperpod_eval_job)
+        # and does not resolve a role here, so "training" is always correct here.
+        role_arn = resolve_and_validate_role(
+            provided_role=self.role,
+            role_type="training",
+            sagemaker_session=self.sagemaker_session,
+        )
         
         # Get region - prefer self.region if set, otherwise extract from session
         region = self.region or (self.sagemaker_session.boto_region_name 
                                  if hasattr(self.sagemaker_session, 'boto_region_name') 
-                                 else 'us-west-2')
+                                 else boto3.Session().region_name)
         
         # Extract account ID from role ARN
         account_id = role_arn.split(':')[4] if ':' in role_arn else '052150106756'
@@ -655,6 +755,38 @@ class BaseEvaluator(BaseModel):
             'account_id': account_id
         }
     
+    def _resolve_mlflow_tracking_fields(self, base_job_name: str):
+        """Resolve the MLflow fields for an SMTJ eval recipe.
+
+        The OSS evaluation container requires, whenever an MLflow tracking URI
+        is set, both a non-empty ``mlflow_experiment_name`` and a non-empty
+        ``mlflow_run_name`` (or ``mlflow_run_id``); otherwise recipe validation
+        fails. When the tracking URI has been resolved (explicitly or via the
+        default MLflow app experience) but the user did not provide these names,
+        default them to ``base_job_name`` so MLflow tracking stays enabled. This
+        mirrors the serverless pipeline templates (which default to
+        ``pipeline_name``) and the MTRL evaluator.
+
+        Applies to all model families. The OSS container requires non-empty
+        names; the Nova container tolerates empty strings but still benefits from
+        a meaningful experiment/run name, so we default both to ``base_job_name``
+        for a consistent MLflow experience across Nova and OSS.
+
+        Args:
+            base_job_name: Fallback experiment/run name when a tracking URI is
+                set but no name was provided.
+
+        Returns:
+            tuple: ``(mlflow_tracking_uri, mlflow_experiment_name, mlflow_run_name)``.
+        """
+        from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_tracking_fields
+        return resolve_mlflow_tracking_fields(
+            mlflow_tracking_uri=self.mlflow_resource_arn,
+            mlflow_experiment_name=self.mlflow_experiment_name,
+            mlflow_run_name=self.mlflow_run_name,
+            base_job_name=base_job_name,
+        )
+
     def _resolve_model_artifacts(self, region: str) -> Dict[str, str]:
         """Resolve model artifacts and create artifact ARN if needed.
         
@@ -837,19 +969,84 @@ class BaseEvaluator(BaseModel):
         
         return execution
     
+    def _get_effective_hyperparameters(self) -> Dict[str, Any]:
+        """Return the effective hyperparameters for this evaluation job.
+
+        If recipe/overrides are provided, or if the user set hyperparameters
+        directly, returns the leaf values from the resolved recipe (flattened).
+        Otherwise returns hyperparameters.to_dict().
+
+        This is the method that evaluate() implementations should call to get
+        the final inference parameters for the pipeline template.
+        """
+        try:
+            resolved = self.get_resolved_recipe()
+            return flatten_resolved_recipe(resolved)
+        except ValueError:
+            pass
+
+        hp = getattr(self, '_hyperparameters', None)
+        if hp and hasattr(hp, 'to_dict'):
+            return hp.to_dict()
+
+        try:
+            return self.hyperparameters.to_dict()
+        except Exception:
+            return {}
+
+    def get_resolved_recipe(self) -> Dict[str, Any]:
+        """Return the fully resolved evaluation recipe configuration.
+
+        Merges base defaults (from Hub hyperparameters spec) + user recipe YAML
+        + overrides dict and returns the result. Callable before or after evaluate().
+
+        When neither ``recipe`` nor ``overrides`` were provided at construction time
+        but hyperparameters have been set directly (e.g. ``evaluator.hyperparameters.x = val``),
+        those user-set values are treated as implicit overrides so the resolved recipe
+        still reflects the user's intent.
+
+        Returns:
+            Dict[str, Any]: Deep copy of the resolved recipe configuration.
+
+        Raises:
+            ValueError: If no recipe, overrides, or direct hyperparameter assignments
+                were provided.
+        """
+        import copy
+
+        # Resolve the hyperparameters object (may be lazy-loaded via property)
+        hp = getattr(self, '_hyperparameters', None)
+        if hp is None:
+            try:
+                hp = self.hyperparameters
+            except Exception:
+                hp = None
+
+        resolved = get_resolved_recipe_from_context(
+            recipe_path=self.recipe,
+            overrides=self.overrides,
+            hyperparameters=hp,
+            resolved_cache=getattr(self, '_resolved_recipe_cache', None),
+            template_section="inference",
+            protected_keys={"task", "strategy", "metric"},
+        )
+
+        object.__setattr__(self, '_resolved_recipe_cache', resolved)
+        return copy.deepcopy(resolved)
+
     def evaluate(self) -> Any:
         """Create and start an evaluation execution.
-        
+
         This method must be implemented by subclasses to define the specific
         evaluation logic for different evaluation types (benchmark, custom scorer,
         LLM-as-judge, etc.).
-        
+
         Returns:
             EvaluationPipelineExecution: The created evaluation execution object.
-            
+
         Raises:
             NotImplementedError: This is an abstract method that must be implemented by subclasses.
-            
+
         Example:
             >>> # In a subclass implementation
             >>> class CustomEvaluator(BaseEvaluator):
@@ -860,3 +1057,788 @@ class BaseEvaluator(BaseModel):
             ...         return EvaluationPipelineExecution.start(...)
         """
         raise NotImplementedError("Subclasses must implement evaluate method")
+
+    # ─── Shared SMTJ evaluation helpers ─────────────────────────────────────────
+
+    def _get_smtj_session_and_role(self):
+        """Resolve SageMaker session, role, and region for SMTJ evaluation.
+
+        Returns:
+            tuple: (sagemaker_session, role, region)
+        """
+        from sagemaker.train.defaults import TrainDefaults
+
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+        role = TrainDefaults.get_role(role=self.role, sagemaker_session=sagemaker_session)
+        region = sagemaker_session.boto_session.region_name
+        return sagemaker_session, role, region
+
+    def _get_smtj_eval_recipes(self, sagemaker_session, region):
+        """Fetch and filter SMTJ evaluation recipes from Hub.
+
+        Queries the SageMaker Hub for the model's recipes, filters by
+        Type=Evaluation and SmtjRecipeTemplateS3Uri presence.
+
+        Args:
+            sagemaker_session: SageMaker session with boto3 access.
+            region: AWS region string.
+
+        Returns:
+            list: SMTJ evaluation recipe metadata dicts.
+
+        Raises:
+            ValueError: If no evaluation or SMTJ recipes are found.
+        """
+        from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
+        from sagemaker.train.common_utils.finetune_utils import _normalize_model_name
+        from sagemaker.train.constants import get_sagemaker_hub_name
+
+        model_name = self._resolve_model_name_for_recipe()
+        normalized_model_name = _normalize_model_name(model_name)
+
+        hub_name = get_sagemaker_hub_name()
+        hub_content = _get_hub_content_metadata(
+            hub_name=hub_name,
+            hub_content_type="Model",
+            hub_content_name=normalized_model_name,
+            session=sagemaker_session.boto_session,
+            region=region,
+        )
+
+        document = hub_content.get('hub_content_document', {})
+        recipe_collection = document.get("RecipeCollection", [])
+
+        # Filter by Type=Evaluation
+        eval_recipes = [r for r in recipe_collection if r.get("Type") == "Evaluation"]
+        if not eval_recipes:
+            raise ValueError(
+                f"No evaluation recipes found for model '{normalized_model_name}' in Hub. "
+                f"Ensure the model has evaluation recipes registered in SageMakerPublicHub."
+            )
+
+        # Filter for SMTJ recipes (must have SmtjRecipeTemplateS3Uri)
+        smtj_eval_recipes = [r for r in eval_recipes if r.get("SmtjRecipeTemplateS3Uri")]
+        if not smtj_eval_recipes:
+            raise ValueError(
+                f"No SMTJ evaluation recipes found for model '{normalized_model_name}'."
+            )
+
+        return smtj_eval_recipes
+
+    def _download_and_load_recipe(self, recipe_s3_uri, sagemaker_session):
+        """Download a recipe YAML from S3 and load it as a dict.
+
+        Args:
+            recipe_s3_uri: S3 URI of the recipe template.
+            sagemaker_session: SageMaker session with boto3 access.
+
+        Returns:
+            tuple: (recipe_dict, tmp_file_path)
+        """
+        import tempfile
+        import yaml
+
+        s3_client = sagemaker_session.boto_session.client("s3")
+        bucket, key = recipe_s3_uri.replace("s3://", "").split("/", 1)
+        recipe_tmp = tempfile.NamedTemporaryFile(prefix="eval_recipe_", suffix=".yaml", delete=False)
+        s3_client.download_file(bucket, key, recipe_tmp.name)
+
+        with open(recipe_tmp.name, "r") as f:
+            recipe_dict = yaml.safe_load(f) or {}
+
+        return recipe_dict, recipe_tmp.name
+
+    def _resolve_model_s3_path(self, sagemaker_session, region):
+        """Resolve S3 model artifacts path from model package or direct S3 URI.
+
+        SMTJ evaluation requires the S3 checkpoint path (not a model package ARN).
+
+        Args:
+            sagemaker_session: SageMaker session with boto3 access.
+            region: AWS region string.
+
+        Returns:
+            Optional[str]: S3 path to model artifacts, or None if not resolvable.
+        """
+        # If model was provided as a direct S3 checkpoint path, return it directly
+        from sagemaker.train.common_utils.model_resolution import _ModelType
+        info = self._get_resolved_model_info()
+        if info and info.model_type == _ModelType.S3_CHECKPOINT and info.s3_model_path:
+            return info.s3_model_path
+
+        if not self._source_model_package_arn:
+            return None
+
+        model_pkg = ModelPackage.get(
+            model_package_name=self._source_model_package_arn,
+            session=sagemaker_session.boto_session,
+            region=region,
+        )
+        model_path = None
+        if (model_pkg.inference_specification and
+            model_pkg.inference_specification.containers):
+            container = model_pkg.inference_specification.containers[0]
+            if hasattr(container, 'model_data_source') and container.model_data_source:
+                src = container.model_data_source
+                if hasattr(src, 's3_data_source') and src.s3_data_source:
+                    model_path = src.s3_data_source.s3_uri
+            elif hasattr(container, 'model_data_url') and container.model_data_url:
+                model_path = container.model_data_url
+
+        return model_path
+
+    def _resolve_eval_model_name_or_path(self, sagemaker_session, region):
+        """Resolve the ``model_name_or_path`` value for SMTJ eval recipe rendering.
+
+        Resolution order:
+          1. Fine-tuned artifacts: a direct S3 checkpoint path or the S3 model
+             artifacts of a fine-tuned ModelPackage (applies to Nova and OSS).
+          2. OSS (non-Nova) base model: resolve the HuggingFace repo id / S3
+             weights URI from Hub content metadata. The OSS evaluation container
+             loads the base weights via ``model_name_or_path``, so this must be
+             populated even when there is no fine-tuned checkpoint.
+
+        The Hub fallback is intentionally scoped to non-Nova models: Nova eval
+        recipes carry their model identity via ``model_type`` and the curated
+        recipe, so the OSS-specific resolution must never touch the Nova flow.
+        This mirrors ``BaseTrainer._train_serverful_smtj`` and the Nova Forge
+        SDK ``RecipeBuilder``.
+
+        Args:
+            sagemaker_session: SageMaker session with boto3 access.
+            region: AWS region string.
+
+        Returns:
+            Optional[str]: Resolved model path (S3 URI or HF repo id), or None.
+        """
+        model_path = self._resolve_model_s3_path(sagemaker_session, region)
+        if model_path:
+            return model_path
+
+        if not _is_nova_model(self._base_model_name):
+            from sagemaker.train.common_utils.finetune_utils import (
+                _resolve_base_model_weights_s3_uri,
+            )
+
+            resolved = _resolve_base_model_weights_s3_uri(
+                model_name=self._resolve_model_name_for_recipe(),
+                sagemaker_session=sagemaker_session,
+            )
+            if resolved:
+                _logger.info(
+                    f"Resolved OSS base model_name_or_path for evaluation: {resolved}"
+                )
+                return resolved
+
+        return None
+
+    def _resolve_eval_model_input(self, sagemaker_session, region):
+        """Resolve the SMTJ eval model: ``model_name_or_path`` + optional channel.
+
+        For OSS (non-Nova) models the eval container loads weights via
+        ``AutoModelForCausalLM.from_pretrained(model_name_or_path)`` and only runs
+        its ``checkpoints/hf_merged/`` path-resolution when handed a *local* path.
+        The serverless flow succeeds because the model is delivered as a local
+        mount (``/opt/ml/input/data/base_model``), letting the container descend
+        into ``checkpoints/hf_merged/``. Passing a raw S3 URI instead makes the
+        container skip resolution ("is not of path. No path resolution needed")
+        and point HuggingFace at the extraction root, which fails with
+        ``Repo id must be in the form ...`` because ``config.json`` lives in the
+        nested ``checkpoints/hf_merged/`` directory.
+
+        To reproduce the serverless experience we deliver the resolved artifact
+        via a dedicated ``model`` input channel (mounted at
+        ``/opt/ml/input/data/model``) and point ``model_name_or_path`` at that
+        mount. This mirrors the OSS SMTJ *training* flow in
+        ``BaseTrainer._train_serverful_smtj``.
+
+        SageMaker File-mode channels do not auto-extract archives, so a
+        compressed ``model.tar.gz`` artifact cannot be delivered this way (the
+        container would see the tarball, not the extracted weights). In that case
+        we raise with actionable guidance instead of letting the job fail
+        mid-run with the opaque container error.
+
+        Nova is intentionally untouched: Nova recipes carry model identity via
+        ``model_type`` / a curated recipe and the container resolves the S3 path
+        itself, so Nova keeps passing the S3 path with no channel.
+
+        Args:
+            sagemaker_session: SageMaker session with boto3 access.
+            region: AWS region string.
+
+        Returns:
+            tuple: ``(model_name_or_path, model_channel)``. ``model_channel`` is
+            an ``InputData`` to append to the job's input channels, or ``None``
+            when no channel is needed (Nova, or no resolvable model).
+        """
+        model_path = self._resolve_eval_model_name_or_path(sagemaker_session, region)
+        if not model_path:
+            return None, None
+
+        # Nova resolves the S3 path container-side; leave its wiring unchanged.
+        if _is_nova_model(self._base_model_name):
+            return model_path, None
+
+        # OSS: a compressed artifact can't be delivered as an extractable mount.
+        if model_path.endswith(".tar.gz"):
+            raise ValueError(
+                "Open-weight (non-Nova) SMTJ evaluation requires the model "
+                "artifact as an uncompressed S3 prefix, but a compressed archive "
+                f"was resolved:\n    {model_path}\n\n"
+                "The evaluation container loads HuggingFace weights from a local "
+                "mount and cannot extract a model.tar.gz delivered through an "
+                "input channel. Provide the model as either:\n"
+                "  1. A fine-tuned ModelPackage (recommended; matches the "
+                "serverless flow), or\n"
+                "  2. An uncompressed S3 prefix containing the model artifacts "
+                "(e.g. the training output 'model/' directory, not "
+                "'model.tar.gz')."
+            )
+
+        from sagemaker.core.training.configs import InputData
+        from sagemaker.core.shapes import S3DataSource
+
+        _logger.info(
+            "Delivering OSS eval model via 'model' input channel from "
+            f"{model_path}; model_name_or_path set to /opt/ml/input/data/model"
+        )
+        model_channel = InputData(
+            channel_name="model",
+            data_source=S3DataSource(
+                s3_uri=model_path,
+                s3_data_type="S3Prefix",
+                s3_data_distribution_type="FullyReplicated",
+            ),
+        )
+        return "/opt/ml/input/data/model", model_channel
+
+    @staticmethod
+    def _is_recipe_placeholder(value):
+        """Return True if ``value`` is a string carrying a ``{{...}}`` template token."""
+        return isinstance(value, str) and "{{" in value and "}}" in value
+
+    @staticmethod
+    def _walk_recipe_leaves(node, visit, path=""):
+        """Recursively walk a recipe dict, invoking ``visit`` on every leaf.
+
+        Provides a single tree-traversal used by all recipe placeholder passes
+        (value injection, blanking, inference defaults, validation) so the
+        recursion and dotted-path bookkeeping live in one place.
+
+        Args:
+            node: The dict (or sub-dict) to walk. Non-dict nodes are ignored.
+            visit: Callable ``visit(parent, key, value, dotted_path)`` invoked
+                for each non-dict leaf. ``parent`` is the containing dict, so a
+                callback may mutate the recipe in place via ``parent[key] = ...``.
+            path: Dotted-path prefix for the current node (used for reporting).
+        """
+        if not isinstance(node, dict):
+            return
+        for key, value in list(node.items()):
+            current = f"{path}.{key}" if path else key
+            if isinstance(value, dict):
+                BaseEvaluator._walk_recipe_leaves(value, visit, current)
+            else:
+                visit(node, key, value, current)
+
+    @staticmethod
+    def _apply_eval_recipe_values(recipe_dict, value_map):
+        """Inject evaluation values into a recipe by leaf-key name and placeholder.
+
+        Recursively walks ``recipe_dict`` and resolves each leaf two ways
+        (schema-agnostic, no assumption about section layout):
+
+          1. If the leaf *key* matches an entry in ``value_map`` (non-None),
+             overwrite the value. Handles concrete-valued leaves and
+             same-named ``{{key}}`` placeholders.
+          2. Else if the leaf *value* is a pure ``{{token}}`` placeholder whose
+             token matches an entry in ``value_map``, substitute that value.
+             Handles recipes where the placeholder name differs from the leaf
+             key (e.g. ``metric: {{evaluation_metric}}``).
+
+        This mirrors the key-driven merge in the Nova Forge SDK ``RecipeBuilder``
+        (``_build_final_recipe`` + the ``{{...}}`` token resolution in
+        ``update_overrides_template``), so it works for Nova recipes
+        (``run``/``evaluation`` sections) and OSS recipe templates alike.
+
+        Args:
+            recipe_dict: The recipe dictionary to modify in-place.
+            value_map: Mapping of field name -> value to inject.
+
+        Returns:
+            set: The set of value_map keys that were found and applied.
+        """
+        applied = set()
+
+        def _placeholder_token(value):
+            """Return the token name if value is a pure ``{{token}}`` else None."""
+            if isinstance(value, str):
+                stripped = value.strip().strip("'\"")
+                if stripped.startswith("{{") and stripped.endswith("}}"):
+                    return stripped[2:-2].strip()
+            return None
+
+        def _visit(parent, key, value, _path):
+            # (1) leaf key matches a managed field
+            if key in value_map and value_map[key] is not None:
+                # Preserve optimizer-style sentinel values that happen to use
+                # the generic ``name`` key (matches Nova Forge SDK behavior).
+                if key == "name" and value == "distributed_fused_adam":
+                    return
+                parent[key] = value_map[key]
+                applied.add(key)
+                return
+            # (2) leaf value is a {{token}} placeholder for a managed field
+            token = _placeholder_token(value)
+            if token is not None and token in value_map and value_map[token] is not None:
+                parent[key] = value_map[token]
+                applied.add(token)
+
+        BaseEvaluator._walk_recipe_leaves(recipe_dict, _visit)
+        return applied
+
+    def _download_eval_override_spec(self, recipe_metadata, sagemaker_session):
+        """Download the override-params spec for a selected eval recipe from Hub.
+
+        The recipe's ``SmtjOverrideParamsS3Uri`` points at a JSON document whose
+        top-level keys are the overridable field names the recipe declares, each
+        mapping to a spec dict (``default``/``type``/``min``/``max``/``enum``).
+        Using this makes the overridable field set Hub-driven instead of
+        hardcoded, so a new model whose recipe declares different fields is
+        picked up automatically (mirrors the Nova Forge SDK, which loads the
+        same override template from Hub).
+
+        Args:
+            recipe_metadata: The selected recipe metadata dict (from
+                ``_get_smtj_eval_recipes``).
+            sagemaker_session: SageMaker session with boto3 access.
+
+        Returns:
+            dict: Parsed override spec (field name -> spec dict), or ``{}`` if
+                the recipe declares no override URI.
+        """
+        import json
+
+        override_uri = recipe_metadata.get("SmtjOverrideParamsS3Uri")
+        if not override_uri:
+            _logger.info(
+                "Selected SMTJ eval recipe has no SmtjOverrideParamsS3Uri; "
+                "no Hub-declared override fields available."
+            )
+            return {}
+
+        s3_client = sagemaker_session.boto_session.client("s3")
+        bucket, key = override_uri.replace("s3://", "").split("/", 1)
+        response = s3_client.get_object(Bucket=bucket, Key=key)
+        spec = json.loads(response["Body"].read())
+
+        if not isinstance(spec, dict):
+            _logger.warning(
+                f"Override spec at {override_uri} is not a JSON object; ignoring."
+            )
+            return {}
+
+        _logger.info(
+            f"Loaded {len(spec)} Hub-declared overridable eval field(s) from "
+            f"{override_uri}: {sorted(spec.keys())}"
+        )
+        return spec
+
+    @staticmethod
+    def _build_eval_value_map(override_spec, semantic_values=None, user_overrides=None):
+        """Build the field->value map for eval recipe rendering, spec-driven.
+
+        The overridable field set and their defaults come from the Hub override
+        spec (``SmtjOverrideParamsS3Uri``). Precedence, low to high:
+
+          1. spec ``default`` for each field the recipe declares,
+          2. SDK-derived semantic values (task, strategy, metric,
+             model_name_or_path, infra fields, ...),
+          3. user-provided ``overrides``.
+
+        Semantic and override keys are included even when absent from the spec,
+        so they still render into recipe leaves that use those keys. User
+        overrides targeting fields the spec does not declare are logged.
+
+        Args:
+            override_spec: Parsed override spec from
+                ``_download_eval_override_spec`` (field name -> spec dict).
+            semantic_values: Optional SDK-derived field -> value mapping.
+            user_overrides: Optional user-provided field -> value mapping.
+
+        Returns:
+            dict: Resolved field -> value mapping.
+        """
+        value_map = {}
+
+        # 1. Hub-declared defaults
+        for key, spec in (override_spec or {}).items():
+            if isinstance(spec, dict):
+                if "default" in spec:
+                    value_map[key] = spec["default"]
+            else:
+                value_map[key] = spec
+
+        # 2. SDK-derived semantic values
+        for key, val in (semantic_values or {}).items():
+            if val is not None:
+                value_map[key] = val
+
+        # 3. user overrides (highest precedence)
+        for key, val in (user_overrides or {}).items():
+            if override_spec and key not in override_spec:
+                _logger.warning(
+                    f"Override '{key}' is not a Hub-declared field for this "
+                    f"evaluation recipe; applying it anyway if the recipe uses it."
+                )
+            value_map[key] = val
+
+        # 4. Coerce values to the type the override spec declares.
+        # The eval container validates field types strictly (e.g. max_model_len
+        # must be an int, not the string "12000"). Values sourced from the
+        # hyperparameters object or user overrides may arrive stringified, so
+        # honor the spec's declared type to avoid container ConfigTypeError.
+        # When the recipe ships without a Hub override spec (or omits a declared
+        # type for a known numeric field), fall back to the conventional type so
+        # fields like max_model_len are still coerced.
+        for key, val in list(value_map.items()):
+            if val is None:
+                continue
+            spec = (override_spec or {}).get(key)
+            type_name = spec.get("type") if isinstance(spec, dict) else None
+            if not type_name:
+                type_name = _DEFAULT_EVAL_FIELD_TYPES.get(key)
+            if type_name:
+                value_map[key] = BaseEvaluator._coerce_to_spec_type(val, type_name)
+
+        return value_map
+
+    @staticmethod
+    def _coerce_to_spec_type(value, type_name):
+        """Coerce a value to the type declared in the override spec.
+
+        Args:
+            value: The value to coerce.
+            type_name: The spec's declared type (e.g. ``integer``, ``float``,
+                ``boolean``, ``string``).
+
+        Returns:
+            The coerced value, or the original value if coercion is not
+            applicable or fails.
+        """
+        normalized = (type_name or "").strip().lower()
+        try:
+            if normalized in ("integer", "int"):
+                # Avoid turning a float-like string (e.g. "1.0") into an error;
+                # route through float first when needed.
+                if isinstance(value, bool):
+                    return value
+                if isinstance(value, str) and "." in value:
+                    return int(float(value))
+                return int(value)
+            if normalized in ("float", "number", "double"):
+                return float(value)
+            if normalized in ("boolean", "bool"):
+                if isinstance(value, bool):
+                    return value
+                return str(value).strip().lower() in ("true", "1", "yes")
+            if normalized in ("string", "str"):
+                return "" if value is None else str(value)
+        except (ValueError, TypeError):
+            return value
+        return value
+
+    @staticmethod
+    def _blank_unresolved_placeholders(recipe_dict):
+        """Replace any leftover ``{{...}}`` placeholder leaves with empty strings.
+
+        An eval recipe template may declare optional infrastructure placeholders
+        that the SDK does not populate (e.g. ``eval_tensorboard_results_dir``,
+        ``mlflow_run_id``). Leaving literal ``{{...}}`` values would fail recipe
+        validation and could leak into the job, so blank them out as a final
+        safety net after all known values have been injected.
+
+        Args:
+            recipe_dict: The recipe dictionary to modify in-place.
+
+        Returns:
+            list: Dotted paths of the leaves that were blanked (for logging).
+        """
+        blanked = []
+
+        def _visit(parent, key, value, path):
+            if BaseEvaluator._is_recipe_placeholder(value):
+                parent[key] = ""
+                blanked.append(path)
+
+        BaseEvaluator._walk_recipe_leaves(recipe_dict, _visit)
+        return blanked
+
+    @staticmethod
+    def _resolve_inference_placeholders(recipe_dict):
+        """Fill in sensible defaults for unresolved inference placeholder values.
+
+        Args:
+            recipe_dict: The recipe dictionary to modify in-place.
+        """
+        if "inference" not in recipe_dict:
+            return
+
+        inf = recipe_dict["inference"]
+        if BaseEvaluator._is_recipe_placeholder(inf.get("max_new_tokens")):
+            inf["max_new_tokens"] = 512
+        if BaseEvaluator._is_recipe_placeholder(inf.get("top_k")):
+            inf["top_k"] = 1
+        if BaseEvaluator._is_recipe_placeholder(inf.get("top_p")):
+            inf["top_p"] = 1.0
+        if BaseEvaluator._is_recipe_placeholder(inf.get("temperature")):
+            inf["temperature"] = 0.0
+
+    def _build_output_data_config(self):
+        """Build OutputDataConfig from s3_output_path if provided."""
+        if self.s3_output_path:
+            from sagemaker.core.training.configs import OutputDataConfig
+            return OutputDataConfig(s3_output_path=self.s3_output_path)
+        return None
+
+    @staticmethod
+    def _validate_no_unresolved_placeholders(recipe_dict):
+        """Validate that no unresolved {{...}} placeholder values remain in the recipe dict.
+
+        Walks the entire recipe dict recursively and raises a ValueError if any
+        key has an unresolved template placeholder (e.g., '{{lambda_arn}}'). This
+        prevents literal placeholder strings from leaking into training job
+        hyperparameters. Mirrors the validation in BaseTrainer's
+        _render_recipe_placeholders which raises on unresolved placeholders.
+
+        Args:
+            recipe_dict: The recipe dictionary to validate.
+
+        Raises:
+            ValueError: If any unresolved {{...}} placeholders are found.
+        """
+        unresolved = []
+
+        def _visit(_parent, _key, value, path):
+            if BaseEvaluator._is_recipe_placeholder(value):
+                unresolved.append(f"{path}={value}")
+
+        BaseEvaluator._walk_recipe_leaves(recipe_dict, _visit)
+        if unresolved:
+            raise ValueError(
+                f"Recipe template has unresolved placeholders: {unresolved}. "
+                f"Ensure all required parameters are provided to the evaluator."
+            )
+
+    def _write_and_submit_smtj_recipe(
+        self, recipe_dict, recipe_tmp_path, training_image, sagemaker_session, role, base_job_name,
+        input_data_config=None
+    ):
+        """Write the modified recipe and submit via ModelTrainer.
+
+        Args:
+            recipe_dict: The fully resolved recipe dictionary.
+            recipe_tmp_path: Path to the temporary recipe file.
+            training_image: Container image URI for the training job.
+            sagemaker_session: SageMaker session.
+            role: IAM execution role ARN.
+            base_job_name: Base name for the training job.
+            input_data_config: Optional list of InputData for additional input channels.
+
+        Returns:
+            The latest training job object from ModelTrainer.
+        """
+        import yaml
+        from sagemaker.train.model_trainer import ModelTrainer
+        from sagemaker.core.training.configs import Compute as TrainingJobCompute
+
+        # Validate no unresolved {{...}} placeholders remain in the recipe
+        # before writing, to prevent literal template strings from leaking into
+        # training job hyperparameters.
+        self._validate_no_unresolved_placeholders(recipe_dict)
+
+        with open(recipe_tmp_path, "w") as f:
+            yaml.dump(recipe_dict, f, default_flow_style=False, sort_keys=False)
+
+        compute = TrainingJobCompute(
+            instance_type=self.compute.instance_type,
+            instance_count=self.compute.instance_count,
+            volume_size_in_gb=self.compute.volume_size_in_gb,
+            keep_alive_period_in_seconds=self.compute.keep_alive_period_in_seconds,
+        )
+
+        model_trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe_tmp_path,
+            compute=compute,
+            training_image=training_image,
+            sagemaker_session=sagemaker_session,
+            role=role,
+            base_job_name=base_job_name,
+            output_data_config=self._build_output_data_config(),
+            input_data_config=input_data_config,
+        )
+
+        model_trainer.train(wait=False, logs=False)
+
+        return model_trainer._latest_training_job
+
+    def _submit_hyperpod_eval_job(self, override_parameters=None, base_job_name=None):
+        """Submit an evaluation job to a HyperPod cluster.
+
+        Handles the common HyperPod workflow: validate cluster config, connect,
+        resolve recipe, build base override parameters, submit job, and parse
+        the job name from CLI output.
+
+        Subclasses call this with their evaluator-specific override parameters.
+
+        Args:
+            override_parameters: Optional dict of evaluator-specific override
+                parameters to merge with the base parameters.
+            base_job_name: Optional base name for the job. If not provided,
+                uses self.base_eval_name or "eval".
+
+        Returns:
+            str: The HyperPod job name.
+
+        Raises:
+            ValueError: If cluster_name or recipe is not set.
+        """
+        import json
+        import subprocess
+        from sagemaker.train.utils import _get_unique_name
+
+        compute = self.compute
+        if not compute.cluster_name:
+            raise ValueError("cluster_name is required in HyperPodCompute for evaluation.")
+
+        # HyperPod submits via the HyperPod CLI running as the *caller's* identity,
+        # so there is no execution role to resolve here; this verifies the caller's
+        # cluster-connect permissions (warn, non-blocking).
+        TrainDefaults.verify_hyperpod_caller_permissions(
+            sagemaker_session=self.sagemaker_session,
+            cluster_name=compute.cluster_name,
+        )
+
+        # Validate HyperPod cluster capacity before proceeding
+        is_nova = _is_nova_model(self._base_model_name)
+        validate_hyperpod_compute(
+            compute=compute,
+            sagemaker_session=self.sagemaker_session,
+            is_nova=is_nova,
+        )
+
+        namespace = compute.namespace or "kubeflow"
+
+        # Connect to cluster
+        subprocess.run(
+            ["hyperpod", "connect-cluster", "--cluster-name", compute.cluster_name, "--namespace", namespace],
+            capture_output=True, text=True, check=True,
+        )
+
+        # Resolve recipe: use user-provided recipe or auto-resolve from Hub
+        recipe_name = self.recipe
+        if not recipe_name:
+            from sagemaker.train.common_utils.finetune_utils import get_hyperpod_recipe_path
+
+            job_base = base_job_name or self.base_eval_name or "eval"
+            model_name = self._resolve_model_name_for_recipe()
+            recipe_name = get_hyperpod_recipe_path(
+                model_name=model_name,
+                customization_technique="Evaluation",
+                training_type="FULL",
+                sagemaker_session=self.sagemaker_session,
+                job_name=job_base,
+                display_name_filter=self._get_eval_recipe_display_name_filter(),
+            )
+            _logger.info(f"Auto-resolved HyperPod eval recipe from Hub: {recipe_name}")
+
+        # Build base override parameters
+        base_overrides = {}
+        if compute.instance_type:
+            base_overrides["instance_type"] = compute.instance_type
+        if self.training_image:
+            base_overrides["container"] = self.training_image
+        else:
+            # Auto-resolve evaluation container image from Hub
+            from sagemaker.train.common_utils.finetune_utils import get_training_image
+            model_name = self._resolve_model_name_for_recipe()
+            eval_image = get_training_image(
+                model_name=model_name,
+                customization_technique="Evaluation",
+                training_type="FULL",
+                sagemaker_session=self.sagemaker_session,
+            )
+            if eval_image:
+                # Convert SMTJ image tag to HyperPod image tag
+                hp_image = eval_image.replace("SM-TJ-", "SM-HP-")
+                base_overrides["container"] = hp_image
+                _logger.info(f"Auto-resolved HyperPod eval image: {hp_image}")
+        if compute.node_count:
+            base_overrides["recipes.run.replicas"] = compute.node_count
+
+        job_name = _get_unique_name(base_job_name or self.base_eval_name or "eval")
+        base_overrides["recipes.run.name"] = job_name
+
+        # Output path
+        if self.s3_output_path:
+            base_overrides["recipes.run.output_s3_path"] = self.s3_output_path
+
+        # Model checkpoint path (fine-tuned model S3 path)
+        if isinstance(self.model, str) and self.model.startswith("s3://"):
+            base_overrides["recipes.run.model_name_or_path"] = self.model
+        else:
+            # Check if model is a BaseTrainer with a completed training job
+            from sagemaker.train.base_trainer import BaseTrainer
+            if isinstance(self.model, BaseTrainer):
+                checkpoint_uri = None
+                training_job = getattr(self.model, '_latest_training_job', None)
+                if training_job:
+                    artifacts = getattr(training_job, 'model_artifacts', None)
+                    if artifacts and not isinstance(artifacts, Unassigned):
+                        s3_path = getattr(artifacts, 's3_model_artifacts', None)
+                        if s3_path and isinstance(s3_path, str):
+                            checkpoint_uri = s3_path
+                if checkpoint_uri:
+                    base_overrides["recipes.run.model_name_or_path"] = checkpoint_uri
+                    _logger.info("Using trainer checkpoint for eval: %s", checkpoint_uri)
+            # Also check resolved model info for S3 checkpoint
+            if "recipes.run.model_name_or_path" not in base_overrides:
+                try:
+                    from sagemaker.train.common_utils.model_resolution import _ModelType
+                    info = self._get_resolved_model_info()
+                    if info and info.model_type == _ModelType.S3_CHECKPOINT and info.s3_model_path:
+                        base_overrides["recipes.run.model_name_or_path"] = info.s3_model_path
+                except Exception:
+                    _logger.debug("Could not resolve S3 checkpoint from model info", exc_info=True)
+
+        # MLflow configuration
+        if self.mlflow_resource_arn:
+            base_overrides["recipes.run.mlflow_tracking_uri"] = self.mlflow_resource_arn
+        if self.mlflow_experiment_name:
+            base_overrides["recipes.run.mlflow_experiment_name"] = self.mlflow_experiment_name
+        if self.mlflow_run_name:
+            base_overrides["recipes.run.mlflow_run_name"] = self.mlflow_run_name
+
+        # Merge evaluator-specific overrides
+        if override_parameters:
+            base_overrides.update(override_parameters)
+
+        # Submit job
+        start_job_cmd = [
+            "hyperpod", "start-job", "--namespace", namespace, "--recipe", recipe_name,
+            "--override-parameters", json.dumps(base_overrides),
+        ]
+
+        try:
+            start_result = subprocess.run(start_job_cmd, capture_output=True, text=True, check=True)
+        except subprocess.CalledProcessError as e:
+            _logger.error(f"HyperPod job submission failed.\nstdout: {e.stdout}\nstderr: {e.stderr}")
+            raise
+
+        matched = re.search(r"NAME: (\S+)", start_result.stdout)
+        if not matched:
+            raise ValueError(f"Could not find job name in output: {start_result.stdout}")
+
+        return matched.group(1)

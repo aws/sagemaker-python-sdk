@@ -11,6 +11,7 @@ Run with: pytest tests/integ/test_featureStore_lakeformation.py -v -m integ
 
 import logging
 import uuid
+from unittest import mock
 import boto3
 import pytest
 from botocore.exceptions import ClientError
@@ -179,6 +180,8 @@ def test_create_feature_group_and_enable_lake_formation(s3_uri, role, region):
             cleanup_feature_group(fg)
 
 
+# Rerun to absorb transient Lake Formation ConcurrentModificationException.
+@pytest.mark.flaky(reruns=1, reruns_delay=15)
 @pytest.mark.serial
 @pytest.mark.slow_test
 def test_create_feature_group_with_lake_formation_enabled(s3_uri, role, region):
@@ -350,21 +353,34 @@ def test_enable_lake_formation_fails_for_non_created_status(s3_uri, role, region
     Expected behavior: ValueError should be raised indicating the Feature Group
     must be in 'Created' status.
 
-    Note: This test creates its own FeatureGroupManager because it needs to test
-    behavior during the 'Creating' status, which requires a fresh resource.
+    Note: This test creates its own FeatureGroupManager and forces a non-'Created'
+    status. We do not rely on catching the transient 'Creating' window, because a
+    small Feature Group can reach 'Created' before enable_lake_formation() refreshes
+    its status, which would make the test race and fall through to the real
+    RegisterResource call (flaky). Instead we pin the status deterministically so
+    only the status guard is exercised.
     """
     fg_name = generate_feature_group_name()
     fg = None
 
     try:
-        # Create the FeatureGroupManager
+        # Create the FeatureGroupManager and let it reach 'Created' so cleanup is safe.
         fg = create_test_feature_group(fg_name, s3_uri, role, region)
         assert fg is not None
+        fg.wait_for_status(target_status="Created", poll=30, timeout=300)
 
-        # Immediately try to enable Lake Formation without waiting for Created status
-        # The Feature Group will be in 'Creating' status
-        with pytest.raises(ValueError) as exc_info:
-            fg.enable_lake_formation(hybrid_access_mode_enabled=False, acknowledge_risk=True, wait_for_active=False)
+        # Force a non-'Created' status deterministically. refresh() is patched to a
+        # no-op so it does not overwrite the pinned status, and enable_lake_formation()
+        # should reject before ever calling RegisterResource.
+        # NOTE: FeatureGroupManager is a pydantic model, so patching the method on the
+        # instance (mock.patch.object(fg, "refresh")) is rejected by pydantic's
+        # validate_assignment. Patch on the class instead to stay pydantic-safe.
+        fg.feature_group_status = "Creating"
+        with mock.patch.object(type(fg), "refresh", return_value=None):
+            with pytest.raises(ValueError) as exc_info:
+                fg.enable_lake_formation(
+                    hybrid_access_mode_enabled=False, acknowledge_risk=True, wait_for_active=False
+                )
 
         # Verify error message mentions status requirement
         error_msg = str(exc_info.value)
@@ -373,7 +389,6 @@ def test_enable_lake_formation_fails_for_non_created_status(s3_uri, role, region
     finally:
         # Cleanup
         if fg:
-            fg.wait_for_status(target_status="Created", poll=30, timeout=300)
             cleanup_feature_group(fg)
 
 

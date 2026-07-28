@@ -1,4 +1,91 @@
 # Changelog
+
+## v1.17.0 (2026-07-24)
+
+### Bug Fixes
+
+- fix(train): correct Networking field names in ModelTrainer intelligent defaults (#6064)
+- fix: resolve MTRL eval base-model ARN against the configured hub (#6040)
+- fix(train): Fall back to public hub when private hub lacks base model (#6092)
+- fix: datamixing recipe path fix (#6073)
+
+### Tests
+
+- test: Doc update and added SFT integ test (#6018)
+- test: Fix role issue in mtrl integ tests (#6070)
+- test: Fix gpu integ test failure due to outdated MPG (#6097)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
+## v1.16.0 (2026-07-15)
+
+### Bug Fixes
+
+- fix: filter full recipe template from serverless train() (#6021)
+- Fix sm-train unit tests + use single logger in base trainer (#6030)
+
+## v1.15.1 (2026-07-09)
+
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
+### Bug Fixes
+
+- fix: always apply evaluator identity keywords and allow explicit domain_id (#5989)
+- fix: refresh LLMAsJudgeEvaluator allowed evaluator models (#5987)
+- fix: define LAMBDA_ARN_REGEX in finetune_utils to fix RLVRTrainer NameError (#5988)
+- fix: RLVR validation bugfix (#6000)
+- fix: drop claude-sonnet-4-20250514 from evaluator allowlist (#6009)
+
+### Other
+
+- test: Fix/v3 tests (#5996)
+- test: wip nova hyperpod integ tests (#5990)
+
+## v1.15.0 (2026-06-22)
+
+### New Features
+
+- feat(train): Add 3-level recipe override support with `get_resolved_recipe()` (#2034)
+- feat: Recipe override handling (#2056)
+- feat: Add Nova-specific recipe validations (#2052)
+- feat(train): Auto-resolve HyperPod recipe from Hub (#2050)
+- feat(train): Add Serverless / SMTJ / HyperPod support to trainers and evaluators (#2045)
+- feat: Add infra validation (#2049)
+- feat(train): Enable Data Mixing for Nova models (#2054)
+- feat: Add `is_multimodal` utils function for multimodal data auto-detection (#2033)
+- feat: RLVRTrainer Lambda ARN support (#2025)
+- feat: RLVR reward Lambda validation (#2036)
+- feat: InspectAI evaluator (#2039)
+- feat: Add Nova as a target for LLM-as-a-Judge (LLMAJ) (#2059)
+- feat: Support serverful training job checkpoint resolution in InspectAI evaluator (#2066)
+- feat: IAM role creation — auto-create least-privilege execution roles, SDK-wide (#2041)
+- feat: HyperPod IAM creation (#2057)
+- feat(train): Add iterative training with `base_model_name` param (#2085)
+
+### Bug Fixes
+
+- fix: Reject unknown recipe overrides (serverless + serverful) and untrusted IAM roles (#2071)
+- fix: Apply recipe overrides to hyperparameters in SMTJ serverful path (#2070)
+- fix: Recipe override errors in evaluator (#2067)
+- fix: Hub-content IAM perms, recipe dataset paths, and log markup escaping (#2065)
+- fix: Harden auto-created IAM roles and protect curated recipe keys (#2058)
+- fix: Add HyperPod validation in train and evaluate (#2051)
+- fix: Evaluation on HyperPod (#2061)
+- fix: Resolve HyperPod training image from EKS payload template (#2069)
+- fix: Skip `model_package_group` validation when HyperPod compute is provided in CPTTrainer (#2068)
+- fix: Use compute param in get fine-tuning utils (#2060)
+- fix: Set Converse as S3DataType for Nova models in SMTJ Serverful for SFT and DPO (#2064)
+- fix(train): Use Converse S3DataType for Nova SFT/DPO in serverless flow (#2079)
+- fix: MLflow error causing OSS model eval to fail (#2075)
+- fix: RLVR setup and reward Lambda handling (#2076)
+- fix(iam): Validate roles by default, opt-in creation, and add MLflow perms (#2080)
+- fix(train): Validate recipe and instance count override for SMTJ serverful (#2082)
+- fix(train): Route `.hyperparameters.*` through recipe resolver (#2078)
+- fix: Check S3 permission before saving recipe.yaml (#2083)
+- fix: `get_resolved_recipe()` includes all overrides and displays as nested dictionary (#2084)
+
 ## v1.14.0 (2026-06-18)
 
 ### Bug Fixes

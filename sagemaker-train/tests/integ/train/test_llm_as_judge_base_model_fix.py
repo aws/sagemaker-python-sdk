@@ -70,7 +70,7 @@ REGION = "us-west-2"
 ACCOUNT_ID = "729646638167"
 
 TEST_CONFIG = {
-    "evaluator_model": "anthropic.claude-3-5-haiku-20241022-v1:0",
+    "evaluator_model": "anthropic.claude-haiku-4-5-20251001-v1:0",
     "dataset_s3_uri": f"s3://sagemaker-{REGION}-{ACCOUNT_ID}/model-customization/eval/gen_qa.jsonl",
     "builtin_metrics": ["Completeness", "Faithfulness"],
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),

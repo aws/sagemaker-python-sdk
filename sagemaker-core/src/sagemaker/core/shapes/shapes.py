@@ -325,6 +325,71 @@ class BatchGetRecordResponse(Base):
     unprocessed_identifiers: List[BatchGetRecordIdentifier]
 
 
+class TtlDuration(Base):
+    """
+    TtlDuration
+      Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
+
+    Attributes
+    ----------------------
+    unit:  TtlDuration time unit.
+    value:  TtlDuration time value.
+    """
+
+    unit: Optional[StrPipeVar] = Unassigned()
+    value: Optional[int] = Unassigned()
+
+
+class BatchWriteRecordEntry(Base):
+    """
+    BatchWriteRecordEntry
+      An entry to write as part of a BatchWriteRecord request.
+
+    Attributes
+    ----------------------
+    feature_group_name: The name or Amazon Resource Name (ARN) of the FeatureGroup to write the record to.
+    record: List of FeatureValues to be inserted. This will be a full over-write.
+    target_stores: A list of stores to which you're adding the record. By default, Feature Store adds the record to all of the stores that you're using for the FeatureGroup.
+    ttl_duration: Time to live duration for this entry, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. This overrides the request level TtlDuration.
+    """
+
+    feature_group_name: Union[StrPipeVar, object]
+    record: List[FeatureValue]
+    target_stores: Optional[List[StrPipeVar]] = Unassigned()
+    ttl_duration: Optional[TtlDuration] = Unassigned()
+
+
+class BatchWriteRecordError(Base):
+    """
+    BatchWriteRecordError
+      The error that has occurred when attempting to write a record in a batch.
+
+    Attributes
+    ----------------------
+    entry: The entry that failed to be written.
+    error_code: The error code for the failed record write.
+    error_message: The error message for the failed record write.
+    """
+
+    entry: BatchWriteRecordEntry
+    error_code: StrPipeVar
+    error_message: StrPipeVar
+
+
+class BatchWriteRecordResponse(Base):
+    """
+    BatchWriteRecordResponse
+
+    Attributes
+    ----------------------
+    errors: A list of errors that occurred when writing records in the batch.
+    unprocessed_entries: A list of entries that were not processed. These entries can be retried.
+    """
+
+    errors: List[BatchWriteRecordError]
+    unprocessed_entries: List[BatchWriteRecordEntry]
+
+
 class GetRecordResponse(Base):
     """
     GetRecordResponse
@@ -339,19 +404,18 @@ class GetRecordResponse(Base):
     expires_at: Optional[StrPipeVar] = Unassigned()
 
 
-class TtlDuration(Base):
+class ListRecordsResponse(Base):
     """
-    TtlDuration
-      Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
+    ListRecordsResponse
 
     Attributes
     ----------------------
-    unit:  TtlDuration time unit.
-    value:  TtlDuration time value.
+    record_identifiers: A list of record identifier values for the records stored in the OnlineStore.
+    next_token: A token to resume pagination if the response includes more record identifiers than MaxResults.
     """
 
-    unit: Optional[StrPipeVar] = Unassigned()
-    value: Optional[int] = Unassigned()
+    record_identifiers: List[StrPipeVar]
+    next_token: Optional[StrPipeVar] = Unassigned()
 
 
 class ResourceNotFound(Base):

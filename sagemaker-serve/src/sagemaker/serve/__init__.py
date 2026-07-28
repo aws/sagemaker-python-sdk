@@ -29,4 +29,31 @@ from sagemaker.serve.spec.inference_spec import InferenceSpec
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.model_builder import ModelBuilder
 
-__all__ = ["InferenceSpec", "ModelServer", "ModelBuilder"]
+from sagemaker.serve.ai_inference_recommender import (
+    BenchmarkJob,
+    BenchmarkResult,
+    InferenceFramework,
+    PerformanceTarget,
+    RecommendationJob,
+    Secret,
+    Workload,
+    FeatureGatedError,
+    WorkloadValidationError,
+    start_benchmark,
+)
+
+__all__ = [
+    "InferenceSpec",
+    "ModelServer",
+    "ModelBuilder",
+    "BenchmarkJob",
+    "BenchmarkResult",
+    "InferenceFramework",
+    "PerformanceTarget",
+    "RecommendationJob",
+    "Secret",
+    "Workload",
+    "FeatureGatedError",
+    "WorkloadValidationError",
+    "start_benchmark",
+]

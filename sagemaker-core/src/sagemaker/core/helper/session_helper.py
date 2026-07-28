@@ -1985,7 +1985,75 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if "/" in role:
             return role
         return self.boto_session.resource("iam").Role(role).arn
-    
+
+    # ========================================
+    # Hub Operations
+    # ========================================
+
+    def describe_hub_content(
+        self, hub_name, hub_content_name, hub_content_version, hub_content_type, **kwargs
+    ):
+        """Describe hub content in a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name or ARN of the hub.
+            hub_content_name (str): The name of the hub content.
+            hub_content_version (str): The version of the hub content.
+            hub_content_type (str): The type of hub content (Model, ModelReference, Notebook).
+
+        Returns:
+            dict: Response from the DescribeHubContent API.
+        """
+        return self.sagemaker_client.describe_hub_content(
+            HubName=hub_name,
+            HubContentName=hub_content_name,
+            HubContentVersion=hub_content_version,
+            HubContentType=hub_content_type,
+            **kwargs,
+        )
+
+    def list_hub_content_versions(self, hub_name, hub_content_name, hub_content_type, **kwargs):
+        """List versions of hub content in a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name or ARN of the hub.
+            hub_content_name (str): The name of the hub content.
+            hub_content_type (str): The type of hub content.
+            **kwargs: Additional arguments (e.g., next_token for pagination).
+
+        Returns:
+            dict: Response from the ListHubContentVersions API.
+        """
+        request = {
+            "HubName": hub_name,
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+        }
+        next_token = kwargs.get("next_token")
+        if next_token:
+            request["NextToken"] = next_token
+        return self.sagemaker_client.list_hub_content_versions(**request)
+
+    def list_hub_contents(self, hub_name, hub_content_type, **kwargs):
+        """List hub contents in a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name or ARN of the hub.
+            hub_content_type (str): The type of hub content to list.
+            **kwargs: Additional arguments (e.g., next_token for pagination).
+
+        Returns:
+            dict: Response from the ListHubContents API.
+        """
+        request = {
+            "HubName": hub_name,
+            "HubContentType": hub_content_type,
+        }
+        next_token = kwargs.get("next_token")
+        if next_token:
+            request["NextToken"] = next_token
+        return self.sagemaker_client.list_hub_contents(**request)
+
 
 def _expand_container_def(c_def):
     """Placeholder docstring"""

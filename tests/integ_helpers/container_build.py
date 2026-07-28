@@ -92,13 +92,13 @@ DOCKERFILE_TEMPLATE_WITH_CONDA = (
 
 DOCKERFILE_TEMPLATE_WITH_USER_AND_WORKDIR = (
     "FROM public.ecr.aws/docker/library/python:{py_version}-slim\n\n"
+    "RUN echo 'Acquire::Retries \"5\";' > /etc/apt/apt.conf.d/80-retries\n"
     "RUN apt-get update -y \
-        && apt-get install -y unzip curl\n\n"
+        && apt-get install -y unzip curl sudo\n\n"
     "RUN curl 'https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip'"
     " -o 'awscliv2.zip' \
         && unzip awscliv2.zip \
         && ./aws/install\n\n"
-    "RUN apt install -y sudo\n"
     "RUN useradd -ms /bin/bash integ-test-user\n"
     "RUN usermod -aG sudo integ-test-user\n"
     "RUN echo '%sudo ALL= (ALL) NOPASSWD:ALL' >> /etc/sudoers\n"

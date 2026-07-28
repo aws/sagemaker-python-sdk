@@ -74,6 +74,7 @@ __all__ = [
     "HubAccessConfig",
     "ModelAccessConfig",
     "Compute",
+    "HyperPodCompute",
     "Networking",
     "InputData",
     "MetricDefinition",
@@ -201,6 +202,29 @@ class Compute(shapes.ResourceConfig):
         if not filtered_dict:
             return None
         return shapes.ResourceConfig(**filtered_dict)
+
+
+class HyperPodCompute(BaseConfig):
+    """HyperPodCompute.
+
+    Configuration for SageMaker HyperPod compute. The trainer uses the HyperPod CLI
+    to submit recipe-based training jobs to a pre-provisioned HyperPod cluster.
+
+    Parameters:
+        cluster_name (str):
+            The SageMaker HyperPod cluster name. Required.
+        instance_type (Optional[str]):
+            The EC2 instance type for training (e.g., ``"ml.p5.48xlarge"``).
+        namespace (str):
+            The Kubernetes namespace for job scheduling. Defaults to ``"kubeflow"``.
+        node_count (int):
+            Number of nodes (replicas) to use. Default: 1.
+    """
+
+    cluster_name: str = ""
+    instance_type: Optional[str] = None
+    namespace: str = "kubeflow"
+    node_count: int = 1
 
 
 class Networking(shapes.VpcConfig):
@@ -343,3 +367,6 @@ class CheckpointConfig(shapes.CheckpointConfig):
 
     s3_uri: Optional[StrPipeVar] = None
     local_path: Optional[StrPipeVar] = "/opt/ml/checkpoints"
+
+# Backward-compatible alias
+TrainingJobCompute = Compute

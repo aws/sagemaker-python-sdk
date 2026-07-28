@@ -211,19 +211,25 @@ class Evaluator(AIRHubEntity):
         source: Optional[str] = None,
         wait: bool = True,
         role: Optional[str] = None,
+        domain_id: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
     ) -> "Evaluator":
         """Create a new Evaluator entity in the AI Registry.
-        
+
         Args:
             name: Name of the evaluator
             type: Type of evaluator (RewardFunction or RewardPrompt)
             source: Lambda ARN, S3 URI, or local file path depending on evaluator type
             wait: Whether to wait for the evaluator to be available
+            role: Optional IAM role ARN. If not provided, uses default execution role.
+            domain_id: Optional SageMaker Studio domain ID used to tag the evaluator so it
+                is visible in Studio. If not provided, it is auto-detected from the Studio
+                environment; supply it explicitly when creating evaluators outside Studio
+                (e.g. from a laptop or CI) so they still appear in the target domain.
 
         Returns:
             Evaluator: Newly created Evaluator instance
-            
+
         Raises:
             ValueError: If source is required but not provided, or if type is unsupported
         """
@@ -231,8 +237,11 @@ class Evaluator(AIRHubEntity):
         if sagemaker_session is None:
             sagemaker_session = Session()
 
-        # Extract domain ID if available (only works in Studio environments)
-        domain_id = _get_current_domain_id(sagemaker_session)
+        # Use the caller-provided domain ID when given; otherwise auto-detect it (only
+        # works in Studio environments). This keeps evaluators discoverable in Studio even
+        # when created from environments where the domain cannot be inferred.
+        if domain_id is None:
+            domain_id = _get_current_domain_id(sagemaker_session)
         sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
         role = TrainDefaults.get_role(role=role, sagemaker_session=sagemaker_session)
         
@@ -257,17 +266,19 @@ class Evaluator(AIRHubEntity):
         if source and source.startswith(LAMBDA_ARN_PREFIX):
             content_type = EVALUATOR_BYOLAMBDA
 
-        # Prepare tags for SearchKeywords
+        # Prepare tags for SearchKeywords.
+        # The identity keywords (@subtype/@evaluatortype/@contenttype) describe what the
+        # asset IS and must ALWAYS be applied so the evaluator is discoverable and visible
+        # in Studio, regardless of evaluator type or whether a method was resolved. Only
+        # `method` is conditional (reward prompts do not have a method).
+        tags = [
+            ("@" + "subtype", EVALUATOR_HUB_CONTENT_SUBTYPE.lower()),
+            ("@" + DOC_KEY_SUB_TYPE.lower(), type.lower()),
+            ("@" + "contenttype", content_type.lower()),
+        ]
         if method is not None:
-            tags = [
-                (TAG_KEY_METHOD, method.value),
-                ("@" + "subtype", EVALUATOR_HUB_CONTENT_SUBTYPE.lower()),
-                ("@" + DOC_KEY_SUB_TYPE.lower(), type.lower()),
-                ("@" + "contenttype", content_type.lower())
-            ]
-        else:
-            tags = []
-        
+            tags.insert(0, (TAG_KEY_METHOD, method.value))
+
         # Add domain-id to SearchKeywords if available
         if domain_id:
             tags.append((TAG_KEY_DOMAIN_ID, domain_id))

@@ -72,7 +72,7 @@ CUSTOM_METRIC_DICT = {
 
 TEST_CONFIG = {
     "model_package_arn": "arn:aws:sagemaker:us-west-2:729646638167:model-package/sdk-test-finetuned-models/1",
-    "evaluator_model": "anthropic.claude-3-5-haiku-20241022-v1:0",
+    "evaluator_model": "anthropic.claude-haiku-4-5-20251001-v1:0",
     "dataset_s3_uri": "s3://sagemaker-us-west-2-729646638167/model-customization/eval/gen_qa.jsonl",
     "builtin_metrics": ["Completeness", "Faithfulness"],
     "custom_metrics_json": json.dumps([CUSTOM_METRIC_DICT]),
@@ -116,6 +116,7 @@ class TestLLMAsJudgeEvaluatorIntegration:
             mlflow_resource_arn=TEST_CONFIG["mlflow_tracking_server_arn"],
             s3_output_path=TEST_CONFIG["s3_output_path"],
             evaluate_base_model=TEST_CONFIG["evaluate_base_model"],
+            region=TEST_CONFIG["region"],
         )
         
         # Verify evaluator was created
