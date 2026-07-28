@@ -512,6 +512,18 @@ class TestBuildForPassthroughSourceCodeRepack:
         mock_create.assert_called_once()
 
     @patch.object(ModelBuilder, "_create_model")
+    def test_repack_branch_makes_is_repack_true(self, mock_create):
+        """After the repack branch runs, is_repack() must return True so
+        _prepare_container_def_base triggers _upload_code(repack=True)."""
+        mock_create.return_value = Mock()
+
+        builder = self._make_builder(s3_model_data_url="s3://bucket/model.tar.gz")
+
+        builder._build_for_passthrough()
+
+        assert builder.is_repack() is True
+
+    @patch.object(ModelBuilder, "_create_model")
     def test_pure_image_passthrough_without_source_code_still_clears_vars(self, mock_create):
         """No source_code -> pure image passthrough clears script-mode vars (unchanged)."""
         mock_create.return_value = Mock()
@@ -526,6 +538,32 @@ class TestBuildForPassthroughSourceCodeRepack:
 
         builder._build_for_passthrough()
 
+        assert builder.entry_point is None
+        assert builder.source_dir is None
+        mock_create.assert_called_once()
+
+    @patch.object(ModelBuilder, "_create_model")
+    def test_entry_point_without_source_dir_warns_and_does_not_repack(self, mock_create):
+        """entry_script without source_dir cannot be repacked: warn, don't repack."""
+        mock_create.return_value = Mock()
+
+        builder = ModelBuilder(
+            image_uri="123456789.dkr.ecr.us-west-2.amazonaws.com/my-image:latest",
+            mode=Mode.SAGEMAKER_ENDPOINT,
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            source_code=SourceCode(entry_script="inference.py"),
+            s3_model_data_url="s3://bucket/model.tar.gz",
+            sagemaker_session=self._make_mock_session(),
+        )
+        # sanity: no source_dir -> repack branch is not eligible
+        assert builder.source_dir is None
+        assert builder.entry_point == "inference.py"
+
+        with patch("sagemaker.serve.model_builder.logger") as mock_logger:
+            builder._build_for_passthrough()
+            mock_logger.warning.assert_called_once()
+
+        # fall-through nulls script-mode vars (no repack occurred)
         assert builder.entry_point is None
         assert builder.source_dir is None
         mock_create.assert_called_once()

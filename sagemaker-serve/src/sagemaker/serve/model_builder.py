@@ -1880,7 +1880,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.secret_key = ""
 
         model_artifact_uri = None
-        if self.model_path and str(self.model_path).startswith("s3://"):
+        if self.model_path and self.model_path.startswith("s3://"):
             model_artifact_uri = self.model_path
         elif isinstance(self.s3_model_data_url, str) and self.s3_model_data_url.startswith(
             "s3://"
@@ -1905,6 +1905,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 self._prepare_for_mode()
 
             return self._create_model()
+
+        if getattr(self, "entry_point", None) and model_artifact_uri:
+            # entry_point provided without a source_dir: repack cannot bundle the
+            # code, so it would be dropped. Warn instead of silently ignoring it.
+            logger.warning(
+                "source_code was provided without a source_dir; the inference code "
+                "will not be repacked into the model artifact. Provide "
+                "SourceCode(source_dir=...) to bundle custom inference code."
+            )
 
         if self.model_path and self.model_path.startswith("s3://"):
             self.s3_upload_path = self.model_path
