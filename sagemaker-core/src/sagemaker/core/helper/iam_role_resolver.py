@@ -15,6 +15,7 @@ from __future__ import absolute_import
 
 import json
 import logging
+import os
 import time
 from typing import List, Optional, Set, Tuple, Union
 from urllib.parse import unquote
@@ -303,13 +304,45 @@ def _resolve_caller_role_arn(
 # ---------------------------------------------------------------------------
 # Read-only permission / trust validation
 # ---------------------------------------------------------------------------
-def _simulate_denied_actions(iam_client, role_arn: str, actions: List[str]) -> List[str]:
-    """Return the subset of ``actions`` that ``role_arn`` is NOT allowed to perform.
+def _is_unverifiable_denial(result: dict) -> bool:
+    """Return True if an evaluation result's non-allowed decision is unverifiable.
+
+    Because iam:SimulatePrincipalPolicy does not evaluate condition-based SCPs or
+    condition-based permissions boundaries, an `implicitDeny` caused by (or
+    masked by) `AllowedByOrganizations == false` or
+    `AllowedByPermissionsBoundary == false` cannot be definitively verified by
+    the client-side policy simulator.
+    """
+    if result.get("EvalDecision") == "explicitDeny":
+        return False
+    org_detail = result.get("OrganizationsDecisionDetail", {})
+    org_allowed = org_detail.get("AllowedByOrganizations") if isinstance(org_detail, dict) else None
+    pb_detail = result.get("PermissionsBoundaryDecisionDetail", {})
+    pb_allowed = pb_detail.get("AllowedByPermissionsBoundary") if isinstance(pb_detail, dict) else None
+
+    # Handle boolean False, string "false", "False", etc.
+    if org_allowed in (False, "false", "False") or pb_allowed in (False, "false", "False"):
+        return True
+    return False
+
+
+def _simulate_denied_actions(
+    iam_client, role_arn: str, actions: List[str]
+) -> Tuple[List[str], List[str]]:
+    """Return lists of (denied_actions, unverifiable_actions) for ``role_arn``.
 
     Wraps the paginated ``iam:SimulatePrincipalPolicy`` call so both the role-
     validation path and the HyperPod caller-side check share one implementation.
-    An empty list means every action is allowed. The pagination matters: a
-    truncated first page must not produce a false "all allowed" verdict.
+    The pagination matters: a truncated first page must not produce a false
+    "all allowed" verdict.
+
+    Returns:
+        (denied_actions, unverifiable_actions):
+            denied_actions: actions definitively denied (explicitDeny, or
+                implicitDeny without org/permissions-boundary conditions).
+            unverifiable_actions: actions returning implicitDeny with
+                AllowedByOrganizations=False or AllowedByPermissionsBoundary=False,
+                which the simulator cannot evaluate due to conditions.
 
     Raises ClientError on failures the caller must interpret (e.g. AccessDenied
     when the principal can't self-simulate, NoSuchEntity when the role is gone).
@@ -319,11 +352,16 @@ def _simulate_denied_actions(iam_client, role_arn: str, actions: List[str]) -> L
     for page in paginator.paginate(PolicySourceArn=role_arn, ActionNames=actions):
         evaluation_results.extend(page.get("EvaluationResults", []))
 
-    return [
-        result["EvalActionName"]
-        for result in evaluation_results
-        if result["EvalDecision"] != "allowed"
-    ]
+    denied = []
+    unverifiable = []
+    for result in evaluation_results:
+        if result.get("EvalDecision") != "allowed":
+            action_name = result["EvalActionName"]
+            if _is_unverifiable_denial(result):
+                unverifiable.append(action_name)
+            else:
+                denied.append(action_name)
+    return denied, unverifiable
 
 
 def _evaluate_permissions(
@@ -339,14 +377,15 @@ def _evaluate_permissions(
         verdict True  — all gated actions are allowed (denied_actions empty).
         verdict False — at least one gated action is denied (denied_actions lists them).
         verdict None  — could not be determined, e.g. the caller lacks
-                        iam:SimulatePrincipalPolicy (denied_actions empty).
+                        iam:SimulatePrincipalPolicy or conditional SCPs prevent
+                        evaluation (denied_actions empty).
     """
     required_actions = _get_smoke_test_actions(role_type)
     if not required_actions:
         return True, []
 
     try:
-        denied = _simulate_denied_actions(iam_client, role_arn, required_actions)
+        denied, unverifiable = _simulate_denied_actions(iam_client, role_arn, required_actions)
         if denied:
             logger.info(
                 "Role '%s' is missing permissions for: %s",
@@ -354,6 +393,16 @@ def _evaluate_permissions(
                 ", ".join(denied[:5]) + ("..." if len(denied) > 5 else ""),
             )
             return False, denied
+        if unverifiable:
+            logger.info(
+                "Cannot definitively verify permissions for role '%s' due to "
+                "Organizations SCPs or permissions boundaries (%s returned implicitDeny "
+                "with AllowedByOrganizations/AllowedByPermissionsBoundary=false); "
+                "permission verdict unknown.",
+                role_arn,
+                ", ".join(unverifiable[:5]) + ("..." if len(unverifiable) > 5 else ""),
+            )
+            return None, []
         return True, []
 
     except ClientError as e:
@@ -518,28 +567,35 @@ def _build_validation_error_message(
 
 
 def resolve_and_validate_role(
-    provided_role: Optional[str],
-    role_type: str,
+    provided_role: Optional[str] = None,
+    role_type: str = "training",
     sagemaker_session=None,
+    validate_role: bool = True,
+    *,
+    role_arn: Optional[str] = None,
 ) -> str:
     """Resolve the role to use and validate it (read-only; does not mutate IAM).
 
     Resolution:
-        1. ``provided_role`` given → resolve it to an ARN (must exist).
+        1. ``provided_role`` (or ``role_arn``) given → resolve it to an ARN (must exist).
         2. Otherwise → resolve the caller's own identity role.
 
     The resolved role is then VALIDATED (read-only, via iam:SimulatePrincipalPolicy
-    + trust inspection):
+    + trust inspection) unless ``validate_role=False`` or environment variable
+    ``SAGEMAKER_VALIDATE_ROLE=false`` is set:
         * permissions allowed AND trusted → return the ARN.
         * a required permission is definitively denied → raise RoleValidationError.
         * the trust policy definitively excludes the service → raise RoleValidationError.
         * permissions cannot be verified (caller lacks iam:SimulatePrincipalPolicy,
-          the common Studio/notebook case) → return the ARN with a WARNING.
+          or conditional SCPs/permissions boundaries prevent evaluation) → return
+          the ARN with a WARNING.
 
     Args:
         provided_role: User-supplied role name or ARN. If set, used directly.
         role_type: One of ROLE_TYPES.
         sagemaker_session: SageMaker session (used to get the boto session).
+        validate_role: If False, skips client-side permission/trust validation.
+        role_arn: Keyword alias for ``provided_role``.
 
     Returns:
         IAM role ARN.
@@ -552,6 +608,7 @@ def resolve_and_validate_role(
     if role_type not in ROLE_TYPES:
         raise ValueError(f"Invalid role_type '{role_type}'. Must be one of: {ROLE_TYPES}")
 
+    provided_role = provided_role or role_arn
     boto_session = _get_boto_session(sagemaker_session)
     iam_client = boto_session.client("iam")
 
@@ -566,6 +623,10 @@ def resolve_and_validate_role(
         role_arn = _resolve_caller_role_arn(iam_client, caller_arn, account_id, partition)
         if not role_arn:
             raise RoleValidationError(_build_validation_error_message(None, role_type))
+
+    if not validate_role or os.getenv("SAGEMAKER_VALIDATE_ROLE", "true").lower() in ("false", "0", "no"):
+        logger.info("Skipping IAM role validation for '%s' (%s).", role_arn, role_type)
+        return role_arn
 
     # Permission check (definitive denial blocks; unverifiable warns).
     verdict, denied = _evaluate_permissions(iam_client, role_arn, role_type)
@@ -584,7 +645,8 @@ def resolve_and_validate_role(
     if verdict is None:
         logger.warning(
             "Could not verify permissions for role '%s' (caller lacks "
-            "iam:SimulatePrincipalPolicy). Proceeding with it. If the operation "
+            "iam:SimulatePrincipalPolicy or conditional SCPs/permissions boundaries "
+            "prevent evaluation). Proceeding with it. If the operation "
             "later fails with an access-denied error, ensure the role has the "
             "required permissions for '%s' (see "
             "IamRoleResolver().get_required_actions('%s')) or create a dedicated "
@@ -643,7 +705,7 @@ def verify_hyperpod_connect_permissions(
         return None
 
     try:
-        denied = _simulate_denied_actions(
+        denied, unverifiable = _simulate_denied_actions(
             iam_client, caller_role_arn, list(HYPERPOD_CLI_CONNECT_ACTIONS)
         )
     except ClientError as e:
@@ -670,6 +732,15 @@ def verify_hyperpod_connect_permissions(
             ", ".join(denied),
         )
         return False
+
+    if unverifiable:
+        logger.info(
+            "Cannot definitively verify HyperPod connect permissions for '%s' due to "
+            "Organizations SCPs or permissions boundaries; the HyperPod CLI will "
+            "validate access at submit time.",
+            caller_role_arn,
+        )
+        return None
 
     logger.info(
         "Caller '%s' has the HyperPod CLI connect permissions.", caller_role_arn
@@ -732,6 +803,22 @@ class IamRoleResolver:
         self._sts_client = self._boto_session.client("sts")
 
     # -- public API ---------------------------------------------------------
+    def resolve_and_validate_role(
+        self,
+        provided_role: Optional[str] = None,
+        role_type: str = "training",
+        *,
+        role_arn: Optional[str] = None,
+        validate_role: bool = True,
+    ) -> str:
+        """Resolve and validate an IAM role (read-only; does not mutate IAM)."""
+        return resolve_and_validate_role(
+            provided_role=provided_role or role_arn,
+            role_type=role_type,
+            sagemaker_session=self._sagemaker_session,
+            validate_role=validate_role,
+        )
+
     def get_required_actions(self, role_type: str) -> List[str]:
         """Return the IAM actions a role of ``role_type`` needs (read-only preview)."""
         self._validate_role_type(role_type)
