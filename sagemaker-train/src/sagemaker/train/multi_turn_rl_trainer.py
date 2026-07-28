@@ -272,15 +272,18 @@ class MultiTurnRLTrainer(BaseTrainer):
         self,
         training_dataset: Optional[Union[str, DataSet]] = None,
         wait: bool = True,
+        dry_run: bool = False,
     ) -> AgentRFTJob:
         """Launch an Agentic RFT job.
 
         Args:
             training_dataset: Training dataset override.
             wait: If True (default), block until job reaches terminal status.
+            dry_run: If True, runs validation without submitting a job.
+                Returns None on success.
 
         Returns:
-            AgentRFTJob instance for tracking the job.
+            AgentRFTJob instance for tracking the job, or None if dry_run=True.
         """
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
@@ -301,7 +304,11 @@ class MultiTurnRLTrainer(BaseTrainer):
 
         if training_dataset is not None:
             self.training_dataset = training_dataset
-        job_config_doc = self._build_job_config_document()
+        job_config_doc = self._build_job_config_document(dry_run=dry_run)
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
 
         tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
@@ -361,14 +368,14 @@ class MultiTurnRLTrainer(BaseTrainer):
 
     # ---- Private: JobConfigDocument construction ----
 
-    def _build_job_config_document(self) -> str:
+    def _build_job_config_document(self, dry_run: bool = False) -> str:
         """Build the JobConfigDocument JSON string conforming to v1_0_0 schema."""
         config = {
             "AgentConfig": self._build_agent_config(),
             "InputDataConfig": self._build_input_data_config(),
             "OutputDataConfig": self._build_output_data_config(),
             "ModelPackageConfig": self._build_model_package_config(),
-            "TrainingConfig": self._build_training_config(),
+            "TrainingConfig": self._build_training_config(dry_run=dry_run),
         }
         if self.networking:
             config["VpcConfig"] = {
@@ -444,12 +451,12 @@ class MultiTurnRLTrainer(BaseTrainer):
         )
         return config
 
-    def _build_training_config(self) -> dict:
+    def _build_training_config(self, dry_run: bool = False) -> dict:
         hyperparameters = getattr(self, "_final_hyperparameters", {})
         config = {
             "BaseModelArn": self._model_arn,
         }
-        mlflow_config = self._build_mlflow_config()
+        mlflow_config = self._build_mlflow_config(dry_run=dry_run)
         if mlflow_config:
             config["MlflowConfig"] = mlflow_config
         if self.accept_eula is not None:
@@ -462,7 +469,7 @@ class MultiTurnRLTrainer(BaseTrainer):
                 config["HyperParameters"] = user_set
         return config
 
-    def _build_mlflow_config(self) -> Optional[dict]:
+    def _build_mlflow_config(self, dry_run: bool = False) -> Optional[dict]:
         arn = (
             self.mlflow_app_arn.arn
             if isinstance(self.mlflow_app_arn, MlflowApp)
@@ -472,7 +479,9 @@ class MultiTurnRLTrainer(BaseTrainer):
             session = self.sagemaker_session or TrainDefaults.get_sagemaker_session(
                 sagemaker_session=self.sagemaker_session
             )
-            arn = _resolve_mlflow_resource_arn(session, None, min_mlflow_version=MIN_MLFLOW_VERSION)
+            arn = _resolve_mlflow_resource_arn(
+                session, None, min_mlflow_version=MIN_MLFLOW_VERSION, dry_run=dry_run
+            )
             if not arn:
                 return None
             logger.info("MLflow resource ARN: %s", arn)
