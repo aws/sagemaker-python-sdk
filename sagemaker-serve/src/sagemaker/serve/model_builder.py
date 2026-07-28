@@ -167,6 +167,8 @@ from sagemaker.serve.model_reuse import (
     MODEL_SOURCE_TAG_KEY,
 )
 from sagemaker.core.training.utils import resolve_nova_checkpoint_uri
+from sagemaker.train.common_utils.model_aliases import normalize_model_name
+
 
 _LOWEST_MMS_VERSION = "1.2"
 SCRIPT_PARAM_NAME = "sagemaker_program"
@@ -1072,6 +1074,61 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             f"Please use a model that supports deployment or contact AWS support for assistance."
         )
 
+    def _resolve_hosting_config_from_base_model_name(self):
+        """Resolve image_uri from Hub using base_model_name.
+
+        Used when no model package is available (e.g. serverful SMTJ training jobs).
+        The base_model_name is normalized to a Hub content name, then the Hub document
+        is fetched to extract the inference container image URI.
+        """
+        # If user already provided image_uri, skip hub resolution
+        if self.image_uri:
+            logger.info(f"Using provided image_uri: {self.image_uri}")
+            return
+
+        base_model_name = self._base_model_name()
+        hub_content_name = normalize_model_name(base_model_name)
+        hub_name = getattr(self, "hub_name", None) or "SageMakerPublicHub"
+
+        try:
+            hub_content = HubContent.get(
+                hub_content_type="Model",
+                hub_name=hub_name,
+                hub_content_name=hub_content_name,
+            )
+            hub_document = json.loads(hub_content.hub_content_document)
+        except Exception as e:
+            raise ValueError(
+                f"Could not resolve hosting configuration from Hub for model "
+                f"'{base_model_name}' (hub_content_name='{hub_content_name}'). "
+                f"Please provide image_uri explicitly to ModelBuilder. Error: {e}"
+            )
+
+        # Try to find hosting configs in the RecipeCollection
+        for recipe in hub_document.get("RecipeCollection", []):
+            hosting_configs = recipe.get("HostingConfigs", [])
+            if hosting_configs:
+                config = self._select_hosting_config_entry(hosting_configs)
+                self.image_uri = config.get("EcrAddress")
+                if self.image_uri:
+                    logger.info(f"Resolved image_uri from Hub: {self.image_uri}")
+                    return
+
+        raise ValueError(
+            f"Could not resolve inference image URI from Hub for model "
+            f"'{base_model_name}' (hub_content_name='{hub_content_name}'). "
+            f"No hosting configuration found in the hub document. "
+            f"Please provide image_uri explicitly to ModelBuilder."
+        )
+
+    @staticmethod
+    def _select_hosting_config_entry(hosting_configs):
+        """Select the best hosting config entry, preferring 'Default' profile."""
+        return next(
+            (cfg for cfg in hosting_configs if cfg.get("Profile") == "Default"),
+            hosting_configs[0],
+        )
+
     # Nova escrow ECR accounts per region
     _NOVA_ESCROW_ACCOUNTS = {
         "us-east-1": "708977205387",
@@ -1267,7 +1324,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return hub_config
 
         model_package = self._fetch_model_package()
-        hub_content_name = model_package.inference_specification.containers[0].base_model.hub_content_name
+        if model_package:
+            hub_content_name = model_package.inference_specification.containers[0].base_model.hub_content_name
+        else:
+            # No model package (e.g. SMTJ trainer): resolve from base_model_name
+            base_model_name = self._base_model_name()
+            hub_content_name = normalize_model_name(base_model_name) if base_model_name else None
 
         configs = self._NOVA_HOSTING_CONFIGS.get(hub_content_name)
         if not configs:
@@ -2853,6 +2915,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         self.serve_settings = self._get_serve_setting()
 
+        # Validate BaseTrainer has a completed training job before proceeding
+        if isinstance(self.model, BaseTrainer):
+            if not hasattr(self.model, "_latest_training_job") or self.model._latest_training_job is None:
+                raise ValueError(
+                    "The trainer passed to ModelBuilder does not have a completed training job. "
+                    "Either call trainer.train() first, or manually set "
+                    "trainer._latest_training_job = TrainingJob.get(training_job_name='<job-name>') "
+                    "to attach a previously completed job."
+                )
+
         # Handle model customization (fine-tuned models)
         if self._is_model_customization():
             if mode is not None and mode != Mode.SAGEMAKER_ENDPOINT:
@@ -2894,12 +2966,25 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             # Fetch recipe config first to set image_uri, instance_type, env_vars,
             # and s3_upload_path. Only possible when a model package is available;
-            # trainers built from an S3 checkpoint carry no package, so the caller
-            # must supply image_uri/instance_type/env_vars directly.
+            # trainers built from an S3 checkpoint carry no package, so we resolve
+            # hosting config from the Hub using base_model_name.
             if model_package is not None:
                 base_model = model_package.inference_specification.containers[0].base_model
                 if base_model is not None:
                     self._fetch_and_cache_recipe_config()
+            else:
+                # No model package (e.g. serverful SMTJ training job).
+                # base_model_name is required to identify the model type and resolve
+                # hosting config, escrow URI, tags, etc.
+                if not self._base_model_name():
+                    raise ValueError(
+                        "trainer.base_model_name is required when deploying a model from an "
+                        "S3 checkpoint (e.g. a serverful SMTJ training job) because no model "
+                        "package is available to identify the model. "
+                        "Set trainer.base_model_name before calling build()."
+                    )
+                # Resolve image_uri from Hub using base_model_name.
+                self._resolve_hosting_config_from_base_model_name()
 
             # Nova models use a completely different deployment architecture
             if self._is_nova_model():
