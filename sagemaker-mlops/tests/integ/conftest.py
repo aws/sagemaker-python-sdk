@@ -69,6 +69,11 @@ CONDA_YML_FILE_TEMPLATE = (
 # ``ClientError: (Throttling) ... Rate exceeded``. This mitigation is a purely
 # test-harness concurrency fix and is intentionally identical to the block in
 # the sagemaker-train / sagemaker-serve integ conftests.
+#
+# Throttling that still exhausts the adaptive retry budget is deliberately left
+# to fail the test loudly (rather than being converted to a skip), so a
+# persistent rate-limit regression stays visible instead of silently
+# disappearing from the results.
 # ---------------------------------------------------------------------------
 
 # botocore adaptive retry settings for throttling-prone IAM validation calls.
@@ -76,11 +81,6 @@ CONDA_YML_FILE_TEMPLATE = (
 # which boto session the SDK ends up using to build its IAM client.
 _RETRY_MODE = "adaptive"
 _MAX_ATTEMPTS = "10"
-
-# Only tolerate throttling on the IAM permission simulation used during role
-# validation, so unrelated throttling still fails loudly.
-_THROTTLE_ERROR_CODES = ("Throttling", "ThrottlingException", "RequestLimitExceeded")
-_SIMULATE_OP = "SimulatePrincipalPolicy"
 
 
 @pytest.fixture(autouse=True, scope="session")
@@ -100,40 +100,6 @@ def _configure_boto_adaptive_retries():
             os.environ.pop(key, None)
         else:
             os.environ[key] = value
-
-
-def _is_simulate_policy_throttle(exc):
-    """Return True if ``exc`` is a SimulatePrincipalPolicy throttling ClientError."""
-    from botocore.exceptions import ClientError
-
-    if not isinstance(exc, ClientError):
-        return False
-    error_code = exc.response.get("Error", {}).get("Code", "")
-    operation = getattr(exc, "operation_name", "") or ""
-    return error_code in _THROTTLE_ERROR_CODES and operation == _SIMULATE_OP
-
-
-@pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    """Skip (rather than fail) on residual SimulatePrincipalPolicy throttling that
-    survives the adaptive retries under heavy concurrency. Applies to setup and
-    call phases, since role resolution frequently happens in fixture setup."""
-    outcome = yield
-    report = outcome.get_result()
-
-    if report.when not in ("setup", "call") or not report.failed:
-        return
-
-    exc = call.excinfo.value if call.excinfo else None
-    # Walk the exception chain so a wrapped ClientError is still detected.
-    while exc is not None:
-        if _is_simulate_policy_throttle(exc):
-            report.outcome = "skipped"
-            report.wasxfail = (
-                "iam:SimulatePrincipalPolicy throttled under concurrent test load"
-            )
-            break
-        exc = exc.__cause__ or exc.__context__
 
 
 # ---------------------------------------------------------------------------
