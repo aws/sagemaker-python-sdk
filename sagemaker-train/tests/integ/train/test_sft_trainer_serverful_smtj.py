@@ -162,3 +162,68 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
         f"{training_job.training_job_status}"
     )
     logger.info(f"Training job completed successfully: {training_job.training_job_name}")
+
+
+@pytest.mark.us_east_1
+def test_sft_trainer_serverful_smtj_invalid_instance_type_raises(
+    sagemaker_session_us_east_1, training_resources
+):
+    """An unsupported instance type must raise before a job is submitted.
+
+    SMTJ compute validates ``instance_type`` against the allowed enum from the
+    model's SMHP recipe. ``ml.t3.medium`` is not a valid training instance for
+    Nova, so ``train()`` should raise a ``ValueError`` rather than launching a
+    training job.
+    """
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    sft_trainer = SFTTrainer(
+        model="nova-textgeneration-lite-v2",
+        training_type=TrainingType.LORA,
+        training_dataset=training_resources["training_dataset"],
+        s3_output_path=training_resources["s3_output_path"],
+        compute=TrainingJobCompute(
+            instance_type="ml.t3.medium",  # unsupported for Nova training
+            instance_count=1,
+        ),
+        sagemaker_session=sagemaker_session_us_east_1,
+        base_job_name=f"sft-smtj-integ-bad-type-{unique_id}",
+    )
+
+    with pytest.raises(ValueError, match="Instance type 'ml.t3.medium' is not supported"):
+        sft_trainer.train(wait=False, dry_run=True)
+
+
+@pytest.mark.us_east_1
+def test_sft_trainer_serverful_smtj_invalid_instance_count_raises(
+    sagemaker_session_us_east_1, training_resources
+):
+    """An unsupported instance count must raise before a job is submitted.
+
+    Uses a valid instance type so validation reaches the instance-count check,
+    then supplies an out-of-range count. SMTJ compute validates
+    ``instance_count`` against the allowed replicas enum from the model's SMHP
+    recipe, so ``train()`` should raise a ``ValueError``.
+    """
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    invalid_instance_count = 9
+
+    sft_trainer = SFTTrainer(
+        model="amazon.nova-micro-v1",
+        training_type=TrainingType.LORA,
+        training_dataset=training_resources["training_dataset"],
+        s3_output_path=training_resources["s3_output_path"],
+        compute=TrainingJobCompute(
+            instance_type="ml.g5.12xlarge",  # valid so count check is reached
+            instance_count=invalid_instance_count,
+        ),
+        sagemaker_session=sagemaker_session_us_east_1,
+        base_job_name=f"sft-smtj-integ-bad-count-{unique_id}",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match=f"Node/Instance count '{invalid_instance_count}' is not supported",
+    ):
+        sft_trainer.train(wait=False, dry_run=True)
