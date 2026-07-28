@@ -166,7 +166,7 @@ def get_rich_handler():
     return handler
 
 
-def get_textual_rich_logger(name: str, log_level: str = "INFO") -> logging.Logger:
+def get_textual_rich_logger(name: str, log_level: str = "WARNING") -> logging.Logger:
     """
     Get a logger with textual rich handler.
 
