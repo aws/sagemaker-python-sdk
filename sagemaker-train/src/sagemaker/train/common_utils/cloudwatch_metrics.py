@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional
 from botocore.exceptions import ClientError
 
 from sagemaker.core.training.configs import HyperPodCompute
+from sagemaker.train.common_utils.constants import AUTH_ERROR_CODES
 
 
 logger = logging.getLogger(__name__)
@@ -44,19 +45,6 @@ AVAILABLE_METRICS: Dict[str, Dict[str, Dict[str, str]]] = {
 
 _UNSUPPORTED_TECHNIQUES = {"DPO", "RLAIF"}
 
-# Error codes that mean "we could not read the logs" rather than "there are no logs".
-# These must surface to the caller instead of degrading to an empty result, otherwise
-# the user is told their job has no logs when their credentials are the real problem.
-_AUTH_ERROR_CODES = {
-    "AccessDenied",
-    "AccessDeniedException",
-    "ExpiredToken",
-    "ExpiredTokenException",
-    "InvalidClientTokenId",
-    "UnauthorizedOperation",
-    "UnrecognizedClientException",
-}
-
 
 def _raise_if_auth_error(error: ClientError, job_name: str, operation: str) -> None:
     """Re-raise a CloudWatch Logs error as ``PermissionError`` if it is auth-related.
@@ -74,7 +62,7 @@ def _raise_if_auth_error(error: ClientError, job_name: str, operation: str) -> N
             or missing CloudWatch Logs permissions.
     """
     error_code = error.response.get("Error", {}).get("Code", "")
-    if error_code in _AUTH_ERROR_CODES:
+    if error_code in AUTH_ERROR_CODES:
         raise PermissionError(
             f"Cannot read CloudWatch logs for job '{job_name}': {operation} failed with "
             f"'{error_code}'. Verify your AWS credentials are valid and have not expired, "

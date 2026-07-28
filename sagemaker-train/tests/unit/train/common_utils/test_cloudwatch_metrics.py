@@ -17,6 +17,7 @@ from sagemaker.train.common_utils.cloudwatch_metrics import (
     fetch_and_plot_metrics,
     parse_metrics_from_logs,
 )
+from sagemaker.train.common_utils.constants import AUTH_ERROR_CODES
 
 
 FAKE_SFT_LOGS = [
@@ -35,16 +36,6 @@ FAKE_RLVR_SMTJ_LOGS = [
 FAKE_RLVR_SMHP_LOGS = [
     {"message": "global_step: 1 train_rm_score: 0.55"},
     {"message": "global_step: 2 train_rm_score: 0.72"},
-]
-
-AUTH_ERROR_CODES = [
-    "AccessDenied",
-    "AccessDeniedException",
-    "ExpiredToken",
-    "ExpiredTokenException",
-    "InvalidClientTokenId",
-    "UnauthorizedOperation",
-    "UnrecognizedClientException",
 ]
 
 
@@ -143,7 +134,7 @@ class TestFetchLogs:
 class TestFetchLogsAuthErrors:
     """Credential/permission failures must surface, not degrade to an empty log list."""
 
-    @pytest.mark.parametrize("error_code", AUTH_ERROR_CODES)
+    @pytest.mark.parametrize("error_code", sorted(AUTH_ERROR_CODES))
     def test_smtj_describe_streams_auth_error_raises(self, error_code):
         mock_client = MagicMock()
         mock_client.describe_log_streams.side_effect = _client_error(
@@ -189,7 +180,7 @@ class TestFetchLogsAuthErrors:
         with pytest.raises(PermissionError, match="credentials"):
             _fetch_smtj_logs("my-job", mock_client, "/aws/sagemaker/TrainingJobs")
 
-    @pytest.mark.parametrize("error_code", AUTH_ERROR_CODES)
+    @pytest.mark.parametrize("error_code", sorted(AUTH_ERROR_CODES))
     def test_smhp_filter_events_auth_error_raises(self, error_code):
         mock_client = MagicMock()
         mock_client.filter_log_events.side_effect = _client_error(

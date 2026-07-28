@@ -113,3 +113,19 @@ class _ErrorConstants:
 
 # Minimum MLflow version required for MTRL training
 MIN_MLFLOW_VERSION = "3.10"
+
+# Error codes that mean "we could not read the resource" rather than "the resource
+# is empty". These must surface to the caller instead of degrading to an empty
+# result, otherwise the user is told their job has no logs when their credentials
+# are the real problem.
+AUTH_ERROR_CODES = frozenset(
+    {
+        "AccessDenied",
+        "AccessDeniedException",
+        "ExpiredToken",
+        "ExpiredTokenException",
+        "InvalidClientTokenId",
+        "UnauthorizedOperation",
+        "UnrecognizedClientException",
+    }
+)
