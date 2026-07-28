@@ -1075,28 +1075,18 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         )
 
     def _resolve_hosting_config_from_base_model_name(self):
-        """Resolve image_uri, env_vars, and instance_type from Hub using base_model_name.
+        """Resolve image_uri from Hub using base_model_name.
 
         Used when no model package is available (e.g. serverful SMTJ training jobs).
         The base_model_name is normalized to a Hub content name, then the Hub document
-        is fetched to extract hosting configuration — replicating what the model-package
-        path does via _fetch_and_cache_recipe_config().
+        is fetched to extract the inference container image URI.
         """
-
-        base_model_name = self._base_model_name()
-        if not base_model_name:
-            raise ValueError(
-                "base_model_name is required when deploying a model from an S3 checkpoint "
-                "(e.g. a serverful SMTJ training job) because no model package is available "
-                "to auto-resolve the inference container image. "
-                "Set trainer.base_model_name before calling build()."
-            )
-
         # If user already provided image_uri, skip hub resolution
         if self.image_uri:
             logger.info(f"Using provided image_uri: {self.image_uri}")
             return
 
+        base_model_name = self._base_model_name()
         hub_content_name = normalize_model_name(base_model_name)
         hub_name = getattr(self, "hub_name", None) or "SageMakerPublicHub"
 
@@ -1338,7 +1328,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             hub_content_name = model_package.inference_specification.containers[0].base_model.hub_content_name
         else:
             # No model package (e.g. SMTJ trainer): resolve from base_model_name
-            from sagemaker.train.common_utils.model_aliases import normalize_model_name
             base_model_name = self._base_model_name()
             hub_content_name = normalize_model_name(base_model_name) if base_model_name else None
 
@@ -2985,7 +2974,16 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     self._fetch_and_cache_recipe_config()
             else:
                 # No model package (e.g. serverful SMTJ training job).
-                # Resolve hosting config from Hub using base_model_name.
+                # base_model_name is required to identify the model type and resolve
+                # hosting config, escrow URI, tags, etc.
+                if not self._base_model_name():
+                    raise ValueError(
+                        "trainer.base_model_name is required when deploying a model from an "
+                        "S3 checkpoint (e.g. a serverful SMTJ training job) because no model "
+                        "package is available to identify the model. "
+                        "Set trainer.base_model_name before calling build()."
+                    )
+                # Resolve image_uri from Hub using base_model_name.
                 self._resolve_hosting_config_from_base_model_name()
 
             # Nova models use a completely different deployment architecture
