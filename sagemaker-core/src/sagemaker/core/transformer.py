@@ -409,6 +409,8 @@ class Transformer(object):
         from sagemaker.core.utils.code_injection.codec import transform as transform_util
 
         transformed = transform_util(serialized_request, "CreateTransformJobRequest")
+        # Remove tags from transformed dict as TransformJob resource doesn't accept it
+        transformed.pop("tags", None)
         self.latest_transform_job = TransformJob(**transformed)
 
         if wait:
