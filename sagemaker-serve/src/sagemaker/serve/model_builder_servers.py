@@ -100,18 +100,8 @@ class _ModelBuilderServers(object):
         if self.model_metadata:
             mlflow_path = self.model_metadata.get(MLFLOW_MODEL_PATH)
 
-        # s3_model_data_url (e.g. a trained artifact) with source_code is valid:
-        # the code is repacked into the artifact and served by the model server.
-        if (
-            not self.model
-            and not mlflow_path
-            and not self.inference_spec
-            and not self.s3_model_data_url
-        ):
-            raise ValueError(
-                "Missing required parameter: model, MLflow path, inference_spec, "
-                "or s3_model_data_url"
-            )
+        if not self.model and not mlflow_path and not self.inference_spec:
+            raise ValueError("Missing required parameter: model, MLflow path, or inference_spec")
 
         # Route to appropriate model server builder
         if self.model_server == ModelServer.TORCHSERVE:

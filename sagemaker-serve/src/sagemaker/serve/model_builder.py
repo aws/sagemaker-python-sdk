@@ -1851,7 +1851,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             and not self.model
             and not self.inference_spec
             and not getattr(self, "_is_mlflow_model", False)
-            and not self.source_code
         ):
             self._passthrough = True
             return
@@ -1862,7 +1861,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             and not self.model
             and not self.inference_spec
             and not getattr(self, "_is_mlflow_model", False)
-            and not self.source_code
         ):
             self._passthrough = True
             return
@@ -1880,6 +1878,33 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             raise ValueError("image_uri is required for pass-through cases")
 
         self.secret_key = ""
+
+        model_artifact_uri = None
+        if self.model_path and str(self.model_path).startswith("s3://"):
+            model_artifact_uri = self.model_path
+        elif isinstance(self.s3_model_data_url, str) and self.s3_model_data_url.startswith(
+            "s3://"
+        ):
+            model_artifact_uri = self.s3_model_data_url
+
+        has_source_code = bool(
+            getattr(self, "entry_point", None) and getattr(self, "source_dir", None)
+        )
+
+        # Repack source_code into the model artifact so build() produces a
+        # self-contained model.tar.gz (code under code/).
+        if has_source_code and model_artifact_uri:
+            if not (
+                isinstance(self.s3_model_data_url, str)
+                and self.s3_model_data_url.startswith("s3://")
+            ):
+                self.s3_model_data_url = model_artifact_uri
+            self.s3_upload_path = None
+
+            if self.mode in LOCAL_MODES:
+                self._prepare_for_mode()
+
+            return self._create_model()
 
         if self.model_path and self.model_path.startswith("s3://"):
             self.s3_upload_path = self.model_path
@@ -2284,8 +2309,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     script_name=os.path.basename(self.entry_point),
                 )
 
-            # Use script_dependencies (a list); self.dependencies is the
-            # deprecated auto-detect dict, which repack_model would iterate as paths.
             repack_dependencies = self.script_dependencies or []
 
             logger.info(
