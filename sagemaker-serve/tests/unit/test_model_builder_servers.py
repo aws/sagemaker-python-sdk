@@ -31,6 +31,7 @@ class TestModelBuilderServersValidation(unittest.TestCase):
         mock_builder.model = None
         mock_builder.model_metadata = None
         mock_builder.inference_spec = None
+        mock_builder.s3_model_data_url = None
         
         with self.assertRaises(ValueError) as context:
             _ModelBuilderServers._build_for_model_server(mock_builder)
@@ -313,6 +314,7 @@ class TestModelBuilderServersEdgeCases(unittest.TestCase):
         mock_builder.model = None
         mock_builder.model_metadata = {}  # Empty dict, no MLFLOW_MODEL_PATH
         mock_builder.inference_spec = None
+        mock_builder.s3_model_data_url = None
         
         with self.assertRaises(ValueError) as context:
             _ModelBuilderServers._build_for_model_server(mock_builder)
@@ -328,6 +330,7 @@ class TestModelBuilderServersEdgeCases(unittest.TestCase):
         mock_builder.model = None
         mock_builder.model_metadata = {"other_key": "value"}  # No MLFLOW_MODEL_PATH
         mock_builder.inference_spec = None
+        mock_builder.s3_model_data_url = None
         
         with self.assertRaises(ValueError) as context:
             _ModelBuilderServers._build_for_model_server(mock_builder)
@@ -469,6 +472,7 @@ class TestModelBuilderServersParameterValidation(unittest.TestCase):
         mock_builder.model = None
         mock_builder.model_metadata = {MLFLOW_MODEL_PATH: None}  # Explicitly None
         mock_builder.inference_spec = None
+        mock_builder.s3_model_data_url = None
         
         with self.assertRaises(ValueError) as context:
             _ModelBuilderServers._build_for_model_server(mock_builder)
@@ -485,6 +489,7 @@ class TestModelBuilderServersParameterValidation(unittest.TestCase):
         mock_builder.model = None
         mock_builder.model_metadata = {MLFLOW_MODEL_PATH: ""}  # Empty string
         mock_builder.inference_spec = None
+        mock_builder.s3_model_data_url = None
         
         # Empty string is falsy, so should raise ValueError
         with self.assertRaises(ValueError) as context:
@@ -501,6 +506,7 @@ class TestModelBuilderServersParameterValidation(unittest.TestCase):
         mock_builder.model = ""  # Empty string is falsy
         mock_builder.model_metadata = None
         mock_builder.inference_spec = None
+        mock_builder.s3_model_data_url = None
         
         with self.assertRaises(ValueError) as context:
             _ModelBuilderServers._build_for_model_server(mock_builder)

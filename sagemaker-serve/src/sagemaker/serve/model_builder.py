@@ -1851,6 +1851,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             and not self.model
             and not self.inference_spec
             and not getattr(self, "_is_mlflow_model", False)
+            and not self.source_code
         ):
             self._passthrough = True
             return
@@ -1861,6 +1862,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             and not self.model
             and not self.inference_spec
             and not getattr(self, "_is_mlflow_model", False)
+            and not self.source_code
         ):
             self._passthrough = True
             return
@@ -1878,44 +1880,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             raise ValueError("image_uri is required for pass-through cases")
 
         self.secret_key = ""
-
-        # Resolve the trained model artifact URI (if any). It may arrive either
-        # directly as an S3 ``model_path`` or via ``s3_model_data_url``. A
-        # ModelTrainer / TrainingJob is normalized to ``model_path`` earlier in
-        # the build flow.
-        model_artifact_uri = None
-        if self.model_path and str(self.model_path).startswith("s3://"):
-            model_artifact_uri = self.model_path
-        elif isinstance(self.s3_model_data_url, str) and self.s3_model_data_url.startswith(
-            "s3://"
-        ):
-            model_artifact_uri = self.s3_model_data_url
-
-        has_source_code = bool(
-            getattr(self, "entry_point", None) and getattr(self, "source_dir", None)
-        )
-
-        # When custom inference source code is supplied alongside a model
-        # artifact, this is not a pure image-only passthrough: honor the
-        # source code by repacking it into the model tarball (mirroring the
-        # classic v2 ``Model`` + ``_RepackModelStep`` behavior) so that
-        # ``build()`` produces a self-contained ``model.tar.gz`` (code under
-        # ``code/``) that is safe to ``register()``.
-        if has_source_code and model_artifact_uri:
-            if not (
-                isinstance(self.s3_model_data_url, str)
-                and self.s3_model_data_url.startswith("s3://")
-            ):
-                # Bridge model_path -> s3_model_data_url so the repack path in
-                # _upload_code(repack=True) can locate the original artifact.
-                self.s3_model_data_url = model_artifact_uri
-            # Let the repacked artifact drive the container ModelDataUrl.
-            self.s3_upload_path = None
-
-            if self.mode in LOCAL_MODES:
-                self._prepare_for_mode()
-
-            return self._create_model()
 
         if self.model_path and self.model_path.startswith("s3://"):
             self.s3_upload_path = self.model_path
