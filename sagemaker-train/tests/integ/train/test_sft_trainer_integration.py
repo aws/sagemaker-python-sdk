@@ -143,13 +143,13 @@ def test_sft_trainer_lora_with_sequence_length(sagemaker_session):
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
 
     sft_trainer = SFTTrainer(
-        model="meta-textgeneration-llama-3-2-1b-instruct",
+        model="huggingface-vlm-qwen3-5-9b",
         training_type=TrainingType.LORA,
         model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
         training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         accept_eula=True,
-        sequence_length="8K",
+        sequence_length="16K",
         base_job_name=f"sft-seqlen-integ-{unique_id}",
     )
 
