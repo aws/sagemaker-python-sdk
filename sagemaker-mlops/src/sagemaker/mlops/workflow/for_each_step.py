@@ -256,20 +256,7 @@ class ForEachStep(Step):
     - ``properties.ChildOutputs[i].<member>`` — per-child output (delegates to
       the body step's property schema; must be indexed)
     - ``properties.Selected.<member>`` — output of the selector-picked child
-    - ``properties.Status`` (String: Succeeded | PartiallySucceeded | Failed)
-    - ``properties.InputItemCount``, ``properties.TotalStepCount``,
-      ``properties.SucceededStepCount``, ``properties.FailedStepCount``,
-      ``properties.StoppedStepCount`` (Integers)
     """
-
-    _AGGREGATE_PROPERTY_MEMBERS = (
-        "Status",
-        "InputItemCount",
-        "TotalStepCount",
-        "SucceededStepCount",
-        "FailedStepCount",
-        "StoppedStepCount",
-    )
 
     def __init__(
         self,
@@ -324,8 +311,6 @@ class ForEachStep(Step):
         self.selector = selector
 
         root_prop = Properties(step_name=name)
-        for member in ForEachStep._AGGREGATE_PROPERTY_MEMBERS:
-            root_prop.__dict__[member] = Properties(step_name=name, path=member)
         root_prop.__dict__["ChildOutputs"] = _ChildOutputsAccessor(self)
         root_prop.__dict__["Selected"] = _ForEachPropertyReference(f"Steps.{name}.Selected", [self])
         self._properties = root_prop
@@ -443,10 +428,8 @@ class ForEachStep(Step):
 
     @property
     def properties(self):
-        """A Properties object exposing the ForEach step's aggregate results.
+        """A Properties object exposing the ForEach step's results.
 
-        Members: ``Status``, ``InputItemCount``, ``TotalStepCount``,
-        ``SucceededStepCount``, ``FailedStepCount``, ``StoppedStepCount``,
-        ``ChildOutputs[i]`` and ``Selected``.
+        Members: ``ChildOutputs[i]`` and ``Selected``.
         """
         return self._properties

@@ -209,17 +209,6 @@ def test_step_only_arguments_excludes_body():
 # ---------------------------------------------------------------------------
 
 
-def test_for_each_step_aggregate_properties():
-    step = make_for_each_step()
-    props = step.properties
-    assert props.Status.expr == {"Get": "Steps.ForEachItems.Status"}
-    assert props.InputItemCount.expr == {"Get": "Steps.ForEachItems.InputItemCount"}
-    assert props.TotalStepCount.expr == {"Get": "Steps.ForEachItems.TotalStepCount"}
-    assert props.SucceededStepCount.expr == {"Get": "Steps.ForEachItems.SucceededStepCount"}
-    assert props.FailedStepCount.expr == {"Get": "Steps.ForEachItems.FailedStepCount"}
-    assert props.StoppedStepCount.expr == {"Get": "Steps.ForEachItems.StoppedStepCount"}
-
-
 def test_for_each_step_child_outputs_property():
     step = make_for_each_step()
     ref = step.properties.ChildOutputs[3].OutputParameters["ResultPath"]
@@ -434,12 +423,6 @@ def test_pipeline_definition_downstream_references(mock_session):
     downstream = CustomStep(
         name="Consumer",
         input_data={
-            "status": for_each.properties.Status,
-            "input_item_count": for_each.properties.InputItemCount,
-            "total": for_each.properties.TotalStepCount,
-            "succeeded": for_each.properties.SucceededStepCount,
-            "failed": for_each.properties.FailedStepCount,
-            "stopped": for_each.properties.StoppedStepCount,
             "child_0": for_each.properties.ChildOutputs[0].OutputParameters["ResultPath"],
             "selected": for_each.properties.Selected.OutputParameters["ResultPath"],
         },
@@ -453,12 +436,6 @@ def test_pipeline_definition_downstream_references(mock_session):
     steps = _definition_steps(pipeline)
     consumer = next(s for s in steps if s["Name"] == "Consumer")
     assert consumer["Arguments"]["input_data"] == {
-        "status": {"Get": "Steps.ForEachItems.Status"},
-        "input_item_count": {"Get": "Steps.ForEachItems.InputItemCount"},
-        "total": {"Get": "Steps.ForEachItems.TotalStepCount"},
-        "succeeded": {"Get": "Steps.ForEachItems.SucceededStepCount"},
-        "failed": {"Get": "Steps.ForEachItems.FailedStepCount"},
-        "stopped": {"Get": "Steps.ForEachItems.StoppedStepCount"},
         "child_0": {"Get": "Steps.ForEachItems.ChildOutputs[0].OutputParameters['ResultPath']"},
         "selected": {"Get": "Steps.ForEachItems.Selected.OutputParameters['ResultPath']"},
     }
