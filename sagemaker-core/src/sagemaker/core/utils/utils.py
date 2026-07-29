@@ -383,8 +383,13 @@ class SageMakerClient(metaclass=SingletonMeta):
         # botocore release. Once these APIs ship in the official botocore
         # service-2.json, this custom loader is unnecessary and the standard
         # session.client("sagemaker", endpoint_url=...) path will work.
+        #
+        # NOTE: The custom data loader is registered on the caller-provided
+        # session's underlying botocore session so that the "sagemaker"
+        # control-plane client keeps the caller's credentials/profile. Using a
+        # fresh botocore.session.get_session() here would silently fall back to
+        # the default AWS profile and break cross-account calls (issue #6069).
         import botocore.loaders
-        import botocore.session as bc_session_mod
         import pathlib
 
         # Look for bundled service model inside the package first,
@@ -392,15 +397,14 @@ class SageMakerClient(metaclass=SingletonMeta):
         _bundled = pathlib.Path(__file__).resolve().parent.parent / "data" / "sample"
         _source_tree = pathlib.Path(__file__).resolve().parent.parent.parent.parent.parent / "sample"
         sample_model_dir = str(_bundled if _bundled.exists() else _source_tree)
-        bc_session = bc_session_mod.get_session()
         loader = botocore.loaders.Loader(
             extra_search_paths=[sample_model_dir],
             include_default_search_paths=True,
         )
-        bc_session.register_component('data_loader', loader)
-        custom_session = Session(botocore_session=bc_session, region_name=env_region)
+        # boto3.Session exposes its underlying botocore session as `_session`.
+        session._session.register_component('data_loader', loader)
 
-        self.sagemaker_client = custom_session.client(
+        self.sagemaker_client = session.client(
             "sagemaker",
             region_name=env_region,
             endpoint_url=endpoint_url,
