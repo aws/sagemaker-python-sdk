@@ -165,3 +165,4 @@ def test_sft_trainer_lora_invalid_instance_type_raises(sagemaker_session):
 
     with pytest.raises(ValueError, match="Instance type 'ml.t3.medium' is not supported"):
         sft_trainer.train(wait=False, dry_run=True)
+    

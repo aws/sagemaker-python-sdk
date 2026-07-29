@@ -1521,3 +1521,4 @@ class BaseTrainer(ABC):
         self._latest_training_job = training_job
 
         return job_name
+    
