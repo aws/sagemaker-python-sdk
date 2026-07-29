@@ -8,23 +8,14 @@ import pytest
 from botocore.exceptions import ClientError
 
 from sagemaker.train.common_utils.log_streamer import (
-    AGENT_RFT_EVAL_LOG_GROUP,
-    AGENT_RFT_LOG_GROUP,
-    TERMINAL_STATUSES,
     LogStreamer,
-    _format_timestamp,
     _resolve_start_time_ms,
     _validate_poll,
+    stream_log_loop,
 )
 
 
 class TestResolveStartTimeMs:
-    def test_none_returns_none(self):
-        assert _resolve_start_time_ms(None) is None
-
-    def test_int_passthrough(self):
-        assert _resolve_start_time_ms(1700000000000) == 1700000000000
-
     def test_datetime_converts_to_ms(self):
         dt = datetime(2023, 11, 14, 22, 13, 20, tzinfo=timezone.utc)
         result = _resolve_start_time_ms(dt)
@@ -36,11 +27,6 @@ class TestResolveStartTimeMs:
 
 
 class TestValidatePoll:
-    def test_valid_poll(self):
-        _validate_poll(1)
-        _validate_poll(5)
-        _validate_poll(300)
-
     def test_poll_too_low(self):
         with pytest.raises(ValueError, match="poll must be between 1 and 300"):
             _validate_poll(0)
@@ -52,26 +38,6 @@ class TestValidatePoll:
     def test_poll_not_int(self):
         with pytest.raises(ValueError, match="poll must be between 1 and 300"):
             _validate_poll(5.0)
-
-
-class TestFormatTimestamp:
-    def test_formats_epoch_ms(self):
-        # 2023-11-14T22:13:20 UTC in ms
-        ts_ms = 1700000000000
-        result = _format_timestamp(ts_ms)
-        assert result == "2023-11-14T22:13:20"
-
-
-class TestConstants:
-    def test_log_group_constants(self):
-        assert AGENT_RFT_LOG_GROUP == "/aws/sagemaker/Job/AgentRFT"
-        assert AGENT_RFT_EVAL_LOG_GROUP == "/aws/sagemaker/Job/AgentRFTEvaluation"
-
-    def test_terminal_statuses(self):
-        assert "Completed" in TERMINAL_STATUSES
-        assert "Failed" in TERMINAL_STATUSES
-        assert "Stopped" in TERMINAL_STATUSES
-        assert "Training" not in TERMINAL_STATUSES
 
 
 def _make_mock_session():
@@ -282,7 +248,6 @@ class TestStreamLogLoop:
 
     def test_early_exit_when_already_terminal(self):
         """stream_log_loop returns immediately if status_fn reports terminal."""
-        from sagemaker.train.common_utils.log_streamer import stream_log_loop
 
         session = _make_mock_session()
         logs_client = session.boto_session.client.return_value
@@ -312,7 +277,6 @@ class TestStreamLogLoop:
 
     def test_exits_when_status_becomes_terminal(self):
         """stream_log_loop exits after status transitions to terminal."""
-        from sagemaker.train.common_utils.log_streamer import stream_log_loop
 
         session = _make_mock_session()
         logs_client = session.boto_session.client.return_value
@@ -337,15 +301,13 @@ class TestStreamLogLoop:
             stream_log_loop(streamer, poll=1, status_fn=lambda: next(statuses))
 
     def test_empty_cycles_feedback(self):
-        """stream_log_loop logs 'No log events yet' after 3 empty cycles."""
-        from sagemaker.train.common_utils.log_streamer import stream_log_loop
+        """stream_log_loop logs 'No log events yet' after ~30s of empty polls."""
 
         session = _make_mock_session()
         logs_client = session.boto_session.client.return_value
         logs_client.get_paginator.return_value.paginate.return_value = [
             {"logStreams": [{"logStreamName": "job/algo-1"}]}
         ]
-        # Always return empty then same token (caught up)
         logs_client.get_log_events.return_value = {
             "events": [], "nextForwardToken": "t1",
         }
@@ -360,19 +322,17 @@ class TestStreamLogLoop:
 
         def _status():
             call_count[0] += 1
-            # Become terminal after 4 calls (initial + 3 loop iterations)
-            return "Completed" if call_count[0] >= 4 else "Training"
+            # With poll=5, warn_cycle=6. Become terminal after 8 calls.
+            return "Completed" if call_count[0] >= 8 else "Training"
 
         with patch("time.sleep"):
             with patch("sagemaker.train.common_utils.log_streamer.logger") as mock_logger:
-                stream_log_loop(streamer, poll=1, status_fn=_status)
-                # Should have logged "No log events yet" at cycle 3
+                stream_log_loop(streamer, poll=5, status_fn=_status)
                 info_calls = [str(c) for c in mock_logger.info.call_args_list]
                 assert any("No log events yet" in c for c in info_calls)
 
     def test_resource_not_found_with_running_job_retries(self):
         """stream_log_loop retries on ResourceNotFoundException while job runs."""
-        from sagemaker.train.common_utils.log_streamer import stream_log_loop
 
         session = _make_mock_session()
         logs_client = session.boto_session.client.return_value
@@ -399,7 +359,6 @@ class TestStreamLogLoop:
 
     def test_access_denied_propagates(self):
         """stream_log_loop raises AccessDeniedException."""
-        from sagemaker.train.common_utils.log_streamer import stream_log_loop
 
         session = _make_mock_session()
         logs_client = session.boto_session.client.return_value

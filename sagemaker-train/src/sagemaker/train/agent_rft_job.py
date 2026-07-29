@@ -22,6 +22,15 @@ from sagemaker.core.resources import Job
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 
+from sagemaker.train.common_utils.log_streamer import (
+    AGENT_RFT_LOG_GROUP,
+    LogStreamer,
+    _resolve_start_time_ms,
+    _validate_poll,
+    stream_log_loop,
+)
+from sagemaker.train.defaults import TrainDefaults
+
 logger = logging.getLogger(__name__)
 
 JOB_CATEGORY = "AgentRFT"
@@ -119,15 +128,6 @@ class AgentRFTJob:
             epoch milliseconds (int). If None, streams from the beginning.
         :raises ValueError: If poll is out of range.
         """
-        from sagemaker.train.common_utils.log_streamer import (
-            AGENT_RFT_LOG_GROUP,
-            LogStreamer,
-            _resolve_start_time_ms,
-            _validate_poll,
-            stream_log_loop,
-        )
-        from sagemaker.train.defaults import TrainDefaults
-
         _validate_poll(poll)
         start_ms = _resolve_start_time_ms(start_time)
         sagemaker_session = self.sagemaker_session or TrainDefaults.get_sagemaker_session()

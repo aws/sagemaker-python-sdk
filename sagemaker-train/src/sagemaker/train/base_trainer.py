@@ -652,55 +652,41 @@ class BaseTrainer(ABC):
         if isinstance(compute, HyperPodCompute):
             self._stream_logs_smhp(training_job, compute, poll, start_time_ms)
         else:
-            self._stream_logs_smtj(training_job, poll)
+            self._stream_logs_smtj(training_job, poll, start_time_ms)
 
-    def _stream_logs_smtj(self, training_job, poll: int) -> None:
-        """Stream logs for an SMTJ training job using MultiLogStreamHandler."""
+    def _stream_logs_smtj(self, training_job, poll: int, start_time_ms=None) -> None:
+        """Stream logs for an SMTJ training job."""
+        from sagemaker.train.common_utils.log_streamer import (
+            LogStreamer,
+            stream_log_loop,
+        )
 
-        # Resolve job name
         if hasattr(training_job, 'training_job_name'):
             job_name = training_job.training_job_name
         else:
             job_name = str(training_job)
 
         log_group = "/aws/sagemaker/TrainingJobs"
-        instance_count = 1
-        if hasattr(self, 'compute') and self.compute and hasattr(self.compute, 'instance_count'):
-            instance_count = self.compute.instance_count or 1
 
-        handler = MultiLogStreamHandler(
-            log_group_name=log_group,
-            log_stream_name_prefix=job_name,
-            expected_stream_count=instance_count,
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
         )
 
-        logger.info(f"Streaming logs for job: {job_name}")
-        logger.info(f"Log group: {log_group}")
+        streamer = LogStreamer(
+            log_group=log_group,
+            job_name=job_name,
+            sagemaker_session=sagemaker_session,
+            start_time_ms=start_time_ms,
+        )
 
-        terminal_statuses = {"Completed", "Failed", "Stopped"}
+        logger.info("Streaming logs for job: %s", job_name)
+        logger.info("Log group: %s", log_group)
 
-        while True:
-            for stream_name, event in handler.get_latest_log_events():
-                message = event.get("message", "").rstrip()
-                if message:
-                    logger.info(message)
+        def _get_status() -> str:
+            job = TrainingJob.get(training_job_name=job_name)
+            return job.training_job_status
 
-            # Check job status
-            try:
-                job = TrainingJob.get(training_job_name=job_name)
-                status = job.training_job_status
-                if status in terminal_statuses:
-                    # Final flush
-                    for stream_name, event in handler.get_latest_log_events():
-                        message = event.get("message", "").rstrip()
-                        if message:
-                            logger.info(message)
-                    logger.info(f"Job {job_name} finished with status: {status}")
-                    return
-            except Exception:
-                pass
-
-            time.sleep(poll)
+        stream_log_loop(streamer, poll, _get_status)
 
     def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None) -> None:
         """Stream logs for a HyperPod job using filter_log_events polling."""
@@ -784,7 +770,7 @@ class BaseTrainer(ABC):
             except Exception as e:
                 logger.debug(f"Error fetching HP logs: {e}")
 
-            # HyperPod jobs don't have a simple status API to poll for completion.
+            # Note: HyperPod jobs don't have a simple status API to poll for completion.
             # This polls till the user interrupts with Ctrl+C.
             try:
                 time.sleep(poll)

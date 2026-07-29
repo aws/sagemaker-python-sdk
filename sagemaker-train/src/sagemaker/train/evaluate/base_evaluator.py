@@ -40,6 +40,7 @@ from sagemaker.train.common_utils.log_streamer import (
     _format_timestamp,
     _resolve_start_time_ms,
     _validate_poll,
+    stream_log_loop,
 )
 from sagemaker.train.common_utils.recipe_utils import resolve_recipe, get_resolved_recipe_from_context
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
@@ -1186,7 +1187,6 @@ class BaseEvaluator(BaseModel):
 
     def _stream_logs_pipeline(self, execution, poll: int, start_time) -> None:
         """Stream logs for a pipeline-based evaluation."""
-        from sagemaker.train.common_utils.log_streamer import stream_log_loop
 
         start_ms = _resolve_start_time_ms(start_time)
 

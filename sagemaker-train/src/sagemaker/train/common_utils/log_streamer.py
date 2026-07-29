@@ -86,7 +86,6 @@ class LogStreamer:
         self,
         log_group: str,
         job_name: str,
-        *,
         sagemaker_session=None,
         filter_pattern: str | None = None,
         start_time_ms: int | None = None,
@@ -243,14 +242,21 @@ def stream_log_loop(
     if status in TERMINAL_STATUSES:
         logger.info("Job already in terminal state: %s", status)
         try:
-            for ts_ms, message in streamer.poll_once():
-                logger.info("[%s] %s", _format_timestamp(ts_ms), message)
+            while True:
+                events = streamer.poll_once()
+                if not events:
+                    break
+                for ts_ms, message in events:
+                    logger.info("[%s] %s", _format_timestamp(ts_ms), message)
         except ClientError:
             pass
         logger.info("Job finished with status: %s", status)
         return
 
     empty_cycles = 0
+    max_empty_cycles = max(300 // poll, 1)  # ~5 minutes
+    warn_cycle = max(30 // poll, 1)  # ~30 seconds
+
     while True:
         try:
             events = streamer.poll_once()
@@ -266,11 +272,11 @@ def stream_log_loop(
                 empty_cycles += 1
                 if empty_cycles == 1:
                     logger.info("Waiting for log group to become available...")
-                elif empty_cycles >= 60:
-                    logger.warning(
-                        "Log group still not found after %d attempts. "
-                        "Check IAM permissions for logs:GetLogEvents.",
-                        empty_cycles,
+                elif empty_cycles >= max_empty_cycles:
+                    raise RuntimeError(
+                        f"Log group not found after {empty_cycles * poll}s. "
+                        "Check IAM permissions for logs:GetLogEvents and "
+                        "logs:DescribeLogStreams."
                     )
                 time.sleep(poll)
                 continue
@@ -282,8 +288,11 @@ def stream_log_loop(
                 logger.info("[%s] %s", _format_timestamp(ts_ms), message)
         else:
             empty_cycles += 1
-            if empty_cycles == 3:
+            if empty_cycles == warn_cycle:
                 logger.info("No log events yet, still waiting...")
+            elif empty_cycles >= max_empty_cycles:
+                logger.warning("No log events found after 5 minutes.")
+                return
 
         status = status_fn()
         if status in TERMINAL_STATUSES:

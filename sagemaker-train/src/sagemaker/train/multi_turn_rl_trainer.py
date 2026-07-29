@@ -41,6 +41,13 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_s3_path_exists,
 )
 from sagemaker.train.common_utils.constants import MIN_MLFLOW_VERSION
+from sagemaker.train.common_utils.log_streamer import (
+    AGENT_RFT_LOG_GROUP,
+    LogStreamer,
+    _resolve_start_time_ms,
+    _validate_poll,
+    stream_log_loop,
+)
 from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe, _is_nova_model
 from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.train.defaults import TrainDefaults
@@ -362,16 +369,6 @@ class MultiTurnRLTrainer(BaseTrainer):
         :raises ValueError: If no training job has been launched yet or poll
             is out of range.
         """
-        from sagemaker.core.resources import Job
-
-        from sagemaker.train.common_utils.log_streamer import (
-            AGENT_RFT_LOG_GROUP,
-            LogStreamer,
-            _resolve_start_time_ms,
-            _validate_poll,
-            stream_log_loop,
-        )
-
         if self._latest_job is None:
             raise ValueError(
                 "No training job found. Call .train(wait=False) first, "

@@ -21,7 +21,7 @@ def _make_client_error(code, message="error"):
 def _make_mock_job(**overrides):
     job = MagicMock()
     job.job_name = "test-mtrl-job"
-    job.job_arn = "arn:aws:sagemaker:us-west-2:123:job/test-mtrl-job"
+    job.job_arn = "arn:aws:sagemaker:us-west-2:123456789012:job/test-mtrl-job"
     job.job_status = "Training"
     job.job_category = "AgentRFT"
     job.job_config_document = "{}"
@@ -180,25 +180,25 @@ class TestBaseEvaluatorStreamLogs:
 
     def test_log_group_for_training_job_arn(self):
         """_log_group_for_step_arn resolves training-job ARNs correctly."""
-        arn = "arn:aws:sagemaker:us-west-2:123:training-job/my-eval-job"
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:training-job/my-eval-job"
         assert BaseEvaluator._log_group_for_step_arn(arn) == "/aws/sagemaker/TrainingJobs"
 
     def test_log_group_for_job_arn(self):
         """_log_group_for_step_arn resolves Job API ARNs correctly."""
-        arn = "arn:aws:sagemaker:us-west-2:123:job/my-eval-job"
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:job/my-eval-job"
         assert BaseEvaluator._log_group_for_step_arn(arn) == "/aws/sagemaker/Job/AgentRFTEvaluation"
 
     def test_job_name_from_training_job_arn(self):
         """_job_name_from_arn extracts job name from training-job ARN."""
-        arn = "arn:aws:sagemaker:us-west-2:123:training-job/my-eval-job-abc123"
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:training-job/my-eval-job-abc123"
         assert BaseEvaluator._job_name_from_arn(arn) == "my-eval-job-abc123"
 
     def test_job_name_from_job_arn(self):
         """_job_name_from_arn extracts job name from Job API ARN."""
-        arn = "arn:aws:sagemaker:us-west-2:123:job/my-mtrl-eval-job"
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:job/my-mtrl-eval-job"
         assert BaseEvaluator._job_name_from_arn(arn) == "my-mtrl-eval-job"
 
     def test_job_name_from_unknown_arn_returns_none(self):
         """_job_name_from_arn returns None for unrecognized ARN format."""
-        arn = "arn:aws:sagemaker:us-west-2:123:pipeline/my-pipeline"
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:pipeline/my-pipeline"
         assert BaseEvaluator._job_name_from_arn(arn) is None
