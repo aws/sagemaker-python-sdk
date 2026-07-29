@@ -18,6 +18,8 @@ import logging
 import time
 from typing import Callable, Optional
 
+from botocore.exceptions import ClientError
+
 logger = logging.getLogger(__name__)
 
 MODEL_SOURCE_TAG_KEY = "sagemaker.amazonaws.com/model-source"
@@ -29,6 +31,7 @@ _TAG_HASH_SUFFIX_LENGTH = 31
 _ACTIVE_STATUSES = {"Active", "InService"}
 _CREATING_STATUSES = {"Creating"}
 _FAILED_STATUSES = {"Failed"}
+_ACCESS_DENIED_CODE = "AccessDeniedException"
 
 
 def normalize_tag_value(value: str) -> str:
@@ -41,6 +44,32 @@ def normalize_tag_value(value: str) -> str:
         return value
     hash_suffix = hashlib.sha256(value.encode()).hexdigest()[:_TAG_HASH_SUFFIX_LENGTH]
     return f"{value[:_TAG_TRUNCATE_PREFIX_LENGTH]}-{hash_suffix}"
+
+
+def _reraise_if_access_denied(error: ClientError, permission: str) -> None:
+    """Surface a denied reuse-discovery call as an actionable PermissionError.
+
+    Called only from ``reuse_resources=True`` discovery paths. A denied
+    discovery call otherwise looks the same as "nothing to reuse", so reuse
+    falls through to creating the resource. But the resource created on a prior
+    run is still there under the same deterministic name, so the create fails
+    with a confusing ``ValidationException: ... already exists`` that never
+    mentions the real cause. Re-raising here names the missing IAM permission
+    instead.
+
+    Args:
+        error: The ClientError raised by a discovery call.
+        permission: The IAM action reuse discovery requires (named in the message).
+
+    Raises:
+        PermissionError: If ``error`` is an ``AccessDeniedException``.
+    """
+    if error.response.get("Error", {}).get("Code") == _ACCESS_DENIED_CODE:
+        raise PermissionError(
+            f"reuse_resources=True requires the '{permission}' permission to discover "
+            f"reusable resources. Add it to the execution role's policy, or set "
+            f"reuse_resources=False to always create new resources."
+        ) from error
 
 
 def find_existing_bedrock_model(
@@ -70,6 +99,10 @@ def find_existing_bedrock_model(
     tag_value = normalize_tag_value(source_id)
     try:
         resource_arn = _find_bedrock_model_arn_by_tag(bedrock_client, tag_value)
+    except ClientError as e:
+        _reraise_if_access_denied(e, "bedrock:ListTagsForResource")
+        logger.warning("Could not list Bedrock custom models: %s. Proceeding without.", e)
+        return None
     except Exception as e:
         logger.warning("Could not list Bedrock custom models: %s. Proceeding without.", e)
         return None
@@ -105,6 +138,12 @@ def find_active_bedrock_deployment_for_model(bedrock_client, model_arn: str) -> 
             next_token = response.get("nextToken")
             if not next_token:
                 return None
+    except ClientError as e:
+        _reraise_if_access_denied(e, "bedrock:ListCustomModelDeployments")
+        logger.warning(
+            "Could not list Bedrock custom model deployments: %s. Proceeding without.", e
+        )
+        return None
     except Exception as e:
         logger.warning(
             "Could not list Bedrock custom model deployments: %s. Proceeding without.", e
@@ -139,6 +178,10 @@ def find_existing_sagemaker_endpoint(
     tag_value = normalize_tag_value(source_id)
     try:
         resource_arn = _find_sagemaker_endpoint_arn_by_tag(sagemaker_client, tag_value)
+    except ClientError as e:
+        _reraise_if_access_denied(e, "sagemaker:ListTags")
+        logger.warning("Could not list SageMaker endpoints: %s. Proceeding without.", e)
+        return None
     except Exception as e:
         logger.warning("Could not list SageMaker endpoints: %s. Proceeding without.", e)
         return None
