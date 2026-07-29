@@ -18,7 +18,6 @@ import multiprocessing
 import subprocess
 import json
 import os
-import re
 import sys
 from pathlib import Path
 import logging
@@ -62,19 +61,6 @@ ENV_OUTPUT_FILE = "/opt/ml/input/sm_training.env"
 
 SENSITIVE_KEYWORDS = ["SECRET", "PASSWORD", "KEY", "TOKEN", "PRIVATE", "CREDS", "CREDENTIALS"]
 HIDDEN_VALUE = "******"
-
-SENSITIVE_VALUE_PATTERNS = [
-    re.compile(r"\b(?:AKIA|ASIA|AROA|AIDA|AGPA|ANPA|ANVA|ASCA)[A-Z0-9]{16}\b"),
-    re.compile(r"(?i)\baws_session_token\b"),
-    re.compile(r"(?i)x-amz-security-token"),
-]
-
-
-def _value_is_sensitive(value) -> bool:
-    """Return True if a value looks like credential material, regardless of key name."""
-    if not isinstance(value, str):
-        return False
-    return any(pattern.search(value) for pattern in SENSITIVE_VALUE_PATTERNS)
 
 
 def num_cpus() -> int:
@@ -273,8 +259,6 @@ def mask_sensitive_info(data):
 def log_key_value(key: str, value: str):
     """Log a key-value pair, masking sensitive values if necessary."""
     if any(keyword.lower() in key.lower() for keyword in SENSITIVE_KEYWORDS):
-        logger.info("%s=%s", key, HIDDEN_VALUE)
-    elif _value_is_sensitive(value):
         logger.info("%s=%s", key, HIDDEN_VALUE)
     elif isinstance(value, dict):
         masked_value = mask_sensitive_info(value)
