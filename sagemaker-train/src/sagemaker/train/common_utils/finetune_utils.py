@@ -1451,10 +1451,11 @@ def _get_smhp_replicas_enum(model_name: str, customization_technique: str, train
         if isinstance(enum_val, list) and enum_val:
             return enum_val
     except Exception as e:
-        logger.warning(
+        # Caller emits the user-facing warning when None is returned; keep the
+        # exception detail at debug level to avoid a duplicate warning.
+        logger.debug(
             f"Could not fetch valid instance counts from SMHP recipe for "
-            f"{model_name}/{customization_technique}: {e}. "
-            "Instance count validation will be skipped."
+            f"{model_name}/{customization_technique}: {e}."
         )
     return None
 
@@ -1484,10 +1485,11 @@ def _get_smhp_instance_type_enum(model_name: str, customization_technique: str, 
         if isinstance(enum_val, list) and enum_val:
             return enum_val
     except Exception as e:
-        logger.warning(
+        # Caller emits the user-facing warning when None is returned; keep the
+        # exception detail at debug level to avoid a duplicate warning.
+        logger.debug(
             f"Could not fetch valid instance types from SMHP recipe for "
-            f"{model_name}/{customization_technique}: {e}. "
-            "Instance type validation will be skipped."
+            f"{model_name}/{customization_technique}: {e}."
         )
     return None
 
