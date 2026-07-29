@@ -301,6 +301,47 @@ class TestMTRLEvaluatorIntegration:
         assert evaluator is not None
         assert evaluator.model == test_config["base_model"]
 
+    def test_evaluator_infers_agent_config_from_trainer(self, mtrl_trainer, test_config):
+        """Test that agent_config is inferred from trainer's nested dict (no explicit agent_config)."""
+        # Simulate AgentRFTJob.agent_config returning a nested dict
+        mtrl_trainer.agent_config = {
+            "BedrockAgentCoreConfig": {"AgentRuntimeArn": test_config["agent_arn"]}
+        }
+
+        evaluator = MultiTurnRLEvaluator(
+            model=mtrl_trainer,
+            dataset=test_config["dataset"],
+            s3_output_path=f'{test_config["s3_output_path"]}integ-infer-agent/',
+            mlflow_resource_arn=test_config["mlflow_resource_arn"],
+            region=test_config["region"],
+        )
+
+        evaluator._resolve_trainer_defaults()
+        assert evaluator.agent_config == test_config["agent_arn"]
+
+        # Clean up: remove the attribute so other tests using this fixture aren't affected
+        del mtrl_trainer.agent_config
+
+    def test_evaluator_infers_lambda_agent_config_from_trainer(self, mtrl_trainer, test_config):
+        """Test that agent_config is inferred from trainer's nested CustomAgentLambdaConfig dict."""
+        lambda_arn = "arn:aws:lambda:us-west-2:123456789012:function:my-agent"
+        mtrl_trainer.agent_config = {
+            "CustomAgentLambdaConfig": {"LambdaArn": lambda_arn}
+        }
+
+        evaluator = MultiTurnRLEvaluator(
+            model=mtrl_trainer,
+            dataset=test_config["dataset"],
+            s3_output_path=f'{test_config["s3_output_path"]}integ-infer-lambda/',
+            mlflow_resource_arn=test_config["mlflow_resource_arn"],
+            region=test_config["region"],
+        )
+
+        evaluator._resolve_trainer_defaults()
+        assert evaluator.agent_config == lambda_arn
+
+        del mtrl_trainer.agent_config
+
     def test_get_all_mtrl_evaluations(self, test_config):
         """Test listing all MTRL evaluation executions."""
         all_execs = MultiTurnRLEvaluator.get_all(region=test_config["region"])
