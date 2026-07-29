@@ -31,6 +31,7 @@ from sagemaker.train.common_utils.finetune_utils import (
     get_recipe_s3_uri,
     _validate_hyperparameter_values,
     _get_smhp_replicas_enum,
+    _get_smhp_instance_type_enum,
 )
 from sagemaker.train.common_utils.data_utils import validate_data_path_exists
 from sagemaker.train.common_utils.metrics_visualizer import plot_training_metrics
@@ -779,6 +780,22 @@ class BaseTrainer(ABC):
             )
         return smhp_replicas_enum
 
+    def _validate_instance_type(self, instance_type, sagemaker_session):
+        """Validate instance type against allowed values from SMHP recipe."""
+        smhp_instance_type_enum = _get_smhp_instance_type_enum(
+            model_name=self._model_name,
+            customization_technique=self._customization_technique,
+            training_type=self.training_type,
+            sagemaker_session=sagemaker_session,
+        )
+
+        if smhp_instance_type_enum and instance_type not in smhp_instance_type_enum:
+            raise ValueError(
+                f"Instance type '{instance_type}' is not supported. "
+                f"Allowed values: {sorted(smhp_instance_type_enum)}."
+            )
+        return smhp_instance_type_enum
+
     @abstractmethod
     def train(self, input_data_config: List[InputData], wait: bool = True, logs: bool = True, wait_timeout: Optional[int] = None, dry_run: bool = False):
         """Common training method that calls the specific implementation."""
@@ -892,14 +909,30 @@ class BaseTrainer(ABC):
             sagemaker_session=sagemaker_session,
         )
 
+        # Validates instance type using SMHP override spec as SMTJ override spec doesn't contain instance type
+        smhp_instance_type_enum = self._validate_instance_type(compute.instance_type, sagemaker_session)
+        if not smhp_instance_type_enum:
+            logger.warning(
+                f"SMHP recipe for {self._model_name}/{self._customization_technique} did not provide a "
+                f"valid instance_type enum. "
+                "Instance type validation will be skipped."
+            )
+
         # Validate instance count against allowed values from SMHP recipe.
         smhp_replicas_enum = self._validate_instance_count(compute.instance_count, sagemaker_session)
+
         if smhp_replicas_enum:
             override_spec.setdefault("replicas", {})["enum"] = smhp_replicas_enum
             if hasattr(self, 'hyperparameters') and hasattr(self.hyperparameters, '_specs'):
                 self.hyperparameters._specs.setdefault("replicas", {})["enum"] = smhp_replicas_enum
                 if not hasattr(self.hyperparameters, 'replicas'):
                     object.__setattr__(self.hyperparameters, 'replicas', compute.instance_count)
+        else:
+            logger.warning(
+                f"SMHP recipe for {self._model_name}/{self._customization_technique} did not provide a "
+                f"valid replicas enum. "
+                "Instance count validation will be skipped."
+            )
 
         # Inject the resolved dataset channel paths so the rendered recipe's
         # train_files / val_files are non-empty (the container aborts otherwise).
