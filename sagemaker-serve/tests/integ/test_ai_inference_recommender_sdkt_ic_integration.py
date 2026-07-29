@@ -11,35 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """End-to-end: deploy a speculative-decoding / kernel-tuning model as an
-Inference Component via ``ModelBuilder``.
-
-Why this test exists
---------------------
-Speculative-decoding (SD) and kernel-tuning (KT) optimized models host **two or
-more model artifacts on one endpoint** — the base weights plus a draft model
-(SD) or tuned-kernel artifacts (KT). On the model container these arrive as
-``AdditionalModelDataSources``. Inference Components are the hosting surface
-customers use to pack such multi-artifact models onto an endpoint, so
-"deploy the optimized model as an Inference Component" is a first-class path.
-
-``ModelBuilder`` deploys as an Inference Component when ``deploy()`` is given an
-``inference_config=ResourceRequirements(...)``. This test builds a model
-carrying the SD/KT ``AdditionalModelDataSources`` shape and deploys it that way,
-asserting the Inference Component reaches ``InService`` — i.e. hosting accepts
-and loads the multi-source model. It guards two failure modes: an Inference
-Component that rejects the multi-source model at deploy time, and a deploy path
-that silently collapses the additional sources into a single primary source
-(the post-deploy shape assertion catches the latter).
-
-Cost / scope
-------------
-Producing a genuine optimized ModelPackage inline is infeasible in CI (SD/KT
-optimization requires substantial multi-GPU training capacity). So this test
-builds a model that carries the SD/KT ``AdditionalModelDataSources`` shape
-directly (base + draft channels) — the shape is the deploy-time contract under
-test, not the specific optimized weights. Marked ``slow_test`` +
-``gpu_intensive`` (one GPU Inference Component endpoint).
-"""
+Inference Component via ``ModelBuilder``."""
 from __future__ import absolute_import
 
 import logging
@@ -58,11 +30,12 @@ from sagemaker.core.training.configs import Compute
 logger = logging.getLogger(__name__)
 
 # Small, ungated, chat-templated model. Its readable S3 artifact stands in for
-# the optimized recommendation's base + draft channels, and it fits a
-# single-GPU g6.2xlarge Inference Component.
+# the base + draft channels. A GPU instance is required by the JumpStart
+# vLLM/LMI container (not by the model size); a single-GPU g4dn.xlarge (T4) is
+# ample for a 0.6B model.
 MODEL_ID = "huggingface-reasoning-qwen3-06b"
-INSTANCE_TYPE = "ml.g6.2xlarge"
-# Right-sized for a 0.6B on a single L4; a too-large request overflows the host
+INSTANCE_TYPE = "ml.g4dn.xlarge"
+# Right-sized for a 0.6B on a single GPU; a too-large request overflows the host
 # and the IC never leaves Creating.
 IC_MIN_MEMORY_MB = 4096
 IC_NUM_ACCELERATORS = 1
@@ -103,32 +76,35 @@ def test_deploy_sdkt_model_as_inference_component():
     endpoint_name = f"air-sdkt-ic-ep-{unique_id}"
     ic_name = f"air-sdkt-ic-{unique_id}"
 
-    source_model = None
-    endpoint = None
+    from sagemaker.core.jumpstart.configs import JumpStartConfig
 
-    try:
-        # Build a source model just to obtain a readable image + S3 artifact for
-        # this account/region (JumpStart resolves the container + weights).
-        from sagemaker.core.jumpstart.configs import JumpStartConfig
-
-        source_mb = ModelBuilder.from_jumpstart_config(
+    def _jumpstart_builder():
+        return ModelBuilder.from_jumpstart_config(
             jumpstart_config=JumpStartConfig(model_id=MODEL_ID),
             compute=Compute(instance_type=INSTANCE_TYPE),
             role_arn=role,
         )
-        source_model = source_mb.build(model_name=src_model_name)
-        src_container = Model.get(model_name=src_model_name)
-        primary = getattr(src_container, "primary_container", None) or getattr(
-            src_container, "containers", [None]
-        )[0]
-        base_s3 = _extract_s3_uri(primary)
+
+    source_model = None
+    endpoint = None
+
+    try:
+        # First build resolves the JumpStart container + a readable weights
+        # artifact for this account/region; read its S3 URI to back the SD/KT
+        # channels (JumpStart populates the artifact during build, not before).
+        source_model = _jumpstart_builder().build(model_name=src_model_name)
+        src_primary = getattr(Model.get(model_name=src_model_name), "primary_container", None)
+        base_s3 = _extract_s3_uri(src_primary)
         assert base_s3, f"Could not resolve a readable S3 artifact for {MODEL_ID}"
         logger.info("Resolved base artifact: %s", base_s3)
 
-        # Build a model that carries the SD/KT additional sources, then deploy it
-        # as an Inference Component (inference_config=ResourceRequirements routes
-        # deploy() to the INFERENCE_COMPONENT_BASED path).
-        ic_mb = ModelBuilder(model_path=base_s3, role_arn=role)
+        # Second build carries the SD/KT additional data sources (base + draft
+        # channels) onto the model, then deploys it as an Inference Component:
+        # inference_config=ResourceRequirements routes deploy() to the
+        # INFERENCE_COMPONENT_BASED path. Both channels point at the same
+        # readable artifact — the deploy-time contract under test is the
+        # multi-source SHAPE, not the specific optimized weights.
+        ic_mb = _jumpstart_builder()
         ic_mb.additional_model_data_sources = _additional_model_data_sources(base_s3)
         ic_mb.build(model_name=ic_model_name)
 
