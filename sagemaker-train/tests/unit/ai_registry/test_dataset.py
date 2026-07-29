@@ -374,13 +374,24 @@ class TestDataSet:
             "HubContentDocument": "{}",
             "HubContentSearchKeywords": ["customization_technique:sft", "method:generated"]
         }
-        mock_create.return_value = Mock()
-        
-        dataset = DataSet("test", "arn", "1.0.0", "s3://bucket/prefix", HubContentStatus.AVAILABLE, "desc", CustomizationTechnique.SFT)
+        session = Mock()
+        new_dataset = Mock(spec=DataSet)
+        new_dataset.arn = "test-arn-v2"
+        new_dataset.version = "2.0.0"
+        mock_create.return_value = new_dataset
+
+        dataset = DataSet(
+            "test", "arn", "1.0.0", "s3://bucket/prefix", HubContentStatus.AVAILABLE, "desc",
+            CustomizationTechnique.SFT, sagemaker_session=session,
+        )
         result = dataset.create_version("s3://bucket/new-data")
-        
-        assert result is True
+
+        assert result is new_dataset
         mock_create.assert_called_once()
+        _, create_kwargs = mock_create.call_args
+        assert create_kwargs["name"] == "test"
+        assert create_kwargs["source"] == "s3://bucket/new-data"
+        assert create_kwargs["sagemaker_session"] is session
 
     @patch('sagemaker.ai_registry.dataset.AIRHub')
     def test_create_version_failure(self, mock_air_hub):
@@ -389,7 +400,7 @@ class TestDataSet:
         dataset = DataSet("test", "arn", "1.0.0", "s3://bucket/prefix", HubContentStatus.AVAILABLE, "desc", CustomizationTechnique.SFT)
         result = dataset.create_version("s3://bucket/new-data")
         
-        assert result is False
+        assert result is None
 
 
 class TestDataSetCreateWithContentMetadata:

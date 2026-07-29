@@ -196,8 +196,9 @@ class TestEvaluatorIntegration:
         Evaluator.delete_by_name(name=unique_name)
         evaluator = Evaluator.create(name=unique_name, type=REWARD_PROMPT, source=sample_prompt_file, wait=False)
         # cleanup_list.append(evaluator)
-        result = evaluator.create_version(source=sample_prompt_file)
-        assert result is True
+        new_version = evaluator.create_version(source=sample_prompt_file)
+        assert isinstance(new_version, Evaluator)
+        assert new_version.name == evaluator.name
         Evaluator.delete_by_name(name=unique_name)
 
     def test_create_reward_prompt_without_source_fails(self, unique_name):

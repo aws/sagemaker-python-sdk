@@ -192,13 +192,24 @@ class TestEvaluator:
 
     @patch('sagemaker.ai_registry.evaluator.Evaluator.create')
     def test_create_version_success(self, mock_create):
-        mock_create.return_value = MagicMock()
-        
-        evaluator = Evaluator("test", "1.0.0", "arn", "AWS/Evaluator", method=EvaluatorMethod.LAMBDA, reference="lambda-arn")
+        session = MagicMock()
+        new_evaluator = MagicMock()
+        new_evaluator.arn = "test-arn-v2"
+        new_evaluator.version = "2.0.0"
+        mock_create.return_value = new_evaluator
+
+        evaluator = Evaluator(
+            "test", "1.0.0", "arn", "AWS/Evaluator", method=EvaluatorMethod.LAMBDA,
+            reference="lambda-arn", sagemaker_session=session,
+        )
         result = evaluator.create_version("arn:aws:lambda:us-west-2:123456789012:function:new")
-        
-        assert result is True
+
+        assert result is new_evaluator
         mock_create.assert_called_once()
+        _, create_kwargs = mock_create.call_args
+        assert create_kwargs["name"] == "test"
+        assert create_kwargs["source"] == "arn:aws:lambda:us-west-2:123456789012:function:new"
+        assert create_kwargs["sagemaker_session"] is session
 
     @patch('sagemaker.ai_registry.evaluator.AIRHub')
     def test_create_version_failure(self, mock_air_hub):
