@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import tempfile
 from datetime import datetime
@@ -54,6 +55,8 @@ from sagemaker.core.utils.utils import (
 )
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.defaults import TrainDefaults
+
+logger = logging.getLogger(__name__)
 
 
 class DataSet(AIRHubEntity):
@@ -519,7 +522,7 @@ class DataSet(AIRHubEntity):
         self, 
         source: str,
         customization_technique: Optional[CustomizationTechnique] = None
-    ) -> bool:
+    ) -> Optional["DataSet"]:
         """Create a new version of this dataset.
         
         Args:
@@ -527,7 +530,7 @@ class DataSet(AIRHubEntity):
             customization_technique: Customization technique to use. If None, uses existing technique.
             
         Returns:
-            True if version created successfully, False otherwise
+            DataSet: The newly created version, or None if creation failed
         """
         try:
             # Get current dataset metadata
@@ -545,19 +548,27 @@ class DataSet(AIRHubEntity):
             technique = customization_technique or (CustomizationTechnique(existing_technique) if existing_technique else None)
             
             # Create new version
-            DataSet.create(
+            new_dataset = DataSet.create(
                 name=self.name,
                 source=source,
                 customization_technique=technique,
                 tags=[
                     (TAG_KEY_CUSTOMIZATION_TECHNIQUE, technique.value),
                     (TAG_KEY_METHOD, keywords.get(TAG_KEY_METHOD, ""))
-                ] if technique else [(TAG_KEY_METHOD, keywords.get(TAG_KEY_METHOD, ""))]
+                ] if technique else [(TAG_KEY_METHOD, keywords.get(TAG_KEY_METHOD, ""))],
+                sagemaker_session=self.sagemaker_session,
             )
-            return True
+            logger.info(
+                "Created new version %s for dataset %s, arn: %s",
+                new_dataset.version, self.name, new_dataset.arn
+            )
+            return new_dataset
         except Exception as e:
-            print(f"Failed to create new version for dataset {self.name} with exception : {e}")
-            return False
+            logger.error(
+                "Failed to create new version for dataset %s with exception : %s",
+                self.name, e
+            )
+            return None
 
     @staticmethod
     def _parse_keywords(search_keywords: List[str]) -> dict:

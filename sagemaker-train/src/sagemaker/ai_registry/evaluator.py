@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import os
 import zipfile
 from collections.abc import Sequence
@@ -51,6 +52,9 @@ from sagemaker.core.telemetry.constants import Feature
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.common_utils.finetune_utils import _get_current_domain_id
 from sagemaker.train.defaults import TrainDefaults
+
+logger = logging.getLogger(__name__)
+
 
 class EvaluatorMethod(Enum):
     """Enum for Evaluator method types."""
@@ -495,21 +499,29 @@ class Evaluator(AIRHubEntity):
         return evaluators
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="Evaluator.create_version")
-    def create_version(self, source: str) -> bool:
+    def create_version(self, source: str) -> "Evaluator":
         """Create a new version of this evaluator.
         
         Args:
             source: Lambda ARN or local file path for the function
 
         Returns:
-            bool: True if version created successfully, False otherwise
+            Evaluator: The newly created version.
+
+        Raises:
+            RuntimeError: If version creation fails.
         """
         try:
-            Evaluator.create(
+            new_evaluator = Evaluator.create(
                 name=self.name,
                 type=self.type,
                 source=source,
+                sagemaker_session=self.sagemaker_session,
             )
-            return True
+            logger.info(
+                "Created new version %s for evaluator %s, arn: %s",
+                new_evaluator.version, self.name, new_evaluator.arn
+            )
+            return new_evaluator
         except Exception as e:
             raise RuntimeError(f"[PySDK Error] Failed to create new version: {str(e)}")
