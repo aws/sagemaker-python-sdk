@@ -34,10 +34,15 @@ from sagemaker.core.config.config_schema import (
     MODEL_TRAINER,
     _simple_path,
     TRAINING_JOB_RESOURCE_CONFIG_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_VPC_CONFIG_PATH,
+    TRAINING_JOB_SUBNETS_PATH,
+    TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
     SAGEMAKER,
     PYTHON_SDK,
     MODULES,
 )
+from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.model_trainer import ModelTrainer, Mode
 from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE
@@ -68,6 +73,7 @@ from sagemaker.train.configs import (
     Channel,
     DataSource,
     MetricDefinition,
+    InstanceGroup,
 )
 from sagemaker.train.distributed import Torchrun, SMP, MPI
 from sagemaker.train.sm_recipes.utils import _load_recipes_cfg, _is_nova_recipe, _get_args_from_nova_recipe
@@ -465,6 +471,153 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
             assert channel.data_source.file_system_data_source == test_case["data_source"]
         else:
             assert channel.data_source.s3_data_source.s3_uri == expected_s3_uri
+
+
+def test_create_input_data_channel_with_instance_group_names(model_trainer):
+    """instance_group_names is propagated onto the channel's S3DataSource."""
+    channel = model_trainer.create_input_data_channel(
+        channel_name="code",
+        data_source=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code",
+        instance_group_names=["head-instance-group", "worker-instance-group-1"],
+    )
+    assert channel.data_source.s3_data_source.instance_group_names == [
+        "head-instance-group",
+        "worker-instance-group-1",
+    ]
+
+
+HETEROGENEOUS_INSTANCE_GROUPS = [
+    InstanceGroup(
+        instance_type="ml.t3.large", instance_count=1, instance_group_name="head-instance-group"
+    ),
+    InstanceGroup(
+        instance_type="ml.m5.2xlarge",
+        instance_count=2,
+        instance_group_name="worker-instance-group-1",
+    ),
+]
+
+
+def _instance_group_names(channel):
+    """Return the channel's assigned instance_group_names as a list (or None)."""
+    s3_data_source = channel.data_source.s3_data_source if channel.data_source else None
+    names = getattr(s3_data_source, "instance_group_names", None) if s3_data_source else None
+    return names if isinstance(names, list) else None
+
+
+def _managed_channel_names(input_data_config):
+    return {
+        channel.channel_name: _instance_group_names(channel) for channel in input_data_config
+    }
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_managed_channels_assigned_instance_groups_when_user_channel_assigns(
+    mock_default_bucket, mock_upload_data
+):
+    """Regression test for issue #6089.
+
+    On a heterogeneous cluster, when a user assigns instance_group_names to any of their
+    channels, the SDK-managed ``code``/``sm_drivers`` channels must also be assigned to the
+    full set of instance groups, otherwise CreateTrainingJob fails validation with
+    "Some channels have assigned instance groups ... while others not".
+    """
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code"
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    expected_names = ["head-instance-group", "worker-instance-group-1"]
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=Compute(instance_groups=HETEROGENEOUS_INSTANCE_GROUPS),
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+
+    user_channel = InputData(
+        channel_name="processing",
+        data_source=S3DataSource(
+            s3_data_type="S3Prefix",
+            s3_uri=f"s3://{DEFAULT_BUCKET}/data/",
+            s3_data_distribution_type="FullyReplicated",
+            instance_group_names=expected_names,
+        ),
+    )
+
+    args = trainer._create_training_job_args(input_data_config=[user_channel])
+    channels = _managed_channel_names(args["input_data_config"])
+
+    assert channels["processing"] == expected_names
+    assert channels["code"] == expected_names
+    assert channels["sm_drivers"] == expected_names
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_managed_channels_not_assigned_when_user_channel_unassigned(
+    mock_default_bucket, mock_upload_data
+):
+    """Managed channels stay unassigned when the user does not use instance groups.
+
+    Even on a heterogeneous cluster, if no user channel assigns instance_group_names, the
+    SDK must not assign them to managed channels (which would itself violate the
+    all-or-nothing rule against the unassigned user channel).
+    """
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code"
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=Compute(instance_groups=HETEROGENEOUS_INSTANCE_GROUPS),
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+
+    user_channel = InputData(
+        channel_name="processing",
+        data_source=S3DataSource(
+            s3_data_type="S3Prefix",
+            s3_uri=f"s3://{DEFAULT_BUCKET}/data/",
+            s3_data_distribution_type="FullyReplicated",
+        ),
+    )
+
+    args = trainer._create_training_job_args(input_data_config=[user_channel])
+    channels = _managed_channel_names(args["input_data_config"])
+
+    assert channels["code"] is None
+    assert channels["sm_drivers"] is None
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_managed_channels_not_assigned_on_homogeneous_cluster(
+    mock_default_bucket, mock_upload_data
+):
+    """No instance groups configured -> managed channels are never assigned."""
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code"
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+
+    user_channel = InputData(channel_name="train", data_source=f"s3://{DEFAULT_BUCKET}/train/")
+
+    args = trainer._create_training_job_args(input_data_config=[user_channel])
+    channels = _managed_channel_names(args["input_data_config"])
+
+    assert channels["code"] is None
+    assert channels["sm_drivers"] is None
 
 
 @pytest.mark.parametrize(
@@ -1756,3 +1909,113 @@ def test_resolve_staging_bucket_returns_default_on_iam_error(model_trainer):
 
     assert bucket == DEFAULT_BUCKET
     assert prefix is None
+
+
+# Networking intelligent defaults from the Training Job config space. These guard the two
+# bugs fixed in _populate_intelligent_defaults_from_training_job_space: (1) the Networking
+# constructor must be given `enable_network_isolation` (not the non-existent
+# `default_enable_network_isolation`), and (2) an existing Networking object with an unset
+# `security_group_ids` must be filled from the security-group-ids path, not the subnets path.
+
+NETWORKING_DEFAULT_SUBNETS = ["subnet-000000000000"]
+NETWORKING_DEFAULT_SECURITY_GROUP_IDS = ["sg-000000000000"]
+
+
+def _make_config_mgr(values):
+    """Return a real SageMakerConfig whose resolve_value_from_config is keyed by config_path.
+
+    A real instance (rather than a bare MagicMock) is required because ModelTrainer validates
+    that config_mgr is a SageMakerConfig on assignment.
+    """
+    config_mgr = SageMakerConfig()
+    config_mgr.resolve_value_from_config = MagicMock(
+        side_effect=lambda **kwargs: values.get(kwargs["config_path"])
+    )
+    return config_mgr
+
+
+def test_networking_intelligent_defaults_creates_networking(model_trainer):
+    """A VpcConfig in the config space builds a valid Networking with the correct fields.
+
+    Regression for Bug 1: passing `default_enable_network_isolation` to Networking() raised
+    a pydantic ValidationError because that field does not exist.
+    """
+    model_trainer.networking = None
+    model_trainer.config_mgr = _make_config_mgr(
+        {
+            TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH: True,
+            TRAINING_JOB_VPC_CONFIG_PATH: {
+                "subnets": NETWORKING_DEFAULT_SUBNETS,
+                "security_group_ids": NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+            },
+            TRAINING_JOB_SUBNETS_PATH: NETWORKING_DEFAULT_SUBNETS,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH: NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+        }
+    )
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    assert model_trainer.networking is not None
+    assert model_trainer.networking.enable_network_isolation is True
+    assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
+    assert model_trainer.networking.security_group_ids == NETWORKING_DEFAULT_SECURITY_GROUP_IDS
+
+
+def test_networking_intelligent_defaults_no_vpc_config_leaves_networking_unset(model_trainer):
+    """No network isolation and no VpcConfig means Networking is not created."""
+    model_trainer.networking = None
+    model_trainer.config_mgr = _make_config_mgr({})
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    assert model_trainer.networking is None
+
+
+def test_networking_intelligent_defaults_fills_security_group_ids_on_existing(model_trainer):
+    """An existing Networking with unset security_group_ids is filled from the SG path.
+
+    Regression for Bug 2: the missing security_group_ids branch mistakenly assigned to
+    `subnets` using the subnets path, so security_group_ids was never populated.
+    """
+    model_trainer.networking = Networking(
+        enable_network_isolation=False,
+        subnets=["subnet-preexisting"],
+        security_group_ids=None,
+    )
+    model_trainer.config_mgr = _make_config_mgr(
+        {
+            TRAINING_JOB_SUBNETS_PATH: NETWORKING_DEFAULT_SUBNETS,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH: NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+        }
+    )
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    # security_group_ids is filled from the security-group-ids path...
+    assert model_trainer.networking.security_group_ids == NETWORKING_DEFAULT_SECURITY_GROUP_IDS
+    # ...and the pre-existing subnets are preserved (not overwritten).
+    assert model_trainer.networking.subnets == ["subnet-preexisting"]
+    model_trainer.config_mgr.resolve_value_from_config.assert_any_call(
+        config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
+    )
+
+
+def test_networking_intelligent_defaults_fills_subnets_on_existing(model_trainer):
+    """An existing Networking with unset subnets is filled from the subnets path."""
+    model_trainer.networking = Networking(
+        enable_network_isolation=False,
+        subnets=None,
+        security_group_ids=["sg-preexisting"],
+    )
+    model_trainer.config_mgr = _make_config_mgr(
+        {
+            TRAINING_JOB_SUBNETS_PATH: NETWORKING_DEFAULT_SUBNETS,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH: NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+        }
+    )
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
+    # pre-existing security_group_ids are preserved.
+    assert model_trainer.networking.security_group_ids == ["sg-preexisting"]

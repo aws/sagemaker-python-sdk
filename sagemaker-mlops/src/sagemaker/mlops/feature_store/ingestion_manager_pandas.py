@@ -14,11 +14,14 @@ from pandas import DataFrame
 from pandas.api.types import is_list_like
 
 from sagemaker.core.resources import FeatureGroup as CoreFeatureGroup
-from sagemaker.core.shapes import FeatureValue
+from sagemaker.core.shapes import BatchWriteRecordEntry, FeatureValue
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.core.telemetry import Feature, _telemetry_emitter
 
 logger = logging.getLogger(__name__)
+
+# Maximum number of records per BatchWriteRecord API call
+BATCH_WRITE_MAX_ENTRIES = 25
 
 
 class IngestionError(Exception):
@@ -55,6 +58,7 @@ class IngestionManagerPandas:
     feature_definitions: Dict[str, Dict[Any, Any]]
     max_workers: int = 1
     max_processes: int = 1
+    use_batch_write_record: bool = False
     _async_result: Any = field(default=None, init=False)
     _processing_pool: Pool = field(default=None, init=False)
     _failed_indices: List[int] = field(default_factory=list, init=False)
@@ -133,19 +137,33 @@ class IngestionManagerPandas:
     ):
         """Ingest utilizing a single process and a single thread."""
         logger.info("Started single-threaded ingestion for %d rows", len(data_frame))
-        failed_rows = []
 
-        fg = CoreFeatureGroup(feature_group_name=self.feature_group_name)
-
-        for row in data_frame.itertuples():
-            self._ingest_row(
+        if self.use_batch_write_record:
+            logger.info(
+                "Using BatchWriteRecord API (batch size=%d). "
+                "Requires sagemaker:BatchWriteRecord AND sagemaker:PutRecord IAM permissions.",
+                BATCH_WRITE_MAX_ENTRIES,
+            )
+            failed_rows = IngestionManagerPandas._ingest_batch_write(
                 data_frame=data_frame,
-                row=row,
-                feature_group=fg,
+                feature_group_name=self.feature_group_name,
                 feature_definitions=self.feature_definitions,
-                failed_rows=failed_rows,
+                start_index=0,
+                end_index=len(data_frame),
                 target_stores=target_stores,
             )
+        else:
+            failed_rows = []
+            fg = CoreFeatureGroup(feature_group_name=self.feature_group_name)
+            for row in data_frame.itertuples():
+                self._ingest_row(
+                    data_frame=data_frame,
+                    row=row,
+                    feature_group=fg,
+                    feature_definitions=self.feature_definitions,
+                    failed_rows=failed_rows,
+                    target_stores=target_stores,
+                )
 
         self._failed_indices = failed_rows
         if self._failed_indices:
@@ -176,6 +194,7 @@ class IngestionManagerPandas:
                 target_stores,
                 start_index,
                 timeout,
+                self.use_batch_write_record,
             ))
 
         def init_worker():
@@ -200,6 +219,7 @@ class IngestionManagerPandas:
         target_stores: List[str] = None,
         row_offset: int = 0,
         timeout: Union[int, float] = None,
+        use_batch_write_record: bool = False,
     ) -> List[int]:
         """Start multi-threaded ingestion within a single process."""
         executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -209,15 +229,26 @@ class IngestionManagerPandas:
         for i in range(max_workers):
             start_index = min(i * batch_size, data_frame.shape[0])
             end_index = min(i * batch_size + batch_size, data_frame.shape[0])
-            future = executor.submit(
-                IngestionManagerPandas._ingest_single_batch,
-                data_frame=data_frame,
-                feature_group_name=feature_group_name,
-                feature_definitions=feature_definitions,
-                start_index=start_index,
-                end_index=end_index,
-                target_stores=target_stores,
-            )
+            if use_batch_write_record:
+                future = executor.submit(
+                    IngestionManagerPandas._ingest_batch_write,
+                    data_frame=data_frame,
+                    feature_group_name=feature_group_name,
+                    feature_definitions=feature_definitions,
+                    start_index=start_index,
+                    end_index=end_index,
+                    target_stores=target_stores,
+                )
+            else:
+                future = executor.submit(
+                    IngestionManagerPandas._ingest_single_batch,
+                    data_frame=data_frame,
+                    feature_group_name=feature_group_name,
+                    feature_definitions=feature_definitions,
+                    start_index=start_index,
+                    end_index=end_index,
+                    target_stores=target_stores,
+                )
             futures[future] = (start_index + row_offset, end_index + row_offset)
 
         failed_indices = []
@@ -332,3 +363,150 @@ class IngestionManagerPandas:
                 f"must be an Array, but was {type(feature_value)}"
             )
         return [str(v) if v is not None else None for v in feature_value]
+
+    @staticmethod
+    def _build_record(
+        data_frame: DataFrame,
+        row: Iterable,
+        feature_definitions: Dict[str, Dict[Any, Any]],
+    ) -> List[FeatureValue]:
+        """Build a list of FeatureValue from a DataFrame row.
+
+        Args:
+            data_frame: Source DataFrame (for column names).
+            row: A single row from itertuples().
+            feature_definitions: Feature definition metadata.
+
+        Returns:
+            List of FeatureValue objects for the row.
+        """
+        record = []
+        for index in range(1, len(row)):
+            feature_name = data_frame.columns[index - 1]
+            feature_value = row[index]
+
+            if not IngestionManagerPandas._feature_value_is_not_none(feature_value):
+                continue
+
+            if IngestionManagerPandas._is_feature_collection_type(feature_name, feature_definitions):
+                record.append(FeatureValue(
+                    feature_name=feature_name,
+                    value_as_string_list=IngestionManagerPandas._convert_to_string_list(feature_value),
+                ))
+            else:
+                record.append(FeatureValue(
+                    feature_name=feature_name,
+                    value_as_string=str(feature_value),
+                ))
+        return record
+
+    @staticmethod
+    def _ingest_batch_write(
+        data_frame: DataFrame,
+        feature_group_name: str,
+        feature_definitions: Dict[str, Dict[Any, Any]],
+        start_index: int,
+        end_index: int,
+        target_stores: List[str] = None,
+    ) -> List[int]:
+        """Ingest records using BatchWriteRecord API (up to 25 per call).
+
+        Args:
+            data_frame: Source DataFrame.
+            feature_group_name: Name of the FeatureGroup.
+            feature_definitions: Feature definition metadata.
+            start_index: Start index in the DataFrame slice.
+            end_index: End index in the DataFrame slice.
+            target_stores: Target stores for ingestion.
+
+        Returns:
+            List of row indices that failed to ingest.
+        """
+        logger.info(
+            "Started batch write ingestion index %d to %d (batch_size=%d)",
+            start_index, end_index, BATCH_WRITE_MAX_ENTRIES,
+        )
+        failed_rows = []
+        rows = list(data_frame[start_index:end_index].itertuples())
+
+        for batch_start in range(0, len(rows), BATCH_WRITE_MAX_ENTRIES):
+            batch = rows[batch_start:batch_start + BATCH_WRITE_MAX_ENTRIES]
+            entries = []
+            row_indices = []
+
+            for row in batch:
+                try:
+                    record = IngestionManagerPandas._build_record(
+                        data_frame=data_frame,
+                        row=row,
+                        feature_definitions=feature_definitions,
+                    )
+                    entry_kwargs = {
+                        "feature_group_name": feature_group_name,
+                        "record": record,
+                    }
+                    if target_stores is not None:
+                        entry_kwargs["target_stores"] = target_stores
+                    entry = BatchWriteRecordEntry(**entry_kwargs)
+                    entries.append(entry)
+                    row_indices.append(row[0])
+                except Exception as e:
+                    logger.error("Failed to build record for row %d: %s", row[0], e)
+                    failed_rows.append(row[0])
+
+            if not entries:
+                continue
+
+            try:
+                fg = CoreFeatureGroup(feature_group_name=feature_group_name)
+                response = fg.batch_write_record(entries=entries)
+
+                # Handle partial failures from unprocessed entries
+                if response.unprocessed_entries:
+                    for entry in response.unprocessed_entries:
+                        # unprocessed_entries are BatchWriteRecordEntry objects;
+                        # find their position in the original entries list
+                        try:
+                            idx = entries.index(entry)
+                            failed_rows.append(row_indices[idx])
+                        except ValueError:
+                            # Can't match entry back — mark all rows in batch as failed
+                            logger.warning(
+                                "Unprocessed entry could not be mapped to a specific row. "
+                                "Marking all rows in this batch as failed."
+                            )
+                            failed_rows.extend(row_indices)
+                            break
+
+                # Handle errors (BatchWriteRecordError with entry object)
+                if response.errors:
+                    for error in response.errors:
+                        # BatchWriteRecordError has .entry (the failed entry), .error_code, .error_message
+                        error_entry = getattr(error, "entry", None)
+                        if error_entry is not None:
+                            try:
+                                idx = entries.index(error_entry)
+                                failed_rows.append(row_indices[idx])
+                            except ValueError:
+                                # Can't match entry back — mark all rows in batch as failed
+                                logger.warning(
+                                    "BatchWriteRecord error could not be mapped to row: %s - %s",
+                                    getattr(error, "error_code", ""),
+                                    getattr(error, "error_message", ""),
+                                )
+                                failed_rows.extend(row_indices)
+                                break
+                        else:
+                            # Fallback: no entry object, mark all rows as failed
+                            logger.warning("BatchWriteRecord error without entry: %s", error)
+                            failed_rows.extend(row_indices)
+                            break
+
+            except Exception as e:
+                logger.error(
+                    "BatchWriteRecord call failed for batch starting at row %d: %s",
+                    row_indices[0] if row_indices else start_index, e,
+                )
+                failed_rows.extend(row_indices)
+
+        return failed_rows

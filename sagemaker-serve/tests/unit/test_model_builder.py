@@ -831,8 +831,17 @@ class TestLoraAcceptEula(unittest.TestCase):
         mb.mode = None
         return mb
 
-    def _patch_lora_deps(self, mb, hosting_uri="s3://bucket/hosting/"):
-        """Patch all dependencies needed to reach the LoRA ContainerDefinition block."""
+    def _patch_lora_deps(self, mb, hosting_uri="s3://bucket/hosting/",
+                         hosting_eula_uri=None):
+        """Patch all dependencies needed to reach the LoRA ContainerDefinition block.
+
+        Pass ``hosting_eula_uri`` to simulate a gated model whose hub content
+        document declares a ``HostingEulaUri``; omit it to simulate an ungated
+        (e.g. Apache-2.0) model.
+        """
+        hub_document = {"HostingArtifactUri": hosting_uri}
+        if hosting_eula_uri is not None:
+            hub_document["HostingEulaUri"] = hosting_eula_uri
         patches = [
             patch.object(mb, "_get_serve_setting", return_value=MagicMock()),
             patch.object(mb, "_is_model_customization", return_value=True),
@@ -841,13 +850,15 @@ class TestLoraAcceptEula(unittest.TestCase):
             patch.object(mb, "_is_nova_model", return_value=False),
             patch.object(mb, "_fetch_peft", return_value="LORA"),
             patch.object(mb, "_fetch_hub_document_for_custom_model",
-                         return_value={"HostingArtifactUri": hosting_uri}),
+                         return_value=hub_document),
         ]
         return patches
 
-    def test_lora_build_raises_when_accept_eula_false(self):
+    _GATED_EULA_URI = "s3://jumpstart-cache-prod/eula/llama_eula.txt"
+
+    def test_lora_gated_build_raises_when_accept_eula_false(self):
         mb = self._make_mb(accept_eula=False)
-        patches = self._patch_lora_deps(mb)
+        patches = self._patch_lora_deps(mb, hosting_eula_uri=self._GATED_EULA_URI)
         for p in patches:
             p.start()
         try:
@@ -858,9 +869,9 @@ class TestLoraAcceptEula(unittest.TestCase):
             for p in patches:
                 p.stop()
 
-    def test_lora_build_raises_when_accept_eula_not_set(self):
+    def test_lora_gated_build_raises_when_accept_eula_not_set(self):
         mb = self._make_mb(accept_eula=None)
-        patches = self._patch_lora_deps(mb)
+        patches = self._patch_lora_deps(mb, hosting_eula_uri=self._GATED_EULA_URI)
         for p in patches:
             p.start()
         try:
@@ -873,10 +884,10 @@ class TestLoraAcceptEula(unittest.TestCase):
 
     @patch("sagemaker.serve.model_builder.ContainerDefinition")
     @patch("sagemaker.serve.model_builder.Model")
-    def test_lora_build_passes_accept_eula_true(self, mock_model, mock_container_def):
+    def test_lora_gated_build_passes_accept_eula_true(self, mock_model, mock_container_def):
         mb = self._make_mb(accept_eula=True)
         mock_model.create.return_value = MagicMock()
-        patches = self._patch_lora_deps(mb)
+        patches = self._patch_lora_deps(mb, hosting_eula_uri=self._GATED_EULA_URI)
         for p in patches:
             p.start()
         try:
@@ -886,6 +897,41 @@ class TestLoraAcceptEula(unittest.TestCase):
                 call_kwargs["model_data_source"]["s3_data_source"]["model_access_config"]["accept_eula"]
             )
             self.assertTrue(eula_val)
+        finally:
+            for p in patches:
+                p.stop()
+
+    @patch("sagemaker.serve.model_builder.ContainerDefinition")
+    @patch("sagemaker.serve.model_builder.Model")
+    def test_lora_ungated_build_succeeds_without_accept_eula(self, mock_model, mock_container_def):
+        """Ungated model (no HostingEulaUri) must deploy without accept_eula."""
+        mb = self._make_mb(accept_eula=None)
+        mock_model.create.return_value = MagicMock()
+        patches = self._patch_lora_deps(mb)  # no hosting_eula_uri -> ungated
+        for p in patches:
+            p.start()
+        try:
+            mb._build_single_modelbuilder()  # must not raise
+            call_kwargs = mock_container_def.call_args[1]
+            eula_val = (
+                call_kwargs["model_data_source"]["s3_data_source"]["model_access_config"]["accept_eula"]
+            )
+            self.assertFalse(eula_val)
+        finally:
+            for p in patches:
+                p.stop()
+
+    @patch("sagemaker.serve.model_builder.ContainerDefinition")
+    @patch("sagemaker.serve.model_builder.Model")
+    def test_lora_ungated_build_succeeds_with_accept_eula_false(self, mock_model, mock_container_def):
+        """Explicit accept_eula=False on an ungated model must still deploy."""
+        mb = self._make_mb(accept_eula=False)
+        mock_model.create.return_value = MagicMock()
+        patches = self._patch_lora_deps(mb)  # ungated
+        for p in patches:
+            p.start()
+        try:
+            mb._build_single_modelbuilder()  # must not raise
         finally:
             for p in patches:
                 p.stop()
