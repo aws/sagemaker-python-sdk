@@ -177,12 +177,12 @@ class TestEnvironment:
     @patch("sagemaker.core.modules.train.container_drivers.scripts.environment.logger")
     def test_log_key_value_non_secret_url_visible(self, mock_logger):
         """A plain endpoint URL is not a secret and remains visible."""
-        log_key_value("SAGEMAKER_ENDPOINT", "https://example.com:9999")
+        endpoint = "https://example.com:9999"
+        log_key_value("SAGEMAKER_ENDPOINT", endpoint)
 
         mock_logger.info.assert_called_once()
         call_args = mock_logger.info.call_args[0]
-        assert "https://example.com:9999" in str(call_args)
-        assert "******" not in str(call_args)
+        assert call_args == ("%s=%s", "SAGEMAKER_ENDPOINT", endpoint)
 
     @patch("sagemaker.core.modules.train.container_drivers.scripts.environment.logger")
     def test_log_key_value_dict(self, mock_logger):

@@ -346,8 +346,13 @@ class SageMakerClient(metaclass=SingletonMeta):
     """
 
     @staticmethod
-    def _singleton_key(session: Session = None, region_name: str = None, config: Config = None):
-        """Cache instances per (session, region)."""
+    def _singleton_key(session: Session = None, region_name: str = None, *args, **kwargs):
+        """Cache instances per (session, region).
+
+        id(session) is stable because the cached instance holds a reference to
+        the session, so the object cannot be garbage-collected while the entry
+        lives.
+        """
         session_key = id(session) if session is not None else None
         return (session_key, region_name)
 
