@@ -55,11 +55,11 @@ def test_all_hub_content_documents(sm_client):
             )
             content_document = json.loads(content["HubContentDocument"])
             print(content["HubContentName"])
-            
+
             # Skip models with RecipeCollection field (not yet supported)
             if "RecipeCollection" in content_document:
                 continue
-                
+
             hub_content_document = HubContentDocument(**content_document)
             assert isinstance(hub_content_document, HubContentDocument)
 

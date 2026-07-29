@@ -89,11 +89,7 @@ class TestJumpStartECRSpecsEdgeCases:
 
     def test_from_json_with_hub_content(self):
         """Test from_json with hub content flag - line 326, 328"""
-        spec = {
-            "Framework": "pytorch",
-            "FrameworkVersion": "1.13.0",
-            "PyVersion": "py39"
-        }
+        spec = {"Framework": "pytorch", "FrameworkVersion": "1.13.0", "PyVersion": "py39"}
         ecr_specs = JumpStartECRSpecs(spec, is_hub_content=True)
         assert ecr_specs.framework == "pytorch"
 
@@ -109,7 +105,7 @@ class TestJumpStartHyperparameterEdgeCases:
             "default": "0.001",
             "scope": "training",
             "exclusive_min": True,
-            "exclusive_max": True
+            "exclusive_max": True,
         }
         hyperparam = JumpStartHyperparameter(spec)
         assert hyperparam.exclusive_min is True
@@ -135,11 +131,7 @@ class TestJumpStartSerializablePayloadEdgeCases:
 
     def test_from_json_with_accept(self):
         """Test from_json with accept field - lines 544"""
-        spec = {
-            "content_type": "application/json",
-            "body": "{}",
-            "accept": "application/json"
-        }
+        spec = {"content_type": "application/json", "body": "{}", "accept": "application/json"}
         payload = JumpStartSerializablePayload(spec)
         assert payload.accept == "application/json"
 
@@ -195,13 +187,13 @@ class TestJumpStartInstanceTypeVariantsEdgeCases:
         """Test get_instance_specific_default_inference_instance_type - line 807"""
         spec = {
             "variants": {
-                "ml.m5.xlarge": {
-                    "properties": {"default_inference_instance_type": "ml.m5.2xlarge"}
-                }
+                "ml.m5.xlarge": {"properties": {"default_inference_instance_type": "ml.m5.2xlarge"}}
             }
         }
         variants = JumpStartInstanceTypeVariants(spec)
-        instance_type = variants.get_instance_specific_default_inference_instance_type("ml.m5.xlarge")
+        instance_type = variants.get_instance_specific_default_inference_instance_type(
+            "ml.m5.xlarge"
+        )
         assert instance_type == "ml.m5.2xlarge"
 
     def test_get_instance_specific_supported_inference_instance_types_empty(self):
@@ -220,7 +212,7 @@ class TestJumpStartInstanceTypeVariantsEdgeCases:
         """Test _get_regional_property with None region and regional_aliases - line 918"""
         spec = {
             "regional_aliases": {"us-west-2": {"image_uri": "image"}},
-            "variants": {"ml.m5.xlarge": {"regional_properties": {"image_uri": "$image_uri"}}}
+            "variants": {"ml.m5.xlarge": {"regional_properties": {"image_uri": "$image_uri"}}},
         }
         variants = JumpStartInstanceTypeVariants(spec)
         result = variants._get_regional_property("ml.m5.xlarge", None, "image_uri")
@@ -230,7 +222,7 @@ class TestJumpStartInstanceTypeVariantsEdgeCases:
         """Test _get_regional_property with bad alias format - line 971"""
         spec = {
             "regional_aliases": {"us-west-2": {"image_uri": "image"}},
-            "variants": {"ml.m5.xlarge": {"regional_properties": {"image_uri": "bad_alias"}}}
+            "variants": {"ml.m5.xlarge": {"regional_properties": {"image_uri": "bad_alias"}}},
         }
         variants = JumpStartInstanceTypeVariants(spec)
         result = variants._get_regional_property("ml.m5.xlarge", "us-west-2", "image_uri")
@@ -273,7 +265,7 @@ class TestS3DataSourceEdgeCases:
             "compression_type": "None",
             "s3_data_type": "S3Prefix",
             "s3_uri": "s3://bucket/path/",
-            "hub_access_config": {"accept_eula": True}
+            "hub_access_config": {"accept_eula": True},
         }
         data_source = S3DataSource(spec)
         assert data_source.hub_access_config is not None
@@ -289,9 +281,9 @@ class TestAdditionalModelDataSourceEdgeCases:
             "s3_data_source": {
                 "compression_type": "None",
                 "s3_data_type": "S3Prefix",
-                "s3_uri": "s3://bucket/model/"
+                "s3_uri": "s3://bucket/model/",
             },
-            "artifact_version": "1.0.0"
+            "artifact_version": "1.0.0",
         }
         data_source = JumpStartModelDataSource(spec)
         json_obj = data_source.to_json(exclude_keys=False)
@@ -303,10 +295,7 @@ class TestJumpStartConfigRankingEdgeCases:
 
     def test_init_with_hub_content(self):
         """Test init with hub content - lines 1488-1491"""
-        spec = {
-            "Description": "Test ranking",
-            "Rankings": ["config1", "config2"]
-        }
+        spec = {"Description": "Test ranking", "Rankings": ["config1", "config2"]}
         ranking = JumpStartConfigRanking(spec, is_hub_content=True)
         assert ranking.description == "Test ranking"
         assert ranking.rankings == ["config1", "config2"]
@@ -320,7 +309,7 @@ class TestJumpStartMetadataBaseFieldsEdgeCases:
         spec = {
             "model_id": "test-model",
             "Capabilities": ["text-generation"],
-            "ModelTypes": ["llm"]
+            "ModelTypes": ["llm"],
         }
         fields = JumpStartMetadataBaseFields(spec, is_hub_content=True)
         assert fields.capabilities == ["text-generation"]
@@ -334,7 +323,7 @@ class TestJumpStartMetadataBaseFieldsEdgeCases:
             "TrainingPrepackedScriptVersion": "1.0.0",
             "HostingPrepackedArtifactVersion": "1.0.0",
             "training_artifact_key": "key",
-            "training_script_key": "script"
+            "training_script_key": "script",
         }
         fields = JumpStartMetadataBaseFields(spec, is_hub_content=True)
         assert fields.training_prepacked_script_version == "1.0.0"
@@ -353,10 +342,7 @@ class TestJumpStartConfigComponentEdgeCases:
 
     def test_init_with_hub_content(self):
         """Test init with hub content - lines 1806"""
-        component = {
-            "ComponentName": "test-component",
-            "HostingEcrUri": "image:latest"
-        }
+        component = {"ComponentName": "test-component", "HostingEcrUri": "image:latest"}
         config_component = JumpStartConfigComponent("test", component, is_hub_content=True)
         assert config_component.component_name == "test-component"
 
@@ -366,12 +352,7 @@ class TestJumpStartMetadataConfigEdgeCases:
 
     def test_init_with_none_benchmark_metrics(self):
         """Test init with None benchmark_metrics - line 1870"""
-        config = JumpStartMetadataConfig(
-            "test-config",
-            {},
-            {"model_id": "test"},
-            {}
-        )
+        config = JumpStartMetadataConfig("test-config", {}, {"model_id": "test"}, {})
         assert config.benchmark_metrics is None
 
 
@@ -384,11 +365,9 @@ class TestJumpStartMetadataConfigsEdgeCases:
         mock_config = Mock()
         mock_config.resolved_config = Mock()
         mock_config.resolved_config.supported_inference_instance_types = ["ml.m5.xlarge"]
-        
+
         configs = JumpStartMetadataConfigs(
-            {"config1": mock_config},
-            None,
-            JumpStartScriptScope.INFERENCE
+            {"config1": mock_config}, None, JumpStartScriptScope.INFERENCE
         )
         result = configs.get_top_config_from_ranking(instance_type="ml.m5.xlarge")
         assert result is not None
@@ -412,15 +391,13 @@ class TestJumpStartModelSpecsEdgeCases:
 
     def test_set_config_config_not_found(self):
         """Test set_config with config not found - lines 2070"""
-        spec = {
-            "model_id": "test-model"
-        }
+        spec = {"model_id": "test-model"}
         model_specs = JumpStartModelSpecs(spec)
         # Create a mock inference_configs with a config
         mock_config = Mock()
         mock_config.configs = {"config1": Mock()}
         model_specs.inference_configs = mock_config
-        
+
         with pytest.raises(ValueError, match="Cannot find Jumpstart config name"):
             model_specs.set_config("nonexistent", JumpStartScriptScope.INFERENCE)
 
@@ -428,35 +405,26 @@ class TestJumpStartModelSpecsEdgeCases:
         """Test supports_prepacked_inference - lines 2095-2096"""
         spec = {
             "model_id": "test-model",
-            "hosting_prepacked_artifact_key": "s3://bucket/artifact.tar.gz"
+            "hosting_prepacked_artifact_key": "s3://bucket/artifact.tar.gz",
         }
         model_specs = JumpStartModelSpecs(spec)
         assert model_specs.supports_prepacked_inference() is True
 
     def test_use_inference_script_uri(self):
         """Test use_inference_script_uri - lines 2107-2118"""
-        spec = {
-            "model_id": "test-model",
-            "hosting_use_script_uri": False
-        }
+        spec = {"model_id": "test-model", "hosting_use_script_uri": False}
         model_specs = JumpStartModelSpecs(spec)
         assert model_specs.use_inference_script_uri() is False
 
     def test_use_training_model_artifact_gated(self):
         """Test use_training_model_artifact with gated bucket - line 2210"""
-        spec = {
-            "model_id": "test-model",
-            "gated_bucket": True
-        }
+        spec = {"model_id": "test-model", "gated_bucket": True}
         model_specs = JumpStartModelSpecs(spec)
         assert model_specs.use_training_model_artifact() is False
 
     def test_is_gated_model(self):
         """Test is_gated_model - lines 2239"""
-        spec = {
-            "model_id": "test-model",
-            "hosting_eula_key": "eula.txt"
-        }
+        spec = {"model_id": "test-model", "hosting_eula_key": "eula.txt"}
         model_specs = JumpStartModelSpecs(spec)
         assert model_specs.is_gated_model() is True
 
@@ -513,7 +481,7 @@ class TestJumpStartModelDeployKwargsEdgeCases:
             region="us-west-2",
             initial_instance_count=1,
             instance_type="ml.m5.xlarge",
-            model_access_configs={}
+            model_access_configs={},
         )
         assert kwargs.model_id == "test-model"
         assert kwargs.model_access_configs == {}
@@ -525,8 +493,7 @@ class TestJumpStartEstimatorInitKwargsEdgeCases:
     def test_init_with_training_plan(self):
         """Test init with training_plan - lines 2936, 2940-2946"""
         kwargs = JumpStartEstimatorInitKwargs(
-            model_id="test-model",
-            training_plan="training-plan-arn"
+            model_id="test-model", training_plan="training-plan-arn"
         )
         assert kwargs.training_plan == "training-plan-arn"
 
@@ -536,9 +503,7 @@ class TestJumpStartEstimatorFitKwargsEdgeCases:
 
     def test_init_minimal(self):
         """Test init with minimal parameters - lines 2956-2973"""
-        kwargs = JumpStartEstimatorFitKwargs(
-            model_id="test-model"
-        )
+        kwargs = JumpStartEstimatorFitKwargs(model_id="test-model")
         assert kwargs.model_id == "test-model"
 
 
@@ -547,10 +512,7 @@ class TestJumpStartModelRegisterKwargsEdgeCases:
 
     def test_init_with_model_card(self):
         """Test init with model_card - lines 2998-3018"""
-        kwargs = JumpStartModelRegisterKwargs(
-            model_id="test-model",
-            model_card={}
-        )
+        kwargs = JumpStartModelRegisterKwargs(model_id="test-model", model_card={})
         assert kwargs.model_card == {}
 
 
@@ -566,12 +528,9 @@ class TestBaseDeploymentConfigDataHolderEdgeCases:
     def test_val_to_json_with_benchmark_stat(self):
         """Test _val_to_json with JumpStartBenchmarkStat"""
         holder = BaseDeploymentConfigDataHolder()
-        stat = JumpStartBenchmarkStat({
-            "name": "test_metric",
-            "value": "100",
-            "unit": "ms",
-            "concurrency": 1
-        })
+        stat = JumpStartBenchmarkStat(
+            {"name": "test_metric", "value": "100", "unit": "ms", "concurrency": 1}
+        )
         result = holder._val_to_json(stat)
         assert result["name"] == "Test Metric"
 
@@ -583,10 +542,10 @@ class TestDeploymentArgsEdgeCases:
         """Test init with resources"""
         mock_resources = Mock()
         mock_resources.get_compute_resource_requirements.return_value = {"cpu": 2}
-        
+
         init_kwargs = JumpStartModelInitKwargs("test-model")
         init_kwargs.resources = mock_resources
-        
+
         deployment_args = DeploymentArgs(init_kwargs=init_kwargs)
         assert deployment_args.compute_resource_requirements == {"cpu": 2}
 
@@ -598,19 +557,19 @@ class TestDeploymentConfigMetadataEdgeCases:
         """Test init with all parameters"""
         init_kwargs = JumpStartModelInitKwargs("test-model")
         deploy_kwargs = JumpStartModelDeployKwargs("test-model")
-        
+
         # Create a mock metadata_config with resolved_config
         metadata_config = Mock()
         metadata_config.resolved_config = {
             "default_inference_instance_type": "ml.m5.xlarge",
             "supported_inference_instance_types": ["ml.m5.xlarge"],
-            "hosting_additional_data_sources": None
+            "hosting_additional_data_sources": None,
         }
-        
+
         config_metadata = DeploymentConfigMetadata(
             config_name="test-config",
             metadata_config=metadata_config,
             init_kwargs=init_kwargs,
-            deploy_kwargs=deploy_kwargs
+            deploy_kwargs=deploy_kwargs,
         )
         assert config_metadata.deployment_config_name == "test-config"

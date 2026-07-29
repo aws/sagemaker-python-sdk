@@ -66,7 +66,7 @@ class TestGetJumpStartContentBucket:
         mock_region_info = Mock()
         mock_region_info.content_bucket = "jumpstart-cache-prod-us-west-2"
         mock_region_dict.__getitem__.return_value = mock_region_info
-        
+
         bucket = utils.get_jumpstart_content_bucket("us-west-2")
         assert bucket == "jumpstart-cache-prod-us-west-2"
 
@@ -74,8 +74,9 @@ class TestGetJumpStartContentBucket:
     def test_get_content_bucket_with_override(self):
         """Test bucket retrieval with environment override"""
         from sagemaker.core.jumpstart import accessors
+
         accessors.JumpStartModelsAccessor.set_jumpstart_content_bucket(None)
-        
+
         bucket = utils.get_jumpstart_content_bucket("us-west-2")
         assert bucket == "my-custom-bucket"
 
@@ -97,7 +98,7 @@ class TestGetJumpStartGatedContentBucket:
         mock_region_info = Mock()
         mock_region_info.gated_content_bucket = "jumpstart-private-cache-prod-us-west-2"
         mock_region_dict.__getitem__.return_value = mock_region_info
-        
+
         bucket = utils.get_jumpstart_gated_content_bucket("us-west-2")
         assert bucket == "jumpstart-private-cache-prod-us-west-2"
 
@@ -105,8 +106,9 @@ class TestGetJumpStartGatedContentBucket:
     def test_get_gated_bucket_with_override(self):
         """Test gated bucket with environment override"""
         from sagemaker.core.jumpstart import accessors
+
         accessors.JumpStartModelsAccessor.set_jumpstart_gated_content_bucket(None)
-        
+
         bucket = utils.get_jumpstart_gated_content_bucket("us-west-2")
         assert bucket == "my-gated-bucket"
 
@@ -117,7 +119,7 @@ class TestGetJumpStartGatedContentBucket:
         mock_region_info = Mock()
         mock_region_info.gated_content_bucket = None
         mock_region_dict.__getitem__.return_value = mock_region_info
-        
+
         with pytest.raises(ValueError, match="No private content bucket"):
             utils.get_jumpstart_gated_content_bucket("us-west-2")
 
@@ -339,9 +341,7 @@ class TestAddJumpStartUriTags:
     def test_skip_pipeline_variable(self, mock_is_pipeline):
         """Test skipping pipeline variables"""
         with patch("sagemaker.core.jumpstart.utils.logging") as mock_logging:
-            tags = utils.add_jumpstart_uri_tags(
-                inference_model_uri=Mock()  # Pipeline variable
-            )
+            tags = utils.add_jumpstart_uri_tags(inference_model_uri=Mock())  # Pipeline variable
             assert tags is None or len(tags) == 0
 
 
@@ -352,7 +352,7 @@ class TestGetEulaMessage:
         """Test when no EULA key"""
         model_specs = Mock()
         model_specs.hosting_eula_key = None
-        
+
         message = utils.get_eula_message(model_specs, "us-west-2")
         assert message == ""
 
@@ -362,11 +362,11 @@ class TestGetEulaMessage:
         """Test with EULA key"""
         mock_get_bucket.return_value = "jumpstart-bucket"
         mock_get_domain.return_value = "amazonaws.com"
-        
+
         model_specs = Mock()
         model_specs.model_id = "test-model"
         model_specs.hosting_eula_key = "eula/test-model.txt"
-        
+
         message = utils.get_eula_message(model_specs, "us-west-2")
         assert "test-model" in message
         assert "end-user license agreement" in message
@@ -384,7 +384,7 @@ class TestVerifyModelRegionAndReturnSpecs:
         mock_specs.inference_vulnerable = False
         mock_specs.training_vulnerable = False
         mock_get_specs.return_value = mock_specs
-        
+
         result = utils.verify_model_region_and_return_specs(
             "test-model",
             "1.0.0",
@@ -419,7 +419,7 @@ class TestVerifyModelRegionAndReturnSpecs:
         mock_specs = Mock(spec=JumpStartModelSpecs)
         mock_specs.training_supported = False
         mock_get_specs.return_value = mock_specs
-        
+
         with pytest.raises(ValueError, match="does not support training"):
             utils.verify_model_region_and_return_specs(
                 "test-model",
@@ -438,7 +438,7 @@ class TestVerifyModelRegionAndReturnSpecs:
         mock_specs.inference_vulnerable = False
         mock_specs.training_vulnerable = False
         mock_get_specs.return_value = mock_specs
-        
+
         with pytest.raises(DeprecatedJumpStartModelError):
             utils.verify_model_region_and_return_specs(
                 "test-model",
@@ -457,7 +457,7 @@ class TestVerifyModelRegionAndReturnSpecs:
         mock_specs.training_vulnerable = True
         mock_specs.training_vulnerabilities = ["CVE-2021-1234"]
         mock_get_specs.return_value = mock_specs
-        
+
         with pytest.raises(VulnerableJumpStartModelError):
             utils.verify_model_region_and_return_specs(
                 "test-model",
@@ -497,9 +497,9 @@ class TestGetSagemakerVersion:
         """Test getting version when not set"""
         mock_get.return_value = ""
         mock_parse.return_value = "2.100.0"
-        
+
         version = utils.get_sagemaker_version()
-        
+
         mock_parse.assert_called_once()
         mock_set.assert_called_once_with("2.100.0")
 
@@ -507,9 +507,9 @@ class TestGetSagemakerVersion:
     def test_get_sagemaker_version_already_set(self, mock_get):
         """Test getting version when already set"""
         mock_get.return_value = "2.100.0"
-        
+
         version = utils.get_sagemaker_version()
-        
+
         assert version == "2.100.0"
 
 
@@ -518,19 +518,19 @@ class TestParseSagemakerVersion:
 
     def test_parse_version_three_parts(self):
         """Test parsing version with three parts"""
-        with patch.object(utils.sagemaker, '__version__', "2.100.0", create=True):
+        with patch.object(utils.sagemaker, "__version__", "2.100.0", create=True):
             version = utils.parse_sagemaker_version()
             assert version == "2.100.0"
 
     def test_parse_version_four_parts(self):
         """Test parsing version with four parts"""
-        with patch.object(utils.sagemaker, '__version__', "2.100.0.dev0", create=True):
+        with patch.object(utils.sagemaker, "__version__", "2.100.0.dev0", create=True):
             version = utils.parse_sagemaker_version()
             assert version == "2.100.0"
 
     def test_parse_version_invalid_periods(self):
         """Test parsing version with invalid number of periods"""
-        with patch.object(utils.sagemaker, '__version__', "2.100", create=True):
+        with patch.object(utils.sagemaker, "__version__", "2.100", create=True):
             with pytest.raises(RuntimeError, match="Bad value for SageMaker version"):
                 utils.parse_sagemaker_version()
 
@@ -552,13 +552,14 @@ class TestGetFormattedManifest:
                 "version": "2.0.0",
                 "min_version": "2.0.0",
                 "spec_key": "specs/test-model-2.json",
-            }
+            },
         ]
-        
+
         result = utils.get_formatted_manifest(manifest)
-        
+
         assert len(result) == 2
         from sagemaker.core.jumpstart.types import JumpStartVersionedModelId
+
         key1 = JumpStartVersionedModelId("test-model-1", "1.0.0")
         assert key1 in result
 
@@ -573,7 +574,7 @@ class TestGetNeoContentBucket:
         mock_region_info = Mock()
         mock_region_info.neo_content_bucket = "neo-cache-prod-us-west-2"
         mock_region_dict.__getitem__.return_value = mock_region_info
-        
+
         bucket = utils.get_neo_content_bucket("us-west-2")
         assert bucket == "neo-cache-prod-us-west-2"
 
@@ -598,30 +599,31 @@ class TestGetJumpStartBaseNameIfJumpStartModel:
     def test_with_jumpstart_uri(self, mock_is_jumpstart):
         """Test with JumpStart URI"""
         mock_is_jumpstart.return_value = True
-        
-        result = utils.get_jumpstart_base_name_if_jumpstart_model("s3://jumpstart-bucket/model.tar.gz")
-        
+
+        result = utils.get_jumpstart_base_name_if_jumpstart_model(
+            "s3://jumpstart-bucket/model.tar.gz"
+        )
+
         assert result == constants.JUMPSTART_RESOURCE_BASE_NAME
 
     @patch("sagemaker.core.jumpstart.utils.is_jumpstart_model_uri")
     def test_with_non_jumpstart_uri(self, mock_is_jumpstart):
         """Test with non-JumpStart URI"""
         mock_is_jumpstart.return_value = False
-        
+
         result = utils.get_jumpstart_base_name_if_jumpstart_model("s3://my-bucket/model.tar.gz")
-        
+
         assert result is None
 
     @patch("sagemaker.core.jumpstart.utils.is_jumpstart_model_uri")
     def test_with_multiple_uris(self, mock_is_jumpstart):
         """Test with multiple URIs"""
         mock_is_jumpstart.side_effect = [False, True]
-        
+
         result = utils.get_jumpstart_base_name_if_jumpstart_model(
-            "s3://my-bucket/model.tar.gz",
-            "s3://jumpstart-bucket/model.tar.gz"
+            "s3://my-bucket/model.tar.gz", "s3://jumpstart-bucket/model.tar.gz"
         )
-        
+
         assert result == constants.JUMPSTART_RESOURCE_BASE_NAME
 
 
@@ -631,10 +633,9 @@ class TestAddHubContentArnTags:
     def test_add_hub_content_arn_tag(self):
         """Test adding hub content ARN tag"""
         tags = utils.add_hub_content_arn_tags(
-            None,
-            "arn:aws:sagemaker:us-west-2:123456789012:hub-content/my-hub/Model/my-model/1"
+            None, "arn:aws:sagemaker:us-west-2:123456789012:hub-content/my-hub/Model/my-model/1"
         )
-        
+
         assert len(tags) == 1
         assert tags[0]["Key"] == enums.JumpStartTag.HUB_CONTENT_ARN
 
@@ -643,9 +644,9 @@ class TestAddHubContentArnTags:
         existing_tags = [{"Key": "existing", "Value": "tag"}]
         tags = utils.add_hub_content_arn_tags(
             existing_tags,
-            "arn:aws:sagemaker:us-west-2:123456789012:hub-content/my-hub/Model/my-model/1"
+            "arn:aws:sagemaker:us-west-2:123456789012:hub-content/my-hub/Model/my-model/1",
         )
-        
+
         assert len(tags) == 2
 
 
@@ -655,7 +656,7 @@ class TestAddBedrockStoreTags:
     def test_add_bedrock_store_tag(self):
         """Test adding bedrock store tag"""
         tags = utils.add_bedrock_store_tags(None, "bedrock-compatible")
-        
+
         assert len(tags) == 1
         assert tags[0]["Key"] == enums.JumpStartTag.BEDROCK
 
@@ -669,17 +670,17 @@ class TestUpdateInferenceTagsWithJumpStartTrainingTags:
             {"Key": enums.JumpStartTag.MODEL_ID, "Value": "test-model"},
             {"Key": enums.JumpStartTag.MODEL_VERSION, "Value": "1.0.0"},
         ]
-        
+
         inference_tags = utils.update_inference_tags_with_jumpstart_training_tags(
             None, training_tags
         )
-        
+
         assert len(inference_tags) == 2
 
     def test_update_with_no_training_tags(self):
         """Test updating when no training tags"""
         result = utils.update_inference_tags_with_jumpstart_training_tags(None, None)
-        
+
         assert result is None
 
     def test_skip_duplicate_tags(self):
@@ -690,11 +691,11 @@ class TestUpdateInferenceTagsWithJumpStartTrainingTags:
         inference_tags = [
             {"Key": enums.JumpStartTag.MODEL_ID, "Value": "old-model"},
         ]
-        
+
         result = utils.update_inference_tags_with_jumpstart_training_tags(
             inference_tags, training_tags
         )
-        
+
         # Should keep old value
         model_id_tags = [t for t in result if t["Key"] == enums.JumpStartTag.MODEL_ID]
         assert len(model_id_tags) == 1
@@ -710,7 +711,7 @@ class TestEmitLogsBasedOnModelSpecs:
         """Test emitting logs with EULA"""
         mock_get_eula.return_value = "EULA message"
         mock_get_manifest.return_value = []
-        
+
         model_specs = Mock()
         model_specs.hosting_eula_key = "eula/test.txt"
         model_specs.version = "1.0.0"
@@ -720,19 +721,19 @@ class TestEmitLogsBasedOnModelSpecs:
         model_specs.usage_info_message = None
         model_specs.inference_vulnerable = False
         model_specs.training_vulnerable = False
-        
+
         mock_s3_client = Mock()
-        
+
         with patch("sagemaker.core.jumpstart.constants.JUMPSTART_LOGGER") as mock_logger:
             utils.emit_logs_based_on_model_specs(model_specs, "us-west-2", mock_s3_client)
-            
+
             mock_logger.info.assert_called()
 
     @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor._get_manifest")
     def test_emit_logs_deprecated_model(self, mock_get_manifest):
         """Test emitting logs for deprecated model"""
         mock_get_manifest.return_value = []
-        
+
         model_specs = Mock()
         model_specs.hosting_eula_key = None
         model_specs.version = "1.0.0"
@@ -743,12 +744,12 @@ class TestEmitLogsBasedOnModelSpecs:
         model_specs.usage_info_message = None
         model_specs.inference_vulnerable = False
         model_specs.training_vulnerable = False
-        
+
         mock_s3_client = Mock()
-        
+
         with patch("sagemaker.core.jumpstart.constants.JUMPSTART_LOGGER") as mock_logger:
             utils.emit_logs_based_on_model_specs(model_specs, "us-west-2", mock_s3_client)
-            
+
             mock_logger.warning.assert_called()
 
 
@@ -761,13 +762,11 @@ class TestGetFormattedEulaMessageTemplate:
         """Test getting formatted EULA message"""
         mock_get_bucket.return_value = "jumpstart-bucket"
         mock_get_domain.return_value = "amazonaws.com"
-        
+
         message = utils.get_formatted_eula_message_template(
-            "test-model",
-            "us-west-2",
-            "eula/test-model.txt"
+            "test-model", "us-west-2", "eula/test-model.txt"
         )
-        
+
         assert "test-model" in message
         assert "end-user license agreement" in message
         assert "jumpstart-bucket" in message

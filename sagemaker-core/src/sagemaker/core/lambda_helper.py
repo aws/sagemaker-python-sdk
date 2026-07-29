@@ -123,12 +123,17 @@ class Lambda:
             bucket, key_prefix = s3.determine_bucket_and_prefix(
                 bucket=self.s3_bucket, key_prefix=None, sagemaker_session=self.session
             )
+            # Spot check: if the resolved bucket is the session's default bucket,
+            # enforce ownership on the upload so an attacker cannot squat on the
+            # predictable default name.
+            expected_owner = self.session._get_account_id_if_default_bucket(bucket)
             key = _upload_to_s3(
                 s3_client=_get_s3_client(self.session),
                 function_name=self.function_name,
                 zipped_code_dir=self.zipped_code_dir,
                 s3_bucket=bucket,
                 s3_key_prefix=key_prefix,
+                expected_bucket_owner=expected_owner,
             )
             code = {"S3Bucket": bucket, "S3Key": key}
 
@@ -179,6 +184,13 @@ class Lambda:
                     else:
                         function_name_for_s3 = self.function_name
 
+                    # Spot check: enforce ownership only when the resolved bucket is
+                    # the session's default bucket (defends against squatting on the
+                    # predictable default name). Other buckets are left untouched.
+                    expected_owner = self.session._get_account_id_if_default_bucket(
+                        bucket
+                    )
+
                     response = lambda_client.update_function_code(
                         FunctionName=(self.function_name or self.function_arn),
                         S3Bucket=bucket,
@@ -188,6 +200,7 @@ class Lambda:
                             zipped_code_dir=self.zipped_code_dir,
                             s3_bucket=bucket,
                             s3_key_prefix=key_prefix,
+                            expected_bucket_owner=expected_owner,
                         ),
                     )
                 return response
@@ -276,12 +289,30 @@ def _get_lambda_client(session):
     return lambda_client
 
 
-def _upload_to_s3(s3_client, function_name, zipped_code_dir, s3_bucket, s3_key_prefix=None):
+def _upload_to_s3(
+    s3_client,
+    function_name,
+    zipped_code_dir,
+    s3_bucket,
+    s3_key_prefix=None,
+    expected_bucket_owner=None,
+):
     """Upload the zipped code to S3 bucket provided in the Lambda instance.
 
     Lambda instance must have a path to the zipped code folder and a S3 bucket to upload
     the code. The key will lambda/function_name/code and the S3 URI where the code is
     uploaded is in this format: s3://bucket_name/lambda/function_name/code.
+
+    Args:
+        s3_client: boto3 S3 client used for the upload.
+        function_name (str): Lambda function name used to build the S3 key.
+        zipped_code_dir (str): Local path to the zipped Lambda code.
+        s3_bucket (str): Destination S3 bucket.
+        s3_key_prefix (str): Optional S3 key prefix.
+        expected_bucket_owner (str): Optional account id passed as ``ExpectedBucketOwner``
+            on the upload when the destination bucket should belong to that account
+            (typically the caller's account, when ``s3_bucket`` is the session's default
+            bucket). ``None`` leaves the upload untouched for cross-account flows.
 
     Returns: the S3 key where the code is uploaded.
     """
@@ -292,7 +323,10 @@ def _upload_to_s3(s3_client, function_name, zipped_code_dir, s3_bucket, s3_key_p
         function_name,
         "code",
     )
-    s3_client.upload_file(zipped_code_dir, s3_bucket, key)
+    extra_args = None
+    if expected_bucket_owner:
+        extra_args = {"ExpectedBucketOwner": expected_bucket_owner}
+    s3_client.upload_file(zipped_code_dir, s3_bucket, key, ExtraArgs=extra_args)
     return key
 
 

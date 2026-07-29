@@ -40,9 +40,9 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         assert transformer.model_name == "test-model"
         assert transformer.instance_count == 1
         assert transformer.instance_type == "ml.m5.xlarge"
@@ -66,9 +66,10 @@ class TestTransformer:
             env={"TEST_VAR": "value"},
             base_transform_job_name="test-job",
             sagemaker_session=mock_session,
-            volume_kms_key="volume-key"
+            volume_kms_key="volume-key",
+            transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
         )
-        
+
         assert transformer.strategy == "MultiRecord"
         assert transformer.assemble_with == "Line"
         assert transformer.output_path == "s3://bucket/output"
@@ -77,6 +78,7 @@ class TestTransformer:
         assert transformer.max_concurrent_transforms == 4
         assert transformer.max_payload == 10
         assert transformer.volume_kms_key == "volume-key"
+        assert transformer.transform_ami_version == "al2-ami-sagemaker-batch-gpu-535"
 
     def test_format_inputs_to_input_config(self, mock_session):
         """Test _format_inputs_to_input_config method"""
@@ -84,17 +86,17 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         config = transformer._format_inputs_to_input_config(
             data="s3://bucket/input",
             data_type="S3Prefix",
             content_type="text/csv",
             compression_type="Gzip",
-            split_type="Line"
+            split_type="Line",
         )
-        
+
         assert config["data_source"].s3_data_source.s3_uri == "s3://bucket/input"
         assert config["data_source"].s3_data_source.s3_data_type == "S3Prefix"
         assert config["content_type"] == "text/csv"
@@ -107,17 +109,17 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         config = transformer._format_inputs_to_input_config(
             data="s3://bucket/input",
             data_type="S3Prefix",
             content_type=None,
             compression_type=None,
-            split_type=None
+            split_type=None,
         )
-        
+
         assert config["data_source"].s3_data_source.s3_uri == "s3://bucket/input"
         assert "content_type" not in config
         assert "compression_type" not in config
@@ -129,16 +131,16 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         config = transformer._prepare_output_config(
             s3_path="s3://bucket/output",
             kms_key_id="kms-key",
             assemble_with="Line",
-            accept="application/json"
+            accept="application/json",
         )
-        
+
         assert config["s3_output_path"] == "s3://bucket/output"
         assert config["kms_key_id"] == "kms-key"
         assert config["assemble_with"] == "Line"
@@ -150,16 +152,13 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         config = transformer._prepare_output_config(
-            s3_path="s3://bucket/output",
-            kms_key_id=None,
-            assemble_with=None,
-            accept=None
+            s3_path="s3://bucket/output", kms_key_id=None, assemble_with=None, accept=None
         )
-        
+
         assert config["s3_output_path"] == "s3://bucket/output"
         assert "kms_key_id" not in config
         assert "assemble_with" not in config
@@ -171,18 +170,37 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         config = transformer._prepare_resource_config(
-            instance_count=2,
-            instance_type="ml.m5.xlarge",
-            volume_kms_key="volume-key"
+            instance_count=2, instance_type="ml.m5.xlarge", volume_kms_key="volume-key"
         )
-        
+
         assert config["instance_count"] == 2
         assert config["instance_type"] == "ml.m5.xlarge"
         assert config["volume_kms_key_id"] == "volume-key"
+
+    def test_prepare_resource_config_with_ami_version(self, mock_session):
+        """Test _prepare_resource_config with transform_ami_version"""
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        config = transformer._prepare_resource_config(
+            instance_count=2,
+            instance_type="ml.g4dn.xlarge",
+            volume_kms_key="volume-key",
+            transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
+        )
+
+        assert config["instance_count"] == 2
+        assert config["instance_type"] == "ml.g4dn.xlarge"
+        assert config["volume_kms_key_id"] == "volume-key"
+        assert config["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
 
     def test_prepare_resource_config_no_kms(self, mock_session):
         """Test _prepare_resource_config without KMS key"""
@@ -190,18 +208,17 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         config = transformer._prepare_resource_config(
-            instance_count=1,
-            instance_type="ml.m5.xlarge",
-            volume_kms_key=None
+            instance_count=1, instance_type="ml.m5.xlarge", volume_kms_key=None
         )
-        
+
         assert config["instance_count"] == 1
         assert config["instance_type"] == "ml.m5.xlarge"
         assert "volume_kms_key_id" not in config
+        assert "transform_ami_version" not in config
 
     def test_prepare_data_processing_all_params(self, mock_session):
         """Test _prepare_data_processing with all parameters"""
@@ -209,15 +226,13 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         data_processing = transformer._prepare_data_processing(
-            input_filter="$.features",
-            output_filter="$.prediction",
-            join_source="Input"
+            input_filter="$.features", output_filter="$.prediction", join_source="Input"
         )
-        
+
         assert data_processing is not None
         assert data_processing.input_filter == "$.features"
         assert data_processing.output_filter == "$.prediction"
@@ -229,15 +244,13 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         data_processing = transformer._prepare_data_processing(
-            input_filter=None,
-            output_filter=None,
-            join_source=None
+            input_filter=None, output_filter=None, join_source=None
         )
-        
+
         assert data_processing is None
 
     def test_prepare_data_processing_partial(self, mock_session):
@@ -246,15 +259,13 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         data_processing = transformer._prepare_data_processing(
-            input_filter="$.features",
-            output_filter=None,
-            join_source=None
+            input_filter="$.features", output_filter=None, join_source=None
         )
-        
+
         assert data_processing is not None
         assert data_processing.input_filter == "$.features"
 
@@ -263,28 +274,29 @@ class TestTransformer:
         """Test _retrieve_image_uri with successful model retrieval"""
         mock_primary_container = Mock()
         mock_primary_container.image = "test-image:latest"
-        
+
         class DictWithAttrs(dict):
             """A dict that also supports attribute access"""
+
             def __getattr__(self, name):
                 return self.get(name)
-        
+
         class MockModel:
             def __init__(self):
                 self.__dict__ = DictWithAttrs()
-                self.__dict__['primary_container'] = mock_primary_container
-                self.__dict__['containers'] = None
-        
+                self.__dict__["primary_container"] = mock_primary_container
+                self.__dict__["containers"] = None
+
         mock_model = MockModel()
         mock_model_class.get.return_value = mock_model
-        
+
         transformer = Transformer(
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         image_uri = transformer._retrieve_image_uri()
         assert image_uri == "test-image:latest"
 
@@ -293,28 +305,29 @@ class TestTransformer:
         """Test _retrieve_image_uri with containers instead of primary_container"""
         mock_container = Mock()
         mock_container.image = "container-image:latest"
-        
+
         class DictWithAttrs(dict):
             """A dict that also supports attribute access"""
+
             def __getattr__(self, name):
                 return self.get(name)
-        
+
         class MockModel:
             def __init__(self):
                 self.__dict__ = DictWithAttrs()
-                self.__dict__['primary_container'] = None
-                self.__dict__['containers'] = [mock_container]
-        
+                self.__dict__["primary_container"] = None
+                self.__dict__["containers"] = [mock_container]
+
         mock_model = MockModel()
         mock_model_class.get.return_value = mock_model
-        
+
         transformer = Transformer(
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         image_uri = transformer._retrieve_image_uri()
         assert image_uri == "container-image:latest"
 
@@ -322,14 +335,14 @@ class TestTransformer:
     def test_retrieve_image_uri_no_model(self, mock_model_class, mock_session):
         """Test _retrieve_image_uri when model doesn't exist"""
         mock_model_class.get.return_value = None
-        
+
         transformer = Transformer(
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         image_uri = transformer._retrieve_image_uri()
         assert image_uri is None
 
@@ -339,9 +352,9 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with patch.object(transformer, "_retrieve_image_uri", return_value="my-image:latest"):
             base_name = transformer._retrieve_base_name()
             assert base_name == "my-image"
@@ -352,9 +365,9 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with patch.object(transformer, "_retrieve_image_uri", return_value=None):
             base_name = transformer._retrieve_base_name()
             assert base_name == "test-model"
@@ -365,9 +378,9 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with pytest.raises(ValueError, match="No transform job available"):
             transformer._ensure_last_transform_job()
 
@@ -378,16 +391,16 @@ class TestTransformer:
         mock_resources.instance_count = 1
         mock_resources.instance_type = "ml.m5.xlarge"
         mock_resources.volume_kms_key_id = "volume-key"
-        
+
         mock_output = Mock()
         mock_output.assemble_with = "Line"
         mock_output.s3_output_path = "s3://bucket/output"
         mock_output.kms_key_id = "output-key"
         mock_output.accept = "application/json"
-        
+
         class MockJob:
             pass
-        
+
         mock_job = MockJob()
         mock_job.__dict__ = {
             "model_name": "test-model",
@@ -396,12 +409,12 @@ class TestTransformer:
             "transform_output": mock_output,
             "max_concurrent_transforms": 4,
             "max_payload_in_mb": 10,
-            "transform_job_name": "test-job-123"
+            "transform_job_name": "test-job-123",
         }
         mock_transform_job_class.get.return_value = mock_job
-        
+
         transformer = Transformer.attach("test-job-123", mock_session)
-        
+
         assert transformer.model_name == "test-model"
         assert transformer.instance_count == 1
         assert transformer.instance_type == "ml.m5.xlarge"
@@ -411,7 +424,7 @@ class TestTransformer:
     def test_attach_job_not_found(self, mock_transform_job_class, mock_session):
         """Test attach method when job is not found"""
         mock_transform_job_class.get.return_value = None
-        
+
         with pytest.raises(ValueError, match="Transform job .* not found"):
             Transformer.attach("nonexistent-job", mock_session)
 
@@ -420,24 +433,22 @@ class TestTransformer:
         job_details = {
             "model_name": "test-model",
             "transform_resources": Mock(
-                instance_count=2,
-                instance_type="ml.m5.xlarge",
-                volume_kms_key_id="volume-key"
+                instance_count=2, instance_type="ml.m5.xlarge", volume_kms_key_id="volume-key"
             ),
             "batch_strategy": "SingleRecord",
             "transform_output": Mock(
                 assemble_with="None",
                 s3_output_path="s3://bucket/output",
                 kms_key_id="output-key",
-                accept="text/csv"
+                accept="text/csv",
             ),
             "max_concurrent_transforms": 8,
             "max_payload_in_mb": 20,
-            "transform_job_name": "test-job-456"
+            "transform_job_name": "test-job-456",
         }
-        
+
         init_params = Transformer._prepare_init_params_from_job_description(job_details)
-        
+
         assert init_params["model_name"] == "test-model"
         assert init_params["instance_count"] == 2
         assert init_params["instance_type"] == "ml.m5.xlarge"
@@ -451,21 +462,102 @@ class TestTransformer:
         assert init_params["volume_kms_key"] == "volume-key"
         assert init_params["base_transform_job_name"] == "test-job-456"
 
+    def test_prepare_init_params_from_job_description_with_ami_version(self, mock_session):
+        """Test _prepare_init_params_from_job_description with transform_ami_version"""
+        job_details = {
+            "model_name": "test-model",
+            "transform_resources": Mock(
+                instance_count=2,
+                instance_type="ml.g4dn.xlarge",
+                volume_kms_key_id="volume-key",
+                transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
+            ),
+            "batch_strategy": "SingleRecord",
+            "transform_output": Mock(
+                assemble_with="None",
+                s3_output_path="s3://bucket/output",
+                kms_key_id="output-key",
+                accept="text/csv",
+            ),
+            "max_concurrent_transforms": 8,
+            "max_payload_in_mb": 20,
+            "transform_job_name": "test-job-789",
+        }
+
+        init_params = Transformer._prepare_init_params_from_job_description(job_details)
+
+        assert init_params["model_name"] == "test-model"
+        assert init_params["instance_count"] == 2
+        assert init_params["instance_type"] == "ml.g4dn.xlarge"
+        assert init_params["volume_kms_key"] == "volume-key"
+        assert init_params["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
+        assert init_params["base_transform_job_name"] == "test-job-789"
+
+    def test_init_with_transform_ami_version(self, mock_session):
+        """Test initialization with transform_ami_version parameter"""
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.g4dn.xlarge",
+            transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
+            sagemaker_session=mock_session,
+        )
+
+        assert transformer.model_name == "test-model"
+        assert transformer.instance_count == 1
+        assert transformer.instance_type == "ml.g4dn.xlarge"
+        assert transformer.transform_ami_version == "al2-ami-sagemaker-batch-gpu-535"
+
+    def test_init_without_transform_ami_version(self, mock_session):
+        """Test initialization without transform_ami_version parameter"""
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.g4dn.xlarge",
+            sagemaker_session=mock_session,
+        )
+
+        assert transformer.transform_ami_version is None
+
+    def test_load_config_with_transform_ami_version(self, mock_session):
+        """Test _load_config includes transform_ami_version in resource_config"""
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=2,
+            instance_type="ml.g4dn.xlarge",
+            output_path="s3://bucket/output",
+            transform_ami_version="al2-ami-sagemaker-batch-gpu-535",
+            sagemaker_session=mock_session,
+        )
+
+        config = transformer._load_config(
+            data="s3://bucket/input",
+            data_type="S3Prefix",
+            content_type="text/csv",
+            compression_type=None,
+            split_type="Line",
+        )
+
+        assert "resource_config" in config
+        assert config["resource_config"]["instance_count"] == 2
+        assert config["resource_config"]["instance_type"] == "ml.g4dn.xlarge"
+        assert config["resource_config"]["transform_ami_version"] == "al2-ami-sagemaker-batch-gpu-535"
+
     def test_delete_model(self, mock_session):
         """Test delete_model method"""
         transformer = Transformer(
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with patch("sagemaker.core.transformer.Model") as mock_model_class:
             mock_model = Mock()
             mock_model_class.get.return_value = mock_model
-            
+
             transformer.delete_model()
-            
+
             mock_model.delete.assert_called_once()
 
     def test_delete_model_no_model(self, mock_session):
@@ -474,12 +566,12 @@ class TestTransformer:
             model_name="test-model",
             instance_count=1,
             instance_type="ml.m5.xlarge",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         with patch("sagemaker.core.transformer.Model") as mock_model_class:
             mock_model_class.get.return_value = None
-            
+
             # Should not raise an error
             transformer.delete_model()
 
@@ -494,11 +586,11 @@ class TestTransformer:
             max_payload=10,
             env={"TEST": "value"},
             tags=[{"Key": "test", "Value": "value"}],
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         transformer._current_job_name = "test-job-123"
-        
+
         args = transformer._get_transform_args(
             data="s3://bucket/input",
             data_type="S3Prefix",
@@ -510,9 +602,9 @@ class TestTransformer:
             join_source=None,
             experiment_config=None,
             model_client_config=None,
-            batch_data_capture_config=None
+            batch_data_capture_config=None,
         )
-        
+
         assert args["job_name"] == "test-job-123"
         assert args["model_name"] == "test-model"
         assert args["strategy"] == "MultiRecord"
@@ -531,19 +623,64 @@ class TestTransformer:
             assemble_with="Line",
             accept="application/json",
             volume_kms_key="volume-key",
-            sagemaker_session=mock_session
+            sagemaker_session=mock_session,
         )
-        
+
         config = transformer._load_config(
             data="s3://bucket/input",
             data_type="S3Prefix",
             content_type="text/csv",
             compression_type="Gzip",
-            split_type="Line"
+            split_type="Line",
         )
-        
+
         assert "input_config" in config
         assert "output_config" in config
         assert "resource_config" in config
         assert config["output_config"]["s3_output_path"] == "s3://bucket/output"
         assert config["resource_config"]["instance_count"] == 2
+
+
+class TestTransformerTransformWithTags:
+    """Regression tests for tags handling in Transformer.transform() (issue #6090)."""
+
+    def test_transform_removes_tags_before_building_transform_job(self, mock_session):
+        """Tags must be dropped from the transformed dict before TransformJob(**transformed).
+
+        TransformJob resource model has no tags field and sets extra="forbid", so leaving
+        tags in the dict raises a pydantic ValidationError after the job is already submitted.
+        """
+        transformer = Transformer(
+            model_name="test-model",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            output_path="s3://bucket/output",
+            tags=[{"Key": "team", "Value": "ml"}],
+            sagemaker_session=mock_session,
+        )
+
+        # Session is not a PipelineSession, so intercept just invokes submit(request).
+        mock_session._intercept_create_request = Mock(
+            side_effect=lambda request, submit, *args, **kwargs: submit(request)
+        )
+
+        with patch(
+            "sagemaker.core.utils.code_injection.codec.transform",
+            return_value={
+                "transform_job_name": "test-job",
+                "tags": [{"Key": "team", "Value": "ml"}],
+            },
+        ):
+            with patch("sagemaker.core.transformer.TransformJob") as mock_transform_job_class:
+                transformer.transform(
+                    data="s3://bucket/input",
+                    content_type="text/csv",
+                    job_name="test-job",
+                    wait=False,
+                )
+
+        # TransformJob must be constructed without the tags key.
+        mock_transform_job_class.assert_called_once()
+        call_kwargs = mock_transform_job_class.call_args[1]
+        assert "tags" not in call_kwargs
+        assert call_kwargs["transform_job_name"] == "test-job"

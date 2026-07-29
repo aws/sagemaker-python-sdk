@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The step definitions for workflow."""
+
 from __future__ import absolute_import
 
 from typing import Any, Dict, List, Union, Optional
@@ -27,7 +28,12 @@ class EMRStepConfig:
     """Config for a Hadoop Jar step."""
 
     def __init__(
-        self, jar, args: List[str] = None, main_class: str = None, properties: List[dict] = None
+        self,
+        jar,
+        args: List[str] = None,
+        main_class: str = None,
+        properties: List[dict] = None,
+        output_args: dict[str, str] = None,
     ):
         """Create a definition for input data used by an EMR cluster(job flow) step.
 
@@ -41,11 +47,23 @@ class EMRStepConfig:
             jar(str): A path to a JAR file run during the step.
             main_class(str): The name of the main class in the specified Java file.
             properties(List(dict)): A list of key-value pairs that are set when the step runs.
+            output_args(dict[str, str]):
+                A dict of argument-value pairs (output_name: S3 URI) that extends the command line
+                args and can be accessible in other steps via EMRStep.emr_outputs[output_name].
+                Argument names are prepended by '--' automatically.
+                Example: {"output-path": "s3://my-bucket/output/"} will result in the following
+                command line args: ["--output-path", "s3://my-bucket/output/"]
         """
         self.jar = jar
         self.args = args
         self.main_class = main_class
         self.properties = properties
+
+        self.output_args_index = {}
+        if output_args:
+            for output_arg_name, output_arg_value in output_args.items():
+                self.args.extend([f"--{output_arg_name}", output_arg_value])
+                self.output_args_index[output_arg_name] = len(self.args) - 1
 
     def to_request(self) -> RequestType:
         """Convert EMRStepConfig object to request dict."""
@@ -229,6 +247,11 @@ class EMRStep(Step):
         self.args = emr_step_args
         self.cache_config = cache_config
         self._properties = root_property
+
+        self.emr_outputs = {
+            output_name: self.properties.Config.Args[step_config.output_args_index[output_name]]
+            for output_name in step_config.output_args_index
+        }
 
     @property
     def arguments(self) -> RequestType:

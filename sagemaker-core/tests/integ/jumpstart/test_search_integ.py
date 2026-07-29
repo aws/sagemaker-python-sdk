@@ -19,6 +19,7 @@ from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.resources import HubContent
 
 
+@pytest.mark.serial
 @pytest.mark.integ
 def test_search_public_hub_models_default_args():
     # Only query, uses default hub name and session
@@ -30,6 +31,7 @@ def test_search_public_hub_models_default_args():
     assert len(results) > 0, "Expected at least one matching model from the public hub"
 
 
+@pytest.mark.serial
 @pytest.mark.integ
 def test_search_public_hub_models_custom_session():
     # Provide a custom SageMaker session
@@ -41,6 +43,7 @@ def test_search_public_hub_models_custom_session():
     assert all(isinstance(m, HubContent) for m in results)
 
 
+@pytest.mark.serial
 @pytest.mark.integ
 def test_search_public_hub_models_custom_hub_name():
     # Using the default public hub but provided explicitly
@@ -51,6 +54,7 @@ def test_search_public_hub_models_custom_hub_name():
     assert all(isinstance(m, HubContent) for m in results)
 
 
+@pytest.mark.serial
 @pytest.mark.integ
 def test_search_public_hub_models_all_args():
     # Provide both hub_name and session explicitly
@@ -62,3 +66,19 @@ def test_search_public_hub_models_all_args():
 
     assert isinstance(results, list)
     assert all(isinstance(m, HubContent) for m in results)
+
+
+@pytest.mark.serial
+@pytest.mark.integ
+def test_search_public_hub_models_safe_from_injection():
+    """Integration test to verify malicious queries don't execute code."""
+    # This would have executed code with the old eval() implementation
+    malicious_query = "__import__('os').system('echo test')"
+    
+    # Should safely return empty results without executing code
+    results = search_public_hub_models(malicious_query)
+    
+    # Verify it returns a list (even if empty) and doesn't crash
+    assert isinstance(results, list)
+    # Should not match any models since it's not a valid filter expression
+    assert len(results) == 0

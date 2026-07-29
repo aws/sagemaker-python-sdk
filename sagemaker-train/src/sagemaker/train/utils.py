@@ -13,6 +13,7 @@
 """Utils module."""
 from __future__ import absolute_import
 
+import re
 import os
 import json
 import subprocess
@@ -25,6 +26,7 @@ from typing import Literal, Any
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.shapes import Unassigned
 from sagemaker.train import logger
+from sagemaker.core.workflow.parameters import PipelineVariable
 
 
 def _default_bucket_and_prefix(session: Session) -> str:
@@ -171,9 +173,10 @@ def safe_serialize(data):
 
     This function handles the following cases:
     1. If `data` is a string, it returns the string as-is without wrapping in quotes.
-    2. If `data` is serializable (e.g., a dictionary, list, int, float), it returns
+    2. If `data` is of type `PipelineVariable`, it returns the json representation of the PipelineVariable
+    3. If `data` is serializable (e.g., a dictionary, list, int, float), it returns
        the JSON-encoded string using `json.dumps()`.
-    3. If `data` cannot be serialized (e.g., a custom object), it returns the string
+    4. If `data` cannot be serialized (e.g., a custom object), it returns the string
        representation of the data using `str(data)`.
 
     Args:
@@ -183,6 +186,8 @@ def safe_serialize(data):
         str: The serialized JSON-compatible string or the string representation of the input.
     """
     if isinstance(data, str):
+        return data
+    elif isinstance(data, PipelineVariable):
         return data
     try:
         return json.dumps(data)
@@ -234,3 +239,30 @@ def _run_clone_command_silent(repo_url, dest_dir):
             logger.error(f"Failed to clone repository: {repo_url}")
             logger.error(f"Error output:\n{e}")
             raise
+
+def _get_jumpstart_tags(model_id: str, hub_name: str):
+    return [
+        {
+            "key": "sagemaker-sdk:jumpstart-model-id",
+            "value": model_id
+        },
+        {
+            "key": "sagemaker-sdk:jumpstart-hub-name",
+            "value": hub_name
+        }
+    ]
+
+
+def _get_training_job_name_from_training_job_arn(training_job_arn: str) -> str:
+    """Extract Training job name from Training job arn.
+    Args:
+        training_job_arn: Training job arn.
+    Returns: Training job name.
+    """
+    if training_job_arn is None:
+        return None
+    pattern = "arn:aws[a-z-]*:sagemaker:[a-z0-9-]*:[0-9]{12}:training-job/(.+)"
+    match = re.match(pattern, training_job_arn)
+    if match:
+        return match.group(1)
+    return None

@@ -48,7 +48,7 @@ class TestGetImageTag:
             processor="gpu",
             py_version="py310",
             tag_prefix="2.0",
-            version="2.0"
+            version="2.0",
         )
         assert "2.0" in tag
         assert "gpu" in tag
@@ -66,7 +66,7 @@ class TestGetImageTag:
             processor="inf",
             py_version="py310",
             tag_prefix="2.0",
-            version="2.0"
+            version="2.0",
         )
         assert "neuron" in tag
 
@@ -82,7 +82,7 @@ class TestGetImageTag:
             processor="cpu",
             py_version="py3",
             tag_prefix="1.5-1",
-            version="1.5-1"
+            version="1.5-1",
         )
         assert "1.5-1-arm64" in tag
 
@@ -229,6 +229,7 @@ class TestProcessor:
     def test_processor_serverless(self):
         """Test _processor with serverless config."""
         from sagemaker.core.serverless_inference_config import ServerlessInferenceConfig
+
         config = ServerlessInferenceConfig()
         proc = _processor(None, ["cpu", "gpu"], serverless_inference_config=config)
         assert proc == "cpu"

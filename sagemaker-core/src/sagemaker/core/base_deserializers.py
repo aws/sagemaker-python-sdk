@@ -31,5 +31,5 @@ warnings.warn(
     "Importing from sagemaker.core.base_deserializers is deprecated. "
     "Use sagemaker.core.deserializers instead.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )

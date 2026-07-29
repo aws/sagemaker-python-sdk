@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 import os
 import io
+import sys
 import subprocess
 import cloudpickle
 import shutil
@@ -155,13 +156,10 @@ def _pickle_file_integrity_check():
 
 def install_package(package_name, version=None):
     """Placeholder docstring"""
-    if version:
-        command = f"pip install {package_name}=={version}"
-    else:
-        command = f"pip install {package_name}"
+    package_spec = f"{package_name}=={version}" if version else package_name
 
     try:
-        subprocess.check_call(command, shell=True)
+        subprocess.check_call([sys.executable, "-m", "pip", "install", package_spec])
         print(f"Successfully installed {package_name} using install_package")
     except subprocess.CalledProcessError as e:
         print(f"Failed to install {package_name}. Error: {e}")

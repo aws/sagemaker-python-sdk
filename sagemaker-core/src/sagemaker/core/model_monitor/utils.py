@@ -1,4 +1,3 @@
-
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License"). You
@@ -43,6 +42,7 @@ import logging
 logger = LOGGER = logging.getLogger("sagemaker")
 
 MODEL_MONITOR_ONE_TIME_SCHEDULE = "NOW"
+
 
 def boto_create_monitoring_schedule(
     sagemaker_session,
@@ -225,7 +225,9 @@ def boto_create_monitoring_schedule(
         ] = inferred_network_config_from_config
 
     tags = _append_project_tags(format_tags(tags))
-    tags = _append_sagemaker_config_tags(sagemaker_session, tags, "{}.{}.{}".format(SAGEMAKER, MONITORING_SCHEDULE, TAGS))
+    tags = _append_sagemaker_config_tags(
+        sagemaker_session, tags, "{}.{}.{}".format(SAGEMAKER, MONITORING_SCHEDULE, TAGS)
+    )
 
     if tags is not None:
         monitoring_schedule_request["Tags"] = tags
@@ -235,6 +237,7 @@ def boto_create_monitoring_schedule(
         "monitoring_schedule_request= %s", json.dumps(monitoring_schedule_request, indent=4)
     )
     sagemaker_session.sagemaker_client.create_monitoring_schedule(**monitoring_schedule_request)
+
 
 def boto_update_monitoring_schedule(
     sagemaker_session,
@@ -320,18 +323,14 @@ def boto_update_monitoring_schedule(
             "ScheduleExpression"
         ]
         if (
-            existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"].get(
-                "DataAnalysisStartTime"
-            )
+            existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"].get("DataAnalysisStartTime")
             is not None
         ):
             existing_data_analysis_start_time = existing_desc["MonitoringScheduleConfig"][
                 "ScheduleConfig"
             ]["DataAnalysisStartTime"]
         if (
-            existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"].get(
-                "DataAnalysisEndTime"
-            )
+            existing_desc["MonitoringScheduleConfig"]["ScheduleConfig"].get("DataAnalysisEndTime")
             is not None
         ):
             existing_data_analysis_end_time = existing_desc["MonitoringScheduleConfig"][
@@ -339,9 +338,7 @@ def boto_update_monitoring_schedule(
             ]["DataAnalysisEndTime"]
 
     request_schedule_expression = schedule_expression or existing_schedule_config
-    request_data_analysis_start_time = (
-        data_analysis_start_time or existing_data_analysis_start_time
-    )
+    request_data_analysis_start_time = data_analysis_start_time or existing_data_analysis_start_time
     request_data_analysis_end_time = data_analysis_end_time or existing_data_analysis_end_time
 
     if request_schedule_expression == MODEL_MONITOR_ONE_TIME_SCHEDULE and (
@@ -356,9 +353,7 @@ def boto_update_monitoring_schedule(
 
     request_monitoring_inputs = (
         monitoring_inputs
-        or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
-            "MonitoringInputs"
-        ]
+        or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["MonitoringInputs"]
     )
     request_instance_count = (
         instance_count
@@ -385,8 +380,7 @@ def boto_update_monitoring_schedule(
         ]["ImageUri"]
     )
     request_role_arn = (
-        role_arn
-        or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
+        role_arn or existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"]["RoleArn"]
     )
 
     monitoring_schedule_request = {
@@ -433,9 +427,7 @@ def boto_update_monitoring_schedule(
     existing_statistics_s3_uri = None
     existing_constraints_s3_uri = None
     if (
-        existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
-            "BaselineConfig"
-        )
+        existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get("BaselineConfig")
         is not None
     ):
         if (
@@ -520,9 +512,9 @@ def boto_update_monitoring_schedule(
             "MonitoringAppSpecification"
         ]["ContainerArguments"] = (arguments or existing_arguments)
 
-    existing_volume_kms_key = existing_desc["MonitoringScheduleConfig"][
-        "MonitoringJobDefinition"
-    ]["MonitoringResources"]["ClusterConfig"].get("VolumeKmsKeyId")
+    existing_volume_kms_key = existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
+        "MonitoringResources"
+    ]["ClusterConfig"].get("VolumeKmsKeyId")
 
     if volume_kms_key is not None or existing_volume_kms_key is not None:
         monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
@@ -542,9 +534,9 @@ def boto_update_monitoring_schedule(
             "StoppingCondition"
         ] = {"MaxRuntimeInSeconds": max_runtime_in_seconds or existing_max_runtime_in_seconds}
 
-    existing_environment = existing_desc["MonitoringScheduleConfig"][
-        "MonitoringJobDefinition"
-    ].get("Environment")
+    existing_environment = existing_desc["MonitoringScheduleConfig"]["MonitoringJobDefinition"].get(
+        "Environment"
+    )
     if environment is not None or existing_environment is not None:
         monitoring_schedule_request["MonitoringScheduleConfig"]["MonitoringJobDefinition"][
             "Environment"
@@ -572,6 +564,7 @@ def boto_update_monitoring_schedule(
     )
     sagemaker_session.sagemaker_client.update_monitoring_schedule(**monitoring_schedule_request)
 
+
 def boto_start_monitoring_schedule(sagemaker_session, monitoring_schedule_name):
     """Starts a monitoring schedule.
 
@@ -583,6 +576,7 @@ def boto_start_monitoring_schedule(sagemaker_session, monitoring_schedule_name):
     sagemaker_session.sagemaker_client.start_monitoring_schedule(
         MonitoringScheduleName=monitoring_schedule_name
     )
+
 
 def boto_stop_monitoring_schedule(sagemaker_session, monitoring_schedule_name):
     """Stops a monitoring schedule.
@@ -596,6 +590,7 @@ def boto_stop_monitoring_schedule(sagemaker_session, monitoring_schedule_name):
         MonitoringScheduleName=monitoring_schedule_name
     )
 
+
 def boto_delete_monitoring_schedule(sagemaker_session, monitoring_schedule_name):
     """Deletes a monitoring schedule.
 
@@ -607,6 +602,7 @@ def boto_delete_monitoring_schedule(sagemaker_session, monitoring_schedule_name)
     sagemaker_session.sagemaker_client.delete_monitoring_schedule(
         MonitoringScheduleName=monitoring_schedule_name
     )
+
 
 def boto_describe_monitoring_schedule(sagemaker_session, monitoring_schedule_name):
     """Calls the DescribeMonitoringSchedule API for given name and returns the response.
@@ -620,6 +616,7 @@ def boto_describe_monitoring_schedule(sagemaker_session, monitoring_schedule_nam
     return sagemaker_session.sagemaker_client.describe_monitoring_schedule(
         MonitoringScheduleName=monitoring_schedule_name
     )
+
 
 def boto_list_monitoring_executions(
     sagemaker_session,
@@ -650,8 +647,13 @@ def boto_list_monitoring_executions(
     )
     return response
 
+
 def boto_list_monitoring_schedules(
-    sagemaker_session, endpoint_name=None, sort_by="CreationTime", sort_order="Descending", max_results=100
+    sagemaker_session,
+    endpoint_name=None,
+    sort_by="CreationTime",
+    sort_order="Descending",
+    max_results=100,
 ):
     """Lists the monitoring executions associated with the given monitoring_schedule_name.
 
@@ -681,6 +683,7 @@ def boto_list_monitoring_schedules(
 
     return response
 
+
 def boto_update_monitoring_alert(
     sagemaker_session,
     monitoring_schedule_name: str,
@@ -705,6 +708,7 @@ def boto_update_monitoring_alert(
         DatapointsToAlert=data_points_to_alert,
         EvaluationPeriod=evaluation_period,
     )
+
 
 def boto_list_monitoring_alerts(
     sagemaker_session,
@@ -732,6 +736,7 @@ def boto_list_monitoring_alerts(
         params.update({"NextToken": next_token})
 
     return sagemaker_session.sagemaker_client.list_monitoring_alerts(**params)
+
 
 def boto_list_monitoring_alert_history(
     sagemaker_session,

@@ -26,6 +26,7 @@ def mock_session():
     session.boto_session.client.return_value = Mock()
     session.sagemaker_client = Mock()
     session.local_mode = False
+    session.sagemaker_config = {}
     return session
 
 
@@ -49,12 +50,23 @@ def test_pipeline_init(mock_session, mock_step):
     assert pipeline.sagemaker_session == mock_session
 
 
-def test_pipeline_create_without_role_raises_error(mock_session, mock_step):
+def test_pipeline_create_without_role_auto_resolves(mock_session, mock_step):
+    """When no role is provided, create() auto-resolves a pipeline role instead of raising."""
+    mock_session.local_mode = True
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
-    
+
+    auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Pipeline"
     with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value=None):
-        with pytest.raises(ValueError, match="AWS IAM role is required"):
+        with patch(
+            "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", return_value=auto_arn
+        ) as mock_resolve:
             pipeline.create()
+            mock_resolve.assert_called_once_with(
+                provided_role=None,
+                role_type="pipeline",
+                sagemaker_session=mock_session,
+            )
+            mock_session.sagemaker_client.create_pipeline.assert_called_once()
 
 
 def test_format_start_parameters():
@@ -84,7 +96,8 @@ def test_pipeline_create_local_mode(mock_session, mock_step):
     mock_session.local_mode = True
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
     
-    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"):
+    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"), \
+         patch("sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", side_effect=lambda provided_role, **kw: provided_role):
         pipeline.create(role_arn="role-arn", description="test", parallelism_config={"MaxParallelExecutionSteps": 2})
         mock_session.sagemaker_client.create_pipeline.assert_called_once()
 
@@ -96,35 +109,63 @@ def test_pipeline_create_large_definition(mock_session, mock_step):
     large_definition = "x" * (1024 * 101)
     with patch.object(pipeline, "definition", return_value=large_definition):
         with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"):
-            with patch("sagemaker.mlops.workflow.pipeline.s3.determine_bucket_and_prefix", return_value=("bucket", "key")):
-                with patch("sagemaker.mlops.workflow.pipeline.s3.S3Uploader.upload_string_as_file_body"):
-                    pipeline.create(role_arn="role-arn")
-                    mock_session.sagemaker_client.create_pipeline.assert_called_once()
+            with patch("sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", side_effect=lambda provided_role, **kw: provided_role):
+                with patch("sagemaker.mlops.workflow.pipeline.s3.determine_bucket_and_prefix", return_value=("bucket", "key")):
+                    with patch("sagemaker.mlops.workflow.pipeline.s3.S3Uploader.upload_string_as_file_body"):
+                        pipeline.create(role_arn="role-arn")
+                        mock_session.sagemaker_client.create_pipeline.assert_called_once()
 
 
-def test_pipeline_update_without_role_raises_error(mock_session, mock_step):
+def test_pipeline_update_without_role_auto_resolves(mock_session, mock_step):
+    """When no role is provided, update() auto-resolves a pipeline role instead of raising."""
+    mock_session.local_mode = True
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
-    
+
+    auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Pipeline"
     with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value=None):
-        with pytest.raises(ValueError, match="AWS IAM role is required"):
+        with patch(
+            "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", return_value=auto_arn
+        ) as mock_resolve:
             pipeline.update()
+            mock_resolve.assert_called_once_with(
+                provided_role=None,
+                role_type="pipeline",
+                sagemaker_session=mock_session,
+            )
+            mock_session.sagemaker_client.update_pipeline.assert_called_once()
 
 
 def test_pipeline_update_local_mode(mock_session, mock_step):
     mock_session.local_mode = True
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
     
-    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"):
+    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"), \
+         patch("sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", side_effect=lambda provided_role, **kw: provided_role):
         pipeline.update(role_arn="role-arn", description="test", parallelism_config={"MaxParallelExecutionSteps": 2})
         mock_session.sagemaker_client.update_pipeline.assert_called_once()
 
 
-def test_pipeline_upsert_without_role_raises_error(mock_session, mock_step):
+def test_pipeline_upsert_without_role_auto_resolves(mock_session, mock_step):
+    """When no role is provided, upsert() auto-resolves a pipeline role instead of raising."""
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
-    
+
+    auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Pipeline"
     with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value=None):
-        with pytest.raises(ValueError, match="AWS IAM role is required"):
-            pipeline.upsert()
+        with patch("sagemaker.mlops.workflow.pipeline.format_tags", return_value=None):
+            with patch(
+                "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role",
+                return_value=auto_arn,
+            ) as mock_resolve:
+                with patch.object(pipeline, "create", return_value={"PipelineArn": "arn"}) as mock_create:
+                    pipeline.upsert()
+                    mock_resolve.assert_called_once_with(
+                        provided_role=None,
+                        role_type="pipeline",
+                        sagemaker_session=mock_session,
+                    )
+                    # The auto-resolved role flows into create().
+                    mock_create.assert_called_once()
+                    assert mock_create.call_args.args[0] == auto_arn
 
 
 def test_pipeline_upsert_existing_pipeline(mock_session, mock_step):
@@ -136,11 +177,12 @@ def test_pipeline_upsert_existing_pipeline(mock_session, mock_step):
     mock_session.sagemaker_client.list_tags.return_value = {"Tags": [{"Key": "old", "Value": "tag"}]}
     
     with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"):
-        with patch("sagemaker.mlops.workflow.pipeline.format_tags", return_value=[{"Key": "new", "Value": "tag"}]):
-            with patch.object(pipeline, "create", side_effect=error):
-                with patch.object(pipeline, "update", return_value=update_response):
-                    pipeline.upsert(role_arn="role-arn", tags=[{"Key": "new", "Value": "tag"}])
-                    mock_session.sagemaker_client.add_tags.assert_called_once()
+        with patch("sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", side_effect=lambda provided_role, **kw: provided_role):
+            with patch("sagemaker.mlops.workflow.pipeline.format_tags", return_value=[{"Key": "new", "Value": "tag"}]):
+                with patch.object(pipeline, "create", side_effect=error):
+                    with patch.object(pipeline, "update", return_value=update_response):
+                        pipeline.upsert(role_arn="role-arn", tags=[{"Key": "new", "Value": "tag"}])
+                        mock_session.sagemaker_client.add_tags.assert_called_once()
 
 
 def test_pipeline_start_with_selective_execution(mock_session, mock_step):
@@ -174,7 +216,7 @@ def test_pipeline_get_latest_execution_arn_none(mock_session, mock_step):
 
 
 def test_pipeline_build_parameters_from_execution(mock_session, mock_step):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
     
     mock_session.sagemaker_client.list_pipeline_parameters_for_execution.return_value = {
@@ -192,18 +234,33 @@ def test_pipeline_validate_parameter_overrides_invalid():
         Pipeline._validate_parameter_overrides("arn", {"param1": "value1"}, {"param2": "value2"})
 
 
-def test_pipeline_put_triggers_without_role_raises_error(mock_session, mock_step):
+def test_pipeline_put_triggers_without_role_auto_resolves(mock_session, mock_step):
+    """When no role is provided, put_triggers() auto-resolves a pipeline role instead of raising.
+
+    With an empty trigger list it still reaches the (later) "no triggers" TypeError,
+    which proves role resolution succeeded rather than raising the old ValueError.
+    """
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
-    
+
+    auto_arn = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Pipeline"
     with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value=None):
-        with pytest.raises(ValueError, match="AWS IAM role is required"):
-            pipeline.put_triggers([])
+        with patch(
+            "sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", return_value=auto_arn
+        ) as mock_resolve:
+            with pytest.raises(TypeError, match="No Triggers provided"):
+                pipeline.put_triggers([])
+            mock_resolve.assert_called_once_with(
+                provided_role=None,
+                role_type="pipeline",
+                sagemaker_session=mock_session,
+            )
 
 
 def test_pipeline_put_triggers_empty_list_raises_error(mock_session, mock_step):
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
     
-    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"):
+    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"), \
+         patch("sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", side_effect=lambda provided_role, **kw: provided_role):
         with pytest.raises(TypeError, match="No Triggers provided"):
             pipeline.put_triggers([])
 
@@ -216,7 +273,8 @@ def test_pipeline_put_triggers_pipeline_not_exists(mock_session, mock_step):
     error = ClientError({"Error": {"Code": "ResourceNotFound"}}, "describe_pipeline")
     mock_session.sagemaker_client.describe_pipeline.side_effect = error
     
-    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"):
+    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"), \
+         patch("sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", side_effect=lambda provided_role, **kw: provided_role):
         with pytest.raises(RuntimeError, match="does not exist"):
             pipeline.put_triggers([PipelineSchedule(rate=(1, "hour"))], role_arn="role-arn")
 
@@ -225,7 +283,8 @@ def test_pipeline_put_triggers_unsupported_type(mock_session, mock_step):
     pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
     mock_session.sagemaker_client.describe_pipeline.return_value = {"PipelineArn": "arn"}
     
-    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"):
+    with patch("sagemaker.mlops.workflow.pipeline.resolve_value_from_config", return_value="role-arn"), \
+         patch("sagemaker.mlops.workflow.pipeline.resolve_and_validate_role", side_effect=lambda provided_role, **kw: provided_role):
         with patch("sagemaker.mlops.workflow.pipeline.validate_default_parameters_for_schedules"):
             with pytest.raises(TypeError, match="Unsupported TriggerType"):
                 pipeline.put_triggers([Mock()], role_arn="role-arn")
@@ -267,43 +326,43 @@ def test_pipeline_delete_triggers_not_found(mock_session, mock_step):
 
 
 def test_pipeline_execution_stop(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     execution.stop()
     mock_session.sagemaker_client.stop_pipeline_execution.assert_called_once()
 
 
 def test_pipeline_execution_describe(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     execution.describe()
     mock_session.sagemaker_client.describe_pipeline_execution.assert_called_once()
 
 
 def test_pipeline_execution_list_steps(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     
     mock_session.sagemaker_client.list_pipeline_execution_steps.return_value = {"PipelineExecutionSteps": []}
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     result = execution.list_steps()
     assert result == []
 
 
 def test_pipeline_execution_list_parameters(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     execution.list_parameters(max_results=10, next_token="token")
     mock_session.sagemaker_client.list_pipeline_parameters_for_execution.assert_called_once()
 
 
 def test_pipeline_execution_wait(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     import botocore.waiter
     
-    execution = _PipelineExecution(arn="arn", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn", sagemaker_session=mock_session)
     with patch("botocore.waiter.create_waiter_with_client") as mock_waiter:
         mock_waiter.return_value.wait = Mock()
         execution.wait(delay=10, max_attempts=5)
@@ -341,7 +400,7 @@ def test_get_function_step_result_wrong_container(mock_session):
     from sagemaker.mlops.workflow.pipeline import get_function_step_result
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": ["python"]},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path"}
     }
@@ -356,7 +415,7 @@ def test_get_function_step_result_incomplete_job(mock_session):
     from sagemaker.core.remote_function.errors import RemoteFunctionError
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path"},
         "TrainingJobStatus": "Failed",
@@ -372,7 +431,7 @@ def test_get_function_step_result_success(mock_session):
     from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
@@ -419,11 +478,67 @@ def test_pipeline_graph_iteration(mock_step):
     assert len(steps) == 1
 
 
+
+
+
+def test_generate_step_map_duplicate_names():
+    from sagemaker.mlops.workflow.pipeline import _generate_step_map
+    
+    step1 = Mock(spec=Step)
+    step1.name = "duplicate"
+    step2 = Mock(spec=Step)
+    step2.name = "duplicate"
+    
+    step_map = {}
+    with pytest.raises(ValueError, match="duplicate names"):
+        _generate_step_map([step1, step2], step_map)
+
+
+def test_pipeline_latest_version_id(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    mock_session.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": [{"PipelineVersionId": 123}]
+    }
+    assert pipeline.latest_pipeline_version_id == 123
+
+
+def test_pipeline_latest_version_id_none(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    mock_session.sagemaker_client.list_pipeline_versions.return_value = {
+        "PipelineVersionSummaries": []
+    }
+    assert pipeline.latest_pipeline_version_id is None
+
+
+def test_pipeline_describe_with_version_id(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    pipeline.describe(pipeline_version_id=123)
+    mock_session.sagemaker_client.describe_pipeline.assert_called_once_with(
+        PipelineName="test-pipeline", PipelineVersionId=123
+    )
+
+
+def test_pipeline_start_with_version_id(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    mock_session.sagemaker_client.start_pipeline_execution.return_value = {"PipelineExecutionArn": "arn"}
+    pipeline.start(pipeline_version_id=123)
+    call_kwargs = mock_session.sagemaker_client.start_pipeline_execution.call_args[1]
+    assert call_kwargs["PipelineVersionId"] == 123
+
+
+def test_pipeline_list_versions(mock_session, mock_step):
+    pipeline = Pipeline(name="test-pipeline", steps=[mock_step], sagemaker_session=mock_session)
+    pipeline.list_pipeline_versions(sort_order="Descending", max_results=10)
+    mock_session.sagemaker_client.list_pipeline_versions.assert_called_once_with(
+        PipelineName="test-pipeline", SortOrder="Descending", MaxResults=10
+    )
+
+
 def test_pipeline_execution_result_waiter_error(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     from botocore.exceptions import WaiterError
     
-    execution = _PipelineExecution(arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/test/execution/exec-id", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/test/execution/exec-id", sagemaker_session=mock_session)
     
     with patch.object(execution, "wait", side_effect=WaiterError("name", "reason", {})):
         with pytest.raises(WaiterError):
@@ -431,15 +546,15 @@ def test_pipeline_execution_result_waiter_error(mock_session):
 
 
 def test_pipeline_execution_result_terminal_failure(mock_session):
-    from sagemaker.mlops.workflow.pipeline import _PipelineExecution
+    from sagemaker.mlops.workflow.pipeline import PipelineExecution
     from botocore.exceptions import WaiterError
     from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
     
-    execution = _PipelineExecution(arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/test/execution/exec-id", sagemaker_session=mock_session)
+    execution = PipelineExecution(arn="arn:aws:sagemaker:us-west-2:123456789012:pipeline/test/execution/exec-id", sagemaker_session=mock_session)
     mock_session.sagemaker_client.list_pipeline_execution_steps.return_value = {
         "PipelineExecutionSteps": [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
     }
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/path/exec-id/step1/results"},
         "TrainingJobStatus": "Completed",
@@ -457,13 +572,49 @@ def test_get_function_step_result_obsolete_s3_path(mock_session):
     from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
     
     step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
-    mock_session.describe_training_job.return_value = {
+    mock_session.sagemaker_client.describe_training_job.return_value = {
         "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
         "OutputDataConfig": {"S3OutputPath": "s3://bucket/different/path"},
         "TrainingJobStatus": "Completed",
         "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "key"}
     }
     
-    with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result"):
+    with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result") as mock_deserialize:
         result = get_function_step_result("step1", step_list, "exec-id", mock_session)
         assert result == "result"
+        # Obsolete format: exec-id/step_name/results suffix must be appended
+        mock_deserialize.assert_called_once_with(
+            sagemaker_session=mock_session,
+            s3_uri="s3://bucket/different/path/exec-id/step1/results",
+            verification_key=None,
+        )
+
+
+def test_get_function_step_result_new_format_with_build_timestamp(mock_session):
+    """New S3 path format includes a build timestamp segment between step name and exec-id.
+
+    Format: s3://bucket/<step_name>/<build_timestamp>/<exec_id>/results
+    The S3OutputPath already points directly to the results folder, so the function
+    must use it as-is without appending any extra path segments.
+    """
+    from sagemaker.mlops.workflow.pipeline import get_function_step_result
+    from sagemaker.core.remote_function.job import JOBS_CONTAINER_ENTRYPOINT
+
+    new_format_path = "s3://bucket/step1/20240101T120000/exec-id/results"
+    step_list = [{"StepName": "step1", "Metadata": {"TrainingJob": {"Arn": "arn:aws:sagemaker:us-west-2:123456789012:training-job/job"}}}]
+    mock_session.sagemaker_client.describe_training_job.return_value = {
+        "AlgorithmSpecification": {"ContainerEntrypoint": JOBS_CONTAINER_ENTRYPOINT},
+        "OutputDataConfig": {"S3OutputPath": new_format_path},
+        "TrainingJobStatus": "Completed",
+        "Environment": {"REMOTE_FUNCTION_SECRET_KEY": "key"},
+    }
+
+    with patch("sagemaker.mlops.workflow.pipeline.deserialize_obj_from_s3", return_value="result") as mock_deserialize:
+        result = get_function_step_result("step1", step_list, "exec-id", mock_session)
+        assert result == "result"
+        # New format: S3OutputPath already ends with /results, must be used verbatim
+        mock_deserialize.assert_called_once_with(
+            sagemaker_session=mock_session,
+            s3_uri=new_format_path,
+            verification_key=None,
+        )

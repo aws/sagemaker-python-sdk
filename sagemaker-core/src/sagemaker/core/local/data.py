@@ -24,6 +24,7 @@ from six import with_metaclass
 from six.moves.urllib.parse import urlparse
 
 import sagemaker.core
+from sagemaker.core.common_utils import _SENSITIVE_SYSTEM_PATHS
 
 
 def get_data_source_instance(data_source, sagemaker_session):
@@ -120,6 +121,15 @@ class LocalFileDataSource(DataSource):
         super(LocalFileDataSource, self).__init__()
 
         self.root_path = os.path.abspath(root_path)
+        
+        # Validate that the path is not in restricted locations
+        for restricted_path in _SENSITIVE_SYSTEM_PATHS:
+            if self.root_path != "/" and self.root_path.startswith(restricted_path):
+                raise ValueError(
+                    f"Local Mode does not support mounting from restricted system paths. "
+                    f"Got: {root_path}"
+                )
+        
         if not os.path.exists(self.root_path):
             raise RuntimeError("Invalid data source: %s does not exist." % self.root_path)
 
@@ -276,7 +286,7 @@ class RecordIOSplitter(Splitter):
     """Split using Amazon Recordio.
 
     Not useful for string content.
-    
+
     Note: This class depends on the deprecated sagemaker.core.amazon module
     and is no longer functional.
     """
@@ -292,7 +302,7 @@ class RecordIOSplitter(Splitter):
 
         Returns: generator for the individual records that were split from
         the file
-        
+
         Raises:
             NotImplementedError: This functionality has been removed due to
                 deprecation of sagemaker.core.amazon module

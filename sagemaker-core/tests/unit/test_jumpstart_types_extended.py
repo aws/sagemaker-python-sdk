@@ -39,13 +39,9 @@ class TestJumpStartInstanceTypeVariants:
         spec = {
             "regional_aliases": {
                 "us-west-2": {"alias1": "value1"},
-                "us-east-1": {"alias2": "value2"}
+                "us-east-1": {"alias2": "value2"},
             },
-            "variants": {
-                "ml.m5.xlarge": {
-                    "properties": {"image_uri": "image1"}
-                }
-            }
+            "variants": {"ml.m5.xlarge": {"properties": {"image_uri": "image1"}}},
         }
         variants = JumpStartInstanceTypeVariants(spec)
 
@@ -55,13 +51,7 @@ class TestJumpStartInstanceTypeVariants:
 
     def test_from_json_without_regional_aliases(self):
         """Test initialization from JSON without regional aliases"""
-        spec = {
-            "variants": {
-                "ml.m5.xlarge": {
-                    "properties": {"image_uri": "image1"}
-                }
-            }
-        }
+        spec = {"variants": {"ml.m5.xlarge": {"properties": {"image_uri": "image1"}}}}
         variants = JumpStartInstanceTypeVariants(spec)
 
         assert variants.regional_aliases is None
@@ -70,14 +60,8 @@ class TestJumpStartInstanceTypeVariants:
     def test_regionalize(self):
         """Test regionalize method"""
         spec = {
-            "regional_aliases": {
-                "us-west-2": {"alias1": "value1"}
-            },
-            "variants": {
-                "ml.m5.xlarge": {
-                    "properties": {"metric": "value"}
-                }
-            }
+            "regional_aliases": {"us-west-2": {"alias1": "value1"}},
+            "variants": {"ml.m5.xlarge": {"properties": {"metric": "value"}}},
         }
         variants = JumpStartInstanceTypeVariants(spec)
         result = variants.regionalize("us-west-2")
@@ -90,11 +74,7 @@ class TestJumpStartInstanceTypeVariants:
         """Test getting instance specific metric definitions"""
         spec = {
             "variants": {
-                "ml.m5.xlarge": {
-                    "properties": {
-                        "metrics": [{"Name": "metric1", "Regex": ".*"}]
-                    }
-                }
+                "ml.m5.xlarge": {"properties": {"metrics": [{"Name": "metric1", "Regex": ".*"}]}}
             }
         }
         variants = JumpStartInstanceTypeVariants(spec)
@@ -107,9 +87,7 @@ class TestJumpStartInstanceTypeVariants:
         """Test getting instance specific artifact key"""
         spec = {
             "variants": {
-                "ml.m5.xlarge": {
-                    "properties": {"artifact_key": "s3://bucket/artifact.tar.gz"}
-                }
+                "ml.m5.xlarge": {"properties": {"artifact_key": "s3://bucket/artifact.tar.gz"}}
             }
         }
         variants = JumpStartInstanceTypeVariants(spec)
@@ -128,7 +106,7 @@ class TestJumpStartInstanceTypeVariants:
                                 "name": "learning_rate",
                                 "type": "float",
                                 "default": "0.001",
-                                "scope": "training"
+                                "scope": "training",
                             }
                         ]
                     }
@@ -145,11 +123,7 @@ class TestJumpStartInstanceTypeVariants:
         """Test getting instance specific environment variables"""
         spec = {
             "variants": {
-                "ml.m5.xlarge": {
-                    "properties": {
-                        "environment_variables": {"VAR1": "value1"}
-                    }
-                }
+                "ml.m5.xlarge": {"properties": {"environment_variables": {"VAR1": "value1"}}}
             }
         }
         variants = JumpStartInstanceTypeVariants(spec)
@@ -161,13 +135,11 @@ class TestJumpStartInstanceTypeVariants:
         """Test getting image URI"""
         spec = {
             "regional_aliases": {
-                "us-west-2": {"image_uri": "123456789012.dkr.ecr.us-west-2.amazonaws.com/image:latest"}
-            },
-            "variants": {
-                "ml.m5.xlarge": {
-                    "regional_properties": {"image_uri": "$image_uri"}
+                "us-west-2": {
+                    "image_uri": "123456789012.dkr.ecr.us-west-2.amazonaws.com/image:latest"
                 }
-            }
+            },
+            "variants": {"ml.m5.xlarge": {"regional_properties": {"image_uri": "$image_uri"}}},
         }
         variants = JumpStartInstanceTypeVariants(spec)
         image_uri = variants.get_image_uri("ml.m5.xlarge", "us-west-2")
@@ -180,9 +152,7 @@ class TestJumpStartInstanceTypeVariants:
         spec = {
             "variants": {
                 "ml.m5.xlarge": {
-                    "properties": {
-                        "resource_requirements": {"MinMemoryRequiredInMb": 2048}
-                    }
+                    "properties": {"resource_requirements": {"MinMemoryRequiredInMb": 2048}}
                 }
             }
         }
@@ -204,9 +174,9 @@ class TestJumpStartAdditionalDataSources:
                     "s3_data_source": {
                         "compression_type": "None",
                         "s3_data_type": "S3Prefix",
-                        "s3_uri": "s3://bucket/draft-model/"
+                        "s3_uri": "s3://bucket/draft-model/",
                     },
-                    "artifact_version": "1.0.0"
+                    "artifact_version": "1.0.0",
                 }
             ]
         }
@@ -224,9 +194,9 @@ class TestJumpStartAdditionalDataSources:
                     "s3_data_source": {
                         "compression_type": "Gzip",
                         "s3_data_type": "S3Prefix",
-                        "s3_uri": "s3://bucket/scripts/"
+                        "s3_uri": "s3://bucket/scripts/",
                     },
-                    "artifact_version": "1.0.0"
+                    "artifact_version": "1.0.0",
                 }
             ]
         }
@@ -244,9 +214,9 @@ class TestJumpStartAdditionalDataSources:
                     "s3_data_source": {
                         "compression_type": "None",
                         "s3_data_type": "S3Prefix",
-                        "s3_uri": "s3://bucket/draft-model/"
+                        "s3_uri": "s3://bucket/draft-model/",
                     },
-                    "artifact_version": "1.0.0"
+                    "artifact_version": "1.0.0",
                 }
             ]
         }
@@ -265,7 +235,7 @@ class TestS3DataSource:
         spec = {
             "compression_type": "None",
             "s3_data_type": "S3Prefix",
-            "s3_uri": "s3://bucket/path/"
+            "s3_uri": "s3://bucket/path/",
         }
         data_source = S3DataSource(spec)
 
@@ -279,7 +249,7 @@ class TestS3DataSource:
             "compression_type": "None",
             "s3_data_type": "S3Prefix",
             "s3_uri": "s3://bucket/path/",
-            "model_access_config": {"accept_eula": True}
+            "model_access_config": {"accept_eula": True},
         }
         data_source = S3DataSource(spec)
 
@@ -291,7 +261,7 @@ class TestS3DataSource:
         spec = {
             "compression_type": "None",
             "s3_data_type": "S3Prefix",
-            "s3_uri": "s3://old-bucket/path/to/file"
+            "s3_uri": "s3://old-bucket/path/to/file",
         }
         data_source = S3DataSource(spec)
         data_source.set_bucket("new-bucket")
@@ -300,11 +270,7 @@ class TestS3DataSource:
 
     def test_set_bucket_without_s3_prefix(self):
         """Test setting bucket when URI doesn't have s3:// prefix"""
-        spec = {
-            "compression_type": "None",
-            "s3_data_type": "S3Prefix",
-            "s3_uri": "path/to/file"
-        }
+        spec = {"compression_type": "None", "s3_data_type": "S3Prefix", "s3_uri": "path/to/file"}
         data_source = S3DataSource(spec)
         data_source.set_bucket("new-bucket")
 
@@ -315,7 +281,7 @@ class TestS3DataSource:
         spec = {
             "compression_type": "None",
             "s3_data_type": "S3Prefix",
-            "s3_uri": "s3://bucket/path/"
+            "s3_uri": "s3://bucket/path/",
         }
         data_source = S3DataSource(spec)
         json_obj = data_source.to_json()
@@ -336,9 +302,9 @@ class TestAdditionalModelDataSource:
             "s3_data_source": {
                 "compression_type": "None",
                 "s3_data_type": "S3Prefix",
-                "s3_uri": "s3://bucket/model/"
+                "s3_uri": "s3://bucket/model/",
             },
-            "artifact_version": "1.0.0"
+            "artifact_version": "1.0.0",
         }
         data_source = JumpStartModelDataSource(spec)
 
@@ -352,10 +318,10 @@ class TestAdditionalModelDataSource:
             "s3_data_source": {
                 "compression_type": "None",
                 "s3_data_type": "S3Prefix",
-                "s3_uri": "s3://bucket/model/"
+                "s3_uri": "s3://bucket/model/",
             },
             "hosting_eula_key": "eula.txt",
-            "artifact_version": "1.0.0"
+            "artifact_version": "1.0.0",
         }
         data_source = JumpStartModelDataSource(spec)
 
@@ -368,10 +334,10 @@ class TestAdditionalModelDataSource:
             "s3_data_source": {
                 "compression_type": "None",
                 "s3_data_type": "S3Prefix",
-                "s3_uri": "s3://bucket/model/"
+                "s3_uri": "s3://bucket/model/",
             },
             "provider": {"name": "test-provider"},
-            "artifact_version": "1.0.0"
+            "artifact_version": "1.0.0",
         }
         data_source = JumpStartModelDataSource(spec)
         json_obj = data_source.to_json(exclude_keys=True)
@@ -404,12 +370,7 @@ class TestJumpStartBenchmarkStat:
 
     def test_from_json(self):
         """Test initialization from JSON"""
-        spec = {
-            "name": "throughput",
-            "value": "100",
-            "unit": "tokens/sec",
-            "concurrency": 1
-        }
+        spec = {"name": "throughput", "value": "100", "unit": "tokens/sec", "concurrency": 1}
         stat = JumpStartBenchmarkStat(spec)
 
         assert stat.name == "throughput"
@@ -419,12 +380,7 @@ class TestJumpStartBenchmarkStat:
 
     def test_to_json(self):
         """Test conversion to JSON"""
-        spec = {
-            "name": "latency",
-            "value": "50",
-            "unit": "ms",
-            "concurrency": 10
-        }
+        spec = {"name": "latency", "value": "50", "unit": "ms", "concurrency": 10}
         stat = JumpStartBenchmarkStat(spec)
         json_obj = stat.to_json()
 
@@ -439,7 +395,7 @@ class TestJumpStartConfigRanking:
         """Test initialization from JSON"""
         spec = {
             "description": "Ranking by performance",
-            "rankings": ["config1", "config2", "config3"]
+            "rankings": ["config1", "config2", "config3"],
         }
         ranking = JumpStartConfigRanking(spec)
 
@@ -449,10 +405,7 @@ class TestJumpStartConfigRanking:
 
     def test_to_json(self):
         """Test conversion to JSON"""
-        spec = {
-            "description": "Ranking by cost",
-            "rankings": ["config-a", "config-b"]
-        }
+        spec = {"description": "Ranking by cost", "rankings": ["config-a", "config-b"]}
         ranking = JumpStartConfigRanking(spec)
         json_obj = ranking.to_json()
 
@@ -465,11 +418,7 @@ class TestJumpStartECRSpecs:
 
     def test_from_json_basic(self):
         """Test basic initialization from JSON"""
-        spec = {
-            "framework": "pytorch",
-            "framework_version": "1.13.0",
-            "py_version": "py39"
-        }
+        spec = {"framework": "pytorch", "framework_version": "1.13.0", "py_version": "py39"}
         ecr_specs = JumpStartECRSpecs(spec)
 
         assert ecr_specs.framework == "pytorch"
@@ -482,7 +431,7 @@ class TestJumpStartECRSpecs:
             "framework": "huggingface",
             "framework_version": "4.26.0",
             "py_version": "py39",
-            "huggingface_transformers_version": "4.26.0"
+            "huggingface_transformers_version": "4.26.0",
         }
         ecr_specs = JumpStartECRSpecs(spec)
 
@@ -490,11 +439,7 @@ class TestJumpStartECRSpecs:
 
     def test_to_json(self):
         """Test conversion to JSON"""
-        spec = {
-            "framework": "tensorflow",
-            "framework_version": "2.11.0",
-            "py_version": "py39"
-        }
+        spec = {"framework": "tensorflow", "framework_version": "2.11.0", "py_version": "py39"}
         ecr_specs = JumpStartECRSpecs(spec)
         json_obj = ecr_specs.to_json()
 
@@ -506,12 +451,7 @@ class TestJumpStartHyperparameter:
 
     def test_from_json_basic(self):
         """Test basic initialization from JSON"""
-        spec = {
-            "name": "learning_rate",
-            "type": "float",
-            "default": "0.001",
-            "scope": "training"
-        }
+        spec = {"name": "learning_rate", "type": "float", "default": "0.001", "scope": "training"}
         hyperparam = JumpStartHyperparameter(spec)
 
         assert hyperparam.name == "learning_rate"
@@ -526,7 +466,7 @@ class TestJumpStartHyperparameter:
             "type": "string",
             "default": "adam",
             "scope": "training",
-            "options": ["adam", "sgd", "rmsprop"]
+            "options": ["adam", "sgd", "rmsprop"],
         }
         hyperparam = JumpStartHyperparameter(spec)
 
@@ -540,7 +480,7 @@ class TestJumpStartHyperparameter:
             "default": "10",
             "scope": "training",
             "min": 1,
-            "max": 100
+            "max": 100,
         }
         hyperparam = JumpStartHyperparameter(spec)
 
@@ -549,12 +489,7 @@ class TestJumpStartHyperparameter:
 
     def test_to_json(self):
         """Test conversion to JSON"""
-        spec = {
-            "name": "batch_size",
-            "type": "int",
-            "default": "32",
-            "scope": "training"
-        }
+        spec = {"name": "batch_size", "type": "int", "default": "32", "scope": "training"}
         hyperparam = JumpStartHyperparameter(spec)
         json_obj = hyperparam.to_json()
 
@@ -570,7 +505,7 @@ class TestJumpStartEnvironmentVariable:
             "name": "MODEL_CACHE_DIR",
             "type": "string",
             "default": "/opt/ml/model",
-            "scope": "inference"
+            "scope": "inference",
         }
         env_var = JumpStartEnvironmentVariable(spec)
 
@@ -586,7 +521,7 @@ class TestJumpStartEnvironmentVariable:
             "type": "string",
             "default": "inference.py",
             "scope": "inference",
-            "required_for_model_class": True
+            "required_for_model_class": True,
         }
         env_var = JumpStartEnvironmentVariable(spec)
 
@@ -594,12 +529,7 @@ class TestJumpStartEnvironmentVariable:
 
     def test_to_json(self):
         """Test conversion to JSON"""
-        spec = {
-            "name": "MAX_WORKERS",
-            "type": "int",
-            "default": "4",
-            "scope": "inference"
-        }
+        spec = {"name": "MAX_WORKERS", "type": "int", "default": "4", "scope": "inference"}
         env_var = JumpStartEnvironmentVariable(spec)
         json_obj = env_var.to_json()
 
@@ -615,7 +545,7 @@ class TestJumpStartPredictorSpecs:
             "default_content_type": "application/json",
             "supported_content_types": ["application/json", "text/csv"],
             "default_accept_type": "application/json",
-            "supported_accept_types": ["application/json", "text/csv"]
+            "supported_accept_types": ["application/json", "text/csv"],
         }
         predictor_specs = JumpStartPredictorSpecs(spec)
 
@@ -634,7 +564,7 @@ class TestJumpStartPredictorSpecs:
             "default_content_type": "text/csv",
             "supported_content_types": ["text/csv"],
             "default_accept_type": "text/csv",
-            "supported_accept_types": ["text/csv"]
+            "supported_accept_types": ["text/csv"],
         }
         predictor_specs = JumpStartPredictorSpecs(spec)
         json_obj = predictor_specs.to_json()
@@ -650,7 +580,7 @@ class TestJumpStartSerializablePayload:
         spec = {
             "content_type": "application/json",
             "body": '{"text": "Hello world"}',
-            "accept": "application/json"
+            "accept": "application/json",
         }
         payload = JumpStartSerializablePayload(spec)
 
@@ -663,7 +593,7 @@ class TestJumpStartSerializablePayload:
         spec = {
             "content_type": "application/json",
             "body": '{"inputs": ""}',
-            "prompt_key": "inputs"
+            "prompt_key": "inputs",
         }
         payload = JumpStartSerializablePayload(spec)
 
@@ -671,10 +601,7 @@ class TestJumpStartSerializablePayload:
 
     def test_to_json(self):
         """Test conversion to JSON preserves raw payload"""
-        spec = {
-            "content_type": "application/json",
-            "body": '{"data": [1, 2, 3]}'
-        }
+        spec = {"content_type": "application/json", "body": '{"data": [1, 2, 3]}'}
         payload = JumpStartSerializablePayload(spec)
         json_obj = payload.to_json()
 

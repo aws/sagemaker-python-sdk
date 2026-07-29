@@ -6,7 +6,7 @@ from sagemaker.serve.model_server.djl_serving.utils import (
     _get_default_batch_size,
     _tokens_from_chars,
     _tokens_from_words,
-    _set_tokens_to_tokens_threshold
+    _set_tokens_to_tokens_threshold,
 )
 
 

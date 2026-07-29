@@ -48,10 +48,7 @@ def copy_directory_structure(destination_directory, relative_path):
             destination_directory
     """
     full_path = os.path.join(destination_directory, relative_path)
-    if os.path.exists(full_path):
-        return
-
-    os.makedirs(destination_directory, relative_path)
+    os.makedirs(full_path, exist_ok=True)
 
 
 def move_to_destination(source, destination, job_name, sagemaker_session, prefix=""):
@@ -137,7 +134,11 @@ def get_child_process_ids(pid):
     Returns:
         (List[int]): Child process ids
     """
-    cmd = f"pgrep -P {pid}".split()
+    if not str(pid).isdigit():
+        raise ValueError("Invalid PID")
+    
+    cmd = ["pgrep", "-P", str(pid)]
+    
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, err = process.communicate()
     if err:

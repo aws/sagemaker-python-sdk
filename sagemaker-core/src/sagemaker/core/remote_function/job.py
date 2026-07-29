@@ -25,6 +25,9 @@ from io import BytesIO
 from typing import Callable, Dict, List, Optional, Tuple, Union, TYPE_CHECKING
 from urllib.parse import urlparse
 
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization as crypto_serialization
+
 import botocore
 from botocore.exceptions import ClientError
 
@@ -75,6 +78,7 @@ from sagemaker.core.remote_function.custom_file_filter import (
     copy_workdir,
     resolve_custom_file_filter_from_config_file,
 )
+
 # Lazy import to avoid circular dependency - DelayedReturn is in MLOps which depends on Core
 # from sagemaker.mlops.workflow.function_step import DelayedReturn
 from sagemaker.core.workflow.step_outputs import get_step
@@ -175,12 +179,12 @@ then
     fi
 
     printf "INFO: Invoking remote function inside conda environment: $conda_env.\\n"
-    printf "INFO: $conda_exe run -n $conda_env python -m sagemaker.train.remote_function.invoke_function \\n"
-    $conda_exe run -n $conda_env python -m sagemaker.train.remote_function.invoke_function "$@"
+    printf "INFO: $conda_exe run -n $conda_env python -m sagemaker.core.remote_function.invoke_function \\n"
+    $conda_exe run -n $conda_env python -m sagemaker.core.remote_function.invoke_function "$@"
 else
     printf "INFO: No conda env provided. Invoking remote function\\n"
-    printf "INFO: python -m sagemaker.train.remote_function.invoke_function \\n"
-    python -m sagemaker.train.remote_function.invoke_function "$@"
+    printf "INFO: python -m sagemaker.core.remote_function.invoke_function \\n"
+    python -m sagemaker.core.remote_function.invoke_function "$@"
 fi
 """
 
@@ -234,14 +238,14 @@ then
         -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
         -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
 
-        python -m mpi4py -m sagemaker.train.remote_function.invoke_function \\n"
+        python -m mpi4py -m sagemaker.core.remote_function.invoke_function \\n"
         $conda_exe run -n $conda_env mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
         --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
         -mca plm_rsh_no_tree_spawn 1 -mca pml ob1 -mca btl ^openib -mca orte_abort_on_non_zero_status 1 \
         -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
         -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
         $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
-        python -m mpi4py -m sagemaker.train.remote_function.invoke_function "$@"
+        python -m mpi4py -m sagemaker.core.remote_function.invoke_function "$@"
 
         python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME} --job_ended 1
     else
@@ -259,7 +263,7 @@ else
         -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
         -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
         $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
-        python -m mpi4py -m sagemaker.train.remote_function.invoke_function \\n"
+        python -m mpi4py -m sagemaker.core.remote_function.invoke_function \\n"
 
         mpirun --host $SM_HOSTS_LIST -np $SM_NPROC_PER_NODE \
         --allow-run-as-root --display-map --tag-output -mca btl_tcp_if_include $SM_NETWORK_INTERFACE_NAME \
@@ -267,7 +271,7 @@ else
         -mca btl_vader_single_copy_mechanism none -mca plm_rsh_num_concurrent $SM_HOST_COUNT \
         -x NCCL_SOCKET_IFNAME=$SM_NETWORK_INTERFACE_NAME -x LD_LIBRARY_PATH -x PATH \
         $SM_FI_PROVIDER $SM_NCCL_PROTO $SM_FI_EFA_USE_DEVICE_RDMA \
-        python -m mpi4py -m sagemaker.train.remote_function.invoke_function "$@"
+        python -m mpi4py -m sagemaker.core.remote_function.invoke_function "$@"
 
         python /opt/ml/input/data/{RUNTIME_SCRIPTS_CHANNEL_NAME}/{MPI_UTILS_SCRIPT_NAME} --job_ended 1
     else
@@ -320,18 +324,18 @@ then
     printf "INFO: Invoking remote function with torchrun inside conda environment: $conda_env.\\n"
     printf "INFO: $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
     --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
-    -m sagemaker.train.remote_function.invoke_function \\n"
+    -m sagemaker.core.remote_function.invoke_function \\n"
 
     $conda_exe run -n $conda_env torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE \
     --master_addr $SM_MASTER_ADDR --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK \
-    -m sagemaker.train.remote_function.invoke_function "$@"
+    -m sagemaker.core.remote_function.invoke_function "$@"
 else
     printf "INFO: No conda env provided. Invoking remote function with torchrun\\n"
     printf "INFO: torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
-    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.train.remote_function.invoke_function \\n"
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function \\n"
 
     torchrun --nnodes $SM_HOST_COUNT --nproc_per_node $SM_NPROC_PER_NODE --master_addr $SM_MASTER_ADDR \
-    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.train.remote_function.invoke_function "$@"
+    --master_port $SM_MASTER_PORT --node_rank $SM_CURRENT_HOST_RANK -m sagemaker.core.remote_function.invoke_function "$@"
 fi
 """
 
@@ -666,6 +670,31 @@ class _JobSettings:
             sagemaker_session=self.sagemaker_session,
         )
 
+        # When using Spark, ensure sagemaker-feature-store-pyspark is installed
+        # and its version-matched JAR is on Spark's classpath before spark-submit
+        if spark_config:
+            install_cmd = (
+                "pip install --root-user-action=ignore"
+                " 'sagemaker-feature-store-pyspark>=2,<3'"
+            )
+            copy_jar_cmd = (
+                "python3 -c \""
+                "import feature_store_pyspark, shutil, os, glob, re; "
+                "release_file = os.path.join(os.environ.get('SPARK_HOME', '/usr/lib/spark'), 'RELEASE'); "
+                "spark_ver = '3.5'; "
+                "rf = open(release_file).read() if os.path.exists(release_file) else ''; "
+                "m = re.search(r'Spark (\\d+\\.\\d+)', rf); "
+                "spark_ver = m.group(1) if m else spark_ver; "
+                "jars_dir = os.path.join(os.path.dirname(feature_store_pyspark.__file__), 'jars'); "
+                "[shutil.copy(j, '/usr/lib/spark/jars/') "
+                "for j in glob.glob(os.path.join(jars_dir, '*' + spark_ver + '*.jar'))]\""
+            )
+            if self.pre_execution_commands is None:
+                self.pre_execution_commands = [install_cmd, copy_jar_cmd]
+            elif install_cmd not in self.pre_execution_commands:
+                self.pre_execution_commands.append(install_cmd)
+                self.pre_execution_commands.append(copy_jar_cmd)
+
         self.pre_execution_script = resolve_value_from_config(
             direct_input=pre_execution_script,
             config_path=REMOTE_FUNCTION_PRE_EXECUTION_SCRIPT,
@@ -724,7 +753,7 @@ class _JobSettings:
             sagemaker_session=self.sagemaker_session,
         )
         if _role:
-            self.role = expand_role(self.sagemaker_session.boto_session, _role)
+            self.role = expand_role(self.sagemaker_session, _role)
         else:
             self.role = get_execution_role(self.sagemaker_session)
 
@@ -764,7 +793,9 @@ class _JobSettings:
         self.vpc_config = vpc_utils.sanitize(vpc_config)
 
         tags = format_tags(tags)
-        self.tags = _append_sagemaker_config_tags(self.sagemaker_session, tags, REMOTE_FUNCTION_TAGS)
+        self.tags = _append_sagemaker_config_tags(
+            self.sagemaker_session, tags, REMOTE_FUNCTION_TAGS
+        )
 
         self.disable_output_compression = disable_output_compression
         self.use_torchrun = use_torchrun
@@ -816,15 +847,27 @@ class _JobSettings:
 
         py_version = str(sys.version_info[0]) + str(sys.version_info[1])
 
-        if py_version not in ["39"]:
+        if py_version not in ["39", "312"]:
             raise ValueError(
-                "The SageMaker Spark image for remote job only supports Python version 3.9. "
+                "The SageMaker Spark image for remote job only supports Python versions 3.9 and 3.12."
             )
+
+        # Detect Spark version from installed pyspark, fall back to default
+        spark_version = DEFAULT_SPARK_VERSION
+        try:
+            import pyspark
+            spark_version = ".".join(pyspark.__version__.split(".")[:2])
+        except ImportError:
+            pass
+
+        # Spark 3.3 and below do not support py312; use 3.5 which supports both py39 and py312
+        if py_version == "312" and spark_version in ("2.4", "3.0", "3.1", "3.2", "3.3"):
+            spark_version = "3.5"
 
         image_uri = image_uris.retrieve(
             framework=SPARK_NAME,
             region=region,
-            version=DEFAULT_SPARK_VERSION,
+            version=spark_version,
             instance_type=None,
             py_version=f"py{py_version}",
             container_version=DEFAULT_SPARK_CONTAINER_VERSION,
@@ -836,19 +879,19 @@ class _JobSettings:
 class _Job:
     """Helper class that interacts with the SageMaker training service."""
 
-    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, hmac_key: str):
+    def __init__(self, job_name: str, s3_uri: str, sagemaker_session: Session, verification_key: str):
         """Initialize a _Job object.
 
         Args:
             job_name (str): The training job name.
             s3_uri (str): The training job output S3 uri.
             sagemaker_session (Session): SageMaker boto session.
-            hmac_key (str): Remote function secret key.
+            verification_key (str): Remote function secret key.
         """
         self.job_name = job_name
         self.s3_uri = s3_uri
         self.sagemaker_session = sagemaker_session
-        self.hmac_key = hmac_key
+        self.verification_key = verification_key
         self._last_describe_response = None
 
     @staticmethod
@@ -864,9 +907,9 @@ class _Job:
         """
         job_name = describe_training_job_response["TrainingJobName"]
         s3_uri = describe_training_job_response["OutputDataConfig"]["S3OutputPath"]
-        hmac_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
+        verification_key = describe_training_job_response["Environment"]["REMOTE_FUNCTION_SECRET_KEY"]
 
-        job = _Job(job_name, s3_uri, sagemaker_session, hmac_key)
+        job = _Job(job_name, s3_uri, sagemaker_session, verification_key)
         job._last_describe_response = describe_training_job_response
         return job
 
@@ -922,25 +965,44 @@ class _Job:
         from sagemaker.core.workflow.properties import Properties
         from sagemaker.core.workflow.parameters import Parameter
         from sagemaker.core.workflow.functions import Join
-        from sagemaker.core.workflow.execution_variables import ExecutionVariables, ExecutionVariable
+        from sagemaker.core.workflow.execution_variables import (
+            ExecutionVariables,
+            ExecutionVariable,
+        )
         from sagemaker.core.workflow.utilities import load_step_compilation_context
 
         step_compilation_context = load_step_compilation_context()
 
         jobs_container_entrypoint = JOBS_CONTAINER_ENTRYPOINT[:]
 
-        # generate hmac key for integrity check
+        # generate asymmetric key pair for integrity check
         if step_compilation_context is None:
-            hmac_key = secrets.token_hex(32)
+            private_key = ec.generate_private_key(ec.SECP256R1())
+            public_key_pem = (
+                private_key.public_key()
+                .public_bytes(
+                    crypto_serialization.Encoding.PEM,
+                    crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
+                )
+                .decode("utf-8")
+            )
         else:
-            hmac_key = step_compilation_context.function_step_secret_token
+            private_key = step_compilation_context.function_step_secret_token
+            public_key_pem = (
+                private_key.public_key()
+                .public_bytes(
+                    crypto_serialization.Encoding.PEM,
+                    crypto_serialization.PublicFormat.SubjectPublicKeyInfo,
+                )
+                .decode("utf-8")
+            )
 
         # serialize function and arguments
         if step_compilation_context is None:
             stored_function = StoredFunction(
                 sagemaker_session=job_settings.sagemaker_session,
                 s3_base_uri=s3_base_uri,
-                hmac_key=hmac_key,
+                signing_key=private_key,
                 s3_kms_key=job_settings.s3_kms_key,
             )
             stored_function.save(func, *func_args, **func_kwargs)
@@ -948,7 +1010,7 @@ class _Job:
             stored_function = StoredFunction(
                 sagemaker_session=job_settings.sagemaker_session,
                 s3_base_uri=s3_base_uri,
-                hmac_key=hmac_key,
+                signing_key=private_key,
                 s3_kms_key=job_settings.s3_kms_key,
                 context=Context(
                     step_name=step_compilation_context.step_name,
@@ -1057,6 +1119,7 @@ class _Job:
                 # Lazy import to avoid circular dependency
                 try:
                     from sagemaker.mlops.workflow.function_step import DelayedReturn
+
                     if isinstance(arg, DelayedReturn):
                         # The uri is a Properties object
                         uri = get_step(arg)._properties.OutputDataConfig.S3OutputPath
@@ -1107,7 +1170,7 @@ class _Job:
         request_dict["EnableManagedSpotTraining"] = job_settings.use_spot_instances
 
         request_dict["Environment"] = job_settings.environment_variables
-        request_dict["Environment"].update({"REMOTE_FUNCTION_SECRET_KEY": hmac_key})
+        request_dict["Environment"].update({"REMOTE_FUNCTION_SECRET_KEY": public_key_pem})
 
         extended_request = _extend_spark_config_to_request(request_dict, job_settings, s3_base_uri)
         extended_request = _extend_mpirun_to_request(extended_request, job_settings)
@@ -1805,11 +1868,13 @@ class _RunInfo:
     experiment_name: str
     run_name: str
 
+
 def _get_initial_job_state(description, status_key, wait):
     """Placeholder docstring"""
     status = description[status_key]
     job_already_completed = status in ("Completed", "Failed", "Stopped")
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
+
 
 def _logs_for_job(  # noqa: C901 - suppress complexity warning for this method
     sagemaker_session, job_name, wait=False, poll=10, log_type="All", timeout=None
@@ -2014,6 +2079,7 @@ def _check_job_status(job, desc, status_key_name):
             actual_status=status,
         )
 
+
 def _flush_log_streams(
     stream_names, instance_count, client, log_group, job_name, positions, dot, color_wrap
 ):
@@ -2074,6 +2140,7 @@ def _flush_log_streams(
         print(".", end="")
         sys.stdout.flush()
 
+
 def _rule_statuses_changed(current_statuses, last_statuses):
     """Checks the rule evaluation statuses for SageMaker Debugger and Profiler rules."""
     if not last_statuses:
@@ -2087,11 +2154,13 @@ def _rule_statuses_changed(current_statuses, last_statuses):
 
     return False
 
+
 def _get_initial_job_state(description, status_key, wait):
     """Placeholder docstring"""
     status = description[status_key]
     job_already_completed = status in ("Completed", "Failed", "Stopped")
     return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
+
 
 def _logs_init(boto_session, description, job):
     """Placeholder docstring"""
@@ -2121,6 +2190,7 @@ def _logs_init(boto_session, description, job):
     dot = False
 
     from sagemaker.core.logs import ColorWrap
+
     color_wrap = ColorWrap()
 
     return instance_count, stream_names, positions, client, log_group, dot, color_wrap

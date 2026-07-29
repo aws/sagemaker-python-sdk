@@ -39,3 +39,45 @@ DEFAULT_CONTAINER_ARGUMENTS = [
     f"chmod +x {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT} "
     + f"&& {SM_DRIVERS_CONTAINER_PATH}/{TRAIN_SCRIPT}",
 ]
+
+def get_sagemaker_hub_name() -> str:
+    """Return the SageMaker Hub name, honoring SAGEMAKER_HUB_NAME env var override.
+
+    Resolved at call time so tests and dev workflows can override the hub
+    without re-importing this module. Defaults to ``"SageMakerPublicHub"``.
+    """
+    return os.environ.get("SAGEMAKER_HUB_NAME", "SageMakerPublicHub")
+
+# Allowed reward model IDs for RLAIF trainer with region restrictions
+_ALLOWED_REWARD_MODEL_IDS = {
+    "openai.gpt-oss-120b-1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "openai.gpt-oss-20b-1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "qwen.qwen3-32b-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "qwen.qwen3-coder-30b-a3b-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "qwen.qwen3-coder-480b-a35b-v1:0": ["us-west-2", "ap-northeast-1"],
+    "qwen.qwen3-235b-a22b-2507-v1:0": ["us-west-2", "ap-northeast-1"]
+}
+
+# Allowed evaluator models for LLM as Judge evaluator with region restrictions.
+#
+# Source of truth: the Bedrock Console judge-model regional
+# allowlist.cross-checked against
+# https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation-judge.html#evaluation-judge-supported
+_ALLOWED_EVALUATOR_MODELS = {
+    "mistral.mistral-large-2402-v1:0": ["us-west-2", "us-east-1", "eu-west-1"],
+    "meta.llama3-1-70b-instruct-v1:0": ["us-west-2", "us-east-1"],
+    "anthropic.claude-3-haiku-20240307-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "anthropic.claude-haiku-4-5-20251001-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "anthropic.claude-sonnet-4-5-20250929-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "anthropic.claude-opus-4-5-20251101-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "amazon.nova-pro-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "amazon.nova-2-lite-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "amazon.nova-micro-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
+    "amazon.nova-premier-v1:0": ["us-west-2", "us-east-1"],
+    "anthropic.claude-3-5-sonnet-20240620-v1:0": ["ap-northeast-1"],
+    "anthropic.claude-3-5-sonnet-20241022-v2:0": ["ap-northeast-1"],
+}
+
+SM_RECIPE = "recipe"
+SM_RECIPE_YAML = "recipe.yaml"
+SM_RECIPE_CONTAINER_PATH = f"/opt/ml/input/data/recipe/{SM_RECIPE_YAML}"

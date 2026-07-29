@@ -11,7 +11,7 @@ from sagemaker.core.config.config_schema import (
 from sagemaker.core.image_retriever.image_retriever import ImageRetriever
 from sagemaker.core.config.config_manager import SageMakerConfig
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
+
 @pytest.mark.integ
 def test_retrieve_image_uri():
     image_uri = ImageRetriever.retrieve("clarify", "us-west-2")
@@ -27,7 +27,7 @@ def test_retrieve_image_uri():
     )
     assert (
         image_uri
-        == "053634841547.dkr.ecr.us-west-1.amazonaws.com/sagemaker-distribution-prod:3.0.0-gpu"
+        == "053634841547.dkr.ecr.us-west-1.amazonaws.com/sagemaker-distribution-prod:3.2.0-gpu"
     )
 
     image_uri = ImageRetriever.retrieve(
@@ -54,7 +54,7 @@ def test_retrieve_image_uri():
         == "763104351884.dkr.ecr.us-west-2.amazonaws.com/tensorflow-training:2.3-gpu-py37-cu110-ubuntu18.04-v3"
     )
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
+
 @pytest.mark.integ
 def test_retrieve_pytorch_uri():
     image_uri = ImageRetriever.retrieve_pytorch_uri(
@@ -69,7 +69,7 @@ def test_retrieve_pytorch_uri():
         == "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.6-gpu-py3-cu110-ubuntu18.04-v3"
     )
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
+
 @pytest.mark.integ
 def test_retrieve_hugging_face_uri():
     image_uri = ImageRetriever.retrieve_hugging_face_uri(
@@ -81,20 +81,23 @@ def test_retrieve_hugging_face_uri():
         base_framework_version="pytorch2.0.0",
         container_version="cu110-ubuntu20.04",
     )
-    assert image_uri == "763104351884.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training"
-    ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+    assert (
+        image_uri
+        == "763104351884.dkr.ecr.us-east-1.amazonaws.com/huggingface-pytorch-training"
+        ":2.0.0-transformers4.28.1-gpu-py310-cu118-ubuntu20.04"
+    )
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
+
 @pytest.mark.integ
 def test_retrieve_base_python_image_uri():
-    image_uri = ImageRetriever.retrieve_base_python_image_uri()
+    image_uri = ImageRetriever.retrieve_base_python_image_uri(region="us-west-2")
     assert image_uri == "236514542706.dkr.ecr.us-west-2.amazonaws.com/sagemaker-base-python-310:1.0"
 
-@pytest.mark.skip("Disabling this for now, Need to be fixed")
-@pytest.mark.integ
+
+# @pytest.mark.skip(reason="Test is failing due to locals()[name] = default_value in Image Retriever")
 @patch.object(SageMakerConfig, "resolve_value_from_config")
 def test_retrieve_image_uri_intelligent_default(mock_load_config):
-    def custom_return(config_path):
+    def custom_return(config_path=None, **kwargs):
         if config_path == _simple_path(
             SAGEMAKER, PYTHON_SDK, MODULES, IMAGE_RETRIEVER, "ImageScope"
         ):
@@ -113,5 +116,5 @@ def test_retrieve_image_uri_intelligent_default(mock_load_config):
     )
     assert (
         image_uri
-        == "053634841547.dkr.ecr.us-west-1.amazonaws.com/sagemaker-distribution-prod:3.0.0-gpu"
+        == "053634841547.dkr.ecr.us-west-1.amazonaws.com/sagemaker-distribution-prod:3.2.0-gpu"
     )

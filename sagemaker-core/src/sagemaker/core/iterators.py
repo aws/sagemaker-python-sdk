@@ -17,6 +17,7 @@ from abc import ABC, abstractmethod
 import io
 
 from sagemaker.core.exceptions import ModelStreamError, InternalStreamFailure
+from sagemaker.core.common_utils import _MAX_BUFFER_SIZE
 
 
 def handle_stream_errors(chunk):
@@ -182,5 +183,15 @@ class LineIterator(BaseIterator):
                 # print and move on to next response byte
                 print("Unknown event type:" + chunk)
                 continue
+            
+            # Check buffer size before writing to prevent unbounded memory consumption
+            chunk_size = len(chunk["PayloadPart"]["Bytes"])
+            current_size = self.buffer.getbuffer().nbytes
+            if current_size + chunk_size > _MAX_BUFFER_SIZE:
+                raise RuntimeError(
+                    f"Line buffer exceeded maximum size of {_MAX_BUFFER_SIZE} bytes. "
+                    f"No newline found in stream."
+                )
+            
             self.buffer.seek(0, io.SEEK_END)
             self.buffer.write(chunk["PayloadPart"]["Bytes"])

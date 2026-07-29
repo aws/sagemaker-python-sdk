@@ -164,7 +164,6 @@ class _DelayedReturnResolver:
     def __init__(
         self,
         delayed_returns: List[_DelayedReturn],
-        hmac_key: str,
         properties_resolver: _PropertiesResolver,
         parameter_resolver: _ParameterResolver,
         execution_variable_resolver: _ExecutionVariableResolver,
@@ -175,7 +174,6 @@ class _DelayedReturnResolver:
 
         Args:
             delayed_returns: list of delayed returns to resolve.
-            hmac_key: key used to encrypt serialized and deserialized function and arguments.
             properties_resolver: resolver used to resolve step properties.
             parameter_resolver: resolver used to pipeline parameters.
             execution_variable_resolver: resolver used to resolve execution variables.
@@ -197,7 +195,6 @@ class _DelayedReturnResolver:
             return uri, deserialize_obj_from_s3(
                 sagemaker_session=settings["sagemaker_session"],
                 s3_uri=uri,
-                hmac_key=hmac_key,
             )
 
         with ThreadPoolExecutor() as executor:
@@ -247,7 +244,6 @@ def resolve_pipeline_variables(
     context: Context,
     func_args: Tuple,
     func_kwargs: Dict,
-    hmac_key: str,
     s3_base_uri: str,
     **settings,
 ):
@@ -257,7 +253,6 @@ def resolve_pipeline_variables(
         context: context for the execution.
         func_args: function args.
         func_kwargs: function kwargs.
-        hmac_key: key used to encrypt serialized and deserialized function and arguments.
         s3_base_uri: the s3 base uri of the function step that the serialized artifacts
             will be uploaded to. The s3_base_uri = s3_root_uri + pipeline_name.
         **settings: settings to pass to the deserialization function.
@@ -280,7 +275,6 @@ def resolve_pipeline_variables(
     properties_resolver = _PropertiesResolver(context)
     delayed_return_resolver = _DelayedReturnResolver(
         delayed_returns=delayed_returns,
-        hmac_key=hmac_key,
         properties_resolver=properties_resolver,
         parameter_resolver=parameter_resolver,
         execution_variable_resolver=execution_variable_resolver,

@@ -22,13 +22,9 @@ class TestResourceRequirements:
 
     def test_init_with_requests_only(self):
         """Test initialization with requests only."""
-        requests = {
-            "num_cpus": 2,
-            "memory": 1024,
-            "copies": 3
-        }
+        requests = {"num_cpus": 2, "memory": 1024, "copies": 3}
         rr = ResourceRequirements(requests=requests)
-        
+
         assert rr.requests == requests
         assert rr.limits is None
         assert rr.num_cpus == 2
@@ -40,7 +36,7 @@ class TestResourceRequirements:
         """Test initialization with limits only."""
         limits = {"memory": 2048}
         rr = ResourceRequirements(limits=limits)
-        
+
         assert rr.requests is None
         assert rr.limits == limits
         assert rr.max_memory == 2048
@@ -48,15 +44,10 @@ class TestResourceRequirements:
 
     def test_init_with_requests_and_limits(self):
         """Test initialization with both requests and limits."""
-        requests = {
-            "num_cpus": 1,
-            "memory": 1024,
-            "num_accelerators": 1,
-            "copies": 5
-        }
+        requests = {"num_cpus": 1, "memory": 1024, "num_accelerators": 1, "copies": 5}
         limits = {"memory": 2048}
         rr = ResourceRequirements(requests=requests, limits=limits)
-        
+
         assert rr.num_cpus == 1
         assert rr.min_memory == 1024
         assert rr.max_memory == 2048
@@ -66,7 +57,7 @@ class TestResourceRequirements:
     def test_init_empty(self):
         """Test initialization with no arguments."""
         rr = ResourceRequirements()
-        
+
         assert rr.requests is None
         assert rr.limits is None
         assert rr.num_cpus is None
@@ -78,7 +69,7 @@ class TestResourceRequirements:
         """Test string representation."""
         requests = {"num_cpus": 2, "memory": 1024}
         rr = ResourceRequirements(requests=requests)
-        
+
         result = str(rr)
         assert isinstance(result, str)
         assert len(result) > 0
@@ -87,40 +78,36 @@ class TestResourceRequirements:
         """Test equality comparison for equal objects."""
         requests = {"num_cpus": 2, "memory": 1024}
         limits = {"memory": 2048}
-        
+
         rr1 = ResourceRequirements(requests=requests, limits=limits)
         rr2 = ResourceRequirements(requests=requests, limits=limits)
-        
+
         assert rr1 == rr2
 
     def test_eq_method_not_equal(self):
         """Test equality comparison for non-equal objects."""
         rr1 = ResourceRequirements(requests={"num_cpus": 2})
         rr2 = ResourceRequirements(requests={"num_cpus": 4})
-        
+
         assert not (rr1 == rr2)
 
     def test_get_compute_resource_requirements_minimal(self):
         """Test get_compute_resource_requirements with minimal config."""
         requests = {"memory": 1024}
         rr = ResourceRequirements(requests=requests)
-        
+
         result = rr.get_compute_resource_requirements()
-        
+
         assert result == {"MinMemoryRequiredInMb": 1024}
 
     def test_get_compute_resource_requirements_full(self):
         """Test get_compute_resource_requirements with all fields."""
-        requests = {
-            "num_cpus": 2,
-            "memory": 1024,
-            "num_accelerators": 1
-        }
+        requests = {"num_cpus": 2, "memory": 1024, "num_accelerators": 1}
         limits = {"memory": 2048}
         rr = ResourceRequirements(requests=requests, limits=limits)
-        
+
         result = rr.get_compute_resource_requirements()
-        
+
         assert result["MinMemoryRequiredInMb"] == 1024
         assert result["MaxMemoryRequiredInMb"] == 2048
         assert result["NumberOfCpuCoresRequired"] == 2
@@ -129,9 +116,9 @@ class TestResourceRequirements:
     def test_get_compute_resource_requirements_no_memory(self):
         """Test get_compute_resource_requirements with no memory specified."""
         rr = ResourceRequirements()
-        
+
         result = rr.get_compute_resource_requirements()
-        
+
         assert result == {"MinMemoryRequiredInMb": None}
 
     def test_copy_count_default(self):

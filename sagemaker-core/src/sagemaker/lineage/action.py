@@ -22,7 +22,7 @@ warnings.warn(
     "The 'sagemaker.lineage.action' module is deprecated. "
     "Please use 'sagemaker.core.lineage.action' instead.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 from sagemaker.core.lineage.action import *  # noqa: F401, F403

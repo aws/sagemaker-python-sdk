@@ -28,14 +28,16 @@ class TestShapesCodeGenInit:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_init_basic(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_init_basic(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test basic initialization."""
         mock_shapes.return_value = {"Shape1": {"type": "structure", "members": {}}}
         mock_ops.return_value = {"Operation1": {}}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -55,22 +57,19 @@ class TestBuildGraph:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_build_graph_simple(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_build_graph_simple(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test building graph with simple shapes."""
         mock_shapes.return_value = {
-            "Shape1": {
-                "type": "structure",
-                "members": {
-                    "Field1": {"shape": "String"}
-                }
-            },
-            "String": {"type": "string"}
+            "Shape1": {"type": "structure", "members": {"Field1": {"shape": "String"}}},
+            "String": {"type": "string"},
         }
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -86,26 +85,20 @@ class TestBuildGraph:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_build_graph_with_list(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_build_graph_with_list(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test building graph with list type."""
         mock_shapes.return_value = {
-            "Shape1": {
-                "type": "structure",
-                "members": {
-                    "Items": {"shape": "ItemList"}
-                }
-            },
-            "ItemList": {
-                "type": "list",
-                "member": {"shape": "String"}
-            },
-            "String": {"type": "string"}
+            "Shape1": {"type": "structure", "members": {"Items": {"shape": "ItemList"}}},
+            "ItemList": {"type": "list", "member": {"shape": "String"}},
+            "String": {"type": "string"},
         }
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -121,27 +114,20 @@ class TestBuildGraph:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_build_graph_with_map(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_build_graph_with_map(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test building graph with map type."""
         mock_shapes.return_value = {
-            "Shape1": {
-                "type": "structure",
-                "members": {
-                    "Tags": {"shape": "TagMap"}
-                }
-            },
-            "TagMap": {
-                "type": "map",
-                "key": {"shape": "String"},
-                "value": {"shape": "String"}
-            },
-            "String": {"type": "string"}
+            "Shape1": {"type": "structure", "members": {"Tags": {"shape": "TagMap"}}},
+            "TagMap": {"type": "map", "key": {"shape": "String"}, "value": {"shape": "String"}},
+            "String": {"type": "string"},
         }
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -160,22 +146,19 @@ class TestTopologicalSort:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_topological_sort_basic(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_topological_sort_basic(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test topological sort with simple dependency."""
         mock_shapes.return_value = {
-            "Shape1": {
-                "type": "structure",
-                "members": {
-                    "Field1": {"shape": "String"}
-                }
-            },
-            "String": {"type": "string"}
+            "Shape1": {"type": "structure", "members": {"Field1": {"shape": "String"}}},
+            "String": {"type": "string"},
         }
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -195,24 +178,24 @@ class TestGenerateDataClassForShape:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_generate_data_class_basic(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_generate_data_class_basic(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test generating data class for basic shape."""
         mock_shapes.return_value = {
             "TestShape": {
                 "type": "structure",
-                "members": {
-                    "Field1": {"shape": "String"}
-                },
-                "documentation": "Test shape documentation"
+                "members": {"Field1": {"shape": "String"}},
+                "documentation": "Test shape documentation",
             },
-            "String": {"type": "string"}
+            "String": {"type": "string"},
         }
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_extractor_instance.generate_data_shape_string_body.return_value = "field1: str"
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -232,26 +215,23 @@ class TestGenerateDocString:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_generate_doc_string_basic(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_generate_doc_string_basic(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test generating docstring for shape."""
         mock_shapes.return_value = {
             "TestShape": {
                 "type": "structure",
-                "members": {
-                    "Field1": {
-                        "shape": "String",
-                        "documentation": "Field documentation"
-                    }
-                },
-                "documentation": "Shape documentation"
+                "members": {"Field1": {"shape": "String", "documentation": "Field documentation"}},
+                "documentation": "Shape documentation",
             },
-            "String": {"type": "string"}
+            "String": {"type": "string"},
         }
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -272,14 +252,16 @@ class TestGenerateImports:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_generate_imports(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_generate_imports(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test generating imports."""
         mock_shapes.return_value = {}
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -300,14 +282,16 @@ class TestGenerateLicense:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_generate_license(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_generate_license(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test generating license."""
         mock_shapes.return_value = {}
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -327,14 +311,16 @@ class TestGenerateBaseClass:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_generate_base_class(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_generate_base_class(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test generating base class."""
         mock_shapes.return_value = {}
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -354,19 +340,21 @@ class TestFilterInputOutputShapes:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_filter_input_output_shapes_input_shape(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_filter_input_output_shapes_input_shape(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test filtering input shapes."""
         mock_shapes.return_value = {}
         mock_ops.return_value = {
             "CreateResource": {
                 "input": {"shape": "CreateResourceRequest"},
-                "output": {"shape": "CreateResourceResponse"}
+                "output": {"shape": "CreateResourceResponse"},
             }
         }
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -381,18 +369,16 @@ class TestFilterInputOutputShapes:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_filter_input_output_shapes_other_shape(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_filter_input_output_shapes_other_shape(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test filtering other shapes."""
         mock_shapes.return_value = {}
-        mock_ops.return_value = {
-            "CreateResource": {
-                "input": {"shape": "CreateResourceRequest"}
-            }
-        }
+        mock_ops.return_value = {"CreateResource": {"input": {"shape": "CreateResourceRequest"}}}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
@@ -411,34 +397,32 @@ class TestGenerateShapes:
     @patch("sagemaker.core.tools.shapes_codegen.load_combined_operations_data")
     @patch("sagemaker.core.tools.shapes_codegen.ShapesExtractor")
     @patch("sagemaker.core.tools.shapes_codegen.ResourcesExtractor")
-    def test_generate_shapes_creates_file(self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes):
+    def test_generate_shapes_creates_file(
+        self, mock_resources_extractor, mock_shapes_extractor, mock_ops, mock_shapes
+    ):
         """Test that generate_shapes creates output file."""
         mock_shapes.return_value = {
-            "TestShape": {
-                "type": "structure",
-                "members": {},
-                "documentation": "Test"
-            }
+            "TestShape": {"type": "structure", "members": {}, "documentation": "Test"}
         }
         mock_ops.return_value = {}
         mock_extractor_instance = Mock()
         mock_extractor_instance.get_shapes_dag.return_value = {}
         mock_extractor_instance.generate_data_shape_string_body.return_value = "pass"
         mock_shapes_extractor.return_value = mock_extractor_instance
-        
+
         mock_resources_instance = Mock()
         mock_resources_instance.get_resource_plan.return_value = Mock()
         mock_resources_instance.get_resource_methods.return_value = {}
         mock_resources_extractor.return_value = mock_resources_instance
 
         codegen = ShapesCodeGen()
-        
+
         with tempfile.TemporaryDirectory() as tmpdir:
             output_file = os.path.join(tmpdir, "test_shapes.py")
             codegen.generate_shapes(output_folder=tmpdir, file_name="test_shapes.py")
-            
+
             assert os.path.exists(output_file)
-            
+
             with open(output_file, "r") as f:
                 content = f.read()
                 assert "Copyright" in content

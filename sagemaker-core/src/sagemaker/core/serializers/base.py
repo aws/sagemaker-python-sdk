@@ -443,9 +443,16 @@ class TorchTensorSerializer(SimpleBaseSerializer):
 
     def __init__(self, content_type="tensor/pt"):
         super(TorchTensorSerializer, self).__init__(content_type=content_type)
-        from torch import Tensor
+        try:
+            from torch import Tensor
 
-        self.torch_tensor = Tensor
+            self.torch_tensor = Tensor
+        except ImportError as e:
+            raise ImportError(
+                "Unable to import torch. Please install torch to use TorchTensorSerializer: "
+                "pip install 'sagemaker-core[torch]'"
+            ) from e
+
         self.numpy_serializer = NumpySerializer()
 
     def serialize(self, data):
@@ -470,7 +477,7 @@ class TorchTensorSerializer(SimpleBaseSerializer):
         raise ValueError("Object of type %s is not a torch.Tensor" % type(data))
 
 
-#TODO fix the unit test for this serializer
+# TODO fix the unit test for this serializer
 class RecordSerializer(SimpleBaseSerializer):
     """Serialize a NumPy array for an inference request."""
 
@@ -503,6 +510,7 @@ class RecordSerializer(SimpleBaseSerializer):
         buffer = io.BytesIO()
         # Lazy import to avoid circular dependency
         from sagemaker.core.serializers.utils import write_numpy_to_dense_tensor
+
         write_numpy_to_dense_tensor(buffer, data)
         buffer.seek(0)
 

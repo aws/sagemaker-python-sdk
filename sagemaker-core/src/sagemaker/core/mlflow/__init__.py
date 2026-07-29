@@ -25,10 +25,10 @@ __all__ = ["forward_sagemaker_metrics"]
 
 def forward_sagemaker_metrics(*args, **kwargs):
     """Stub for MLflow metrics forwarding.
-    
+
     This function is not yet implemented. MLflow integration is an optional
     feature that will be added in a future release.
-    
+
     Raises:
         NotImplementedError: Always raised as this is a stub.
     """

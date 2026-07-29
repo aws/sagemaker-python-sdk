@@ -414,20 +414,22 @@ class TestModelBuilderServersAllModelServers(unittest.TestCase):
         """Test that all supported model servers have corresponding build methods."""
         from sagemaker.serve.model_builder_servers import _ModelBuilderServers
         
-        # Map of model servers to their expected build methods
-        server_method_map = {
-            ModelServer.TORCHSERVE: '_build_for_torchserve',
-            ModelServer.TRITON: '_build_for_triton',
-            ModelServer.TENSORFLOW_SERVING: '_build_for_tensorflow_serving',
-            ModelServer.DJL_SERVING: '_build_for_djl',
-            ModelServer.TEI: '_build_for_tei',
-            ModelServer.TGI: '_build_for_tgi',
-            ModelServer.MMS: '_build_for_transformers',
-            ModelServer.SMD: '_build_for_smd',
-        }
+        # Map of model servers to their expected build methods using string values
+        # to avoid enum serialization issues with pytest-xdist
+        server_method_map = [
+            (ModelServer.TORCHSERVE, '_build_for_torchserve'),
+            (ModelServer.TRITON, '_build_for_triton'),
+            (ModelServer.TENSORFLOW_SERVING, '_build_for_tensorflow_serving'),
+            (ModelServer.DJL_SERVING, '_build_for_djl'),
+            (ModelServer.TEI, '_build_for_tei'),
+            (ModelServer.TGI, '_build_for_tgi'),
+            (ModelServer.MMS, '_build_for_transformers'),
+            (ModelServer.SMD, '_build_for_smd'),
+        ]
         
-        for model_server, method_name in server_method_map.items():
-            with self.subTest(model_server=model_server):
+        for model_server, method_name in server_method_map:
+            # Use enum.name instead of enum itself for subTest to avoid serialization
+            with self.subTest(model_server=model_server.name):
                 self.mock_builder.model_server = model_server
                 
                 # Mock the specific build method

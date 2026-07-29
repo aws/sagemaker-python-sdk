@@ -129,6 +129,7 @@ class InferenceAmiVersionEnum(StrEnum):
     """InferenceAmiVersionEnum"""
 
     AL2_AMI_SAGEMAKER_INFERENCE_GPU_2 = "al2-ami-sagemaker-inference-gpu-2"
+    AL2_AMI_SAGEMAKER_INFERENCE_GPU_3_1 = "al2-ami-sagemaker-inference-gpu-3-1"
 
 
 class ScopeEnum(StrEnum):
@@ -189,6 +190,7 @@ class DefaultPayloadsModel(BaseConfig):
     PromptKey: Optional[str] = None
     OutputKeys: Optional[OutputKeysModel] = None
     Body: Union[str, Dict[str, Any]]
+    CustomAttributes: Optional[str] = None
 
 
 class HostingResourceRequirementsModel(BaseConfig):
@@ -395,6 +397,10 @@ class CapabilityEnum(StrEnum):
     HYPERPOD_DEPLOYMENT = "HYPERPOD_DEPLOYMENT"
     SAGEMAKER_EVALUATE = "SAGEMAKER_EVALUATE"
     SAGEMAKER_MODEL_OPTIMIZE = "SAGEMAKER_MODEL_OPTIMIZE"
+    TRAINING = "TRAINING"
+    FINE_TUNING = "FINE_TUNING"
+    VALIDATION = "VALIDATION"
+    INCREMENTAL_TRAINING = "INCREMENTAL_TRAINING"
 
 
 class DemoNotebookModel(BaseConfig):
@@ -467,6 +473,8 @@ class HubContentDocument(HostingComponentsModel, TrainingComponentsModel):
 
     The HubContentDocument class represents the metadata for a JumpStart model.
     """
+
+    model_config = ConfigDict(validate_assignment=True, extra="ignore")
 
     ModelTypes: List[ModelTypeEnum]
     Url: str

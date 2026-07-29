@@ -58,6 +58,36 @@ python _repack_model.py \
 --source_dir "${var_source_dir}"
 """
 
+# Static list of regions where Experiments (Eureka) is Generally Available.
+# Note: Experiments is not expanding to new regions, so this list is static.
+EUREKA_GA_REGIONS = frozenset([
+    "us-east-1",       # iad (N. Virginia)
+    "us-east-2",       # cmh (Ohio)
+    "us-west-1",       # sfo (N. California)
+    "us-west-2",       # pdx (Oregon)
+    "ca-central-1",    # yul (Montreal)
+    "eu-west-1",       # dub (Dublin)
+    "eu-west-2",       # lhr (London)
+    "eu-west-3",       # cdg (Paris)
+    "eu-central-1",    # fra (Frankfurt)
+    "eu-north-1",      # arn (Stockholm)
+    "eu-south-1",      # mxp (Milan)
+    "eu-south-2",      # zaz (Spain)
+    "ap-northeast-1",  # nrt (Tokyo)
+    "ap-northeast-2",  # icn (Seoul)
+    "ap-northeast-3",  # kix (Osaka)
+    "ap-southeast-1",  # sin (Singapore)
+    "ap-southeast-2",  # syd (Sydney)
+    "ap-southeast-3",  # cgk (Jakarta)
+    "ap-south-1",      # bom (Mumbai)
+    "ap-east-1",       # hkg (Hong Kong)
+    "sa-east-1",       # gru (São Paulo)
+    "af-south-1",      # cpt (Cape Town)
+    "me-south-1",      # bah (Bahrain)
+    "il-central-1",    # tlv (Tel Aviv)
+    "cn-north-1",      # bjs (Beijing)
+    "cn-northwest-1",  # zhy (Ningxia)
+])
 
 class _RepackModelStep(TrainingStep):
     """Repacks model artifacts with custom inference entry points.

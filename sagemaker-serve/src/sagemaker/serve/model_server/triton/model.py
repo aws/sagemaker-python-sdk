@@ -3,7 +3,6 @@
 from __future__ import absolute_import
 import os
 import logging
-import ssl
 from pathlib import Path
 import platform
 
@@ -12,10 +11,6 @@ import cloudpickle
 from sagemaker.serve.validations.check_integrity import perform_integrity_check
 
 logger = logging.getLogger(__name__)
-
-# Otherwise it will complain SSL: CERTIFICATE_VERIFY_FAILED
-# When trying to download models from torchvision
-ssl._create_default_https_context = ssl._create_unverified_context
 
 TRITON_MODEL_DIR = os.getenv("TRITON_MODEL_DIR")
 
@@ -31,10 +26,14 @@ class TritonPythonModel:
     def initialize(self, args: dict) -> None:
         """Placeholder docstring"""
         serve_path = Path(TRITON_MODEL_DIR).joinpath("serve.pkl")
-        with open(str(serve_path), mode="rb") as f:
-            inference_spec, schema_builder = cloudpickle.load(f)
+        metadata_path = Path(TRITON_MODEL_DIR).joinpath("metadata.json")
 
-        # TODO: HMAC signing for integrity check
+        # Integrity check BEFORE deserialization to prevent RCE via malicious pickle
+        with open(str(serve_path), "rb") as f:
+            buffer = f.read()
+        perform_integrity_check(buffer=buffer, metadata_path=metadata_path)
+
+        inference_spec, schema_builder = cloudpickle.loads(buffer)
 
         self.inference_spec = inference_spec
         self.schema_builder = schema_builder

@@ -45,8 +45,9 @@ from sagemaker.core.shapes import (
     InstanceGroup,
     TensorBoardOutputConfig,
     CheckpointConfig,
+    MetricDefinition,
 )
-
+from typing import List
 
 __all__ = [
     "SourceCode",
@@ -70,6 +71,7 @@ __all__ = [
     "Compute",
     "Networking",
     "InputData",
+    "MetricDefinition",
 ]
 
 from sagemaker.core.modules.utils import convert_unassigned_to_none
@@ -89,7 +91,10 @@ class SourceCode(BaseConfig):
 
     Parameters:
         source_dir (Optional[str]):
-            The local directory containing the source code to be used in the training job container.
+            The local directory, S3 URI, or path to a tar.gz file stored locally or in S3
+            that contains the source code to be used in the training job container.
+            When an S3 URI is provided, the source code is used directly from S3
+            without local packaging.
         requirements (Optional[str]):
             The path within ``source_dir`` to a ``requirements.txt`` file. If specified, the listed
             requirements will be installed in the training job container.
@@ -99,12 +104,23 @@ class SourceCode(BaseConfig):
         command (Optional[str]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
+        ignore_patterns: (Optional[List[str]]) :
+            The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
+            default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
     """
 
     source_dir: Optional[str] = None
     requirements: Optional[str] = None
     entry_script: Optional[str] = None
     command: Optional[str] = None
+    ignore_patterns: Optional[List[str]] = [
+        ".env",
+        ".git",
+        "__pycache__",
+        ".DS_Store",
+        ".cache",
+        ".ipynb_checkpoints",
+    ]
 
 
 class Compute(shapes.ResourceConfig):

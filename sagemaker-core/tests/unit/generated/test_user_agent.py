@@ -1,21 +1,12 @@
-# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License"). You
-# may not use this file except in compliance with the License. A copy of
-# the License is located at
-#
-#     http://aws.amazon.com/apache2.0/
-#
-# or in the "license" file accompanying this file. This file is
-# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
-# ANY KIND, either express or implied. See the License for the specific
-# language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
 import json
+import os
 from mock import patch, mock_open
 
+import pytest
 
+from sagemaker.core.telemetry.attribution import _CREATED_BY_ENV_VAR
 from sagemaker.core.utils.user_agent import (
     SagemakerCore_PREFIX,
     SagemakerCore_VERSION,
@@ -24,8 +15,15 @@ from sagemaker.core.utils.user_agent import (
     process_notebook_metadata_file,
     process_studio_metadata_file,
     get_user_agent_extra_suffix,
+    sanitize_user_agent_string_component,
 )
-from sagemaker.core.utils.user_agent import SagemakerCore_PREFIX
+
+
+@pytest.fixture(autouse=True)
+def clean_env():
+    yield
+    if _CREATED_BY_ENV_VAR in os.environ:
+        del os.environ[_CREATED_BY_ENV_VAR]
 
 
 # Test process_notebook_metadata_file function
@@ -58,6 +56,27 @@ def test_process_studio_metadata_file_not_exists(tmp_path):
         assert process_studio_metadata_file() is None
 
 
+# Test sanitize_user_agent_string_component function
+def test_sanitize_replaces_slash_with_dash():
+    assert sanitize_user_agent_string_component("awslabs/agent-plugins/sagemaker-ai") == "awslabs-agent-plugins-sagemaker-ai"
+
+
+def test_sanitize_allows_alphanumeric():
+    assert sanitize_user_agent_string_component("abc123") == "abc123"
+
+
+def test_sanitize_replaces_hash_when_not_allowed():
+    assert sanitize_user_agent_string_component("foo#bar") == "foo-bar"
+
+
+def test_sanitize_allows_hash_when_permitted():
+    assert sanitize_user_agent_string_component("foo#bar", allow_hash=True) == "foo#bar"
+
+
+def test_sanitize_replaces_space_with_dash():
+    assert sanitize_user_agent_string_component("foo bar") == "foo-bar"
+
+
 # Test get_user_agent_extra_suffix function
 def test_get_user_agent_extra_suffix():
     assert get_user_agent_extra_suffix() == f"lib/{SagemakerCore_PREFIX}#{SagemakerCore_VERSION}"
@@ -78,3 +97,20 @@ def test_get_user_agent_extra_suffix():
             get_user_agent_extra_suffix()
             == f"lib/{SagemakerCore_PREFIX}#{SagemakerCore_VERSION} md/{STUDIO_PREFIX}#studio_type"
         )
+
+
+def test_get_user_agent_extra_suffix_without_created_by():
+    suffix = get_user_agent_extra_suffix()
+    assert "createdBy" not in suffix
+
+
+def test_get_user_agent_extra_suffix_with_created_by():
+    os.environ[_CREATED_BY_ENV_VAR] = "awslabs/agent-plugins/sagemaker-ai"
+    suffix = get_user_agent_extra_suffix()
+    assert "md/createdBy#awslabs-agent-plugins-sagemaker-ai" in suffix
+
+
+def test_get_user_agent_extra_suffix_created_by_sanitized():
+    os.environ[_CREATED_BY_ENV_VAR] = "my agent/v1.0 (test)"
+    suffix = get_user_agent_extra_suffix()
+    assert "md/createdBy#my-agent-v1.0--test-" in suffix

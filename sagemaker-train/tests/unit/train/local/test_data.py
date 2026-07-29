@@ -296,7 +296,7 @@ class TestMultiRecordStrategy:
     def test_pad_splits_when_exceeding_size(self):
         """Test pad splits records when exceeding size."""
         splitter = MagicMock()
-        splitter.split.return_value = ["a" * 1000, "b" * 1000, "c" * 1000]
+        splitter.split.return_value = ["a" * 500, "b" * 500, "c" * 500]
         
         strategy = MultiRecordStrategy(splitter)
         result = list(strategy.pad("file.txt", size=0.001))  # Very small size

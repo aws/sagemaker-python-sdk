@@ -9,7 +9,10 @@ from sagemaker.core.utils.utils import Unassigned
 
 # Use the installed package location
 import sagemaker.core.shapes
-FILE_NAME = os.path.join(os.path.dirname(os.path.abspath(sagemaker.core.shapes.__file__)), "shapes.py")
+
+FILE_NAME = os.path.join(
+    os.path.dirname(os.path.abspath(sagemaker.core.shapes.__file__)), "shapes.py"
+)
 
 
 class TestGeneratedShape(unittest.TestCase):

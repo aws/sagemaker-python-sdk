@@ -31,9 +31,6 @@ MODEL_ID = "t5-small"  # Small text generation model
 MODEL_NAME_PREFIX = "tgi-test-model"
 ENDPOINT_NAME_PREFIX = "tgi-test-endpoint"
 
-# Configuration from backup file
-AWS_REGION = "us-east-2"
-
 
 @pytest.mark.slow_test
 def test_tgi_build_deploy_invoke_cleanup():
@@ -81,8 +78,6 @@ def build_and_deploy():
     hf_model_id = MODEL_ID
     
     schema_builder = create_schema_builder()
-    boto_session = boto3.Session(region_name=AWS_REGION)
-    sagemaker_session = Session(boto_session=boto_session)
     unique_id = str(uuid.uuid4())[:8]
 
     compute = Compute(
@@ -101,7 +96,6 @@ def build_and_deploy():
         model=hf_model_id,  # Use HuggingFace model string
         model_server=ModelServer.TGI,
         schema_builder=schema_builder,
-        sagemaker_session=sagemaker_session,
         compute=compute,
         env_vars=env_vars
     )
@@ -112,7 +106,7 @@ def build_and_deploy():
 
     core_endpoint = model_builder.deploy(
         endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}",
-        initial_instance_count=1
+        initial_instance_count=1,
     )
     logger.info(f"Endpoint Successfully Created: {core_endpoint.endpoint_name}")
     

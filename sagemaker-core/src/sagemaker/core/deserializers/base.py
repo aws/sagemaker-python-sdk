@@ -365,8 +365,11 @@ class TorchTensorDeserializer(SimpleBaseDeserializer):
             from torch import from_numpy
 
             self.convert_npy_to_tensor = from_numpy
-        except ImportError:
-            raise Exception("Unable to import pytorch.")
+        except ImportError as e:
+            raise ImportError(
+                "Unable to import torch. Please install torch to use TorchTensorDeserializer: "
+                "pip install 'sagemaker-core[torch]'"
+            ) from e
 
     def deserialize(self, stream, content_type="tensor/pt"):
         """Deserialize streamed data to TorchTensor
@@ -392,7 +395,7 @@ class TorchTensorDeserializer(SimpleBaseDeserializer):
             )
 
 
-#TODO fix the unit test for this deserializer
+# TODO fix the unit test for this deserializer
 class RecordDeserializer(SimpleBaseDeserializer):
     """Deserialize RecordIO Protobuf data from an inference endpoint."""
 
@@ -418,6 +421,7 @@ class RecordDeserializer(SimpleBaseDeserializer):
         try:
             # Lazy import to avoid circular dependency
             from sagemaker.core.serializers.utils import read_records
+
             return read_records(data)
         finally:
             data.close()

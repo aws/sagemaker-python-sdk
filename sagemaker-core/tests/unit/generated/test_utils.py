@@ -353,6 +353,20 @@ def test_serialize_method_returns_correct_data():
     assert serialized_data["S3Uri"] == "s3/uri"
 
 
+def test_serialize_preserves_falsy_dict_values():
+    # Regression: previously False / 0 / "" were stripped along with None.
+    assert serialize({"k": False}) == {"k": False}
+    assert serialize({"k": 0}) == {"k": 0}
+    assert serialize({"k": ""}) == {"k": ""}
+    assert serialize({"k": None}) == {}
+    assert serialize({"k": Unassigned()}) == {}
+
+
+def test_serialize_preserves_falsy_list_values():
+    assert serialize([False, 0, ""]) == [False, 0, ""]
+    assert serialize([None, "x", Unassigned(), 1]) == ["x", 1]
+
+
 def test_serialize_method_nested_shape():
     trial_component_parameters = {
         "test_num_value": TrialComponentParameterValue(number_value=1),
@@ -371,3 +385,50 @@ def test_serialize_method_nested_shape():
             "StringValue": "string",
         },
     }
+
+
+class TestUnassignedBehavior:
+    """Test Unassigned class methods for proper behavior.
+    
+    Bug fix: GetRecordResponse is not printable and cannot be parsed via iterator.
+    Error: TypeError: 'Unassigned' object is not iterable
+    """
+
+    def test_unassigned_repr(self):
+        """Test that Unassigned has clean repr."""
+        u = Unassigned()
+        assert repr(u) == "Unassigned()"
+
+    def test_unassigned_str(self):
+        """Test that Unassigned converts to empty string."""
+        u = Unassigned()
+        assert str(u) == ""
+
+    def test_unassigned_bool(self):
+        """Test that Unassigned is falsy."""
+        u = Unassigned()
+        assert not u
+        assert bool(u) is False
+
+    def test_unassigned_iter(self):
+        """Test that Unassigned is iterable and returns empty list."""
+        u = Unassigned()
+        result = list(u)
+        assert result == []
+
+    def test_unassigned_singleton(self):
+        """Test that Unassigned is a singleton."""
+        u1 = Unassigned()
+        u2 = Unassigned()
+        assert u1 is u2
+
+    def test_unassigned_in_conditional(self):
+        """Test that Unassigned works correctly in conditionals."""
+        u = Unassigned()
+        
+        # Should evaluate to False
+        if u:
+            pytest.fail("Unassigned should be falsy")
+        
+        # Should work with not
+        assert not u

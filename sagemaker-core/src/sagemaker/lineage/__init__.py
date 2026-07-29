@@ -24,10 +24,9 @@ import warnings
 
 # Show deprecation warning
 warnings.warn(
-    "The 'sagemaker.lineage' module is deprecated. "
-    "Please use 'sagemaker.core.lineage' instead.",
+    "The 'sagemaker.lineage' module is deprecated. " "Please use 'sagemaker.core.lineage' instead.",
     DeprecationWarning,
-    stacklevel=2
+    stacklevel=2,
 )
 
 # Re-export from core.lineage for backward compatibility

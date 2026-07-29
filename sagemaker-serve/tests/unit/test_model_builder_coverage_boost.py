@@ -12,6 +12,9 @@ from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.core.training.configs import Compute, Networking
+from sagemaker.core.jumpstart.configs import JumpStartConfig
+from sagemaker.core.inference_config import AsyncInferenceConfig
+from botocore.exceptions import ClientError
 
 
 class TestModelBuilderInit(unittest.TestCase):
@@ -189,7 +192,6 @@ class TestBuildDefaultAsyncInferenceConfig(unittest.TestCase):
 
     def test_build_default_async_config(self):
         """Test building default async inference config."""
-        from sagemaker.core.inference_config import AsyncInferenceConfig
         
         mb = ModelBuilder(model=Mock())
         mb.model_name = "test-model"
@@ -256,7 +258,6 @@ class TestDoesICExist(unittest.TestCase):
 
     def test_does_ic_exist_false(self):
         """Test IC doesn't exist."""
-        from botocore.exceptions import ClientError
         
         mb = ModelBuilder(model=Mock())
         mb.sagemaker_session = Mock()
@@ -366,7 +367,6 @@ class TestFromJumpStartConfig(unittest.TestCase):
 
     def test_from_jumpstart_config_basic(self):
         """Test creating ModelBuilder from JumpStart config."""
-        from sagemaker.core.jumpstart.configs import JumpStartConfig
         
         js_config = JumpStartConfig(
             model_id="test-model",
@@ -380,6 +380,160 @@ class TestFromJumpStartConfig(unittest.TestCase):
         
         self.assertEqual(mb.model, "test-model")
         self.assertEqual(mb.model_version, "1.0.0")
+
+    @patch("sagemaker.serve.model_builder._retrieve_model_deploy_kwargs")
+    def test_from_jumpstart_config_applies_network_isolation(self, mock_deploy_kwargs):
+        """Test that enable_network_isolation from deploy kwargs is applied."""
+
+        mock_deploy_kwargs.return_value = {
+            "model_data_download_timeout": 600,
+            "enable_network_isolation": True,
+        }
+
+        js_config = JumpStartConfig(
+            model_id="test-model",
+            model_version="1.0.0"
+        )
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.sagemaker_config = None
+
+        mb = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            compute=Compute(instance_type="ml.g5.xlarge"),
+            sagemaker_session=mock_session,
+        )
+
+        self.assertTrue(mb._enable_network_isolation)
+
+    @patch("sagemaker.serve.model_builder._retrieve_model_deploy_kwargs")
+    def test_from_jumpstart_config_applies_volume_size(self, mock_deploy_kwargs):
+        """Test that volume_size from deploy kwargs is applied."""
+
+        mock_deploy_kwargs.return_value = {
+            "model_data_download_timeout": 600,
+            "volume_size": 256,
+        }
+
+        js_config = JumpStartConfig(
+            model_id="meta-textgenerationneuron-llama-2-7b",
+            model_version="1.0.0"
+        )
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.sagemaker_config = None
+
+        mb = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            compute=Compute(instance_type="ml.inf2.xlarge"),
+            sagemaker_session=mock_session,
+        )
+
+        self.assertEqual(mb.volume_size, 256)
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.session_helper.production_variant")
+    @patch("sagemaker.serve.model_builder._retrieve_model_deploy_kwargs")
+    def test_deploy_passes_volume_size_to_production_variant(
+        self, mock_deploy_kwargs, mock_prod_variant, mock_endpoint_get
+    ):
+        """Test that volume_size kwarg passed to deploy() reaches production_variant."""
+
+        mock_deploy_kwargs.return_value = {"volume_size": 256}
+        mock_prod_variant.return_value = {"VariantName": "AllTraffic"}
+        mock_endpoint_get.return_value = Mock()
+
+        js_config = JumpStartConfig(
+            model_id="meta-textgenerationneuron-llama-2-7b",
+            model_version="1.0.0",
+        )
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.endpoint_in_service_or_not = Mock(return_value=False)
+        mock_session.endpoint_from_production_variants = Mock()
+        mock_session.sagemaker_config = {}
+        mock_session.settings = Mock()
+        mock_session.settings.include_jumpstart_tags = False
+        mock_session._append_sagemaker_config_tags = Mock(return_value=[])
+
+        mb = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            compute=Compute(instance_type="ml.inf2.xlarge"),
+            sagemaker_session=mock_session,
+        )
+        mb.built_model = Mock()
+        mb.built_model.model_name = "test-model"
+        mb.model_server = None
+        mb.mode = Mode.SAGEMAKER_ENDPOINT
+
+        # Deploy with explicit volume_size=512 overriding spec's 256
+        mb.deploy(
+            endpoint_name="test-ep",
+            instance_type="ml.inf2.xlarge",
+            initial_instance_count=1,
+            volume_size=512,
+            wait=False,
+        )
+
+        # Verify production_variant was called with user's 512, not spec's 256
+        mock_prod_variant.assert_called_once()
+        call_kwargs = mock_prod_variant.call_args[1]
+        self.assertEqual(call_kwargs["volume_size"], 512)
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.session_helper.production_variant")
+    @patch("sagemaker.serve.model_builder._retrieve_model_deploy_kwargs")
+    def test_deploy_uses_spec_volume_size_when_not_passed(
+        self, mock_deploy_kwargs, mock_prod_variant, mock_endpoint_get
+    ):
+        """Test that volume_size from spec is used when customer doesn't pass it."""
+
+        mock_deploy_kwargs.return_value = {"volume_size": 256}
+        mock_prod_variant.return_value = {"VariantName": "AllTraffic"}
+        mock_endpoint_get.return_value = Mock()
+
+        js_config = JumpStartConfig(
+            model_id="meta-textgenerationneuron-llama-2-7b",
+            model_version="1.0.0",
+        )
+
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.endpoint_in_service_or_not = Mock(return_value=False)
+        mock_session.endpoint_from_production_variants = Mock()
+        mock_session.sagemaker_config = {}
+        mock_session.settings = Mock()
+        mock_session.settings.include_jumpstart_tags = False
+        mock_session._append_sagemaker_config_tags = Mock(return_value=[])
+
+        mb = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+            compute=Compute(instance_type="ml.inf2.xlarge"),
+            sagemaker_session=mock_session,
+        )
+        mb.built_model = Mock()
+        mb.built_model.model_name = "test-model"
+        mb.model_server = None
+        mb.mode = Mode.SAGEMAKER_ENDPOINT
+
+        # Deploy WITHOUT passing volume_size — should use spec's 256
+        mb.deploy(
+            endpoint_name="test-ep",
+            instance_type="ml.inf2.xlarge",
+            initial_instance_count=1,
+            wait=False,
+        )
+
+        mock_prod_variant.assert_called_once()
+        call_kwargs = mock_prod_variant.call_args[1]
+        self.assertEqual(call_kwargs["volume_size"], 256)
 
 
 if __name__ == "__main__":

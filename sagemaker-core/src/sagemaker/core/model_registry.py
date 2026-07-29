@@ -12,10 +12,12 @@ from sagemaker.core.config import (
     MODEL_PACKAGE_INFERENCE_SPECIFICATION_CONTAINERS_PATH,
     MODEL_PACKAGE_VALIDATION_PROFILES_PATH,
 )
+from sagemaker.core.resources import ModelPackageModelCard
 from botocore.exceptions import ClientError
 import logging
 
 logger = LOGGER = logging.getLogger("sagemaker")
+
 
 def get_model_package_args(
     content_types=None,
@@ -97,14 +99,14 @@ def get_model_package_args(
     if source_uri is not None:
         model_package_args["source_uri"] = source_uri
     if model_life_cycle is not None:
-        model_package_args["model_life_cycle"] = model_life_cycle
+        model_package_args["model_life_cycle"] = model_life_cycle._to_request_dict()
     if model_card is not None:
-        original_req = model_card._create_request_args()
-        if original_req.get("ModelCardName") is not None:
-            del original_req["ModelCardName"]
-        if original_req.get("Content") is not None:
-            original_req["ModelCardContent"] = original_req["Content"]
-            del original_req["Content"]
+        original_req = {}
+        if isinstance(model_card, ModelPackageModelCard):
+             original_req["ModelCardContent"] = model_card.model_card_content
+        else:
+             original_req["ModelCardContent"] = model_card.content
+        original_req["ModelCardStatus"] = model_card.model_card_status
         model_package_args["model_card"] = original_req
     return model_package_args
 
@@ -235,6 +237,7 @@ def get_create_model_package_request(
         request_dict["ModelLifeCycle"] = model_life_cycle
     return request_dict
 
+
 def create_model_package_from_containers(
     sagemaker_session,
     containers=None,
@@ -361,9 +364,7 @@ def create_model_package_from_containers(
     )
 
     def submit(request):
-        if model_package_group_name is not None and not model_package_group_name.startswith(
-            "arn:"
-        ):
+        if model_package_group_name is not None and not model_package_group_name.startswith("arn:"):
             is_model_package_group_present = False
             try:
                 model_package_groups_response = sagemaker_session.search(
@@ -382,8 +383,10 @@ def create_model_package_from_containers(
                     is_model_package_group_present = True
             except Exception:  # pylint: disable=W0703
                 model_package_groups = []
-                model_package_groups_response = sagemaker_session.sagemaker_client.list_model_package_groups(
-                    NameContains=request["ModelPackageGroupName"],
+                model_package_groups_response = (
+                    sagemaker_session.sagemaker_client.list_model_package_groups(
+                        NameContains=request["ModelPackageGroupName"],
+                    )
                 )
                 model_package_groups = (
                     model_package_groups
@@ -442,6 +445,7 @@ def create_model_package_from_containers(
     return sagemaker_session._intercept_create_request(
         model_pkg_request, submit, create_model_package_from_containers.__name__
     )
+
 
 def create_model_package_from_algorithm(self, name, description, algorithm_arn, model_data):
     """Create a SageMaker Model Package from the results of training with an Algorithm Package.

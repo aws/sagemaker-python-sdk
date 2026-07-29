@@ -733,7 +733,6 @@ SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {
                                     },
                                 },
                                 MODEL_TRAINER: {TYPE: OBJECT, ADDITIONAL_PROPERTIES: True},
-
                                 REMOTE_FUNCTION: {
                                     TYPE: OBJECT,
                                     ADDITIONAL_PROPERTIES: False,

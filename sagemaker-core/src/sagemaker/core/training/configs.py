@@ -21,11 +21,11 @@ For more documentation on ``sagemaker.core.shapes``, see:
 
 from __future__ import absolute_import
 
-from typing import Optional, Union
+from typing import Optional, Union, List
 from pydantic import BaseModel, model_validator, ConfigDict
 
 import sagemaker.core.shapes as shapes
-from sagemaker.core.helper.pipeline_variable import StrPipeVar
+from sagemaker.core.helper.pipeline_variable import StrPipeVar, IntPipeVar, BoolPipeVar
 
 # TODO: Can we add custom logic to some of these to set better defaults?
 from sagemaker.core.shapes import (
@@ -45,6 +45,8 @@ from sagemaker.core.shapes import (
     InstanceGroup,
     HubAccessConfig,
     ModelAccessConfig,
+    MetricDefinition,
+    DatasetSource,
 )
 
 from sagemaker.core.training.utils import convert_unassigned_to_none
@@ -72,8 +74,11 @@ __all__ = [
     "HubAccessConfig",
     "ModelAccessConfig",
     "Compute",
+    "HyperPodCompute",
     "Networking",
     "InputData",
+    "MetricDefinition",
+    "DatasetSource",
 ]
 
 
@@ -102,18 +107,29 @@ class SourceCode(BaseConfig):
         command (Optional[StrPipeVar]):
             The command(s) to execute in the training job container. Example: "python my_script.py".
             If not specified, entry_script must be provided.
+        ignore_patterns: (Optional[List[str]]) :
+            The ignore patterns to ignore specific files/folders when uploading to S3. If not specified,
+            default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
     """
 
     source_dir: Optional[StrPipeVar] = None
     requirements: Optional[StrPipeVar] = None
     entry_script: Optional[StrPipeVar] = None
     command: Optional[StrPipeVar] = None
-
+    ignore_patterns: Optional[List[str]] = [
+        ".env",
+        ".git",
+        "__pycache__",
+        ".DS_Store",
+        ".cache",
+        ".ipynb_checkpoints",
+    ]
 
 class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 
-    Provides the configuration for the output data location of the training job.
+    Provides the configuration for the output data location of the training job 
+    (will not be carried over to any model repository or deployment).
 
     Parameters:
         s3_output_path (Optional[StrPipeVar]):
@@ -143,23 +159,23 @@ class Compute(shapes.ResourceConfig):
         instance_type (Optional[StrPipeVar]):
             The ML compute instance type. For information about available instance types,
             see https://aws.amazon.com/sagemaker/pricing/.
-        instance_count (Optional[int]): The number of ML compute instances to use. For distributed
+        instance_count (Optional[IntPipeVar]): The number of ML compute instances to use. For distributed
             training, provide a value greater than 1.
-        volume_size_in_gb (Optional[int]):
+        volume_size_in_gb (Optional[IntPipeVar]):
             The size of the ML storage volume that you want to provision.  ML storage volumes store
             model artifacts and incremental states. Training algorithms might also use the ML
             storage volume for scratch space. Default: 30
         volume_kms_key_id (Optional[StrPipeVar]):
             The Amazon Web Services KMS key that SageMaker uses to encrypt data on the storage
             volume attached to the ML compute instance(s) that run the training job.
-        keep_alive_period_in_seconds (Optional[int]):
+        keep_alive_period_in_seconds (Optional[IntPipeVar]):
             The duration of time in seconds to retain configured resources in a warm pool for
             subsequent training jobs.
         instance_groups (Optional[List[InstanceGroup]]):
             A list of instance groups for heterogeneous clusters to be used in the training job.
         training_plan_arn (Optional[StrPipeVar]):
             The Amazon Resource Name (ARN) of the training plan to use for this resource configuration.
-        enable_managed_spot_training (Optional[bool]):
+        enable_managed_spot_training (Optional[BoolPipeVar]):
             To train models using managed spot training, choose True. Managed spot training
             provides a fully managed and scalable infrastructure for training machine learning
             models. this option is useful when training jobs can be interrupted and when there
@@ -186,6 +202,29 @@ class Compute(shapes.ResourceConfig):
         if not filtered_dict:
             return None
         return shapes.ResourceConfig(**filtered_dict)
+
+
+class HyperPodCompute(BaseConfig):
+    """HyperPodCompute.
+
+    Configuration for SageMaker HyperPod compute. The trainer uses the HyperPod CLI
+    to submit recipe-based training jobs to a pre-provisioned HyperPod cluster.
+
+    Parameters:
+        cluster_name (str):
+            The SageMaker HyperPod cluster name. Required.
+        instance_type (Optional[str]):
+            The EC2 instance type for training (e.g., ``"ml.p5.48xlarge"``).
+        namespace (str):
+            The Kubernetes namespace for job scheduling. Defaults to ``"kubeflow"``.
+        node_count (int):
+            Number of nodes (replicas) to use. Default: 1.
+    """
+
+    cluster_name: str = ""
+    instance_type: Optional[str] = None
+    namespace: str = "kubeflow"
+    node_count: int = 1
 
 
 class Networking(shapes.VpcConfig):
@@ -253,22 +292,25 @@ class InputData(BaseConfig):
     Parameters:
         channel_name (StrPipeVar):
             The name of the input data source channel.
-        data_source (Union[StrPipeVar, S3DataSource, FileSystemDataSource]):
+        data_source (Union[StrPipeVar, S3DataSource, FileSystemDataSource, DatasetSource]):
             The data source for the channel. Can be an S3 URI string, local file path string,
-            S3DataSource object, or FileSystemDataSource object.
+            S3DataSource object, FileSystemDataSource object, DatasetSource object, or a
+            pipeline variable (Properties) from a previous step.
         content_type (StrPipeVar):
             The MIME type of the data.
     """
 
     channel_name: StrPipeVar = None
-    data_source: Union[StrPipeVar, FileSystemDataSource, S3DataSource] = None
+    data_source: Union[StrPipeVar, FileSystemDataSource, S3DataSource, DatasetSource] = None
     content_type: StrPipeVar = None
+
 
 class OutputDataConfig(shapes.OutputDataConfig):
     """OutputDataConfig.
 
     The OutputDataConfig class is a subclass of ``sagemaker.core.shapes.OutputDataConfig``
-    and allows the user to specify the output data configuration for the training job.
+    and allows the user to specify the output data configuration for the training job
+    (will not be carried over to any model repository or deployment).
 
     Parameters:
         s3_output_path (Optional[StrPipeVar]):
@@ -325,3 +367,6 @@ class CheckpointConfig(shapes.CheckpointConfig):
 
     s3_uri: Optional[StrPipeVar] = None
     local_path: Optional[StrPipeVar] = "/opt/ml/checkpoints"
+
+# Backward-compatible alias
+TrainingJobCompute = Compute

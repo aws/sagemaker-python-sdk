@@ -1,0 +1,234 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AWS Converse Format",
+  "description": "AWS Bedrock Converse API format for training data",
+  "type": "object",
+  "required": ["messages"],
+  "properties": {
+    "schemaVersion": {
+      "type": "string"
+    },
+    "system": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["text"],
+        "properties": {
+          "text": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "messages": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["role", "content"],
+        "properties": {
+          "role": {
+            "type": "string",
+            "enum": ["user", "assistant"]
+          },
+          "content": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                },
+                "image": {
+                  "type": "object",
+                  "required": ["format", "source"],
+                  "properties": {
+                    "format": {
+                      "type": "string",
+                      "enum": ["jpeg", "png", "gif", "webp"]
+                    },
+                    "source": {
+                      "type": "object",
+                      "required": ["s3Location"],
+                      "properties": {
+                        "s3Location": {
+                          "type": "object",
+                          "required": ["localPath"],
+                          "properties": {
+                            "localPath": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "video": {
+                  "type": "object",
+                  "required": ["format", "source"],
+                  "properties": {
+                    "format": {
+                      "type": "string",
+                      "enum": ["mov", "mkv", "mp4", "webm"]
+                    },
+                    "source": {
+                      "type": "object",
+                      "required": ["s3Location"],
+                      "properties": {
+                        "s3Location": {
+                          "type": "object",
+                          "required": ["localPath"],
+                          "properties": {
+                            "localPath": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "document": {
+                  "type": "object",
+                  "required": ["format", "source"],
+                  "properties": {
+                    "format": {
+                      "type": "string",
+                      "enum": ["pdf"]
+                    },
+                    "source": {
+                      "type": "object",
+                      "required": ["s3Location"],
+                      "properties": {
+                        "s3Location": {
+                          "type": "object",
+                          "required": ["localPath"],
+                          "properties": {
+                            "localPath": {
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "toolUse": {
+                  "type": "object",
+                  "required": ["toolUseId", "name", "input"],
+                  "properties": {
+                    "toolUseId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "input": {
+                      "type": "object"
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "toolResult": {
+                  "type": "object",
+                  "required": ["toolUseId", "content"],
+                  "properties": {
+                    "toolUseId": {
+                      "type": "string"
+                    },
+                    "content": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "json": {
+                            "type": "object"
+                          },
+                          "text": {
+                            "type": "string"
+                          }
+                        },
+                        "additionalProperties": true
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                },
+                "reasoningContent": {
+                  "type": "object",
+                  "required": ["reasoningText"],
+                  "properties": {
+                    "reasoningText": {
+                      "type": "object",
+                      "required": ["text"],
+                      "properties": {
+                        "text": {
+                          "type": "string"
+                        }
+                      },
+                      "additionalProperties": false
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": true
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "toolConfig": {
+      "type": "object",
+      "required": ["tools"],
+      "properties": {
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "toolSpec": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "json": {
+                        "type": "object"
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

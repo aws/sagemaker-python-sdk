@@ -34,7 +34,12 @@ from sagemaker.core.jumpstart.filters import (
     Identity,
     SpecialSupportedFilterKeys,
 )
-from sagemaker.core.jumpstart.filters import Constant, ModelFilter, Operator, evaluate_filter_expression
+from sagemaker.core.jumpstart.filters import (
+    Constant,
+    ModelFilter,
+    Operator,
+    evaluate_filter_expression,
+)
 from sagemaker.core.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
 from sagemaker.core.jumpstart.utils import (
     get_jumpstart_content_bucket,

@@ -17,6 +17,7 @@ import struct
 import sys
 import numpy as np
 
+
 def _write_feature_tensor(resolved_type, record, vector):
     """Placeholder Docstring"""
     raise NotImplementedError()

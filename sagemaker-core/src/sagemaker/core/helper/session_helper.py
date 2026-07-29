@@ -51,6 +51,7 @@ from sagemaker.core.common_utils import (
     TagsDict,
     instance_supports_kms,
     create_paginator_config,
+    validate_path_within_directory,
 )
 
 from sagemaker.core.config.config_utils import _log_sagemaker_config_merge
@@ -102,7 +103,7 @@ _STATUS_CODE_TABLE = {
     "STARTING": "Starting",
     "PENDING": "Pending",
 }
-EP_LOGGER_POLL = 10
+EP_LOGGER_POLL = 30
 DEFAULT_EP_POLL = 30
 
 
@@ -236,7 +237,12 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # Create sagemaker_client with the botocore_config object
         # This config is customized to append SageMaker Python SDK specific user_agent suffix
-        self.sagemaker_client = sagemaker_client or self.boto_session.client("sagemaker")
+        if sagemaker_client is not None:
+            self.sagemaker_client = sagemaker_client
+        else:
+            from sagemaker.core.user_agent import get_user_agent_extra_suffix
+            config = botocore.config.Config(user_agent_extra=get_user_agent_extra_suffix())
+            self.sagemaker_client = self.boto_session.client("sagemaker", config=config)
 
         if sagemaker_runtime_client is not None:
             self.sagemaker_runtime_client = sagemaker_runtime_client
@@ -325,15 +331,15 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 user_profile_name = metadata.get("UserProfileName")
                 execution_role_arn = metadata.get("ExecutionRoleArn")
             try:
+                # find execution role from the metadata file if present
+                if execution_role_arn is not None:
+                    return execution_role_arn
+
                 if domain_id is None:
                     instance_desc = self.sagemaker_client.describe_notebook_instance(
                         NotebookInstanceName=instance_name
                     )
                     return instance_desc["RoleArn"]
-
-                # find execution role from the metadata file if present
-                if execution_role_arn is not None:
-                    return execution_role_arn
 
                 user_profile_desc = self.sagemaker_client.describe_user_profile(
                     DomainId=domain_id, UserProfileName=user_profile_name
@@ -423,6 +429,14 @@ class Session(object):  # pylint: disable=too-many-public-methods
             bucket=bucket, key_prefix=key_prefix, sagemaker_session=self
         )
 
+        # Spot check: if the resolved bucket is the session's default bucket, enforce
+        # ownership on the upload to defend against bucket-squatting on the predictable
+        # default name. Other buckets are left untouched to preserve cross-account flows.
+        expected_owner = self._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            extra_args = dict(extra_args) if extra_args else {}
+            extra_args["ExpectedBucketOwner"] = expected_owner
+
         # Generate a tuple for each file that we want to upload of the form (local_path, s3_key).
         files = []
         key_suffix = None
@@ -479,10 +493,17 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         s3_object = s3.Object(bucket_name=bucket, key=key)
 
+        # Spot check: enforce ownership only when writing to the session's default
+        # bucket. Cross-account destinations are left untouched.
+        put_kwargs = {"Body": body}
         if kms_key is not None:
-            s3_object.put(Body=body, SSEKMSKeyId=kms_key, ServerSideEncryption="aws:kms")
-        else:
-            s3_object.put(Body=body)
+            put_kwargs["SSEKMSKeyId"] = kms_key
+            put_kwargs["ServerSideEncryption"] = "aws:kms"
+        expected_owner = self._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            put_kwargs["ExpectedBucketOwner"] = expected_owner
+
+        s3_object.put(**put_kwargs)
 
         s3_uri = "s3://{}/{}".format(bucket, key)
         return s3_uri
@@ -506,11 +527,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
         else:
             s3 = self.s3_client
 
+        # Spot check: if the caller-supplied bucket is the session's default bucket,
+        # assert ownership on the list/download calls to defend against squatting on
+        # the predictable default bucket name. Non-default buckets are left untouched
+        # to preserve legitimate cross-account flows.
+        expected_owner = self._get_account_id_if_default_bucket(bucket)
+
         # Initialize the variables used to loop through the contents of the S3 bucket.
         keys = []
         directories = []
         next_token = ""
         base_parameters = {"Bucket": bucket, "Prefix": key_prefix}
+        if expected_owner:
+            base_parameters["ExpectedBucketOwner"] = expected_owner
 
         # Loop through the contents of the bucket, 1,000 objects at a time. Gathering all keys into
         # a "keys" list.
@@ -537,18 +566,31 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         # For each object key, create the directory on the local machine if needed, and then
         # download the file.
+        download_extra_args = dict(extra_args) if extra_args else {}
+        if expected_owner:
+            download_extra_args["ExpectedBucketOwner"] = expected_owner
         downloaded_paths = []
+        path_real = os.path.realpath(path)
         for dir_path in directories:
+            validate_path_within_directory(dir_path, path)
             os.makedirs(os.path.dirname(dir_path), exist_ok=True)
         for key in keys:
             tail_s3_uri_path = os.path.basename(key)
             if not os.path.splitext(key_prefix)[1]:
                 tail_s3_uri_path = os.path.relpath(key, key_prefix)
             destination_path = os.path.join(path, tail_s3_uri_path)
+
+            validate_path_within_directory(
+                destination_path, path, source_description=key
+            )
+
             if not os.path.exists(os.path.dirname(destination_path)):
                 os.makedirs(os.path.dirname(destination_path), exist_ok=True)
             s3.download_file(
-                Bucket=bucket, Key=key, Filename=destination_path, ExtraArgs=extra_args
+                Bucket=bucket,
+                Key=key,
+                Filename=destination_path,
+                ExtraArgs=download_extra_args or None,
             )
             downloaded_paths.append(destination_path)
         return downloaded_paths
@@ -568,8 +610,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
         else:
             s3 = self.s3_client
 
+        # Spot check: assert ownership only when the caller is reading from the
+        # session's default bucket. Other buckets (e.g. JumpStart content buckets)
+        # are read without ExpectedBucketOwner to preserve cross-account flows.
+        get_kwargs = {"Bucket": bucket, "Key": key_prefix}
+        expected_owner = self._get_account_id_if_default_bucket(bucket)
+        if expected_owner:
+            get_kwargs["ExpectedBucketOwner"] = expected_owner
+
         # Explicitly passing a None kms_key to boto3 throws a validation error.
-        s3_object = s3.get_object(Bucket=bucket, Key=key_prefix)
+        s3_object = s3.get_object(**get_kwargs)
 
         return s3_object["Body"].read().decode("utf-8")
 
@@ -661,9 +711,16 @@ class Session(object):  # pylint: disable=too-many-public-methods
 
         """
         try:
-            s3.meta.client.head_bucket(
-                Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
-            )
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name,
+                    Prefix=self.default_bucket_prefix,
+                    ExpectedBucketOwner=expected_bucket_owner_id,
+                )
+            else:
+                s3.meta.client.head_bucket(
+                    Bucket=bucket_name, ExpectedBucketOwner=expected_bucket_owner_id
+                )
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
@@ -687,27 +744,50 @@ class Session(object):  # pylint: disable=too-many-public-methods
         If there is any other error that comes up with calling head bucket, it is raised up here
         If there is no bucket , it will create one
 
+        When the SDK selected the bucket name itself (``_default_bucket_set_by_sdk`` is True),
+        the probe is issued with ``ExpectedBucketOwner`` set to the caller's account id so that
+        S3 returns ``403`` if a bucket with the SDK-chosen name happens to exist in another
+        account (bucket-squatting defense). For user-overridden bucket names the probe is
+        issued without ``ExpectedBucketOwner`` to preserve legitimate cross-account usage.
+
         Args:
             bucket_name (str): Name of the S3 bucket
             s3 (str): S3 object from boto session
             region (str): The region in which to create the bucket.
             bucket_creation_date_none (bool):Indicating whether S3 bucket already exists or not
         """
+        extra_args = {}
+        if self._default_bucket_set_by_sdk:
+            extra_args["ExpectedBucketOwner"] = self.account_id()
+
         try:
-            s3.meta.client.head_bucket(Bucket=bucket_name)
+            if self.default_bucket_prefix:
+                s3.meta.client.list_objects_v2(
+                    Bucket=bucket_name, Prefix=self.default_bucket_prefix, **extra_args
+                )
+            else:
+                s3.meta.client.head_bucket(Bucket=bucket_name, **extra_args)
         except ClientError as e:
             error_code = e.response["Error"]["Code"]
             message = e.response["Error"]["Message"]
-            # bucket does not exist or forbidden to access
+            # bucket does not exist, is owned by another account, or is forbidden to access
             if bucket_creation_date_none:
                 if error_code == "404" and message == "Not Found":
                     self.create_bucket_for_not_exist_error(bucket_name, region, s3)
                 elif error_code == "403" and message == "Forbidden":
-                    LOGGER.error(
-                        "Bucket %s exists, but access is forbidden. Please try again after "
-                        "adding appropriate access.",
-                        bucket.name,
-                    )
+                    if self._default_bucket_set_by_sdk:
+                        LOGGER.error(
+                            "Bucket %s is not accessible as the default bucket. It may be "
+                            "owned by another account or access is forbidden. To unblock, "
+                            "pass a custom default_bucket parameter to sagemaker.Session.",
+                            bucket.name,
+                        )
+                    else:
+                        LOGGER.error(
+                            "Bucket %s exists, but access is forbidden. Please try again "
+                            "after adding appropriate access.",
+                            bucket.name,
+                        )
                     raise
                 else:
                     raise
@@ -755,6 +835,51 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "sts", region_name=region, endpoint_url=sts_regional_endpoint(region)
         ).get_caller_identity()["Account"]
         return "sagemaker-{}-{}".format(region, account)
+
+    def _get_account_id_if_default_bucket(self, bucket):
+        """Return the caller's account id if ``bucket`` is the SDK-generated default bucket.
+
+        Used by S3 operations that receive a caller-supplied bucket name to apply the
+        "spot check": when the bucket matches the SDK-generated default bucket name,
+        the call should assert ownership via ``ExpectedBucketOwner`` to defend against
+        bucket-squatting on the predictable default name. For any other bucket — including
+        user-overridden default buckets (which may legitimately be cross-account),
+        JumpStart, marketplace artifacts, or shared-team buckets — this returns ``None``
+        so the call proceeds unchanged.
+
+        This check is passive: it does not trigger default-bucket resolution or creation.
+        If ``default_bucket()`` has not been called yet, this returns ``None``.
+
+        Args:
+            bucket (str): The bucket name the caller is about to use.
+
+        Returns:
+            Optional[str]: The expected account id, or ``None`` if the spot check does
+                not apply.
+        """
+        if not bucket:
+            return None
+
+        # Only apply the spot check when the SDK generated the bucket name itself.
+        # User-overridden default buckets (_default_bucket_name_override) may legitimately
+        # be in another account, so we must not assert caller-account ownership on them.
+        if not self._default_bucket_set_by_sdk:
+            return None
+
+        # Use the already-resolved default bucket (fast, no side effects).
+        # _default_bucket is only set after default_bucket() has been called at least once.
+        if self._default_bucket and bucket == self._default_bucket:
+            try:
+                return self.account_id()
+            except Exception:  # pylint: disable=broad-except
+                # account_id() issues an STS call; if it fails we skip the spot check
+                # rather than block the S3 operation.
+                LOGGER.warning(
+                    "Could not resolve caller account id for ExpectedBucketOwner check "
+                    "on bucket %s; proceeding without the check.",
+                    bucket,
+                )
+        return None
 
     def determine_bucket_and_prefix(
         self, bucket: Optional[str] = None, key_prefix: Optional[str] = None, sagemaker_session=None
@@ -1657,111 +1782,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
             self.wait_for_inference_component(inference_component_name)
         return inference_component_name
 
-    def transform(
-        self,
-        job_name,
-        model_name,
-        strategy,
-        max_concurrent_transforms,
-        max_payload,
-        input_config,
-        output_config,
-        resource_config,
-        experiment_config,
-        env: Optional[Dict[str, str]] = None,
-        tags=None,
-        data_processing=None,
-        model_client_config=None,
-        batch_data_capture_config: BatchDataCaptureConfig = None,
-    ):
-        """Create an Amazon SageMaker transform job.
-
-        Args:
-            job_name (str): Name of the transform job being created.
-            model_name (str): Name of the SageMaker model being used for the transform job.
-            strategy (str): The strategy used to decide how to batch records in a single request.
-                Possible values are 'MultiRecord' and 'SingleRecord'.
-            max_concurrent_transforms (int): The maximum number of HTTP requests to be made to
-                each individual transform container at one time.
-            max_payload (int): Maximum size of the payload in a single HTTP request to the
-                container in MB.
-            env (dict): Environment variables to be set for use during the transform job.
-            input_config (dict): A dictionary describing the input data (and its location) for the
-                job.
-            output_config (dict): A dictionary describing the output location for the job.
-            resource_config (dict): A dictionary describing the resources to complete the job.
-            experiment_config (dict[str, str]): Experiment management configuration.
-                Optionally, the dict can contain three keys:
-                'ExperimentName', 'TrialName', and 'TrialComponentDisplayName'.
-                The behavior of setting these keys is as follows:
-                * If `ExperimentName` is supplied but `TrialName` is not a Trial will be
-                automatically created and the job's Trial Component associated with the Trial.
-                * If `TrialName` is supplied and the Trial already exists the job's Trial Component
-                will be associated with the Trial.
-                * If both `ExperimentName` and `TrialName` are not supplied the trial component
-                will be unassociated.
-                * `TrialComponentDisplayName` is used for display in Studio.
-            tags (Optional[Tags]): List of tags for labeling a transform job.
-            data_processing(dict): A dictionary describing config for combining the input data and
-                transformed data. For more, see
-                https://docs.aws.amazon.com/sagemaker/latest/dg/API_Tag.html.
-            model_client_config (dict): A dictionary describing the model configuration for the
-                job. Dictionary contains two optional keys,
-                'InvocationsTimeoutInSeconds', and 'InvocationsMaxRetries'.
-            batch_data_capture_config (BatchDataCaptureConfig): Configuration object which
-                specifies the configurations related to the batch data capture for the transform job
-        """
-        tags = _append_project_tags(format_tags(tags))
-        tags = self._append_sagemaker_config_tags(
-            tags, "{}.{}.{}".format(SAGEMAKER, TRANSFORM_JOB, TAGS)
-        )
-        batch_data_capture_config = resolve_class_attribute_from_config(
-            None,
-            batch_data_capture_config,
-            "kms_key_id",
-            TRANSFORM_JOB_KMS_KEY_ID_PATH,
-            sagemaker_session=self,
-        )
-        output_config = resolve_nested_dict_value_from_config(
-            output_config, [KMS_KEY_ID], TRANSFORM_OUTPUT_KMS_KEY_ID_PATH, sagemaker_session=self
-        )
-        resource_config = resolve_nested_dict_value_from_config(
-            resource_config,
-            [VOLUME_KMS_KEY_ID],
-            TRANSFORM_JOB_VOLUME_KMS_KEY_ID_PATH,
-            sagemaker_session=self,
-        )
-        env = resolve_value_from_config(
-            direct_input=env,
-            config_path=TRANSFORM_JOB_ENVIRONMENT_PATH,
-            default_value=None,
-            sagemaker_session=self,
-        )
-
-        transform_request = self._get_transform_request(
-            job_name=job_name,
-            model_name=model_name,
-            strategy=strategy,
-            max_concurrent_transforms=max_concurrent_transforms,
-            max_payload=max_payload,
-            env=env,
-            input_config=input_config,
-            output_config=output_config,
-            resource_config=resource_config,
-            experiment_config=experiment_config,
-            tags=tags,
-            data_processing=data_processing,
-            model_client_config=model_client_config,
-            batch_data_capture_config=batch_data_capture_config,
-        )
-
-        def submit(request):
-            logger.info("Creating transform job with name: %s", job_name)
-            logger.debug("Transform request: %s", json.dumps(request, indent=4))
-            self.sagemaker_client.create_transform_job(**request)
-
-        self._intercept_create_request(transform_request, submit, self.transform.__name__)
-
     def _create_model_request(
         self,
         name,
@@ -1965,6 +1985,74 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if "/" in role:
             return role
         return self.boto_session.resource("iam").Role(role).arn
+
+    # ========================================
+    # Hub Operations
+    # ========================================
+
+    def describe_hub_content(
+        self, hub_name, hub_content_name, hub_content_version, hub_content_type, **kwargs
+    ):
+        """Describe hub content in a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name or ARN of the hub.
+            hub_content_name (str): The name of the hub content.
+            hub_content_version (str): The version of the hub content.
+            hub_content_type (str): The type of hub content (Model, ModelReference, Notebook).
+
+        Returns:
+            dict: Response from the DescribeHubContent API.
+        """
+        return self.sagemaker_client.describe_hub_content(
+            HubName=hub_name,
+            HubContentName=hub_content_name,
+            HubContentVersion=hub_content_version,
+            HubContentType=hub_content_type,
+            **kwargs,
+        )
+
+    def list_hub_content_versions(self, hub_name, hub_content_name, hub_content_type, **kwargs):
+        """List versions of hub content in a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name or ARN of the hub.
+            hub_content_name (str): The name of the hub content.
+            hub_content_type (str): The type of hub content.
+            **kwargs: Additional arguments (e.g., next_token for pagination).
+
+        Returns:
+            dict: Response from the ListHubContentVersions API.
+        """
+        request = {
+            "HubName": hub_name,
+            "HubContentName": hub_content_name,
+            "HubContentType": hub_content_type,
+        }
+        next_token = kwargs.get("next_token")
+        if next_token:
+            request["NextToken"] = next_token
+        return self.sagemaker_client.list_hub_content_versions(**request)
+
+    def list_hub_contents(self, hub_name, hub_content_type, **kwargs):
+        """List hub contents in a SageMaker Hub.
+
+        Args:
+            hub_name (str): The name or ARN of the hub.
+            hub_content_type (str): The type of hub content to list.
+            **kwargs: Additional arguments (e.g., next_token for pagination).
+
+        Returns:
+            dict: Response from the ListHubContents API.
+        """
+        request = {
+            "HubName": hub_name,
+            "HubContentType": hub_content_type,
+        }
+        next_token = kwargs.get("next_token")
+        if next_token:
+            request["NextToken"] = next_token
+        return self.sagemaker_client.list_hub_contents(**request)
 
 
 def _expand_container_def(c_def):
@@ -2584,7 +2672,9 @@ def _flush_log_streams(
             color_wrap(idx, event["message"])
             ts, count = positions[stream_names[idx]]
             if event["timestamp"] == ts:
-                positions[stream_names[idx]] = sagemaker.core.logs.Position(timestamp=ts, skip=count + 1)
+                positions[stream_names[idx]] = sagemaker.core.logs.Position(
+                    timestamp=ts, skip=count + 1
+                )
             else:
                 positions[stream_names[idx]] = sagemaker.core.logs.Position(
                     timestamp=event["timestamp"], skip=1
@@ -2800,7 +2890,7 @@ def _live_logging_deploy_done(sagemaker_client, endpoint_name, paginator, pagina
         if endpoint_status != "Creating":
             stop = True
             if endpoint_status == "InService":
-                LOGGER.info("Created endpoint with name %s", endpoint_name)
+                LOGGER.info("Created endpoint with name %s. Waiting for it to be InService", endpoint_name)
             else:
                 time.sleep(poll)
 

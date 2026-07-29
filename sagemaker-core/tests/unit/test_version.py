@@ -25,35 +25,37 @@ class TestVersion:
         """Test that version is read from VERSION file."""
         # Read the VERSION file directly to verify it exists and has content
         import os
-        version_file_path = os.path.join(os.path.dirname(__file__), '..', '..', 'VERSION')
-        
+
+        version_file_path = os.path.join(os.path.dirname(__file__), "..", "..", "VERSION")
+
         if os.path.exists(version_file_path):
             with open(version_file_path) as f:
                 version = f.read().strip()
                 assert len(version) > 0
-                assert '.' in version or version.isdigit()
+                assert "." in version or version.isdigit()
 
-    @patch('builtins.open', new_callable=mock_open, read_data='1.2.3\n')
-    @patch('os.path.abspath')
-    @patch('os.path.dirname')
-    @patch('os.path.join')
+    @patch("builtins.open", new_callable=mock_open, read_data="1.2.3\n")
+    @patch("os.path.abspath")
+    @patch("os.path.dirname")
+    @patch("os.path.join")
     def test_version_file_parsing(self, mock_join, mock_dirname, mock_abspath, mock_file):
         """Test version file parsing with mocked file system."""
-        mock_dirname.return_value = '/fake/path'
+        mock_dirname.return_value = "/fake/path"
         mock_abspath.side_effect = lambda x: x
-        mock_join.return_value = '/fake/VERSION'
-        
+        mock_join.return_value = "/fake/VERSION"
+
         # Re-import to trigger the version loading with mocks
         import importlib
         from sagemaker.core import _version
+
         importlib.reload(_version)
-        
+
         # Verify version was stripped of whitespace
-        assert _version.__version__ == '1.2.3'
+        assert _version.__version__ == "1.2.3"
 
     def test_version_format(self):
         """Test that version follows semantic versioning format."""
         from sagemaker.core._version import __version__
-        
+
         # Version should contain at least one dot (e.g., "1.0" or "1.0.0")
-        assert '.' in __version__ or __version__.isdigit()
+        assert "." in __version__ or __version__.isdigit()

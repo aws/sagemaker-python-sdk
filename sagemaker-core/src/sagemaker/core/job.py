@@ -23,12 +23,14 @@ from sagemaker.core.workflow import is_pipeline_variable
 def _is_file_input(obj):
     """Check if object is a file_input instance (lazy import to avoid circular dependency)."""
     from sagemaker.core.local.local_session import file_input
+
     return isinstance(obj, file_input)
 
 
 def _get_file_input_class():
     """Get file_input class (lazy import to avoid circular dependency)."""
     from sagemaker.core.local.local_session import file_input
+
     return file_input
 
 
@@ -301,7 +303,7 @@ class _Job(object):
     @staticmethod
     def _format_record_set_list_input(inputs):
         """Placeholder docstring
-        
+
         Note: This method depends on RecordSet and FileSystemRecordSet from the
         deprecated sagemaker.core.amazon module and is no longer functional.
         """

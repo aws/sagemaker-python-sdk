@@ -118,17 +118,23 @@ def get_tc_and_exp_config_from_job_env(
     job_name = environment.source_arn.split("/")[-1]
     if environment.environment_type == _EnvironmentType.SageMakerTrainingJob:
         job_response = retry_with_backoff(
-            callable_func=lambda: sagemaker_session.describe_training_job(job_name),
+            callable_func=lambda: sagemaker_session.sagemaker_client.describe_training_job(
+                TrainingJobName=job_name
+            ),
             num_attempts=4,
         )
     elif environment.environment_type == _EnvironmentType.SageMakerProcessingJob:
         job_response = retry_with_backoff(
-            callable_func=lambda: sagemaker_session.describe_processing_job(job_name),
+            callable_func=lambda: sagemaker_session.sagemaker_client.describe_processing_job(
+                ProcessingJobName=job_name
+            ),
             num_attempts=4,
         )
     else:  # environment.environment_type == _EnvironmentType.SageMakerTransformJob
         job_response = retry_with_backoff(
-            callable_func=lambda: sagemaker_session.describe_transform_job(job_name),
+            callable_func=lambda: sagemaker_session.sagemaker_client.describe_transform_job(
+                TransformJobName=job_name
+            ),
             num_attempts=4,
         )
 

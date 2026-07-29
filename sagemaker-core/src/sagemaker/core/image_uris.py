@@ -41,6 +41,7 @@ HUGGING_FACE_LLM_FRAMEWORK = "huggingface-llm"
 HUGGING_FACE_TEI_GPU_FRAMEWORK = "huggingface-tei"
 HUGGING_FACE_TEI_CPU_FRAMEWORK = "huggingface-tei-cpu"
 HUGGING_FACE_LLM_NEURONX_FRAMEWORK = "huggingface-llm-neuronx"
+HUGGING_FACE_VLLM_NEURONX_FRAMEWORK = "huggingface-vllm-neuronx"
 XGBOOST_FRAMEWORK = "xgboost"
 SKLEARN_FRAMEWORK = "sklearn"
 TRAINIUM_ALLOWED_FRAMEWORKS = "pytorch"
@@ -77,7 +78,8 @@ def retrieve(
 ) -> str:
     """Retrieves the ECR URI for the Docker image matching the given arguments.
 
-    Ideally this function should not be called directly.
+    Ideally this function should not be called directly, rather it should be called from the
+    fit() function inside framework estimator.
 
     Args:
         framework (str): The name of the framework or algorithm.
@@ -126,7 +128,7 @@ def retrieve(
         serverless_inference_config (sagemaker.serverless.ServerlessInferenceConfig):
             Specifies configuration related to serverless endpoint. Instance type is
             not provided in serverless inference. So this is used to determine processor type.
-        sagemaker_session (sagemaker.core.helper.session.Session): A SageMaker Session
+        sagemaker_session (sagemaker.session.Session): A SageMaker Session
             object, used for SageMaker interactions. If not
             specified, one is created using the default AWS configuration
             chain. (Default: sagemaker.jumpstart.constants.DEFAULT_JUMPSTART_SAGEMAKER_SESSION).
@@ -229,7 +231,11 @@ def retrieve(
         container_version = version_config["container_version"][processor]
 
     # Append sdk version in case of trainium instances
-    if repo in ["pytorch-training-neuron", "pytorch-training-neuronx"]:
+    if repo in [
+        "pytorch-training-neuron",
+        "pytorch-training-neuronx",
+        "huggingface-vllm-inference-neuronx",
+    ]:
         if not sdk_version:
             sdk_version = _get_latest_versions(version_config["sdk_versions"])
         container_version = sdk_version + "-" + container_version

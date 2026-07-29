@@ -16,7 +16,13 @@ from __future__ import absolute_import
 import json
 from typing import Any, Dict, List, Optional, Tuple, Union
 from sagemaker.core.shapes import ModelAccessConfig
-from sagemaker.core import environment_variables, image_uris, instance_types, model_uris, script_uris
+from sagemaker.core import (
+    environment_variables,
+    image_uris,
+    instance_types,
+    model_uris,
+    script_uris,
+)
 from sagemaker.serve.async_inference.async_inference_config import AsyncInferenceConfig
 from sagemaker.core.deserializers.base import BaseDeserializer
 from sagemaker.core.serializers.base import BaseSerializer
@@ -40,7 +46,11 @@ from sagemaker.core.jumpstart.hub.utils import (
     construct_hub_model_reference_arn_from_inputs,
 )
 
-from sagemaker.core.jumpstart.enums import JumpStartScriptScope, JumpStartModelType, HubContentCapability
+from sagemaker.core.jumpstart.enums import (
+    JumpStartScriptScope,
+    JumpStartModelType,
+    HubContentCapability,
+)
 from sagemaker.core.jumpstart.types import (
     HubContentType,
     JumpStartEstimatorDeployKwargs,
@@ -130,7 +140,6 @@ def _set_temp_sagemaker_session_if_not_set(kwargs: KwargsType) -> Tuple[KwargsTy
     if kwargs.sagemaker_session is None:
         kwargs.sagemaker_session = DEFAULT_JUMPSTART_SAGEMAKER_SESSION
     return kwargs, orig_session
-
 
 
 def _add_region_to_kwargs(kwargs: JumpStartModelInitKwargs) -> JumpStartModelInitKwargs:

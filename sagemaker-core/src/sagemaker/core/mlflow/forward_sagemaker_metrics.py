@@ -25,15 +25,15 @@ __all__ = ["log_sagemaker_job_to_mlflow"]
 
 def log_sagemaker_job_to_mlflow(job_name, *args, **kwargs):
     """Stub for logging SageMaker job metrics to MLflow.
-    
+
     This function is not yet implemented. MLflow integration is an optional
     feature that will be added in a future release.
-    
+
     Args:
         job_name (str): Name of the SageMaker training job
         *args: Additional positional arguments (ignored)
         **kwargs: Additional keyword arguments (ignored)
-    
+
     Raises:
         NotImplementedError: Always raised as this is a stub.
     """

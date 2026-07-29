@@ -1,0 +1,99 @@
+name: _Conda Forge Package Release
+
+on:
+  workflow_call:
+    inputs:
+      package:
+        description: 'Package being released (e.g. sagemaker-train)'
+        required: true
+        type: string
+      feedstock:
+        description: 'Feedstock repo (e.g. conda-forge/sagemaker-train-feedstock)'
+        required: true
+        type: string
+      pr_search:
+        description: 'PR title search string (e.g. sagemaker-train v1.6.0)'
+        required: true
+        type: string
+      version:
+        description: 'Version of this package being released (e.g. 1.6.0)'
+        required: true
+        type: string
+      dep_package:
+        description: 'Conda dependency to wait for before retrying CI (e.g. sagemaker-core)'
+        required: true
+        type: string
+      dep_version:
+        description: 'Version of the dependency to wait for (e.g. 2.6.0)'
+        required: true
+        type: string
+      poll_interval:
+        required: true
+        type: string
+      max_attempts:
+        required: true
+        type: string
+    secrets:
+      token:
+        required: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.token }}
+    steps:
+      - name: Wait for dependency (${{ inputs.dep_package }}==${{ inputs.dep_version }}) on conda-forge
+        run: |
+          PACKAGE="${{ inputs.dep_package }}"
+          VERSION="${{ inputs.dep_version }}"
+          echo "Waiting for ${PACKAGE}==${VERSION} on conda-forge..."
+          for i in $(seq 1 ${{ inputs.max_attempts }}); do
+            RESULT=$(conda search -c conda-forge --override-channels \
+              "${PACKAGE}==${VERSION}" --json 2>/dev/null \
+              | python3 -c "import sys,json; d=json.load(sys.stdin); print('found' if d.get('$PACKAGE') else 'not_found')" \
+              2>/dev/null || echo "not_found")
+            echo "Attempt $i: ${RESULT}"
+            [ "$RESULT" = "found" ] && echo "${PACKAGE}==${VERSION} is available." && exit 0
+            sleep ${{ inputs.poll_interval }}
+          done
+          echo "Timed out waiting for ${PACKAGE}==${VERSION}." && exit 1
+
+      - name: Merge and wait for ${{ inputs.package }} feedstock PR
+        run: |
+          REPO="${{ inputs.feedstock }}"
+          SEARCH="${{ inputs.pr_search }}"
+          for i in $(seq 1 ${{ inputs.max_attempts }}); do
+            STATE=$(gh pr list --repo "$REPO" --state all \
+              --search "$SEARCH" --json state -q '.[0].state // "NOT_FOUND"')
+            echo "Attempt $i: ${STATE}"
+            [ "$STATE" = "MERGED" ] && exit 0
+            PR=$(gh pr list --repo "$REPO" --state open \
+              --search "$SEARCH" --json number -q '.[0].number')
+            if [ -n "$PR" ]; then
+              CI_STATUS=$(gh pr view "$PR" --repo "$REPO" \
+                --json statusCheckRollup -q '
+                  .statusCheckRollup | map(
+                    if .__typename == "CheckRun" then .conclusion
+                    elif .__typename == "StatusContext" then .state
+                    else null end
+                  ) | if length == 0 then "pending"
+                    elif any(. == null or . == "" or . == "IN_PROGRESS" or . == "QUEUED" or . == "WAITING" or . == "PENDING") then "pending"
+                    elif all(. == "SUCCESS") then "success"
+                    else "failure" end')
+              echo "CI status: ${CI_STATUS}"
+              if [ "$CI_STATUS" = "success" ]; then
+                echo "CI passed, merging PR #${PR}..."
+                gh pr merge "$PR" --repo "$REPO" --merge 2>/dev/null || true
+              elif [ "$CI_STATUS" = "failure" ]; then
+                echo "CI failed, retriggering..."
+                BRANCH=$(gh pr view "$PR" --repo "$REPO" --json headRefName -q .headRefName)
+                RUN_ID=$(gh run list --repo "$REPO" --branch "$BRANCH" \
+                  --json databaseId,conclusion -q \
+                  '[.[] | select(.conclusion=="failure")][0].databaseId')
+                [ -n "$RUN_ID" ] && gh run rerun "$RUN_ID" --repo "$REPO" --failed || true
+              fi
+            fi
+            sleep ${{ inputs.poll_interval }}
+          done
+          echo "Timed out waiting for ${{ inputs.package }} PR to merge." && exit 1

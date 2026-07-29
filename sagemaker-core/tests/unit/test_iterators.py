@@ -25,37 +25,28 @@ from sagemaker.core.exceptions import ModelStreamError, InternalStreamFailure
 
 def test_handle_stream_errors_model_stream_error():
     """Test handle_stream_errors raises ModelStreamError."""
-    chunk = {
-        "ModelStreamError": {
-            "Message": "Model error occurred",
-            "ErrorCode": "ModelError"
-        }
-    }
-    
+    chunk = {"ModelStreamError": {"Message": "Model error occurred", "ErrorCode": "ModelError"}}
+
     with pytest.raises(ModelStreamError) as exc_info:
         handle_stream_errors(chunk)
-    
+
     assert "Model error occurred" in str(exc_info.value)
 
 
 def test_handle_stream_errors_internal_stream_failure():
     """Test handle_stream_errors raises InternalStreamFailure."""
-    chunk = {
-        "InternalStreamFailure": {
-            "Message": "Internal failure occurred"
-        }
-    }
-    
+    chunk = {"InternalStreamFailure": {"Message": "Internal failure occurred"}}
+
     with pytest.raises(InternalStreamFailure) as exc_info:
         handle_stream_errors(chunk)
-    
+
     assert "Internal failure occurred" in str(exc_info.value)
 
 
 def test_handle_stream_errors_no_error():
     """Test handle_stream_errors does nothing when no error in chunk."""
     chunk = {"PayloadPart": {"Bytes": b"test data"}}
-    
+
     # Should not raise any exception
     handle_stream_errors(chunk)
 
@@ -64,16 +55,16 @@ def test_byte_iterator_initialization():
     """Test ByteIterator initialization."""
     mock_stream = []
     iterator = ByteIterator(mock_stream)
-    
+
     assert iterator.event_stream == mock_stream
-    assert hasattr(iterator, 'byte_iterator')
+    assert hasattr(iterator, "byte_iterator")
 
 
 def test_byte_iterator_iter():
     """Test ByteIterator __iter__ returns self."""
     mock_stream = []
     iterator = ByteIterator(mock_stream)
-    
+
     assert iterator.__iter__() == iterator
 
 
@@ -84,29 +75,25 @@ def test_byte_iterator_next_with_payload():
         {"PayloadPart": {"Bytes": b"chunk2"}},
     ]
     iterator = ByteIterator(mock_stream)
-    
+
     assert next(iterator) == b"chunk1"
     assert next(iterator) == b"chunk2"
 
 
 def test_byte_iterator_next_with_model_error():
     """Test ByteIterator __next__ raises ModelStreamError."""
-    mock_stream = [
-        {"ModelStreamError": {"Message": "Error", "ErrorCode": "500"}}
-    ]
+    mock_stream = [{"ModelStreamError": {"Message": "Error", "ErrorCode": "500"}}]
     iterator = ByteIterator(mock_stream)
-    
+
     with pytest.raises(ModelStreamError):
         next(iterator)
 
 
 def test_byte_iterator_next_with_internal_failure():
     """Test ByteIterator __next__ raises InternalStreamFailure."""
-    mock_stream = [
-        {"InternalStreamFailure": {"Message": "Failure"}}
-    ]
+    mock_stream = [{"InternalStreamFailure": {"Message": "Failure"}}]
     iterator = ByteIterator(mock_stream)
-    
+
     with pytest.raises(InternalStreamFailure):
         next(iterator)
 
@@ -115,7 +102,7 @@ def test_byte_iterator_next_stop_iteration():
     """Test ByteIterator __next__ raises StopIteration when stream ends."""
     mock_stream = []
     iterator = ByteIterator(mock_stream)
-    
+
     with pytest.raises(StopIteration):
         next(iterator)
 
@@ -128,7 +115,7 @@ def test_byte_iterator_multiple_chunks():
         {"PayloadPart": {"Bytes": b"chunk3"}},
     ]
     iterator = ByteIterator(mock_stream)
-    
+
     chunks = list(iterator)
     assert len(chunks) == 3
     assert chunks[0] == b"chunk1"
@@ -140,10 +127,10 @@ def test_line_iterator_initialization():
     """Test LineIterator initialization."""
     mock_stream = []
     iterator = LineIterator(mock_stream)
-    
+
     assert iterator.event_stream == mock_stream
-    assert hasattr(iterator, 'byte_iterator')
-    assert hasattr(iterator, 'buffer')
+    assert hasattr(iterator, "byte_iterator")
+    assert hasattr(iterator, "buffer")
     assert iterator.read_pos == 0
 
 
@@ -151,7 +138,7 @@ def test_line_iterator_iter():
     """Test LineIterator __iter__ returns self."""
     mock_stream = []
     iterator = LineIterator(mock_stream)
-    
+
     assert iterator.__iter__() == iterator
 
 
@@ -161,7 +148,7 @@ def test_line_iterator_next_single_line():
         {"PayloadPart": {"Bytes": b'{"outputs": [" test"]}\n'}},
     ]
     iterator = LineIterator(mock_stream)
-    
+
     line = next(iterator)
     assert line == b'{"outputs": [" test"]}'
 
@@ -173,7 +160,7 @@ def test_line_iterator_next_multiple_lines():
         {"PayloadPart": {"Bytes": b'{"outputs": [" line2"]}\n'}},
     ]
     iterator = LineIterator(mock_stream)
-    
+
     line1 = next(iterator)
     line2 = next(iterator)
     assert line1 == b'{"outputs": [" line1"]}'
@@ -187,29 +174,25 @@ def test_line_iterator_split_json():
         {"PayloadPart": {"Bytes": b'[" test"]}\n'}},
     ]
     iterator = LineIterator(mock_stream)
-    
+
     line = next(iterator)
     assert line == b'{"outputs": [" test"]}'
 
 
 def test_line_iterator_with_model_error():
     """Test LineIterator __next__ raises ModelStreamError."""
-    mock_stream = [
-        {"ModelStreamError": {"Message": "Error", "ErrorCode": "500"}}
-    ]
+    mock_stream = [{"ModelStreamError": {"Message": "Error", "ErrorCode": "500"}}]
     iterator = LineIterator(mock_stream)
-    
+
     with pytest.raises(ModelStreamError):
         next(iterator)
 
 
 def test_line_iterator_with_internal_failure():
     """Test LineIterator __next__ raises InternalStreamFailure."""
-    mock_stream = [
-        {"InternalStreamFailure": {"Message": "Failure"}}
-    ]
+    mock_stream = [{"InternalStreamFailure": {"Message": "Failure"}}]
     iterator = LineIterator(mock_stream)
-    
+
     with pytest.raises(InternalStreamFailure):
         next(iterator)
 
@@ -218,7 +201,7 @@ def test_line_iterator_stop_iteration():
     """Test LineIterator __next__ raises StopIteration when stream ends."""
     mock_stream = []
     iterator = LineIterator(mock_stream)
-    
+
     with pytest.raises(StopIteration):
         next(iterator)
 
@@ -229,7 +212,7 @@ def test_line_iterator_multiple_lines_in_single_chunk():
         {"PayloadPart": {"Bytes": b'{"outputs": [" line1"]}\n{"outputs": [" line2"]}\n'}},
     ]
     iterator = LineIterator(mock_stream)
-    
+
     line1 = next(iterator)
     line2 = next(iterator)
     assert line1 == b'{"outputs": [" line1"]}'
@@ -242,10 +225,10 @@ def test_line_iterator_incomplete_line_at_end():
         {"PayloadPart": {"Bytes": b'{"outputs": [" complete"]}\n'}},
     ]
     iterator = LineIterator(mock_stream)
-    
+
     line1 = next(iterator)
     assert line1 == b'{"outputs": [" complete"]}'
-    
+
     # After consuming all complete lines, should raise StopIteration
     with pytest.raises(StopIteration):
         next(iterator)

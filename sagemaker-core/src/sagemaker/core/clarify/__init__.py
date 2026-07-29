@@ -2004,7 +2004,7 @@ class SageMakerClarifyProcessor(Processor):
                 kms_key,
             )
             from sagemaker.core.shapes import ProcessingS3Input, ProcessingS3Output
-            
+
             config_input = ProcessingInput(
                 input_name="analysis_config",
                 s3_input=ProcessingS3Input(
@@ -2013,7 +2013,7 @@ class SageMakerClarifyProcessor(Processor):
                     s3_data_type="S3Prefix",
                     s3_input_mode="File",
                     s3_compression_type="None",
-                )
+                ),
             )
             data_input = ProcessingInput(
                 input_name="dataset",
@@ -2024,7 +2024,7 @@ class SageMakerClarifyProcessor(Processor):
                     s3_input_mode="File",
                     s3_data_distribution_type=data_config.s3_data_distribution_type,
                     s3_compression_type=data_config.s3_compression_type,
-                )
+                ),
             )
             result_output = ProcessingOutput(
                 output_name="analysis_result",
@@ -2032,7 +2032,7 @@ class SageMakerClarifyProcessor(Processor):
                     s3_uri=data_config.s3_output_path,
                     local_path=self._CLARIFY_OUTPUT,
                     s3_upload_mode=ProcessingOutputHandler.get_s3_upload_mode(analysis_config),
-                )
+                ),
             )
 
             return super().run(
@@ -2101,9 +2101,7 @@ class SageMakerClarifyProcessor(Processor):
             data_config, data_bias_config, methods
         )
         # when name is either not provided (is None) or an empty string ("")
-        job_name = job_name or name_from_base(
-            self.job_name_prefix or "Clarify-Pretraining-Bias"
-        )
+        job_name = job_name or name_from_base(self.job_name_prefix or "Clarify-Pretraining-Bias")
         return self._run(
             data_config,
             analysis_config,
@@ -2187,9 +2185,7 @@ class SageMakerClarifyProcessor(Processor):
             model_config,
         )
         # when name is either not provided (is None) or an empty string ("")
-        job_name = job_name or name_from_base(
-            self.job_name_prefix or "Clarify-Posttraining-Bias"
-        )
+        job_name = job_name or name_from_base(self.job_name_prefix or "Clarify-Posttraining-Bias")
         return self._run(
             data_config,
             analysis_config,
@@ -2373,9 +2369,7 @@ class SageMakerClarifyProcessor(Processor):
             data_config, model_config, model_scores, explainability_config
         )
         # when name is either not provided (is None) or an empty string ("")
-        job_name = job_name or name_from_base(
-            self.job_name_prefix or "Clarify-Explainability"
-        )
+        job_name = job_name or name_from_base(self.job_name_prefix or "Clarify-Explainability")
         return self._run(
             data_config,
             analysis_config,
