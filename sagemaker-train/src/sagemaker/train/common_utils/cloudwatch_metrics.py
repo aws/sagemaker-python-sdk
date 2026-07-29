@@ -15,8 +15,10 @@ import logging
 import re
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from botocore.exceptions import ClientError
 
 from sagemaker.core.training.configs import HyperPodCompute
+from sagemaker.train.common_utils.constants import AUTH_ERROR_CODES
 
 
 logger = logging.getLogger(__name__)
@@ -43,6 +45,32 @@ AVAILABLE_METRICS: Dict[str, Dict[str, Dict[str, str]]] = {
 
 _UNSUPPORTED_TECHNIQUES = {"DPO", "RLAIF"}
 
+
+def _raise_if_auth_error(error: ClientError, job_name: str, operation: str) -> None:
+    """Re-raise a CloudWatch Logs error as ``PermissionError`` if it is auth-related.
+
+    Return silently for any other error code so the caller can treat it as
+    "no log data available".
+
+    Args:
+        error: The ``ClientError`` raised by the CloudWatch Logs client.
+        job_name: Training job name, included in the error message.
+        operation: CloudWatch Logs API that failed, e.g. "DescribeLogStreams".
+
+    Raises:
+        PermissionError: If the error code indicates expired/invalid credentials
+            or missing CloudWatch Logs permissions.
+    """
+    error_code = error.response.get("Error", {}).get("Code", "")
+    if error_code in AUTH_ERROR_CODES:
+        raise PermissionError(
+            f"Cannot read CloudWatch logs for job '{job_name}': {operation} failed with "
+            f"'{error_code}'. Verify your AWS credentials are valid and have not expired, "
+            f"and that your caller identity has logs:DescribeLogStreams, logs:GetLogEvents, "
+            f"and logs:FilterLogEvents permissions."
+        ) from error
+
+
 def _get_smtj_log_group() -> str:
     """Return the CW log group for SageMaker Training Jobs."""
     return "/aws/sagemaker/TrainingJobs"
@@ -67,14 +95,20 @@ def _fetch_smtj_logs(
     start_time: Optional[int] = None,
     end_time: Optional[int] = None,
 ) -> List[Dict[str, Any]]:
-    """Fetch CloudWatch log events for an SMTJ training job."""
+    """Fetch CloudWatch log events for an SMTJ training job.
+
+    Raises:
+        PermissionError: If the logs cannot be read because the caller's credentials
+            are expired/invalid or lack CloudWatch Logs permissions.
+    """
     # Find the job's dedicated log stream
     try:
         response = logs_client.describe_log_streams(
             logGroupName=log_group,
             logStreamNamePrefix=job_name,
         )
-    except Exception as e:
+    except ClientError as e:
+        _raise_if_auth_error(e, job_name, "DescribeLogStreams")
         logger.warning(f"Could not describe log streams for job '{job_name}': {e}")
         return []
 
@@ -102,7 +136,12 @@ def _fetch_smtj_logs(
         if next_token:
             params["nextToken"] = next_token
 
-        response = logs_client.get_log_events(**params)
+        try:
+            response = logs_client.get_log_events(**params)
+        except ClientError as e:
+            _raise_if_auth_error(e, job_name, "GetLogEvents")
+            raise
+
         events = response.get("events", [])
         all_events.extend(events)
 
@@ -125,6 +164,10 @@ def _fetch_smhp_logs(
 
     HyperPod doesn't separate log streams by job — uses filter_log_events
     with the job ID as the filter pattern.
+
+    Raises:
+        PermissionError: If the logs cannot be read because the caller's credentials
+            are expired/invalid or lack CloudWatch Logs permissions.
     """
     all_events: List[Dict[str, Any]] = []
     next_token = None
@@ -144,7 +187,8 @@ def _fetch_smhp_logs(
 
         try:
             response = logs_client.filter_log_events(**params)
-        except Exception as e:
+        except ClientError as e:
+            _raise_if_auth_error(e, job_id, "FilterLogEvents")
             logger.warning(f"Could not filter log events for HP job '{job_id}': {e}")
             return all_events
 
@@ -346,6 +390,8 @@ def fetch_and_plot_metrics(
 
     Raises:
         NotImplementedError: If the technique is not supported (e.g., DPO).
+        PermissionError: If CloudWatch logs cannot be read because the caller's
+            credentials are expired/invalid or lack CloudWatch Logs permissions.
         ValueError: If no logs or metrics are found.
     """
     technique = customization_technique.upper()

@@ -393,6 +393,8 @@ class BaseTrainer(ABC):
         Raises:
             NotImplementedError: If the training technique does not support metric
                 extraction (e.g., DPO).
+            PermissionError: If CloudWatch logs cannot be read because the caller's
+                credentials are expired/invalid or lack CloudWatch Logs permissions.
             ValueError: If no training job has been run yet, no logs/metrics
                 are found, or MLflow is not configured for OSS models.
         """
