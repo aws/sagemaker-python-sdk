@@ -1451,10 +1451,45 @@ def _get_smhp_replicas_enum(model_name: str, customization_technique: str, train
         if isinstance(enum_val, list) and enum_val:
             return enum_val
     except Exception as e:
-        logger.warning(
+        # Caller emits the user-facing warning when None is returned; keep the
+        # exception detail at debug level to avoid a duplicate warning.
+        logger.debug(
             f"Could not fetch valid instance counts from SMHP recipe for "
-            f"{model_name}/{customization_technique}: {e}. "
-            "Instance count validation will be skipped."
+            f"{model_name}/{customization_technique}: {e}."
+        )
+    return None
+
+
+def _get_smhp_instance_type_enum(model_name: str, customization_technique: str, training_type,
+                                 sagemaker_session, hub_name: Optional[str] = None) -> Optional[list]:
+    """Fetch the instance_type enum from the SMHP override spec for the same model/technique.
+
+    SMTJ hub content does not include an instance_type enum in its override spec, but
+    the SMHP recipe for the same configuration does. This function retrieves that
+    enum so it can be applied to SMTJ recipe validation.
+
+    Returns:
+        List of valid instance types, or None if unavailable.
+    """
+    try:
+        _, smhp_override_spec = _get_recipe_entry_and_override_spec(
+            model_name=model_name,
+            customization_technique=customization_technique,
+            training_type=training_type,
+            sagemaker_session=sagemaker_session,
+            platform="hyperpod",
+            hub_name=hub_name,
+        )
+        instance_type_meta = smhp_override_spec.get("instance_type", {})
+        enum_val = instance_type_meta.get("enum")
+        if isinstance(enum_val, list) and enum_val:
+            return enum_val
+    except Exception as e:
+        # Caller emits the user-facing warning when None is returned; keep the
+        # exception detail at debug level to avoid a duplicate warning.
+        logger.debug(
+            f"Could not fetch valid instance types from SMHP recipe for "
+            f"{model_name}/{customization_technique}: {e}."
         )
     return None
 
