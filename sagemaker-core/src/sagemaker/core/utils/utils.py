@@ -318,9 +318,6 @@ class Unassigned:
 class SingletonMeta(type):
     """
     Singleton metaclass. Ensures that a single instance of a class using this metaclass is created.
-
-    A class may define a ``_singleton_key(*args, **kwargs)`` classmethod returning
-    a hashable key to cache instances per ``(class, key)`` instead of per class.
     """
 
     _instances = {}
@@ -330,14 +327,10 @@ class SingletonMeta(type):
         Overrides the call method to return an existing instance of the class if it exists,
         or create a new one if it doesn't.
         """
-        key = cls
-        key_fn = getattr(cls, "_singleton_key", None)
-        if key_fn is not None:
-            key = (cls, key_fn(*args, **kwargs))
-        if key not in cls._instances:
+        if cls not in cls._instances:
             instance = super().__call__(*args, **kwargs)
-            cls._instances[key] = instance
-        return cls._instances[key]
+            cls._instances[cls] = instance
+        return cls._instances[cls]
 
 
 class SageMakerClient(metaclass=SingletonMeta):
@@ -345,27 +338,10 @@ class SageMakerClient(metaclass=SingletonMeta):
     A singleton class for creating a SageMaker client.
     """
 
-    @staticmethod
-    def _singleton_key(session: Session = None, region_name: str = None, *args, **kwargs):
-        """Cache instances per (session, region).
-
-        id(session) is stable because the cached instance holds a reference to
-        the session, so the object cannot be garbage-collected while the entry
-        lives.
-        """
-        session_key = id(session) if session is not None else None
-        return (session_key, region_name)
-
     @classmethod
     def reset(cls):
-        """Reset cached singleton instances for this class."""
-        keys = [
-            k
-            for k in SingletonMeta._instances
-            if k == cls or (isinstance(k, tuple) and k[0] is cls)
-        ]
-        for key in keys:
-            SingletonMeta._instances.pop(key, None)
+        """Reset the singleton instance."""
+        SingletonMeta._instances.pop(cls, None)
 
     def __init__(
         self,
