@@ -318,3 +318,44 @@ class TestMlflowInjection:
 
         assert override_spec["mlflow_experiment_name"]["default"] == "user-experiment"
         assert override_spec["mlflow_run_name"]["default"] == "nova-lite-sft"
+
+
+class TestValidateInstanceType:
+    """Unit tests for BaseTrainer._validate_instance_type.
+
+    Validates instance types against the SMHP override-spec enum, and skips
+    validation (returning None) when the enum is unavailable.
+    """
+
+    def _trainer(self):
+        trainer = _ConcreteTrainer.__new__(_ConcreteTrainer)
+        trainer._model_name = "nova-lite"
+        trainer._customization_technique = "sft"
+        trainer.training_type = "lora"
+        return trainer
+
+    @patch("sagemaker.train.base_trainer._get_smhp_instance_type_enum")
+    def test_allowed_instance_type_returns_enum(self, mock_enum):
+        mock_enum.return_value = ["ml.p4d.24xlarge", "ml.p5.48xlarge"]
+        trainer = self._trainer()
+
+        result = trainer._validate_instance_type("ml.p4d.24xlarge", MagicMock())
+
+        assert result == ["ml.p4d.24xlarge", "ml.p5.48xlarge"]
+
+    @patch("sagemaker.train.base_trainer._get_smhp_instance_type_enum")
+    def test_disallowed_instance_type_raises(self, mock_enum):
+        mock_enum.return_value = ["ml.p4d.24xlarge", "ml.p5.48xlarge"]
+        trainer = self._trainer()
+
+        with pytest.raises(ValueError, match="is not supported"):
+            trainer._validate_instance_type("ml.g5.xlarge", MagicMock())
+
+    @patch("sagemaker.train.base_trainer._get_smhp_instance_type_enum")
+    def test_skips_validation_when_enum_unavailable(self, mock_enum):
+        """When the enum can't be fetched, validation is skipped (returns None)."""
+        mock_enum.return_value = None
+        trainer = self._trainer()
+
+        # Any instance type is accepted; the method returns None to signal skip.
+        assert trainer._validate_instance_type("ml.g5.xlarge", MagicMock()) is None

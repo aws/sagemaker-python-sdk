@@ -1220,6 +1220,87 @@ class TestModelReuse(unittest.TestCase):
         mock_endpoint_get.assert_not_called()
         mock_deploy.assert_called_once()
 
+    def _stub_endpoint_config_client(self, instance_type):
+        # Describe an endpoint whose production variant runs on `instance_type`.
+        client = self.mock_session.sagemaker_client
+        client.describe_endpoint.return_value = {"EndpointConfigName": "cfg"}
+        client.describe_endpoint_config.return_value = {
+            "ProductionVariants": [{"ModelName": "m", "InstanceType": instance_type}]
+        }
+        client.describe_model.return_value = {
+            "PrimaryContainer": {"Environment": {}, "Image": "img:1"}
+        }
+        return client
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.find_existing_sagemaker_endpoint")
+    def test_deploy_ignores_cached_endpoint_when_instance_type_mismatches(
+        self, mock_find, mock_endpoint_get
+    ):
+        # A build-time cached endpoint must be re-validated against the deploy-time
+        # instance_type, not returned blindly. Cache is g5.xlarge; deploy asks p4d.
+        self._stub_endpoint_config_client(instance_type="ml.g5.xlarge")
+        mock_find.return_value = None
+
+        with (
+            patch.object(ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_get_deploy_wrapper") as mock_get_wrapper,
+            patch.object(ModelBuilder, "add_tags"),
+        ):
+            mock_deploy = Mock(return_value=Mock())
+            mock_get_wrapper.return_value = mock_deploy
+
+            builder = self._make_builder()
+            builder.built_model = Mock()
+            builder.region = "us-west-2"
+            builder._reused_endpoint_name = "cached-ep"
+
+            builder.deploy(
+                endpoint_name="new-ep",
+                instance_type="ml.p4d.24xlarge",
+                reuse_resources=True,
+            )
+
+        # Instance-type mismatch: fall through and create a new endpoint.
+        mock_endpoint_get.assert_not_called()
+        mock_deploy.assert_called_once()
+
+    @patch("sagemaker.serve.model_builder.Endpoint.get")
+    @patch("sagemaker.serve.model_builder.find_existing_sagemaker_endpoint")
+    def test_deploy_reuses_cached_endpoint_when_instance_type_matches(
+        self, mock_find, mock_endpoint_get
+    ):
+        # A matching instance_type still reuses the cached endpoint (no over-correction).
+        self._stub_endpoint_config_client(instance_type="ml.p4d.24xlarge")
+        mock_endpoint = Mock()
+        mock_endpoint_get.return_value = mock_endpoint
+
+        with (
+            patch.object(ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"),
+            patch.object(ModelBuilder, "_is_model_customization", return_value=False),
+            patch.object(ModelBuilder, "_get_deploy_wrapper") as mock_get_wrapper,
+            patch.object(ModelBuilder, "add_tags"),
+        ):
+            mock_deploy = Mock(return_value=Mock())
+            mock_get_wrapper.return_value = mock_deploy
+
+            builder = self._make_builder()
+            builder.built_model = Mock()
+            builder.region = "us-west-2"
+            builder._reused_endpoint_name = "cached-ep"
+
+            result = builder.deploy(
+                endpoint_name="new-ep",
+                instance_type="ml.p4d.24xlarge",
+                reuse_resources=True,
+            )
+
+        # Cache hit: endpoint reused, not recreated, and no fresh discovery scan.
+        mock_deploy.assert_not_called()
+        mock_find.assert_not_called()
+        assert result == mock_endpoint
+
 
 class TestReusedEndpointMatchesConfig(unittest.TestCase):
     """Tests for ModelBuilder._reused_endpoint_matches_config."""
@@ -1299,4 +1380,38 @@ class TestReusedEndpointMatchesConfig(unittest.TestCase):
         client = Mock()
         client.describe_endpoint.side_effect = Exception("boom")
         builder.sagemaker_session.sagemaker_client = client
+        assert builder._reused_endpoint_matches_config("ep") is True
+
+    def _stub_ic_sagemaker_client(self, builder, instance_type):
+        # IC-based endpoints carry no ModelName on the variant, only InstanceType.
+        client = Mock()
+        client.describe_endpoint.return_value = {"EndpointConfigName": "cfg"}
+        client.describe_endpoint_config.return_value = {
+            "ProductionVariants": [{"InstanceType": instance_type}]
+        }
+        builder.sagemaker_session.sagemaker_client = client
+        return client
+
+    def test_ic_endpoint_mismatch_on_instance_type(self):
+        # Regression: the IC early-return previously skipped the instance_type check.
+        builder = self._make_builder()
+        client = self._stub_ic_sagemaker_client(builder, instance_type="ml.g5.xlarge")
+        assert (
+            builder._reused_endpoint_matches_config("ep", instance_type="ml.p4d.24xlarge") is False
+        )
+        # Caught from the variant alone, without describing a model.
+        client.describe_model.assert_not_called()
+
+    def test_ic_endpoint_matches_on_instance_type(self):
+        # An IC endpoint whose instance_type matches is still reusable.
+        builder = self._make_builder()
+        self._stub_ic_sagemaker_client(builder, instance_type="ml.p4d.24xlarge")
+        assert (
+            builder._reused_endpoint_matches_config("ep", instance_type="ml.p4d.24xlarge") is True
+        )
+
+    def test_ic_endpoint_reusable_when_no_instance_type_requested(self):
+        # No instance_type requested: an IC endpoint stays reusable.
+        builder = self._make_builder()
+        self._stub_ic_sagemaker_client(builder, instance_type="ml.g5.xlarge")
         assert builder._reused_endpoint_matches_config("ep") is True

@@ -16,9 +16,12 @@ import hashlib
 import pytest
 from unittest.mock import Mock, patch, call
 
+from botocore.exceptions import ClientError
+
 from sagemaker.serve.model_reuse import (
     MODEL_SOURCE_TAG_KEY,
     normalize_tag_value,
+    find_active_bedrock_deployment_for_model,
     find_existing_bedrock_model,
     find_existing_sagemaker_endpoint,
     build_source_tag,
@@ -26,6 +29,22 @@ from sagemaker.serve.model_reuse import (
     check_sagemaker_endpoint_status,
     _arn_to_name,
 )
+
+
+def _access_denied_error(operation, action):
+    """Build a ClientError mirroring a real AWS AccessDeniedException (403)."""
+    return ClientError(
+        {
+            "Error": {
+                "Code": "AccessDeniedException",
+                "Message": (
+                    f"User is not authorized to perform: {action} because no "
+                    f"identity-based policy allows the {action} action"
+                ),
+            }
+        },
+        operation,
+    )
 
 
 @pytest.fixture
@@ -193,6 +212,40 @@ def test_find_existing_bedrock_model_returns_none_when_no_models(boto_session, b
     assert result is None
 
 
+def test_find_existing_bedrock_model_raises_on_access_denied(boto_session, bedrock_client):
+    # A denied tag read must surface the missing permission, not fall through to None.
+    bedrock_client.list_custom_models.return_value = {"modelSummaries": [{"modelArn": SAMPLE_ARN}]}
+    bedrock_client.list_tags_for_resource.side_effect = _access_denied_error(
+        "ListTagsForResource", "bedrock:ListTagsForResource"
+    )
+
+    with pytest.raises(PermissionError, match="bedrock:ListTagsForResource"):
+        find_existing_bedrock_model(bedrock_client, "source-id")
+
+
+def test_find_existing_bedrock_model_still_fails_open_on_non_access_error(
+    boto_session, bedrock_client
+):
+    # A non-authorization ClientError (e.g. throttling) still degrades to None.
+    bedrock_client.list_custom_models.side_effect = ClientError(
+        {"Error": {"Code": "ThrottlingException", "Message": "Rate exceeded"}},
+        "ListCustomModels",
+    )
+
+    result = find_existing_bedrock_model(bedrock_client, "source-id")
+
+    assert result is None
+
+
+def test_find_active_bedrock_deployment_raises_on_access_denied(boto_session, bedrock_client):
+    bedrock_client.list_custom_model_deployments.side_effect = _access_denied_error(
+        "ListCustomModelDeployments", "bedrock:ListCustomModelDeployments"
+    )
+
+    with pytest.raises(PermissionError, match="bedrock:ListCustomModelDeployments"):
+        find_active_bedrock_deployment_for_model(bedrock_client, SAMPLE_ARN)
+
+
 def test_find_existing_sagemaker_endpoint_returns_arn_when_in_service(boto_session, sagemaker_client):
     _sagemaker_with_tagged_endpoint(sagemaker_client, ENDPOINT_ARN, "source-id")
     sagemaker_client.describe_endpoint.return_value = {"EndpointStatus": "InService"}
@@ -244,6 +297,16 @@ def test_find_existing_sagemaker_endpoint_returns_none_when_no_endpoints(boto_se
     result = find_existing_sagemaker_endpoint(sagemaker_client, "source-id")
 
     assert result is None
+
+
+def test_find_existing_sagemaker_endpoint_raises_on_access_denied(boto_session, sagemaker_client):
+    sagemaker_client.list_endpoints.return_value = {"Endpoints": [{"EndpointArn": ENDPOINT_ARN}]}
+    sagemaker_client.list_tags.side_effect = _access_denied_error(
+        "ListTags", "sagemaker:ListTags"
+    )
+
+    with pytest.raises(PermissionError, match="sagemaker:ListTags"):
+        find_existing_sagemaker_endpoint(sagemaker_client, "source-id")
 
 
 def test_build_source_tag_returns_correct_dict():

@@ -18,6 +18,7 @@ import random
 import pytest
 import boto3
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.training.configs import TrainingJobCompute
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 
@@ -135,3 +136,32 @@ def test_sft_trainer_nova_workflow(sagemaker_session_us_east_1):
     assert training_job.training_job_status == "Completed"
     assert hasattr(training_job, 'output_model_package_arn')
     assert training_job.output_model_package_arn is not None
+
+
+def test_sft_trainer_lora_invalid_instance_type_raises(sagemaker_session):
+    """An unsupported instance type must raise before a job is submitted.
+
+    Based on the ``test_sft_trainer_lora_workflow`` notebook (Llama LORA on
+    serverful compute in us-west-2). SFTTrainer validates ``instance_type``
+    against the allowed enum from the model's recipe, so ``train()`` should
+    raise a ``ValueError`` rather than launching a training job.
+    """
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    sft_trainer = SFTTrainer(
+        model="meta-textgeneration-llama-3-2-1b-instruct",
+        training_type=TrainingType.LORA,
+        model_package_group="arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/sft/sample_data_256_final.jsonl",
+        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        compute=TrainingJobCompute(
+            instance_type="ml.t3.medium",  # unsupported for SFT training
+            instance_count=1,
+        ),
+        accept_eula=True,
+        base_job_name=f"sft-lora-integ-bad-type-{unique_id}",
+        sagemaker_session=sagemaker_session,
+    )
+
+    with pytest.raises(ValueError, match="Instance type 'ml.t3.medium' is not supported"):
+        sft_trainer.train(wait=False, dry_run=True)

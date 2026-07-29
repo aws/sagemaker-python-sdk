@@ -971,5 +971,5 @@ class BenchMarkEvaluator(BaseEvaluator):
 
         return self._submit_hyperpod_eval_job(
             override_parameters=override_parameters,
-            base_job_name=f"eval-{self.benchmark.value}",
+            base_job_name=self.base_eval_name or f"eval-{self.benchmark.value}",
         )

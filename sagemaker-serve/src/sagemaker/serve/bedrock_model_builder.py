@@ -107,20 +107,23 @@ class BedrockModelBuilder:
         model artifacts, opt into resource reuse with ``reuse_resources=True``.
 
     Args:
-        model: The model to deploy. Can be a ModelTrainer, MultiTurnRLTrainer,
-            TrainingJob, ModelPackage instance, or an S3 URI string pointing
-            to model artifacts (e.g., ``"s3://bucket/checkpoint/step_4/"``).
+        model: The model to deploy. Can be a ModelTrainer, BaseTrainer
+            (SFTTrainer, DPOTrainer, RLVRTrainer, RLAIFTrainer, etc.),
+            MultiTurnRLTrainer, TrainingJob, ModelPackage instance, or an
+            S3 URI string pointing to model artifacts
+            (e.g., ``"s3://bucket/checkpoint/step_4/"``).
     """
 
     def __init__(
         self,
-        model: Optional[Union[str, ModelTrainer, MultiTurnRLTrainer, AgentRFTJob, TrainingJob, ModelPackage]] = None,
+        model: Optional[Union[str, ModelTrainer, BaseTrainer, MultiTurnRLTrainer, AgentRFTJob, TrainingJob, ModelPackage]] = None,
     ):
         """Initialize BedrockModelBuilder.
 
         Args:
-            model: Model to deploy. Accepts a ModelTrainer, MultiTurnRLTrainer,
-                AgentRFTJob, TrainingJob, ModelPackage, or S3 URI string.
+            model: Model to deploy. Accepts a ModelTrainer, BaseTrainer (SFTTrainer,
+                DPOTrainer, RLVRTrainer, etc.), MultiTurnRLTrainer, AgentRFTJob,
+                TrainingJob, ModelPackage, or S3 URI string.
         """
         self._bedrock_client = None
         self._sagemaker_client = None
@@ -755,6 +758,8 @@ class BedrockModelBuilder:
             # No valid model package ARN — _get_s3_artifacts will resolve.
             return None
         if isinstance(self.model, (MultiTurnRLTrainer, AgentRFTJob)):
+            # NOTE: Must check MultiTurnRLTrainer before BaseTrainer since it
+            # extends BaseTrainer but requires output_model_package_arn (raises ValueError).
             arn = self.model.output_model_package_arn
             if not arn:
                 job_name = None
@@ -783,6 +788,17 @@ class BedrockModelBuilder:
                 return ModelPackage.get(mp_arn)
             # No model package (e.g., HyperPod) — _get_s3_artifacts will resolve.
             return None
+        if isinstance(self.model, BaseTrainer):
+            training_job = getattr(self.model, '_latest_training_job', None)
+            if training_job:
+                mp_arn = getattr(training_job, 'output_model_package_arn', None)
+                if mp_arn and isinstance(mp_arn, str):
+                    try:
+                        return ModelPackage.get(mp_arn)
+                    except Exception:
+                        pass
+            # No model package — _get_s3_artifacts will resolve from training job.
+            return None
         return None
 
     def _get_s3_artifacts(self) -> Optional[str]:
@@ -793,9 +809,10 @@ class BedrockModelBuilder:
            checkpoint URI from manifest.json in training job output.
         2. If model_package exists, returns the model data source S3 URI, resolving
            to the hf_merged checkpoint directory if it exists (required for Bedrock import).
-        3. If no model_package and model is a TrainingJob, reads model_artifacts.s3_model_artifacts.
-        4. If no model_package and model is a ModelTrainer/BaseTrainer, reads
-           _latest_training_job.model_artifacts.s3_model_artifacts.
+        3. If no model_package and model is a TrainingJob/ModelTrainer/BaseTrainer,
+           reads model_artifacts.s3_model_artifacts from the training job.
+        4. If model_artifacts is empty (e.g., HyperPod jobs), falls back to resolving
+           checkpoint from the Nova manifest in the training job's s3_output_path.
 
         Returns:
             S3 URI string of the model artifacts, or None if not available.
@@ -825,7 +842,25 @@ class BedrockModelBuilder:
             s3_path = self._s3_artifacts_from_training_job(training_job)
             if s3_path:
                 logger.info("Resolved S3 artifacts from training job: %s", s3_path)
-            return s3_path
+                return s3_path
+
+            # For HyperPod jobs, model_artifacts may not be set. Try resolving
+            # the checkpoint from the Nova manifest in s3_output_path.
+            output_data_config = getattr(training_job, "output_data_config", None)
+            s3_output_path = getattr(output_data_config, "s3_output_path", None)
+            job_name = getattr(training_job, "training_job_name", None)
+            if s3_output_path and job_name:
+                try:
+                    checkpoint_uri = resolve_nova_checkpoint_uri(
+                        self.boto_session.client("s3"),
+                        s3_output_path,
+                        job_name,
+                    )
+                    if checkpoint_uri:
+                        logger.info("Resolved checkpoint from manifest: %s", checkpoint_uri)
+                        return checkpoint_uri
+                except Exception as e:
+                    logger.debug("Could not resolve checkpoint from manifest: %s", e)
 
         return None
 

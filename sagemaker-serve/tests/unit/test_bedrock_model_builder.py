@@ -202,6 +202,60 @@ class TestFetchModelPackage:
         b.model = "unknown"
         assert b._fetch_model_package() is None
 
+    def test_from_base_trainer_with_model_package_arn(self):
+        """BaseTrainer with _latest_training_job.output_model_package_arn resolves package."""
+        b = _builder()
+        mock_trainer = Mock()
+        mock_trainer._latest_training_job = Mock()
+        mock_trainer._latest_training_job.output_model_package_arn = "arn:pkg"
+        b.model = mock_trainer
+        expected = Mock()
+
+        class _FakeModelPackage:
+            @staticmethod
+            def get(arn):
+                return expected
+
+        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), \
+             patch(f"{MODULE}.TrainingJob", type(None)), \
+             patch(f"{MODULE}.ModelTrainer", type(None)), \
+             patch(f"{MODULE}.MultiTurnRLTrainer", type(None)), \
+             patch(f"{MODULE}.AgentRFTJob", type(None)), \
+             patch(f"{MODULE}.BaseTrainer", type(mock_trainer)):
+            result = b._fetch_model_package()
+        assert result is expected
+
+    def test_from_base_trainer_without_model_package_arn(self):
+        """BaseTrainer without output_model_package_arn returns None."""
+        b = _builder()
+        mock_trainer = Mock()
+        mock_trainer._latest_training_job = Mock()
+        mock_trainer._latest_training_job.output_model_package_arn = None
+        b.model = mock_trainer
+
+        with patch(f"{MODULE}.TrainingJob", type(None)), \
+             patch(f"{MODULE}.ModelTrainer", type(None)), \
+             patch(f"{MODULE}.MultiTurnRLTrainer", type(None)), \
+             patch(f"{MODULE}.AgentRFTJob", type(None)), \
+             patch(f"{MODULE}.BaseTrainer", type(mock_trainer)):
+            result = b._fetch_model_package()
+        assert result is None
+
+    def test_from_base_trainer_no_training_job(self):
+        """BaseTrainer with no _latest_training_job returns None."""
+        b = _builder()
+        mock_trainer = Mock()
+        mock_trainer._latest_training_job = None
+        b.model = mock_trainer
+
+        with patch(f"{MODULE}.TrainingJob", type(None)), \
+             patch(f"{MODULE}.ModelTrainer", type(None)), \
+             patch(f"{MODULE}.MultiTurnRLTrainer", type(None)), \
+             patch(f"{MODULE}.AgentRFTJob", type(None)), \
+             patch(f"{MODULE}.BaseTrainer", type(mock_trainer)):
+            result = b._fetch_model_package()
+        assert result is None
+
 
 # ── _get_s3_artifacts ───────────────────────────────────────────────────────
 

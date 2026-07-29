@@ -6,7 +6,6 @@ import time
 import logging
 import json
 from typing import Any, Dict, Optional, Union
-import time
 import boto3
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
@@ -188,7 +187,12 @@ def _get_prod_sm_client(sagemaker_session) -> "boto3.client":
     return boto3.client("sagemaker", region_name=region)
 
 
-def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optional[str] = None, min_mlflow_version: Optional[str] = None) -> Optional[str]:
+def _resolve_mlflow_resource_arn(
+    sagemaker_session,
+    mlflow_resource_arn: Optional[str] = None,
+    min_mlflow_version: Optional[str] = None,
+    dry_run: bool = False,
+) -> Optional[str]:
     """Resolve MLflow resource ARN using default experience logic.
 
     All MLflow API calls use a raw boto3 client against prod (no custom endpoint),
@@ -199,6 +203,8 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
         mlflow_resource_arn: Explicit ARN to use (returned as-is if provided).
         min_mlflow_version: Minimum required MLflow version (e.g. "3.10").
             If the resolved app's version is below this, a new app is created.
+        dry_run: If True, only performs read-only checks (list/describe) without
+            creating new apps or waiting for apps in Creating status.
     """
     if mlflow_resource_arn:
         return mlflow_resource_arn
@@ -240,10 +246,24 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
                 logger.warning("Resolved MLflow app %s is in failed state: %s. Skipping.",
                                resolved_arn, resolved_app.get("Status"))
                 resolved_app = None
+            elif dry_run and resolved_app.get("Status") in ["Creating", "Updating"]:
+                logger.warning(
+                    "dry_run: MLflow app %s is in '%s' state. "
+                    "Job submission would block until the app is ready.",
+                    resolved_arn, resolved_app.get("Status"),
+                )
+                return resolved_arn
 
         # Version check: if resolved app is below min version, create a new one as default
         if resolved_app and min_mlflow_version and not _mlflow_version_meets_minimum_dict(resolved_app, min_mlflow_version):
             resolved_arn = resolved_app["Arn"]
+            if dry_run:
+                logger.warning(
+                    "dry_run: MLflow app %s has version below %s. "
+                    "Job submission would create a new app (may take several minutes).",
+                    resolved_arn, min_mlflow_version,
+                )
+                return resolved_arn
             logger.info(
                 "Existing MLflow app %s has version below %s. Creating new app as default.",
                 resolved_arn, min_mlflow_version
@@ -257,6 +277,21 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
 
         if resolved_app:
             return resolved_app["Arn"]
+
+        # In dry_run mode, don't create a new app — just warn and return None
+        if dry_run:
+            if mlflow_apps_list:
+                # Apps exist but none are in a ready/usable state
+                logger.warning(
+                    "dry_run: No MLflow app in ready state found. "
+                    "Job submission would create a new app (may take several minutes)."
+                )
+            else:
+                logger.warning(
+                    "dry_run: No MLflow app exists. "
+                    "Job submission would create a new app (may take several minutes)."
+                )
+            return None
 
         # Create new app
         new_arn = _create_mlflow_app(sagemaker_session)
@@ -679,6 +714,7 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             except Exception as e:
                 logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
 
+        # Build union of supported instance types from both sources:
         if options_dict:
             return FineTuningOptions(options_dict), model_arn, is_gated_model
         else:
@@ -969,7 +1005,8 @@ def _create_model_package_config(model_package_group_name, model, sagemaker_sess
 
 
 def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None, 
-                       mlflow_experiment_name=None, mlflow_run_name=None):
+                       mlflow_experiment_name=None, mlflow_run_name=None,
+                       dry_run=False):
     """Create MLflow configuration with resolved resource ARN.
     
     Args:
@@ -977,6 +1014,8 @@ def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None,
         mlflow_resource_arn: MLflow resource ARN (if None, uses default experience)
         mlflow_experiment_name: MLflow experiment name
         mlflow_run_name: MLflow run name
+        dry_run: If True, only performs read-only checks without creating
+            new MLflow apps or waiting for apps in Creating status.
     
     Returns:
         MlflowConfig object or None if no MLflow resource ARN is resolved
@@ -984,7 +1023,9 @@ def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None,
 
     
     # Derive mlflow_resource_arn with default experience
-    resolved_mlflow_arn = _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn)
+    resolved_mlflow_arn = _resolve_mlflow_resource_arn(
+        sagemaker_session, mlflow_resource_arn, dry_run=dry_run
+    )
     logger.info(f"MLflow resource ARN: {resolved_mlflow_arn}")
 
     # Create MlflowConfig using shapes
@@ -1410,10 +1451,45 @@ def _get_smhp_replicas_enum(model_name: str, customization_technique: str, train
         if isinstance(enum_val, list) and enum_val:
             return enum_val
     except Exception as e:
-        logger.warning(
+        # Caller emits the user-facing warning when None is returned; keep the
+        # exception detail at debug level to avoid a duplicate warning.
+        logger.debug(
             f"Could not fetch valid instance counts from SMHP recipe for "
-            f"{model_name}/{customization_technique}: {e}. "
-            "Instance count validation will be skipped."
+            f"{model_name}/{customization_technique}: {e}."
+        )
+    return None
+
+
+def _get_smhp_instance_type_enum(model_name: str, customization_technique: str, training_type,
+                                 sagemaker_session, hub_name: Optional[str] = None) -> Optional[list]:
+    """Fetch the instance_type enum from the SMHP override spec for the same model/technique.
+
+    SMTJ hub content does not include an instance_type enum in its override spec, but
+    the SMHP recipe for the same configuration does. This function retrieves that
+    enum so it can be applied to SMTJ recipe validation.
+
+    Returns:
+        List of valid instance types, or None if unavailable.
+    """
+    try:
+        _, smhp_override_spec = _get_recipe_entry_and_override_spec(
+            model_name=model_name,
+            customization_technique=customization_technique,
+            training_type=training_type,
+            sagemaker_session=sagemaker_session,
+            platform="hyperpod",
+            hub_name=hub_name,
+        )
+        instance_type_meta = smhp_override_spec.get("instance_type", {})
+        enum_val = instance_type_meta.get("enum")
+        if isinstance(enum_val, list) and enum_val:
+            return enum_val
+    except Exception as e:
+        # Caller emits the user-facing warning when None is returned; keep the
+        # exception detail at debug level to avoid a duplicate warning.
+        logger.debug(
+            f"Could not fetch valid instance types from SMHP recipe for "
+            f"{model_name}/{customization_technique}: {e}."
         )
     return None
 

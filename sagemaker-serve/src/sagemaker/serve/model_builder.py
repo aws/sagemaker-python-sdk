@@ -2151,11 +2151,19 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if not variants:
                 return True
             variant = variants[0]
+            # InstanceType lives on the variant, so check it before the IC
+            # early-return below -- otherwise an IC mismatch is silently reused.
+            if (
+                instance_type
+                and variant.get("InstanceType")
+                and instance_type != variant["InstanceType"]
+            ):
+                return False
             model_name = variant.get("ModelName")
             if not model_name:
-                # IC-based endpoint — can't validate container config from the
-                # variant. Proceed with reuse (the Model was already matched by
-                # tag in _find_reusable_model).
+                # IC-based endpoint: no ModelName to validate container config
+                # against, and instance type is already checked above. Reuse it
+                # (the Model was matched by tag in _find_reusable_model).
                 return True
             model_desc = sagemaker_client.describe_model(ModelName=model_name)
             # Check PrimaryContainer and fallback to Containers list if PrimaryContainer is empty
@@ -2178,9 +2186,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             return False
 
         if self.image_uri and container.get("Image") and self.image_uri != container["Image"]:
-            return False
-
-        if instance_type and variant.get("InstanceType") and instance_type != variant["InstanceType"]:
             return False
 
         return True
@@ -5499,16 +5504,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "inference_component_name (IC update). The flag is ignored."
             )
 
-        # Resource reuse is opt-in per call. When requested, reuse an existing
-        # endpoint built from the same model source (with matching config). If
-        # build() already resolved one (build's reuse gate), use that; otherwise
-        # discover it here.
+        # Resource reuse is opt-in per call. build() may have cached a candidate
+        # in _reused_endpoint_name, but without deploy-time context (instance_type
+        # is a deploy() arg), so re-validate the cache before trusting it and fall
+        # back to a fresh discovery on a miss or mismatch.
         if reuse_resources and not is_inference_component_deploy:
-            reusable_endpoint = getattr(
-                self, "_reused_endpoint_name", None
-            ) or self._find_reusable_endpoint(
-                instance_type=instance_type or self.instance_type
-            )
+            requested_instance_type = instance_type or self.instance_type
+            cached_endpoint = getattr(self, "_reused_endpoint_name", None)
+            if cached_endpoint and self._reused_endpoint_matches_config(
+                cached_endpoint, instance_type=requested_instance_type
+            ):
+                reusable_endpoint = cached_endpoint
+            else:
+                reusable_endpoint = self._find_reusable_endpoint(
+                    instance_type=requested_instance_type
+                )
             if reusable_endpoint:
                 if endpoint_name and endpoint_name != reusable_endpoint:
                     logger.warning(

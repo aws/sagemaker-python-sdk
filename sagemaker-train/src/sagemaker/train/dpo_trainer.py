@@ -285,7 +285,6 @@ class DPOTrainer(BaseTrainer):
         )
 
         logger.info(f"Training Job Name: {current_training_job_name}")
-        print(f"Training Job Name: {current_training_job_name}")
 
         #data
         input_data_config = _create_input_data_config(training_dataset or self.training_dataset,
@@ -315,6 +314,7 @@ class DPOTrainer(BaseTrainer):
             mlflow_resource_arn=self.mlflow_resource_arn,
             mlflow_experiment_name=self.mlflow_experiment_name,
             mlflow_run_name=self.mlflow_run_name,
+            dry_run=dry_run,
         )
 
         final_hyperparameters = self.hyperparameters.to_dict()
