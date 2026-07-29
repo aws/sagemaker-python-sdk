@@ -32,6 +32,8 @@ def _submit_service_job(
     timeout: Optional[Dict] = None,
     share_identifier: Optional[str] = None,
     tags: Optional[Dict] = None,
+    quota_share_name: Optional[str] = None,
+    preemption_config: Optional[Dict] = None,
 ) -> Dict:
     """Batch submit_service_job API helper function.
 
@@ -44,6 +46,8 @@ def _submit_service_job(
         timeout: Set with value of timeout if specified, else default to 1 day.
         share_identifier: value of shareIdentifier if specified.
         tags: A dict of string to string representing Batch tags.
+        quota_share_name: value of quotaShareName if specified.
+        preemption_config: Preemption configuration.
 
     Returns:
         A dict containing jobArn, jobName and jobId.
@@ -68,6 +72,10 @@ def _submit_service_job(
         payload["shareIdentifier"] = share_identifier
     if tags or training_payload_tags:
         payload["tags"] = __merge_tags(tags, training_payload_tags)
+    if quota_share_name:
+        payload["quotaShareName"] = quota_share_name
+    if preemption_config:
+        payload["preemptionConfiguration"] = preemption_config
     return client.submit_service_job(**payload)
 
 
@@ -96,21 +104,45 @@ def _describe_service_job(job_id: str) -> Dict:
         'jobId': 'string',
         'jobName': 'string',
         'jobQueue': 'string',
+        'latestAttempt': {
+            'serviceResourceId': {
+                'name': 'string',
+                'value': 'string'
+            }
+        },
+        'preemptionSummary': {
+            'preemptedAttemptCount': 123,
+            'recentPreemptedAttempts': [
+                {
+                    'serviceResourceId': {
+                        'name': 'string',
+                        'value': 'string'
+                    },
+                    'startedAt': 123,
+                    'stoppedAt': 123,
+                    'statusReason': 'string'
+                },
+            ]
+        },
         'retryStrategy': {
             'attempts': 123
         },
         'schedulingPriority': 123,
         'serviceRequestPayload': 'string',
-        'serviceJobType': 'EKS'|'ECS'|'ECS_FARGATE'|'SAGEMAKER_TRAINING',
+        'serviceJobType': 'SAGEMAKER_TRAINING',
         'shareIdentifier': 'string',
+        'quotaShareName': 'string',
+        'preemptionConfiguration': {
+            'preemptionRetriesBeforeTermination': 123
+        },
         'startedAt': 123,
-        'status': 'SUBMITTED'|'PENDING'|'RUNNABLE'|'STARTING'|'RUNNING'|'SUCCEEDED'|'FAILED',
+        'status': 'SUBMITTED'|'PENDING'|'RUNNABLE'|'SCHEDULED'|'STARTING'|'RUNNING'|'SUCCEEDED'|'FAILED',
         'statusReason': 'string',
         'stoppedAt': 123,
         'tags': {
             'string': 'string'
         },
-        'timeout': {
+        'timeoutConfig': {
             'attemptDurationSeconds': 123
         }
     }
@@ -130,6 +162,19 @@ def _terminate_service_job(job_id: str, reason: Optional[str] = "default termina
     """
     client = get_batch_boto_client()
     return client.terminate_service_job(jobId=job_id, reason=reason)
+
+
+def _update_service_job(job_id: str, scheduling_priority: int) -> Dict:
+    """Batch update_service_job API helper function.
+
+    Args:
+        job_id: Job ID or Job Arn
+        scheduling_priority: An integer representing scheduling priority.
+
+    Returns: a dict containing jobArn, jobId and jobName.
+    """
+    client = get_batch_boto_client()
+    return client.update_service_job(jobId=job_id, schedulingPriority=scheduling_priority)
 
 
 def _list_service_job(

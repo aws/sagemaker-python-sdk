@@ -22,6 +22,7 @@ import boto3
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.core.resources import EndpointConfig
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core import image_uris
 
 logger = logging.getLogger(__name__)
 
@@ -31,11 +32,13 @@ MODEL_NAME_PREFIX = "jumpstart-optimize-test"
 ENDPOINT_NAME_PREFIX = "jumpstart-optimize-test-endpoint"
 
 # Configuration from optimize test
-AWS_ACCOUNT_ID = "593793038179"
-AWS_REGION = "us-east-2"
+AWS_REGION = "us-west-2"
+
+# DJL LMI image configuration
+DJL_LMI_FRAMEWORK = "djl-lmi"
+DJL_LMI_VERSION = "0.31.0"
 
 
-@pytest.mark.skip(reason="Test takes too long to run")
 def test_optimize_build_deploy_invoke_cleanup():
     """Integration test for Optimize workflow"""
     logger.info("Starting Optimize integration test...")
@@ -91,6 +94,13 @@ def build_and_deploy():
     # Optimize the model
     logger.info("Optimizing JumpStart model...")
     default_bucket = sagemaker_session.default_bucket()
+    djl_lmi_image_uri = image_uris.retrieve(
+        framework=DJL_LMI_FRAMEWORK,
+        region=AWS_REGION,
+        version=DJL_LMI_VERSION,
+    )
+    logger.info(f"Resolved DJL LMI image URI: {djl_lmi_image_uri}")
+    
     optimized_model = model_builder.optimize(
         model_name=f"{MODEL_NAME_PREFIX}-{unique_id}",
         instance_type="ml.g5.2xlarge",
@@ -98,7 +108,8 @@ def build_and_deploy():
         quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
         accept_eula=True,
         job_name=f"js-optimize-{int(time.time())}",
-        image_uri="763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.31.0-lmi13.0.0-cu124"
+        image_uri=djl_lmi_image_uri,
+        region=AWS_REGION
     )
     logger.info(f"Model Successfully Optimized: {optimized_model.model_name}")
     

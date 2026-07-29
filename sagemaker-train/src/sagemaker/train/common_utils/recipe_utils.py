@@ -7,12 +7,21 @@ and inference parameters from SageMaker Hub content.
 
 import json
 import logging
-from typing import Dict, Any, Optional
+import os
+from typing import Any, Dict, List, Optional
+
 import boto3
 
 from sagemaker.core.resources import HubContent
+from sagemaker.train.constants import get_sagemaker_hub_name
+from sagemaker.train.recipe_resolver import RecipeResolver
 
 logger = logging.getLogger(__name__)
+
+
+class NoRecipeError(ValueError):
+    """Raised when get_resolved_recipe has no recipe, overrides, or user-set hyperparameters."""
+    pass
 
 
 def _is_nova_model(model_id: str) -> bool:
@@ -60,14 +69,30 @@ def _get_hub_content_metadata(
         ... )
         >>> print(metadata['HubContentName'])
     """
-    hub_content = HubContent.get(
-        hub_name=hub_name,
-        hub_content_type=hub_content_type,
-        hub_content_name=hub_content_name,
-        region=region,
-        session=session
-    )
-    
+    try:
+        hub_content = HubContent.get(
+            hub_name=hub_name,
+            hub_content_type=hub_content_type,
+            hub_content_name=hub_content_name,
+            region=region,
+            session=session
+        )
+    except Exception:
+        if hub_name != "SageMakerPublicHub":
+            logger.info(
+                f"Hub content '{hub_content_name}' not found in '{hub_name}', "
+                f"falling back to SageMakerPublicHub"
+            )
+            hub_content = HubContent.get(
+                hub_name="SageMakerPublicHub",
+                hub_content_type=hub_content_type,
+                hub_content_name=hub_content_name,
+                region=region,
+                session=session
+            )
+        else:
+            raise
+
     # Convert to dict for easier access
     hub_content_dict = hub_content.__dict__
     
@@ -316,3 +341,248 @@ def _extract_eval_override_options(
             )
     
     return extracted_params
+
+
+def get_resolved_recipe_from_context(
+    recipe_path: Optional[str],
+    overrides: Optional[Dict[str, Any]],
+    hyperparameters,
+    resolved_cache: Optional[Dict[str, Any]],
+    template_section: str,
+    protected_keys: Optional[set] = None,
+    full_recipe_template: Optional[Dict[str, Any]] = None,
+    compute=None,
+) -> Dict[str, Any]:
+    """Resolve a recipe using the standard pre-resolution pattern.
+
+    Shared helper used by BaseTrainer.get_resolved_recipe() and
+    BaseEvaluator.get_resolved_recipe(). Handles:
+      1. Returning a cached result if available.
+      2. Merging user-set hyperparameters into overrides (highest precedence).
+         When overrides already exist, user-set values are layered on top.
+         When neither recipe nor overrides are provided, user-set values
+         become the sole overrides.
+      3. Extracting override_spec from hyperparameters._specs.
+      4. Delegating to resolve_recipe() for the 3-level merge.
+
+    Precedence (highest wins):
+      1. Direct hyperparameter assignments (trainer.hyperparameters.x = val)
+      2. Programmatic overrides dict (overrides={"training_config": {...}})
+      3. User recipe YAML (recipe="path/to/recipe.yaml")
+      4. Base defaults (Hub spec defaults from override_spec)
+
+    Args:
+        recipe_path: Path to a user recipe YAML (local or S3), or None.
+        overrides: Programmatic override dict, or None.
+        hyperparameters: The FineTuningOptions-like object (must have ``_specs``,
+            ``_user_set`` attributes). May be None.
+        resolved_cache: Previously resolved recipe dict (returned as-is if not None).
+        template_section: Top-level key for the recipe template
+            (e.g. ``"training_config"`` for trainers, ``"inference"`` for evaluators).
+        protected_keys: Set of keys that cannot be overridden by user recipe/overrides.
+        full_recipe_template: Optional full recipe dict from Hub. When provided,
+            used as the base layer instead of the synthetic template.
+        compute: Optional compute configuration. None indicates SMTJServerless.
+
+    Returns:
+        Fully resolved recipe dict (deep copy).
+
+    Raises:
+        ValueError: If no recipe, overrides, or direct hyperparameter assignments
+            are available.
+    """
+    import copy
+
+    if resolved_cache is not None:
+        return copy.deepcopy(resolved_cache)
+
+    # Merge user-set hyperparameters into overrides. When overrides already
+    # exist, user-set values are layered on top (highest precedence). When
+    # neither recipe nor overrides are provided, user-set values become the
+    # sole overrides so resolution still works.
+    user_set = getattr(hyperparameters, '_user_set', None) if hyperparameters else None
+    if isinstance(user_set, set) and user_set:
+        user_values = {
+            k: getattr(hyperparameters, k)
+            for k in user_set
+            if getattr(hyperparameters, k, None) is not None
+        }
+        if user_values:
+            if overrides:
+                # Layer user-set values on top of existing overrides
+                overrides = copy.deepcopy(overrides)
+                section = overrides.setdefault(template_section, {})
+                section.update(user_values)
+            else:
+                overrides = {template_section: user_values}
+
+    if not recipe_path and not overrides:
+        raise NoRecipeError(
+            "get_resolved_recipe() requires a 'recipe', 'overrides', or direct "
+            "hyperparameter assignments (e.g. .hyperparameters.x = val) "
+            "to be provided."
+        )
+
+    override_spec = {}
+    if hyperparameters and hasattr(hyperparameters, '_specs'):
+        override_spec = hyperparameters._specs
+
+    frt = full_recipe_template
+    if frt is None:
+        frt_candidate = getattr(hyperparameters, '_full_recipe_template', None) if hyperparameters else None
+        if isinstance(frt_candidate, dict):
+            frt = frt_candidate
+
+    resolved = resolve_recipe(
+        recipe_path=recipe_path,
+        overrides=overrides,
+        override_spec=override_spec,
+        template_section=template_section,
+        protected_keys=protected_keys,
+        full_recipe_template=frt,
+        compute=compute,
+    )
+
+    return resolved
+
+
+def resolve_recipe(
+    recipe_path: Optional[str],
+    overrides: Optional[Dict[str, Any]],
+    override_spec: Dict[str, Any],
+    template_section: str,
+    protected_keys: Optional[set] = None,
+    full_recipe_template: Optional[Dict[str, Any]] = None,
+    compute = None,
+) -> Dict[str, Any]:
+    """Resolve a recipe configuration through the 3-level merge pipeline.
+
+    Shared logic used by both BaseTrainer.get_resolved_recipe() and
+    BaseEvaluator.get_resolved_recipe().
+
+    Args:
+        recipe_path: Path to user recipe YAML (local or S3), or None.
+        overrides: Programmatic override dict, or None.
+        override_spec: Flat dict of parameter specs (type/min/max/enum/default)
+            typically from hyperparameters._specs.
+        template_section: Top-level key for the recipe template
+            (e.g. "training_config" for trainers, "inference" for evaluators).
+        protected_keys: Set of keys that cannot be overridden by user recipe
+            or overrides.
+        full_recipe_template: Optional full recipe dict from Hub
+            (SmtjRecipeTemplateS3Uri). When provided, used as the base layer
+            instead of the synthetic template — enables overriding any key in
+            the full recipe, not just the spec-exposed subset.
+        compute: Optional compute configuration (Compute/TrainingJobCompute
+            or HyperPodCompute). None indicates SMTJServerless platform.
+
+    Returns:
+        Fully resolved recipe dict.
+
+    Raises:
+        ValueError: If neither recipe_path nor overrides are provided, or
+            if validation fails.
+    """
+    if not recipe_path and not overrides:
+        raise ValueError(
+            "resolve_recipe() requires a 'recipe' or 'overrides' to be provided."
+        )
+
+    recipe_template: Dict[str, Any] = {template_section: {}}
+    for key in override_spec:
+        recipe_template[template_section][key] = "{{" + key + "}}"
+
+    resolver = RecipeResolver(
+        recipe_template=recipe_template,
+        override_spec=override_spec,
+        user_recipe_path=recipe_path,
+        overrides=overrides,
+        protected_keys=protected_keys or set(),
+        full_recipe_template=full_recipe_template,
+        compute=compute,
+    )
+
+    return resolver.resolve()
+
+
+def _build_recipe_keyword(recipe_type: str, technique: str) -> str:
+    """Build the ``@recipe:`` search keyword for a recipe type and technique.
+
+    The hub tags recipes as ``@recipe:{type}_{technique}_{strategy}`` (all
+    lowercase).  We match on the ``@recipe:{type}_{technique}_`` prefix so
+    the strategy component (e.g. ``lora``) is ignored.
+
+    Args:
+        recipe_type: ``"FineTuning"`` or ``"Evaluation"``.
+        technique: Technique value, e.g. ``"MTRL"`` or ``"MTRLEvaluation"``.
+
+    Returns:
+        Lowercase keyword prefix string, e.g. ``"@recipe:finetuning_mtrl_"``.
+    """
+    return f"@recipe:{recipe_type}_{technique}_".lower()
+
+
+def _list_hub_models_by_recipe(
+    recipe_type: str,
+    technique: str,
+    session=None,
+) -> List[str]:
+    """List all models in SageMakerPublicHub matching a recipe filter.
+
+    Filters models using ``HubContentSearchKeywords`` returned in the
+    ``list_hub_contents`` summary, avoiding per-model ``describe_hub_content``
+    calls.  Each model with a matching recipe carries a keyword of the form
+    ``@recipe:{type}_{technique}_{strategy}`` (all lowercase).
+
+    Args:
+        recipe_type: Recipe type to filter on — ``"FineTuning"`` or
+            ``"Evaluation"``.
+        technique: The technique value to match. For FineTuning this is
+            the ``CustomizationTechnique`` (e.g. ``"MTRL"``). For
+            Evaluation this is the ``EvaluationType``
+            (e.g. ``"MTRLEvaluation"``).
+        session: Optional boto3 session.
+
+    Returns:
+        Sorted list of hub content model names whose search keywords
+        contain at least one matching ``@recipe:`` tag.
+    """
+    if recipe_type not in ("FineTuning", "Evaluation"):
+        raise ValueError(
+            f"recipe_type must be 'FineTuning' or 'Evaluation', got: {recipe_type!r}"
+        )
+
+    keyword_prefix = _build_recipe_keyword(recipe_type, technique)
+
+    region = (getattr(session, "region_name", None) or 
+              getattr(getattr(session, "boto_session", None), "region_name", None) or
+              boto3.Session().region_name or "us-west-2")
+    # Use the session's sagemaker_client if available (respects custom endpoints)
+    if hasattr(session, "sagemaker_client"):
+        client = session.sagemaker_client
+    else:
+        boto_session = getattr(session, "boto_session", session) or boto3.Session()
+        client = boto_session.client("sagemaker", region_name=region)
+    matched_models: list[str] = []
+    next_token = None
+
+    while True:
+        kwargs: dict = {"HubName": get_sagemaker_hub_name(), "HubContentType": "Model"}
+        if next_token:
+            kwargs["NextToken"] = next_token
+
+        response = client.list_hub_contents(**kwargs)
+        for summary in response.get("HubContentSummaries", []):
+            content_name = summary.get("HubContentName")
+            if not content_name:
+                continue
+            keywords = summary.get("HubContentSearchKeywords", [])
+            if any(kw.lower().startswith(keyword_prefix) for kw in keywords):
+                matched_models.append(content_name)
+
+        next_token = response.get("NextToken")
+        if not next_token:
+            break
+
+    matched_models.sort()
+    return matched_models

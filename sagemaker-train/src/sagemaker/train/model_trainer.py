@@ -26,7 +26,7 @@ from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core import resources
 from sagemaker.core.resources import TrainingJob
 from sagemaker.core import shapes
-from sagemaker.core.shapes import AlgorithmSpecification
+from sagemaker.core.shapes import AlgorithmSpecification, ModelPackageConfig
 from sagemaker.core.utils.utils import serialize
 from sagemaker.core.apiutils._boto_functions import to_pascal_case
 
@@ -83,6 +83,9 @@ from sagemaker.train.constants import (
     SM_CODE_CONTAINER_PATH,
     SM_DRIVERS,
     SM_DRIVERS_LOCAL_PATH,
+    SM_RECIPE,
+    SM_RECIPE_YAML,
+    SM_RECIPE_CONTAINER_PATH,
     TRAIN_SCRIPT,
     DEFAULT_CONTAINER_ENTRYPOINT,
     DEFAULT_CONTAINER_ARGUMENTS,
@@ -97,16 +100,23 @@ from sagemaker.train.templates import (
     INSTALL_AUTO_REQUIREMENTS,
     INSTALL_REQUIREMENTS,
 )
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train import logger
-from sagemaker.train.sm_recipes.utils import _get_args_from_recipe, _determine_device_type
+from sagemaker.train.sm_recipes.utils import (
+    _get_args_from_recipe,
+    _determine_device_type,
+    _is_nova_recipe,
+    _is_llmft_recipe,
+    _load_base_recipe,
+)
 
 from sagemaker.core.jumpstart.configs import JumpStartConfig
 from sagemaker.core.jumpstart.document import get_hub_content_and_document
 from sagemaker.core.jumpstart.utils import get_eula_url
 from sagemaker.train.defaults import TrainDefaults, JumpStartTrainDefaults
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
+from sagemaker.core.helper.pipeline_variable import StrPipeVar
 
 from sagemaker.train.local.local_container import _LocalContainer
 
@@ -211,6 +221,10 @@ class ModelTrainer(BaseModel):
         local_container_root (Optional[str]):
             The local root directory to store artifacts from a training job launched in
             "LOCAL_CONTAINER" mode.
+        model_package_config (Optional[ModelPackageConfig]):
+            The model package configuration for the training job. Used for Nova RMP
+            (Restricted Model Package) jobs to specify SourceModelPackageArn and
+            ModelPackageGroupArn.
     """
 
     model_config = ConfigDict(
@@ -226,17 +240,18 @@ class ModelTrainer(BaseModel):
     compute: Optional[Compute] = None
     networking: Optional[Networking] = None
     stopping_condition: Optional[StoppingCondition] = None
-    training_image: Optional[str] = None
+    training_image: Optional[StrPipeVar] = None
     training_image_config: Optional[TrainingImageConfig] = None
-    algorithm_name: Optional[str] = None
+    algorithm_name: Optional[StrPipeVar] = None
     output_data_config: Optional[shapes.OutputDataConfig] = None
     input_data_config: Optional[List[Union[Channel, InputData]]] = None
     checkpoint_config: Optional[shapes.CheckpointConfig] = None
-    training_input_mode: Optional[str] = "File"
-    environment: Optional[Dict[str, str]] = {}
+    training_input_mode: Optional[StrPipeVar] = "File"
+    environment: Optional[Dict[str, StrPipeVar]] = {}
     hyperparameters: Optional[Union[Dict[str, Any], str]] = {}
     tags: Optional[List[Tag]] = None
     local_container_root: Optional[str] = os.getcwd()
+    model_package_config: Optional[ModelPackageConfig] = None
 
     # Created Artifacts
     _latest_training_job: Optional[resources.TrainingJob] = PrivateAttr(default=None)
@@ -249,6 +264,8 @@ class ModelTrainer(BaseModel):
     _remote_debug_config: Optional[RemoteDebugConfig] = PrivateAttr(default=None)
     _metric_definitions: Optional[List[MetricDefinition]] = PrivateAttr(default=None)
 
+    _is_nova_recipe: Optional[bool] = PrivateAttr(default=None)
+    _is_llmft_recipe: Optional[bool] = PrivateAttr(default=None)
     # Private Attributes for Recipes
     _temp_recipe_train_dir: Optional[TemporaryDirectory] = PrivateAttr(default=None)
 
@@ -314,7 +331,7 @@ class ModelTrainer(BaseModel):
         if not self.networking:
             if default_enable_network_isolation is not None or default_vpc_config is not None:
                 self.networking = Networking(
-                    default_enable_network_isolation=default_enable_network_isolation,
+                    enable_network_isolation=default_enable_network_isolation,
                     subnets=self.config_mgr.resolve_value_from_config(
                         config_path=TRAINING_JOB_SUBNETS_PATH
                     ),
@@ -330,8 +347,8 @@ class ModelTrainer(BaseModel):
                     config_path=TRAINING_JOB_SUBNETS_PATH
                 )
             if self.networking.security_group_ids is None:
-                self.networking.subnets = self.config_mgr.resolve_value_from_config(
-                    config_path=TRAINING_JOB_SUBNETS_PATH
+                self.networking.security_group_ids = self.config_mgr.resolve_value_from_config(
+                    config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
                 )
 
         if not self.output_data_config:
@@ -534,7 +551,11 @@ class ModelTrainer(BaseModel):
             )
 
         if self.training_image:
-            logger.info(f"Training image URI: {self.training_image}")
+            from sagemaker.core.helper.pipeline_variable import PipelineVariable
+            if isinstance(self.training_image, PipelineVariable):
+                logger.info("Training image URI: (PipelineVariable - resolved at pipeline execution)")
+            else:
+                logger.info(f"Training image URI: {self.training_image}")
     
 
     def _create_training_job_args(
@@ -573,6 +594,29 @@ class ModelTrainer(BaseModel):
 
             final_input_data_config = list(existing_channels.values()) + new_channels
 
+        # Assign SDK-managed channels to instance groups when the user uses them (see helper).
+        managed_channel_instance_group_names = self._resolve_managed_channel_instance_groups(
+            final_input_data_config
+        )
+
+        if self._is_nova_recipe or self._is_llmft_recipe:
+            for input_data in final_input_data_config:
+                if input_data.channel_name == SM_RECIPE:
+                    raise ValueError(
+                        "Cannot use reserved channel name 'recipe' as an input channel name "
+                        " for Nova or LLMFT Recipe"
+                    )
+            recipe_file_path = os.path.join(self._temp_recipe_train_dir.name, SM_RECIPE_YAML)
+            recipe_channel = self.create_input_data_channel(
+                channel_name=SM_RECIPE,
+                data_source=recipe_file_path,
+                key_prefix=input_data_key_prefix,
+                instance_group_names=managed_channel_instance_group_names,
+            )
+            final_input_data_config.append(recipe_channel)
+            if self._is_nova_recipe or self._is_llmft_recipe:
+                self.hyperparameters.update({"sagemaker_recipe_local_path": SM_RECIPE_CONTAINER_PATH})
+
         if final_input_data_config:
             final_input_data_config = self._get_input_data_config(
                 final_input_data_config, input_data_key_prefix
@@ -604,6 +648,14 @@ class ModelTrainer(BaseModel):
             # Copy everything under container_drivers/ to a temporary directory
             shutil.copytree(SM_DRIVERS_LOCAL_PATH, self._temp_code_dir.name, dirs_exist_ok=True)
 
+            # Copy the CodeArtifact-aware install_requirements script from sagemaker-core
+            # so it's available in the container at /opt/ml/input/data/sm_drivers/scripts/
+            import sagemaker.core.utils.install_requirements as _ir_mod
+            shutil.copy2(
+                _ir_mod.__file__,
+                os.path.join(self._temp_code_dir.name, "scripts", "install_requirements.py"),
+            )
+
             # If distributed is provided, overwrite code under <root>/drivers
             if self.distributed:
                 distributed_driver_dir = self.distributed.driver_dir
@@ -618,6 +670,7 @@ class ModelTrainer(BaseModel):
                     data_source=self.source_code.source_dir,
                     key_prefix=input_data_key_prefix,
                     ignore_patterns=self.source_code.ignore_patterns,
+                    instance_group_names=managed_channel_instance_group_names,
                 )
                 final_input_data_config.append(source_code_channel)
 
@@ -640,6 +693,7 @@ class ModelTrainer(BaseModel):
                 data_source=self._temp_code_dir.name,
                 key_prefix=input_data_key_prefix,
                 ignore_patterns=self.source_code.ignore_patterns,
+                instance_group_names=managed_channel_instance_group_names,
             )
             final_input_data_config.append(sm_drivers_channel)
 
@@ -707,6 +761,9 @@ class ModelTrainer(BaseModel):
             "session_chaining_config": self._session_chaining_config,
         }
 
+        if self.model_package_config:
+            training_request["model_package_config"] = self.model_package_config
+
         if boto3 or isinstance(self.sagemaker_session, PipelineSession):
             if isinstance(self.sagemaker_session, PipelineSession):
                 training_request.pop("training_job_name", None)
@@ -718,7 +775,19 @@ class ModelTrainer(BaseModel):
         return training_request
 
 
-    @_telemetry_emitter(feature=Feature.MODEL_TRAINER, func_name="model_trainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_TRAINER,
+        func_name="model_trainer.train",
+        telemetry_params=[
+            ("training_mode", TelemetryParamType.ATTR_VALUE),
+            ("training_input_mode", TelemetryParamType.ATTR_VALUE),
+            ("networking", TelemetryParamType.ATTR_EXISTS),
+            ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
+            ("distributed", TelemetryParamType.ATTR_EXISTS),
+            ("source_code", TelemetryParamType.ATTR_EXISTS),
+            ("checkpoint_config", TelemetryParamType.ATTR_EXISTS),
+        ],
+    )
     @runnable_by_pipeline
     @validate_call
     def train(
@@ -781,6 +850,93 @@ class ModelTrainer(BaseModel):
         if self._temp_code_dir is not None:
             self._temp_code_dir.cleanup()
 
+    def _resolve_staging_bucket(self) -> tuple[str,str]:
+        """Resolve the S3 bucket and key prefix for staging training artifacts.
+
+        Uses iam:SimulatePrincipalPolicy to check whether the training role
+        can access the default SageMaker bucket. If not, falls back to the
+        s3_output_path bucket and prefix.
+
+        Returns:
+            tuple: (bucket_name, prefix_override) where prefix_override is None
+                   when using the default bucket, or the output path prefix when
+                   falling back.
+        """
+        default_bucket = self.sagemaker_session.default_bucket()
+
+        if not self.role:
+            logger.debug(
+                "No training role specified; skipping bucket access check. "
+                "Using default bucket '%s' for artifact staging.", default_bucket
+            )
+            return default_bucket, None
+
+        try:
+            iam_client = self.sagemaker_session.boto_session.client("iam")
+            result = iam_client.simulate_principal_policy(
+                PolicySourceArn=self.role,
+                ActionNames=["s3:PutObject"],
+                ResourceArns=[f"arn:aws:s3:::{default_bucket}/*"],
+            )
+            decisions = result.get("EvaluationResults", [])
+            if decisions and decisions[0].get("EvalDecision") != "allowed":
+                # Training role can't access default bucket — fall back to output path
+                if self.output_data_config and hasattr(self.output_data_config, 's3_output_path'):
+                    output_path = self.output_data_config.s3_output_path
+                    if output_path and output_path.startswith("s3://"):
+                        from urllib.parse import urlparse
+                        parsed = urlparse(output_path)
+                        if parsed.netloc:
+                            prefix = parsed.path.strip("/")
+                            logger.info(
+                                f"Training role '{self.role}' cannot access default bucket "
+                                f"'{default_bucket}'. Using output path bucket "
+                                f"'{parsed.netloc}/{prefix}' for artifact staging."
+                            )
+                            return parsed.netloc, prefix
+        except Exception as e:
+            logger.debug(f"Could not verify role access to default bucket: {e}")
+
+        return default_bucket, None
+
+    def _resolve_managed_channel_instance_groups(
+        self, input_data_config: List[Union[Channel, InputData]]
+    ) -> Optional[List[str]]:
+        """Resolve the instance groups to assign to SDK-managed channels.
+
+        SageMaker requires that, on a heterogeneous cluster, either all channels are
+        assigned to instance groups or none are. The SDK injects channels (recipe, code,
+        sm_drivers) that users cannot configure, so when a user assigns instance groups to
+        any of their channels, the managed channels must be assigned too. We assign them to
+        the full set of instance groups defined on the compute config, since the code and
+        drivers must be present on every node regardless of instance group.
+
+        Args:
+            input_data_config (List[Union[Channel, InputData]]): The user-provided channels.
+
+        Returns:
+            Optional[List[str]]: The full list of instance group names to assign to
+            managed channels, or ``None`` if instance groups are not in use.
+        """
+        instance_groups = getattr(self.compute, "instance_groups", None) if self.compute else None
+        if not instance_groups:
+            return None
+
+        def _channel_has_instance_groups(channel: Union[Channel, InputData]) -> bool:
+            # Channel nests its S3DataSource under data_source; InputData may hold it directly.
+            s3_data_source = None
+            if isinstance(channel, Channel):
+                if channel.data_source:
+                    s3_data_source = channel.data_source.s3_data_source
+            elif isinstance(channel, InputData):
+                if isinstance(channel.data_source, S3DataSource):
+                    s3_data_source = channel.data_source
+            return bool(getattr(s3_data_source, "instance_group_names", None))
+
+        if not any(_channel_has_instance_groups(channel) for channel in input_data_config):
+            return None
+
+        return [group.instance_group_name for group in instance_groups]
 
     def create_input_data_channel(
         self,
@@ -788,6 +944,7 @@ class ModelTrainer(BaseModel):
         data_source: DataSourceType,
         key_prefix: Optional[str] = None,
         ignore_patterns: Optional[List[str]] = None,
+        instance_group_names: Optional[List[str]] = None,
     ) -> Channel:
         """Create an input data channel for the training job.
 
@@ -806,9 +963,21 @@ class ModelTrainer(BaseModel):
             ignore_patterns: (Optional[List[str]]) :
                 The ignore patterns to ignore specific files/folders when uploading to S3.
                 If not specified, default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
+            instance_group_names: (Optional[List[str]]) :
+                The names of the instance groups (for heterogeneous clusters) that this
+                channel's data should be assigned to. Only applied when the channel is
+                built from a URI/local-path data source (not a caller-supplied
+                ``S3DataSource``/``FileSystemDataSource``, which the caller controls).
         """
         from sagemaker.core.helper.pipeline_variable import PipelineVariable
-        
+
+        # Pass the field only when provided, so it stays unset (Unassigned) by default.
+        instance_group_kwargs = (
+            {"instance_group_names": instance_group_names}
+            if instance_group_names is not None
+            else {}
+        )
+
         channel = None
         if isinstance(data_source, PipelineVariable):
             channel = Channel(
@@ -818,6 +987,7 @@ class ModelTrainer(BaseModel):
                         s3_data_type="S3Prefix",
                         s3_uri=data_source,
                         s3_data_distribution_type="FullyReplicated",
+                        **instance_group_kwargs,
                     ),
                 ),
                 input_mode="File",
@@ -831,6 +1001,7 @@ class ModelTrainer(BaseModel):
                             s3_data_type="S3Prefix",
                             s3_uri=data_source,
                             s3_data_distribution_type="FullyReplicated",
+                            **instance_group_kwargs,
                         ),
                     ),
                     input_mode="File",
@@ -855,6 +1026,9 @@ class ModelTrainer(BaseModel):
                     )
                     if self.sagemaker_session.default_bucket_prefix:
                         key_prefix = f"{self.sagemaker_session.default_bucket_prefix}/{key_prefix}"
+                    # Resolve staging bucket based on training role permissions
+                    staging_bucket, staging_prefix = self._resolve_staging_bucket()
+                    effective_prefix = f"{staging_prefix}/{key_prefix}" if staging_prefix else key_prefix
                     if ignore_patterns and _is_valid_path(data_source, path_type="Directory"):
                         tmp_dir = TemporaryDirectory()
                         copied_path = os.path.join(
@@ -868,14 +1042,14 @@ class ModelTrainer(BaseModel):
                         )
                         s3_uri = self.sagemaker_session.upload_data(
                             path=copied_path,
-                            bucket=self.sagemaker_session.default_bucket(),
-                            key_prefix=key_prefix,
+                            bucket=staging_bucket,
+                            key_prefix=effective_prefix,
                         )
                     else:
                         s3_uri = self.sagemaker_session.upload_data(
                             path=data_source,
-                            bucket=self.sagemaker_session.default_bucket(),
-                            key_prefix=key_prefix,
+                            bucket=staging_bucket,
+                            key_prefix=effective_prefix,
                         )
                     channel = Channel(
                         channel_name=channel_name,
@@ -884,6 +1058,7 @@ class ModelTrainer(BaseModel):
                                 s3_data_type="S3Prefix",
                                 s3_uri=s3_uri,
                                 s3_data_distribution_type="FullyReplicated",
+                                **instance_group_kwargs,
                             ),
                         ),
                         input_mode="File",
@@ -1039,10 +1214,12 @@ class ModelTrainer(BaseModel):
         checkpoint_config: Optional[shapes.CheckpointConfig] = None,
         training_input_mode: Optional[str] = "File",
         environment: Optional[Dict[str, str]] = None,
+        hyperparameters: Optional[Union[Dict[str, Any], str]] = {},
         tags: Optional[List[Tag]] = None,
         sagemaker_session: Optional[Session] = None,
         role: Optional[str] = None,
         base_job_name: Optional[str] = None,
+        model_package_config: Optional[ModelPackageConfig] = None,
     ) -> "ModelTrainer":  # noqa: D412
         """Create a ModelTrainer from a training recipe.
 
@@ -1132,15 +1309,27 @@ class ModelTrainer(BaseModel):
                 The base name for the training job.
                 If not specified, a default name will be generated using the algorithm name
                 or training image.
+            model_package_config (Optional[ModelPackageConfig]):
+                The model package configuration. Used for Nova RMP jobs to specify
+                SourceModelPackageArn and ModelPackageGroupArn. If also specified in recipe,
+                direct param wins on conflict.
         """
         if compute.instance_type is None:
             raise ValueError("Must set ``instance_type`` in Compute when using training recipes.")
         device_type = _determine_device_type(compute.instance_type)
-        if device_type == "cpu":
+        recipe = _load_base_recipe(
+            training_recipe=training_recipe, recipe_overrides=recipe_overrides
+        )
+        is_nova = _is_nova_recipe(recipe=recipe)
+        is_llmft = _is_llmft_recipe(recipe=recipe)
+        if device_type == "cpu" and not (is_nova or is_llmft):
             raise ValueError(
                 "Training recipes are not supported for CPU instances. "
                 "Please provide a GPU or Tranium instance type."
             )
+
+        if training_image is None and (is_nova or is_llmft):
+            raise ValueError("training_image must be provided when using recipe for Nova or LLMFT")
 
         if training_image_config and training_image is None:
             raise ValueError("training_image must be provided when using training_image_config.")
@@ -1154,15 +1343,31 @@ class ModelTrainer(BaseModel):
         # - distributed
         # - compute
         # - hyperparameters
-        model_trainer_args, recipe_train_dir = _get_args_from_recipe(
-            training_recipe=training_recipe,
+        model_trainer_args, tmp_dir = _get_args_from_recipe(
+            training_recipe=recipe,
             recipe_overrides=recipe_overrides,
             requirements=requirements,
             compute=compute,
             region_name=sagemaker_session.boto_region_name,
+            role=role,
         )
         if training_image is not None:
             model_trainer_args["training_image"] = training_image
+
+        if hyperparameters and not is_nova:
+            logger.warning(
+                "Hyperparameters are not supported for general and LLMFT training recipes. "
+                + "Ignoring hyperparameters input."
+            )
+        if is_nova:
+            if hyperparameters and isinstance(hyperparameters, str):
+                hyperparameters = cls._validate_and_load_hyperparameters_file(hyperparameters)
+                model_trainer_args["hyperparameters"].update(hyperparameters)
+            elif hyperparameters and isinstance(hyperparameters, dict):
+                model_trainer_args["hyperparameters"].update(hyperparameters)
+
+        # Pop recipe model_package_config dict before unpacking into constructor
+        recipe_mpc_dict = model_trainer_args.pop("model_package_config", None) or {}
 
         model_trainer = cls(
             sagemaker_session=sagemaker_session,
@@ -1180,8 +1385,69 @@ class ModelTrainer(BaseModel):
             **model_trainer_args,
         )
 
-        model_trainer._temp_recipe_train_dir = recipe_train_dir
+        # Merge ModelPackageConfig: recipe dict + direct Pydantic param (direct wins)
+        direct_mpc_dict = model_package_config.model_dump(exclude_unset=True) if model_package_config else {}
+        merged = {**recipe_mpc_dict, **direct_mpc_dict}
+        if merged:
+            model_trainer.model_package_config = ModelPackageConfig(**merged)
+
+        model_trainer._is_nova_recipe = is_nova
+        model_trainer._is_llmft_recipe = is_llmft
+        model_trainer._temp_recipe_train_dir = tmp_dir
+        model_trainer._resolved_recipe_cache = None
+        model_trainer._training_recipe = training_recipe
+        model_trainer._recipe_overrides = recipe_overrides
         return model_trainer
+
+    def get_resolved_recipe(self) -> Dict[str, Any]:
+        """Return the fully resolved recipe configuration.
+
+        Shows the final merged result of base recipe + recipe_overrides after
+        OmegaConf interpolation resolution. Callable before or after train().
+        Works for all recipe types (Nova, LLMFT, general).
+
+        Returns:
+            Dict[str, Any]: Deep copy of the resolved recipe configuration.
+
+        Raises:
+            ValueError: If recipe resolution fails.
+            AttributeError: If called on a ModelTrainer not created via from_recipe().
+        """
+        if not hasattr(self, '_training_recipe'):
+            raise AttributeError(
+                "get_resolved_recipe() is only available on ModelTrainer instances "
+                "created via ModelTrainer.from_recipe()."
+            )
+
+        if self._resolved_recipe_cache is not None:
+            import copy
+            return copy.deepcopy(self._resolved_recipe_cache)
+
+        from omegaconf import OmegaConf
+        from sagemaker.train.sm_recipes.utils import (
+            _load_base_recipe,
+            _register_custom_resolvers,
+        )
+        import copy
+
+        recipe = _load_base_recipe(
+            training_recipe=self._training_recipe,
+            recipe_overrides=self._recipe_overrides,
+        )
+
+        _register_custom_resolvers()
+
+        try:
+            OmegaConf.resolve(recipe)
+        except Exception as e:
+            logger.warning(
+                f"Could not fully resolve recipe interpolations: {e}. "
+                f"Returning partially resolved recipe."
+            )
+
+        resolved = OmegaConf.to_container(recipe, resolve=True)
+        self._resolved_recipe_cache = resolved
+        return copy.deepcopy(resolved)
 
     @classmethod
     def from_jumpstart_config(

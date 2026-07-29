@@ -36,8 +36,8 @@ def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool =
     if "auto" in dependencies and dependencies["auto"]:
         import site
 
-        pkl_path = work_dir.joinpath(PKL_FILE_NAME).resolve()
-        dest_path = path.resolve()
+        pkl_path = str(work_dir.joinpath(PKL_FILE_NAME).resolve())
+        dest_path = str(path.resolve())
         site_packages_dir = site.getsitepackages()[0]
         pickle_command_dir = "/sagemaker/serve/detector"
 
@@ -46,15 +46,18 @@ def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool =
             "-c",
         ]
 
+        # Use repr() to emit properly escaped Python string literals so that
+        # attacker-controlled path characters (e.g. '"') cannot break out of
+        # the literal and inject code into the -c script (CWE-94).
         if capture_all:
             command.append(
                 f"from sagemaker.serve.detector.pickle_dependencies import get_all_requirements;"
-                f'get_all_requirements("{dest_path}")'
+                f"get_all_requirements({dest_path!r})"
             )
         else:
             command.append(
                 f"from sagemaker.serve.detector.pickle_dependencies import get_requirements_for_pkl_file;"
-                f'get_requirements_for_pkl_file("{pkl_path}", "{dest_path}")'
+                f"get_requirements_for_pkl_file({pkl_path!r}, {dest_path!r})"
             )
 
         subprocess.run(

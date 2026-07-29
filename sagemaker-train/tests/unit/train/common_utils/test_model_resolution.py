@@ -63,7 +63,6 @@ class TestModelResolver:
         """Test ModelResolver initialization."""
         resolver = _ModelResolver()
         assert resolver.sagemaker_session is None
-        assert resolver.DEFAULT_HUB_NAME == "SageMakerPublicHub"
     
     def test_resolver_with_session(self):
         """Test ModelResolver with custom session."""
@@ -71,11 +70,10 @@ class TestModelResolver:
         resolver = _ModelResolver(sagemaker_session=mock_session)
         assert resolver.sagemaker_session == mock_session
     
-    @patch.dict(os.environ, {'SAGEMAKER_ENDPOINT': 'https://beta.endpoint'})
-    def test_resolver_with_beta_endpoint(self):
-        """Test ModelResolver detects beta endpoint."""
+    def test_resolver_without_session(self):
+        """Test ModelResolver initializes without session."""
         resolver = _ModelResolver()
-        assert resolver._endpoint == 'https://beta.endpoint'
+        assert resolver.sagemaker_session is None
 
 
 class TestResolveModelInfo:
@@ -126,7 +124,7 @@ class TestResolveModelInfo:
     def test_resolve_model_package_object(self, mock_resolve_obj):
         """Test resolving ModelPackage object."""
         resolver = _ModelResolver()
-        mock_package = MagicMock()
+        mock_package = MagicMock(spec=['model_package_arn', 'inference_specification'])
         mock_package.model_package_arn = "arn:test"
         mock_info = _ModelInfo(
             base_model_name="base-model",
@@ -217,6 +215,54 @@ class TestResolveJumpStartModel:
         
         with pytest.raises(ValueError, match="Failed to resolve JumpStart model"):
             resolver._resolve_jumpstart_model("test-model", "SageMakerPublicHub")
+
+    @patch('sagemaker.core.resources.HubContent')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
+    def test_resolve_jumpstart_falls_back_to_public_hub(
+        self, mock_get_session, mock_hub_content_class
+    ):
+        """Base model missing from a private hub falls back to SageMakerPublicHub."""
+        mock_session = MagicMock()
+        mock_session.boto_session.region_name = 'us-west-2'
+        mock_get_session.return_value = mock_session
+
+        mock_hub_content = MagicMock()
+        mock_hub_content.hub_content_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/test"
+        mock_hub_content.hub_content_document = '{"key": "value"}'
+        # First call (private hub) raises, fallback (public hub) succeeds.
+        mock_hub_content_class.get.side_effect = [
+            Exception("ResourceNotFound in private hub"),
+            mock_hub_content,
+        ]
+
+        resolver = _ModelResolver()
+        result = resolver._resolve_jumpstart_model("test-model", "sdktest")
+
+        assert result.base_model_name == "test-model"
+        assert result.model_type == _ModelType.JUMPSTART
+        assert mock_hub_content_class.get.call_count == 2
+        # The fallback call must target the public hub.
+        assert mock_hub_content_class.get.call_args_list[1].kwargs["hub_name"] == (
+            "SageMakerPublicHub"
+        )
+
+    @patch('sagemaker.core.resources.HubContent')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
+    def test_resolve_jumpstart_public_hub_failure_does_not_retry(
+        self, mock_get_session, mock_hub_content_class
+    ):
+        """A public-hub miss raises immediately without a redundant fallback call."""
+        mock_session = MagicMock()
+        mock_session.boto_session.region_name = 'us-west-2'
+        mock_get_session.return_value = mock_session
+        mock_hub_content_class.get.side_effect = Exception("Hub error")
+
+        resolver = _ModelResolver()
+
+        with pytest.raises(ValueError, match="Failed to resolve JumpStart model"):
+            resolver._resolve_jumpstart_model("test-model", "SageMakerPublicHub")
+
+        assert mock_hub_content_class.get.call_count == 1
 
 
 class TestResolveModelPackageObject:
@@ -355,38 +401,135 @@ class TestResolveModelPackageArn:
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._validate_model_package_arn')
     def test_resolve_arn_construct_hub_content_arn(self, mock_validate, mock_get_session, mock_model_package_class):
-        """Test ARN resolution when HubContentArn needs to be constructed."""
+        """Test ARN resolution when HubContentArn needs to be constructed.
+
+        With no SAGEMAKER_HUB_NAME override, the base model is assumed to live
+        in the account-less SageMakerPublicHub.
+        """
         arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model/1"
-        
+
         # Mock session
         mock_session = MagicMock()
         mock_session.boto_session.region_name = 'us-west-2'
         mock_get_session.return_value = mock_session
-        
+
         # Mock ModelPackage without hub_content_arn (needs to be constructed)
         mock_package = MagicMock()
         mock_package.model_package_arn = arn
-        
+
         mock_container = MagicMock()
         mock_base_model = MagicMock()
         mock_base_model.hub_content_name = 'base-model'
         mock_base_model.hub_content_version = '1.0'
         mock_base_model.hub_content_arn = None  # Not provided, needs construction
         mock_container.base_model = mock_base_model
-        
+
         mock_package.inference_specification = MagicMock()
         mock_package.inference_specification.containers = [mock_container]
-        
+
         mock_model_package_class.get.return_value = mock_package
-        
+
         resolver = _ModelResolver()
-        result = resolver._resolve_model_package_arn(arn)
-        
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("SAGEMAKER_HUB_NAME", None)
+            result = resolver._resolve_model_package_arn(arn)
+
         # Should construct ARN from region and hub content name/version
         expected_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/base-model/1.0"
         assert result.base_model_arn == expected_arn
         assert result.base_model_name == "base-model"
         assert result.hub_content_name == "base-model"
+
+    @patch('sagemaker.core.resources.HubContent')
+    @patch('sagemaker.core.resources.ModelPackage')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._validate_model_package_arn')
+    def test_resolve_arn_construct_hub_content_arn_private_hub(self, mock_validate, mock_get_session, mock_model_package_class, mock_hub_content_class):
+        """When SAGEMAKER_HUB_NAME points at a private hub that DOES contain the
+        base model, the reconstructed base-model ARN targets that hub under the
+        model package's own account (not the account-less public hub)."""
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model/1"
+
+        mock_session = MagicMock()
+        mock_session.boto_session.region_name = 'us-west-2'
+        mock_get_session.return_value = mock_session
+
+        # Private hub contains the base model, so verification succeeds.
+        mock_hub_content_class.get.return_value = MagicMock()
+
+        # Mock ModelPackage without hub_content_arn (needs to be constructed)
+        mock_package = MagicMock()
+        mock_package.model_package_arn = arn
+
+        mock_container = MagicMock()
+        mock_base_model = MagicMock()
+        mock_base_model.hub_content_name = 'mock-oss-test'
+        mock_base_model.hub_content_version = '0.0.1'
+        mock_base_model.hub_content_arn = None  # Not provided, needs construction
+        mock_container.base_model = mock_base_model
+
+        mock_package.inference_specification = MagicMock()
+        mock_package.inference_specification.containers = [mock_container]
+
+        mock_model_package_class.get.return_value = mock_package
+
+        resolver = _ModelResolver()
+        with patch.dict(os.environ, {"SAGEMAKER_HUB_NAME": "sdktest"}):
+            result = resolver._resolve_model_package_arn(arn)
+
+        # Private hub: uses the model package's account (123456789012), not "aws"
+        expected_arn = "arn:aws:sagemaker:us-west-2:123456789012:hub-content/sdktest/Model/mock-oss-test/0.0.1"
+        assert result.base_model_arn == expected_arn
+        assert result.base_model_name == "mock-oss-test"
+        assert result.hub_content_name == "mock-oss-test"
+
+    @patch('sagemaker.core.resources.HubContent')
+    @patch('sagemaker.core.resources.ModelPackage')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
+    @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._validate_model_package_arn')
+    def test_resolve_arn_construct_hub_content_arn_private_hub_fallback_public(self, mock_validate, mock_get_session, mock_model_package_class, mock_hub_content_class):
+        """When SAGEMAKER_HUB_NAME points at a private hub that does NOT contain
+        the base model (e.g. it never mirrored it or was cleaned up), the
+        reconstructed base-model ARN falls back to the account-less public hub.
+
+        Regression test: without this fallback the server-side CreateTrainingJob
+        fails with 'Hub content ... does not exist' during evaluation."""
+        arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-model/1"
+
+        mock_session = MagicMock()
+        mock_session.boto_session.region_name = 'us-west-2'
+        mock_get_session.return_value = mock_session
+
+        # Private hub does NOT contain the base model -> verification raises.
+        mock_hub_content_class.get.side_effect = Exception(
+            "Hub content with name mock-oss-test does not exist."
+        )
+
+        # Mock ModelPackage without hub_content_arn (needs to be constructed)
+        mock_package = MagicMock()
+        mock_package.model_package_arn = arn
+
+        mock_container = MagicMock()
+        mock_base_model = MagicMock()
+        mock_base_model.hub_content_name = 'mock-oss-test'
+        mock_base_model.hub_content_version = '0.0.1'
+        mock_base_model.hub_content_arn = None  # Not provided, needs construction
+        mock_container.base_model = mock_base_model
+
+        mock_package.inference_specification = MagicMock()
+        mock_package.inference_specification.containers = [mock_container]
+
+        mock_model_package_class.get.return_value = mock_package
+
+        resolver = _ModelResolver()
+        with patch.dict(os.environ, {"SAGEMAKER_HUB_NAME": "sdktest"}):
+            result = resolver._resolve_model_package_arn(arn)
+
+        # Fell back to the account-less public hub since the private hub lacks it.
+        expected_arn = "arn:aws:sagemaker:us-west-2:aws:hub-content/SageMakerPublicHub/Model/mock-oss-test/0.0.1"
+        assert result.base_model_arn == expected_arn
+        assert result.base_model_name == "mock-oss-test"
+        assert result.hub_content_name == "mock-oss-test"
     
     @patch('sagemaker.core.resources.ModelPackage')
     @patch('sagemaker.train.common_utils.model_resolution._ModelResolver._get_session')
@@ -491,25 +634,17 @@ class TestGetSession:
         assert result == mock_session
         mock_session_class.assert_called_once()
     
-    @patch.dict(os.environ, {'SAGEMAKER_ENDPOINT': 'https://beta.endpoint'})
-    @patch('boto3.client')
     @patch('sagemaker.core.helper.session_helper.Session')
-    def test_get_session_with_beta_endpoint(self, mock_session_class, mock_boto_client):
-        """Test creating session with beta endpoint."""
-        mock_sm_client = MagicMock()
-        mock_boto_client.return_value = mock_sm_client
-        
+    def test_get_session_creates_default(self, mock_session_class):
+        """Test creating default session when none provided."""
         mock_session = MagicMock()
         mock_session_class.return_value = mock_session
-        
+
         resolver = _ModelResolver()
         result = resolver._get_session()
-        
-        mock_boto_client.assert_called_once_with(
-            'sagemaker',
-            endpoint_url='https://beta.endpoint'
-        )
-        mock_session_class.assert_called_once_with(sagemaker_client=mock_sm_client)
+
+        mock_session_class.assert_called_once()
+        assert result == mock_session
 
 
 class TestResolveBaseModel:

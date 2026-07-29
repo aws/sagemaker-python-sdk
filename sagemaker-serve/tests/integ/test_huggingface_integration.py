@@ -25,7 +25,7 @@ from sagemaker.core.resources import EndpointConfig
 logger = logging.getLogger(__name__)
 
 # Configuration - easily customizable
-MODEL_ID = "t5-small"  # Small text generation model
+MODEL_ID = "openai-community/gpt2"  # canonical HF repo id ("gpt2" no longer accepted)
 MODEL_NAME_PREFIX = "hf-test-model"
 ENDPOINT_NAME_PREFIX = "hf-test-endpoint"
 
@@ -95,10 +95,7 @@ def build_and_deploy():
     )
     
     # Build and deploy your model. Returns SageMaker Core Model and Endpoint objects
-    core_model = model_builder.build(
-        model_name=f"{MODEL_NAME_PREFIX}-{unique_id}",
-        region="us-east-1"
-    )
+    core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}")
     logger.info(f"Model Successfully Created: {core_model.model_name}")
 
     core_endpoint = model_builder.deploy(endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}")

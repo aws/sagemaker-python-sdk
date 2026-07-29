@@ -19,7 +19,7 @@ from __future__ import absolute_import
 __version__ = "0.1.0"
 
 # Pipeline and configuration
-from sagemaker.mlops.workflow.pipeline import Pipeline, PipelineGraph
+from sagemaker.mlops.workflow.pipeline import Pipeline, PipelineGraph, PipelineExecution
 from sagemaker.mlops.workflow.pipeline_experiment_config import (
     PipelineExperimentConfig,
     PipelineExperimentConfigProperty,
@@ -74,6 +74,7 @@ from sagemaker.mlops.workflow.check_job_config import CheckJobConfig
 __all__ = [
     # Pipeline and configuration
     "Pipeline",
+    "PipelineExecution",
     "PipelineGraph",
     "PipelineExperimentConfig",
     "PipelineExperimentConfigProperty",

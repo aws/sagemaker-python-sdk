@@ -56,10 +56,13 @@ ALTERNATE_DOMAINS = {
     "cn-north-1": "amazonaws.com.cn",
     "cn-northwest-1": "amazonaws.com.cn",
     "us-iso-east-1": "c2s.ic.gov",
+    "us-iso-west-1": "c2s.ic.gov",
     "us-isob-east-1": "sc2s.sgov.gov",
+    "us-isob-west-1": "sc2s.sgov.gov",
     "us-isof-south-1": "csp.hci.ic.gov",
     "us-isof-east-1": "csp.hci.ic.gov",
     "eu-isoe-west-1": "cloud.adc-e.uk",
+    "eusc-de-east-1": "amazonaws.eu",
 }
 
 ECR_URI_PATTERN = r"^(\d+)(\.)dkr(\.)ecr(\.)(.+)(\.)(.*)(/)(.*:.*)$"
@@ -424,12 +427,24 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
 
     prefix = prefix.lstrip("/")
 
+    if ".." in prefix:
+        raise ValueError("Traversal components are not allowed in S3 path!")
+
+    # Spot check: enforce ownership only when downloading from the session's default
+    # bucket. Cross-account buckets are left untouched.
+    expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket_name)
+    extra_args = None
+    if expected_owner:
+        extra_args = {"ExpectedBucketOwner": expected_owner}
+
     # Try to download the prefix as an object first, in case it is a file and not a 'directory'.
     # Do this first, in case the object has broader permissions than the bucket.
     if not prefix.endswith("/"):
         try:
             file_destination = os.path.join(target, os.path.basename(prefix))
-            s3.Object(bucket_name, prefix).download_file(file_destination)
+            s3.Object(bucket_name, prefix).download_file(
+                file_destination, ExtraArgs=extra_args
+            )
             return
         except botocore.exceptions.ClientError as e:
             err_info = e.response["Error"]
@@ -440,10 +455,10 @@ def download_folder(bucket_name, prefix, target, sagemaker_session):
             else:
                 raise
 
-    _download_files_under_prefix(bucket_name, prefix, target, s3)
+    _download_files_under_prefix(bucket_name, prefix, target, s3, extra_args=extra_args)
 
 
-def _download_files_under_prefix(bucket_name, prefix, target, s3):
+def _download_files_under_prefix(bucket_name, prefix, target, s3, extra_args=None):
     """Download all S3 files which match the given prefix
 
     Args:
@@ -451,7 +466,10 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
         prefix (str): S3 prefix within the bucket that will be downloaded
         target (str): destination path where the downloaded items will be placed
         s3 (boto3.resources.base.ServiceResource): S3 resource
+        extra_args (dict): Optional extra arguments passed to each download_file call.
+            Used to carry ExpectedBucketOwner when the bucket is the session's default.
     """
+    target_real = os.path.realpath(target)
     bucket = s3.Bucket(bucket_name)
     for obj_sum in bucket.objects.filter(Prefix=prefix):
         # if obj_sum is a folder object skip it.
@@ -461,6 +479,8 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
         s3_relative_path = obj_sum.key[len(prefix) :].lstrip("/")
         file_path = os.path.join(target, s3_relative_path)
 
+        validate_path_within_directory(file_path, target, source_description=obj_sum.key)
+
         try:
             os.makedirs(os.path.dirname(file_path))
         except OSError as exc:
@@ -468,7 +488,7 @@ def _download_files_under_prefix(bucket_name, prefix, target, s3):
             # anything else will be raised.
             if exc.errno != errno.EEXIST:
                 raise
-        obj.download_file(file_path)
+        obj.download_file(file_path, ExtraArgs=extra_args)
 
 
 def create_tar_file(source_files, target=None):
@@ -615,6 +635,16 @@ def _save_model(repacked_model_uri, tmp_model_path, sagemaker_session, kms_key):
             extra_args = {"ServerSideEncryption": "aws:kms"}
         else:
             extra_args = None
+
+        # Spot check: when the model is being uploaded to the session's default bucket,
+        # assert ownership to defend against bucket-squatting on the predictable default
+        # name. Other caller-supplied buckets are left untouched.
+        if sagemaker_session is not None:
+            expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket)
+            if expected_owner:
+                extra_args = dict(extra_args) if extra_args else {}
+                extra_args["ExpectedBucketOwner"] = expected_owner
+
         sagemaker_session.boto_session.resource(
             "s3", region_name=sagemaker_session.boto_region_name
         ).Object(bucket, new_key).upload_file(tmp_model_path, ExtraArgs=extra_args)
@@ -762,7 +792,17 @@ def download_file(bucket_name, path, target, sagemaker_session):
 
     s3 = boto_session.resource("s3", region_name=sagemaker_session.boto_region_name)
     bucket = s3.Bucket(bucket_name)
-    bucket.download_file(path, target)
+
+    # Spot check: assert ownership only when downloading from the session's default
+    # bucket. Non-default buckets (e.g. caller-supplied model URIs pointing at shared
+    # or cross-account data) are downloaded without ExpectedBucketOwner to preserve
+    # legitimate cross-account flows.
+    expected_owner = sagemaker_session._get_account_id_if_default_bucket(bucket_name)
+    extra_args = None
+    if expected_owner:
+        extra_args = {"ExpectedBucketOwner": expected_owner}
+
+    bucket.download_file(path, target, ExtraArgs=extra_args)
 
 
 def sts_regional_endpoint(region):
@@ -1667,6 +1707,31 @@ def _get_resolved_path(path):
     and handles platform-specific differences
     """
     return normpath(realpath(abspath(path)))
+
+
+def validate_path_within_directory(file_path, target_directory, source_description=""):
+    """Validate that file_path resolves to a location within target_directory.
+
+    Prevents path traversal attacks (CWE-22) by resolving both paths to their
+    canonical forms and checking containment.
+
+    Args:
+        file_path (str): The file path to validate.
+        target_directory (str): The directory that file_path must stay within.
+        source_description (str): Optional description of the source (e.g. S3 key)
+            included in the error message for debugging.
+
+    Raises:
+        ValueError: If file_path resolves to a location outside target_directory.
+    """
+    target_real = os.path.realpath(target_directory)
+    file_real = os.path.realpath(file_path)
+    if not file_real.startswith(target_real + os.sep) and file_real != target_real:
+        source_info = f"'{source_description}' resolves to " if source_description else ""
+        raise ValueError(
+            f"Path traversal detected: {source_info}"
+            f"'{file_real}' which is outside the target directory '{target_real}'"
+        )
 
 
 def _is_bad_path(path, base):

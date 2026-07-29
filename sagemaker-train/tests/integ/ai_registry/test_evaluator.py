@@ -81,6 +81,47 @@ class TestEvaluatorIntegration:
         assert evaluator.method == EvaluatorMethod.BYOC
         assert evaluator.reference is not None
 
+    def test_create_reward_function_from_local_py_file_and_invoke(
+        self, unique_name, sample_lambda_py_file, test_role, cleanup_list
+    ):
+        """End-to-end test: create evaluator from a raw .py file with non-default name and invoke it.
+
+        Regression test for the handler name bug where the Lambda was created with an incorrect
+        handler derived from the source filename instead of 'lambda_function.lambda_handler'.
+        """
+        import json
+        import boto3
+
+        evaluator = Evaluator.create(
+            name=unique_name,
+            type=REWARD_FUNCTION,
+            source=sample_lambda_py_file,
+            role=test_role,
+            wait=True,  # wait for Lambda to be active
+        )
+        cleanup_list.append(evaluator)
+        assert evaluator.method == EvaluatorMethod.BYOC
+        assert evaluator.reference is not None
+
+        # Wait for Lambda to become Active before invoking
+        lambda_client = boto3.client("lambda")
+        waiter = lambda_client.get_waiter("function_active_v2")
+        waiter.wait(FunctionName=evaluator.reference)
+
+        # Invoke the Lambda directly to verify the handler is correct
+        lambda_client = boto3.client("lambda")
+        response = lambda_client.invoke(
+            FunctionName=evaluator.reference,
+            InvocationType="RequestResponse",
+            Payload=json.dumps({"input": "test"}).encode(),
+        )
+        assert response["StatusCode"] == 200
+        assert "FunctionError" not in response, (
+            f"Lambda invocation failed with error: {response.get('FunctionError')}"
+        )
+        result = json.loads(response["Payload"].read())
+        assert result.get("statusCode") == 200
+
     def test_get_evaluator(self, unique_name, sample_prompt_file, cleanup_list):
         """Test retrieving evaluator by name."""
         try:

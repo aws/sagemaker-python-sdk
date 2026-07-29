@@ -1,0 +1,122 @@
+name: Conda Forge Release Chain
+
+on:
+  workflow_dispatch:
+    inputs:
+      poll_interval_seconds:
+        description: 'Seconds between polls (default: 300)'
+        required: false
+        default: '300'
+      timeout_attempts:
+        description: 'Max poll attempts per package before failing (default: 20 = 100min at 300s)'
+        required: false
+        default: '20'
+
+jobs:
+  read-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      core: ${{ steps.v.outputs.core }}
+      train: ${{ steps.v.outputs.train }}
+      serve: ${{ steps.v.outputs.serve }}
+      mlops: ${{ steps.v.outputs.mlops }}
+      pysdk: ${{ steps.v.outputs.pysdk }}
+      meta: ${{ steps.v.outputs.meta }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read versions
+        id: v
+        run: |
+          echo "core=$(cat sagemaker-core/VERSION)"  >> $GITHUB_OUTPUT
+          echo "train=$(cat sagemaker-train/VERSION)" >> $GITHUB_OUTPUT
+          echo "serve=$(cat sagemaker-serve/VERSION)" >> $GITHUB_OUTPUT
+          echo "mlops=$(cat sagemaker-mlops/VERSION)" >> $GITHUB_OUTPUT
+          echo "pysdk=$(cat VERSION)"                 >> $GITHUB_OUTPUT
+          echo "meta=$(cat VERSION)"                  >> $GITHUB_OUTPUT
+          echo "Versions:"
+          echo "  sagemaker-core:       $(cat sagemaker-core/VERSION)"
+          echo "  sagemaker-train:      $(cat sagemaker-train/VERSION)"
+          echo "  sagemaker-serve:      $(cat sagemaker-serve/VERSION)"
+          echo "  sagemaker-mlops:      $(cat sagemaker-mlops/VERSION)"
+          echo "  sagemaker-python-sdk: $(cat VERSION)"
+          echo "  sagemaker (meta):     $(cat VERSION)"
+
+  # sagemaker-train waits for sagemaker-core
+  release-sagemaker-train:
+    needs: read-versions
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker-train
+      feedstock: conda-forge/sagemaker-train-feedstock
+      pr_search: "sagemaker-train v${{ needs.read-versions.outputs.train }}"
+      version: ${{ needs.read-versions.outputs.train }}
+      dep_package: sagemaker-core
+      dep_version: ${{ needs.read-versions.outputs.core }}
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.CONDA_FORGE_RELEASE }}
+
+  # sagemaker-serve waits for sagemaker-train
+  release-sagemaker-serve:
+    needs: [read-versions, release-sagemaker-train]
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker-serve
+      feedstock: conda-forge/sagemaker-serve-feedstock
+      pr_search: "sagemaker-serve v${{ needs.read-versions.outputs.serve }}"
+      version: ${{ needs.read-versions.outputs.serve }}
+      dep_package: sagemaker-train
+      dep_version: ${{ needs.read-versions.outputs.train }}
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.CONDA_FORGE_RELEASE }}
+
+  # sagemaker-mlops waits for sagemaker-serve
+  release-sagemaker-mlops:
+    needs: [read-versions, release-sagemaker-serve]
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker-mlops
+      feedstock: conda-forge/sagemaker-mlops-feedstock
+      pr_search: "sagemaker-mlops v${{ needs.read-versions.outputs.mlops }}"
+      version: ${{ needs.read-versions.outputs.mlops }}
+      dep_package: sagemaker-serve
+      dep_version: ${{ needs.read-versions.outputs.serve }}
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.CONDA_FORGE_RELEASE }}
+
+  # sagemaker-python-sdk waits for sagemaker-mlops
+  release-sagemaker-python-sdk:
+    needs: [read-versions, release-sagemaker-mlops]
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker-python-sdk
+      feedstock: conda-forge/sagemaker-python-sdk-feedstock
+      pr_search: "[bot-automerge] sagemaker-python-sdk v${{ needs.read-versions.outputs.pysdk }}"
+      version: ${{ needs.read-versions.outputs.pysdk }}
+      dep_package: sagemaker-mlops
+      dep_version: ${{ needs.read-versions.outputs.mlops }}
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.CONDA_FORGE_RELEASE }}
+
+  # sagemaker (meta) waits for sagemaker-python-sdk
+  release-sagemaker:
+    needs: [read-versions, release-sagemaker-python-sdk]
+    uses: ./.github/workflows/_conda-forge-package-release.yml
+    with:
+      package: sagemaker
+      feedstock: conda-forge/sagemaker-feedstock
+      pr_search: "[bot-automerge] sagemaker v${{ needs.read-versions.outputs.meta }}"
+      version: ${{ needs.read-versions.outputs.meta }}
+      dep_package: sagemaker-python-sdk
+      dep_version: ${{ needs.read-versions.outputs.pysdk }}
+      poll_interval: ${{ github.event.inputs.poll_interval_seconds }}
+      max_attempts: ${{ github.event.inputs.timeout_attempts }}
+    secrets:
+      token: ${{ secrets.CONDA_FORGE_RELEASE }}

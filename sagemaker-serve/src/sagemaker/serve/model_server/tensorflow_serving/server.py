@@ -37,7 +37,7 @@ class LocalTensorflowServing:
             detach=True,
             auto_remove=False,  # Temporarily disabled to see crash logs
             # network_mode="host",
-            ports={'8501/tcp': 8501},
+            ports={"8501/tcp": 8501},
             volumes={
                 Path(model_path): {
                     "bind": "/opt/ml/model",
@@ -47,7 +47,6 @@ class LocalTensorflowServing:
             environment={
                 "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
                 "SAGEMAKER_PROGRAM": "inference.py",
-                "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
                 "LOCAL_PYTHON": platform.python_version(),
                 **env_vars,
             },
@@ -124,7 +123,6 @@ class SageMakerTensorflowServing:
             "SAGEMAKER_PROGRAM": "inference.py",
             "SAGEMAKER_REGION": sagemaker_session.boto_region_name,
             "SAGEMAKER_CONTAINER_LOG_LEVEL": "10",
-            "SAGEMAKER_SERVE_SECRET_KEY": secret_key,
             "LOCAL_PYTHON": platform.python_version(),
         }
         return s3_upload_path, env_vars

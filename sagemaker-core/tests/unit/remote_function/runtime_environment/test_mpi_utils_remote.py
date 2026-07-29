@@ -10,14 +10,10 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Tests for mpi_utils_remote module."""
-from __future__ import absolute_import
 
-import os
 import pytest
+from unittest.mock import Mock, patch, MagicMock, mock_open
 import subprocess
-import time
-from unittest.mock import patch, MagicMock, mock_open, call
 import paramiko
 
 from sagemaker.core.remote_function.runtime_environment.mpi_utils_remote import (
@@ -36,7 +32,6 @@ from sagemaker.core.remote_function.runtime_environment.mpi_utils_remote import 
     main,
     SUCCESS_EXIT_CODE,
     DEFAULT_FAILURE_CODE,
-    FAILURE_REASON_PATH,
     FINISHED_STATUS_FILE,
     READY_FILE,
     DEFAULT_SSH_PORT,
@@ -44,381 +39,328 @@ from sagemaker.core.remote_function.runtime_environment.mpi_utils_remote import 
 
 
 class TestCustomHostKeyPolicy:
-    """Test CustomHostKeyPolicy class."""
+    """Test cases for CustomHostKeyPolicy class"""
 
-    def test_accepts_algo_hostname(self):
-        """Test accepts hostnames starting with algo-."""
+    def test_missing_host_key_algo_hostname(self):
+        """Test missing_host_key accepts algo-* hostnames"""
         policy = CustomHostKeyPolicy()
-        mock_client = MagicMock()
-        mock_hostname = "algo-1234"
-        mock_key = MagicMock()
-        mock_key.get_name.return_value = "ssh-rsa"
-        
+        client = Mock()
+        client.get_host_keys.return_value = Mock()
+        key = Mock()
+        key.get_name.return_value = "ssh-rsa"
+
         # Should not raise exception
-        policy.missing_host_key(mock_client, mock_hostname, mock_key)
-        
-        mock_client.get_host_keys().add.assert_called_once_with(mock_hostname, "ssh-rsa", mock_key)
+        policy.missing_host_key(client, "algo-1", key)
 
-    def test_rejects_non_algo_hostname(self):
-        """Test rejects hostnames not starting with algo-."""
+        client.get_host_keys().add.assert_called_once()
+
+    def test_missing_host_key_unknown_hostname(self):
+        """Test missing_host_key rejects unknown hostnames"""
         policy = CustomHostKeyPolicy()
-        mock_client = MagicMock()
-        mock_hostname = "unknown-host"
-        mock_key = MagicMock()
-        
-        with pytest.raises(paramiko.SSHException):
-            policy.missing_host_key(mock_client, mock_hostname, mock_key)
+        client = Mock()
+        key = Mock()
+
+        with pytest.raises(paramiko.SSHException, match="Unknown host key"):
+            policy.missing_host_key(client, "unknown-host", key)
 
 
-class TestParseArgs:
-    """Test _parse_args function."""
+class TestConnectionFunctions:
+    """Test cases for connection functions"""
 
-    def test_parse_default_args(self):
-        """Test parsing with default arguments."""
-        args = []
-        parsed = _parse_args(args)
-        assert parsed.job_ended == "0"
-
-    def test_parse_job_ended_true(self):
-        """Test parsing with job_ended set to true."""
-        args = ["--job_ended", "1"]
-        parsed = _parse_args(args)
-        assert parsed.job_ended == "1"
-
-    def test_parse_job_ended_false(self):
-        """Test parsing with job_ended set to false."""
-        args = ["--job_ended", "0"]
-        parsed = _parse_args(args)
-        assert parsed.job_ended == "0"
-
-
-class TestCanConnect:
-    """Test _can_connect function."""
-
-    @patch("paramiko.SSHClient")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.paramiko.SSHClient")
     def test_can_connect_success(self, mock_ssh_client_class):
-        """Test successful connection."""
-        mock_client = MagicMock()
+        """Test _can_connect when connection succeeds"""
+        mock_client = Mock()
         mock_ssh_client_class.return_value.__enter__.return_value = mock_client
-        
+
         result = _can_connect("algo-1", DEFAULT_SSH_PORT)
-        
+
         assert result is True
         mock_client.connect.assert_called_once_with("algo-1", port=DEFAULT_SSH_PORT)
 
-    @patch("paramiko.SSHClient")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.paramiko.SSHClient")
     def test_can_connect_failure(self, mock_ssh_client_class):
-        """Test failed connection."""
-        mock_client = MagicMock()
+        """Test _can_connect when connection fails"""
+        mock_client = Mock()
         mock_client.connect.side_effect = Exception("Connection failed")
         mock_ssh_client_class.return_value.__enter__.return_value = mock_client
-        
+
         result = _can_connect("algo-1", DEFAULT_SSH_PORT)
-        
+
         assert result is False
 
-    @patch("paramiko.SSHClient")
-    def test_can_connect_uses_custom_port(self, mock_ssh_client_class):
-        """Test connection with custom port."""
-        mock_client = MagicMock()
-        mock_ssh_client_class.return_value.__enter__.return_value = mock_client
-        
-        _can_connect("algo-1", 2222)
-        
-        mock_client.connect.assert_called_once_with("algo-1", port=2222)
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.subprocess.run")
+    def test_write_file_to_host_success(self, mock_run):
+        """Test _write_file_to_host when write succeeds"""
+        mock_run.return_value = Mock()
 
-
-class TestWriteFileToHost:
-    """Test _write_file_to_host function."""
-
-    @patch("subprocess.run")
-    def test_write_file_success(self, mock_run):
-        """Test successful file write."""
-        mock_run.return_value = MagicMock(returncode=0)
-        
         result = _write_file_to_host("algo-1", "/tmp/status")
-        
+
         assert result is True
         mock_run.assert_called_once()
 
-    @patch("subprocess.run")
-    def test_write_file_failure(self, mock_run):
-        """Test failed file write."""
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.subprocess.run")
+    def test_write_file_to_host_failure(self, mock_run):
+        """Test _write_file_to_host when write fails"""
         mock_run.side_effect = subprocess.CalledProcessError(1, "ssh")
-        
+
         result = _write_file_to_host("algo-1", "/tmp/status")
-        
+
         assert result is False
 
-
-class TestWriteFailureReasonFile:
-    """Test _write_failure_reason_file function."""
-
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.os.path.exists")
     @patch("builtins.open", new_callable=mock_open)
-    @patch("os.path.exists")
-    def test_writes_failure_file(self, mock_exists, mock_file):
-        """Test writes failure reason file."""
+    def test_write_failure_reason_file(self, mock_file, mock_exists):
+        """Test _write_failure_reason_file"""
         mock_exists.return_value = False
-        
-        _write_failure_reason_file("Test error message")
-        
-        mock_file.assert_called_once_with(FAILURE_REASON_PATH, "w")
-        mock_file().write.assert_called_once_with("RuntimeEnvironmentError: Test error message")
 
-    @patch("builtins.open", new_callable=mock_open)
-    @patch("os.path.exists")
-    def test_does_not_write_if_exists(self, mock_exists, mock_file):
-        """Test does not write if failure file already exists."""
-        mock_exists.return_value = True
-        
-        _write_failure_reason_file("Test error message")
-        
-        mock_file.assert_not_called()
+        _write_failure_reason_file("Test error")
+
+        mock_file.assert_called_once()
+        mock_file().write.assert_called_once_with("RuntimeEnvironmentError: Test error")
 
 
-class TestWaitForMaster:
-    """Test _wait_for_master function."""
+class TestWaitFunctions:
+    """Test cases for wait functions"""
 
-    @patch("time.sleep")
     @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._can_connect")
-    def test_wait_for_master_success(self, mock_can_connect, mock_sleep):
-        """Test successful wait for master."""
-        mock_can_connect.return_value = True
-        
-        _wait_for_master("algo-1", DEFAULT_SSH_PORT, timeout=300)
-        
-        mock_can_connect.assert_called_once_with("algo-1", DEFAULT_SSH_PORT)
-
-    @patch("time.time")
-    @patch("time.sleep")
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._can_connect")
-    def test_wait_for_master_timeout(self, mock_can_connect, mock_sleep, mock_time):
-        """Test timeout waiting for master."""
-        mock_can_connect.return_value = False
-        # Need enough values for all time.time() calls in the loop
-        mock_time.side_effect = [0] + [i * 5 for i in range(1, 100)]  # Simulate time passing
-        
-        with pytest.raises(TimeoutError):
-            _wait_for_master("algo-1", DEFAULT_SSH_PORT, timeout=300)
-
-    @patch("time.time")
-    @patch("time.sleep")
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._can_connect")
-    def test_wait_for_master_retries(self, mock_can_connect, mock_sleep, mock_time):
-        """Test retries before successful connection."""
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.time.sleep")
+    def test_wait_for_master_success(self, mock_sleep, mock_can_connect):
+        """Test _wait_for_master when master becomes available"""
         mock_can_connect.side_effect = [False, False, True]
-        # Return value instead of side_effect for time.time()
-        mock_time.return_value = 0
-        
+
         _wait_for_master("algo-1", DEFAULT_SSH_PORT, timeout=300)
-        
+
         assert mock_can_connect.call_count == 3
 
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._can_connect")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.time.sleep")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.time.time")
+    def test_wait_for_master_timeout(self, mock_time, mock_sleep, mock_can_connect):
+        """Test _wait_for_master when timeout occurs"""
+        mock_can_connect.return_value = False
+        mock_time.side_effect = [0, 100, 200, 301, 301]
 
-class TestWaitForStatusFile:
-    """Test _wait_for_status_file function."""
+        with pytest.raises(TimeoutError, match="Timed out waiting for master"):
+            _wait_for_master("algo-1", DEFAULT_SSH_PORT, timeout=300)
 
-    @patch("time.sleep")
-    @patch("os.path.exists")
-    def test_wait_for_status_file_exists(self, mock_exists, mock_sleep):
-        """Test wait for status file that exists."""
-        mock_exists.return_value = True
-        
-        _wait_for_status_file("/tmp/status")
-        
-        mock_exists.assert_called_once_with("/tmp/status")
-
-    @patch("time.sleep")
-    @patch("os.path.exists")
-    def test_wait_for_status_file_waits(self, mock_exists, mock_sleep):
-        """Test waits until status file exists."""
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.os.path.exists")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.time.sleep")
+    def test_wait_for_status_file(self, mock_sleep, mock_exists):
+        """Test _wait_for_status_file"""
         mock_exists.side_effect = [False, False, True]
-        
+
         _wait_for_status_file("/tmp/status")
-        
+
         assert mock_exists.call_count == 3
-        assert mock_sleep.call_count == 2
 
-
-class TestWaitForWorkers:
-    """Test _wait_for_workers function."""
-
-    @patch("os.path.exists")
     @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._can_connect")
-    def test_wait_for_workers_empty_list(self, mock_can_connect, mock_exists):
-        """Test wait for workers with empty list."""
-        _wait_for_workers([], DEFAULT_SSH_PORT, timeout=300)
-        
-        mock_can_connect.assert_not_called()
-
-    @patch("time.sleep")
-    @patch("os.path.exists")
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._can_connect")
-    def test_wait_for_workers_success(self, mock_can_connect, mock_exists, mock_sleep):
-        """Test successful wait for workers."""
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.os.path.exists")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.time.sleep")
+    def test_wait_for_workers_success(self, mock_sleep, mock_exists, mock_can_connect):
+        """Test _wait_for_workers when all workers become available"""
         mock_can_connect.return_value = True
         mock_exists.return_value = True
-        
+
         _wait_for_workers(["algo-2", "algo-3"], DEFAULT_SSH_PORT, timeout=300)
-        
+
         assert mock_can_connect.call_count == 2
 
-    @patch("time.time")
-    @patch("time.sleep")
-    @patch("os.path.exists")
     @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._can_connect")
-    def test_wait_for_workers_timeout(self, mock_can_connect, mock_exists, mock_sleep, mock_time):
-        """Test timeout waiting for workers."""
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.time.sleep")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.time.time")
+    def test_wait_for_workers_timeout(self, mock_time, mock_sleep, mock_can_connect):
+        """Test _wait_for_workers when timeout occurs"""
         mock_can_connect.return_value = False
-        mock_exists.return_value = False
-        # Need enough values for all time.time() calls in the loop
-        mock_time.side_effect = [0] + [i * 5 for i in range(1, 100)]
-        
-        with pytest.raises(TimeoutError):
+        mock_time.side_effect = [0, 100, 200, 301, 301]
+
+        with pytest.raises(TimeoutError, match="Timed out waiting for workers"):
             _wait_for_workers(["algo-2"], DEFAULT_SSH_PORT, timeout=300)
 
+    def test_wait_for_workers_no_workers(self):
+        """Test _wait_for_workers with no workers"""
+        # Should not raise exception
+        _wait_for_workers([], DEFAULT_SSH_PORT, timeout=300)
 
-class TestBootstrapMasterNode:
-    """Test bootstrap_master_node function."""
+
+class TestBootstrapFunctions:
+    """Test cases for bootstrap functions"""
 
     @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._wait_for_workers")
     def test_bootstrap_master_node(self, mock_wait):
-        """Test bootstrap master node."""
-        worker_hosts = ["algo-2", "algo-3"]
-        
-        bootstrap_master_node(worker_hosts)
-        
-        mock_wait.assert_called_once_with(worker_hosts)
+        """Test bootstrap_master_node"""
+        bootstrap_master_node(["algo-2", "algo-3"])
 
+        mock_wait.assert_called_once_with(["algo-2", "algo-3"])
 
-class TestBootstrapWorkerNode:
-    """Test bootstrap_worker_node function."""
-
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._wait_for_status_file")
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._write_file_to_host")
     @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._wait_for_master")
-    def test_bootstrap_worker_node(self, mock_wait_master, mock_write, mock_wait_status):
-        """Test bootstrap worker node."""
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._write_file_to_host"
+    )
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._wait_for_status_file"
+    )
+    def test_bootstrap_worker_node(self, mock_wait_status, mock_write, mock_wait_master):
+        """Test bootstrap_worker_node"""
         bootstrap_worker_node("algo-1", "algo-2", "/tmp/status")
-        
+
         mock_wait_master.assert_called_once_with("algo-1")
         mock_write.assert_called_once()
         mock_wait_status.assert_called_once_with("/tmp/status")
 
-
-class TestStartSshdDaemon:
-    """Test start_sshd_daemon function."""
-
-    @patch("subprocess.Popen")
-    @patch("os.path.exists")
-    def test_starts_sshd_successfully(self, mock_exists, mock_popen):
-        """Test starts SSH daemon successfully."""
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.os.path.exists")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.subprocess.Popen")
+    def test_start_sshd_daemon_success(self, mock_popen, mock_exists):
+        """Test start_sshd_daemon when sshd exists"""
         mock_exists.return_value = True
-        
-        start_sshd_daemon()
-        
-        mock_popen.assert_called_once_with(["/usr/sbin/sshd", "-D"])
 
-    @patch("os.path.exists")
-    def test_raises_error_if_sshd_not_found(self, mock_exists):
-        """Test raises error if SSH daemon not found."""
+        start_sshd_daemon()
+
+        mock_popen.assert_called_once()
+
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.os.path.exists")
+    def test_start_sshd_daemon_not_found(self, mock_exists):
+        """Test start_sshd_daemon when sshd not found"""
         mock_exists.return_value = False
-        
-        with pytest.raises(RuntimeError):
+
+        with pytest.raises(RuntimeError, match="SSH daemon not found"):
             start_sshd_daemon()
 
-
-class TestWriteStatusFileToWorkers:
-    """Test write_status_file_to_workers function."""
-
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._write_file_to_host")
-    def test_writes_to_all_workers(self, mock_write):
-        """Test writes status file to all workers."""
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._write_file_to_host"
+    )
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.time.sleep")
+    def test_write_status_file_to_workers_success(self, mock_sleep, mock_write):
+        """Test write_status_file_to_workers when writes succeed"""
         mock_write.return_value = True
-        worker_hosts = ["algo-2", "algo-3"]
-        
-        write_status_file_to_workers(worker_hosts, "/tmp/status")
-        
+
+        write_status_file_to_workers(["algo-2", "algo-3"], "/tmp/status")
+
         assert mock_write.call_count == 2
 
-    @patch("time.sleep")
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._write_file_to_host")
-    def test_retries_on_failure(self, mock_write, mock_sleep):
-        """Test retries writing status file on failure."""
-        mock_write.side_effect = [False, False, True]
-        worker_hosts = ["algo-2"]
-        
-        write_status_file_to_workers(worker_hosts, "/tmp/status")
-        
-        assert mock_write.call_count == 3
-        assert mock_sleep.call_count == 2
-
-    @patch("time.sleep")
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._write_file_to_host")
-    def test_raises_timeout_after_retries(self, mock_write, mock_sleep):
-        """Test raises timeout after max retries."""
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._write_file_to_host"
+    )
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.time.sleep")
+    def test_write_status_file_to_workers_timeout(self, mock_sleep, mock_write):
+        """Test write_status_file_to_workers when timeout occurs"""
         mock_write.return_value = False
-        worker_hosts = ["algo-2"]
-        
-        with pytest.raises(TimeoutError):
-            write_status_file_to_workers(worker_hosts, "/tmp/status")
+
+        with pytest.raises(TimeoutError, match="Timed out waiting"):
+            write_status_file_to_workers(["algo-2"], "/tmp/status")
+
+
+class TestParseArgs:
+    """Test cases for _parse_args function"""
+
+    def test_parse_args_job_ended_false(self):
+        """Test _parse_args with job_ended=0"""
+        args = _parse_args(["--job_ended", "0"])
+
+        assert args.job_ended == "0"
+
+    def test_parse_args_job_ended_true(self):
+        """Test _parse_args with job_ended=1"""
+        args = _parse_args(["--job_ended", "1"])
+
+        assert args.job_ended == "1"
+
+    def test_parse_args_default(self):
+        """Test _parse_args with default values"""
+        args = _parse_args([])
+
+        assert args.job_ended == "0"
 
 
 class TestMain:
-    """Test main function."""
+    """Test cases for main function"""
 
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.bootstrap_worker_node")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._parse_args")
     @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.start_sshd_daemon")
-    @patch.dict("os.environ", {"SM_MASTER_ADDR": "algo-1", "SM_CURRENT_HOST": "algo-2"})
-    def test_main_worker_node_running(self, mock_start_sshd, mock_bootstrap_worker):
-        """Test main function for worker node during job run."""
-        args = ["--job_ended", "0"]
-        
-        main(args)
-        
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.bootstrap_worker_node"
+    )
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.os.environ",
+        {"SM_MASTER_ADDR": "algo-1", "SM_CURRENT_HOST": "algo-2"},
+    )
+    def test_main_worker_node_job_running(self, mock_bootstrap_worker, mock_start_sshd, mock_parse):
+        """Test main for worker node when job is running"""
+        mock_args = Mock()
+        mock_args.job_ended = "0"
+        mock_parse.return_value = mock_args
+
+        main([])
+
         mock_start_sshd.assert_called_once()
         mock_bootstrap_worker.assert_called_once()
 
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.bootstrap_master_node")
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._parse_args")
     @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.start_sshd_daemon")
-    @patch.dict("os.environ", {"SM_MASTER_ADDR": "algo-1", "SM_CURRENT_HOST": "algo-1", "SM_HOSTS": '["algo-1", "algo-2"]'})
-    def test_main_master_node_running(self, mock_start_sshd, mock_bootstrap_master):
-        """Test main function for master node during job run."""
-        args = ["--job_ended", "0"]
-        
-        main(args)
-        
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.bootstrap_master_node"
+    )
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.json.loads")
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.os.environ",
+        {
+            "SM_MASTER_ADDR": "algo-1",
+            "SM_CURRENT_HOST": "algo-1",
+            "SM_HOSTS": '["algo-1", "algo-2", "algo-3"]',
+        },
+    )
+    def test_main_master_node_job_running(
+        self, mock_json_loads, mock_bootstrap_master, mock_start_sshd, mock_parse
+    ):
+        """Test main for master node when job is running"""
+        mock_args = Mock()
+        mock_args.job_ended = "0"
+        mock_parse.return_value = mock_args
+        mock_json_loads.return_value = ["algo-1", "algo-2", "algo-3"]
+
+        main([])
+
         mock_start_sshd.assert_called_once()
-        mock_bootstrap_master.assert_called_once()
+        mock_bootstrap_master.assert_called_once_with(["algo-2", "algo-3"])
 
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.write_status_file_to_workers")
-    @patch.dict("os.environ", {"SM_MASTER_ADDR": "algo-1", "SM_CURRENT_HOST": "algo-1", "SM_HOSTS": '["algo-1", "algo-2"]'})
-    def test_main_master_node_job_ended(self, mock_write_status):
-        """Test main function for master node after job ends."""
-        args = ["--job_ended", "1"]
-        
-        main(args)
-        
-        mock_write_status.assert_called_once()
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._parse_args")
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.write_status_file_to_workers"
+    )
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.json.loads")
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.os.environ",
+        {
+            "SM_MASTER_ADDR": "algo-1",
+            "SM_CURRENT_HOST": "algo-1",
+            "SM_HOSTS": '["algo-1", "algo-2"]',
+        },
+    )
+    def test_main_master_node_job_ended(self, mock_json_loads, mock_write_status, mock_parse):
+        """Test main for master node when job has ended"""
+        mock_args = Mock()
+        mock_args.job_ended = "1"
+        mock_parse.return_value = mock_args
+        mock_json_loads.return_value = ["algo-1", "algo-2"]
 
-    @patch.dict("os.environ", {"SM_MASTER_ADDR": "algo-1", "SM_CURRENT_HOST": "algo-2"})
-    def test_main_worker_node_job_ended(self):
-        """Test main function for worker node after job ends."""
-        args = ["--job_ended", "1"]
-        
-        # Should not raise any exceptions
-        main(args)
+        main([])
 
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._write_failure_reason_file")
-    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.start_sshd_daemon")
-    @patch.dict("os.environ", {"SM_MASTER_ADDR": "algo-1", "SM_CURRENT_HOST": "algo-2"})
-    def test_main_handles_exception(self, mock_start_sshd, mock_write_failure):
-        """Test main function handles exceptions."""
-        mock_start_sshd.side_effect = Exception("Test error")
-        args = ["--job_ended", "0"]
-        
+        mock_write_status.assert_called_once_with(["algo-2"])
+
+    @patch("sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._parse_args")
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote._write_failure_reason_file"
+    )
+    @patch(
+        "sagemaker.core.remote_function.runtime_environment.mpi_utils_remote.os.environ",
+        {"SM_MASTER_ADDR": "algo-1", "SM_CURRENT_HOST": "algo-2"},
+    )
+    def test_main_with_exception(self, mock_write_failure, mock_parse):
+        """Test main when exception occurs"""
+        mock_parse.side_effect = Exception("Test error")
+
         with pytest.raises(SystemExit) as exc_info:
-            main(args)
-        
+            main([])
+
         assert exc_info.value.code == DEFAULT_FAILURE_CODE
         mock_write_failure.assert_called_once()

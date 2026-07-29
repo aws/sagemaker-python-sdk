@@ -25,6 +25,7 @@ from sagemaker.train.defaults import (
     DEFAULT_MAX_RUNTIME_IN_SECONDS,
 )
 from sagemaker.train.configs import Compute, StoppingCondition
+from sagemaker.core.shapes import InstanceGroup
 
 
 class TestDefaultConstants:
@@ -71,37 +72,110 @@ class TestTrainDefaultsGetSagemakerSession:
 class TestTrainDefaultsGetRole:
     """Test TrainDefaults.get_role method."""
 
-    def test_returns_provided_role(self):
-        """Test returns the provided role."""
-        role = "arn:aws:iam::123456789012:role/MyRole"
-        result = TrainDefaults.get_role(role=role)
-        assert result == role
-
-    @patch("sagemaker.train.defaults.get_execution_role")
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
     @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
-    def test_gets_execution_role_when_none(self, mock_get_session, mock_get_role):
-        """Test gets execution role when none provided."""
+    def test_returns_provided_role(self, mock_get_session, mock_resolve):
+        """Test returns the provided role (passed through the resolver)."""
+        role = "arn:aws:iam::123456789012:role/MyRole"
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
-        expected_role = "arn:aws:iam::123456789012:role/ExecutionRole"
-        mock_get_role.return_value = expected_role
+        mock_resolve.return_value = role
+
+        result = TrainDefaults.get_role(role=role)
+
+        assert result == role
+        mock_resolve.assert_called_once_with(
+            provided_role=role,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
+
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_auto_resolves_role_when_none(self, mock_get_session, mock_resolve):
+        """Test auto-resolves a training role when none is provided."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        expected_role = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"
+        mock_resolve.return_value = expected_role
 
         result = TrainDefaults.get_role(role=None)
 
-        mock_get_role.assert_called_once_with(mock_session)
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
         assert result == expected_role
 
-    @patch("sagemaker.train.defaults.get_execution_role")
-    def test_uses_provided_session_for_role(self, mock_get_role):
-        """Test uses provided session when getting role."""
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
+    def test_uses_provided_session_for_role(self, mock_resolve):
+        """Test uses provided session when resolving the role."""
         mock_session = MagicMock()
-        expected_role = "arn:aws:iam::123456789012:role/ExecutionRole"
-        mock_get_role.return_value = expected_role
+        expected_role = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"
+        mock_resolve.return_value = expected_role
 
         result = TrainDefaults.get_role(role=None, sagemaker_session=mock_session)
 
-        mock_get_role.assert_called_once_with(mock_session)
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
         assert result == expected_role
+
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_get_role_resolves_training_role(self, mock_get_session, mock_resolve):
+        """get_role always resolves the training execution role."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        expected_role = "arn:aws:iam::123456789012:role/SageMaker-AutoRole-Training"
+        mock_resolve.return_value = expected_role
+
+        result = TrainDefaults.get_role(role=None)
+
+        mock_resolve.assert_called_once_with(
+            provided_role=None,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
+        assert result == expected_role
+
+
+class TestTrainDefaultsVerifyHyperPodCallerPermissions:
+    """Test TrainDefaults.verify_hyperpod_caller_permissions (caller-side check)."""
+
+    @patch("sagemaker.train.defaults.verify_hyperpod_connect_permissions")
+    @patch("sagemaker.train.defaults.resolve_and_validate_role")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_delegates_to_resolver_and_forwards_cluster_name(
+        self, mock_get_session, mock_resolve, mock_verify
+    ):
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+        mock_verify.return_value = True
+
+        result = TrainDefaults.verify_hyperpod_caller_permissions(
+            cluster_name="my-cluster"
+        )
+
+        assert result is True
+        mock_verify.assert_called_once_with(
+            sagemaker_session=mock_session, cluster_name="my-cluster"
+        )
+        # The caller-side check never resolves/creates an execution role.
+        mock_resolve.assert_not_called()
+
+    @patch("sagemaker.train.defaults.verify_hyperpod_connect_permissions")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_propagates_negative_and_unknown_verdicts(
+        self, mock_get_session, mock_verify
+    ):
+        mock_get_session.return_value = MagicMock()
+        for verdict in (False, None):
+            mock_verify.return_value = verdict
+            assert TrainDefaults.verify_hyperpod_caller_permissions() is verdict
 
 
 class TestTrainDefaultsGetBaseJobName:
@@ -434,4 +508,173 @@ class TestJumpStartTrainDefaultsGetCompute:
             sagemaker_session=mock_session,
         )
 
+        assert result.volume_size_in_gb == DEFAULT_VOLUME_SIZE
+
+
+    def test_does_not_set_instance_type_when_instance_groups_configured(self):
+        """Test instance_type is not overwritten when instance_groups are set."""
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=30,
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+        assert result.instance_type is None
+
+    def test_does_not_set_instance_count_when_instance_groups_configured(self):
+        """Test instance_count is not overwritten when instance_groups are set."""
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=30,
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+        assert result.instance_count is None
+
+    def test_sets_volume_size_when_instance_groups_configured(self):
+        """Test volume_size_in_gb is still set when instance_groups are configured."""
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=None,
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+        assert result.volume_size_in_gb == DEFAULT_VOLUME_SIZE
+
+    def test_preserves_existing_volume_size_with_instance_groups(self):
+        """Test existing volume_size_in_gb is preserved when instance_groups are configured."""
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=100,
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+        assert result.volume_size_in_gb == 100
+
+
+class TestJumpStartTrainDefaultsGetComputeHeterogeneousCluster:
+    """Test JumpStartTrainDefaults.get_compute with heterogeneous cluster (instance_groups)."""
+
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_does_not_set_instance_type_when_instance_groups_configured(
+        self, mock_get_session, mock_get_hub_content
+    ):
+        """Test instance_type is not overwritten when instance_groups are set."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_document = MagicMock()
+        mock_document.DefaultTrainingInstanceType = "ml.p3.2xlarge"
+        mock_document.TrainingVolumeSize = 100
+        mock_get_hub_content.return_value = (None, mock_document)
+
+        mock_config = MagicMock()
+        mock_config.training_config_name = None
+
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=30,
+        )
+        result = JumpStartTrainDefaults.get_compute(
+            jumpstart_config=mock_config,
+            compute=compute,
+            sagemaker_session=mock_session,
+        )
+        assert result.instance_type is None
+
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_does_not_set_instance_count_when_instance_groups_configured(
+        self, mock_get_session, mock_get_hub_content
+    ):
+        """Test instance_count is not overwritten when instance_groups are set."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_document = MagicMock()
+        mock_document.DefaultTrainingInstanceType = "ml.p3.2xlarge"
+        mock_document.TrainingVolumeSize = 100
+        mock_get_hub_content.return_value = (None, mock_document)
+
+        mock_config = MagicMock()
+        mock_config.training_config_name = None
+
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=30,
+        )
+        result = JumpStartTrainDefaults.get_compute(
+            jumpstart_config=mock_config,
+            compute=compute,
+            sagemaker_session=mock_session,
+        )
+        assert result.instance_count is None
+
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_sets_volume_size_from_document_when_instance_groups_configured(
+        self, mock_get_session, mock_get_hub_content
+    ):
+        """Test volume_size_in_gb is set from document even when instance_groups are configured."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_document = MagicMock()
+        mock_document.DefaultTrainingInstanceType = "ml.p3.2xlarge"
+        mock_document.TrainingVolumeSize = 100
+        mock_get_hub_content.return_value = (None, mock_document)
+
+        mock_config = MagicMock()
+        mock_config.training_config_name = None
+
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=None,
+        )
+        result = JumpStartTrainDefaults.get_compute(
+            jumpstart_config=mock_config,
+            compute=compute,
+            sagemaker_session=mock_session,
+        )
+        assert result.volume_size_in_gb == 100
+
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_sets_default_volume_size_when_instance_groups_and_no_document_volume(
+        self, mock_get_session, mock_get_hub_content
+    ):
+        """Test DEFAULT_VOLUME_SIZE is used when instance_groups set and document has no volume."""
+        mock_session = MagicMock()
+        mock_get_session.return_value = mock_session
+
+        mock_document = MagicMock()
+        mock_document.DefaultTrainingInstanceType = "ml.p3.2xlarge"
+        mock_document.TrainingVolumeSize = None
+        mock_get_hub_content.return_value = (None, mock_document)
+
+        mock_config = MagicMock()
+        mock_config.training_config_name = None
+
+        compute = Compute(
+            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_type=None,
+            instance_count=None,
+            volume_size_in_gb=None,
+        )
+        result = JumpStartTrainDefaults.get_compute(
+            jumpstart_config=mock_config,
+            compute=compute,
+            sagemaker_session=mock_session,
+        )
         assert result.volume_size_in_gb == DEFAULT_VOLUME_SIZE

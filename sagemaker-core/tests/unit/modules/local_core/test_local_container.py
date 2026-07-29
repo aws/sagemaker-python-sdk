@@ -638,6 +638,82 @@ class TestLocalContainer:
         with pytest.raises(ImportError, match="Docker Compose is not installed"):
             container._get_compose_cmd_prefix()
 
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_docker_compose_v5(
+        self, mock_check_output, mock_session, basic_channel
+    ):
+        """Test _get_compose_cmd_prefix accepts Docker Compose v5"""
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.return_value = "Docker Compose version v5.1.1"
+
+        result = container._get_compose_cmd_prefix()
+
+        assert result == ["docker", "compose"]
+
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_docker_compose_v3(
+        self, mock_check_output, mock_session, basic_channel
+    ):
+        """Test _get_compose_cmd_prefix accepts Docker Compose v3"""
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.return_value = "Docker Compose version v3.0.0"
+
+        result = container._get_compose_cmd_prefix()
+
+        assert result == ["docker", "compose"]
+
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    @patch("sagemaker.core.modules.local_core.local_container.shutil.which")
+    def test_get_compose_cmd_prefix_docker_compose_v1_rejected(
+        self, mock_which, mock_check_output, mock_session, basic_channel
+    ):
+        """Test _get_compose_cmd_prefix rejects Docker Compose v1"""
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.return_value = "docker-compose version v1.29.2"
+        mock_which.return_value = None
+
+        with pytest.raises(ImportError, match="Docker Compose is not installed"):
+            container._get_compose_cmd_prefix()
+
     def test_init_with_container_entrypoint(self, mock_session, basic_channel):
         """Test initialization with container entrypoint"""
         container = _LocalContainer(
@@ -941,3 +1017,63 @@ class TestLocalContainer:
         calls = mock_write.call_args_list
         input_config_call = [c for c in calls if "inputdataconfig.json" in str(c)]
         assert len(input_config_call) > 0
+
+
+RMTREE_IMAGE = "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:2.1-cpu-py310"
+MODULE = "sagemaker.core.modules.local_core.local_container"
+
+
+class TestRmtree:
+    """Test cases for _rmtree function."""
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    def test_rmtree_success(self, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        _rmtree("/tmp/test", RMTREE_IMAGE)
+        mock_rmtree.assert_called_once_with("/tmp/test")
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    @patch(f"{MODULE}.subprocess.run")
+    def test_rmtree_permission_error_docker_chmod_fallback(self, mock_run, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
+        _rmtree("/tmp/test", RMTREE_IMAGE)
+        mock_run.assert_called_once_with(
+            ["docker", "run", "--rm", "-v", "/tmp/test:/delete", RMTREE_IMAGE, "chmod", "-R", "777", "/delete"],
+            check=True,
+            capture_output=True,
+        )
+        assert mock_rmtree.call_count == 2
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    @patch(f"{MODULE}.subprocess.run")
+    def test_rmtree_studio_adds_network(self, mock_run, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        mock_rmtree.side_effect = [PermissionError("Permission denied"), None]
+        _rmtree("/tmp/test", RMTREE_IMAGE, is_studio=True)
+        mock_run.assert_called_once_with(
+            [
+                "docker", "run", "--rm",
+                "--network", "sagemaker",
+                "-v", "/tmp/test:/delete", RMTREE_IMAGE,
+                "chmod", "-R", "777", "/delete",
+            ],
+            check=True,
+            capture_output=True,
+        )
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    @patch(f"{MODULE}.subprocess.run")
+    def test_rmtree_docker_fallback_fails_raises(self, mock_run, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        mock_rmtree.side_effect = PermissionError("Permission denied")
+        mock_run.side_effect = Exception("docker failed")
+        with pytest.raises(Exception, match="docker failed"):
+            _rmtree("/tmp/test", RMTREE_IMAGE)
+
+    @patch(f"{MODULE}.shutil.rmtree")
+    def test_rmtree_no_image_raises(self, mock_rmtree):
+        from sagemaker.core.modules.local_core.local_container import _rmtree
+        mock_rmtree.side_effect = PermissionError("Permission denied")
+        with pytest.raises(PermissionError):
+            _rmtree("/tmp/test")

@@ -17,7 +17,7 @@ dependencies = [
     "PyYAML>=6.0, <7.0",
     "jsonschema<5.0.0",
     "platformdirs>=4.0.0, <5.0.0",
-    "rich>=13.0.0, <14.0.0",
+    "rich>=13.0.0, <15.0.0",
     "mock>4.0, <5.0",
     "importlib-metadata<7.0,>=1.4.0",
     "typing_extensions>=4.9.0",
@@ -25,32 +25,37 @@ dependencies = [
     "requests>=2.20.0,<3.0.0",
     "attrs>=20.3.0",
     "packaging>=20.0",
-    "protobuf>=3.12,<5.0",
+    "protobuf>=3.12,<7.0.0",
     "pandas>=1.0.0",
     "numpy>=1.9.0",
     # Dependencies migrated from sagemaker_utils
     "smdebug_rulesconfig>=1.0.1",
     "schema>=0.7.5",
     "omegaconf>=2.1.0",
-    "torch>=1.9.0",
     "scipy>=1.5.0",
     # Remote function dependencies
     "cloudpickle>=2.0.0",
     "paramiko>=2.11.0",
     "tblib>=1.7.0",
+    "cryptography>=46.0.0",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]
 
 [project.optional-dependencies]
+torch = [
+    "torch>=1.9.0",
+]
+all = [
+    "sagemaker-core[torch]",
+]
 codegen = [
     "black>=24.3.0, <25.0.0",
     "pandas>=2.0.0, <3.0.0",
@@ -61,6 +66,7 @@ test = [
     "pytest>=8.0.0, <9.0.0",
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.0.0",
+    "sagemaker-core[torch]",
 ]
 
 [project.urls]

@@ -21,6 +21,8 @@ from sagemaker.core.apiutils import _base_types
 from sagemaker.core.experiments.trial import _Trial
 from sagemaker.core.experiments.trial_component import _TrialComponent
 from sagemaker.core.common_utils import format_tags
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
+from sagemaker.core.telemetry.constants import Feature
 
 
 class Experiment(_base_types.Record):
@@ -93,6 +95,7 @@ class Experiment(_base_types.Record):
         )
 
     @classmethod
+    @_telemetry_emitter(feature=Feature.MLOPS, func_name="experiment.create")
     def create(
         cls,
         experiment_name,

@@ -400,6 +400,7 @@ def tar_and_upload_dir(
     kms_key=None,
     s3_resource=None,
     settings: Optional[SessionSettings] = None,
+    expected_bucket_owner: Optional[str] = None,
 ) -> UploadedCode:
     """Package source files and upload a compress tar file to S3.
 
@@ -430,6 +431,12 @@ def tar_and_upload_dir(
         settings (sagemaker.session_settings.SessionSettings): Optional. The settings
             of the SageMaker ``Session``, can be used to override the default encryption
             behavior (default: None).
+        expected_bucket_owner (str): Optional. AWS account id passed as
+            ``ExpectedBucketOwner`` on the upload. Callers should supply this when
+            ``bucket`` is the session's default bucket (via
+            ``Session._get_account_id_if_default_bucket``) to defend against
+            bucket-squatting on the predictable default name. Leave as ``None`` for
+            cross-account destination buckets.
     Returns:
         sagemaker.fw_utils.UploadedCode: An object with the S3 bucket and key (S3 prefix) and
             script name.
@@ -470,6 +477,10 @@ def tar_and_upload_dir(
             extra_args = {"ServerSideEncryption": "aws:kms"}
         else:
             extra_args = None
+
+        if expected_bucket_owner:
+            extra_args = dict(extra_args) if extra_args else {}
+            extra_args["ExpectedBucketOwner"] = expected_bucket_owner
 
         if s3_resource is None:
             s3_resource = session.resource("s3", region_name=session.region_name)

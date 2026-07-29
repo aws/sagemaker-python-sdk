@@ -230,13 +230,15 @@ class DataSet(AIRHubEntity):
         description: str = "",
         tags: Optional[List[Tuple[str, str]]] = None,
         role: Optional[str] = None,
+        domain_id: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
+        content_metadata: Optional[dict] = None,
     ) -> "DataSet":
         """Create a new DataSet Hub AIR entity.
-        
+
         Creates a new version if entity already exists. This is the primary entry point
         for users. Uploads to S3 internally if local file input is provided.
-        
+
         Args:
             name: Name of the dataset
             source: S3 URI or local file path for the dataset
@@ -245,28 +247,52 @@ class DataSet(AIRHubEntity):
             description: Description of the dataset
             tags: Optional list of (key, value) tag tuples
             role: Optional IAM role ARN. If not provided, uses default execution role.
+            domain_id: Optional SageMaker Studio domain ID used to tag the dataset so it is
+                visible in Studio. If not provided, it is auto-detected from the Studio
+                environment; supply it explicitly when creating datasets outside Studio
+                (e.g. from a laptop or CI) so they still appear in the target domain.
             sagemaker_session: Optional SageMaker session. If not provided, uses default session.
-            
+            content_metadata: Optional metadata dict (PascalCase keys) to include in the
+                HubContent document. Used by Feature Store lineage to pass source FG ARNs.
+                When provided, file format validation is skipped.
+
         Returns:
             DataSet: The created dataset instance
-            
+
         Raises:
             ValueError: If validation fails or required parameters are missing
         """
         # Get or create session for domain ID extraction
         if sagemaker_session is None:
             sagemaker_session = Session()
+
+        # Use the caller-provided domain ID when given; otherwise auto-detect it (only
+        # works in Studio environments). This keeps datasets discoverable in Studio even
+        # when created from environments where the domain cannot be inferred.
+        if domain_id is None:
+            domain_id = _get_current_domain_id(sagemaker_session)
         
-        # Extract domain ID if available (only works in Studio environments)
-        domain_id = _get_current_domain_id(sagemaker_session)
-        
-        # Validate dataset file
-        cls._validate_dataset_file(source)
+        # Validate dataset file (skip for Feature Store metadata-only datasets)
+        if content_metadata is None:
+            cls._validate_dataset_file(source)
         sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
         role = TrainDefaults.get_role(role=role, sagemaker_session=sagemaker_session)
         
         # Parse S3 URL to extract bucket and prefix
-        if source.startswith("s3://"):
+        if content_metadata is not None:
+            # Feature Store datasets are CSVs, not LLM training formats — skip format validation
+            if source.startswith("s3://"):
+                parsed = urlparse(source)
+                bucket_name = parsed.netloc
+                s3_key = parsed.path.lstrip("/")
+                s3_prefix = s3_key
+                method = DataSetMethod.GENERATED
+            else:
+                bucket_name = _get_default_bucket()
+                s3_prefix = _get_default_s3_prefix(name)
+                method = DataSetMethod.UPLOADED
+                AIRHub.upload_to_s3(bucket_name, s3_prefix, source)
+        elif source.startswith("s3://"):
             parsed = urlparse(source)
             bucket_name = parsed.netloc
             s3_key = parsed.path.lstrip("/")
@@ -305,6 +331,7 @@ class DataSet(AIRHubEntity):
             conversation_id=DATASET_DEFAULT_CONVERSATION_ID,  # Required for now, needs cleanup
             conversation_checkpoint_id=DATASET_DEFAULT_CHECKPOINT_ID,
             dependencies=[],
+            content_metadata=content_metadata,
         )
         
         document_str = hub_content_document.to_json()
@@ -389,7 +416,6 @@ class DataSet(AIRHubEntity):
         
         return datasets
 
-    @classmethod
     @classmethod
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="DataSet.get_all")
     def get_all(cls, max_results: Optional[int] = None, sagemaker_session=None):

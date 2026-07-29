@@ -101,21 +101,19 @@ class TestModelBuilderInitialization(unittest.TestCase):
         
         self.assertEqual(builder.region, "us-west-2")
 
-    @patch('sagemaker.core.helper.session_helper.get_execution_role')
-    def test_initialization_gets_default_role(self, mock_get_role):
+    @patch('sagemaker.serve.model_builder.resolve_and_validate_role')
+    def test_initialization_gets_default_role(self, mock_resolve_role):
         """Test that default role is retrieved when not provided."""
-        mock_get_role.return_value = "arn:aws:iam::123456789012:role/DefaultRole"
-        
-        # Mock the session to return a proper role ARN
-        self.mock_session.get_caller_identity_arn = Mock(return_value="arn:aws:iam::123456789012:role/DefaultRole")
-        
+        mock_resolve_role.return_value = "arn:aws:iam::123456789012:role/DefaultRole"
+
         builder = ModelBuilder(
             model=Mock(),
             sagemaker_session=self.mock_session
         )
-        
-        # The role should be set from get_execution_role
-        self.assertIsNotNone(builder.role_arn)
+
+        # The role should be set from the resolver when not explicitly provided
+        self.assertEqual(builder.role_arn, "arn:aws:iam::123456789012:role/DefaultRole")
+        mock_resolve_role.assert_called_once()
 
     def test_deprecated_parameters_warning(self):
         """Test that deprecated parameters trigger warnings."""

@@ -5,10 +5,11 @@ from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYP
 from sagemaker.core.resources import TrainingJob, ModelPackageGroup, MlflowTrackingServer, ModelPackage
 from sagemaker.core.shapes import VpcConfig
 from sagemaker.train.defaults import TrainDefaults
-from sagemaker.train.utils import _get_unique_name, _get_studio_tags
+from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 from sagemaker.train.common_utils.recipe_utils import _get_hub_content_metadata
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.ai_registry.evaluator import Evaluator
+from sagemaker.train.configs import StoppingCondition
 from sagemaker.train.common_utils.finetune_utils import (
     _get_beta_session,
     _get_fine_tuning_options_and_model_arn,
@@ -24,9 +25,12 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_eula_for_gated_model,
     _validate_hyperparameter_values
 )
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
+from sagemaker.train.common_utils.data_utils import is_multimodal_data
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
-from sagemaker.train.constants import HUB_NAME, _ALLOWED_REWARD_MODEL_IDS
+from sagemaker.train.constants import get_sagemaker_hub_name, _ALLOWED_REWARD_MODEL_IDS
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +114,12 @@ class RLAIFTrainer(BaseTrainer):
             The KMS key ID for encrypting training job outputs.
         networking (Optional[VpcConfig]):
             The VPC configuration for the training job.
+        stopping_condition (Optional[StoppingCondition]):
+            The stopping condition to override training runtime limit.
+            If not specified, uses SageMaker service default (24 hours for serverless training).
+        is_multimodal (Optional[bool]):
+            Whether the training dataset contains multimodal data. If None (default),
+            auto-detected from the training dataset at train time.
     """
 
     def __init__(
@@ -130,6 +140,8 @@ class RLAIFTrainer(BaseTrainer):
         # vpc config
         networking: Optional[VpcConfig] = None,
         accept_eula: bool = False,
+        stopping_condition: Optional[StoppingCondition] = None,
+        is_multimodal: Optional[bool] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
@@ -150,6 +162,8 @@ class RLAIFTrainer(BaseTrainer):
         self.s3_output_path = s3_output_path
         self.kms_key_id = kms_key_id
         self.networking = networking
+        self.stopping_condition = stopping_condition
+        self.is_multimodal = is_multimodal
 
         # Initialize fine-tuning options with beta session fallback
         self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
@@ -190,8 +204,14 @@ class RLAIFTrainer(BaseTrainer):
         return reward_model_id
         
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLAIFTrainer.train")
-    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True):
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="RLAIFTrainer.train",
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+            ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
+        ],
+    )
+    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
         """Execute the RLAIF training job.
 
         Parameters:
@@ -203,6 +223,11 @@ class RLAIFTrainer(BaseTrainer):
                 Can be an S3 URI, dataset ARN, or DataSet object.
             wait (bool):
                 Whether to wait for the training job to complete. Defaults to True.
+            wait_timeout (Optional[int]):
+                Maximum time in seconds to wait for the training job to complete. Only used when wait=True.
+                If None, uses the default timeout from the wait utility.
+            poll (int):
+                Polling interval in seconds for checking training job status. Defaults to 5.
 
         Returns:
             TrainingJob: The SageMaker training job object.
@@ -248,6 +273,12 @@ class RLAIFTrainer(BaseTrainer):
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
+        # Resolve is_multimodal: auto-detect from training dataset if not explicitly set
+        if self.is_multimodal is None:
+            effective_training_dataset = training_dataset or self.training_dataset
+            if effective_training_dataset is not None:
+                self.is_multimodal = is_multimodal_data(effective_training_dataset)
+
         _validate_hyperparameter_values(final_hyperparameters)
 
         model_package_config = _create_model_package_config(
@@ -257,23 +288,30 @@ class RLAIFTrainer(BaseTrainer):
         )
 
         vpc_config = self.networking if self.networking else None
-        tags = _get_studio_tags(self._model_name, HUB_NAME)
+        tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
+
+        # Build TrainingJob.create() arguments
+        create_args = {
+            "training_job_name": current_training_job_name,
+            "role_arn": role,
+            "input_data_config": channels,
+            "output_data_config": output_config,
+            "serverless_job_config": serverless_config,
+            "mlflow_config": mlflow_config,
+            "hyper_parameters": final_hyperparameters,
+            "model_package_config": model_package_config,
+            "vpc_config": vpc_config,
+            "session": sagemaker_session.boto_session,
+            "region": sagemaker_session.boto_session.region_name,
+            "tags": tags,
+        }
+        
+        # Only pass stopping_condition if explicitly provided by user
+        if self.stopping_condition is not None:
+            create_args["stopping_condition"] = self.stopping_condition
 
         try:
-            training_job = TrainingJob.create(
-                training_job_name=current_training_job_name,
-                role_arn=role,
-                input_data_config=channels,
-                output_data_config=output_config,
-                serverless_job_config=serverless_config,
-                mlflow_config=mlflow_config,
-                hyper_parameters=final_hyperparameters,
-                model_package_config=model_package_config,
-                vpc_config=vpc_config,
-                session=sagemaker_session.boto_session,
-                region=sagemaker_session.boto_session.region_name,
-                tags=tags,
-            )
+            training_job = TrainingJob.create(**create_args)
         except Exception as e:
             logger.error("Error: %s", e)
             raise e
@@ -282,7 +320,11 @@ class RLAIFTrainer(BaseTrainer):
             from sagemaker.train.common_utils.trainer_wait import wait as _wait
             from sagemaker.core.utils.exceptions import TimeoutExceededError
             try :
-                _wait(training_job)
+                wait_kwargs = {}
+                if wait_timeout is not None:
+                    wait_kwargs['timeout'] = wait_timeout
+                wait_kwargs['poll'] = poll
+                _wait(training_job, **wait_kwargs)
             except TimeoutExceededError as e:
                 logger.error("Error: %s", e)
 
@@ -345,7 +387,7 @@ class RLAIFTrainer(BaseTrainer):
             sagemaker_session=self.sagemaker_session
         )
                 hub_content = _get_hub_content_metadata(
-                    hub_name=HUB_NAME,
+                    hub_name=get_sagemaker_hub_name(),
                     hub_content_type="JsonDoc",
                     hub_content_name=self.reward_prompt,
                     session=session.boto_session,

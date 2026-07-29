@@ -22,6 +22,11 @@ TERMINAL_STATES = set(["Completed", "Stopped", "Deleted", "Failed", "Succeeded",
 
 RESOURCE_WITH_LOGS = set(["TrainingJob", "ProcessingJob", "TransformJob"])
 
+DEFAULT_TIMEOUT_MESSAGE = "Increase the timeout and try again."
+RESOURCE_TIMEOUT_MESSAGES = {
+    "TrainingJob": "Your training job is still running. Call .refresh() to check its current status.",
+}
+
 CONFIGURABLE_ATTRIBUTE_SUBSTRINGS = [
     "kms",
     "s3",
@@ -51,6 +56,7 @@ PYTHON_TYPES_TO_BASIC_JSON_TYPES = {
     "str": "string",
     "StrPipeVar": "string",
     "int": "integer",
+    "IntPipeVar": "integer",
     "bool": "boolean",
     "float": "double",
     "datetime.datetime": "timestamp",
@@ -103,7 +109,30 @@ INTELLIGENT_DEFAULTS_HELPER_CODEGEN_FILE_NAME = "intelligent_defaults_helper.py"
 RESOURCES_CODEGEN_FILE_NAME = "resources.py"
 
 SHAPES_CODEGEN_FILE_NAME = "shapes.py"
+SHAPES_CODEGEN_OUTPUT_DIR = os.getcwd() + "/src/sagemaker/core/shapes"
 
 CONFIG_SCHEMA_FILE_NAME = "config_schema.py"
 
 API_COVERAGE_JSON_FILE_PATH = os.getcwd() + "/src/sagemaker/core/tools/api_coverage.json"
+
+# Members that the service model marks as required but the API returns as optional.
+# E.g. DescribeInferenceComponent returns empty ComputeResourceRequirements for adapter ICs.
+REQUIRED_TO_OPTIONAL_OVERRIDES = {
+    "InferenceComponentComputeResourceRequirements": ["MinMemoryRequiredInMb"],
+    # ModelPackageName is not applicable to versioned model packages (group-based).
+    # ModelPackageSecurityConfig.KmsKeyId is absent when no KMS key is configured.
+    "DescribeModelPackageOutput": ["ModelPackageName"],
+    "ModelPackageSecurityConfig": ["KmsKeyId"],
+    # S3Uri is optional when ModelDataSource references escrow-managed artifacts (RMP).
+    "S3ModelDataSource": ["S3Uri"],
+}
+
+# Members where the generated primitive type should be replaced with a PipelineVariable
+# Key: shape name, Value: dict of member name -> replacement type.
+PIPE_VAR_OVERRIDES = {
+    "ResourceConfig": {
+        "InstanceCount": "IntPipeVar",
+        "VolumeSizeInGB": "IntPipeVar",
+        "KeepAlivePeriodInSeconds": "IntPipeVar",
+    },
+}

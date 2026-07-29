@@ -1,5 +1,342 @@
 # Changelog
 
+## v3.17.0 (2026-07-24)
+
+### New Features
+
+- feat: update SDK to use latest LMI v27 image for sdk v3.x (#5976)
+- feat(serve): support fine-tuned models in deployment-config API (#6041)
+- feat: Wire BatchWriteRecord and ListRecords into ingest_dataframe (#6026)
+
+### Bug Fixes
+
+- fix: Fix source_dir in FrameworkProcessor (#6047)
+- fix(train): correct Networking field names in ModelTrainer intelligent defaults (#6064)
+- fix: resolve MTRL eval base-model ARN against the configured hub (#6040)
+- fix(train): Fall back to public hub when private hub lacks base model (#6092)
+- fix: datamixing recipe path fix (#6073)
+- fix: Fix private hub (#6036)
+- fix(serve): support aliased hub content names in private hub deploys (#6039)
+- fix(serve): dedicated INFERENCE_RECOMMENDER telemetry feature + type workload param (#6028)
+- fix: Fixing EULA check, relying on HostingEulaUri field (#6077)
+
+### Tests
+
+- test: Doc update and added SFT integ test (#6018)
+- test: Fix role issue in mtrl integ tests (#6070)
+- test: Fix gpu integ test failure due to outdated MPG (#6097)
+- test: move two tests in serve to gpu-integ-tests (#6096)
+- test(feature-processor): Isolate pipeline names to fix flaky integ tests (#6095)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
+## v3.16.0 (2026-07-15)
+
+### New Features
+
+- feat: actionable guidance for removed v2 interfaces (#6004)
+- feat(serve): add SageMaker GenAI inference benchmarking and recommendation (#5874)
+- feat(feature-store): add BatchWriteRecord and ListRecords to FeatureGroup (#5983)
+
+### Bug Fixes
+
+- fix(iam): scope repo-level ECR actions to prevent false deny in preflight validation (#6024)
+- fix: filter full recipe template from serverless train() (#6021)
+- Fix sm-train unit tests + use single logger in base trainer (#6030)
+
+### Tests
+
+- test(mlops): Skip non-PEP440 version keys in sklearn_latest_version (#6022)
+
+## v3.15.1 (2026-07-09)
+
+### New Features
+
+- feat: Add granular telemetry signals decorator params and error classification (#5963)
+
+### Bug Fixes
+
+- fix: always apply evaluator identity keywords and allow explicit domain_id (#5989)
+- fix: ModelBuilder resolves private hub artifacts correctly (#5985)
+- fix: refresh LLMAsJudgeEvaluator allowed evaluator models (#5987)
+- fix: define LAMBDA_ARN_REGEX in finetune_utils to fix RLVRTrainer NameError (#5988)
+- fix: RLVR validation bugfix (#6000)
+- fix: drop claude-sonnet-4-20250514 from evaluator allowlist (#6009)
+- fix(serve): Invoke pip without shell in xgboost install_package (#5981)
+- fix: Correct DJL-LMI ISO/ADC accounts + add THF/ISO-E (djl-lmi, huggingface-llm-neuronx) (#5980)
+
+### Documentation
+
+- docs: Add AGENTS.md and llms.txt for AI agent v3 guidance (#5982)
+- docs: Add SDK-first guidance to AGENTS.md and llms.txt (#5997)
+- docs: Add Version Lifecycle page under Getting Started (#5994)
+- docs: serve robots.txt opting V2 docs out of AI training crawls (#6003)
+
+### Other
+
+- Add Triton Server v26.05 image URI config (#5999)
+- Add sklearn 1.4-2-py312 and xgboost 3.2-0 image URI configs (#6008)
+- test: Fix/v3 tests (#5996)
+- test: wip nova hyperpod integ tests (#5990)
+
+## v3.15.0 (2026-06-22)
+
+### New Features
+
+- **feat: Training — Recipes** - Add 3-level recipe override support with `get_resolved_recipe()`
+- **feat: Training — Recipes** - Recipe override handling
+- **feat: Training — Recipes** - Add Nova-specific recipe validations
+- **feat: Training — Recipes** - Auto-resolve HyperPod recipe from Hub
+- **feat: Training — Compute/Infra** - Add Serverless / SMTJ / HyperPod support to trainers and evaluators
+- **feat: Training — Compute/Infra** - Add infra validation
+- **feat: Training — Methods & Data** - Enable Data Mixing for Nova models
+- **feat: Training — Methods & Data** - Add `is_multimodal` utils function (multimodal data auto-detection)
+- **feat: Training — Methods & Data** - RLVRTrainer Lambda ARN support
+- **feat: Training — Methods & Data** - RLVR reward Lambda validation
+- **feat: Evaluation** - InspectAI evaluator
+- **feat: Evaluation** - Add Nova as a target for LLM-as-a-Judge (LLMAJ)
+- **feat: Evaluation** - Support serverful training job checkpoint resolution in InspectAI evaluator
+- **feat: Deploy/Setup/Validation** - Add Nova SMI config bounds validation to ModelBuilder
+- **feat: Deploy/Setup/Validation** - IAM role creation (auto-create least-privilege execution roles, SDK-wide)
+- **feat: Deploy/Setup/Validation** - HyperPod IAM creation
+
+### Bug Fixes
+
+- fix: Reject unknown recipe overrides (serverless + serverful) and untrusted IAM roles
+- fix: Apply recipe overrides to hyperparameters in SMTJ serverful path
+- fix: Recipe override errors in evaluator
+- fix: Hub-content IAM perms, recipe dataset paths, and log markup escaping
+- fix: Harden auto-created IAM roles and protect curated recipe keys
+- fix: Add HyperPod validation in train and evaluate
+- fix: Evaluation on HyperPod
+- fix: Resolve HyperPod training image from EKS payload template
+- fix: Skip `model_package_group` validation when HyperPod compute is provided in CPTTrainer
+- fix: Use compute param in get fine-tuning utils
+- fix: Set Converse as S3DataType for Nova models in SMTJ Serverful for SFT and DPO
+- fix: Use Converse S3DataType for Nova SFT/DPO in serverless flow
+- fix: MLflow error causing OSS model eval to fail
+- fix: RLVR setup and reward Lambda handling
+
+## v3.14.0 (2026-06-18)
+
+### Other
+
+- chore: deprecate Python 3.9 support (#5941)
+- chore: update SDK to use latest LMI image for v3.x (#5954)
+
+## v3.13.1 (2026-06-04)
+
+### New Features
+
+- feat: add import job polling and provisioned throughput for Bedrock OSS deployments
+
+### Bug Fixes
+
+- fix: Address MTRL Eval Hyperparameters issue
+
+## v3.13.0 (2026-06-02)
+### New Features
+
+- **feat: Model customization** - Add new finetuning Trainer - MultiTurnRLTrainer(Multi-Turn Reinforcement Learning)
+- **feat: Model customization** - Add new evaluator - MultiTurnRLEvaluator
+- **feat: Deployment** - Add MTRL support for BedrockModelBuilder and ModelBuilder.
+
+### Documentation
+
+- Add details for MTRL trainer along with other finetuning interfaces under Model customization Section - https://sagemaker.readthedocs.io/en/stable/model_customization/model_customization.html
+- Add details for MTRL evaluator along with existing evaluators.
+
+### Bug Fixes
+
+- fix: set sagemaker_config=None on mock session in test_from_jumpstart_config_applies_volume_size
+- Restore BatchTransformInput.destination attribute in v3
+
+## v3.12.0 (2026-05-19)
+
+### New Features
+- **SageMaker Token Generator** (#5868): Embed the `aws-sagemaker-token-generator` library into `sagemaker.core` so users can generate SageMaker bearer tokens without installing a separate wheel. Usage: `from sagemaker.core.aws_sagemaker_token_generator import provide_token`
+- **Feature Processor - Lake Formation credential vending** (#5816): Add configurable `use_lake_formation_credentials` parameter to the `@feature_processor` decorator, enabling Lake Formation credential vending when set to `True`.
+- **Feature Processor - Spark 3.5 / Python 3.12 support** (#5816): Dynamic Spark image resolution based on installed PySpark and Python versions. Supports Spark 3.1/3.2/3.3/3.5 with Python 3.9 and 3.12. Auto-installs `sagemaker-feature-store-pyspark` for Spark remote jobs.
+- **Feature Processor - Stored function signing key** (#5816): Generate ECDSA signing key in `ConfigUploader` for function payload signature verification.
+- **Feature Store - Export IcebergProperties** (#5816): Add `IcebergProperties` to the `feature_store` public API surface.
+
+### Documentation
+- None
+
+### Bug Fixes
+- **Networking** `vpc_config` AttributeError and telemetry region fallback (#5839): Fix `AttributeError` on `vpc_config` in networking and telemetry region fallback for classmethods.
+- **Add CustomAttributes field to DefaultPayloadsModel** (#5870): Add missing `CustomAttributes` field to `DefaultPayloadsModel`.
+- **sagemaker-core**: Preserve falsy values in `serialize()` output (#5860): Fix bug where `False`, `0`, and `""` were silently dropped by `serialize()` due to truthy check. This caused issues like `optimize_model=False` being sent as `True`.
+- **serve**: Prevent code injection in `capture_dependencies` path interpolation (#5792): Security fix — use `repr()` escaping to prevent code injection via crafted directory names in `ModelBuilder` with `dependencies={"auto": True}`. (CWE-94, P414309851)
+- **VolumeSizeInGB** missing from v3 deploy for JumpStart models (#5847): Fix `VolumeSizeInGB` not being passed through when deploying models with `inference_volume_size` from JumpStart config.
+
+## v3.11.0 (2026-05-12)
+
+### New Features
+- Auto-detect subscription recipe hyperparameters in SFTTrainer for Nova Forge datamix support
+- Create asymmetric ECDSA signing key in feature processor step compiler for remote function payload verification
+
+### Documentation
+- Add Feature Store reference to Implement MLOps page
+- Replace internal S3 URIs with user placeholders in SFT notebook
+
+## v3.10.1 (2026-05-07)
+
+### Bug Fixes
+- Fix KMS key propagation in check steps (QualityCheckStep, ClarifyCheckStep)
+- Fix JumpStart network isolation in ModelBuilder
+- Fix base_model_arn construction to use private hub when SAGEMAKER_HUB_NAME is set
+- Fix imports for Model Customization interfaces
+- Fix handling of unrecognized JumpStart container images in ModelBuilder
+- Increase default timeout for training jobs
+
+## v3.10.0 (2026-05-01)
+
+### New Features
+- Make _PipelineExecution a public class
+- Add CodeArtifact support for ModelTrainer and FrameworkProcessor requirements.txt installation
+
+### Bug Fixes
+- Fix S3 bucket operations
+- Fix potential S3 path traversal
+- Wire FrameworkProcessor code_location into code upload paths
+- Improve subprocess exception handling in git_utils
+
+### Other
+- Update service-2.json with latest public botocore service model
+
+## v3.9.0 (2026-04-23)
+
+### New Features
+- **Train**: Add `wait_timeout` parameter to `train()` for SFT, DPO, RLAIF, RLVR, and BaseTrainer
+- **Evaluate**: Add MLflow experiment link to eval output
+- **JumpStart**: Allow `SAGEMAKER_HUB_NAME` environment variable to override the `HUB_NAME` constant
+
+### Bug Fixes
+- **HyperparameterTuner**: Pass through full `OutputDataConfig` from `ModelTrainer` so `kms_key_id`, `compression_type`, and other fields are preserved
+- **HyperparameterTuner / ModelTrainer**: Propagate environment variables that were previously dropped
+- **sagemaker-core**: Improve error messages for waiter timeouts
+- **ModelBuilder**: Stop overwriting user-provided `HF_MODEL_ID` for DJL Serving
+- **ModelBuilder**: Keep `/opt/ml/model` writable when using `source_code` with DJL LMI
+- **Evaluate**: Skip `None` hyperparameters in `to_dict` instead of converting them to the string `"None"`
+- **Nova**: Add `us-west-2` to Nova supported regions
+- **DJL LMI**: Update ISO account mappings
+
+## v3.8.0 (2026-04-16)
+
+### New Features
+- **Feature Group Manager**: Feature Group Manager support
+- **Image Upgrades**: Image upgrades
+
+### Bug Fixes
+- **ModelBuilder**: Add MLFlowConfig to Base Model
+- **Docker**: Support for docker compose > v2
+- **HuggingFace**: Improve SDK v3 Hugging Face support
+- **Dependencies**: Remove Pytorch hard dependency
+  
+## v3.7.1 (2026-03-31)
+
+### Features
+- **Telemetry**: Added telemetry emitter to `ScriptProcessor` and `FrameworkProcessor`, enabling SDK usage tracking for processing jobs via the telemetry attribution module (new `PROCESSING` feature enum added to telemetry constants)
+
+### Fixes
+- **ModelBuilder**: Fixed `accept_eula` handling in ModelBuilder's LoRA deployment path — previously hardcoded to `True`, now respects the user-provided value and raises a `ValueError` if not explicitly set to `True`
+- **Evaluate**: Fixed Lambda handler name derivation in the Evaluator — hardcoded the handler to `lambda_function.lambda_handler` instead of deriving it from the source filename, which caused invocation failures when the source file had a non-default name
+
+## v3.7.0 (2026-03-25)
+
+### Fixes
+- **ModelBuilder**: Sync Nova hosting configs with AGISageMakerInference (#5664)
+- **Evaluate**: Remove GPT OSS model evaluation restriction (#5658)
+
+### Features
+- **AWS Batch**: Add support for Quota Management job submission and job priority update (#5659)
+- **AWS Batch**: Extend list_jobs_by_share for quota_share_name (#5669)
+- **Evaluate**: Support IAM role for BaseEvaluator (#5671)
+- **Telemetry**: Add telemetry attribution module for SDK usage provenance (#5661)
+- **MLflow**: Metrics visualization, enhanced wait UI, and eval job links (#5662)
+
+### Chores
+- Updated SDK to use latest LMIv22 image for v3.x (#5640)
+- Migration guide update (#5655)
+- AWS Batch integ test resources are now uniquely named by test run (#5666)
+
+## v3.6.0 (2026-03-19)
+
+### Fixes
+- **HyperparameterTuner**: Include sm_drivers channel in HyperparameterTuner jobs (#5516)
+- **Pipeline**: Fix handling of training step dependencies to allow successful pipeline creation
+- **ModelBuilder**: Fix the bug in deploy from LORA finetuning job
+
+### Features
+- **Feature Processor**: Port feature processor to v3
+- **Jumpstart**: Add EUSC region config for JumpStart
+  
+## v3.5.0 (2026-03-02)
+
+### Features
+- **Feature Store v3**: New version of Feature Store functionality
+- **Batch job listing by share identifier**: Added support for listing Batch jobs filtered by share identifier
+- **Stop condition for model customization trainers**: Added stopping condition support to model customization trainers
+- **EMRStep smart output**: Enhanced EMR step output handling with smart output capabilities
+- **Transform AMI version support**: Added support for specifying AMI version in SageMaker transform jobs
+
+### Enhancements
+- **Inference pipeline notebook example**: Added example notebook demonstrating inference pipeline usage
+- **Migration documentation**: Added migration documentation
+
+### Bug Fixes
+- **Model Customization bugs**: Fixed multiple issues in Model Customization functionality
+- **Default stopping condition removal**: Removed default stopping condition for MC trainer to prevent conflicts
+- **Instance groups parameter handling**: Fixed issue where default instance_type/instance_count were incorrectly applied when instance_groups was set
+- **JumpStart alt config resolution**: Resolved alternative configuration resolution for JumpStart models
+- **Inference processor naming**: Updated inference processor identifier from 'inf2' to 'neuronx'
+- **HuggingFace Neuronx PyTorch version**: Corrected the PyTorch version for HuggingFace Neuronx
+- **License additions**: Added license to sagemaker-mlops and sagemaker-serve packages
+
+## v3.4.1 (2026-02-10)
+
+### Fixes
+- **Pipelines**: Correct Tag class usage in pipeline creation (#5526)
+- **ModelTrainer**: Support PipelineVariables in hyperparameters (#5519)
+- **HyperparameterTuner**: Include ModelTrainer internal channels (#5516)
+- **Experiments**: Don't apply default experiment config for pipelines in non-Eureka GA
+regions (#5500)
+
+### Features
+- **JumpStart**: Added ISO regions support (#5505)
+- **JumpStart**: Added version 1.4 and 1.5 (#5538)
+
+### Chores
+- Added unit and integration tests for JumpStart search functionality (#5544)
+- Removed java-kotlin from CodeQL workflow (#5517)
+
+## v3.4.0 (2026-01-22)
+
+### Features
+  - feat: add emr-serverless step for SageMaker Pipelines
+
+### Bug fixes and Other Changes
+  - Add Nova recipe training support in ModelTrainer 
+  - Add Partner-app Auth provider
+  - Add sagemaker dependency for remote function by default V3
+
+
+## v3.3.1 (2026-01-12)
+### Bug fixes and Other Changes
+  * ProcessingJob fix - Remove tags in Processor while Job creation
+  * Telemetry Updates
+  * sagemaker-mlops bug fix - Correct source code 'dependencies' parameter to 'requirements'
+  * aws_batch bug fix - remove experiment config parameter as it Estimator is deprecated.
+
+
+## v3.3.0 (2025-12-19)
+
+### Features
+  * AWS_Batch: queueing of training jobs with ModelTrainer
+### Bug fixes and Other Changes
+  * Fixes for model registry with ModelBuilder
+
 ## v3.2.0 (2025-12-18)
 
 ### Features

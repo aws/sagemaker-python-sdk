@@ -13,19 +13,19 @@
 """Tests for SageMaker Evaluation Module Constants."""
 from __future__ import absolute_import
 
-import pytest
 from enum import Enum
 
+import pytest
 from sagemaker.train.evaluate.constants import (
-    EvalType,
     _PIPELINE_NAME_PREFIX,
-    _get_pipeline_name,
-    _get_pipeline_name_prefix,
-    _get_eval_type_display_name,
     _TAG_EVAL_TYPE_PREFIX,
     _TAG_EVALUATION,
     _TAG_SAGEMAKER_MODEL_EVALUATION,
+    EvalType,
+    _get_eval_type_display_name,
     _get_eval_type_tag_key,
+    _get_pipeline_name,
+    _get_pipeline_name_prefix,
 )
 
 
@@ -49,20 +49,21 @@ class TestEvalType:
         assert EvalType.LLM_AS_JUDGE.value == "llmasjudge"
 
     def test_eval_type_has_all_expected_members(self):
-        """Test that EvalType has exactly three expected members."""
-        expected_members = {"BENCHMARK", "CUSTOM_SCORER", "LLM_AS_JUDGE"}
+        """Test that EvalType has all expected members."""
+        expected_members = {"BENCHMARK", "CUSTOM_SCORER", "LLM_AS_JUDGE", "MTRL", "INSPECT_AI"}
         actual_members = {member.name for member in EvalType}
         assert actual_members == expected_members
 
     def test_eval_type_member_count(self):
-        """Test that EvalType has exactly three members."""
-        assert len(EvalType) == 3
+        """Test that EvalType has exactly five members."""
+        assert len(EvalType) == 5
 
     def test_eval_type_members_accessible(self):
         """Test that all enum members are accessible."""
         assert hasattr(EvalType, "BENCHMARK")
         assert hasattr(EvalType, "CUSTOM_SCORER")
         assert hasattr(EvalType, "LLM_AS_JUDGE")
+        assert hasattr(EvalType, "INSPECT_AI")
 
     def test_eval_type_equality(self):
         """Test enum member equality."""
@@ -73,10 +74,12 @@ class TestEvalType:
     def test_eval_type_can_iterate(self):
         """Test that we can iterate over EvalType members."""
         members = list(EvalType)
-        assert len(members) == 3
+        assert len(members) == 5
         assert EvalType.BENCHMARK in members
         assert EvalType.CUSTOM_SCORER in members
         assert EvalType.LLM_AS_JUDGE in members
+        assert EvalType.MTRL in members
+        assert EvalType.INSPECT_AI in members
 
     def test_eval_type_value_uniqueness(self):
         """Test that all enum values are unique."""
@@ -140,8 +143,9 @@ class TestGetEvalTypeDisplayName:
             (EvalType.BENCHMARK, "BenchmarkEvaluation"),
             (EvalType.CUSTOM_SCORER, "CustomScorerEvaluation"),
             (EvalType.LLM_AS_JUDGE, "LLMAJEvaluation"),
+            (EvalType.INSPECT_AI, "InspectAIEvaluation"),
         ],
-        ids=["benchmark", "custom_scorer", "llm_as_judge"],
+        ids=["benchmark", "custom_scorer", "llm_as_judge", "inspect_ai"],
     )
     def test_get_eval_type_display_name_valid_types(self, eval_type, expected_name):
         """Test _get_eval_type_display_name with valid evaluation types."""
@@ -250,7 +254,7 @@ class TestGetPipelineNamePrefix:
         """Test that prefix doesn't end with hyphen (AWS validation requirement)."""
         for eval_type in EvalType:
             result = _get_pipeline_name_prefix(eval_type)
-            assert not result.endswith('-')
+            assert not result.endswith("-")
 
     def test_get_pipeline_name_prefix_format(self):
         """Test that prefix follows expected format."""
@@ -368,7 +372,7 @@ class TestIntegration:
             assert len(prefix) > 0
             assert isinstance(prefix, str)
             # Prefix should not end with hyphen
-            assert not prefix.endswith('-')
+            assert not prefix.endswith("-")
 
     def test_constants_module_exports(self):
         """Test that all expected exports are available."""

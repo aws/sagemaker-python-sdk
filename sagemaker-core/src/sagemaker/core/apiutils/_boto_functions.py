@@ -128,3 +128,19 @@ def to_boto(member_vars, member_name_to_boto_name, member_name_to_type):
             boto_value = api_type.to_boto(member_value) if api_type else member_value
         to_boto_values[boto_name] = boto_value
     return to_boto_values
+
+
+def to_lower_camel_case(snake_case):
+    """Convert a snake case string to lowerCamelCase.
+
+    Unlike to_camel_case/to_pascal_case which produce PascalCase (TrainingType),
+    this produces lowerCamelCase (trainingType) where the first word stays lowercase.
+
+    Args:
+        snake_case (str): String to convert to lowerCamelCase.
+
+    Returns:
+        str: String converted to lowerCamelCase.
+    """
+    parts = snake_case.split("_")
+    return parts[0] + "".join(p.capitalize() for p in parts[1:])

@@ -30,6 +30,8 @@ from sagemaker.core.tools.constants import (
     PYTHON_TYPES_TO_BASIC_JSON_TYPES,
     CONFIGURABLE_ATTRIBUTE_SUBSTRINGS,
     RESOURCE_WITH_LOGS,
+    DEFAULT_TIMEOUT_MESSAGE,
+    RESOURCE_TIMEOUT_MESSAGES,
 )
 from sagemaker.core.tools.method import Method, MethodType
 from sagemaker.core.utils.utils import (
@@ -245,13 +247,16 @@ class ResourcesCodeGen:
         self,
         output_folder: str = GENERATED_CLASSES_LOCATION,
         file_name: str = RESOURCES_CODEGEN_FILE_NAME,
-    ) -> None:
+    ) -> str:
         """
         Generate the resources file.
 
         Args:
             output_folder (str, optional): The output folder path. Defaults to "GENERATED_CLASSES_LOCATION".
             file_name (str, optional): The output file name. Defaults to "RESOURCES_CODEGEN_FILE_NAME".
+
+        Returns:
+            str: The path to the generated output file.
         """
         # Check if the output folder exists, if not, create it
         os.makedirs(output_folder, exist_ok=True)
@@ -301,6 +306,8 @@ class ResourcesCodeGen:
                 # If the resource class was successfully generated, write it to the file
                 if resource_class:
                     file.write(f"{resource_class}\n\n")
+
+        return output_file
 
     def _evaluate_method(
         self, resource_name: str, method_name: str, methods: list, **kwargs
@@ -1237,8 +1244,53 @@ class ResourcesCodeGen:
             operation_input_args=operation_input_args,
             operation=operation,
             describe_operation_output_shape=resource_operation_output_shape_name,
+            post_processing=self._get_method_post_processing(resource_name, resource_lower),
         )
         return formatted_method
+
+    def _get_method_post_processing(self, resource_name: str, resource_lower: str) -> str:
+        """Get resource-specific post-processing applied to the deserialized get() response.
+
+        Some resources require synthesizing attributes that the describe API does not
+        always return. Emitting this from the codegen engine ensures the customization
+        survives the next autogeneration of resources.py.
+
+        Args:
+            resource_name (str): The resource name.
+            resource_lower (str): The snake_case resource name (the local variable name).
+
+        Returns:
+            str: An indented block of post-processing statements, or an empty string.
+        """
+        if resource_name == "TrainingJob":
+            # Synthesize model_artifacts for completed jobs where the API does not
+            # return ModelArtifacts (e.g., serverful Nova training jobs). The block is
+            # emitted at 4-space indent to match the get() template body (add_indent
+            # later promotes it to the 8-space class-method body indentation).
+            return f"""
+
+    # Post-processing: synthesize model_artifacts for completed jobs where
+    # the API does not return ModelArtifacts (e.g., serverful Nova training jobs).
+    if (
+        {resource_lower}.training_job_status == "Completed"
+        and isinstance({resource_lower}.model_artifacts, Unassigned)
+        and not isinstance({resource_lower}.output_data_config, Unassigned)
+        and {resource_lower}.output_data_config
+    ):
+        s3_output_path = {resource_lower}.output_data_config.s3_output_path
+        if s3_output_path and isinstance(s3_output_path, str):
+            synthesized_path = (
+                f"{{s3_output_path.rstrip('/')}}/{{{resource_lower}.training_job_name}}/output/"
+            )
+            {resource_lower}.model_artifacts = ModelArtifacts(
+                s3_model_artifacts=synthesized_path
+            )
+            logger.info(
+                "Synthesized model_artifacts from output_data_config: %s",
+                synthesized_path,
+            )"""
+
+        return ""
 
     def generate_refresh_method(self, resource_name: str, **kwargs) -> str:
         """Auto-Generate 'refresh' object Method [describe API] for a resource.
@@ -1441,13 +1493,23 @@ class ResourcesCodeGen:
         else:
             decorator = ""
             method_args = add_indent("self,\n", 4)
+            # Allow operations to exclude specific resource attributes from self-mapping
+            # This is needed when a resource attribute name collides with an unrelated
+            # operation input (e.g., FeatureGroup.next_token vs ListRecords.NextToken)
+            exclude_resource_attrs_override = getattr(method, "exclude_resource_attributes", [])
+            effective_resource_attributes = [
+                attr for attr in resource_attributes if attr not in exclude_resource_attrs_override
+            ]
             method_args += (
-                self._generate_method_args(operation_input_shape_name, resource_attributes) + "\n"
+                self._generate_method_args(
+                    operation_input_shape_name, effective_resource_attributes
+                )
+                + "\n"
             )
             operation_input_args = self._generate_operation_input_args_updated(
-                operation_metadata, False, resource_attributes
+                operation_metadata, False, effective_resource_attributes
             )
-            exclude_resource_attrs = resource_attributes
+            exclude_resource_attrs = effective_resource_attributes
         method_args += add_indent("session: Optional[Session] = None,\n", 4)
         method_args += add_indent("region: Optional[str] = None,", 4)
 
@@ -1664,12 +1726,19 @@ class ResourcesCodeGen:
         """
 
         if resource_name == "TrainingJob":
-            return """(
-                sum(instance_group.instance_count for instance_group in self.resource_config.instance_groups)
-                if self.resource_config.instance_groups and not isinstance(self.resource_config.instance_groups, Unassigned)
-                else self.resource_config.instance_count
-            )
-            """
+            return """1  # Default
+if not isinstance(self.resource_config, Unassigned):
+    if (
+        hasattr(self.resource_config, "instance_groups")
+        and self.resource_config.instance_groups
+        and not isinstance(self.resource_config.instance_groups, Unassigned)
+    ):
+        instance_count = sum(
+            instance_group.instance_count
+            for instance_group in self.resource_config.instance_groups
+        )
+    elif hasattr(self.resource_config, "instance_count"):
+        instance_count = self.resource_config.instance_count"""
         elif resource_name == "TransformJob":
             return "self.transform_resources.instance_count"
         elif resource_name == "ProcessingJob":
@@ -1735,6 +1804,7 @@ class ResourcesCodeGen:
             logs_arg_doc=logs_arg_doc,
             init_wait_logs=init_wait_logs,
             print_wait_logs=print_wait_logs,
+            timeout_message=RESOURCE_TIMEOUT_MESSAGES.get(resource_name, DEFAULT_TIMEOUT_MESSAGE),
         )
         return formatted_method
 
@@ -1924,13 +1994,15 @@ class ResourcesCodeGen:
         )
         return formatted_method
 
-    def generate_config_schema(self):
+    def generate_config_schema(self) -> str:
         """
         Generates the Config Schema that is used by json Schema to validate config jsons .
         This function creates a python file with a variable that is consumed in the scripts to further fetch configs.
 
         Input for generating the Schema is the service JSON that is already loaded in the class
 
+        Returns:
+            str: The path to the generated output file.
         """
         resource_properties = {}
 
@@ -1991,6 +2063,8 @@ class ResourcesCodeGen:
                 f"SAGEMAKER_PYTHON_SDK_CONFIG_SCHEMA = {json.dumps(combined_config_schema, indent=4)}"
             )
 
+        return output
+
     def _cleanup_class_attributes_types(self, class_attributes: dict) -> dict:
         """
         Helper function that creates a direct mapping of attribute to type without default parameters assigned and without Optionals
@@ -2020,7 +2094,7 @@ class ResourcesCodeGen:
             Dict with attributes that can be configurable
 
         """
-        PYTHON_TYPES = ["StrPipeVar", "datetime.datetime", "bool", "int", "float"]
+        PYTHON_TYPES = ["StrPipeVar", "IntPipeVar", "datetime.datetime", "bool", "int", "float"]
         default_attributes = {}
         for key, value in class_attributes.items():
             if value in PYTHON_TYPES or value.startswith("List"):

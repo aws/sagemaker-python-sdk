@@ -40,6 +40,14 @@ def _setup_mlflow_integration(training_job: TrainingJob) -> Tuple[
     try:
         import boto3
 
+        # Check if mlflow_config exists and is assigned
+        if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
+            return None, None, None
+
+        # Check if mlflow_config exists and is assigned
+        if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
+            return None, None, None
+
         sm_client = boto3.client('sagemaker')
         mlflow_arn = training_job.mlflow_config.mlflow_resource_arn
 
@@ -56,7 +64,11 @@ def _setup_mlflow_integration(training_job: TrainingJob) -> Tuple[
 
         return mlflow_url, metrics_util, mlflow_run_name
 
-    except Exception:
+    except Exception as e:
+        # Log the exception for debugging
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"MLflow integration setup failed: {e}")
         return None, None, None
 
 
@@ -154,10 +166,45 @@ def _calculate_transition_duration(trans) -> Tuple[str, str]:
     return duration, check
 
 
+def get_mlflow_url(training_job) -> str:
+    """Get presigned MLflow URL for training job experiment.
+    
+    Args:
+        training_job: SageMaker TrainingJob object or job name string
+        
+    Returns:
+        Presigned MLflow URL to experiment (valid for 5 minutes)
+        
+    Example:
+        >>> from sagemaker.train import get_mlflow_url
+        >>> url = get_mlflow_url('my-training-job')
+        >>> print(url)
+    """
+    if isinstance(training_job, str):
+        training_job = TrainingJob.get(training_job_name=training_job)
+    
+    if not hasattr(training_job, 'mlflow_config') or _is_unassigned_attribute(training_job.mlflow_config):
+        raise ValueError("Training job does not have MLflow configured")
+
+    from sagemaker.train.common_utils.mlflow_url_utils import get_presigned_mlflow_experiment_url
+
+    mlflow_arn = training_job.mlflow_config.mlflow_resource_arn
+    exp_name = training_job.mlflow_config.mlflow_experiment_name
+    if _is_unassigned_attribute(exp_name):
+        exp_name = None
+
+    url = get_presigned_mlflow_experiment_url(mlflow_arn, exp_name)
+    if url is None:
+        raise ValueError("Failed to generate presigned MLflow URL")
+    return url
+
+
+
+
 def wait(
         training_job: TrainingJob,
         poll: int = 5,
-        timeout: Optional[int] = 3000
+        timeout: Optional[int] = 43200
 ) -> None:
     """Wait for training job to complete with progress tracking.
 
@@ -188,32 +235,101 @@ def wait(
             from rich.console import Group
             with _suppress_info_logging():
                 console = Console(force_jupyter=True)
+                
+                # MLflow link caching
+                mlflow_link_cache = {'url': None, 'timestamp': 0, 'error': None}
+                has_mlflow_config = (hasattr(training_job, 'mlflow_config') and 
+                                     not _is_unassigned_attribute(training_job.mlflow_config))
+                
+                def get_cached_mlflow_url():
+                    """Get cached MLflow URL or generate new one if expired."""
+                    current_time = time.time()
+                    # Regenerate every 4 minutes (before 5-minute expiration)
+                    if mlflow_link_cache['url'] is None or (current_time - mlflow_link_cache['timestamp']) > 240:
+                        try:
+                            mlflow_link_cache['url'] = get_mlflow_url(training_job)
+                            mlflow_link_cache['error'] = None
+                        except Exception as e:
+                            mlflow_link_cache['error'] = str(e)
+                        mlflow_link_cache['timestamp'] = current_time
+                    return mlflow_link_cache['url']
+                
+                # Track last rendered state to avoid unnecessary refreshes
+                last_status = None
+                last_secondary_status = None
 
                 iteration = 0
                 while True:
                     iteration += 1
-                    time.sleep(1)
-                    if iteration == poll:
+                    time.sleep(0.5)
+                    if iteration >= poll * 2:
                         training_job.refresh()
                         iteration = 0
-                    clear_output(wait=True)
-
+                    
                     status = training_job.training_job_status
                     secondary_status = training_job.secondary_status
                     elapsed = time.time() - start_time
+                    
+                    # Only re-render if status changed or every 2 seconds (for elapsed time)
+                    should_render = (
+                        status != last_status or 
+                        secondary_status != last_secondary_status or
+                        iteration % 4 == 0  # Every 2 seconds (4 * 0.5s)
+                    )
+                    
+                    if not should_render:
+                        continue
+                    
+                    last_status = status
+                    last_secondary_status = secondary_status
+                    
+                    clear_output(wait=True)
 
-                    # Header section with training job name and MLFlow URL
+                    # Header section with training job info
                     header_table = Table(show_header=False, box=None, padding=(0, 1))
                     header_table.add_column("Property", style="cyan bold", width=20)
-                    header_table.add_column("Value", style="white")
+                    header_table.add_column("Value", style="dim", overflow="fold")
+                    
                     header_table.add_row("TrainingJob Name", f"[bold green]{training_job.training_job_name}[/bold green]")
-                    if mlflow_url:
-                        header_table.add_row("MLFlow URL",
-                                             f"[link={mlflow_url}][bold bright_blue underline]{mlflow_run_name}(link valid for 5 mins)[/bright_blue bold underline][/link]")
+                    header_table.add_row("TrainingJob ARN", f"[dim]{training_job.training_job_arn}[/dim]")
+                    
+                    # Build links rows
+                    links_row1 = []
+                    links_row2 = []
+                    try:
+                        from sagemaker.train.common_utils.metrics_visualizer import (
+                            _is_in_studio, get_console_job_url, get_cloudwatch_logs_url, get_studio_url
+                        )
+                        console_url = get_console_job_url(training_job.training_job_arn)
+                        if console_url:
+                            links_row1.append(f"[bright_blue underline][link={console_url}]🔗 Training Job (Console)[/link][/bright_blue underline]")
+                        if _is_in_studio():
+                            studio_url = get_studio_url(training_job)
+                            if studio_url:
+                                links_row1.append(f"[bright_blue underline][link={studio_url}]🔗 Training Job (Studio)[/link][/bright_blue underline]")
+                        cw_url = get_cloudwatch_logs_url(training_job.training_job_arn)
+                        if cw_url:
+                            links_row2.append(f"[bright_blue underline][link={cw_url}]🔗 CloudWatch Logs[/link][/bright_blue underline]")
+                    except Exception:
+                        pass
+                    if has_mlflow_config:
+                        cached_url = get_cached_mlflow_url()
+                        if cached_url:
+                            links_row2.append(f"[bright_blue underline][link={cached_url}]🔗 MLflow Experiment[/link][/bright_blue underline]")
+                        elif mlflow_link_cache['error']:
+                            header_table.add_row("MLflow Experiment", f"[red]{mlflow_link_cache['error']}[/red]")
+                    if has_mlflow_config:
+                        exp_name = training_job.mlflow_config.mlflow_experiment_name if hasattr(training_job, 'mlflow_config') else None
+                        if exp_name and not _is_unassigned_attribute(exp_name):
+                            header_table.add_row("MLflow Experiment", f"{exp_name}")
+                    if links_row1:
+                        header_table.add_row("Links", " | ".join(links_row1))
+                    if links_row2:
+                        header_table.add_row("" if links_row1 else "Links", " | ".join(links_row2))
 
                     status_table = Table(show_header=False, box=None, padding=(0, 1))
                     status_table.add_column("Property", style="cyan bold", width=20)
-                    status_table.add_column("Value", style="white")
+                    status_table.add_column("Value", style="dim")
 
                     status_table.add_row("Job Status", f"[bold][orange3]{status}[/][/]")
                     status_table.add_row("Secondary Status", f"[bold yellow]{secondary_status}[/bold yellow]")
@@ -307,7 +423,9 @@ def wait(
                         raise TimeoutExceededError(resource_type="TrainingJob", status=status)
 
         else:
-            print(f"\nTrainingJob Name: {training_job.training_job_name}")
+            print(f"\nTraining job started: {training_job.training_job_name}", flush=True)
+            print(f"Log group: /aws/sagemaker/TrainingJobs", flush=True)
+            print(f"Log stream prefix: {training_job.training_job_name}", flush=True)
             iteration = 0
             while True:
                 iteration += 1
@@ -320,8 +438,8 @@ def wait(
 
                 # Show transitions with checkmarks
                 if training_job.secondary_status_transitions:
-                    print("\n--------------------------------------\n")
-                    print("Status Transitions:")
+                    print("\n--------------------------------------\n", flush=True)
+                    print("Status Transitions:", flush=True)
                     for trans in training_job.secondary_status_transitions:
                         duration, check = _calculate_transition_duration(trans)
 
@@ -340,28 +458,39 @@ def wait(
                             if progress_pct is not None:
                                 step_msg += f" - {progress_pct:.1f}%{progress_text.replace(chr(10), ', ')}"
 
-                        print(step_msg)
-                print(f"\nStatus: {status} - {secondary_status} (Elapsed: {elapsed:.1f}s)")
+                        print(step_msg, flush=True)
+                print(f"\nStatus: {status} - {secondary_status} (Elapsed: {elapsed:.1f}s)", flush=True)
 
                 if status in ["Completed", "Failed", "Stopped"]:
                     if status == "Completed":
                         if mlflow_url:
-                            print(f"\n✓ Training completed! View metrics in MLflow: {mlflow_url}")
+                            print(f"\n✓ Training completed! View metrics in MLflow: {mlflow_url}", flush=True)
                         try:
                             steps_per_epoch = training_job.progress_info.total_step_count_per_epoch
                             loss_metrics_by_epoch = metrics_util._get_loss_metrics_by_epoch(run_name=mlflow_run_name,
                                                                                            steps_per_epoch=steps_per_epoch)
                             if loss_metrics_by_epoch:
-                                print("\n------------ Loss Metrics by Epoch ------------")
+                                print("\n------------ Loss Metrics by Epoch ------------", flush=True)
                                 for epoch, metrics in list(loss_metrics_by_epoch.items())[:-1]:
-                                    print(f"Epoch {epoch}: {metrics}")
-                                print("----------------------------------------------")
+                                    print(f"Epoch {epoch}: {metrics}", flush=True)
+                                print("----------------------------------------------", flush=True)
                         except Exception:
                             pass
+                    if status == "Failed":
+                        failure_reason = training_job.failure_reason
+                        if failure_reason and not _is_unassigned_attribute(failure_reason):
+                            print(f"\nFailure reason: {failure_reason}", flush=True)
+                        print(f"\nLog group: /aws/sagemaker/TrainingJobs", flush=True)
+                        print(f"Log stream prefix: {training_job.training_job_name}", flush=True)
+                        from sagemaker.train.common_utils.metrics_visualizer import get_cloudwatch_logs_url
+                        cw_url = get_cloudwatch_logs_url(training_job.training_job_arn)
+                        if cw_url:
+                            print(f"CloudWatch Logs: {cw_url}", flush=True)
+                        raise FailedStatusError(resource_type="TrainingJob", status=status, reason=failure_reason)
                     return
 
                 failure_reason = training_job.failure_reason
-                if status == "Failed" or (failure_reason and not _is_unassigned_attribute(failure_reason)):
+                if failure_reason and not _is_unassigned_attribute(failure_reason):
                     raise FailedStatusError(resource_type="TrainingJob", status=status, reason=failure_reason)
 
                 if timeout and elapsed >= timeout:

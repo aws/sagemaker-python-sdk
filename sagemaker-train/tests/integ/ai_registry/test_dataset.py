@@ -79,8 +79,9 @@ class TestDataSetIntegration:
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.DPO
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_sft(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova SFT dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_sft_train.jsonl"
         dataset = DataSet.create(
             name=unique_name,
@@ -92,8 +93,9 @@ class TestDataSetIntegration:
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.SFT
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_dpo(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova DPO dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_dpo_train.jsonl"
         dataset = DataSet.create(
             name=unique_name,
@@ -105,8 +107,9 @@ class TestDataSetIntegration:
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.DPO
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_rft(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova RFT dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_rft_train.jsonl"
         dataset = DataSet.create(
             name=unique_name,
@@ -118,8 +121,9 @@ class TestDataSetIntegration:
         assert dataset.name == unique_name
         assert dataset.customization_technique == CustomizationTechnique.RLVR
 
+    @pytest.mark.us_east_1
     def test_create_dataset_from_s3_nova_eval(self, unique_name, test_bucket, cleanup_list):
-        """Test creating RLVR dataset from S3 URI."""
+        """Test creating Nova eval dataset from S3 URI."""
         s3_uri = f"s3://{test_bucket}/test_datasets/Nova/nova_eval.jsonl"
         dataset = DataSet.create(
             name=unique_name,
@@ -129,9 +133,10 @@ class TestDataSetIntegration:
         cleanup_list.append(dataset)
         assert dataset.name == unique_name
 
-    def test_get_dataset(self, unique_name, sample_jsonl_file):
+    def test_get_dataset(self, unique_name, sample_jsonl_file, cleanup_list):
         """Test retrieving dataset by name."""
         created = DataSet.create(name=unique_name, source=sample_jsonl_file, wait=False)
+        cleanup_list.append(created)
         retrieved = DataSet.get(unique_name)
         assert retrieved.name == created.name
         assert retrieved.arn == created.arn
@@ -141,16 +146,18 @@ class TestDataSetIntegration:
         datasets = list(DataSet.get_all(max_results=5))
         assert isinstance(datasets, list)
 
-    def test_dataset_refresh(self, unique_name, sample_jsonl_file):
+    def test_dataset_refresh(self, unique_name, sample_jsonl_file, cleanup_list):
         """Test refreshing dataset status."""
         dataset = DataSet.create(name=unique_name, source=sample_jsonl_file, wait=False)
+        cleanup_list.append(dataset)
         dataset.refresh()
         time.sleep(3)
         assert dataset.status in [HubContentStatus.IMPORTING.value, HubContentStatus.AVAILABLE.value]
 
-    def test_dataset_get_versions(self, unique_name, sample_jsonl_file):
+    def test_dataset_get_versions(self, unique_name, sample_jsonl_file, cleanup_list):
         """Test getting dataset versions."""
         dataset = DataSet.create(name=unique_name, source=sample_jsonl_file, wait=False)
+        cleanup_list.append(dataset)
         versions = dataset.get_versions()
         assert len(versions) >= 1
         assert all(isinstance(v, DataSet) for v in versions)
@@ -178,7 +185,7 @@ class TestDataSetIntegration:
         """Test creating new dataset version."""
         dataset = DataSet.create(name=unique_name, source=sample_jsonl_file, wait=False)
         result = dataset.create_version(sample_jsonl_file)
-        cleanup_list.append(cleanup_list)
+        cleanup_list.append(dataset)
         assert result is True
 
     def test_dataset_validation_invalid_extension(self, unique_name):

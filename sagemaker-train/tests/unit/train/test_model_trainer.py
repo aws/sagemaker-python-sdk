@@ -18,9 +18,11 @@ import tempfile
 import json
 import os
 import yaml
+from omegaconf import OmegaConf
 import pytest
 from pydantic import ValidationError
 from unittest.mock import patch, MagicMock, ANY, mock_open
+from tempfile import NamedTemporaryFile
 
 from sagemaker.core.resources import TrainingJob
 from sagemaker.core.shapes import (
@@ -32,10 +34,15 @@ from sagemaker.core.config.config_schema import (
     MODEL_TRAINER,
     _simple_path,
     TRAINING_JOB_RESOURCE_CONFIG_PATH,
+    TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH,
+    TRAINING_JOB_VPC_CONFIG_PATH,
+    TRAINING_JOB_SUBNETS_PATH,
+    TRAINING_JOB_SECURITY_GROUP_IDS_PATH,
     SAGEMAKER,
     PYTHON_SDK,
     MODULES,
 )
+from sagemaker.core.config.config_manager import SageMakerConfig
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.model_trainer import ModelTrainer, Mode
 from sagemaker.train.defaults import DEFAULT_INSTANCE_TYPE
@@ -43,6 +50,7 @@ from sagemaker.train.constants import (
     DISTRIBUTED_JSON,
     SOURCE_CODE_JSON,
     TRAIN_SCRIPT,
+    SM_RECIPE_CONTAINER_PATH,
 )
 from sagemaker.train.configs import (
     Compute,
@@ -65,9 +73,10 @@ from sagemaker.train.configs import (
     Channel,
     DataSource,
     MetricDefinition,
+    InstanceGroup,
 )
 from sagemaker.train.distributed import Torchrun, SMP, MPI
-from sagemaker.train.sm_recipes.utils import _load_recipes_cfg
+from sagemaker.train.sm_recipes.utils import _load_recipes_cfg, _is_nova_recipe, _get_args_from_nova_recipe
 from sagemaker.train.templates import EXEUCTE_DISTRIBUTED_DRIVER
 from tests.unit import DATA_DIR
 
@@ -105,7 +114,9 @@ DEFAULT_ARGUMENTS = [
 
 @pytest.fixture(scope="module", autouse=True)
 def modules_session():
-    with patch("sagemaker.train.Session", spec=Session) as session_mock:
+    with patch("sagemaker.train.Session", spec=Session) as session_mock, patch(
+        "sagemaker.train.defaults.resolve_and_validate_role", return_value=DEFAULT_ROLE
+    ):
         session_instance = session_mock.return_value
         session_instance.default_bucket.return_value = DEFAULT_BUCKET
         session_instance.get_caller_identity_arn.return_value = DEFAULT_ROLE
@@ -460,6 +471,153 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
             assert channel.data_source.file_system_data_source == test_case["data_source"]
         else:
             assert channel.data_source.s3_data_source.s3_uri == expected_s3_uri
+
+
+def test_create_input_data_channel_with_instance_group_names(model_trainer):
+    """instance_group_names is propagated onto the channel's S3DataSource."""
+    channel = model_trainer.create_input_data_channel(
+        channel_name="code",
+        data_source=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code",
+        instance_group_names=["head-instance-group", "worker-instance-group-1"],
+    )
+    assert channel.data_source.s3_data_source.instance_group_names == [
+        "head-instance-group",
+        "worker-instance-group-1",
+    ]
+
+
+HETEROGENEOUS_INSTANCE_GROUPS = [
+    InstanceGroup(
+        instance_type="ml.t3.large", instance_count=1, instance_group_name="head-instance-group"
+    ),
+    InstanceGroup(
+        instance_type="ml.m5.2xlarge",
+        instance_count=2,
+        instance_group_name="worker-instance-group-1",
+    ),
+]
+
+
+def _instance_group_names(channel):
+    """Return the channel's assigned instance_group_names as a list (or None)."""
+    s3_data_source = channel.data_source.s3_data_source if channel.data_source else None
+    names = getattr(s3_data_source, "instance_group_names", None) if s3_data_source else None
+    return names if isinstance(names, list) else None
+
+
+def _managed_channel_names(input_data_config):
+    return {
+        channel.channel_name: _instance_group_names(channel) for channel in input_data_config
+    }
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_managed_channels_assigned_instance_groups_when_user_channel_assigns(
+    mock_default_bucket, mock_upload_data
+):
+    """Regression test for issue #6089.
+
+    On a heterogeneous cluster, when a user assigns instance_group_names to any of their
+    channels, the SDK-managed ``code``/``sm_drivers`` channels must also be assigned to the
+    full set of instance groups, otherwise CreateTrainingJob fails validation with
+    "Some channels have assigned instance groups ... while others not".
+    """
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code"
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    expected_names = ["head-instance-group", "worker-instance-group-1"]
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=Compute(instance_groups=HETEROGENEOUS_INSTANCE_GROUPS),
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+
+    user_channel = InputData(
+        channel_name="processing",
+        data_source=S3DataSource(
+            s3_data_type="S3Prefix",
+            s3_uri=f"s3://{DEFAULT_BUCKET}/data/",
+            s3_data_distribution_type="FullyReplicated",
+            instance_group_names=expected_names,
+        ),
+    )
+
+    args = trainer._create_training_job_args(input_data_config=[user_channel])
+    channels = _managed_channel_names(args["input_data_config"])
+
+    assert channels["processing"] == expected_names
+    assert channels["code"] == expected_names
+    assert channels["sm_drivers"] == expected_names
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_managed_channels_not_assigned_when_user_channel_unassigned(
+    mock_default_bucket, mock_upload_data
+):
+    """Managed channels stay unassigned when the user does not use instance groups.
+
+    Even on a heterogeneous cluster, if no user channel assigns instance_group_names, the
+    SDK must not assign them to managed channels (which would itself violate the
+    all-or-nothing rule against the unassigned user channel).
+    """
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code"
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=Compute(instance_groups=HETEROGENEOUS_INSTANCE_GROUPS),
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+
+    user_channel = InputData(
+        channel_name="processing",
+        data_source=S3DataSource(
+            s3_data_type="S3Prefix",
+            s3_uri=f"s3://{DEFAULT_BUCKET}/data/",
+            s3_data_distribution_type="FullyReplicated",
+        ),
+    )
+
+    args = trainer._create_training_job_args(input_data_config=[user_channel])
+    channels = _managed_channel_names(args["input_data_config"])
+
+    assert channels["code"] is None
+    assert channels["sm_drivers"] is None
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_managed_channels_not_assigned_on_homogeneous_cluster(
+    mock_default_bucket, mock_upload_data
+):
+    """No instance groups configured -> managed channels are never assigned."""
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code"
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+
+    user_channel = InputData(channel_name="train", data_source=f"s3://{DEFAULT_BUCKET}/train/")
+
+    args = trainer._create_training_job_args(input_data_config=[user_channel])
+    channels = _managed_channel_names(args["input_data_config"])
+
+    assert channels["code"] is None
+    assert channels["sm_drivers"] is None
 
 
 @pytest.mark.parametrize(
@@ -1347,3 +1505,517 @@ def test_metric_definitions(mock_training_job, modules_session):
             mock_training_job.create.call_args.kwargs["algorithm_specification"].metric_definitions
             == metric_definitions
         )
+
+
+@patch("sagemaker.train.model_trainer._get_unique_name")
+@patch("sagemaker.core.resources.TrainingJob")
+def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
+    def mock_upload_data(path, bucket, key_prefix):
+        if os.path.isfile(path):
+            file_name = os.path.basename(path)
+            return f"s3://{bucket}/{key_prefix}/{file_name}"
+        else:
+            return f"s3://{bucket}/{key_prefix}"
+
+    unique_name = "base-job-0123456789"
+    base_name = "base-job"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+    mock_unique_name.return_value = unique_name
+
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        # Patch TrainingJob.create to avoid Pydantic validation on session
+        with patch.object(TrainingJob, 'create', return_value=mock_training_job) as mock_create:
+            trainer = ModelTrainer.from_recipe(
+                training_recipe=recipe.name,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                training_image=DEFAULT_IMAGE,
+                base_job_name=base_name,
+            )
+
+            assert trainer._is_nova_recipe
+
+            trainer.train()
+            mock_create.assert_called_once()
+            assert mock_create.call_args.kwargs["hyper_parameters"] == {
+                "base_model": "dummy-model",
+                "sagemaker_recipe_local_path": SM_RECIPE_CONTAINER_PATH,
+            }
+
+            default_base_path = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{base_name}"
+            assert mock_create.call_args.kwargs["input_data_config"] == [
+                Channel(
+                    channel_name="recipe",
+                    data_source=DataSource(
+                        s3_data_source=S3DataSource(
+                            s3_data_type="S3Prefix",
+                            s3_uri=f"{default_base_path}/{unique_name}/input/recipe/recipe.yaml",
+                            s3_data_distribution_type="FullyReplicated",
+                        )
+                    ),
+                    input_mode="File",
+                )
+            ]
+
+
+def test_nova_recipe_with_distillation(modules_session):
+    recipe_data = {"training_config": {"distillation_data": "true", "kms_key": "alias/my-kms-key"}}
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        # Create ModelTrainer from recipe
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+        )
+
+        # Verify that the hyperparameters were set correctly
+        assert trainer.hyperparameters == {
+            "distillation_data": "true",
+            "role_arn": DEFAULT_ROLE,
+            "kms_key": "alias/my-kms-key",
+        }
+
+        # Clean up the temporary file
+        os.unlink(recipe.name)
+
+
+def test_nova_recipe_with_model_package_arn(modules_session):
+    """Test that MP ARN in model_name_or_path routes to ModelPackageConfig."""
+    mp_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-mpg/1"
+    mpg_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/my-mpg"
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": mp_arn,
+            "model_package_group": mpg_arn,
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+        )
+
+        from sagemaker.core.shapes import ModelPackageConfig
+        assert isinstance(trainer.model_package_config, ModelPackageConfig)
+        assert trainer.model_package_config.source_model_package_arn == mp_arn
+        assert trainer.model_package_config.model_package_group_arn == mpg_arn
+        assert "base_model" not in trainer.hyperparameters
+        assert "base_model_location" not in trainer.hyperparameters
+
+        os.unlink(recipe.name)
+
+
+def test_nova_recipe_mp_arn_with_mpg_creates_model_package_config(modules_session):
+    """Test that MP ARN with model_package_group creates ModelPackageConfig."""
+    mp_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package/my-mpg/1"
+    mpg_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/my-mpg"
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": mp_arn,
+            "model_package_group": mpg_arn,
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+        )
+
+        from sagemaker.core.shapes import ModelPackageConfig
+        assert isinstance(trainer.model_package_config, ModelPackageConfig)
+        assert trainer.model_package_config.source_model_package_arn == mp_arn
+        assert trainer.model_package_config.model_package_group_arn == mpg_arn
+        assert "base_model" not in trainer.hyperparameters
+        assert "base_model_location" not in trainer.hyperparameters
+
+        os.unlink(recipe.name)
+
+
+def test_nova_recipe_model_package_config_direct_overrides_recipe(modules_session):
+    """Test that direct model_package_config param overrides recipe on conflict."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1",
+            "model_package_group": "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg",
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        direct_mpg = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/direct-mpg"
+        from sagemaker.core.shapes import ModelPackageConfig
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+            model_package_config=ModelPackageConfig(
+                model_package_group_arn=direct_mpg,
+            ),
+        )
+
+        assert trainer.model_package_config.model_package_group_arn == direct_mpg
+        assert trainer.model_package_config.source_model_package_arn == \
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1"
+
+        os.unlink(recipe.name)
+
+
+
+def test_nova_recipe_model_package_config_direct_source_mp_overrides_recipe(modules_session):
+    """Test that direct source_model_package_arn overrides recipe MP ARN."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "arn:aws:sagemaker:us-east-1:123456789012:model-package/recipe-mp/1",
+            "model_package_group": "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg",
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        direct_source_mp = "arn:aws:sagemaker:us-east-1:123456789012:model-package/direct-mp/2"
+        from sagemaker.core.shapes import ModelPackageConfig
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+            model_package_config=ModelPackageConfig(
+                model_package_group_arn="arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg",
+                source_model_package_arn=direct_source_mp,
+            ),
+        )
+
+        assert trainer.model_package_config.source_model_package_arn == direct_source_mp
+        assert trainer.model_package_config.model_package_group_arn == \
+            "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/recipe-mpg"
+
+        os.unlink(recipe.name)
+
+def test_nova_recipe_model_package_config_only_mpg_from_recipe(modules_session):
+    """Test recipe with base model name + MPG (no MP ARN)."""
+    mpg_arn = "arn:aws:sagemaker:us-east-1:123456789012:model-package-group/my-mpg"
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "nova-pro",
+            "model_package_group": mpg_arn,
+        }
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+        )
+
+        assert trainer.hyperparameters["base_model"] == "nova-pro"
+        from sagemaker.core.shapes import ModelPackageConfig
+        assert isinstance(trainer.model_package_config, ModelPackageConfig)
+        assert trainer.model_package_config.model_package_group_arn == mpg_arn
+
+        os.unlink(recipe.name)
+
+
+@patch("sagemaker.train.model_trainer._get_unique_name")
+@patch("sagemaker.train.model_trainer.TrainingJob")
+def test_llmft_recipe(mock_training_job, mock_unique_name, modules_session):
+    def mock_upload_data(path, bucket, key_prefix):
+        if os.path.isfile(path):
+            file_name = os.path.basename(path)
+            return f"s3://{bucket}/{key_prefix}/{file_name}"
+        else:
+            return f"s3://{bucket}/{key_prefix}"
+
+    unique_name = "base-job-0123456789"
+    base_name = "base-job"
+
+    modules_session.upload_data.side_effect = mock_upload_data
+    mock_unique_name.return_value = unique_name
+
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "llm_finetuning_aws",
+        },
+        "trainer": {"num_nodes": "12"},
+        "training_config": {"model_save_name": "xyz"},
+    }
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+            base_job_name=base_name,
+        )
+
+        assert trainer._is_llmft_recipe
+
+        trainer.train()
+        mock_training_job.create.assert_called_once()
+
+        default_base_path = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BUCKET_PREFIX}/{base_name}"
+        assert mock_training_job.create.call_args.kwargs["input_data_config"] == [
+            Channel(
+                channel_name="recipe",
+                data_source=DataSource(
+                    s3_data_source=S3DataSource(
+                        s3_data_type="S3Prefix",
+                        s3_uri=f"{default_base_path}/{unique_name}/input/recipe/recipe.yaml",
+                        s3_data_distribution_type="FullyReplicated",
+                    )
+                ),
+                input_mode="File",
+            )
+        ]
+
+
+def test_llmft_recipe_missing_training_image_error(modules_session):
+    """Test that LLMFT recipe throws an error when training_image is not provided."""
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "llm_finetuning_aws",
+        },
+        "trainer": {"num_nodes": "12"},
+        "training_config": {"model_save_name": "xyz"},
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+
+        # Test that ValueError is raised when training_image is not provided for LLMFT recipe
+        with pytest.raises(
+            ValueError, match="training_image must be provided when using recipe for Nova or LLMFT"
+        ):
+            ModelTrainer.from_recipe(
+                training_recipe=recipe.name,
+                role=DEFAULT_ROLE,
+                sagemaker_session=modules_session,
+                compute=DEFAULT_COMPUTE_CONFIG,
+                # Note: training_image is intentionally not provided
+                base_job_name="base-job",
+            )
+
+        # Clean up the temporary file
+        os.unlink(recipe.name)
+
+def test_resolve_staging_bucket_returns_default_when_allowed(model_trainer):
+    """When training role has PutObject access to default bucket, use default bucket."""
+    mock_iam = MagicMock()
+    mock_iam.simulate_principal_policy.return_value = {
+        "EvaluationResults": [{"EvalDecision": "allowed"}]
+    }
+    with patch.object(model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+        with patch.object(model_trainer.sagemaker_session, "boto_session") as mock_boto:
+            mock_boto.client.return_value = mock_iam
+            bucket, prefix = model_trainer._resolve_staging_bucket()
+
+    assert bucket == DEFAULT_BUCKET
+    assert prefix is None
+
+
+def test_resolve_staging_bucket_falls_back_when_denied(modules_session):
+    """When training role is denied, fall back to output path bucket."""
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=OutputDataConfig(
+            s3_output_path="s3://fallback-bucket/my/prefix/",
+        ),
+    )
+    mock_iam = MagicMock()
+    mock_iam.simulate_principal_policy.return_value = {
+        "EvaluationResults": [{"EvalDecision": "implicitDeny"}]
+    }
+    with patch.object(trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+        with patch.object(trainer.sagemaker_session, "boto_session") as mock_boto:
+            mock_boto.client.return_value = mock_iam
+            bucket, prefix = trainer._resolve_staging_bucket()
+
+    assert bucket == "fallback-bucket"
+    assert prefix == "my/prefix"
+
+
+def test_resolve_staging_bucket_returns_default_on_iam_error(model_trainer):
+    """When IAM simulate call fails, gracefully returns default bucket."""
+    mock_iam = MagicMock()
+    mock_iam.simulate_principal_policy.side_effect = Exception("AccessDenied")
+    with patch.object(model_trainer.sagemaker_session, "default_bucket", return_value=DEFAULT_BUCKET):
+        with patch.object(model_trainer.sagemaker_session, "boto_session") as mock_boto:
+            mock_boto.client.return_value = mock_iam
+            bucket, prefix = model_trainer._resolve_staging_bucket()
+
+    assert bucket == DEFAULT_BUCKET
+    assert prefix is None
+
+
+# Networking intelligent defaults from the Training Job config space. These guard the two
+# bugs fixed in _populate_intelligent_defaults_from_training_job_space: (1) the Networking
+# constructor must be given `enable_network_isolation` (not the non-existent
+# `default_enable_network_isolation`), and (2) an existing Networking object with an unset
+# `security_group_ids` must be filled from the security-group-ids path, not the subnets path.
+
+NETWORKING_DEFAULT_SUBNETS = ["subnet-000000000000"]
+NETWORKING_DEFAULT_SECURITY_GROUP_IDS = ["sg-000000000000"]
+
+
+def _make_config_mgr(values):
+    """Return a real SageMakerConfig whose resolve_value_from_config is keyed by config_path.
+
+    A real instance (rather than a bare MagicMock) is required because ModelTrainer validates
+    that config_mgr is a SageMakerConfig on assignment.
+    """
+    config_mgr = SageMakerConfig()
+    config_mgr.resolve_value_from_config = MagicMock(
+        side_effect=lambda **kwargs: values.get(kwargs["config_path"])
+    )
+    return config_mgr
+
+
+def test_networking_intelligent_defaults_creates_networking(model_trainer):
+    """A VpcConfig in the config space builds a valid Networking with the correct fields.
+
+    Regression for Bug 1: passing `default_enable_network_isolation` to Networking() raised
+    a pydantic ValidationError because that field does not exist.
+    """
+    model_trainer.networking = None
+    model_trainer.config_mgr = _make_config_mgr(
+        {
+            TRAINING_JOB_ENABLE_NETWORK_ISOLATION_PATH: True,
+            TRAINING_JOB_VPC_CONFIG_PATH: {
+                "subnets": NETWORKING_DEFAULT_SUBNETS,
+                "security_group_ids": NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+            },
+            TRAINING_JOB_SUBNETS_PATH: NETWORKING_DEFAULT_SUBNETS,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH: NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+        }
+    )
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    assert model_trainer.networking is not None
+    assert model_trainer.networking.enable_network_isolation is True
+    assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
+    assert model_trainer.networking.security_group_ids == NETWORKING_DEFAULT_SECURITY_GROUP_IDS
+
+
+def test_networking_intelligent_defaults_no_vpc_config_leaves_networking_unset(model_trainer):
+    """No network isolation and no VpcConfig means Networking is not created."""
+    model_trainer.networking = None
+    model_trainer.config_mgr = _make_config_mgr({})
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    assert model_trainer.networking is None
+
+
+def test_networking_intelligent_defaults_fills_security_group_ids_on_existing(model_trainer):
+    """An existing Networking with unset security_group_ids is filled from the SG path.
+
+    Regression for Bug 2: the missing security_group_ids branch mistakenly assigned to
+    `subnets` using the subnets path, so security_group_ids was never populated.
+    """
+    model_trainer.networking = Networking(
+        enable_network_isolation=False,
+        subnets=["subnet-preexisting"],
+        security_group_ids=None,
+    )
+    model_trainer.config_mgr = _make_config_mgr(
+        {
+            TRAINING_JOB_SUBNETS_PATH: NETWORKING_DEFAULT_SUBNETS,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH: NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+        }
+    )
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    # security_group_ids is filled from the security-group-ids path...
+    assert model_trainer.networking.security_group_ids == NETWORKING_DEFAULT_SECURITY_GROUP_IDS
+    # ...and the pre-existing subnets are preserved (not overwritten).
+    assert model_trainer.networking.subnets == ["subnet-preexisting"]
+    model_trainer.config_mgr.resolve_value_from_config.assert_any_call(
+        config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
+    )
+
+
+def test_networking_intelligent_defaults_fills_subnets_on_existing(model_trainer):
+    """An existing Networking with unset subnets is filled from the subnets path."""
+    model_trainer.networking = Networking(
+        enable_network_isolation=False,
+        subnets=None,
+        security_group_ids=["sg-preexisting"],
+    )
+    model_trainer.config_mgr = _make_config_mgr(
+        {
+            TRAINING_JOB_SUBNETS_PATH: NETWORKING_DEFAULT_SUBNETS,
+            TRAINING_JOB_SECURITY_GROUP_IDS_PATH: NETWORKING_DEFAULT_SECURITY_GROUP_IDS,
+        }
+    )
+
+    model_trainer._populate_intelligent_defaults_from_training_job_space()
+
+    assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
+    # pre-existing security_group_ids are preserved.
+    assert model_trainer.networking.security_group_ids == ["sg-preexisting"]

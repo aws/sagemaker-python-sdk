@@ -4,15 +4,14 @@ This module contains Jinja2 template strings for generating SageMaker Pipeline
 definitions for different evaluation types (benchmark, custom scorer, LLM-as-judge).
 """
 
-from .constants import EvalType
+from .constants import EvalType  # noqa: F401
 
 DETERMINISTIC_TEMPLATE = """{
     "Version": "2020-12-01",
     "Metadata": {},
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
-        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}{% if mlflow_run_name %},
-        "MlflowRunName": "{{ mlflow_run_name }}"{% endif %}
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
     },
     "Parameters": [],
     "Steps": [
@@ -94,10 +93,6 @@ DETERMINISTIC_TEMPLATE = """{
             "Type": "Training",
             "Arguments": {
                 "RoleArn": "{{ role_arn }}",
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
-                },
                 "ServerlessJobConfig": {
                     "BaseModelArn": "{{ base_model_arn }}",
                     "AcceptEula": true,
@@ -331,6 +326,10 @@ DETERMINISTIC_TEMPLATE = """{
 LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
     "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
     "Parameters": [],
     "Steps": [
         {
@@ -462,6 +461,10 @@ LLMAJ_TEMPLATE_BASE_MODEL_ONLY = """{
 DETERMINISTIC_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
     "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
     "Parameters": [],
     "Steps": [
         {
@@ -531,8 +534,7 @@ CUSTOM_SCORER_TEMPLATE = """{
     "Metadata": {},
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
-        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}{% if mlflow_run_name %},
-        "MlflowRunName": "{{ mlflow_run_name }}"{% endif %}
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
     },
     "Parameters": [],
     "Steps": [
@@ -614,10 +616,6 @@ CUSTOM_SCORER_TEMPLATE = """{
             "Type": "Training",
             "Arguments": {
                 "RoleArn": "{{ role_arn }}",
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
-                },
                 "ServerlessJobConfig": {
                     "BaseModelArn": "{{ base_model_arn }}",
                     "AcceptEula": true,
@@ -853,6 +851,10 @@ CUSTOM_SCORER_TEMPLATE = """{
 CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
     "Version": "2020-12-01",
     "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
     "Parameters": [],
     "Steps": [
         {
@@ -918,15 +920,14 @@ CUSTOM_SCORER_TEMPLATE_BASE_MODEL_ONLY = """{
 }"""
 
 # LLM-as-a-Judge Template with Jinja2 Placeholders - 2-Phase Evaluation Pipeline (Type 2)
-# Phase 1: Generate inference responses from base and custom models  
+# Phase 1: Generate inference responses from base and custom models
 # Phase 2: Use judge model to evaluate responses with built-in and custom metrics
 LLMAJ_TEMPLATE = """{
     "Version": "2020-12-01",
     "Metadata": {},
     "MlflowConfig": {
         "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
-        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}{% if mlflow_run_name %},
-        "MlflowRunName": "{{ mlflow_run_name }}"{% endif %}
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
     },
     "Parameters": [],
     "Steps": [
@@ -1028,10 +1029,6 @@ LLMAJ_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
                 }{% if dataset_uri %},
                 "InputDataConfig": [
                     {
@@ -1183,10 +1180,6 @@ LLMAJ_TEMPLATE = """{
                 {% if kms_key_id %},
                 "KmsKeyId": "{{ kms_key_id }}"
                 {% endif %}
-                },
-                "ModelPackageConfig": {
-                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
-                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
                 }
             }
         },{% endif %}
@@ -1476,6 +1469,197 @@ LLMAJ_TEMPLATE = """{
                         "AssociationType": "ContributedTo"
                     }
                 ]
+            }
+        }
+    ]
+}"""
+
+# InspectAI Evaluation Template - Single Training step with config input channel
+INSPECT_AI_TEMPLATE = """{
+    "Version": "2020-12-01",
+    "Metadata": {},
+    "Parameters": [],
+    "Steps": [
+        {
+            "Name": "InspectAIEvaluation",
+            "Type": "Training",
+            "Arguments": {
+                "TrainingJobName": {
+                    "Std:Join": {
+                        "On": "-",
+                        "Values": [
+                            "{{ job_name_prefix }}",
+                            {
+                                "Get": "Execution.PipelineExecutionId"
+                            }
+                        ]
+                    }
+                },
+                "AlgorithmSpecification": {
+                    "TrainingImage": "{{ image_uri }}",
+                    "TrainingInputMode": "File"
+                },
+                "RoleArn": "{{ role_arn }}",
+                "ResourceConfig": {
+                    "InstanceType": "{{ instance_type }}",
+                    "InstanceCount": 1,
+                    "VolumeSizeInGB": 30
+                },
+                "StoppingCondition": {
+                    "MaxRuntimeInSeconds": {{ max_runtime_seconds }}
+                },
+                "InputDataConfig": [
+                    {
+                        "ChannelName": "config",
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "{{ config_s3_uri }}"
+                            }
+                        }
+                    }
+                ],
+                "OutputDataConfig": {
+                    "S3OutputPath": "{{ s3_output_path }}",
+                    "CompressionType": "NONE"
+                {% if kms_key_id %},
+                "KmsKeyId": "{{ kms_key_id }}"
+                {% endif %}
+                }{% if environment %},
+                "Environment": {{ environment | tojson }}{% endif %}{% if vpc_config %},
+                "VpcConfig": {
+                    "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
+                    "Subnets": {{ vpc_subnets | tojson }}
+                }{% endif %}
+            }
+        }
+    ]
+}"""
+
+# LLM-as-a-Judge InspectAI Template - 2-Phase Evaluation Pipeline
+# Phase 1: InspectAI Training job runs inference benchmark (Bedrock or SageMaker Endpoint)
+# Phase 2: LLMAJEvaluation judging step evaluates inference responses with judge model
+LLMAJ_INSPECTAI_TEMPLATE = """{
+    "Version": "2020-12-01",
+    "Metadata": {},
+    "MlflowConfig": {
+        "MlflowResourceArn": "{{ mlflow_resource_arn }}"{% if mlflow_experiment_name %},
+        "MlflowExperimentName": "{{ mlflow_experiment_name }}"{% endif %}
+    },
+    "Parameters": [],
+    "Steps": [
+        {
+            "Name": "InspectAIInference",
+            "Type": "Training",
+            "Arguments": {
+                "TrainingJobName": {
+                    "Std:Join": {
+                        "On": "-",
+                        "Values": [
+                            "inspectai-infer",
+                            {
+                                "Get": "Execution.PipelineExecutionId"
+                            }
+                        ]
+                    }
+                },
+                "AlgorithmSpecification": {
+                    "TrainingImage": "{{ inspectai_image_uri }}",
+                    "TrainingInputMode": "File"
+                },
+                "RoleArn": "{{ role_arn }}",
+                "ResourceConfig": {
+                    "InstanceType": "{{ inspectai_instance_type }}",
+                    "InstanceCount": 1,
+                    "VolumeSizeInGB": 30
+                },
+                "StoppingCondition": {
+                    "MaxRuntimeInSeconds": 86400
+                },
+                "InputDataConfig": [
+                    {
+                        "ChannelName": "config",
+                        "DataSource": {
+                            "S3DataSource": {
+                                "S3DataType": "S3Prefix",
+                                "S3Uri": "{{ inspectai_config_s3_uri }}"
+                            }
+                        }
+                    }
+                ],
+                "OutputDataConfig": {
+                    "S3OutputPath": "{{ s3_output_path }}",
+                    "CompressionType": "NONE"
+                {% if kms_key_id %},
+                "KmsKeyId": "{{ kms_key_id }}"
+                {% endif %}
+                }{% if environment %},
+                "Environment": {{ environment | tojson }}{% endif %}{% if vpc_config %},
+                "VpcConfig": {
+                    "SecurityGroupIds": {{ vpc_security_group_ids | tojson }},
+                    "Subnets": {{ vpc_subnets | tojson }}
+                }{% endif %}
+            }
+        },
+        {
+            "Name": "EvaluateWithJudge",
+            "Type": "Training",
+            "DependsOn": ["InspectAIInference"],
+            "Arguments": {
+                "TrainingJobName": {
+                    "Std:Join": {
+                        "On": "-",
+                        "Values": [
+                            "llmaj-eval",
+                            {
+                                "Get": "Execution.PipelineExecutionId"
+                            }
+                        ]
+                    }
+                },
+                "RoleArn": "{{ role_arn }}",
+                "ServerlessJobConfig": {
+                    "BaseModelArn": "{{ base_model_arn }}",
+                    "AcceptEula": true,
+                    "JobType": "Evaluation",
+                    "EvaluationType": "LLMAJEvaluation"
+                },
+                "StoppingCondition": {
+                    "MaxRuntimeInSeconds": 86400
+                },
+                "HyperParameters": {
+                    "name": {
+                        "Std:Join": {
+                            "On": "-",
+                            "Values": [
+                                "llmaj-eval",
+                                {
+                                    "Get": "Execution.PipelineExecutionId"
+                                }
+                            ]
+                        }
+                    },
+                    "judge_model_id": "{{ judge_model_id }}",
+                    "inference_data_s3_path": "{{ inference_output_s3_uri }}",
+                    "output_path": "{{ s3_output_path }}",
+                    "llmaj_metrics": {{ llmaj_metrics | tojson }},{% if custom_metrics %}
+                    "custom_metrics": "{{ custom_metrics }}",{% endif %}
+                    "max_new_tokens": "{{ max_new_tokens }}",
+                    "temperature": "{{ temperature }}",
+                    "top_k": "{{ top_k }}",
+                    "top_p": "{{ top_p }}"
+                },
+                "OutputDataConfig": {
+                    "S3OutputPath": "{{ s3_output_path }}",
+                    "CompressionType": "NONE"
+                {% if kms_key_id %},
+                "KmsKeyId": "{{ kms_key_id }}"
+                {% endif %}
+                }{% if model_package_config %},
+                "ModelPackageConfig": {
+                    "ModelPackageGroupArn": "{{ model_package_group_arn }}",
+                    "SourceModelPackageArn": "{{ source_model_package_arn }}"
+                }{% endif %}
             }
         }
     ]

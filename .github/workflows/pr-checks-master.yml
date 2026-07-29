@@ -3,6 +3,9 @@ on:
   pull_request_target:
     branches:
       - "master"
+      - "master-mtrl-trainer"
+      - "master-mtrl-release"
+      - "master-nova-reconcillation"
     paths:
       - 'sagemaker-train/**'
       - 'sagemaker-serve/**'
@@ -74,32 +77,93 @@ jobs:
           echo "Changed files:"
           echo "$CHANGES"
           
-          SUBMODULES=[]
+          # Function to extract dependencies from pyproject.toml
+          get_dependencies() {
+            local module=$1
+            grep "sagemaker-" "$module/pyproject.toml" | grep -o 'sagemaker-[a-z]*' | sort -u
+          }
           
-          if echo "$CHANGES" | grep -q "^sagemaker-train/"; then
-            SUBMODULES='["sagemaker-train"]'
-          fi
-          if echo "$CHANGES" | grep -q "^sagemaker-serve/"; then
-            if [ "$SUBMODULES" = '[]' ]; then
-              SUBMODULES='["sagemaker-serve"]'
-            else
-              SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-serve"\]/')
+          # Function to find all modules that depend on a given module (recursively)
+          find_dependents() {
+            local target=$1
+            local all_modules=("sagemaker-core" "sagemaker-train" "sagemaker-serve" "sagemaker-mlops")
+            local dependents=()
+            
+            for module in "${all_modules[@]}"; do
+              if [ "$module" != "$target" ]; then
+                if get_dependencies "$module" | grep -q "^$target$"; then
+                  dependents+=("$module")
+                fi
+              fi
+            done
+            
+            echo "${dependents[@]}"
+          }
+          
+          # Initialize set of submodules to test (using associative array)
+          declare -A SUBMODULES_SET
+          
+          # Function to recursively add module and all its dependents
+          add_module_and_dependents() {
+            local module=$1
+            
+            if [ -z "${SUBMODULES_SET[$module]}" ]; then
+              SUBMODULES_SET["$module"]=1
+              echo "Adding $module to test set"
+              
+              # Find all modules that depend on this one and add them recursively
+              local dependents=$(find_dependents "$module")
+              for dependent in $dependents; do
+                add_module_and_dependents "$dependent"
+              done
             fi
-          fi
-          if echo "$CHANGES" | grep -q "^sagemaker-mlops/"; then
-            if [ "$SUBMODULES" = '[]' ]; then
-              SUBMODULES='["sagemaker-mlops"]'
-            else
-              SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-mlops"\]/')
+          }
+          
+          # Determine whether a module has any non-test changes. A change counts
+          # as a source change if it touches anything under the module other than
+          # its tests/ directory (e.g. src/, pyproject.toml, tox.ini, VERSION).
+          # This is intentionally conservative: only changes confined entirely to
+          # tests/ are treated as test-only.
+          is_source_changed() {
+            local module=$1
+            echo "$CHANGES" | grep "^$module/" | grep -qv "^$module/tests/"
+          }
+          
+          all_modules=("sagemaker-core" "sagemaker-train" "sagemaker-serve" "sagemaker-mlops")
+          
+          # Pass 1: modules with source changes pull in themselves plus every
+          # module that (transitively) depends on them, since a source change can
+          # affect downstream behaviour. This preserves the original logic.
+          for module in "${all_modules[@]}"; do
+            if is_source_changed "$module"; then
+              echo "$module has source changes - adding it and all dependents"
+              add_module_and_dependents "$module"
             fi
-          fi
-          if echo "$CHANGES" | grep -q "^sagemaker-core/"; then
-            if [ "$SUBMODULES" = '[]' ]; then
-              SUBMODULES='["sagemaker-core"]'
-            else
-              SUBMODULES=$(echo $SUBMODULES | sed 's/\]$/,"sagemaker-core"\]/')
+          done
+          
+          # Pass 2: modules with test-only changes add only themselves and skip
+          # dependency propagation, since changing a module's tests cannot affect
+          # other modules. Run after Pass 1 so source-change propagation is never
+          # short-circuited by a test-only module already being in the set.
+          for module in "${all_modules[@]}"; do
+            if echo "$CHANGES" | grep -q "^$module/" && ! is_source_changed "$module"; then
+              if [ -z "${SUBMODULES_SET[$module]}" ]; then
+                echo "$module has test-only changes - adding only $module"
+                SUBMODULES_SET["$module"]=1
+              fi
             fi
-          fi
+          done
+          
+          # Convert associative array to JSON array
+          SUBMODULES='[]'
+          for submodule in "${!SUBMODULES_SET[@]}"; do
+            if [ "$SUBMODULES" = '[]' ]; then
+              SUBMODULES="[\"$submodule\"]"
+            else
+              SUBMODULES=$(echo $SUBMODULES | sed "s/\]$/,\"$submodule\"\]/")
+            fi
+          done
+          
           echo "Final SUBMODULES: $SUBMODULES"
           echo "submodules=$SUBMODULES" >> $GITHUB_OUTPUT
 
@@ -144,8 +208,18 @@ jobs:
       - name: Run Unit Tests for ${{ matrix.submodule }}
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-unit-tests
+          # Use the single CDK-managed V3 unit-test project (driven by the SUBMODULE
+          # env var), the same project the CI-health workflow uses. The previous
+          # per-submodule projects (sagemaker-python-sdk-ci-<submodule>-unit-tests)
+          # were created manually, are not CDK/pipeline-managed, and had drifted
+          # stale (e.g. still running `--cov=.` instead of the deployed
+          # `--cov=sagemaker`), so PR coverage never reflected buildspec fixes.
+          project-name: ${{ github.event.repository.name }}-ci-health-unit-test-v3
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+          env-vars-for-codebuild: |
+            SUBMODULE
+        env:
+          SUBMODULE: ${{ matrix.submodule }}
 
   integ-tests:
     runs-on: ubuntu-latest
@@ -167,4 +241,22 @@ jobs:
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-integ-tests
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+
+  integ-tests-us-east-1:
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: needs.detect-changes.outputs.submodules != '[]'
+    steps:
+      - name: Configure AWS Credentials (us-east-1)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_US_EAST_1_ARN }}
+          aws-region: us-east-1
+          role-duration-seconds: 10800
+
+      - name: Run us-east-1 Integ Tests (all submodules)
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: ${{ github.event.repository.name }}-ci-integ-tests-us-east-1
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'

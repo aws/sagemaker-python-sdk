@@ -1,0 +1,4 @@
+echo "test-content-1" > test_file_1
+echo "test-content-2" > test_file_2
+echo "test-content-3" > test_file_3
+rm ./test_file_2

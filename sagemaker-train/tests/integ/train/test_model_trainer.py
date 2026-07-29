@@ -96,7 +96,7 @@ def test_hp_contract_basic_sh_script(sagemaker_session):
 
 
 # skip this test for now as requirments.txt is not resolved
-@pytest.mark.skip
+# @pytest.mark.skip(reason="MPI distributed training does not resolve requirements.txt on worker nodes")
 def test_hp_contract_mpi_script(sagemaker_session):
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
     model_trainer = ModelTrainer(

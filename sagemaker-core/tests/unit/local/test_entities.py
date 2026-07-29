@@ -355,6 +355,107 @@ class TestLocalTransformJob:
         assert description["ModelName"] == "test-model"
 
 
+class TestPerformBatchInferencePathTraversal:
+    """Test _perform_batch_inference blocks path traversal attacks."""
+
+    @patch("sagemaker.core.local.local_session.LocalSession")
+    def test_path_traversal_in_file_list(self, mock_session_class):
+        """Test that file paths resolving outside working_dir are blocked."""
+        mock_session = Mock()
+        mock_client = Mock()
+        mock_client.describe_model.return_value = {
+            "PrimaryContainer": {
+                "Image": "test-image:latest",
+                "ModelDataUrl": "s3://bucket/model.tar.gz",
+                "Environment": {},
+            }
+        }
+        mock_session.sagemaker_client = mock_client
+
+        job = _LocalTransformJob("test-job", "test-model", mock_session)
+
+        with tempfile.TemporaryDirectory() as working_dir:
+            with tempfile.TemporaryDirectory() as dataset_dir:
+                # Mock _get_working_directory to return our temp dir
+                job._get_working_directory = Mock(return_value=working_dir)
+
+                # Create a mock data source with a traversal path
+                mock_data_source = Mock()
+                mock_data_source.get_root_dir.return_value = dataset_dir
+                # Simulate a file that would resolve outside working_dir via relpath
+                traversal_file = os.path.join(dataset_dir, "..", "..", "..", "etc", "passwd")
+                mock_data_source.get_file_list.return_value = [traversal_file]
+
+                mock_batch_provider = Mock()
+
+                job._prepare_data_transformation = Mock(
+                    return_value=(mock_data_source, mock_batch_provider)
+                )
+
+                input_data = {"ContentType": "text/csv"}
+                output_data = {"S3OutputPath": "s3://bucket/output", "Accept": "text/csv"}
+
+                with pytest.raises(ValueError, match="Path traversal detected"):
+                    job._perform_batch_inference(
+                        input_data, output_data, BatchStrategy="MultiRecord", MaxPayloadInMB="6"
+                    )
+
+    @patch("sagemaker.core.local.local_session.LocalSession")
+    def test_safe_file_paths_are_allowed(self, mock_session_class):
+        """Test that normal file paths within dataset_dir are allowed."""
+        mock_session = Mock()
+        mock_client = Mock()
+        mock_client.describe_model.return_value = {
+            "PrimaryContainer": {
+                "Image": "test-image:latest",
+                "ModelDataUrl": "s3://bucket/model.tar.gz",
+                "Environment": {},
+            }
+        }
+        mock_session.sagemaker_client = mock_client
+        mock_session.sagemaker_runtime_client = Mock()
+        mock_session.sagemaker_runtime_client.invoke_endpoint.return_value = {
+            "Body": Mock(read=Mock(return_value=b"result"), close=Mock())
+        }
+
+        job = _LocalTransformJob("test-job", "test-model", mock_session)
+
+        with tempfile.TemporaryDirectory() as working_dir:
+            with tempfile.TemporaryDirectory() as dataset_dir:
+                # Create a real file in the dataset dir
+                test_file = os.path.join(dataset_dir, "input.csv")
+                with open(test_file, "w") as f:
+                    f.write("test data")
+
+                job._get_working_directory = Mock(return_value=working_dir)
+
+                mock_data_source = Mock()
+                mock_data_source.get_root_dir.return_value = dataset_dir
+                mock_data_source.get_file_list.return_value = [test_file]
+
+                mock_batch_provider = Mock()
+                mock_batch_provider.pad.return_value = [b"test data"]
+
+                job._prepare_data_transformation = Mock(
+                    return_value=(mock_data_source, mock_batch_provider)
+                )
+
+                job.container = Mock()
+
+                input_data = {"ContentType": "text/csv"}
+                output_data = {"S3OutputPath": "s3://bucket/output", "Accept": "text/csv"}
+
+                # Patch move_to_destination to avoid S3 interaction
+                with patch("sagemaker.core.local.entities.move_to_destination"):
+                    job._perform_batch_inference(
+                        input_data, output_data, BatchStrategy="MultiRecord", MaxPayloadInMB="6"
+                    )
+
+                # Verify the output file was created inside working_dir
+                expected_output = os.path.join(working_dir, "input.csv.out")
+                assert os.path.exists(expected_output)
+
+
 class TestLocalModel:
     """Test cases for _LocalModel"""
 

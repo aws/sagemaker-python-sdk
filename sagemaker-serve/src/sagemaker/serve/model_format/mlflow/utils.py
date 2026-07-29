@@ -22,6 +22,7 @@ import os
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core import image_uris
+from sagemaker.core.common_utils import validate_path_within_directory
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.detector.image_detector import _cast_to_compatible_version
 from sagemaker.serve.model_format.mlflow.constants import (
@@ -244,6 +245,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
     s3 = session.boto_session.client("s3")
 
     os.makedirs(dst_path, exist_ok=True)
+    dst_path_real = os.path.realpath(dst_path)
 
     paginator = s3.get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_key):
@@ -251,6 +253,10 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
             key = obj["Key"]
             rel_path = os.path.relpath(key, s3_key)
             local_file_path = os.path.join(dst_path, rel_path)
+
+            validate_path_within_directory(
+                local_file_path, dst_path, source_description=key
+            )
 
             if not key.endswith("/"):
                 local_file_dir = os.path.dirname(local_file_path)

@@ -17,7 +17,11 @@ import os
 import sys
 import json
 
-from sagemaker.train.container_drivers.distributed_drivers.mpi_utils import (
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from distributed_drivers.mpi_utils import (  # noqa: E402 # pylint: disable=C0413,E0611
     start_sshd_daemon,
     bootstrap_master_node,
     bootstrap_worker_node,
@@ -27,7 +31,7 @@ from sagemaker.train.container_drivers.distributed_drivers.mpi_utils import (
 )
 
 
-from sagemaker.train.container_drivers.common.utils import (
+from common.utils import (  # noqa: E402 # pylint: disable=C0413,E0611
     logger,
     hyperparameters_to_cli_args,
     get_process_count,

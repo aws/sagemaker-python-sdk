@@ -13,18 +13,73 @@
 """Integration tests for RLVR trainer"""
 from __future__ import absolute_import
 
-import os
 import time
+import random
+import tempfile
 import pytest
 import boto3
+import yaml
+import logging
+
 from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.resources import ModelPackageGroup
 from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.common import TrainingType
+from sagemaker.ai_registry.evaluator import Evaluator
+from sagemaker.ai_registry.air_constants import REWARD_FUNCTION
+
+logger = logging.getLogger(__name__)
+
+EVALUATOR_NAME = "test-integ-rlvr-trainer"
+LAMBDA_OSS_REWARD_FUNCTION_NAME = "rlvr-oss-reward-function"
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
+@pytest.fixture(scope="module")
+def account_id(sagemaker_session):
+    """Resolve the AWS account ID from the current session."""
+    return sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="module")
+def region(sagemaker_session):
+    """Resolve the AWS region from the current session."""
+    return sagemaker_session.boto_session.region_name
+
+
+@pytest.fixture(scope="module")
+def lambda_arn(account_id, region):
+    """Return the Lambda ARN for the OSS reward function."""
+    return f"arn:aws:lambda:{region}:{account_id}:function:{LAMBDA_OSS_REWARD_FUNCTION_NAME}"
+
+# TODO: Add test cleanup to remove evaluator versions older than 24h
+@pytest.fixture(scope="module")
+def evaluator(sagemaker_session, lambda_arn):
+    """Ensure the evaluator exists in the AI Registry and return its ARN."""
+    try:
+        evaluator = Evaluator.get(EVALUATOR_NAME, sagemaker_session=sagemaker_session)
+    except Exception as e:
+        logger.info(
+            f"Evaluator '{EVALUATOR_NAME}' not found ({e}). Creating a new one from Lambda: {lambda_arn}"
+        )
+        evaluator = Evaluator.create(
+            name=EVALUATOR_NAME,
+            type=REWARD_FUNCTION,
+            source=lambda_arn,
+            wait=True,
+            sagemaker_session=sagemaker_session,
+        )
+    return evaluator
+
+
+@pytest.fixture(scope="module")
+def lambda_arn(region, account_id):
+    """Construct the Lambda function ARN from account and region."""
+    return f"arn:aws:lambda:{region}:{account_id}:function:{LAMBDA_OSS_REWARD_FUNCTION_NAME}"
+
+@pytest.mark.gpu_intensive
 def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     """Test complete RLVR training workflow with LORA."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -32,13 +87,15 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
         model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
-        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
-        accept_eula=True
+        accept_eula=True,
+        base_job_name=f"rlvr-lora-integ-{unique_id}",
     )
     
     # Create training job
     training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
     
     # Manual wait loop to avoid resource_config issue
     max_wait_time = 3600  # 1 hour timeout
@@ -60,9 +117,10 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
+@pytest.mark.gpu_intensive
 def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     """Test RLVR trainer with custom reward function."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     
     rlvr_trainer = RLVRTrainer(
         model="meta-textgeneration-llama-3-2-1b-instruct",
@@ -70,13 +128,15 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
         model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-rlvr-finetuned-models-exp",
         mlflow_run_name="test-rlvr-finetuned-models-run",
-        training_dataset="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/DataSet/rlvr-rlaif-oss-test-data/0.0.1",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
         s3_output_path="s3://mc-flows-sdk-testing/output/",
         custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
-        accept_eula=True
+        accept_eula=True,
+        base_job_name=f"rlvr-rf-integ-{unique_id}",
     )
     
     training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
     
     # Manual wait loop
     max_wait_time = 3600
@@ -98,33 +158,43 @@ def test_rlvr_trainer_with_custom_reward_function(sagemaker_session):
     assert training_job.output_model_package_arn is not None
 
 
-# @pytest.mark.skipif(os.environ.get('AWS_DEFAULT_REGION') != 'us-east-1', reason="Nova models only available in us-east-1")
-@pytest.mark.skip(reason="Skipping GPU resource intensive test")
-def test_rlvr_trainer_nova_workflow(sagemaker_session):
+@pytest.mark.gpu_intensive
+@pytest.mark.us_east_1
+def test_rlvr_trainer_nova_workflow(sagemaker_session_us_east_1):
     """Test RLVR training workflow with Nova model."""
-    import os
-    os.environ['SAGEMAKER_REGION'] = 'us-east-1'
+    # sagemaker_session_us_east_1 fixture is defined in conftest.py (us-east-1 region)
 
-    # For fine-tuning 
+    overrides={
+        "training_config": {
+            "lambda_concurrency_limit": 64
+        }
+    }
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
     rlvr_trainer = RLVRTrainer(
         model="nova-textgeneration-lite-v2",
         model_package_group="sdk-test-finetuned-models",
         mlflow_experiment_name="test-nova-rlvr-finetuned-models-exp",
         mlflow_run_name="test-nova-rlvr-finetuned-models-run",
-        training_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/rlvr-nova/grpo-64-sample.jsonl",
-        validation_dataset="s3://mc-flows-sdk-testing-us-east-1/input_data/rlvr-nova/grpo-64-sample.jsonl",
-        s3_output_path="s3://mc-flows-sdk-testing-us-east-1/output/",
-        custom_reward_function="arn:aws:sagemaker:us-east-1:729646638167:hub-content/sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1",
-        accept_eula=True
+        training_dataset="s3://sagemaker-us-east-1-784379639078/input_data/rlvr-nova/grpo-64-sample.jsonl",
+        validation_dataset="s3://sagemaker-us-east-1-784379639078/input_data/rlvr-nova/grpo-64-sample.jsonl",
+        s3_output_path="s3://sagemaker-us-east-1-784379639078/output/",
+        custom_reward_function="arn:aws:sagemaker:us-east-1:784379639078:hub-content/sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1",
+        # Can uncomment below reward function to test lambda arn flow as well.
+        # custom_reward_function="arn:aws:lambda:us-east-1:784379639078:function:rlvr-nova-reward-function",
+        accept_eula=True,
+        sagemaker_session=sagemaker_session_us_east_1,
+        base_job_name=f"rlvr-nova-integ-{unique_id}",
+        overrides=overrides,
     )
-    rlvr_trainer.hyperparameters.data_s3_path = 's3://example-bucket'
-
-    rlvr_trainer.hyperparameters.reward_lambda_arn = 'arn:aws:lambda:us-east-1:729646638167:function:rlvr-nova-reward-function'
+    # Workaround: Hub spec has save_steps default=null but recipe template requires an integer
+    rlvr_trainer.hyperparameters.save_steps = 10
+    rlvr_trainer.hyperparameters.global_batch_size = 32
 
     training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
     
     # Manual wait loop
-    max_wait_time = 3600
+    max_wait_time = 10800  # 3 hour timeout (Nova training takes >1 hour)
     poll_interval = 30
     start_time = time.time()
     
@@ -141,3 +211,145 @@ def test_rlvr_trainer_nova_workflow(sagemaker_session):
     assert training_job.training_job_status == "Completed"
     assert hasattr(training_job, 'output_model_package_arn')
     assert training_job.output_model_package_arn is not None
+
+
+@pytest.mark.gpu_intensive
+def test_rlvr_trainer_with_lambda_arn_auto_creates_evaluator(sagemaker_session, lambda_arn):
+    """Test RLVR trainer with a Lambda ARN that auto-creates an Evaluator in AI Registry."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    rlvr_trainer = RLVRTrainer(
+        model="meta-textgeneration-llama-3-2-1b-instruct",
+        training_type=TrainingType.LORA,
+        model_package_group="sdk-test-finetuned-models",
+        mlflow_experiment_name="test-rlvr-lambda-evaluator-exp",
+        mlflow_run_name="test-rlvr-lambda-evaluator-run",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        custom_reward_function=lambda_arn,
+        accept_eula=True,
+        base_job_name=f"rlvr-rf-integ-{unique_id}",
+    )
+
+    training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
+
+    # Manual wait loop
+    max_wait_time = 3600
+    poll_interval = 30
+    start_time = time.time()
+
+    while time.time() - start_time < max_wait_time:
+        training_job.refresh()
+        status = training_job.training_job_status
+
+        if status in ["Completed", "Failed", "Stopped"]:
+            break
+
+        time.sleep(poll_interval)
+
+    # Verify job completed successfully
+    assert training_job.training_job_status == "Completed"
+    assert hasattr(training_job, 'output_model_package_arn')
+    assert training_job.output_model_package_arn is not None
+
+
+@pytest.mark.gpu_intensive
+def test_rlvr_trainer_with_evaluator_object(sagemaker_session, evaluator):
+    """Test RLVR trainer with a pre-created Evaluator object."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    rlvr_trainer = RLVRTrainer(
+        model="meta-textgeneration-llama-3-2-1b-instruct",
+        training_type=TrainingType.LORA,
+        model_package_group="sdk-test-finetuned-models",
+        mlflow_experiment_name="test-rlvr-evaluator-obj-exp",
+        mlflow_run_name="test-rlvr-evaluator-obj-run",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        custom_reward_function=evaluator,
+        accept_eula=True,
+        base_job_name=f"rlvr-rf-integ-{unique_id}",
+    )
+
+    training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
+
+    # Manual wait loop
+    max_wait_time = 3600
+    poll_interval = 30
+    start_time = time.time()
+
+    while time.time() - start_time < max_wait_time:
+        training_job.refresh()
+        status = training_job.training_job_status
+        if status in ["Completed", "Failed", "Stopped"]:
+            break
+        time.sleep(poll_interval)
+    # Verify job completed successfully
+    assert training_job.training_job_status == "Completed"
+    assert hasattr(training_job, 'output_model_package_arn')
+    assert training_job.output_model_package_arn is not None
+
+
+@pytest.mark.gpu_intensive
+def test_rlvr_trainer_nemotron_with_kl_and_recipe(sagemaker_session):
+    """Test RLVR training with Nemotron model, KL regularization, recipe overrides, and hyperparameter tuning."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    recipe_content = {
+        "training_config": {
+            "data": {
+                "max_prompt_length": 3070,
+            },
+        }
+    }
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        yaml.dump(recipe_content, f)
+        recipe_path = f.name
+
+    rlvr_trainer = RLVRTrainer(
+        model="huggingface-reasoning-nvidia-nemotron-3-nano-30b-a3b-bf16",
+        model_package_group="sdk-test-finetuned-models",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        sagemaker_session=sagemaker_session,
+        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+        accept_eula=True,
+        base_job_name=f"rlvr-nemotron-kl-integ-{unique_id}",
+        overrides={
+            "training_config": {
+                "learning_rate": 2e-5,
+                "max_epochs": 10,
+                "train_val_split_ratio": 0.8,
+                "temperature": 1.1,
+            }
+        },
+        recipe=recipe_path,
+    )
+
+    rlvr_trainer.hyperparameters.use_kl_loss = True
+    rlvr_trainer.hyperparameters.kl_loss_coef = 0.05
+    rlvr_trainer.hyperparameters.max_epochs = 1
+    rlvr_trainer.hyperparameters.clip_ratio = 0.2
+
+    training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
+
+    max_wait_time = 7200  # 2 hour timeout for larger model
+    poll_interval = 30
+    start_time = time.time()
+
+    while time.time() - start_time < max_wait_time:
+        training_job.refresh()
+        status = training_job.training_job_status
+
+        if status in ["Completed", "Failed", "Stopped"]:
+            break
+
+        time.sleep(poll_interval)
+
+    assert training_job.training_job_status == "Completed"
+    assert hasattr(training_job, 'output_model_package_arn')
+    assert training_job.output_model_package_arn is not None
+    

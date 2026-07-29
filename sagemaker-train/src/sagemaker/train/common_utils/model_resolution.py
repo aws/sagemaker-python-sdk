@@ -6,21 +6,51 @@ This module provides common functionality for resolving model metadata from:
 - ModelPackage objects or ARNs (fine-tuned models)
 """
 
-import os
 import json
+import logging
 import boto3
 from typing import Union, Optional, Dict, Any
 from dataclasses import dataclass
 from enum import Enum
 import re
 from sagemaker.train.base_trainer import BaseTrainer
+from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.core.utils.utils import Unassigned
+
+_logger = logging.getLogger(__name__)
 
 
 class _ModelType(Enum):
     """Internal enum for model type classification."""
     JUMPSTART = "jumpstart"
     FINE_TUNED = "fine_tuned"
+    S3_CHECKPOINT = "s3_checkpoint"
+
+
+class _CheckpointPlatform(Enum):
+    """Platform where a checkpoint was trained."""
+    SMTJ = "smtj"
+    HYPERPOD = "hyperpod"
+
+
+def _detect_checkpoint_platform(s3_path: str) -> Optional['_CheckpointPlatform']:
+    """Detect the training platform from an S3 checkpoint path.
+
+    Platform identifiers appear in the escrow bucket name:
+    - SMTJ: s3://customer-escrow-{account}-smtj-{id}/...
+    - HyperPod: s3://customer-escrow-{account}-hp-{id}/...
+
+    Args:
+        s3_path: S3 URI to the model checkpoint.
+
+    Returns:
+        _CheckpointPlatform.SMTJ, _CheckpointPlatform.HYPERPOD, or None if cannot determine.
+    """
+    if "-smtj-" in s3_path:
+        return _CheckpointPlatform.SMTJ
+    elif "-hp-" in s3_path:
+        return _CheckpointPlatform.HYPERPOD
+    return None
 
 
 @dataclass
@@ -32,9 +62,10 @@ class _ModelInfo:
         base_model_name: Human-readable model name
         base_model_arn: ARN of the base model
         source_model_package_arn: ARN of source model package (None for JumpStart models)
-        model_type: Type of model (JUMPSTART or FINE_TUNED)
+        model_type: Type of model (JUMPSTART, FINE_TUNED, or S3_CHECKPOINT)
         hub_content_name: Name in the hub (for JumpStart models)
         additional_metadata: Any additional metadata extracted during resolution
+        s3_model_path: Direct S3 URI to model checkpoint (for S3_CHECKPOINT type)
     """
     base_model_name: str
     base_model_arn: str
@@ -42,6 +73,7 @@ class _ModelInfo:
     model_type: _ModelType
     hub_content_name: Optional[str]
     additional_metadata: Dict[str, Any]
+    s3_model_path: Optional[str] = None
 
 
 class _ModelResolver:
@@ -52,18 +84,15 @@ class _ModelResolver:
     and fine-tuned ModelPackage objects/ARNs.
     """
     
-    DEFAULT_HUB_NAME = "SageMakerPublicHub"
-    
     def __init__(self, sagemaker_session=None):
         """
         Initialize the resolver.
-        
+
         Args:
             sagemaker_session: SageMaker session to use for API calls.
-                             If None, will be created with endpoint if configured.
+                             If None, will be created using default configuration.
         """
         self.sagemaker_session = sagemaker_session
-        self._endpoint = os.environ.get('SAGEMAKER_ENDPOINT')
     
     def resolve_model_info(
         self, 
@@ -85,13 +114,93 @@ class _ModelResolver:
         """
         # Check if it's a string first
         if isinstance(base_model, str):
+            # Check if it's an S3 checkpoint path
+            if base_model.startswith("s3://"):
+                return self._resolve_s3_checkpoint(base_model)
             # Check if it's a model package ARN or JumpStart model ID
-            if base_model.startswith("arn:aws:sagemaker:") and ":model-package/" in base_model:
+            elif base_model.startswith("arn:aws:sagemaker:") and ":model-package/" in base_model:
                 return self._resolve_model_package_arn(base_model)
             else:
-                return self._resolve_jumpstart_model(base_model, hub_name or self.DEFAULT_HUB_NAME)
+                return self._resolve_jumpstart_model(base_model, hub_name or get_sagemaker_hub_name())
+        # Handle AgentRFTJob type
+        elif hasattr(base_model, 'output_model_package_arn') and hasattr(base_model, 'job_name'):
+            arn = base_model.output_model_package_arn
+            if arn and not isinstance(arn, Unassigned):
+                return self._resolve_model_package_arn(arn)
+            else:
+                raise ValueError("AgentRFTJob must have completed training to be used for evaluation")
         # Handle BaseTrainer type
         elif isinstance(base_model, BaseTrainer):
+            # If the trainer already has resolved model info, use it directly
+            # to avoid redundant DescribeModelPackage calls.
+            trainer_model_arn = getattr(base_model, '_model_arn', None)
+            trainer_model_name = getattr(base_model, '_model_name', None)
+            if trainer_model_arn and trainer_model_name:
+                # Check for source model package ARN from completed training
+                source_mp_arn = None
+                job = getattr(base_model, '_latest_job', None)
+                if job:
+                    source_mp_arn = getattr(job, 'output_model_package_arn', None)
+                if not source_mp_arn:
+                    training_job = getattr(base_model, '_latest_training_job', None)
+                    if training_job and hasattr(training_job, 'output_model_package_arn'):
+                        arn = training_job.output_model_package_arn
+                        if arn and not isinstance(arn, Unassigned):
+                            source_mp_arn = arn
+                # If there's a trainer checkpoint, prefer S3_CHECKPOINT type
+                checkpoint_uri = None
+                training_job = getattr(base_model, '_latest_training_job', None)
+                if training_job:
+                    artifacts = getattr(training_job, 'model_artifacts', None)
+                    if artifacts and not isinstance(artifacts, Unassigned):
+                        s3_path = getattr(artifacts, 's3_model_artifacts', None)
+                        if s3_path and isinstance(s3_path, str):
+                            checkpoint_uri = s3_path
+                if checkpoint_uri and not source_mp_arn:
+                    return _ModelInfo(
+                        base_model_name=trainer_model_name,
+                        base_model_arn=trainer_model_arn,
+                        source_model_package_arn=None,
+                        model_type=_ModelType.S3_CHECKPOINT,
+                        hub_content_name=trainer_model_name,
+                        additional_metadata={},
+                        s3_model_path=checkpoint_uri,
+                    )
+                return _ModelInfo(
+                    base_model_name=trainer_model_name,
+                    base_model_arn=trainer_model_arn,
+                    source_model_package_arn=source_mp_arn,
+                    model_type=_ModelType.FINE_TUNED if source_mp_arn else _ModelType.JUMPSTART,
+                    hub_content_name=trainer_model_name,
+                    additional_metadata={},
+                )
+            # Check for trainer checkpoint path from _latest_training_job.model_artifacts
+            checkpoint_uri = None
+            training_job = getattr(base_model, '_latest_training_job', None)
+            if training_job:
+                artifacts = getattr(training_job, 'model_artifacts', None)
+                if artifacts and not isinstance(artifacts, Unassigned):
+                    s3_path = getattr(artifacts, 's3_model_artifacts', None)
+                    if s3_path and isinstance(s3_path, str):
+                        checkpoint_uri = s3_path
+            if checkpoint_uri:
+                model_name = getattr(base_model, '_model_name', None) or "hyperpod-checkpoint"
+                return _ModelInfo(
+                    base_model_name=model_name,
+                    base_model_arn="",
+                    source_model_package_arn=None,
+                    model_type=_ModelType.S3_CHECKPOINT,
+                    hub_content_name=model_name,
+                    additional_metadata={},
+                    s3_model_path=checkpoint_uri,
+                )
+            # Check for AgentRFT Job (MultiTurnRLTrainer uses _latest_job, not _latest_training_job)
+            if hasattr(base_model, '_latest_job') and base_model._latest_job is not None:
+                job = base_model._latest_job
+                arn = getattr(job, 'output_model_package_arn', None)
+                if arn and not isinstance(arn, Unassigned):
+                    return self._resolve_model_package_arn(arn)
+            # Fall back to standard training job path
             if hasattr(base_model, '_latest_training_job') and hasattr(base_model._latest_training_job,
                                                               'output_model_package_arn'):
                 arn = base_model._latest_training_job.output_model_package_arn
@@ -108,10 +217,38 @@ class _ModelResolver:
                 return self._resolve_model_package_object(base_model)
             else:
                 raise ValueError(
-                    f"base_model must be a string (JumpStart model ID or ModelPackage ARN) "
+                    f"base_model must be a string (JumpStart model ID, ModelPackage ARN, or S3 URI) "
                     f"or ModelPackage object, got {type(base_model)}"
                 )
     
+    def _resolve_s3_checkpoint(self, s3_uri: str) -> _ModelInfo:
+        """Resolve model information from a direct S3 checkpoint path.
+        
+        Used for HyperPod training outputs where no Model Package is created,
+        and the checkpoint resides directly in S3.
+        
+        Args:
+            s3_uri: S3 URI to the model checkpoint (e.g., s3://bucket/path/to/checkpoint)
+            
+        Returns:
+            _ModelInfo: Model info with S3_CHECKPOINT type and the S3 path stored.
+        """
+        # Extract a human-readable name from the S3 path
+        # e.g., s3://bucket/my-job-name/outputs/checkpoints/step_10 -> "my-job-name"
+        path_parts = s3_uri.replace("s3://", "").split("/")
+        # Use the first path component after the bucket as the name
+        base_model_name = path_parts[1] if len(path_parts) > 1 else "s3-checkpoint"
+        
+        return _ModelInfo(
+            base_model_name=base_model_name,
+            base_model_arn="",
+            source_model_package_arn=None,
+            model_type=_ModelType.S3_CHECKPOINT,
+            hub_content_name=None,
+            additional_metadata={},
+            s3_model_path=s3_uri,
+        )
+
     def _resolve_jumpstart_model(self, model_id: str, hub_name: str) -> _ModelInfo:
         """
         Resolve JumpStart model information from Hub API.
@@ -128,13 +265,28 @@ class _ModelResolver:
         session = self._get_session()
         
         try:
-            hub_content = HubContent.get(
-                hub_name=hub_name,
-                hub_content_type="Model",
-                hub_content_name=model_id,
-                session=session.boto_session,
-                region=session.boto_session.region_name
-            )
+            try:
+                hub_content = HubContent.get(
+                    hub_name=hub_name,
+                    hub_content_type="Model",
+                    hub_content_name=model_id,
+                    session=session.boto_session,
+                    region=session.boto_session.region_name
+                )
+            except Exception:
+                # The base model may not exist in a custom/private hub (e.g. a
+                # recipe hub pinned via SAGEMAKER_HUB_NAME). Base models are
+                # published to the public hub, so fall back to it before giving
+                # up, mirroring the resolution behavior in recipe_utils.
+                if hub_name == "SageMakerPublicHub":
+                    raise
+                hub_content = HubContent.get(
+                    hub_name="SageMakerPublicHub",
+                    hub_content_type="Model",
+                    hub_content_name=model_id,
+                    session=session.boto_session,
+                    region=session.boto_session.region_name
+                )
             
             # Parse additional metadata from hub content document
             additional_metadata = {}
@@ -208,12 +360,23 @@ class _ModelResolver:
                 model_pkg_arn = getattr(model_package, 'model_package_arn', None)
                 
                 if hub_content_name and hub_content_version and model_pkg_arn:
-                    # Extract region from model package ARN
+                    # Extract region and account from model package ARN
                     arn_parts = model_pkg_arn.split(':')
-                    if len(arn_parts) >= 4:
+                    if len(arn_parts) >= 5:
                         region = arn_parts[3]
-                        # Construct hub content ARN for SageMaker public hub
-                        base_model_arn = f"arn:aws:sagemaker:{region}:aws:hub-content/SageMakerPublicHub/Model/{hub_content_name}/{hub_content_version}"
+                        account = arn_parts[4]
+                        # Reconstruct the base-model hub-content ARN in the hub the
+                        # model was customized against. Defaults to SageMakerPublicHub
+                        # but honors SAGEMAKER_HUB_NAME so private/custom hubs (e.g. an
+                        # integ-test hub) resolve correctly. Public-hub content is
+                        # account-less ("aws"); private-hub content lives under the
+                        # model package's own account.
+                        #
+                        hub_name = self._resolve_base_model_hub(
+                            hub_content_name, hub_content_version, region
+                        )
+                        hub_account = "aws" if hub_name == "SageMakerPublicHub" else account
+                        base_model_arn = f"arn:aws:sagemaker:{region}:{hub_account}:hub-content/{hub_name}/Model/{hub_content_name}/{hub_content_version}"
         
         # If we couldn't extract or construct base model ARN, this is not a supported model package
         if not base_model_arn:
@@ -307,27 +470,64 @@ class _ModelResolver:
             )
         return True
     
+    def _resolve_base_model_hub(
+        self, hub_content_name: str, hub_content_version: str, region: str
+    ) -> str:
+        """Pick the hub that backs the base model's hub content.
+
+        Returns the hub from ``SAGEMAKER_HUB_NAME`` (defaults to
+        ``SageMakerPublicHub``). When a non-public hub is configured but does
+        not contain the base model, returns ``SageMakerPublicHub`` instead,
+        since base models are always published there.
+
+        Args:
+            hub_content_name: Base model hub content name.
+            hub_content_version: Base model hub content version.
+            region: AWS region of the model package.
+
+        Returns:
+            The hub name whose content should back the base model ARN.
+        """
+        hub_name = get_sagemaker_hub_name()
+        if hub_name == "SageMakerPublicHub":
+            return hub_name
+
+        from sagemaker.core.resources import HubContent
+
+        try:
+            session = self._get_session()
+            HubContent.get(
+                hub_name=hub_name,
+                hub_content_type="Model",
+                hub_content_name=hub_content_name,
+                hub_content_version=hub_content_version,
+                session=session.boto_session,
+                region=region,
+            )
+            return hub_name
+        except Exception as e:
+            _logger.info(
+                "Base model '%s' (v%s) not found in hub '%s' (%s); "
+                "falling back to SageMakerPublicHub.",
+                hub_content_name,
+                hub_content_version,
+                hub_name,
+                e,
+            )
+            return "SageMakerPublicHub"
+
     def _get_session(self):
         """
-        Get or create SageMaker session with endpoint support.
-        
+        Get or create SageMaker session.
+
         Returns:
             SageMaker session
         """
         if self.sagemaker_session:
             return self.sagemaker_session
-        
+
         from sagemaker.core.helper.session_helper import Session
-        
-        # Check for endpoint in environment variable
-        if self._endpoint:
-            sm_client = boto3.client(
-                'sagemaker',
-                endpoint_url=self._endpoint
-            )
-            return Session(sagemaker_client=sm_client)
-        
-        # Default session
+
         return Session()
 
 

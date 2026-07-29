@@ -28,6 +28,7 @@ from sagemaker.core.fw_utils import (
     GRAVITON_ALLOWED_FRAMEWORKS,
 )
 from sagemaker.core.common_utils import _botocore_resolver, get_instance_type_family
+from sagemaker.core.spark import defaults
 
 logger = logging.getLogger(__name__)
 
