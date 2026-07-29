@@ -594,6 +594,11 @@ class ModelTrainer(BaseModel):
 
             final_input_data_config = list(existing_channels.values()) + new_channels
 
+        # Assign SDK-managed channels to instance groups when the user uses them (see helper).
+        managed_channel_instance_group_names = self._resolve_managed_channel_instance_groups(
+            final_input_data_config
+        )
+
         if self._is_nova_recipe or self._is_llmft_recipe:
             for input_data in final_input_data_config:
                 if input_data.channel_name == SM_RECIPE:
@@ -606,6 +611,7 @@ class ModelTrainer(BaseModel):
                 channel_name=SM_RECIPE,
                 data_source=recipe_file_path,
                 key_prefix=input_data_key_prefix,
+                instance_group_names=managed_channel_instance_group_names,
             )
             final_input_data_config.append(recipe_channel)
             if self._is_nova_recipe or self._is_llmft_recipe:
@@ -664,6 +670,7 @@ class ModelTrainer(BaseModel):
                     data_source=self.source_code.source_dir,
                     key_prefix=input_data_key_prefix,
                     ignore_patterns=self.source_code.ignore_patterns,
+                    instance_group_names=managed_channel_instance_group_names,
                 )
                 final_input_data_config.append(source_code_channel)
 
@@ -686,6 +693,7 @@ class ModelTrainer(BaseModel):
                 data_source=self._temp_code_dir.name,
                 key_prefix=input_data_key_prefix,
                 ignore_patterns=self.source_code.ignore_patterns,
+                instance_group_names=managed_channel_instance_group_names,
             )
             final_input_data_config.append(sm_drivers_channel)
 
@@ -891,12 +899,52 @@ class ModelTrainer(BaseModel):
 
         return default_bucket, None
 
+    def _resolve_managed_channel_instance_groups(
+        self, input_data_config: List[Union[Channel, InputData]]
+    ) -> Optional[List[str]]:
+        """Resolve the instance groups to assign to SDK-managed channels.
+
+        SageMaker requires that, on a heterogeneous cluster, either all channels are
+        assigned to instance groups or none are. The SDK injects channels (recipe, code,
+        sm_drivers) that users cannot configure, so when a user assigns instance groups to
+        any of their channels, the managed channels must be assigned too. We assign them to
+        the full set of instance groups defined on the compute config, since the code and
+        drivers must be present on every node regardless of instance group.
+
+        Args:
+            input_data_config (List[Union[Channel, InputData]]): The user-provided channels.
+
+        Returns:
+            Optional[List[str]]: The full list of instance group names to assign to
+            managed channels, or ``None`` if instance groups are not in use.
+        """
+        instance_groups = getattr(self.compute, "instance_groups", None) if self.compute else None
+        if not instance_groups:
+            return None
+
+        def _channel_has_instance_groups(channel: Union[Channel, InputData]) -> bool:
+            # Channel nests its S3DataSource under data_source; InputData may hold it directly.
+            s3_data_source = None
+            if isinstance(channel, Channel):
+                if channel.data_source:
+                    s3_data_source = channel.data_source.s3_data_source
+            elif isinstance(channel, InputData):
+                if isinstance(channel.data_source, S3DataSource):
+                    s3_data_source = channel.data_source
+            return bool(getattr(s3_data_source, "instance_group_names", None))
+
+        if not any(_channel_has_instance_groups(channel) for channel in input_data_config):
+            return None
+
+        return [group.instance_group_name for group in instance_groups]
+
     def create_input_data_channel(
         self,
         channel_name: str,
         data_source: DataSourceType,
         key_prefix: Optional[str] = None,
         ignore_patterns: Optional[List[str]] = None,
+        instance_group_names: Optional[List[str]] = None,
     ) -> Channel:
         """Create an input data channel for the training job.
 
@@ -915,9 +963,21 @@ class ModelTrainer(BaseModel):
             ignore_patterns: (Optional[List[str]]) :
                 The ignore patterns to ignore specific files/folders when uploading to S3.
                 If not specified, default to: ['.env', '.git', '__pycache__', '.DS_Store', '.cache', '.ipynb_checkpoints'].
+            instance_group_names: (Optional[List[str]]) :
+                The names of the instance groups (for heterogeneous clusters) that this
+                channel's data should be assigned to. Only applied when the channel is
+                built from a URI/local-path data source (not a caller-supplied
+                ``S3DataSource``/``FileSystemDataSource``, which the caller controls).
         """
         from sagemaker.core.helper.pipeline_variable import PipelineVariable
-        
+
+        # Pass the field only when provided, so it stays unset (Unassigned) by default.
+        instance_group_kwargs = (
+            {"instance_group_names": instance_group_names}
+            if instance_group_names is not None
+            else {}
+        )
+
         channel = None
         if isinstance(data_source, PipelineVariable):
             channel = Channel(
@@ -927,6 +987,7 @@ class ModelTrainer(BaseModel):
                         s3_data_type="S3Prefix",
                         s3_uri=data_source,
                         s3_data_distribution_type="FullyReplicated",
+                        **instance_group_kwargs,
                     ),
                 ),
                 input_mode="File",
@@ -940,6 +1001,7 @@ class ModelTrainer(BaseModel):
                             s3_data_type="S3Prefix",
                             s3_uri=data_source,
                             s3_data_distribution_type="FullyReplicated",
+                            **instance_group_kwargs,
                         ),
                     ),
                     input_mode="File",
@@ -996,6 +1058,7 @@ class ModelTrainer(BaseModel):
                                 s3_data_type="S3Prefix",
                                 s3_uri=s3_uri,
                                 s3_data_distribution_type="FullyReplicated",
+                                **instance_group_kwargs,
                             ),
                         ),
                         input_mode="File",
