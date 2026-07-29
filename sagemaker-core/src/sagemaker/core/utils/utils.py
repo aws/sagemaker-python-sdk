@@ -318,6 +318,9 @@ class Unassigned:
 class SingletonMeta(type):
     """
     Singleton metaclass. Ensures that a single instance of a class using this metaclass is created.
+
+    A class may define a ``_singleton_key(*args, **kwargs)`` classmethod returning
+    a hashable key to cache instances per ``(class, key)`` instead of per class.
     """
 
     _instances = {}
@@ -327,10 +330,14 @@ class SingletonMeta(type):
         Overrides the call method to return an existing instance of the class if it exists,
         or create a new one if it doesn't.
         """
-        if cls not in cls._instances:
+        key = cls
+        key_fn = getattr(cls, "_singleton_key", None)
+        if key_fn is not None:
+            key = (cls, key_fn(*args, **kwargs))
+        if key not in cls._instances:
             instance = super().__call__(*args, **kwargs)
-            cls._instances[cls] = instance
-        return cls._instances[cls]
+            cls._instances[key] = instance
+        return cls._instances[key]
 
 
 class SageMakerClient(metaclass=SingletonMeta):
@@ -338,10 +345,22 @@ class SageMakerClient(metaclass=SingletonMeta):
     A singleton class for creating a SageMaker client.
     """
 
+    @staticmethod
+    def _singleton_key(session: Session = None, region_name: str = None, config: Config = None):
+        """Cache instances per (session, region)."""
+        session_key = id(session) if session is not None else None
+        return (session_key, region_name)
+
     @classmethod
     def reset(cls):
-        """Reset the singleton instance so the next call re-reads env vars."""
-        SingletonMeta._instances.pop(cls, None)
+        """Reset cached singleton instances for this class."""
+        keys = [
+            k
+            for k in SingletonMeta._instances
+            if k == cls or (isinstance(k, tuple) and k[0] is cls)
+        ]
+        for key in keys:
+            SingletonMeta._instances.pop(key, None)
 
     def __init__(
         self,
@@ -368,53 +387,12 @@ class SageMakerClient(metaclass=SingletonMeta):
         self.config = Config(user_agent_extra=get_user_agent_extra_suffix())
         self.session = session
         self.region_name = region_name
-        # Read region from environment variable, default to us-west-2
-        import os
-        env_region = os.environ.get('SAGEMAKER_REGION', region_name)
-        env_stage = os.environ.get('SAGEMAKER_STAGE', 'prod')  # default to gamma
-        logger.info(f"Runs on sagemaker {env_stage}, region:{env_region}")
-
-        endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
-        runtime_endpoint_url = os.environ.get('SAGEMAKER_RUNTIME_ENDPOINT')
-
-        # TODO: Remove post-launch. This loads a custom botocore service model
-        # (from the 'sample/' directory) that includes pre-GA Job APIs
-        # (CreateJob, DescribeJob, ListJobs, etc.) not yet in the public
-        # botocore release. Once these APIs ship in the official botocore
-        # service-2.json, this custom loader is unnecessary and the standard
-        # session.client("sagemaker", endpoint_url=...) path will work.
-        #
-        # NOTE: The custom data loader is registered on the caller-provided
-        # session's underlying botocore session so that the "sagemaker"
-        # control-plane client keeps the caller's credentials/profile. Using a
-        # fresh botocore.session.get_session() here would silently fall back to
-        # the default AWS profile and break cross-account calls (issue #6069).
-        import botocore.loaders
-        import pathlib
-
-        # Look for bundled service model inside the package first,
-        # fall back to source-tree layout (sample/ as sibling of src/)
-        _bundled = pathlib.Path(__file__).resolve().parent.parent / "data" / "sample"
-        _source_tree = pathlib.Path(__file__).resolve().parent.parent.parent.parent.parent / "sample"
-        sample_model_dir = str(_bundled if _bundled.exists() else _source_tree)
-        loader = botocore.loaders.Loader(
-            extra_search_paths=[sample_model_dir],
-            include_default_search_paths=True,
-        )
-        # boto3.Session exposes its underlying botocore session as `_session`.
-        session._session.register_component('data_loader', loader)
 
         self.sagemaker_client = session.client(
-            "sagemaker",
-            region_name=env_region,
-            endpoint_url=endpoint_url,
-            config=self.config,
+            "sagemaker", region_name, config=self.config
         )
-
         self.sagemaker_runtime_client = session.client(
-            "sagemaker-runtime", region_name,
-            endpoint_url=runtime_endpoint_url,
-            config=self.config,
+            "sagemaker-runtime", region_name, config=self.config
         )
         self.sagemaker_featurestore_runtime_client = session.client(
             "sagemaker-featurestore-runtime", region_name, config=self.config
