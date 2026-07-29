@@ -29,16 +29,17 @@ from sagemaker.core.training.configs import Compute
 
 logger = logging.getLogger(__name__)
 
-# Small, ungated, chat-templated model. Its readable S3 artifact stands in for
-# the base + draft channels. A GPU instance is required by the JumpStart
-# vLLM/LMI container (not by the model size); a single-GPU g4dn.xlarge (T4) is
-# ample for a 0.6B model.
+# Small, ungated, chat-templated model. A GPU instance is required by the
+# JumpStart vLLM/LMI container (not by the model size); a single-GPU g4dn.xlarge
+# (T4) is ample for a 0.6B model.
 MODEL_ID = "huggingface-reasoning-qwen3-06b"
 INSTANCE_TYPE = "ml.g4dn.xlarge"
-# Right-sized for a 0.6B on a single GPU; a too-large request overflows the host
-# and the IC never leaves Creating.
+# Right-sized for a 0.6B on a single GPU; an oversized request overflows the
+# host and the IC never leaves Creating.
 IC_MIN_MEMORY_MB = 4096
 IC_NUM_ACCELERATORS = 1
+# Upper bound for the Inference Component to reach a terminal state.
+_IC_TIMEOUT_S = 40 * 60
 
 
 def _additional_model_data_sources(s3_uri):
@@ -124,11 +125,15 @@ def test_deploy_sdkt_model_as_inference_component():
         )
         logger.info("Deploy returned; endpoint=%s ic=%s", endpoint_name, ic_name)
 
+        # deploy(wait=True) waits for the endpoint, but the Inference Component
+        # is created with wait=False and finishes shortly after — poll it to a
+        # terminal state before asserting.
+        ic = _wait_for_ic_terminal(ic_name)
+
         # The Inference Component — referencing a model with base + draft
         # AdditionalModelDataSources — must be InService. This is the assertion
         # that turns red if hosting rejects the multi-source shape at
         # create/deploy time.
-        ic = InferenceComponent.get(inference_component_name=ic_name)
         assert ic.inference_component_status == "InService", (
             f"Inference Component {ic_name} did not reach InService: "
             f"{ic.inference_component_status} / "
@@ -148,6 +153,13 @@ def test_deploy_sdkt_model_as_inference_component():
         logger.info("SD/KT model InService on IC with channels: %s", channels)
 
     finally:
+        # An IC still in Creating cannot be deleted (the API rejects it), which
+        # would strand the IC and its GPU endpoint. Wait for it to leave
+        # Creating first, then delete and confirm it is gone before the endpoint.
+        try:
+            _wait_for_ic_terminal(ic_name)
+        except Exception as exc:
+            logger.warning("Could not resolve IC %s before teardown: %s", ic_name, exc)
         _delete_quietly(
             lambda: InferenceComponent.get(inference_component_name=ic_name),
             f"InferenceComponent {ic_name}",
@@ -167,6 +179,24 @@ def test_deploy_sdkt_model_as_inference_component():
         )
         if source_model:
             _delete_quietly(lambda: source_model, f"Model {src_model_name}")
+
+
+def _wait_for_ic_terminal(ic_name, timeout_s=_IC_TIMEOUT_S):
+    """Poll an Inference Component until it leaves ``Creating``/``Updating``.
+
+    Returns the resource in its terminal state (``InService`` / ``Failed``);
+    on timeout, returns the last-observed resource so the caller's assertion
+    reports the stuck status rather than this helper masking it.
+    """
+    waited = 0
+    ic = InferenceComponent.get(inference_component_name=ic_name)
+    while getattr(ic, "inference_component_status", None) in ("Creating", "Updating"):
+        if waited >= timeout_s:
+            break
+        time.sleep(20)
+        waited += 20
+        ic = InferenceComponent.get(inference_component_name=ic_name)
+    return ic
 
 
 def _extract_s3_uri(container):
