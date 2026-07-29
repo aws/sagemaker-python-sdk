@@ -173,6 +173,8 @@ class MultiTurnRLTrainer(BaseTrainer):
             and 'job_name_prefix'. If not specified, no notifications are sent.
     """
 
+    _customization_technique = "MTRL"
+
     def __init__(
         self,
         model: Union[str, ModelPackage],
