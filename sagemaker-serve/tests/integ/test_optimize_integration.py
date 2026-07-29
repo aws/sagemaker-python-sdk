@@ -20,9 +20,10 @@ import logging
 import boto3
 
 from sagemaker.serve.model_builder import ModelBuilder
-from sagemaker.core.resources import EndpointConfig
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core import image_uris
+
+from cleanup_helpers import cleanup_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -42,30 +43,33 @@ DJL_LMI_VERSION = "0.31.0"
 def test_optimize_build_deploy_invoke_cleanup():
     """Integration test for Optimize workflow"""
     logger.info("Starting Optimize integration test...")
-    
-    optimized_model = None
-    core_endpoint = None
-    
+
+    # Names are generated up front so cleanup can run by name even if optimize()
+    # or deploy() raises or is killed before returning a resource handle.
+    unique_id = str(uuid.uuid4())[:8]
+    model_name = f"{MODEL_NAME_PREFIX}-{unique_id}"
+    endpoint_name = f"{ENDPOINT_NAME_PREFIX}-{unique_id}"
+
     try:
         # Build and deploy
         logger.info("Optimizing and deploying model...")
-        optimized_model, core_endpoint = build_and_deploy()
-        
+        core_endpoint = build_and_deploy(model_name, endpoint_name, unique_id)
+
         # Make prediction
         logger.info("Making prediction...")
         make_prediction(core_endpoint)
-        
+
         # Test passed successfully
         logger.info("Optimize integration test completed successfully")
-        
+
     except Exception as e:
         logger.error(f"Optimize integration test failed: {str(e)}")
         raise
     finally:
-        # Cleanup resources
-        if optimized_model and core_endpoint:
-            logger.info("Cleaning up resources...")
-            cleanup_resources(optimized_model, core_endpoint)
+        # Best-effort cleanup by name; runs even if deploy() failed/hung so a
+        # Failed or half-created endpoint is still torn down.
+        logger.info("Cleaning up resources...")
+        cleanup_by_name(endpoint_name=endpoint_name, model_name=model_name)
 
 
 def create_schema_builder():
@@ -78,19 +82,18 @@ def create_schema_builder():
     return SchemaBuilder(sample_input, sample_output)
 
 
-def build_and_deploy():
+def build_and_deploy(model_name, endpoint_name, unique_id):
     """Optimize and deploy JumpStart model - exact logic from optimize test."""
     schema_builder = create_schema_builder()
     boto_session = boto3.Session(region_name=AWS_REGION)
     sagemaker_session = Session(boto_session=boto_session)
-    unique_id = str(uuid.uuid4())[:8]
-    
+
     model_builder = ModelBuilder(
         model=MODEL_ID,
         schema_builder=schema_builder,
         sagemaker_session=sagemaker_session,
     )
-    
+
     # Optimize the model
     logger.info("Optimizing JumpStart model...")
     default_bucket = sagemaker_session.default_bucket()
@@ -100,9 +103,9 @@ def build_and_deploy():
         version=DJL_LMI_VERSION,
     )
     logger.info(f"Resolved DJL LMI image URI: {djl_lmi_image_uri}")
-    
+
     optimized_model = model_builder.optimize(
-        model_name=f"{MODEL_NAME_PREFIX}-{unique_id}",
+        model_name=model_name,
         instance_type="ml.g5.2xlarge",
         output_path=f"s3://{default_bucket}/optimize-output/jumpstart-{unique_id}/",
         quantization_config={"OverrideEnvironment": {"OPTION_QUANTIZE": "awq"}},
@@ -112,17 +115,17 @@ def build_and_deploy():
         region=AWS_REGION
     )
     logger.info(f"Model Successfully Optimized: {optimized_model.model_name}")
-    
+
     # Deploy the optimized model
     logger.info("Deploying optimized model to endpoint...")
     core_endpoint = model_builder.deploy(
-        endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}",
+        endpoint_name=endpoint_name,
         initial_instance_count=1,
         instance_type="ml.g5.2xlarge"
     )
     logger.info(f"Endpoint Successfully Created: {core_endpoint.endpoint_name}")
-    
-    return optimized_model, core_endpoint
+
+    return core_endpoint
 
 
 def make_prediction(core_endpoint):
@@ -140,14 +143,3 @@ def make_prediction(core_endpoint):
     response_body = result.body.read().decode('utf-8')
     prediction = json.loads(response_body)
     logger.info(f"Result of invoking optimized endpoint: {prediction}")
-
-
-def cleanup_resources(optimized_model, core_endpoint):
-    """Clean up optimized model and endpoint - preserving exact logic from manual test"""
-    core_endpoint_config = EndpointConfig.get(endpoint_config_name=core_endpoint.endpoint_name)
-   
-    optimized_model.delete()
-    core_endpoint.delete()
-    core_endpoint_config.delete()
-
-    logger.info("Optimized model and endpoint successfully deleted!")
