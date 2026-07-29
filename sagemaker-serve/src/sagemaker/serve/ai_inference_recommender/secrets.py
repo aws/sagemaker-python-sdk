@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Helper for creating AWS Secrets Manager secrets."""
+
 from __future__ import absolute_import
 
 import uuid
@@ -24,9 +25,8 @@ import boto3
 class Secret:
     """A handle to a Secrets Manager secret.
 
-    Supports context-manager use. On context exit, only a secret this object
-    created (via :meth:`from_string`) is deleted; a secret you merely wrapped
-    by ARN is left untouched.
+    Supports context-manager use. On context exit, only a secret this object created (via
+    :meth:`from_string`) is deleted; a secret you merely wrapped by ARN is left untouched.
     """
 
     arn: str

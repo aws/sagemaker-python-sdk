@@ -10,14 +10,14 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""
-Backward compatibility shim for sagemaker.serve.async_inference.async_inference_config
+"""Backward compatibility shim for sagemaker.serve.async_inference.async_inference_config.
 
-This module has been moved to sagemaker.core.inference_config.
-This file provides backward compatibility by re-exporting the class from its new location.
+This module has been moved to sagemaker.core.inference_config. This file provides backward
+compatibility by re-exporting the class from its new location.
 
 DEPRECATED: Import from sagemaker.core.inference_config instead.
 """
+
 from __future__ import absolute_import
 
 import warnings

@@ -49,15 +49,11 @@ def patch_resources():
 
 
 def _builder(s3_uri: str = "s3://my-models/llama/") -> SimpleNamespace:
-    return SimpleNamespace(
-        model_path=s3_uri, s3_upload_path=None, s3_model_data_url=None
-    )
+    return SimpleNamespace(model_path=s3_uri, s3_upload_path=None, s3_model_data_url=None)
 
 
 class TestStartBenchmark:
-    def test_creates_workload_config_and_benchmark_job(
-        self, patch_session, patch_resources
-    ):
+    def test_creates_workload_config_and_benchmark_job(self, patch_session, patch_resources):
         AIWorkloadConfig, AIBenchmarkJob, _ = patch_resources
 
         start_benchmark(
@@ -93,9 +89,7 @@ class TestStartBenchmark:
         target = AIBenchmarkJob.create.call_args.kwargs["benchmark_target"]
         assert target.endpoint.identifier == "ep-from-resource"
 
-    def test_existing_workload_config_string_passes_through(
-        self, patch_session, patch_resources
-    ):
+    def test_existing_workload_config_string_passes_through(self, patch_session, patch_resources):
         AIWorkloadConfig, AIBenchmarkJob, _ = patch_resources
         start_benchmark(endpoint="ep", workload="existing-config")
         AIWorkloadConfig.create.assert_not_called()
@@ -104,9 +98,7 @@ class TestStartBenchmark:
             == "existing-config"
         )
 
-    def test_dataset_workload_plumbs_dataset_config(
-        self, patch_session, patch_resources
-    ):
+    def test_dataset_workload_plumbs_dataset_config(self, patch_session, patch_resources):
         AIWorkloadConfig, _, _ = patch_resources
         wl = Workload.from_dataset(
             s3_uri="s3://my-bucket/datasets/traffic/",
@@ -120,13 +112,9 @@ class TestStartBenchmark:
         channels = ds_config.input_data_config
         assert len(channels) == 1
         assert channels[0].channel_name == "dataset"
-        assert channels[0].data_source.s3_data_source.s3_uri == (
-            "s3://my-bucket/datasets/traffic/"
-        )
+        assert channels[0].data_source.s3_data_source.s3_uri == ("s3://my-bucket/datasets/traffic/")
 
-    def test_synthetic_workload_omits_dataset_config(
-        self, patch_session, patch_resources
-    ):
+    def test_synthetic_workload_omits_dataset_config(self, patch_session, patch_resources):
         AIWorkloadConfig, _, _ = patch_resources
         start_benchmark(
             endpoint="ep",
@@ -135,9 +123,7 @@ class TestStartBenchmark:
         wc_kwargs = AIWorkloadConfig.create.call_args.kwargs
         assert wc_kwargs["dataset_config"] is None
 
-    def test_inline_workload_kwargs_construct_synthetic(
-        self, patch_session, patch_resources
-    ):
+    def test_inline_workload_kwargs_construct_synthetic(self, patch_session, patch_resources):
         AIWorkloadConfig, _, _ = patch_resources
         start_benchmark(
             endpoint="ep",
@@ -148,11 +134,9 @@ class TestStartBenchmark:
         wc_kwargs = AIWorkloadConfig.create.call_args.kwargs
         spec = wc_kwargs["ai_workload_configs"].workload_spec.inline
         assert "meta-llama/Llama-3.2-1B" in spec
-        assert "\"concurrency\": 4" in spec
+        assert '"concurrency": 4' in spec
 
-    def test_rejects_workload_and_inline_kwargs_together(
-        self, patch_session, patch_resources
-    ):
+    def test_rejects_workload_and_inline_kwargs_together(self, patch_session, patch_resources):
         with pytest.raises(ValueError, match="either workload= or inline"):
             start_benchmark(
                 endpoint="ep",
@@ -164,9 +148,7 @@ class TestStartBenchmark:
         with pytest.raises(ValueError, match="requires either"):
             start_benchmark(endpoint="ep")
 
-    def test_inference_components_routed_into_target(
-        self, patch_session, patch_resources
-    ):
+    def test_inference_components_routed_into_target(self, patch_session, patch_resources):
         _, AIBenchmarkJob, _ = patch_resources
         start_benchmark(
             endpoint="ep",
@@ -177,19 +159,14 @@ class TestStartBenchmark:
         ids = [c.identifier for c in target.endpoint.inference_components]
         assert ids == ["ic-llama", "ic-qwen"]
 
-    def test_explicit_role_overrides_execution_role(
-        self, patch_session, patch_resources
-    ):
+    def test_explicit_role_overrides_execution_role(self, patch_session, patch_resources):
         _, AIBenchmarkJob, _ = patch_resources
         start_benchmark(
             endpoint="ep",
             workload=Workload.synthetic(tokenizer="t"),
             role="arn:aws:iam::1:role/explicit",
         )
-        assert (
-            AIBenchmarkJob.create.call_args.kwargs["role_arn"]
-            == "arn:aws:iam::1:role/explicit"
-        )
+        assert AIBenchmarkJob.create.call_args.kwargs["role_arn"] == "arn:aws:iam::1:role/explicit"
 
     def test_explicit_output_path_used_verbatim(self, patch_session, patch_resources):
         _, AIBenchmarkJob, _ = patch_resources
@@ -215,9 +192,7 @@ class TestStartBenchmark:
 
 
 class TestRunRecommendationJob:
-    def test_creates_workload_config_and_recommendation_job(
-        self, patch_session, patch_resources
-    ):
+    def test_creates_workload_config_and_recommendation_job(self, patch_session, patch_resources):
         AIWorkloadConfig, _, AIRecommendationJob = patch_resources
 
         run_recommendation_job(
@@ -248,9 +223,7 @@ class TestRunRecommendationJob:
                 performance_target="throughput",
             )
 
-    def test_resolves_s3_model_data_url_for_jumpstart_builds(
-        self, patch_session, patch_resources
-    ):
+    def test_resolves_s3_model_data_url_for_jumpstart_builds(self, patch_session, patch_resources):
         _, _, AIRecommendationJob = patch_resources
         builder = SimpleNamespace(
             model_path="/local/jumpstart-cache",
@@ -265,9 +238,7 @@ class TestRunRecommendationJob:
         model_source = AIRecommendationJob.create.call_args.kwargs["model_source"]
         assert model_source.s3.s3_uri == "s3://jumpstart-cache-prod/model/"
 
-    def test_compute_spec_built_from_instance_types(
-        self, patch_session, patch_resources
-    ):
+    def test_compute_spec_built_from_instance_types(self, patch_session, patch_resources):
         _, _, AIRecommendationJob = patch_resources
         run_recommendation_job(
             builder=_builder(),
@@ -301,13 +272,9 @@ class TestRunRecommendationJob:
             cs.capacity_reservation_config.capacity_reservation_preference
             == "capacity-reservations-only"
         )
-        assert cs.capacity_reservation_config.ml_reservation_arns == [
-            "arn:aws:ec2:..:cr/cr-1"
-        ]
+        assert cs.capacity_reservation_config.ml_reservation_arns == ["arn:aws:ec2:..:cr/cr-1"]
 
-    def test_framework_routed_to_inference_specification(
-        self, patch_session, patch_resources
-    ):
+    def test_framework_routed_to_inference_specification(self, patch_session, patch_resources):
         _, _, AIRecommendationJob = patch_resources
         run_recommendation_job(
             builder=_builder(),
@@ -318,9 +285,7 @@ class TestRunRecommendationJob:
         spec = AIRecommendationJob.create.call_args.kwargs["inference_specification"]
         assert spec.framework == "VLLM"
 
-    def test_enum_inputs_normalized_to_service_strings(
-        self, patch_session, patch_resources
-    ):
+    def test_enum_inputs_normalized_to_service_strings(self, patch_session, patch_resources):
         from sagemaker.serve.ai_inference_recommender import (
             InferenceFramework,
             PerformanceTarget,
@@ -368,9 +333,7 @@ class TestRunRecommendationJob:
         )
         assert AIRecommendationJob.create.call_args.kwargs["optimize_model"] is False
 
-    def test_existing_workload_config_string_passes_through(
-        self, patch_session, patch_resources
-    ):
+    def test_existing_workload_config_string_passes_through(self, patch_session, patch_resources):
         AIWorkloadConfig, _, AIRecommendationJob = patch_resources
         run_recommendation_job(
             builder=_builder(), workload="existing-config", performance_target="throughput"
@@ -381,9 +344,7 @@ class TestRunRecommendationJob:
             == "existing-config"
         )
 
-    def test_builder_role_used_when_role_arn_omitted(
-        self, patch_session, patch_resources
-    ):
+    def test_builder_role_used_when_role_arn_omitted(self, patch_session, patch_resources):
         _, _, AIRecommendationJob = patch_resources
         builder = _builder()
         builder.role_arn = "arn:aws:iam::1:role/builder"
@@ -393,13 +354,10 @@ class TestRunRecommendationJob:
             performance_target="throughput",
         )
         assert (
-            AIRecommendationJob.create.call_args.kwargs["role_arn"]
-            == "arn:aws:iam::1:role/builder"
+            AIRecommendationJob.create.call_args.kwargs["role_arn"] == "arn:aws:iam::1:role/builder"
         )
 
-    def test_explicit_role_arn_overrides_builder_role(
-        self, patch_session, patch_resources
-    ):
+    def test_explicit_role_arn_overrides_builder_role(self, patch_session, patch_resources):
         _, _, AIRecommendationJob = patch_resources
         builder = _builder()
         builder.role_arn = "arn:aws:iam::1:role/builder"
@@ -476,9 +434,7 @@ class TestServiceErrorMapping:
         _, _, AIRecommendationJob = patch_resources
         AIRecommendationJob.create.side_effect = _client_error("AccessDeniedException")
         with pytest.raises(FeatureGatedError):
-            run_recommendation_job(
-                _builder(), Workload.synthetic(tokenizer="t"), "throughput"
-            )
+            run_recommendation_job(_builder(), Workload.synthetic(tokenizer="t"), "throughput")
 
     def test_unrelated_error_passes_through(self, patch_session, patch_resources):
         _, AIBenchmarkJob, _ = patch_resources

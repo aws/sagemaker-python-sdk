@@ -9,11 +9,9 @@ Tests the is_checkpoint logic for:
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-import uuid
+from unittest.mock import Mock, patch
 
 from sagemaker.serve.model_builder import ModelBuilder
-from sagemaker.serve.utils.types import ModelServer
 
 
 class TestResolveModelArtifactUriCheckpoint(unittest.TestCase):
@@ -236,7 +234,9 @@ class TestBuildNonLoraCheckpoint(unittest.TestCase):
         model_package = Mock()
         model_package.inference_specification = Mock()
         model_package.inference_specification.containers = [container]
-        model_package.model_package_arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/test"
+        model_package.model_package_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:model-package/test"
+        )
         return model_package
 
     @patch("sagemaker.core.resources.Model.create")
@@ -246,8 +246,13 @@ class TestBuildNonLoraCheckpoint(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization")
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
     def test_build_sets_hf_merged_path_when_is_checkpoint_false(
-        self, mock_get_serve, mock_is_mc, mock_fetch_peft, mock_fetch_mp,
-        mock_is_nova, mock_model_create
+        self,
+        mock_get_serve,
+        mock_is_mc,
+        mock_fetch_peft,
+        mock_fetch_mp,
+        mock_is_nova,
+        mock_model_create,
     ):
         """build() should set s3_upload_path to hf_merged when is_checkpoint is False."""
         from sagemaker.core.resources import ModelPackage
@@ -285,8 +290,13 @@ class TestBuildNonLoraCheckpoint(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization")
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
     def test_build_sets_raw_s3_path_when_is_checkpoint_true(
-        self, mock_get_serve, mock_is_mc, mock_fetch_peft, mock_fetch_mp,
-        mock_is_nova, mock_model_create
+        self,
+        mock_get_serve,
+        mock_is_mc,
+        mock_fetch_peft,
+        mock_fetch_mp,
+        mock_is_nova,
+        mock_model_create,
     ):
         """build() should set s3_upload_path to raw s3_uri when is_checkpoint is True."""
         from sagemaker.core.resources import ModelPackage
@@ -355,10 +365,14 @@ class TestInferenceComponentUsesModelName(unittest.TestCase):
         mock_fetch_peft.return_value = None
         mock_is_nova.return_value = False
         mock_endpoint_exists.return_value = False
-        mock_fetch_mp_arn.return_value = "arn:aws:sagemaker:us-west-2:123456789012:model-package/test"
+        mock_fetch_mp_arn.return_value = (
+            "arn:aws:sagemaker:us-west-2:123456789012:model-package/test"
+        )
 
         model_package = Mock()
-        model_package.model_package_arn = "arn:aws:sagemaker:us-west-2:123456789012:model-package/test"
+        model_package.model_package_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:model-package/test"
+        )
         model_package.inference_specification = Mock()
         container = Mock()
         container.is_checkpoint = False

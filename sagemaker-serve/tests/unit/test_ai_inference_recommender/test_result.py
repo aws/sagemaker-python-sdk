@@ -72,9 +72,7 @@ class TestBenchmarkMetricsFromProfileJson:
         assert metrics.get("does_not_exist") is None
 
     def test_metric_raw_preserves_full_dict(self):
-        metric = BenchmarkMetric.from_dict(
-            "x", {"avg": 1, "unit": "s", "extra": "kept"}
-        )
+        metric = BenchmarkMetric.from_dict("x", {"avg": 1, "unit": "s", "extra": "kept"})
         assert metric.raw == {"avg": 1, "unit": "s", "extra": "kept"}
 
 
@@ -190,9 +188,7 @@ class TestBenchmarkResultMetadataFields:
         assert "0.6.0" in text
 
     def test_str_renders_dashes_when_metadata_missing(self):
-        text = str(
-            self._result(endpoint=None, workload_config=None, tool_version=None)
-        )
+        text = str(self._result(endpoint=None, workload_config=None, tool_version=None))
         assert "endpoint:           -" in text
         assert "workload_config:    -" in text
         assert "tool_version:       -" in text
@@ -236,10 +232,12 @@ class TestBenchmarkResultMetadataFields:
         assert result.tool_version == "0.6.1"
 
     def test_tool_version_pulled_from_profile_metadata(self):
-        archive_bytes = self._archive_with({
-            **SAMPLE_PROFILE,
-            "metadata": {"version": "0.6.2"},
-        })
+        archive_bytes = self._archive_with(
+            {
+                **SAMPLE_PROFILE,
+                "metadata": {"version": "0.6.2"},
+            }
+        )
         result = self._parse_archive(archive_bytes)
         assert result.tool_version == "0.6.2"
 
@@ -281,9 +279,7 @@ class TestBenchmarkResultMetadataFields:
                 def client(self, name):
                     return s3_client
 
-            return BenchmarkResult.from_s3(
-                "s3://b/p/", session=_SessionStub()
-            )
+            return BenchmarkResult.from_s3("s3://b/p/", session=_SessionStub())
 
 
 class TestFindObjectPagination:

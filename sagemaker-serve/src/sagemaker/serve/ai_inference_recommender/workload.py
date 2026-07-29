@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Workload spec builder."""
+
 from __future__ import absolute_import
 
 import json
@@ -60,10 +61,10 @@ class Workload(BaseModel):
     ) -> Dict[str, Union[str, Secret]]:
         """Reject plaintext secret values so they are never persisted server-side.
 
-        A workload's secrets are serialized into the ``AIWorkloadConfig`` the
-        service stores; a raw string that is not a Secrets Manager ARN would be
-        saved in cleartext. Require a ``Secret`` or an ARN string, and point
-        callers at :meth:`Secret.from_string` to store a plaintext value safely.
+        A workload's secrets are serialized into the ``AIWorkloadConfig`` the service stores; a raw
+        string that is not a Secrets Manager ARN would be saved in cleartext. Require a ``Secret``
+        or an ARN string, and point callers at :meth:`Secret.from_string` to store a plaintext value
+        safely.
         """
         for key, secret in value.items():
             if isinstance(secret, str) and not _SECRET_ARN_PATTERN.match(secret):
@@ -131,8 +132,8 @@ class Workload(BaseModel):
     def sonnet(cls, **kwargs: Any) -> "Workload":
         """Alias for :meth:`synthetic`.
 
-        AIPerf seeds synthetic prompts from the Sonnet dataset by default,
-        so ``Workload.sonnet(...)`` is the same as ``Workload.synthetic(...)``.
+        AIPerf seeds synthetic prompts from the Sonnet dataset by default, so
+        ``Workload.sonnet(...)`` is the same as ``Workload.synthetic(...)``.
         """
         return cls.synthetic(**kwargs)
 
@@ -337,10 +338,10 @@ class Workload(BaseModel):
     ) -> str:
         """Upload a local-path or inline Jinja2 template to S3 and return its URI.
 
-        ``request_template`` is treated as a local file path when it points at
-        an existing file (absolute, relative, or ``~``-prefixed); otherwise it
-        is treated as an inline template string. The object is uploaded to the
-        session default bucket so the caller never has to stage it by hand.
+        ``request_template`` is treated as a local file path when it points at an existing file
+        (absolute, relative, or ``~``-prefixed); otherwise it is treated as an inline template
+        string. The object is uploaded to the session default bucket so the caller never has to
+        stage it by hand.
         """
         from sagemaker.core.helper.session_helper import Session
         from sagemaker.core.s3 import S3Uploader

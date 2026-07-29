@@ -3,7 +3,7 @@ from sagemaker.serve.constants import (
     Framework,
     LOCAL_MODES,
     SUPPORTED_MODEL_SERVERS,
-    DEFAULT_SERIALIZERS_BY_FRAMEWORK
+    DEFAULT_SERIALIZERS_BY_FRAMEWORK,
 )
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.types import ModelServer
@@ -19,8 +19,18 @@ class TestFramework(unittest.TestCase):
 
     def test_all_frameworks_exist(self):
         expected_frameworks = [
-            "XGBOOST", "LDA", "PYTORCH", "TENSORFLOW", "MXNET",
-            "CHAINER", "SKLEARN", "HUGGINGFACE", "DJL", "SPARKML", "NTM", "SMD"
+            "XGBOOST",
+            "LDA",
+            "PYTORCH",
+            "TENSORFLOW",
+            "MXNET",
+            "CHAINER",
+            "SKLEARN",
+            "HUGGINGFACE",
+            "DJL",
+            "SPARKML",
+            "NTM",
+            "SMD",
         ]
         for fw in expected_frameworks:
             self.assertTrue(hasattr(Framework, fw))

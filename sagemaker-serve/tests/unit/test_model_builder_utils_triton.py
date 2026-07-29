@@ -4,7 +4,7 @@ Targets uncovered Triton functionality.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 import os
 import tempfile
 from pathlib import Path
@@ -44,7 +44,6 @@ class TestValidateForTriton(unittest.TestCase):
 
     def test_validate_for_triton_missing_tritonclient(self):
         """Test validation fails without tritonclient - skipped as tritonclient is installed."""
-        pass
 
     @patch("importlib.util.find_spec")
     @patch.object(_ModelBuilderUtils, "_has_nvidia_gpu")
@@ -160,7 +159,6 @@ class TestExportPytorchToOnnx(unittest.TestCase):
     def test_export_pytorch_to_onnx_no_torch(self):
         """Test PyTorch export without torch installed - skipped."""
         # Skipping as torch is installed in environment
-        pass
 
 
 class TestExportTFToOnnx(unittest.TestCase):

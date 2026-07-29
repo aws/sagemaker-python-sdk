@@ -15,7 +15,6 @@ from __future__ import absolute_import
 import json
 import uuid
 import time
-import pytest
 import logging
 import boto3
 
@@ -42,22 +41,22 @@ DJL_LMI_VERSION = "0.31.0"
 def test_optimize_build_deploy_invoke_cleanup():
     """Integration test for Optimize workflow"""
     logger.info("Starting Optimize integration test...")
-    
+
     optimized_model = None
     core_endpoint = None
-    
+
     try:
         # Build and deploy
         logger.info("Optimizing and deploying model...")
         optimized_model, core_endpoint = build_and_deploy()
-        
+
         # Make prediction
         logger.info("Making prediction...")
         make_prediction(core_endpoint)
-        
+
         # Test passed successfully
         logger.info("Optimize integration test completed successfully")
-        
+
     except Exception as e:
         logger.error(f"Optimize integration test failed: {str(e)}")
         raise
@@ -71,10 +70,10 @@ def test_optimize_build_deploy_invoke_cleanup():
 def create_schema_builder():
     """Create schema builder for text generation - exact from optimize test."""
     from sagemaker.serve.builder.schema_builder import SchemaBuilder
-    
+
     sample_input = {"inputs": "What are falcons?", "parameters": {"max_new_tokens": 32}}
     sample_output = [{"generated_text": "Falcons are small to medium-sized birds of prey."}]
-    
+
     return SchemaBuilder(sample_input, sample_output)
 
 
@@ -84,13 +83,13 @@ def build_and_deploy():
     boto_session = boto3.Session(region_name=AWS_REGION)
     sagemaker_session = Session(boto_session=boto_session)
     unique_id = str(uuid.uuid4())[:8]
-    
+
     model_builder = ModelBuilder(
         model=MODEL_ID,
         schema_builder=schema_builder,
         sagemaker_session=sagemaker_session,
     )
-    
+
     # Optimize the model
     logger.info("Optimizing JumpStart model...")
     default_bucket = sagemaker_session.default_bucket()
@@ -100,7 +99,7 @@ def build_and_deploy():
         version=DJL_LMI_VERSION,
     )
     logger.info(f"Resolved DJL LMI image URI: {djl_lmi_image_uri}")
-    
+
     optimized_model = model_builder.optimize(
         model_name=f"{MODEL_NAME_PREFIX}-{unique_id}",
         instance_type="ml.g5.2xlarge",
@@ -109,19 +108,19 @@ def build_and_deploy():
         accept_eula=True,
         job_name=f"js-optimize-{int(time.time())}",
         image_uri=djl_lmi_image_uri,
-        region=AWS_REGION
+        region=AWS_REGION,
     )
     logger.info(f"Model Successfully Optimized: {optimized_model.model_name}")
-    
+
     # Deploy the optimized model
     logger.info("Deploying optimized model to endpoint...")
     core_endpoint = model_builder.deploy(
         endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}",
         initial_instance_count=1,
-        instance_type="ml.g5.2xlarge"
+        instance_type="ml.g5.2xlarge",
     )
     logger.info(f"Endpoint Successfully Created: {core_endpoint.endpoint_name}")
-    
+
     return optimized_model, core_endpoint
 
 
@@ -129,15 +128,12 @@ def make_prediction(core_endpoint):
     """Test optimized model invocation - exact logic from optimize test."""
     test_data = {
         "inputs": "What are the benefits of machine learning?",
-        "parameters": {"max_new_tokens": 50}
+        "parameters": {"max_new_tokens": 50},
     }
-    
-    result = core_endpoint.invoke(
-        body=json.dumps(test_data),
-        content_type="application/json"
-    )
-    
-    response_body = result.body.read().decode('utf-8')
+
+    result = core_endpoint.invoke(body=json.dumps(test_data), content_type="application/json")
+
+    response_body = result.body.read().decode("utf-8")
     prediction = json.loads(response_body)
     logger.info(f"Result of invoking optimized endpoint: {prediction}")
 
@@ -145,7 +141,7 @@ def make_prediction(core_endpoint):
 def cleanup_resources(optimized_model, core_endpoint):
     """Clean up optimized model and endpoint - preserving exact logic from manual test"""
     core_endpoint_config = EndpointConfig.get(endpoint_config_name=core_endpoint.endpoint_name)
-   
+
     optimized_model.delete()
     core_endpoint.delete()
     core_endpoint_config.delete()

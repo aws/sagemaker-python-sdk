@@ -1,4 +1,4 @@
-"""Placeholder docstring"""
+"""Placeholder docstring."""
 
 from __future__ import absolute_import
 import io
@@ -34,19 +34,18 @@ logger = logging.getLogger(__name__)
 
 
 class JSONSerializerWrapper(JSONSerializer):
-    """Wraps the JSONSerializer because it does not convert jsonable to bytes"""
+    """Wraps the JSONSerializer because it does not convert jsonable to bytes."""
 
     def serialize(self, data) -> bytes:
-        """Placeholder docstring"""
-
+        """Placeholder docstring."""
         return super().serialize(data).encode("utf-8")
 
 
 class CSVSerializerWrapper(CSVSerializer):
-    """Wraps the CSVSerializer because it does not convert dataframe to bytes"""
+    """Wraps the CSVSerializer because it does not convert dataframe to bytes."""
 
     def serialize(self, data) -> bytes:
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         return super().serialize(data).encode("utf-8")
 
 
@@ -74,7 +73,7 @@ class DeserializerWrapper(BaseDeserializer):
         self._accept = accept
 
     def deserialize(self, stream, content_type: str = None):
-        """Deserialize stream into object"""
+        """Deserialize stream into object."""
         return self._deserializer.deserialize(
             stream,
             # We need to overwrite the accept type because model
@@ -84,7 +83,7 @@ class DeserializerWrapper(BaseDeserializer):
 
     @property
     def ACCEPT(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         return self._accept[0]
 
 
@@ -153,7 +152,7 @@ class SchemaBuilder(TritonSchemaBuilder):
 
     def _get_serializer(self, obj):
         # pylint: disable=too-many-return-statements
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         if isinstance(obj, np.ndarray):
             return NumpySerializer()
         if isinstance(obj, DataFrame):
@@ -183,7 +182,7 @@ class SchemaBuilder(TritonSchemaBuilder):
 
     def _get_deserializer(self, obj):
         # pylint: disable=too-many-return-statements
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         if isinstance(obj, np.ndarray):
             return NumpyDeserializer()
         if isinstance(obj, DataFrame):
@@ -212,14 +211,14 @@ class SchemaBuilder(TritonSchemaBuilder):
         )
 
     def _get_inverse(self, obj):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         try:
             return translation_mapping.get(obj.__class__)()
         except KeyError:
             raise Exception("Unable to serialize")
 
     def __repr__(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         if hasattr(self, "input_serializer") and hasattr(self, "output_serializer"):
             return (
                 f"SchemaBuilder(\n"
@@ -235,7 +234,7 @@ class SchemaBuilder(TritonSchemaBuilder):
         )
 
     def generate_marshalling_map(self) -> dict:
-        """Generate marshalling map for the schema builder"""
+        """Generate marshalling map for the schema builder."""
         return {
             "input_serializer": (
                 self.input_serializer.__class__.__name__
@@ -262,12 +261,12 @@ class SchemaBuilder(TritonSchemaBuilder):
         }
 
     def get_input_sample(self) -> object:
-        """Get input sample for the schema builder"""
+        """Get input sample for the schema builder."""
         return self.sample_input
 
 
 def _is_torch_tensor(data: object) -> bool:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     try:
         from torch import Tensor
 
@@ -278,7 +277,7 @@ def _is_torch_tensor(data: object) -> bool:
 
 def _is_jsonable(data: object) -> bool:
     # pylint: disable=broad-except
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     try:
         JSONSerializerWrapper().serialize(data)
         return True
@@ -287,14 +286,14 @@ def _is_jsonable(data: object) -> bool:
 
 
 def _is_path_to_file(data: object) -> bool:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return isinstance(data, str) and Path(data).resolve().is_file()
 
 
 def _validate_translations(
     payload: object, serialize_callable: Callable, deserialize_callable: Callable
 ) -> None:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     try:
         b = serialize_callable(payload=payload, content_type="application/custom")
         stream = io.BytesIO(b)

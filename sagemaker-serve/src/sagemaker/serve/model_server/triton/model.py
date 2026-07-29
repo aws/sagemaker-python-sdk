@@ -16,15 +16,15 @@ TRITON_MODEL_DIR = os.getenv("TRITON_MODEL_DIR")
 
 
 class TritonPythonModel:
-    """A class for Triton Python Backend"""
+    """A class for Triton Python Backend."""
 
     @staticmethod
     def auto_complete_config(auto_complete_model_config):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         return auto_complete_model_config
 
     def initialize(self, args: dict) -> None:
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         serve_path = Path(TRITON_MODEL_DIR).joinpath("serve.pkl")
         metadata_path = Path(TRITON_MODEL_DIR).joinpath("metadata.json")
 
@@ -40,7 +40,7 @@ class TritonPythonModel:
         self.model = inference_spec.load(model_dir=TRITON_MODEL_DIR)
 
     def execute(self, requests):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         responses = []
 
         for request in requests:

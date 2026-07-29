@@ -10,7 +10,11 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Holds the validation logic used for the .optimize() function. INTERNAL only"""
+"""Holds the validation logic used for the .optimize() function.
+
+INTERNAL only
+"""
+
 from __future__ import absolute_import
 
 import textwrap
@@ -23,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 class _OptimizationContainer(Enum):
-    """Optimization containers"""
+    """Optimization containers."""
 
     TRT = "TRT"
     VLLM = "vLLM"
@@ -31,7 +35,7 @@ class _OptimizationContainer(Enum):
 
 
 class _OptimizationCombination(BaseModel):
-    """Optimization ruleset data structure for comparing input to ruleset"""
+    """Optimization ruleset data structure for comparing input to ruleset."""
 
     optimization_container: _OptimizationContainer = None
     compilation: Set[Optional[bool]]
@@ -40,8 +44,7 @@ class _OptimizationCombination(BaseModel):
     quantization_technique: Set[Optional[str]]
 
     def validate_against(self, optimization_combination, rule_set: _OptimizationContainer):
-        """Validator for optimization containers"""
-
+        """Validator for optimization containers."""
         # check the validity of each individual field
         if not optimization_combination.compilation.issubset(self.compilation):
             raise ValueError("Compilation")
@@ -111,8 +114,7 @@ def _validate_optimization_configuration(
     sharding_config: Dict[str, Any],
     speculative_decoding_config: Dict[str, Any],
 ):
-    """Validate .optimize() input off of standard ruleset"""
-
+    """Validate .optimize() input off of standard ruleset."""
     instance_family = None
     if instance_type:
         split_instance_type = instance_type.split(".")

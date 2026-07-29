@@ -1,4 +1,4 @@
-"""Save the object using cloudpickle"""
+"""Save the object using cloudpickle."""
 
 from __future__ import absolute_import
 from typing import Any
@@ -9,7 +9,7 @@ PKL_FILE_NAME = "serve.pkl"
 
 
 def save_pkl(save_path: Path, obj: Any):
-    """Save obj with cloudpickle under save_path"""
+    """Save obj with cloudpickle under save_path."""
     if not save_path.exists():
         save_path.mkdir(parents=True)
     with open(save_path.joinpath(PKL_FILE_NAME), mode="wb") as file:
@@ -17,26 +17,27 @@ def save_pkl(save_path: Path, obj: Any):
 
 
 def save_xgboost(save_path: Path, xgb_model: Any):
-    """Save xgboost model to json format using save_model"""
+    """Save xgboost model to json format using save_model."""
     if not save_path.exists():
         save_path.mkdir(parents=True)
     xgb_model.save_model(str(save_path.joinpath("model.json")))
+
 
 def save_sklearn(model_path: str, model: object) -> None:
     """Save sklearn model using joblib serialization."""
     import joblib
     import os
     from pathlib import Path
-    
+
     # Ensure directory exists
     Path(model_path).mkdir(parents=True, exist_ok=True)
-    
+
     model_file = os.path.join(model_path, "model.joblib")
     joblib.dump(model, model_file)
 
 
 def load_xgboost_from_json(model_save_path: str, class_name: str):
-    """Load xgboost model from json format"""
+    """Load xgboost model from json format."""
     try:
         kls = _get_class_from_name(class_name=class_name)
         xgb_model = kls()
@@ -53,7 +54,7 @@ def load_xgboost_from_json(model_save_path: str, class_name: str):
 
 
 def _get_class_from_name(class_name: str):
-    """Given a full class name like xgboost.sklearn.XGBClassifier, return the class"""
+    """Given a full class name like xgboost.sklearn.XGBClassifier, return the class."""
     parts = class_name.split(".")
     module = ".".join(parts[:-1])
     m = __import__(module)

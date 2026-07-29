@@ -1,4 +1,4 @@
-"""Module that defines the LocalContainerMode class"""
+"""Module that defines the LocalContainerMode class."""
 
 from __future__ import absolute_import
 from pathlib import Path
@@ -64,7 +64,7 @@ class LocalContainerMode(
     LocalMultiModelServer,
     LocalTensorflowServing,
 ):
-    """A class that holds methods to deploy model to a container in local environment"""
+    """A class that holds methods to deploy model to a container in local environment."""
 
     def __init__(
         self,
@@ -94,7 +94,7 @@ class LocalContainerMode(
         self._invoke_serving = None
 
     def load(self, model_path: str = None):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         path = Path(model_path if model_path else self.model_path)
         if not path.exists():
             raise Exception("model_path does not exist")
@@ -104,7 +104,7 @@ class LocalContainerMode(
         return self.inference_spec.load(str(path))
 
     def prepare(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
 
     def create_server(
         self,
@@ -112,13 +112,12 @@ class LocalContainerMode(
         container_timeout_seconds: int,
         secret_key: str,
         container_config: Dict,
-        ping_fn = None,
+        ping_fn=None,
         env_vars: Dict[str, str] = None,
         model_path: str = None,
         jumpstart: bool = False,
     ):
-        """Placeholder docstring"""
-
+        """Placeholder docstring."""
         self._pull_image(image=image)
 
         self.destroy_server()
@@ -219,7 +218,7 @@ class LocalContainerMode(
             raise LocalDeepPingException(_PING_HEALTH_CHECK_FAIL_MSG)
 
     def destroy_server(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         if self.container:
             try:
                 logger.debug("Stopping currently running container...")
@@ -231,7 +230,6 @@ class LocalContainerMode(
 
     def _pull_image(self, image: str):
         """Pull image with proper error handling and early failure detection."""
-        
         # Check if Docker is available first
         try:
             self.client = _get_docker_client()
@@ -241,7 +239,7 @@ class LocalContainerMode(
                 f"Docker is not available or not running. Please ensure Docker is installed and running. "
                 f"Error: {e}"
             ) from e
-        
+
         # Handle ECR authentication for ECR images
         if self._is_ecr_image(image):
             try:
@@ -254,10 +252,10 @@ class LocalContainerMode(
                 username, password = decoded_token.split(":")
                 ecr_uri = image.split("/")[0]
                 login_command = ["docker", "login", "-u", username, "-p", password, ecr_uri]
-                
-                result = subprocess.run(login_command, check=True, capture_output=True, text=True)
+
+                subprocess.run(login_command, check=True, capture_output=True, text=True)
                 logger.info("Successfully authenticated with ECR")
-                
+
             except subprocess.CalledProcessError as e:
                 error_msg = f"ECR authentication failed: {e.stderr if e.stderr else str(e)}"
                 logger.error(error_msg)
@@ -266,7 +264,7 @@ class LocalContainerMode(
                 error_msg = f"ECR authentication error: {str(e)}"
                 logger.error(error_msg)
                 raise RuntimeError(error_msg) from e
-        
+
         # Pull the image
         try:
             logger.info("Pulling image %s from repository...", image)
@@ -280,4 +278,3 @@ class LocalContainerMode(
     def _is_ecr_image(self, image: str) -> bool:
         """Check if image is from ECR."""
         return ".dkr.ecr." in image and ".amazonaws.com" in image
-

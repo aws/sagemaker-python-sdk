@@ -24,12 +24,12 @@ This module provides utility functions for:
 
 Example:
     Basic usage as a mixin class::
-    
+
         class MyModelBuilder(ModelBuilderUtils):
             def __init__(self):
                 self.model = "huggingface-model-id"
                 self.instance_type = "ml.g5.xlarge"
-                
+
             def build(self):
                 self._auto_detect_image_uri()
                 return self.image_uri
@@ -128,7 +128,6 @@ from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.core import model_uris
 from sagemaker.serve.utils.local_hardware import _get_available_gpus
 from sagemaker.core.base_serializers import JSONSerializer
-from sagemaker.core.deserializers import JSONDeserializer
 from sagemaker.serve.detector.pickler import save_pkl
 from sagemaker.serve.builder.requirements_manager import RequirementsManager
 from sagemaker.serve.validations.check_integrity import (
@@ -200,7 +199,7 @@ VERSION_FOR_TF1 = "23.02"
 
 
 class TritonSerializer(JSONSerializer):
-    """A wrapper of JSONSerializer because Triton expects input to be certain format"""
+    """A wrapper of JSONSerializer because Triton expects input to be certain format."""
 
     def __init__(self, input_serializer, dtype: str, content_type="application/json"):
         """Initialize TritonSerializer with input serializer and data type."""
@@ -926,7 +925,9 @@ class _ModelBuilderUtils:
                 spec_model = inference_spec.get_model()
                 if spec_model is None:
                     logger.warning(
-                        "InferenceSpec.get_model() returned None. If you are using a JumpStar or HuggingFace model, you may need to implement get_model() in your InferenceSpec class"
+                        "InferenceSpec.get_model() returned None. If you are using a JumpStar "
+                        "or HuggingFace model, you may need to implement get_model() in your "
+                        "InferenceSpec class"
                     )
 
                 if isinstance(spec_model, str):
@@ -947,7 +948,7 @@ class _ModelBuilderUtils:
                     # Restore original model
                     self.model = original_model
                     return
-            except Exception as e:
+            except Exception:
                 pass
 
             # Fall back to existing object detection
@@ -998,7 +999,9 @@ class _ModelBuilderUtils:
                         logger.warning(
                             "Could not initialize HF schema builder for task %r "
                             "(%s: %s); falling back to the JumpStart-supplied schema.",
-                            model_task, type(e).__name__, e,
+                            model_task,
+                            type(e).__name__,
+                            e,
                         )
 
             huggingface_model_id = self.model
@@ -1110,8 +1113,8 @@ class _ModelBuilderUtils:
     def _prepare_hf_model_for_upload(self) -> None:
         """Download HuggingFace model metadata for upload.
 
-        Creates a temporary directory and downloads the necessary HuggingFace
-        model metadata files if model_path is not already set.
+        Creates a temporary directory and downloads the necessary HuggingFace model metadata files
+        if model_path is not already set.
         """
         model_path = getattr(self, "model_path", None)
         if not model_path:
@@ -1345,8 +1348,8 @@ class _ModelBuilderUtils:
     def _handle_mlflow_input(self) -> None:
         """Check and handle MLflow model input if present.
 
-        Detects MLflow model arguments, validates metadata existence,
-        and initializes MLflow-specific configurations.
+        Detects MLflow model arguments, validates metadata existence, and initializes MLflow-
+        specific configurations.
         """
         self._is_mlflow_model = self._has_mlflow_arguments()
         if not self._is_mlflow_model:
@@ -1858,7 +1861,6 @@ class _ModelBuilderUtils:
         Returns:
             List[Dict]: The additional model data sources.
         """
-
         additional_model_data_source = {
             "ChannelName": channel_name,
             "S3DataSource": {
@@ -1969,7 +1971,7 @@ class _ModelBuilderUtils:
             )
 
     def _get_cached_model_specs(self, model_id, version, region, sagemaker_session):
-        """Get cached JumpStart model specs to avoid repeated fetches"""
+        """Get cached JumpStart model specs to avoid repeated fetches."""
         if not hasattr(self, "_cached_js_model_specs"):
             self._cached_js_model_specs = accessors.JumpStartModelsAccessor.get_model_specs(
                 model_id=model_id,
@@ -2166,7 +2168,7 @@ class _ModelBuilderUtils:
         self.env_vars.update(env)
 
     def _is_gated_model(self) -> bool:
-        """Determine if ``this`` Model is Gated
+        """Determine if ``this`` Model is Gated.
 
         Args:
             model (Model): Jumpstart Model
@@ -2350,7 +2352,7 @@ class _ModelBuilderUtils:
     def _set_optimization_image_default(
         self, create_optimization_job_args: Dict[str, Any]
     ) -> Dict[str, Any]:
-        """Defaults the optimization image to the JumpStart deployment config default
+        """Defaults the optimization image to the JumpStart deployment config default.
 
         Args:
             create_optimization_job_args (Dict[str, Any]): create optimization job request
@@ -2398,7 +2400,7 @@ class _ModelBuilderUtils:
         return create_optimization_job_args
 
     def _get_default_vllm_image(self, image: str) -> bool:
-        """Ensures the minimum working image version for vLLM enabled optimization techniques
+        """Ensures the minimum working image version for vLLM enabled optimization techniques.
 
         Args:
             image (str): JumpStart provided default image
@@ -2415,7 +2417,7 @@ class _ModelBuilderUtils:
         return image
 
     def _get_latest_lmi_version_from_list(self, version: str, version_to_compare: str) -> bool:
-        """LMI version comparator
+        """LMI version comparator.
 
         Args:
             version (str): current version
@@ -2440,7 +2442,7 @@ class _ModelBuilderUtils:
         return False
 
     def _parse_lmi_version(self, image: str) -> Tuple[int, int, int]:
-        """Parse out LMI version
+        """Parse out LMI version.
 
         Args:
             image (str): image to parse version out of
@@ -2633,7 +2635,6 @@ class _ModelBuilderUtils:
 
     def _generate_optimized_core_model(self, optimization_response: dict) -> Model:
         """Generate optimized CoreModel from optimization job response."""
-
         recommended_image_uri = optimization_response.get("OptimizationOutput", {}).get(
             "RecommendedInferenceImage"
         )
@@ -3393,34 +3394,6 @@ class _ModelBuilderUtils:
                 raise ValueError(
                     f"Could not detect inference image for training image: {training_image}"
                 )
-
-    def _extract_speculative_draft_model_provider(
-        self,
-        speculative_decoding_config: Optional[Dict] = None,
-    ) -> Optional[str]:
-        """Extracts speculative draft model provider from speculative decoding config.
-
-        Args:
-            speculative_decoding_config (Optional[Dict]): A speculative decoding config.
-
-        Returns:
-            Optional[str]: The speculative draft model provider.
-        """
-        if speculative_decoding_config is None:
-            return None
-
-        model_provider = speculative_decoding_config.get("ModelProvider", "").lower()
-
-        if model_provider == "jumpstart":
-            return "jumpstart"
-
-        if model_provider == "custom" or speculative_decoding_config.get("ModelSource"):
-            return "custom"
-
-        if model_provider == "sagemaker":
-            return "sagemaker"
-
-        return "auto"
 
     def get_huggingface_model_metadata(
         self, model_id: str, hf_hub_token: Optional[str] = None

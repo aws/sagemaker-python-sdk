@@ -30,11 +30,11 @@ ENDPOINT_NAME_PREFIX = "inprocess-test-endpoint"
 
 class MathInferenceSpec(InferenceSpec):
     """Simple math operations for IN_PROCESS testing."""
-    
+
     def load(self, model_dir: str):
         """Load a simple math 'model'."""
         return {"operation": "multiply", "factor": 2.0}
-    
+
     def invoke(self, input_object, model):
         """Perform math operation."""
         if isinstance(input_object, dict) and "numbers" in input_object:
@@ -43,10 +43,10 @@ class MathInferenceSpec(InferenceSpec):
             numbers = input_object
         else:
             numbers = [float(input_object)]
-        
+
         factor = model["factor"]
         result = [num * factor for num in numbers]
-        
+
         return {"result": result, "operation": f"multiply by {factor}"}
 
 
@@ -54,22 +54,22 @@ class MathInferenceSpec(InferenceSpec):
 def test_in_process_build_deploy_invoke_cleanup():
     """Integration test for In-Process mode build, deploy, invoke, and cleanup workflow"""
     logger.info("Starting In-Process integration test...")
-    
+
     core_model = None
     local_endpoint = None
-    
+
     try:
         # Build and deploy
         logger.info("Building and deploying In-Process model...")
         core_model, local_endpoint = build_and_deploy()
-        
+
         # Make prediction
         logger.info("Making prediction...")
         make_prediction(local_endpoint)
-        
+
         # Test passed successfully
         logger.info("In-Process integration test completed successfully")
-        
+
     except Exception as e:
         logger.error(f"In-Process integration test failed: {str(e)}")
         raise
@@ -92,30 +92,25 @@ def build_and_deploy():
     schema_builder = create_schema_builder()
     inference_spec = MathInferenceSpec()
     unique_id = str(uuid.uuid4())[:8]
-    
+
     model_builder = ModelBuilder(
-        inference_spec=inference_spec,
-        schema_builder=schema_builder,
-        mode=Mode.IN_PROCESS
+        inference_spec=inference_spec, schema_builder=schema_builder, mode=Mode.IN_PROCESS
     )
-    
+
     core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}")
     logger.info(f"Model Successfully Created: {core_model.model_name}")
 
     local_endpoint = model_builder.deploy_local(endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}")
     logger.info(f"Endpoint Successfully Created: {local_endpoint.endpoint_name}")
-    
+
     return core_model, local_endpoint
 
 
 def make_prediction(local_endpoint):
     """Make prediction using the deployed endpoint - preserving exact logic from manual test"""
     test_data = {"numbers": [1.0, 2.0, 3.0]}
-    
-    result = local_endpoint.invoke(
-        body=test_data,
-        content_type="application/json"
-    )
+
+    result = local_endpoint.invoke(body=test_data, content_type="application/json")
 
     logger.info(f"Result of invoking endpoint: {result.body}")
 
@@ -123,8 +118,8 @@ def make_prediction(local_endpoint):
 def cleanup_resources(core_model, local_endpoint):
     """Clean up IN_PROCESS endpoint - preserving exact logic from manual test"""
     # Clean up IN_PROCESS endpoint
-    if local_endpoint and hasattr(local_endpoint, 'in_process_mode_obj'):
+    if local_endpoint and hasattr(local_endpoint, "in_process_mode_obj"):
         if local_endpoint.in_process_mode_obj:
             local_endpoint.in_process_mode_obj.destroy_server()
-    
+
     logger.info("Model and Endpoint Successfully Deleted!")

@@ -113,9 +113,7 @@ class TestDjlHfCacheAndModelId:
 
     def test_preserves_user_provided_hf_model_id(self, tmp_path):
         """User-provided HF_MODEL_ID must NOT be overridden by model param."""
-        builder = _create_djl_builder(
-            tmp_path, env_vars={"HF_MODEL_ID": "/opt/ml/model"}
-        )
+        builder = _create_djl_builder(tmp_path, env_vars={"HF_MODEL_ID": "/opt/ml/model"})
         builder._build_for_djl()
 
         assert builder.env_vars["HF_MODEL_ID"] == "/opt/ml/model"

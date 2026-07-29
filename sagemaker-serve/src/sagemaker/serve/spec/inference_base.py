@@ -10,20 +10,21 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Holds templated classes to enable users to provide custom inference scripting capabilities"""
+"""Holds templated classes to enable users to provide custom inference scripting capabilities."""
+
 from __future__ import absolute_import
 from abc import ABC, abstractmethod
 
 
 class CustomOrchestrator(ABC):
-    """Templated class to standardize sync entrypoint-based inference scripts"""
+    """Templated class to standardize sync entrypoint-based inference scripts."""
 
     def __init__(self):
         self._client = None
 
     @property
     def client(self):
-        """Boto3 SageMaker runtime client to use with custom orchestrator"""
+        """Boto3 SageMaker runtime client to use with custom orchestrator."""
         if not hasattr(self, "_client") or not self._client:
             from boto3 import Session
 
@@ -32,14 +33,14 @@ class CustomOrchestrator(ABC):
 
     @abstractmethod
     def handle(self, data, context=None):
-        """Abstract class for defining an entrypoint for the model server"""
+        """Abstract class for defining an entrypoint for the model server."""
         return NotImplemented
 
 
 class AsyncCustomOrchestrator(ABC):
-    """Templated class to standardize async entrypoint-based inference scripts"""
+    """Templated class to standardize async entrypoint-based inference scripts."""
 
     @abstractmethod
     async def handle(self, data, context=None):
-        """Abstract class for defining an aynchronous entrypoint for the model server"""
+        """Abstract class for defining an aynchronous entrypoint for the model server."""
         return NotImplemented

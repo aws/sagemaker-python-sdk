@@ -7,10 +7,8 @@ Tests verify that:
 4. Separate inference components are created for base and adapter
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock, call
+from unittest.mock import Mock, patch
 from sagemaker.serve.model_builder import ModelBuilder
-from sagemaker.core.resources import ModelPackage, TrainingJob
 
 
 class TestTwoStageDeployment:

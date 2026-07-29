@@ -27,10 +27,9 @@ import pytest
 import random
 from sagemaker.serve import ModelBuilder
 from sagemaker.core.resources import TrainingJob
+from sagemaker.core.helper.session_helper import Session
 
 logger = logging.getLogger(__name__)
-
-from sagemaker.core.helper.session_helper import Session
 
 # This test relies on resources in a specific region
 AWS_REGION = "us-east-1"
@@ -172,6 +171,7 @@ def cleanup_endpoints():
     for ep_name in endpoints_to_cleanup:
         try:
             from sagemaker.core.resources import Endpoint
+
             endpoint = Endpoint.get(endpoint_name=ep_name, region=AWS_REGION)
             endpoint.delete()
         except Exception:
@@ -201,7 +201,9 @@ class TestModelCustomizationFromTrainingJob:
         assert model_builder.image_uri is not None
         assert model_builder.instance_type is not None
 
-    def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
+    def test_deploy_from_training_job(
+        self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session
+    ):
         """Test deploying a Nova model from a training job and invoking it."""
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(
@@ -229,11 +231,13 @@ class TestModelCustomizationFromTrainingJob:
         time.sleep(10)  # brief buffer for inference component readiness
 
         invoke_response = endpoint.invoke(
-            body=json.dumps({
-                "messages": [
-                    {"role": "user", "content": [{"type": "text", "text": "What is 7+7?"}]}
-                ]
-            }),
+            body=json.dumps(
+                {
+                    "messages": [
+                        {"role": "user", "content": [{"type": "text", "text": "What is 7+7?"}]}
+                    ]
+                }
+            ),
             content_type="application/json",
             accept="application/json",
         )
@@ -275,7 +279,9 @@ class TestModelCustomizationFromModelPackage:
         assert model.model_arn is not None
         assert model_builder._fetch_model_package_arn() is not None
 
-    def test_deploy_from_model_package(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
+    def test_deploy_from_model_package(
+        self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session
+    ):
         """Deploy a Nova model via the training-job path and validate the endpoint."""
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(
@@ -354,9 +360,7 @@ class TestTrainerIntegration:
         """Test building a model from a Nova SFTTrainer object."""
         from sagemaker.train.sft_trainer import SFTTrainer
 
-        training_job = TrainingJob.get(
-            training_job_name=training_job_name, region=AWS_REGION
-        )
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
 
         trainer = SFTTrainer(
             model=NOVA_MODEL_ID,
@@ -381,9 +385,7 @@ class TestTrainerIntegration:
         """Test building a model from a Nova RLVRTrainer object."""
         from sagemaker.train.rlvr_trainer import RLVRTrainer
 
-        training_job = TrainingJob.get(
-            training_job_name=training_job_name, region=AWS_REGION
-        )
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
 
         trainer = RLVRTrainer(
             model=NOVA_MODEL_ID,
@@ -413,6 +415,7 @@ class TestNovaBedrockDeployment:
     def role_arn(self):
         """Execution role ARN with Bedrock permissions."""
         from sagemaker.core.helper.session_helper import get_execution_role
+
         return get_execution_role()
 
     @pytest.fixture(scope="class")
@@ -424,6 +427,7 @@ class TestNovaBedrockDeployment:
     def bedrock_runtime(self):
         """Bedrock runtime client with retries for not-yet-ready custom models."""
         from botocore.config import Config
+
         config = Config(retries={"total_max_attempts": 10, "mode": "standard"})
         return boto3.client("bedrock-runtime", region_name=AWS_REGION, config=config)
 
@@ -498,13 +502,13 @@ class TestNovaBedrockDeployment:
 
         response = bedrock_runtime.invoke_model(
             modelId=deployment_arn,
-            body=json.dumps({
-                "schemaVersion": "messages-v1",
-                "messages": [
-                    {"role": "user", "content": [{"text": "What is 7+7?"}]}
-                ],
-                "inferenceConfig": {"maxTokens": 100, "temperature": 0.0, "topP": 0.9},
-            }),
+            body=json.dumps(
+                {
+                    "schemaVersion": "messages-v1",
+                    "messages": [{"role": "user", "content": [{"text": "What is 7+7?"}]}],
+                    "inferenceConfig": {"maxTokens": 100, "temperature": 0.0, "topP": 0.9},
+                }
+            ),
             contentType="application/json",
             accept="application/json",
         )

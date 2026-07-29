@@ -1,4 +1,5 @@
 """Unit tests: HF_MODEL_ID is not overwritten when user provides it."""
+
 from __future__ import annotations
 
 from typing import Dict, List, Optional
@@ -17,18 +18,9 @@ S3_PATH = "s3://my-bucket/models/Qwen/"
 DEFAULT_MODEL = "Qwen/Qwen3-VL-4B-Instruct"
 
 _MOD = "sagemaker.serve.model_builder_servers"
-_DJL_PREP = (
-    "sagemaker.serve.model_server"
-    ".djl_serving.prepare._create_dir_structure"
-)
-_TGI_PREP = (
-    "sagemaker.serve.model_server"
-    ".tgi.prepare._create_dir_structure"
-)
-_MMS_PREP = (
-    "sagemaker.serve.model_server"
-    ".multi_model_server.prepare._create_dir_structure"
-)
+_DJL_PREP = "sagemaker.serve.model_server" ".djl_serving.prepare._create_dir_structure"
+_TGI_PREP = "sagemaker.serve.model_server" ".tgi.prepare._create_dir_structure"
+_MMS_PREP = "sagemaker.serve.model_server" ".multi_model_server.prepare._create_dir_structure"
 
 
 def _create_mock_builder(
@@ -38,9 +30,7 @@ def _create_mock_builder(
     """Create a mock builder with common attributes set."""
     builder = MagicMock(spec=_ModelBuilderServers)
     builder.model = model
-    builder.env_vars = (
-        env_vars if env_vars is not None else {}
-    )
+    builder.env_vars = env_vars if env_vars is not None else {}
     builder.model_path = "/tmp/test_model_path"
     builder.mode = Mode.SAGEMAKER_ENDPOINT
     builder.model_server = ModelServer.DJL_SERVING
@@ -61,16 +51,10 @@ def _create_mock_builder(
     builder.hf_model_config = {}
     builder.model_data_download_timeout = None
     builder._user_provided_instance_type = True
-    builder._is_jumpstart_model_id = Mock(
-        return_value=False
-    )
+    builder._is_jumpstart_model_id = Mock(return_value=False)
     builder._auto_detect_image_uri = Mock()
-    builder._prepare_for_mode = Mock(
-        return_value=("s3://model-data", None)
-    )
-    builder._create_model = Mock(
-        return_value=Mock()
-    )
+    builder._prepare_for_mode = Mock(return_value=("s3://model-data", None))
+    builder._create_model = Mock(return_value=Mock())
     builder._optimizing = False
     builder._validate_djl_serving_sample_data = Mock()
     builder._validate_tgi_serving_sample_data = Mock()
@@ -79,12 +63,8 @@ def _create_mock_builder(
     builder._save_inference_spec = Mock()
     builder._prepare_for_triton = Mock()
     builder._auto_detect_image_for_triton = Mock()
-    builder.get_huggingface_model_metadata = Mock(
-        return_value={"pipeline_tag": "text-generation"}
-    )
-    builder.role_arn = (
-        "arn:aws:iam::123456789012:role/SageMakerRole"
-    )
+    builder.get_huggingface_model_metadata = Mock(return_value={"pipeline_tag": "text-generation"})
+    builder.role_arn = "arn:aws:iam::123456789012:role/SageMakerRole"
     return builder
 
 
@@ -97,9 +77,7 @@ def mock_builder() -> MagicMock:
 @pytest.fixture
 def mock_builder_with_s3() -> MagicMock:
     """Mock builder with user-provided S3 HF_MODEL_ID."""
-    return _create_mock_builder(
-        env_vars={"HF_MODEL_ID": S3_PATH}
-    )
+    return _create_mock_builder(env_vars={"HF_MODEL_ID": S3_PATH})
 
 
 # -- Patch targets for each server type ----------------------
@@ -114,12 +92,12 @@ _DJL_PATCHES: List[str] = [
 ]
 
 _DJL_RETURN_VALUES = [
-    1,          # tensor_parallel_degree
-    1,          # gpu_info
-    None,       # nb_instance
+    1,  # tensor_parallel_degree
+    1,  # gpu_info
+    None,  # nb_instance
     ({}, 256),  # djl_configurations
-    {},         # hf_model_config
-    None,       # _create_dir_structure
+    {},  # hf_model_config
+    None,  # _create_dir_structure
 ]
 
 _TGI_PATCHES: List[str] = [
@@ -132,12 +110,12 @@ _TGI_PATCHES: List[str] = [
 ]
 
 _TGI_RETURN_VALUES = [
-    1,          # tensor_parallel_degree
-    1,          # gpu_info
-    None,       # nb_instance
+    1,  # tensor_parallel_degree
+    1,  # gpu_info
+    None,  # nb_instance
     ({}, 256),  # tgi_configurations
-    {},         # hf_model_config
-    None,       # _create_dir_structure
+    {},  # hf_model_config
+    None,  # _create_dir_structure
 ]
 
 _TEI_PATCHES: List[str] = [
@@ -148,7 +126,7 @@ _TEI_PATCHES: List[str] = [
 
 _TEI_RETURN_VALUES = [
     None,  # nb_instance
-    {},    # hf_model_config
+    {},  # hf_model_config
     None,  # _create_dir_structure
 ]
 
@@ -171,7 +149,7 @@ _MMS_PATCHES: List[str] = [
 
 _MMS_RETURN_VALUES = [
     None,  # nb_instance
-    {},    # hf_model_config
+    {},  # hf_model_config
     None,  # _create_dir_structure
 ]
 
@@ -257,9 +235,7 @@ def test_preserves_user_provided_hf_model_id(
     builder.model_server = server_type
     patchers = _apply_patches(patch_targets, patch_rvs)
     try:
-        getattr(
-            _ModelBuilderServers, build_method
-        )(builder)
+        getattr(_ModelBuilderServers, build_method)(builder)
     finally:
         _stop_patches(patchers)
     assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
@@ -282,14 +258,10 @@ def test_sets_default_hf_model_id_when_not_provided(
     builder.model_server = server_type
     patchers = _apply_patches(patch_targets, patch_rvs)
     try:
-        getattr(
-            _ModelBuilderServers, build_method
-        )(builder)
+        getattr(_ModelBuilderServers, build_method)(builder)
     finally:
         _stop_patches(patchers)
-    assert (
-        builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
-    )
+    assert builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
 
 
 # -----------------------------------------------------------
@@ -305,18 +277,12 @@ class TestBuildForTransformersHfModelId:
         """User S3 URI is preserved."""
         builder = mock_builder_with_s3
         builder.model_server = ModelServer.MMS
-        patchers = _apply_patches(
-            _MMS_PATCHES, _MMS_RETURN_VALUES
-        )
+        patchers = _apply_patches(_MMS_PATCHES, _MMS_RETURN_VALUES)
         try:
-            _ModelBuilderServers._build_for_transformers(
-                builder
-            )
+            _ModelBuilderServers._build_for_transformers(builder)
         finally:
             _stop_patches(patchers)
-        assert (
-            builder.env_vars["HF_MODEL_ID"] == S3_PATH
-        )
+        assert builder.env_vars["HF_MODEL_ID"] == S3_PATH
 
     def test_sets_default_when_not_provided(
         self,
@@ -325,19 +291,12 @@ class TestBuildForTransformersHfModelId:
         """HF_MODEL_ID defaults to self.model."""
         builder = mock_builder
         builder.model_server = ModelServer.MMS
-        patchers = _apply_patches(
-            _MMS_PATCHES, _MMS_RETURN_VALUES
-        )
+        patchers = _apply_patches(_MMS_PATCHES, _MMS_RETURN_VALUES)
         try:
-            _ModelBuilderServers._build_for_transformers(
-                builder
-            )
+            _ModelBuilderServers._build_for_transformers(builder)
         finally:
             _stop_patches(patchers)
-        assert (
-            builder.env_vars["HF_MODEL_ID"]
-            == DEFAULT_MODEL
-        )
+        assert builder.env_vars["HF_MODEL_ID"] == DEFAULT_MODEL
 
     @patch(f"{_MOD}.prepare_for_mms")
     @patch(f"{_MOD}.save_pkl")
@@ -361,22 +320,12 @@ class TestBuildForTransformersHfModelId:
         _mock_mms: Mock,
     ) -> None:
         """User HF_MODEL_ID preserved with inference_spec."""
-        builder = _create_mock_builder(
-            env_vars={"HF_MODEL_ID": S3_PATH}
-        )
+        builder = _create_mock_builder(env_vars={"HF_MODEL_ID": S3_PATH})
         builder.model_server = ModelServer.MMS
         builder.model_data_download_timeout = None
         builder.model = None
         builder.inference_spec = Mock()
-        builder.inference_spec.get_model.return_value = (
-            "some-hf-model-id"
-        )
-        builder._is_jumpstart_model_id = Mock(
-            return_value=False
-        )
-        _ModelBuilderServers._build_for_transformers(
-            builder
-        )
-        assert (
-            builder.env_vars["HF_MODEL_ID"] == S3_PATH
-        )
+        builder.inference_spec.get_model.return_value = "some-hf-model-id"
+        builder._is_jumpstart_model_id = Mock(return_value=False)
+        _ModelBuilderServers._build_for_transformers(builder)
+        assert builder.env_vars["HF_MODEL_ID"] == S3_PATH

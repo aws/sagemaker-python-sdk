@@ -302,6 +302,6 @@ all_accounts = {
 
 
 def is_1p_image_uri(image_uri: str) -> bool:
-    """Shows if the given image_uri is owned by a 1st party account"""
+    """Shows if the given image_uri is owned by a 1st party account."""
     image_uri_account = image_uri[0:12]
     return image_uri_account in all_accounts

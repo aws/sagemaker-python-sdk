@@ -22,7 +22,7 @@ METADATA_PATH = Path(__file__).parent.joinpath("metadata.json")
 
 
 def model_fn(model_dir, context=None):
-    """Overrides default method for loading a model"""
+    """Overrides default method for loading a model."""
     shared_libs_path = Path(model_dir + "/shared_libs")
 
     if shared_libs_path.exists():
@@ -41,7 +41,7 @@ def model_fn(model_dir, context=None):
 
 
 def input_fn(input_data, content_type, context=None):
-    """Deserializes the bytes that were received from the model server"""
+    """Deserializes the bytes that were received from the model server."""
     try:
         if hasattr(schema_builder, "custom_input_translator"):
             deserialized_data = schema_builder.custom_input_translator.deserialize(
@@ -85,12 +85,12 @@ def input_fn(input_data, content_type, context=None):
 
 
 def predict_fn(input_data, predict_callable, context=None):
-    """Invokes the model that is taken in by model server"""
+    """Invokes the model that is taken in by model server."""
     return predict_callable(input_data)
 
 
 def output_fn(predictions, accept_type, context=None):
-    """Prediction is serialized to bytes and sent back to the customer"""
+    """Prediction is serialized to bytes and sent back to the customer."""
     try:
         if hasattr(inference_spec, "postprocess"):
             postprocessed = inference_spec.postprocess(predictions)

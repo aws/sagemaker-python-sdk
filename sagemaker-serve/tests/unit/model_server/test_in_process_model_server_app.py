@@ -6,10 +6,7 @@ Tests the InProcessServer class for serving models using FastAPI and uvicorn.
 
 import unittest
 from unittest.mock import Mock, patch, MagicMock, AsyncMock
-import asyncio
 import threading
-import io
-import json
 import sys
 
 # Mock optional dependencies before importing
@@ -19,7 +16,7 @@ mock_transformers.Pipeline = mock_pipeline_class
 sys.modules["transformers"] = mock_transformers
 sys.modules["sentence_transformers"] = MagicMock()
 
-from sagemaker.serve.model_server.in_process_model_server.app import InProcessServer
+from sagemaker.serve.model_server.in_process_model_server.app import InProcessServer  # noqa: E402
 
 
 class TestInProcessServerInitialization(unittest.TestCase):

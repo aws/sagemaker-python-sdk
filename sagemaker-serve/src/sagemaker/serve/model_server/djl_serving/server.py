@@ -1,4 +1,4 @@
-"""Module for Local DJL Serving"""
+"""Module for Local DJL Serving."""
 
 from __future__ import absolute_import
 
@@ -27,12 +27,12 @@ logger = logging.getLogger(__name__)
 
 
 class LocalDJLServing:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
 
     def _start_djl_serving(
         self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
     ):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         updated_env_vars = _update_env_vars(env_vars)
 
         self.container = client.containers.run(
@@ -53,7 +53,7 @@ class LocalDJLServing:
         )
 
     def _invoke_djl_serving(self, request: object, content_type: str, accept: str):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         try:
             response = requests.post(
                 f"http://{get_docker_host()}:8080/predictions/model",
@@ -68,7 +68,7 @@ class LocalDJLServing:
 
 
 class SageMakerDjlServing:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
 
     def _upload_djl_artifacts(
         self,
@@ -79,7 +79,7 @@ class SageMakerDjlServing:
         env_vars: dict = None,
         should_upload_artifacts: bool = False,
     ):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         model_data_url = None
         if _is_s3_uri(model_path):
             model_data_url = model_path
@@ -124,7 +124,7 @@ class SageMakerDjlServing:
 
 
 def _update_env_vars(env_vars: dict) -> dict:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     updated_env_vars = {}
     updated_env_vars.update(_DEFAULT_ENV_VARS)
     if env_vars:

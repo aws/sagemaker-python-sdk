@@ -311,9 +311,7 @@ def aliased_model_reference(private_hub):
 
     for _ in range(60):
         try:
-            contents = sm.list_hub_contents(
-                HubName=private_hub, HubContentType="ModelReference"
-            )
+            contents = sm.list_hub_contents(HubName=private_hub, HubContentType="ModelReference")
             if any(
                 s["HubContentName"] == ALIASED_CONTENT_NAME
                 and s.get("HubContentStatus") == "Available"
@@ -366,16 +364,12 @@ def _deploy_and_assert_hub_access_config(
 
         # Assert the created Model resource carries HubAccessConfig
         endpoint = sm.describe_endpoint(EndpointName=endpoint_name)
-        ep_config = sm.describe_endpoint_config(
-            EndpointConfigName=endpoint["EndpointConfigName"]
-        )
+        ep_config = sm.describe_endpoint_config(EndpointConfigName=endpoint["EndpointConfigName"])
         model_name = ep_config["ProductionVariants"][0]["ModelName"]
         model = sm.describe_model(ModelName=model_name)
         container = model.get("PrimaryContainer") or model["Containers"][0]
         hub_access = (
-            container.get("ModelDataSource", {})
-            .get("S3DataSource", {})
-            .get("HubAccessConfig")
+            container.get("ModelDataSource", {}).get("S3DataSource", {}).get("HubAccessConfig")
         )
         assert hub_access is not None, (
             "CreateModel succeeded but the model has no "
@@ -394,9 +388,7 @@ def _deploy_and_assert_hub_access_config(
 
 
 @pytest.mark.slow_test
-def test_deploy_with_no_s3_execution_role(
-    private_hub, no_s3_execution_role, sagemaker_session
-):
+def test_deploy_with_no_s3_execution_role(private_hub, no_s3_execution_role, sagemaker_session):
     """E2E: deploy from a private hub with an execution role that has ZERO
     S3 permissions. Passes only when the SDK attaches HubAccessConfig to
     the CreateModel call (SageMaker brokers artifact access via the hub).

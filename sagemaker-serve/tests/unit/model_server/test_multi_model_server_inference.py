@@ -132,7 +132,7 @@ class TestMultiModelServerInference(unittest.TestCase):
         inference_spec = Mock()
         inference_spec.postprocess = Mock(return_value={"postprocessed": True})
 
-        result = output_fn([0.1, 0.9], "application/json", schema_builder, inference_spec)
+        output_fn([0.1, 0.9], "application/json", schema_builder, inference_spec)
 
         inference_spec.postprocess.assert_called_once_with([0.1, 0.9])
         schema_builder.custom_output_translator.serialize.assert_called_once_with(
@@ -162,7 +162,7 @@ class TestMultiModelServerInference(unittest.TestCase):
         inference_spec = Mock()
         inference_spec.postprocess = Mock(return_value=None)
 
-        result = output_fn([0.1, 0.9], "application/json", schema_builder, inference_spec)
+        output_fn([0.1, 0.9], "application/json", schema_builder, inference_spec)
 
         # Should use original predictions since postprocess returned None
         schema_builder.custom_output_translator.serialize.assert_called_once_with(

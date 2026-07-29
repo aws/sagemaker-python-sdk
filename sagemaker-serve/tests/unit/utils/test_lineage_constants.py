@@ -1,4 +1,5 @@
 """Unit tests for sagemaker.serve.utils.lineage_constants module."""
+
 import unittest
 import re
 from sagemaker.serve.utils.lineage_constants import (
@@ -36,12 +37,12 @@ class TestLineageConstants(unittest.TestCase):
         """Test TRACKING_SERVER_ARN_REGEX constant."""
         self.assertEqual(
             TRACKING_SERVER_ARN_REGEX,
-            r"arn:(.*?):sagemaker:(.*?):(.*?):mlflow-tracking-server/(.*?)$"
+            r"arn:(.*?):sagemaker:(.*?):(.*?):mlflow-tracking-server/(.*?)$",
         )
         # Test that it's a valid regex
         pattern = re.compile(TRACKING_SERVER_ARN_REGEX)
         self.assertIsNotNone(pattern)
-        
+
         # Test matching a valid ARN
         valid_arn = "arn:aws:sagemaker:us-west-2:123456789012:mlflow-tracking-server/my-server"
         match = pattern.match(valid_arn)
@@ -54,8 +55,7 @@ class TestLineageConstants(unittest.TestCase):
     def test_model_builder_mlflow_model_path_lineage_artifact_type(self):
         """Test MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE constant."""
         self.assertEqual(
-            MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE,
-            "ModelBuilderInputModelData"
+            MODEL_BUILDER_MLFLOW_MODEL_PATH_LINEAGE_ARTIFACT_TYPE, "ModelBuilderInputModelData"
         )
 
     def test_mlflow_path_constants(self):

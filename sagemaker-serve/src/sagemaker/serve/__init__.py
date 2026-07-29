@@ -11,14 +11,13 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
-"""
-Local SageMaker Serve development package.
+"""Local SageMaker Serve development package.
 
-This __init__.py file imports key modules used by inference scripts to prevent
-Python module resolution conflicts with external serve.py files.
+This __init__.py file imports key modules used by inference scripts to prevent Python module
+resolution conflicts with external serve.py files.
 
-The imports below "prime" the module cache so that sagemaker.serve is recognized
-as a package, preventing conflicts when inference scripts import from submodules.
+The imports below "prime" the module cache so that sagemaker.serve is recognized as a package,
+preventing conflicts when inference scripts import from submodules.
 """
 
 from __future__ import absolute_import

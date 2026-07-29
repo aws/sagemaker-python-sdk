@@ -1,4 +1,4 @@
-"""Defines CustomPayloadTranslator class that holds custom serialization/deserialization code"""
+"""Defines CustomPayloadTranslator class that holds custom serialization/deserialization code."""
 
 from __future__ import absolute_import
 import abc
@@ -27,7 +27,7 @@ class CustomPayloadTranslator(abc.ABC):
 
     @abc.abstractmethod
     def serialize_payload_to_bytes(self, payload: object) -> bytes:
-        """Serialize payload into bytes
+        """Serialize payload into bytes.
 
         Args:
             payload (object): Data to be serialized into bytes.
@@ -48,21 +48,21 @@ class CustomPayloadTranslator(abc.ABC):
         """
 
     def serialize(self, payload: object, content_type: str = CONTENT_TYPE) -> bytes:
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         # pylint: disable=unused-argument
         return self.serialize_payload_to_bytes(payload)
 
     def deserialize(self, stream: IO, content_type: str = CONTENT_TYPE) -> object:
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         # pylint: disable=unused-argument
         return self.deserialize_payload_from_stream(stream)
 
     @property
     def CONTENT_TYPE(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         return self._content_type
 
     @property
     def ACCEPT(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         return self._accept_type

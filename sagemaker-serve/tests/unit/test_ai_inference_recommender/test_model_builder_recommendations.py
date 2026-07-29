@@ -505,9 +505,7 @@ class TestRegisterReturnsArn:
         with patch(
             "sagemaker.serve.model_builder.create_model_package_from_containers",
             return_value={"ModelPackageArn": arn},
-        ), patch(
-            "sagemaker.serve.model_builder.get_model_package_args", return_value={}
-        ), patch(
+        ), patch("sagemaker.serve.model_builder.get_model_package_args", return_value={}), patch(
             "sagemaker.serve.model_builder.update_container_with_inference_params",
             side_effect=lambda **kw: kw.get("container_def"),
         ), patch.object(

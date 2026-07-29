@@ -35,7 +35,6 @@ def prepare_for_smd(
 
     Returns:
         ( str ) :
-
     """
     model_path = Path(model_path)
     if not model_path.exists():

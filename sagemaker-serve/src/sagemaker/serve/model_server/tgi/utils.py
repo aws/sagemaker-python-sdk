@@ -1,4 +1,4 @@
-"""TGI ModelBuilder Utils"""
+"""TGI ModelBuilder Utils."""
 
 from __future__ import absolute_import
 
@@ -11,14 +11,14 @@ from sagemaker.serve.builder.schema_builder import SchemaBuilder
 
 
 def _get_default_dtype():
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return "bfloat16"
 
 
 def _get_default_tgi_configurations(
     model_id: str, hf_model_config: dict, schema_builder: SchemaBuilder
 ) -> Dict[str, str]:
-    """Get default TGI configurations"""
+    """Get default TGI configurations."""
     default_num_shard = _get_default_tensor_parallel_degree(hf_model_config)
     _, default_max_new_tokens = _get_default_max_tokens(
         schema_builder.sample_input, schema_builder.sample_output
@@ -44,5 +44,5 @@ def _get_default_tgi_configurations(
 
 
 def _get_admissible_dtypes():
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return ["bfloat16"]

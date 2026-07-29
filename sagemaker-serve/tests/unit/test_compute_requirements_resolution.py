@@ -4,13 +4,12 @@ Tests the _resolve_compute_requirements method with various scenarios.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pytest
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.core.inference_config import ResourceRequirements
-from sagemaker.core.shapes import InferenceComponentComputeResourceRequirements
 
 
 class TestComputeRequirementsResolution(unittest.TestCase):
@@ -545,7 +544,7 @@ class TestComputeRequirementsResolution(unittest.TestCase):
 
             assert (
                 requirements.number_of_accelerator_devices_required == expected_gpus
-            ), f"Expected {expected_gpus} GPUs for {instance_type}, got {requirements.number_of_accelerator_devices_required}"
+            ), f"Expected {expected_gpus} GPUs for {instance_type}, got {requirements.number_of_accelerator_devices_required}"  # noqa: E501
 
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_hub_document_for_custom_model")
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_instance_resources")

@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Prepare DjlModel for Deployment"""
+"""Prepare DjlModel for Deployment."""
 
 from __future__ import absolute_import
 import json
@@ -29,14 +29,14 @@ logger = logging.getLogger(__name__)
 
 
 def _extract_js_resource(js_model_dir: str, code_dir: Path, js_id: str):
-    """Uncompress the jumpstart resource"""
+    """Uncompress the jumpstart resource."""
     tmp_sourcedir = Path(js_model_dir).joinpath(f"infer-prepack-{js_id}.tar.gz")
     with tarfile.open(str(tmp_sourcedir)) as resources:
         custom_extractall_tarfile(resources, code_dir)
 
 
 def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> tuple:
-    """Copy the associated JumpStart Resource into the code directory"""
+    """Copy the associated JumpStart Resource into the code directory."""
     logger.info("Downloading JumpStart artifacts from S3...")
 
     s3_downloader = S3Downloader()
@@ -69,7 +69,7 @@ def _copy_jumpstart_artifacts(model_data: str, js_id: str, code_dir: Path) -> tu
 
 
 def _create_dir_structure(model_path: str) -> tuple:
-    """Placeholder Docstring"""
+    """Placeholder Docstring."""
     model_path = Path(model_path)
     if not model_path.exists():
         model_path.mkdir(parents=True)
@@ -92,7 +92,7 @@ def prepare_djl_js_resources(
     dependencies: str = None,
     model_data: str = None,
 ) -> tuple:
-    """Prepare serving when a JumpStart model id is given
+    """Prepare serving when a JumpStart model id is given.
 
     Args:
         model_path (str) : Argument
@@ -104,7 +104,6 @@ def prepare_djl_js_resources(
 
     Returns:
         ( str ) :
-
     """
     model_path, code_dir = _create_dir_structure(model_path)
 

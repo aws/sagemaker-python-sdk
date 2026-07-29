@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Utility functions for fetching model information from HuggingFace Hub"""
+"""Utility functions for fetching model information from HuggingFace Hub."""
 
 from __future__ import absolute_import
 import json
@@ -23,8 +23,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_model_config_properties_from_hf(model_id: str, hf_hub_token: str = None):
-    """Placeholder docstring"""
-
+    """Placeholder docstring."""
     config_files = ["config.json", "model_index.json", "adapter_config.json"]
 
     model_config = None

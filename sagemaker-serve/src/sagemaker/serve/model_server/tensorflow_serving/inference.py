@@ -20,7 +20,7 @@ METADATA_PATH = Path(__file__).parent.joinpath("metadata.json")
 
 
 def input_handler(data, context):
-    """Pre-process request input before it is sent to TensorFlow Serving REST API
+    """Pre-process request input before it is sent to TensorFlow Serving REST API.
 
     Args:
         data (obj): the request data, in format of dict or string
@@ -78,7 +78,10 @@ def output_handler(data, context):
                 response_content_type,
             )
         else:
-            return schema_builder.output_serializer.serialize(prediction_dict["predictions"]), response_content_type
+            return (
+                schema_builder.output_serializer.serialize(prediction_dict["predictions"]),
+                response_content_type,
+            )
     except Exception as e:
         logger.error("Encountered error: %s in serialize_response." % e)
         raise Exception("Encountered error in serialize_response.") from e

@@ -1,4 +1,4 @@
-"""Placeholder docstring"""
+"""Placeholder docstring."""
 
 from __future__ import absolute_import
 from pathlib import Path
@@ -30,7 +30,7 @@ class SageMakerEndpointMode(
     SageMakerTensorflowServing,
     SageMakerSmdServer,
 ):
-    """Holds the required method to deploy a model to a SageMaker Endpoint"""
+    """Holds the required method to deploy a model to a SageMaker Endpoint."""
 
     def __init__(self, inference_spec: Type[InferenceSpec], model_server: ModelServer):
         super().__init__()
@@ -43,7 +43,7 @@ class SageMakerEndpointMode(
         self._tei_serving = SageMakerTeiServing()
 
     def load(self, model_path: str):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         path = Path(model_path)
         if not path.exists():
             raise Exception("model_path does not exist")
@@ -63,7 +63,7 @@ class SageMakerEndpointMode(
         jumpstart: bool = False,
         should_upload_artifacts: bool = False,
     ):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         try:
             sagemaker_session = sagemaker_session or Session()
         except Exception as e:

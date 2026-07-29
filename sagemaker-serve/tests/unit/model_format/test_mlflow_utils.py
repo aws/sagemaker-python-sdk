@@ -5,11 +5,9 @@ Tests utility functions for MLflow model format handling.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 import os
 import tempfile
-import shutil
-import yaml
 from pathlib import Path
 
 from sagemaker.serve.model_format.mlflow.utils import (
@@ -25,7 +23,7 @@ from sagemaker.serve.model_format.mlflow.utils import (
     _select_container_for_mlflow_model,
     _validate_input_for_mlflow,
     _get_saved_model_path_for_tensorflow_and_keras_flavor,
-    _move_contents
+    _move_contents,
 )
 from sagemaker.serve.utils.types import ModelServer
 
@@ -62,38 +60,42 @@ class TestGetDefaultModelServerForMlflow(unittest.TestCase):
 class TestGetDefaultImageForMlflow(unittest.TestCase):
     """Test _get_default_image_for_mlflow function."""
 
-    @patch('sagemaker.serve.model_format.mlflow.utils.image_uris')
+    @patch("sagemaker.serve.model_format.mlflow.utils.image_uris")
     def test_get_default_image_success(self, mock_image_uris):
         """Test successful retrieval of default image."""
-        mock_image_uris.retrieve.return_value = "123456789.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.13.1-cpu-py39"
-        
+        mock_image_uris.retrieve.return_value = (
+            "123456789.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.13.1-cpu-py39"
+        )
+
         result = _get_default_image_for_mlflow("3.9.0", "us-east-1", "ml.m5.xlarge")
-        
+
         self.assertIn("pytorch-inference", result)
         mock_image_uris.retrieve.assert_called_once()
         call_args = mock_image_uris.retrieve.call_args[1]
-        self.assertEqual(call_args['framework'], 'pytorch')
-        self.assertEqual(call_args['region'], 'us-east-1')
-        self.assertEqual(call_args['py_version'], 'py39')
+        self.assertEqual(call_args["framework"], "pytorch")
+        self.assertEqual(call_args["region"], "us-east-1")
+        self.assertEqual(call_args["py_version"], "py39")
 
-    @patch('sagemaker.serve.model_format.mlflow.utils.image_uris')
+    @patch("sagemaker.serve.model_format.mlflow.utils.image_uris")
     def test_get_default_image_python_38(self, mock_image_uris):
         """Test image retrieval for Python 3.8."""
-        mock_image_uris.retrieve.return_value = "123456789.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.1-cpu-py38"
-        
-        result = _get_default_image_for_mlflow("3.8.10", "us-west-2", "ml.t2.medium")
-        
-        call_args = mock_image_uris.retrieve.call_args[1]
-        self.assertEqual(call_args['py_version'], 'py38')
+        mock_image_uris.retrieve.return_value = (
+            "123456789.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.12.1-cpu-py38"
+        )
 
-    @patch('sagemaker.serve.model_format.mlflow.utils.image_uris')
+        _get_default_image_for_mlflow("3.8.10", "us-west-2", "ml.t2.medium")
+
+        call_args = mock_image_uris.retrieve.call_args[1]
+        self.assertEqual(call_args["py_version"], "py38")
+
+    @patch("sagemaker.serve.model_format.mlflow.utils.image_uris")
     def test_get_default_image_failure_raises_error(self, mock_image_uris):
         """Test that ValueError is raised when image cannot be retrieved."""
         mock_image_uris.retrieve.side_effect = ValueError("No image found")
-        
+
         with self.assertRaises(ValueError) as context:
             _get_default_image_for_mlflow("3.11.0", "us-east-1", "ml.m5.xlarge")
-        
+
         self.assertIn("Unable to find default image", str(context.exception))
 
 
@@ -104,11 +106,11 @@ class TestGenerateMlflowArtifactPath(unittest.TestCase):
         """Test successful artifact path generation."""
         with tempfile.TemporaryDirectory() as tmpdir:
             artifact_file = os.path.join(tmpdir, "MLmodel")
-            with open(artifact_file, 'w') as f:
+            with open(artifact_file, "w") as f:
                 f.write("test content")
-            
+
             result = _generate_mlflow_artifact_path(tmpdir, "MLmodel")
-            
+
             self.assertEqual(result, artifact_file)
             self.assertTrue(os.path.isfile(result))
 
@@ -117,7 +119,7 @@ class TestGenerateMlflowArtifactPath(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             with self.assertRaises(FileNotFoundError) as context:
                 _generate_mlflow_artifact_path(tmpdir, "nonexistent.txt")
-            
+
             self.assertIn("does not exist", str(context.exception))
 
 
@@ -137,16 +139,16 @@ flavors:
     pickled_model: model.pkl
     sklearn_version: 1.0.2
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(mlmodel_content)
             f.flush()
-            
+
             try:
                 result = _get_all_flavor_metadata(f.name)
-                
-                self.assertIn('python_function', result)
-                self.assertIn('sklearn', result)
-                self.assertEqual(result['python_function']['python_version'], '3.8.10')
+
+                self.assertIn("python_function", result)
+                self.assertIn("sklearn", result)
+                self.assertEqual(result["python_function"]["python_version"], "3.8.10")
             finally:
                 os.unlink(f.name)
 
@@ -154,7 +156,7 @@ flavors:
         """Test that ValueError is raised when file doesn't exist."""
         with self.assertRaises(ValueError) as context:
             _get_all_flavor_metadata("/nonexistent/path/MLmodel")
-        
+
         self.assertIn("File does not exist", str(context.exception))
 
     def test_get_flavor_metadata_missing_flavors_key(self):
@@ -163,28 +165,28 @@ flavors:
 artifact_path: model
 run_id: abc123
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write(mlmodel_content)
             f.flush()
-            
+
             try:
                 with self.assertRaises(ValueError) as context:
                     _get_all_flavor_metadata(f.name)
-                
+
                 self.assertIn("'flavors' key is missing", str(context.exception))
             finally:
                 os.unlink(f.name)
 
     def test_get_flavor_metadata_invalid_yaml(self):
         """Test that ValueError is raised for invalid YAML."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             f.write("invalid: yaml: content: [")
             f.flush()
-            
+
             try:
                 with self.assertRaises(ValueError) as context:
                     _get_all_flavor_metadata(f.name)
-                
+
                 self.assertIn("Error parsing the file as YAML", str(context.exception))
             finally:
                 os.unlink(f.name)
@@ -200,10 +202,10 @@ numpy==1.21.0
 scikit-learn==1.0.2
 pandas==1.3.0
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(requirements_content)
             f.flush()
-            
+
             try:
                 result = _get_framework_version_from_requirements("sklearn", f.name)
                 self.assertEqual(result, "1.0.2")
@@ -215,10 +217,10 @@ pandas==1.3.0
         requirements_content = """
 tensorflow>=2.8.0
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(requirements_content)
             f.flush()
-            
+
             try:
                 result = _get_framework_version_from_requirements("tensorflow", f.name)
                 self.assertEqual(result, "2.8.0")
@@ -230,10 +232,10 @@ tensorflow>=2.8.0
         requirements_content = """
 torch<=1.13.1
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(requirements_content)
             f.flush()
-            
+
             try:
                 result = _get_framework_version_from_requirements("pytorch", f.name)
                 self.assertEqual(result, "1.13.1")
@@ -246,10 +248,10 @@ torch<=1.13.1
 numpy==1.21.0
 pandas==1.3.0
 """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(requirements_content)
             f.flush()
-            
+
             try:
                 result = _get_framework_version_from_requirements("sklearn", f.name)
                 self.assertIsNone(result)
@@ -260,16 +262,16 @@ pandas==1.3.0
         """Test that ValueError is raised when file doesn't exist."""
         with self.assertRaises(ValueError) as context:
             _get_framework_version_from_requirements("sklearn", "/nonexistent/requirements.txt")
-        
+
         self.assertIn("File not found", str(context.exception))
 
     def test_get_version_unsupported_flavor(self):
         """Test with unsupported flavor returns None."""
         requirements_content = "numpy==1.21.0"
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(requirements_content)
             f.flush()
-            
+
             try:
                 result = _get_framework_version_from_requirements("unsupported_flavor", f.name)
                 self.assertIsNone(result)
@@ -284,9 +286,9 @@ class TestGetDeploymentFlavor(unittest.TestCase):
         """Test deployment flavor extraction with sklearn."""
         flavor_metadata = {
             "python_function": {"python_version": "3.8.10"},
-            "sklearn": {"sklearn_version": "1.0.2"}
+            "sklearn": {"sklearn_version": "1.0.2"},
         }
-        
+
         result = _get_deployment_flavor(flavor_metadata)
         self.assertEqual(result, "sklearn")
 
@@ -294,18 +296,16 @@ class TestGetDeploymentFlavor(unittest.TestCase):
         """Test deployment flavor extraction with pytorch."""
         flavor_metadata = {
             "python_function": {"python_version": "3.9.0"},
-            "pytorch": {"pytorch_version": "1.13.1"}
+            "pytorch": {"pytorch_version": "1.13.1"},
         }
-        
+
         result = _get_deployment_flavor(flavor_metadata)
         self.assertEqual(result, "pytorch")
 
     def test_get_deployment_flavor_pyfunc_only(self):
         """Test deployment flavor defaults to pyfunc when only pyfunc exists."""
-        flavor_metadata = {
-            "python_function": {"python_version": "3.8.10"}
-        }
-        
+        flavor_metadata = {"python_function": {"python_version": "3.8.10"}}
+
         result = _get_deployment_flavor(flavor_metadata)
         self.assertEqual(result, "python_function")
 
@@ -313,14 +313,14 @@ class TestGetDeploymentFlavor(unittest.TestCase):
         """Test that ValueError is raised when flavor_metadata is None."""
         with self.assertRaises(ValueError) as context:
             _get_deployment_flavor(None)
-        
+
         self.assertIn("Flavor metadata is not found", str(context.exception))
 
     def test_get_deployment_flavor_empty_dict_raises_error(self):
         """Test that ValueError is raised when flavor_metadata is empty."""
         with self.assertRaises(ValueError) as context:
             _get_deployment_flavor({})
-        
+
         self.assertIn("Flavor metadata is not found", str(context.exception))
 
 
@@ -331,58 +331,51 @@ class TestGetPythonVersionFromParsedMlflowModelFile(unittest.TestCase):
         """Test successful Python version extraction."""
         parsed_metadata = {
             "python_function": {"python_version": "3.8.10"},
-            "sklearn": {"sklearn_version": "1.0.2"}
+            "sklearn": {"sklearn_version": "1.0.2"},
         }
-        
+
         result = _get_python_version_from_parsed_mlflow_model_file(parsed_metadata)
         self.assertEqual(result, "3.8.10")
 
     def test_get_python_version_missing_pyfunc_raises_error(self):
         """Test that ValueError is raised when python_function is missing."""
-        parsed_metadata = {
-            "sklearn": {"sklearn_version": "1.0.2"}
-        }
-        
+        parsed_metadata = {"sklearn": {"sklearn_version": "1.0.2"}}
+
         with self.assertRaises(ValueError) as context:
             _get_python_version_from_parsed_mlflow_model_file(parsed_metadata)
-        
+
         self.assertIn("python_function cannot be found", str(context.exception))
 
 
 class TestDownloadS3Artifacts(unittest.TestCase):
     """Test _download_s3_artifacts function."""
 
-    @patch('sagemaker.serve.model_format.mlflow.utils.os.makedirs')
+    @patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
     def test_download_s3_artifacts_invalid_path(self, mock_makedirs):
         """Test that ValueError is raised for invalid S3 path."""
         mock_session = Mock()
-        
+
         with self.assertRaises(ValueError) as context:
             _download_s3_artifacts("/local/path", "/dst/path", mock_session)
-        
+
         self.assertIn("Invalid S3 path", str(context.exception))
 
-    @patch('sagemaker.serve.model_format.mlflow.utils.os.makedirs')
+    @patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
     def test_download_s3_artifacts_success(self, mock_makedirs):
         """Test successful S3 artifact download."""
         mock_session = Mock()
         mock_s3_client = Mock()
         mock_session.boto_session.client.return_value = mock_s3_client
-        
+
         # Mock paginator
         mock_paginator = Mock()
         mock_s3_client.get_paginator.return_value = mock_paginator
         mock_paginator.paginate.return_value = [
-            {
-                "Contents": [
-                    {"Key": "model/MLmodel"},
-                    {"Key": "model/model.pkl"}
-                ]
-            }
+            {"Contents": [{"Key": "model/MLmodel"}, {"Key": "model/model.pkl"}]}
         ]
-        
+
         _download_s3_artifacts("s3://my-bucket/model", "/local/dst", mock_session)
-        
+
         mock_s3_client.get_paginator.assert_called_once_with("list_objects_v2")
         self.assertEqual(mock_s3_client.download_file.call_count, 2)
 
@@ -390,7 +383,7 @@ class TestDownloadS3Artifacts(unittest.TestCase):
 class TestDownloadS3ArtifactsPathTraversal(unittest.TestCase):
     """Test _download_s3_artifacts blocks path traversal attacks."""
 
-    @patch('sagemaker.serve.model_format.mlflow.utils.os.makedirs')
+    @patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
     def test_path_traversal_via_dotdot_in_key(self, mock_makedirs):
         """Test that S3 keys with '..' traversal sequences are blocked."""
         mock_session = Mock()
@@ -415,7 +408,7 @@ class TestDownloadS3ArtifactsPathTraversal(unittest.TestCase):
 
         mock_s3_client.download_file.assert_not_called()
 
-    @patch('sagemaker.serve.model_format.mlflow.utils.os.makedirs')
+    @patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
     def test_path_traversal_overwrite_ssh_keys(self, mock_makedirs):
         """Test the attack scenario from the vulnerability report targeting SSH keys."""
         mock_session = Mock()
@@ -434,15 +427,13 @@ class TestDownloadS3ArtifactsPathTraversal(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmpdir:
             with self.assertRaises(ValueError) as context:
-                _download_s3_artifacts(
-                    "s3://shared-bucket/mlruns/exp1/model", tmpdir, mock_session
-                )
+                _download_s3_artifacts("s3://shared-bucket/mlruns/exp1/model", tmpdir, mock_session)
 
             self.assertIn("Path traversal detected", str(context.exception))
 
         mock_s3_client.download_file.assert_not_called()
 
-    @patch('sagemaker.serve.model_format.mlflow.utils.os.makedirs')
+    @patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
     def test_safe_keys_are_allowed(self, mock_makedirs):
         """Test that normal S3 keys within the target directory are allowed."""
         mock_session = Mock()
@@ -465,7 +456,7 @@ class TestDownloadS3ArtifactsPathTraversal(unittest.TestCase):
 
         self.assertEqual(mock_s3_client.download_file.call_count, 2)
 
-    @patch('sagemaker.serve.model_format.mlflow.utils.os.makedirs')
+    @patch("sagemaker.serve.model_format.mlflow.utils.os.makedirs")
     def test_folder_keys_are_skipped(self, mock_makedirs):
         """Test that S3 folder objects (keys ending with /) are not downloaded."""
         mock_session = Mock()
@@ -499,17 +490,17 @@ class TestCopyDirectoryContents(unittest.TestCase):
             with tempfile.TemporaryDirectory() as dest_dir:
                 # Create test files in source
                 test_file = os.path.join(src_dir, "test.txt")
-                with open(test_file, 'w') as f:
+                with open(test_file, "w") as f:
                     f.write("test content")
-                
+
                 sub_dir = os.path.join(src_dir, "subdir")
                 os.makedirs(sub_dir)
                 sub_file = os.path.join(sub_dir, "sub.txt")
-                with open(sub_file, 'w') as f:
+                with open(sub_file, "w") as f:
                     f.write("sub content")
-                
+
                 _copy_directory_contents(src_dir, dest_dir)
-                
+
                 # Verify files were copied
                 self.assertTrue(os.path.exists(os.path.join(dest_dir, "test.txt")))
                 self.assertTrue(os.path.exists(os.path.join(dest_dir, "subdir", "sub.txt")))
@@ -518,12 +509,12 @@ class TestCopyDirectoryContents(unittest.TestCase):
         """Test that no action is taken when source and dest are the same."""
         with tempfile.TemporaryDirectory() as tmpdir:
             test_file = os.path.join(tmpdir, "test.txt")
-            with open(test_file, 'w') as f:
+            with open(test_file, "w") as f:
                 f.write("test content")
-            
+
             # Should not raise error
             _copy_directory_contents(tmpdir, tmpdir)
-            
+
             # File should still exist
             self.assertTrue(os.path.exists(test_file))
 
@@ -550,14 +541,14 @@ class TestValidateInputForMlflow(unittest.TestCase):
         """Test that ValueError is raised for unsupported model server."""
         with self.assertRaises(ValueError) as context:
             _validate_input_for_mlflow(ModelServer.DJL_SERVING, "sklearn")
-        
+
         self.assertIn("is currently not supported", str(context.exception))
 
     def test_validate_tensorflow_serving_with_wrong_flavor_raises_error(self):
         """Test that ValueError is raised for TF Serving with incompatible flavor."""
         with self.assertRaises(ValueError) as context:
             _validate_input_for_mlflow(ModelServer.TENSORFLOW_SERVING, "sklearn")
-        
+
         self.assertIn("Tensorflow Serving is currently only supported", str(context.exception))
 
 
@@ -570,11 +561,11 @@ class TestGetSavedModelPathForTensorflowAndKerasFlavor(unittest.TestCase):
             model_dir = os.path.join(tmpdir, "model", "data")
             os.makedirs(model_dir)
             saved_model_file = os.path.join(model_dir, "saved_model.pb")
-            with open(saved_model_file, 'w') as f:
+            with open(saved_model_file, "w") as f:
                 f.write("test")
-            
+
             result = _get_saved_model_path_for_tensorflow_and_keras_flavor(tmpdir)
-            
+
             self.assertEqual(result, model_dir)
 
     def test_find_saved_model_pb_not_found(self):
@@ -589,11 +580,11 @@ class TestGetSavedModelPathForTensorflowAndKerasFlavor(unittest.TestCase):
             nested_dir = os.path.join(tmpdir, "a", "b", "c", "model")
             os.makedirs(nested_dir)
             saved_model_file = os.path.join(nested_dir, "saved_model.pb")
-            with open(saved_model_file, 'w') as f:
+            with open(saved_model_file, "w") as f:
                 f.write("test")
-            
+
             result = _get_saved_model_path_for_tensorflow_and_keras_flavor(tmpdir)
-            
+
             self.assertEqual(result, nested_dir)
 
 
@@ -606,24 +597,24 @@ class TestMoveContents(unittest.TestCase):
             src_dir = os.path.join(tmpdir, "src")
             dest_dir = os.path.join(tmpdir, "dest")
             os.makedirs(src_dir)
-            
+
             # Create test files
             test_file = os.path.join(src_dir, "test.txt")
-            with open(test_file, 'w') as f:
+            with open(test_file, "w") as f:
                 f.write("test content")
-            
+
             sub_dir = os.path.join(src_dir, "subdir")
             os.makedirs(sub_dir)
             sub_file = os.path.join(sub_dir, "sub.txt")
-            with open(sub_file, 'w') as f:
+            with open(sub_file, "w") as f:
                 f.write("sub content")
-            
+
             _move_contents(src_dir, dest_dir)
-            
+
             # Verify files were moved
             self.assertTrue(os.path.exists(os.path.join(dest_dir, "test.txt")))
             self.assertTrue(os.path.exists(os.path.join(dest_dir, "subdir", "sub.txt")))
-            
+
             # Verify source directory was removed
             self.assertFalse(os.path.exists(src_dir))
 
@@ -633,12 +624,12 @@ class TestMoveContents(unittest.TestCase):
             src_dir = Path(tmpdir) / "src"
             dest_dir = Path(tmpdir) / "dest"
             src_dir.mkdir()
-            
+
             test_file = src_dir / "test.txt"
             test_file.write_text("test content")
-            
+
             _move_contents(src_dir, dest_dir)
-            
+
             self.assertTrue((dest_dir / "test.txt").exists())
             self.assertFalse(src_dir.exists())
 
@@ -646,77 +637,69 @@ class TestMoveContents(unittest.TestCase):
 class TestSelectContainerForMlflowModel(unittest.TestCase):
     """Test _select_container_for_mlflow_model function."""
 
-    @patch('sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements')
-    @patch('sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata')
-    @patch('sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path')
-    @patch('sagemaker.serve.model_format.mlflow.utils.image_uris')
-    @patch('sagemaker.serve.model_format.mlflow.utils._cast_to_compatible_version')
-    def test_select_container_pytorch_success(self, mock_cast, mock_image_uris, mock_gen_path,
-                                                mock_get_metadata, mock_get_version):
+    @patch("sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements")
+    @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
+    @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
+    @patch("sagemaker.serve.model_format.mlflow.utils.image_uris")
+    @patch("sagemaker.serve.model_format.mlflow.utils._cast_to_compatible_version")
+    def test_select_container_pytorch_success(
+        self, mock_cast, mock_image_uris, mock_gen_path, mock_get_metadata, mock_get_version
+    ):
         """Test successful container selection for PyTorch."""
         mock_gen_path.side_effect = ["/path/requirements.txt", "/path/MLmodel"]
         mock_get_metadata.return_value = {
             "python_function": {"python_version": "3.9.0"},
-            "pytorch": {"pytorch_version": "1.13.1"}
+            "pytorch": {"pytorch_version": "1.13.1"},
         }
         mock_get_version.return_value = "1.13.1"
         mock_cast.return_value = ("1.13.1",)
         mock_image_uris.retrieve.return_value = "pytorch-inference:1.13.1-cpu-py39"
-        
+
         result = _select_container_for_mlflow_model(
-            "/path/to/model",
-            "pytorch",
-            "us-east-1",
-            "ml.m5.xlarge"
+            "/path/to/model", "pytorch", "us-east-1", "ml.m5.xlarge"
         )
-        
+
         self.assertIn("pytorch-inference", result)
 
-    @patch('sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements')
-    @patch('sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata')
-    @patch('sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path')
-    @patch('sagemaker.serve.model_format.mlflow.utils._get_default_image_for_mlflow')
-    def test_select_container_unsupported_flavor_uses_default(self, mock_default_image, mock_gen_path,
-                                                               mock_get_metadata, mock_get_version):
+    @patch("sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements")
+    @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
+    @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
+    @patch("sagemaker.serve.model_format.mlflow.utils._get_default_image_for_mlflow")
+    def test_select_container_unsupported_flavor_uses_default(
+        self, mock_default_image, mock_gen_path, mock_get_metadata, mock_get_version
+    ):
         """Test that unsupported flavor falls back to default image."""
         mock_gen_path.side_effect = ["/path/requirements.txt", "/path/MLmodel"]
-        mock_get_metadata.return_value = {
-            "python_function": {"python_version": "3.8.10"}
-        }
+        mock_get_metadata.return_value = {"python_function": {"python_version": "3.8.10"}}
         mock_default_image.return_value = "default-image:latest"
-        
+
         result = _select_container_for_mlflow_model(
-            "/path/to/model",
-            "unsupported_flavor",
-            "us-east-1",
-            "ml.m5.xlarge"
+            "/path/to/model", "unsupported_flavor", "us-east-1", "ml.m5.xlarge"
         )
-        
+
         self.assertEqual(result, "default-image:latest")
 
-    @patch('sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements')
-    @patch('sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata')
-    @patch('sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path')
-    def test_select_container_no_framework_version_raises_error(self, mock_gen_path,
-                                                                  mock_get_metadata, mock_get_version):
+    @patch("sagemaker.serve.model_format.mlflow.utils._get_framework_version_from_requirements")
+    @patch("sagemaker.serve.model_format.mlflow.utils._get_all_flavor_metadata")
+    @patch("sagemaker.serve.model_format.mlflow.utils._generate_mlflow_artifact_path")
+    def test_select_container_no_framework_version_raises_error(
+        self, mock_gen_path, mock_get_metadata, mock_get_version
+    ):
         """Test that ValueError is raised when framework version cannot be detected."""
         mock_gen_path.side_effect = ["/path/requirements.txt", "/path/MLmodel"]
         mock_get_metadata.return_value = {
             "python_function": {"python_version": "3.9.0"},
-            "sklearn": {"sklearn_version": "1.0.2"}
+            "sklearn": {"sklearn_version": "1.0.2"},
         }
         mock_get_version.return_value = None
-        
+
         with self.assertRaises(ValueError) as context:
             _select_container_for_mlflow_model(
-                "/path/to/model",
-                "sklearn",
-                "us-east-1",
-                "ml.m5.xlarge"
+                "/path/to/model", "sklearn", "us-east-1", "ml.m5.xlarge"
             )
-        
+
         self.assertIn("Unable to auto detect framework version", str(context.exception))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

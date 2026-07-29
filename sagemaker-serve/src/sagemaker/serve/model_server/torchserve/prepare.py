@@ -39,7 +39,6 @@ def prepare_for_torchserve(
 
     Returns:
         ( str ) :
-
     """
     model_path = Path(model_path)
     if not model_path.exists():

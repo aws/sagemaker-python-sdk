@@ -10,7 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Holds the util functions used for lineage tracking"""
+"""Holds the util functions used for lineage tracking."""
+
 from __future__ import absolute_import
 
 import os
@@ -56,7 +57,7 @@ def _load_artifact_by_source_uri(
     source_types_to_match: Optional[List[str]] = None,
     artifact_type: Optional[str] = None,
 ) -> Optional[ArtifactSummary]:
-    """Load lineage artifact by source uri
+    """Load lineage artifact by source uri.
 
     Arguments:
         source_uri (str): The s3 uri used for uploading transfomred model artifacts.
@@ -192,7 +193,7 @@ def _retrieve_and_create_if_not_exist_mlflow_model_path_lineage_artifact(
     sagemaker_session: Session,
     tracking_server_arn: Optional[str] = None,
 ) -> Optional[Union[Artifact, ArtifactSummary]]:
-    """Retrieves an existing artifact for the given MLflow model path or
+    """Retrieves an existing artifact for the given MLflow model path or.
 
     creates a new one if it doesn't exist.
 

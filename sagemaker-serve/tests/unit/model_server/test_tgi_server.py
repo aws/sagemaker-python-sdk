@@ -1,8 +1,7 @@
 """Unit tests for tgi server.py module."""
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
-from pathlib import Path
+from unittest.mock import Mock, patch
 
 
 class TestLocalTgiServing(unittest.TestCase):

@@ -1,4 +1,4 @@
-"""Placeholder docerting"""
+"""Placeholder docerting."""
 
 from __future__ import absolute_import
 import uuid
@@ -22,7 +22,7 @@ _SHM_SIZE = "2G"
 
 
 class LocalTritonServer:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
 
     def __init__(self) -> None:
         self.triton_client = None
@@ -35,7 +35,7 @@ class LocalTritonServer:
         image_uri: str,
         env_vars: dict,
     ):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         self.container_name = "triton" + uuid.uuid1().hex
         model_repository = model_path + "/model_repository"
         env_vars.update(
@@ -71,7 +71,7 @@ class LocalTritonServer:
             )
 
     def _invoke_triton_server(self, payload, *args, **kwargs):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         httpClient = importlib.import_module("tritonclient.http")
 
         if not self.triton_client:
@@ -90,7 +90,7 @@ class LocalTritonServer:
 
 
 class SageMakerTritonServer:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
 
     def __init__(self) -> None:
         pass
@@ -104,7 +104,7 @@ class SageMakerTritonServer:
         image: str = None,
         should_upload_artifacts: bool = False,
     ):
-        """Tar triton artifacts and upload to s3"""
+        """Tar triton artifacts and upload to s3."""
         s3_upload_path = None
         if _is_s3_uri(model_path):
             s3_upload_path = model_path

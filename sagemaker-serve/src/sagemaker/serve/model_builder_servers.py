@@ -12,9 +12,9 @@
 # language governing permissions and limitations under the License.
 """ModelBuilder class for building and deploying machine learning models.
 
-This module provides the ModelBuilder class, which offers a unified interface for building
-and deploying machine learning models across different model servers and deployment modes.
-It supports various frameworks including PyTorch, TensorFlow, HuggingFace, XGBoost, and more.
+This module provides the ModelBuilder class, which offers a unified interface for building and
+deploying machine learning models across different model servers and deployment modes. It supports
+various frameworks including PyTorch, TensorFlow, HuggingFace, XGBoost, and more.
 """
 
 from __future__ import absolute_import, annotations
@@ -1087,7 +1087,7 @@ class _ModelBuilderServers(object):
             return self._create_model()
 
     def _djl_model_builder_deploy_wrapper(self, *args, **kwargs) -> Union[Endpoint, LocalEndpoint]:
-        """Returns predictor depending on local mode or endpoint mode"""
+        """Returns predictor depending on local mode or endpoint mode."""
         timeout = kwargs.get("model_data_download_timeout")
         if timeout:
             self.env_vars.update({"MODEL_LOADING_TIMEOUT": str(timeout)})
@@ -1116,7 +1116,6 @@ class _ModelBuilderServers(object):
 
     def _tgi_model_builder_deploy_wrapper(self, *args, **kwargs) -> Union[Endpoint, LocalEndpoint]:
         """Simplified TGI deploy wrapper - env vars already set during build."""
-
         # Handle mode overrides for local deployment
         if self.mode == Mode.IN_PROCESS:
             return self._deploy_local_endpoint(**kwargs)
@@ -1141,7 +1140,6 @@ class _ModelBuilderServers(object):
 
     def _tei_model_builder_deploy_wrapper(self, *args, **kwargs) -> Union[Endpoint, LocalEndpoint]:
         """Simplified TEI deploy wrapper - env vars already set during build."""
-
         # Handle local deployment modes
         if self.mode == Mode.IN_PROCESS:
             return self._deploy_local_endpoint(**kwargs)
@@ -1166,7 +1164,6 @@ class _ModelBuilderServers(object):
 
     def _js_builder_deploy_wrapper(self, *args, **kwargs) -> Union[Endpoint, LocalEndpoint]:
         """Simplified JumpStart deploy wrapper - resource prep already done during build."""
-
         # Handle local deployment
         if self.mode == Mode.LOCAL_CONTAINER:
             return self._deploy_local_endpoint(**kwargs)
@@ -1190,7 +1187,6 @@ class _ModelBuilderServers(object):
         self, *args, **kwargs
     ) -> Union[Endpoint, LocalEndpoint]:
         """Simplified Transformers deploy wrapper - env vars already set during build."""
-
         # Handle local deployment modes
         if self.mode == Mode.LOCAL_CONTAINER:
             return self._deploy_local_endpoint(**kwargs)

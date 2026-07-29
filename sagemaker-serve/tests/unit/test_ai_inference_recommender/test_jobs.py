@@ -84,9 +84,7 @@ class TestBenchmarkResultFromJob:
                 mock_refresh.assert_called_once()
 
     def test_raises_with_wait_hint_when_job_in_progress(self):
-        job = BenchmarkJob(
-            ai_benchmark_job_name="bench-1", ai_benchmark_job_status="InProgress"
-        )
+        job = BenchmarkJob(ai_benchmark_job_name="bench-1", ai_benchmark_job_status="InProgress")
         with patch.object(BenchmarkJob, "refresh", return_value=job):
             with pytest.raises(RuntimeError, match="has not finished.*job.wait"):
                 BenchmarkResult.from_job(job)
@@ -108,9 +106,7 @@ class TestBenchmarkResultFromJob:
             output_config=AIBenchmarkOutputResult(
                 s3_output_location="s3://bucket/results/bench-1/"
             ),
-            benchmark_target=AIBenchmarkTarget(
-                endpoint=AIBenchmarkEndpoint(identifier="my-ep")
-            ),
+            benchmark_target=AIBenchmarkTarget(endpoint=AIBenchmarkEndpoint(identifier="my-ep")),
             ai_workload_config_identifier="my-wl-cfg",
         )
         with patch.object(BenchmarkResult, "from_s3", return_value="PARSED") as from_s3:
@@ -137,7 +133,9 @@ def _fake_recommendation_row():
             environment_variables={"MY_VAR_A": "128", "MY_VAR_B": "1"},
         ),
         expected_performance=[
-            SimpleNamespace(metric="RequestThroughput", stat="avg", value=28.42, unit="Requests/Second"),
+            SimpleNamespace(
+                metric="RequestThroughput", stat="avg", value=28.42, unit="Requests/Second"
+            ),
             SimpleNamespace(metric="RequestLatency", stat="p99", value=4639.0, unit="Milliseconds"),
         ],
     )
@@ -179,7 +177,9 @@ class TestRecommendationView:
         view = _RecommendationView(_fake_recommendation_row())
         assert view.recommendation_spec_name == "my-spec"
         # And on a row whose model_details lacks the field:
-        sparse = SimpleNamespace(model_details=None, deployment_configuration=None, expected_performance=[])
+        sparse = SimpleNamespace(
+            model_details=None, deployment_configuration=None, expected_performance=[]
+        )
         assert _RecommendationView(sparse).recommendation_spec_name is None
 
     def test_handles_missing_optional_fields(self):
@@ -209,8 +209,12 @@ def _fake_two_recommendations():
             environment_variables={},
         ),
         expected_performance=[
-            SimpleNamespace(metric="RequestThroughput", stat="avg", value=152.94, unit="Requests/Second"),
-            SimpleNamespace(metric="OutputTokenThroughput", stat="avg", value=4893.7, unit="Tokens/Second"),
+            SimpleNamespace(
+                metric="RequestThroughput", stat="avg", value=152.94, unit="Requests/Second"
+            ),
+            SimpleNamespace(
+                metric="OutputTokenThroughput", stat="avg", value=4893.7, unit="Tokens/Second"
+            ),
             SimpleNamespace(metric="RequestLatency", stat="p50", value=402.6, unit="Milliseconds"),
             SimpleNamespace(metric="RequestLatency", stat="p99", value=481.6, unit="Milliseconds"),
         ],
@@ -228,8 +232,12 @@ def _fake_two_recommendations():
             environment_variables={},
         ),
         expected_performance=[
-            SimpleNamespace(metric="RequestThroughput", stat="avg", value=151.6, unit="Requests/Second"),
-            SimpleNamespace(metric="OutputTokenThroughput", stat="avg", value=4851.1, unit="Tokens/Second"),
+            SimpleNamespace(
+                metric="RequestThroughput", stat="avg", value=151.6, unit="Requests/Second"
+            ),
+            SimpleNamespace(
+                metric="OutputTokenThroughput", stat="avg", value=4851.1, unit="Tokens/Second"
+            ),
             SimpleNamespace(metric="RequestLatency", stat="p50", value=425.2, unit="Milliseconds"),
             SimpleNamespace(metric="RequestLatency", stat="p99", value=474.6, unit="Milliseconds"),
         ],
@@ -240,16 +248,17 @@ def _fake_two_recommendations():
 class TestRecommendationsView:
     def _make(self, rows=None):
         rows = rows if rows is not None else _fake_two_recommendations()
-        return _RecommendationsView(
-            _RecommendationView(row, index=i) for i, row in enumerate(rows)
-        )
+        return _RecommendationsView(_RecommendationView(row, index=i) for i, row in enumerate(rows))
 
     def test_behaves_like_list(self):
         view = self._make()
         assert len(view) == 2
         assert isinstance(view[0], _RecommendationView)
         # iteration
-        names = [getattr(getattr(r.raw, "model_details", None), "inference_specification_name", None) for r in view]
+        names = [
+            getattr(getattr(r.raw, "model_details", None), "inference_specification_name", None)
+            for r in view
+        ]
         assert names == ["high-otps-on-g5-2xlarge", "high-otps-on-g5-2xlarge-1"]
 
     def test_best_returns_first_row(self):
@@ -269,9 +278,14 @@ class TestRecommendationsView:
         assert "high-otps-on-g5-2xlarge" in text
         assert "high-otps-on-g5-2xlarge-1" in text
         for column in (
-            "idx", "spec_name", "instance_type",
-            "instances", "copies/inst", "container",
-            "req/s", "lat_p99",
+            "idx",
+            "spec_name",
+            "instance_type",
+            "instances",
+            "copies/inst",
+            "container",
+            "req/s",
+            "lat_p99",
         ):
             assert column in text
         # The two rows have different throughput values that should both render
@@ -304,9 +318,7 @@ class TestRecommendationJobShowResult:
 
         # Call the unbound method with a lightweight stand-in so we exercise
         # show_result's logic without pydantic field validation on the rows.
-        stub = SimpleNamespace(
-            recommendations=rows, refresh=lambda: None
-        )
+        stub = SimpleNamespace(recommendations=rows, refresh=lambda: None)
         result = RecommendationJob.show_result(stub)
 
         assert isinstance(result, _RecommendationsView)
@@ -320,11 +332,19 @@ class TestShortContainerTag:
     """_short_container_tag should pick the friendly version token from a full image URI."""
 
     def _short(self, uri):
-        from sagemaker.serve.ai_inference_recommender._recommendation_view import _short_container_tag
+        from sagemaker.serve.ai_inference_recommender._recommendation_view import (
+            _short_container_tag,
+        )
+
         return _short_container_tag(uri)
 
     def test_picks_lmi_token(self):
-        assert self._short("111122223333.dkr.ecr.us-west-2.amazonaws.com/example:0.36.0-lmi25.0.0-cu130") == "lmi25.0.0"
+        assert (
+            self._short(
+                "111122223333.dkr.ecr.us-west-2.amazonaws.com/example:0.36.0-lmi25.0.0-cu130"
+            )
+            == "lmi25.0.0"
+        )
 
     def test_picks_vllm_token(self):
         assert self._short("example/img:vllm0.6.0-cu121") == "vllm0.6.0"

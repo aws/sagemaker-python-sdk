@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Shared resources for prepare step of model deployment"""
+"""Shared resources for prepare step of model deployment."""
 
 from __future__ import absolute_import
 import logging
@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 def _create_dir_structure(model_path: str) -> tuple:
-    """Create the expected model directory structure for the Multi Model server"""
+    """Create the expected model directory structure for the Multi Model server."""
     model_path = Path(model_path)
     if not model_path.exists():
         model_path.mkdir(parents=True)
@@ -57,7 +57,7 @@ def prepare_mms_js_resources(
     dependencies: str = None,
     model_data: str = None,
 ) -> tuple:
-    """Prepare serving when a JumpStart model id is given
+    """Prepare serving when a JumpStart model id is given.
 
     Args:
         model_path (str) : Argument
@@ -68,7 +68,6 @@ def prepare_mms_js_resources(
 
     Returns:
         ( str ) :
-
     """
     model_path, code_dir = _create_dir_structure(model_path)
 
@@ -83,7 +82,8 @@ def prepare_for_mms(
     image_uri: str,
     inference_spec: InferenceSpec = None,
 ) -> str:
-    """Prepares for InferenceSpec using model_path, writes inference.py, and captures dependencies to generate secret_key.
+    """Prepares for InferenceSpec using model_path, writes inference.py, and captures dependencies
+    to generate secret_key.
 
     Args:to
         model_path (str) : Argument

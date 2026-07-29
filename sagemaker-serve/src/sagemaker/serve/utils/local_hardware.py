@@ -10,7 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Utilites for identifying and analyzing local gpu hardware"""
+"""Utilites for identifying and analyzing local gpu hardware."""
+
 from __future__ import absolute_import
 
 import subprocess
@@ -97,7 +98,7 @@ fallback_gpu_resource_mapping = {
 
 
 def _get_available_gpus(log=True):
-    """Detect the GPUs available on the device and their available resources"""
+    """Detect the GPUs available on the device and their available resources."""
     try:
         gpu_query = ["nvidia-smi", "--query-gpu=name,memory.free", "--format=csv"]
         gpu_info_csv = subprocess.run(gpu_query, stdout=subprocess.PIPE, check=True)
@@ -118,7 +119,7 @@ def _get_available_gpus(log=True):
 
 
 def _get_nb_instance():
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     gpu_info = _get_available_gpus(False)
     if not gpu_info:
         return None
@@ -153,12 +154,12 @@ def _get_nb_instance():
 
 
 def _get_ram_usage_mb():
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return psutil.virtual_memory()[3] / 1000000
 
 
 def _check_disk_space(model_path: str):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     usage = shutil.disk_usage(model_path)
     percentage_used = usage[1] / usage[0]
     if percentage_used >= 0.5:
@@ -209,7 +210,7 @@ def _check_docker_disk_usage():
 
 
 def _get_gpu_info(instance_type: str, session: Session) -> int:
-    """Get GPU info for the provided instance"""
+    """Get GPU info for the provided instance."""
     ec2_client = session.boto_session.client("ec2")
 
     split_instance = instance_type.split(".")
@@ -227,7 +228,7 @@ def _get_gpu_info(instance_type: str, session: Session) -> int:
 
 
 def _get_gpu_info_fallback(instance_type: str) -> int:
-    """Get GPU info for the provided instance fallback"""
+    """Get GPU info for the provided instance fallback."""
     available_gpus = fallback_gpu_resource_mapping.get(instance_type)
     if not available_gpus:
         raise ValueError("Provided instance_type is not GPU enabled.")

@@ -24,7 +24,7 @@ schema_builder = None
 
 
 def model_fn(model_dir):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     shared_libs_path = Path(model_dir + "/shared_libs")
 
     if shared_libs_path.exists():
@@ -73,7 +73,7 @@ def model_fn(model_dir):
 
 
 def input_fn(input_data, content_type):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     try:
         if hasattr(schema_builder, "custom_input_translator"):
             deserialized_data = schema_builder.custom_input_translator.deserialize(
@@ -116,12 +116,12 @@ def input_fn(input_data, content_type):
 
 
 def predict_fn(input_data, predict_callable):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return predict_callable(input_data)
 
 
 def output_fn(predictions, accept_type):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     try:
         if hasattr(inference_spec, "postprocess"):
             postprocessed = inference_spec.postprocess(predictions)

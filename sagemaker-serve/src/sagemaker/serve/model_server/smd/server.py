@@ -1,4 +1,4 @@
-"""Module for SMD Server"""
+"""Module for SMD Server."""
 
 from __future__ import absolute_import
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class SageMakerSmdServer:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
 
     def _upload_smd_artifacts(
         self,
@@ -25,7 +25,8 @@ class SageMakerSmdServer:
         image: str = None,
         should_upload_artifacts: bool = False,
     ):
-        """Tar the model artifact and upload to S3 bucket, then prepare for the environment variables"""
+        """Tar the model artifact and upload to S3 bucket, then prepare for the environment
+        variables."""
         s3_upload_path = None
         if _is_s3_uri(model_path):
             s3_upload_path = model_path

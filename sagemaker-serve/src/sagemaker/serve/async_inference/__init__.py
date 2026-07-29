@@ -10,12 +10,12 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Imports the classes in this module to simplify customer imports"""
+"""Imports the classes in this module to simplify customer imports."""
 
 from __future__ import absolute_import
 
 from sagemaker.core.inference_config import AsyncInferenceConfig  # noqa: F401
 from sagemaker.serve.async_inference.waiter_config import WaiterConfig  # noqa: F401
-from sagemaker.serve.async_inference.async_inference_response import (
+from sagemaker.serve.async_inference.async_inference_response import (  # noqa: F401
     AsyncInferenceResponse,
-)  # noqa: F401
+)

@@ -10,7 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Utilities for detecting  available GPUs and Aggregate GPU Memory size of an instance"""
+"""Utilities for detecting  available GPUs and Aggregate GPU Memory size of an instance."""
+
 from __future__ import absolute_import
 
 import logging
@@ -29,7 +30,7 @@ MEMORY_BUFFER_MULTIPLIER = 1.2  # 20% buffer
 
 
 def _get_gpu_info(instance_type: str, session: Session) -> Tuple[int, int]:
-    """Get GPU info for the provided instance
+    """Get GPU info for the provided instance.
 
     Args:
         instance_type (str)
@@ -70,7 +71,7 @@ def _get_gpu_info(instance_type: str, session: Session) -> Tuple[int, int]:
 
 
 def _get_gpu_info_fallback(instance_type: str, region: str) -> Tuple[int, int]:
-    """Get GPU info for the provided from the config
+    """Get GPU info for the provided from the config.
 
     Args:
         instance_type (str):
@@ -98,7 +99,7 @@ def _get_gpu_info_fallback(instance_type: str, region: str) -> Tuple[int, int]:
 
 
 def _format_instance_type(instance_type: str) -> str:
-    """Formats provided instance type name
+    """Formats provided instance type name.
 
     Args:
         instance_type (str):
@@ -115,11 +116,11 @@ def _format_instance_type(instance_type: str) -> str:
 
 
 def _total_inference_model_size_mib(model: str, dtype: str) -> int:
-    """Calculates the model size from HF accelerate
+    """Calculates the model size from HF accelerate.
 
-    This function gets the model size from accelerate. It also adds a
-    padding and converts to size MiB. When performing inference, expect
-     to add up to an additional 20% to the given model size as found by EleutherAI.
+    This function gets the model size from accelerate. It also adds a padding and converts to size
+    MiB. When performing inference, expect  to add up to an additional 20% to the given model size
+    as found by EleutherAI.
     """
     output = None
     try:

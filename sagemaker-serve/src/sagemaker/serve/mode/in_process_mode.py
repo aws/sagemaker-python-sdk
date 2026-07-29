@@ -1,4 +1,4 @@
-"""Module that defines the InProcessMode class"""
+"""Module that defines the InProcessMode class."""
 
 from __future__ import absolute_import
 
@@ -20,7 +20,7 @@ _PING_HEALTH_CHECK_FAIL_MSG = "Ping health check did not pass. Please review you
 
 
 class InProcessMode(InProcessServing):
-    """A class that holds methods to deploy model to a container in process environment"""
+    """A class that holds methods to deploy model to a container in process environment."""
 
     def __init__(
         self,
@@ -43,7 +43,7 @@ class InProcessMode(InProcessServing):
         self._ping_local_server = None
 
     def load(self, model_path: str = None):
-        """Loads model path, checks that path exists"""
+        """Loads model path, checks that path exists."""
         path = Path(model_path if model_path else self.model_path)
         if not path.exists():
             raise ValueError("model_path does not exist")
@@ -53,14 +53,13 @@ class InProcessMode(InProcessServing):
         return self.inference_spec.load(str(path))
 
     def prepare(self):
-        """Prepares the server"""
+        """Prepares the server."""
 
     def create_server(
         self,
         ping_fn,
     ):
         """Creating the fast api server and checking ping health."""
-
         logger.info("Waiting for fastapi server to start up...")
 
         logger.warning("Note: This is not a standard model server.")
@@ -91,5 +90,5 @@ class InProcessMode(InProcessServing):
             raise InProcessDeepPingException(_PING_HEALTH_CHECK_FAIL_MSG)
 
     def destroy_server(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         self._stop_serving()

@@ -23,17 +23,17 @@ Key Features:
 
 Example:
     Basic usage with a ModelBuilder::
-    
+
         model_builder = ModelBuilder(model="my-model")
         model = model_builder.build()
-        
+
         # Get right-sizing recommendations
         model.right_size(
             sample_payload_url="s3://my-bucket/sample-payload.json",
             supported_content_types=["application/json"],
             supported_instance_types=["ml.m5.large", "ml.m5.xlarge"]
         )
-        
+
         # Deploy with recommendations
         predictor = model.deploy()
 """
@@ -53,7 +53,7 @@ from sagemaker.core.parameter import CategoricalParameter
 
 INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING = {
     "xgboost": "XGBOOST",
-    "sklearn": "SAGEMAKER-SCIKIT-LEARN", 
+    "sklearn": "SAGEMAKER-SCIKIT-LEARN",
     "pytorch": "PYTORCH",
     "tensorflow": "TENSORFLOW",
     "mxnet": "MXNET",
@@ -68,15 +68,15 @@ class Phase:
 
     Defines a phase of load testing with specific duration, user count, and spawn rate.
     Multiple phases can be combined to create complex traffic patterns.
-    
+
     Args:
         duration_in_seconds: How long this phase should run
         initial_number_of_users: Number of concurrent users at start of phase
         spawn_rate: Rate at which new users are added (users per second)
-        
+
     Example:
         Create a ramp-up phase::
-        
+
             phase = Phase(
                 duration_in_seconds=300,  # 5 minutes
                 initial_number_of_users=1,
@@ -84,9 +84,11 @@ class Phase:
             )
     """
 
-    def __init__(self, duration_in_seconds: int, initial_number_of_users: int, spawn_rate: int) -> None:
+    def __init__(
+        self, duration_in_seconds: int, initial_number_of_users: int, spawn_rate: int
+    ) -> None:
         """Initialize a Phase for load testing.
-        
+
         Args:
             duration_in_seconds: Duration of this phase in seconds
             initial_number_of_users: Starting number of concurrent users
@@ -104,14 +106,14 @@ class ModelLatencyThreshold:
 
     Defines acceptable response latency limits for model inference.
     Used to filter recommendations based on performance requirements.
-    
+
     Args:
         percentile: Latency percentile to measure (e.g., "P95", "P99")
         value_in_milliseconds: Maximum acceptable latency in milliseconds
-        
+
     Example:
         Set P95 latency threshold::
-        
+
             threshold = ModelLatencyThreshold(
                 percentile="P95",
                 value_in_milliseconds=100  # 100ms max P95 latency
@@ -120,7 +122,7 @@ class ModelLatencyThreshold:
 
     def __init__(self, percentile: str, value_in_milliseconds: int) -> None:
         """Initialize a ModelLatencyThreshold.
-        
+
         Args:
             percentile: Latency percentile (e.g., "P95", "P99")
             value_in_milliseconds: Maximum latency threshold in milliseconds
@@ -130,17 +132,17 @@ class ModelLatencyThreshold:
 
 class _InferenceRecommenderMixin:
     """Mixin class providing SageMaker Inference Recommender functionality.
-    
+
     This mixin adds right-sizing capabilities to SageMaker models, enabling
     automatic instance type and configuration recommendations based on model
     performance requirements.
-    
+
     The mixin provides:
     - Automatic framework detection from container images
     - Default and Advanced recommendation job types
     - Load testing with custom traffic patterns
     - Performance-based filtering and optimization
-    
+
     This class is designed to be mixed into Model classes that have:
     - sagemaker_session: SageMaker session for API calls
     - role_arn: IAM role for job execution
@@ -215,14 +217,15 @@ class _InferenceRecommenderMixin:
             :func:`~sagemaker.model.Model` for full details.
         """
         # Auto-detect framework from image URI if not provided
-        if not framework and hasattr(self, 'image_uri'):
+        if not framework and hasattr(self, "image_uri"):
             detected_framework, detected_version = self._extract_framework_from_image_uri()
             if detected_framework:
                 # Convert framework enum to string if needed
-                framework_str = getattr(detected_framework, 'value', str(detected_framework)).lower()
+                framework_str = getattr(
+                    detected_framework, "value", str(detected_framework)
+                ).lower()
                 framework = INFERENCE_RECOMMENDER_FRAMEWORK_MAPPING.get(
-                    framework_str, 
-                    str(detected_framework)
+                    framework_str, str(detected_framework)
                 )
             framework_version = framework_version or detected_version
 
@@ -248,16 +251,16 @@ class _InferenceRecommenderMixin:
             job_type = "Default"
 
         # Initialize SageMaker session if needed (method from ModelBuilder mixin)
-        if hasattr(self, '_init_sagemaker_session_if_does_not_exist'):
+        if hasattr(self, "_init_sagemaker_session_if_does_not_exist"):
             self._init_sagemaker_session_if_does_not_exist()
 
         # Create inference recommendations job
         ret_name = self.sagemaker_session.create_inference_recommendations_job(
-            role=getattr(self, 'role_arn', None),
+            role=getattr(self, "role_arn", None),
             job_name=job_name,
             job_type=job_type,
             job_duration_in_seconds=job_duration_in_seconds,
-            model_name=getattr(self, 'model_name', None),
+            model_name=getattr(self, "model_name", None),
             model_package_version_arn=getattr(self, "model_package_arn", None),
             framework=framework,
             framework_version=framework_version,
@@ -284,14 +287,14 @@ class _InferenceRecommenderMixin:
 
     def _update_params(self, **kwargs) -> Optional[Tuple[str, int]]:
         """Update deployment parameters based on inference recommendations.
-        
+
         Processes inference recommendation ID or right-size results to determine
         optimal instance type and count for model deployment.
-        
+
         Args:
             **kwargs: Deployment parameters including instance_type, initial_instance_count,
                      inference_recommendation_id, etc.
-                     
+
         Returns:
             Tuple of (instance_type, initial_instance_count) if recommendations found,
             otherwise None to use provided parameters.
@@ -304,9 +307,9 @@ class _InferenceRecommenderMixin:
         explainer_config = kwargs.get("explainer_config")
         inference_recommendation_id = kwargs.get("inference_recommendation_id")
         inference_recommender_job_results = kwargs.get("inference_recommender_job_results")
-        
+
         inference_recommendation = None
-        
+
         if inference_recommendation_id is not None:
             inference_recommendation = self._update_params_for_recommendation_id(
                 instance_type=instance_type,
@@ -446,7 +449,6 @@ class _InferenceRecommenderMixin:
             (string, int): instance type and associated instance count from selected
             inference recommendation id if arguments combination check passed.
         """
-
         if instance_type is not None and initial_instance_count is not None:
             logger.warning(
                 "Both instance_type and initial_instance_count are specified,"
@@ -495,7 +497,7 @@ class _InferenceRecommenderMixin:
                     "Must specify initial_instance_count when using model recommendation ID."
                 )
             # Update environment variables if they exist
-            env_vars = getattr(self, 'env_vars', {})
+            env_vars = getattr(self, "env_vars", {})
             env_vars.update(model_recommendation.get("Environment", {}))
             instance_type = model_recommendation["InstanceType"]
             return (instance_type, initial_instance_count)
@@ -506,19 +508,19 @@ class _InferenceRecommenderMixin:
                 "instance_type and initial_instance_count must both be specified together "
                 "to override recommendation, or both omitted to use recommendation values."
             )
-            
+
         input_config = right_size_job_res["InputConfig"]
         model_config = right_size_recommendation["ModelConfiguration"]
         envs = model_config.get("EnvironmentParameters")
-        
+
         # Update environment variables from recommendation
         recommend_envs = {}
         if envs:
             for env in envs:
                 recommend_envs[env["Key"]] = env["Value"]
-                
+
         # Safely update env_vars
-        current_env_vars = getattr(self, 'env_vars', {})
+        current_env_vars = getattr(self, "env_vars", {})
         current_env_vars.update(recommend_envs)
 
         # Update params with non-compilation recommendation results
@@ -568,13 +570,13 @@ class _InferenceRecommenderMixin:
         self, hyperparameter_ranges: Optional[List[Dict[str, CategoricalParameter]]]
     ) -> Optional[List[Dict[str, Any]]]:
         """Convert hyperparameter ranges to endpoint configurations for Advanced jobs.
-        
+
         Args:
             hyperparameter_ranges: List of hyperparameter range dictionaries
-            
+
         Returns:
             List of endpoint configuration dictionaries, or None if no ranges provided
-            
+
         Raises:
             ValueError: If instance_types not specified in hyperparameter ranges
         """
@@ -610,11 +612,11 @@ class _InferenceRecommenderMixin:
         self, traffic_type: Optional[str], phases: Optional[List[Phase]]
     ) -> Optional[Dict[str, Any]]:
         """Convert traffic pattern parameters for Advanced jobs.
-        
+
         Args:
             traffic_type: Type of traffic pattern (defaults to "PHASES")
             phases: List of Phase objects defining load test pattern
-            
+
         Returns:
             Traffic pattern dictionary, or None if no phases provided
         """
@@ -629,11 +631,11 @@ class _InferenceRecommenderMixin:
         self, max_tests: Optional[int], max_parallel_tests: Optional[int]
     ) -> Optional[Dict[str, int]]:
         """Convert resource limit parameters for Advanced jobs.
-        
+
         Args:
             max_tests: Maximum number of tests to run
             max_parallel_tests: Maximum number of parallel tests
-            
+
         Returns:
             Resource limit dictionary, or None if no limits specified
         """
@@ -647,16 +649,16 @@ class _InferenceRecommenderMixin:
         return resource_limit
 
     def _convert_to_stopping_conditions_json(
-        self, 
-        max_invocations: Optional[int], 
-        model_latency_thresholds: Optional[List[ModelLatencyThreshold]]
+        self,
+        max_invocations: Optional[int],
+        model_latency_thresholds: Optional[List[ModelLatencyThreshold]],
     ) -> Optional[Dict[str, Any]]:
         """Convert stopping condition parameters for Advanced jobs.
-        
+
         Args:
             max_invocations: Maximum number of invocations per minute
             model_latency_thresholds: List of latency threshold requirements
-            
+
         Returns:
             Stopping conditions dictionary, or None if no conditions specified
         """
@@ -675,27 +677,27 @@ class _InferenceRecommenderMixin:
         self, sage_client: Any, job_or_model_name: str, inference_recommendation_id: str
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
         """Retrieve recommendation from right-size job or model.
-        
+
         Args:
             sage_client: SageMaker client for API calls
             job_or_model_name: Name of the job or model
             inference_recommendation_id: ID of the specific recommendation
-            
+
         Returns:
             Tuple of (right_size_recommendation, model_recommendation, right_size_job_res)
-            
+
         Raises:
             ValueError: If recommendation ID is not found in any source
         """
         right_size_recommendation, model_recommendation, right_size_job_res = None, None, None
-        
+
         # Try to get recommendation from right-size job first
         right_size_recommendation, right_size_job_res = self._get_right_size_recommendation(
             sage_client=sage_client,
             job_or_model_name=job_or_model_name,
             inference_recommendation_id=inference_recommendation_id,
         )
-        
+
         # If not found in job, try model recommendations
         if right_size_recommendation is None:
             model_recommendation = self._get_model_recommendation(
@@ -718,12 +720,12 @@ class _InferenceRecommenderMixin:
         inference_recommendation_id: str,
     ) -> Tuple[Optional[Dict[str, Any]], Optional[Dict[str, Any]]]:
         """Get recommendation from right-size job.
-        
+
         Args:
             sage_client: SageMaker client
             job_or_model_name: Name of the inference recommendations job
             inference_recommendation_id: Specific recommendation ID to find
-            
+
         Returns:
             Tuple of (recommendation, job_results) or (None, None) if not found
         """
@@ -749,12 +751,12 @@ class _InferenceRecommenderMixin:
         inference_recommendation_id: str,
     ) -> Optional[Dict[str, Any]]:
         """Get recommendation from model deployment recommendations.
-        
+
         Args:
             sage_client: SageMaker client
             job_or_model_name: Name of the model
             inference_recommendation_id: Specific recommendation ID to find
-            
+
         Returns:
             Model recommendation dictionary or None if not found
         """
@@ -777,11 +779,11 @@ class _InferenceRecommenderMixin:
         self, recommendation_list: List[Dict[str, Any]], inference_recommendation_id: str
     ) -> Optional[Dict[str, Any]]:
         """Search for specific recommendation by ID.
-        
+
         Args:
             recommendation_list: List of recommendation dictionaries
             inference_recommendation_id: ID to search for
-            
+
         Returns:
             Matching recommendation dictionary or None if not found
         """
@@ -796,23 +798,23 @@ class _InferenceRecommenderMixin:
 
     def _filter_recommendations_for_realtime(self) -> Tuple[Optional[str], Optional[int]]:
         """Filter recommendations to find real-time (non-serverless) instance.
-        
+
         Returns:
             Tuple of (instance_type, initial_instance_count) for first real-time
             recommendation found, or (None, None) if none found.
-            
+
         Note:
             TODO: Integrate right_size + deploy with serverless support
         """
         instance_type = None
         initial_instance_count = None
-        
-        inference_recommendations = getattr(self, 'inference_recommendations', [])
+
+        inference_recommendations = getattr(self, "inference_recommendations", [])
         for recommendation in inference_recommendations:
             endpoint_config = recommendation.get("EndpointConfiguration", {})
             if "ServerlessConfig" not in endpoint_config:
                 instance_type = endpoint_config.get("InstanceType")
                 initial_instance_count = endpoint_config.get("InitialInstanceCount")
                 break
-                
+
         return (instance_type, initial_instance_count)

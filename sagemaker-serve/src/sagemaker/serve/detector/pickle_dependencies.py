@@ -1,4 +1,4 @@
-"""Load a pickled object to detect the dependencies it requires"""
+"""Load a pickled object to detect the dependencies it requires."""
 
 from __future__ import absolute_import
 from pathlib import Path
@@ -21,7 +21,7 @@ pipcmd = [sys.executable, "-m", "pip", "--disable-pip-version-check"]
 
 
 def get_all_files_for_installed_packages_pip(packages: List[str]):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     proc = subprocess.Popen(pipcmd + ["show", "-f"] + packages, stdout=subprocess.PIPE)
     with proc.stdout:
         lines = []
@@ -36,7 +36,7 @@ def get_all_files_for_installed_packages_pip(packages: List[str]):
 
 
 def get_all_files_for_installed_packages(packages: List[str]):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     ret = {}
     for rawmsg in get_all_files_for_installed_packages_pip(packages):
         parser = email.parser.BytesParser(policy=email.policy.default)
@@ -51,7 +51,10 @@ def get_all_files_for_installed_packages(packages: List[str]):
 
 
 def batched(iterable, n):
-    """Batch data into tuples of length n. The last batch may be shorter."""
+    """Batch data into tuples of length n.
+
+    The last batch may be shorter.
+    """
     # batched('ABCDEFG', 3) --> ABC DEF G
     if n < 1:
         raise ValueError("n must be at least one")
@@ -64,13 +67,13 @@ def batched(iterable, n):
 
 
 def get_all_installed_packages():
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     proc = subprocess.run(pipcmd + ["list", "--format", "json"], stdout=subprocess.PIPE, check=True)
     return json.loads(proc.stdout)
 
 
 def map_package_names_to_files(package_names: List[str]):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     m = {}
     batch_size = 20
     with tqdm.tqdm(total=len(package_names), desc="Scanning for dependencies", ncols=100) as pbar:
@@ -81,7 +84,7 @@ def map_package_names_to_files(package_names: List[str]):
 
 
 def get_currently_used_packages():
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     all_installed_packages = get_all_installed_packages()
     package_to_file_names = map_package_names_to_files([x["name"] for x in all_installed_packages])
 
@@ -100,7 +103,7 @@ def get_currently_used_packages():
 
 
 def get_requirements_for_pkl_file(pkl_path: Path, dest: Path):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     with open(pkl_path, mode="rb") as file:
         cloudpickle.load(file)
 
@@ -119,7 +122,7 @@ def get_requirements_for_pkl_file(pkl_path: Path, dest: Path):
 
 
 def get_all_requirements(dest: Path):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     all_installed_packages = get_all_installed_packages()
 
     with open(dest, mode="w+") as out:

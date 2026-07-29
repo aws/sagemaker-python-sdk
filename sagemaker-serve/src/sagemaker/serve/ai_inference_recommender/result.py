@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Parsing of benchmark output artifacts from S3."""
+
 from __future__ import absolute_import
 
 import io
@@ -63,9 +64,9 @@ class BenchmarkMetric:
 class BenchmarkMetrics:
     """Typed access to the well-known AIPerf metrics.
 
-    Use ``.get(name)`` to look up any metric by its raw key. ``print()``-ing
-    this object renders every metric in a table; ``print(result)`` (the
-    parent ``BenchmarkResult``) shows just the well-known metrics.
+    Use ``.get(name)`` to look up any metric by its raw key. ``print()``-ing this object renders
+    every metric in a table; ``print(result)`` (the parent ``BenchmarkResult``) shows just the well-
+    known metrics.
     """
 
     request_throughput: Optional[BenchmarkMetric] = None
@@ -216,9 +217,7 @@ class BenchmarkResult:
                 f"(status={status}). Call job.wait() (or pass wait=True to "
                 f"start_benchmark) before BenchmarkResult.from_job()."
             )
-        if job.output_config is None or not getattr(
-            job.output_config, "s3_output_location", None
-        ):
+        if job.output_config is None or not getattr(job.output_config, "s3_output_location", None):
             failure_reason = getattr(job, "failure_reason", None)
             hint = (
                 f"Job failed: {failure_reason or 'no reason provided'}."
@@ -293,8 +292,8 @@ def _extract_endpoint(job) -> Optional[str]:
 def _extract_tool_version(profile: Dict[str, Any]) -> Optional[str]:
     """Best-effort lookup of the AIPerf tool version from the profile JSON.
 
-    AIPerf has no single canonical key; we check a few plausible top-level
-    locations and return the first string we find.
+    AIPerf has no single canonical key; we check a few plausible top-level locations and return the
+    first string we find.
     """
     for key in ("aiperf_version", "tool_version", "version"):
         value = profile.get(key)
@@ -325,9 +324,7 @@ def _find_object(s3_client, bucket: str, prefix: str, suffix: str) -> str:
             key = obj.get("Key", "")
             if key.endswith(suffix):
                 return key
-    raise FileNotFoundError(
-        f"No object ending in {suffix!r} under s3://{bucket}/{prefix}"
-    )
+    raise FileNotFoundError(f"No object ending in {suffix!r} under s3://{bucket}/{prefix}")
 
 
 def _read_member_from_tar_gz(archive_bytes: bytes, suffix: str) -> Optional[bytes]:
@@ -366,14 +363,16 @@ def _format_metrics_table(name_metric_pairs) -> str:
     """Render an iterable of (name, BenchmarkMetric) pairs as a table."""
     rows = []
     for _name, metric in name_metric_pairs:
-        rows.append([
-            metric.name,
-            metric.unit or "-",
-            _fmt_number(metric.avg),
-            _fmt_number(metric.p50),
-            _fmt_number(metric.p90),
-            _fmt_number(metric.p99),
-        ])
+        rows.append(
+            [
+                metric.name,
+                metric.unit or "-",
+                _fmt_number(metric.avg),
+                _fmt_number(metric.p50),
+                _fmt_number(metric.p90),
+                _fmt_number(metric.p99),
+            ]
+        )
     return _format_table(
         headers=["metric", "unit", "avg", "p50", "p90", "p99"],
         rows=rows,
@@ -381,14 +380,15 @@ def _format_metrics_table(name_metric_pairs) -> str:
 
 
 def _format_table(headers, rows) -> str:
-    """Tiny stdlib-only table formatter. No external deps.
+    """Tiny stdlib-only table formatter.
 
-    Returns a str like:
+    No external deps.
+        Returns a str like:
 
-        metric              unit  avg     p50    p90   p99
-        ──────────────────  ────  ──────  ─────  ────  ────
-        request_throughput  -     0.169   -      -     -
-        request_latency     ms    5896    408    5989  50247
+            metric              unit  avg     p50    p90   p99
+            ──────────────────  ────  ──────  ─────  ────  ────
+            request_throughput  -     0.169   -      -     -
+            request_latency     ms    5896    408    5989  50247
     """
     if not rows:
         return "(no metrics)"
@@ -400,7 +400,6 @@ def _format_table(headers, rows) -> str:
     header_line = "  ".join(str(h).ljust(widths[i]) for i, h in enumerate(headers))
     sep_line = "  ".join("─" * widths[i] for i in range(len(headers)))
     body = "\n".join(
-        "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row))
-        for row in str_rows
+        "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)) for row in str_rows
     )
     return f"{header_line}\n{sep_line}\n{body}"

@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""A class for AsyncInferenceResponse"""
+"""A class for AsyncInferenceResponse."""
 
 from __future__ import print_function, absolute_import
 
@@ -25,11 +25,10 @@ from sagemaker.core.exceptions import (
 
 
 class AsyncInferenceResponse(object):
-    """Response from Async Inference endpoint
+    """Response from Async Inference endpoint.
 
-    This response object provides a method to check for an async inference result in the
-    Amazon S3 output path specified. If result object exists in that path, get and return
-    the result
+    This response object provides a method to check for an async inference result in the Amazon S3
+    output path specified. If result object exists in that path, get and return the result
     """
 
     def __init__(
@@ -60,7 +59,7 @@ class AsyncInferenceResponse(object):
         self,
         waiter_config=None,
     ):
-        """Get async inference result in the Amazon S3 output path specified
+        """Get async inference result in the Amazon S3 output path specified.
 
         Args:
             waiter_config (sagemaker.async_inference.waiter_config.WaiterConfig): Configuration
@@ -87,14 +86,14 @@ class AsyncInferenceResponse(object):
         return self._result
 
     def _get_result_from_s3(self, output_path, failure_path):
-        """Retrieve output based on the presense of failure_path"""
+        """Retrieve output based on the presense of failure_path."""
         if failure_path is not None:
             return self._get_result_from_s3_output_failure_paths(output_path, failure_path)
 
         return self._get_result_from_s3_output_path(output_path)
 
     def _get_result_from_s3_output_path(self, output_path):
-        """Get inference result from the output Amazon S3 path"""
+        """Get inference result from the output Amazon S3 path."""
         bucket, key = parse_s3_url(output_path)
         try:
             response = self.predictor_async.s3_client.get_object(Bucket=bucket, Key=key)
@@ -110,7 +109,7 @@ class AsyncInferenceResponse(object):
             )
 
     def _get_result_from_s3_output_failure_paths(self, output_path, failure_path):
-        """Get inference result from the output & failure Amazon S3 path"""
+        """Get inference result from the output & failure Amazon S3 path."""
         bucket, key = parse_s3_url(output_path)
         try:
             response = self.predictor_async.s3_client.get_object(Bucket=bucket, Key=key)

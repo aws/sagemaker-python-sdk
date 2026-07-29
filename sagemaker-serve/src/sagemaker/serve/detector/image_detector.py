@@ -1,4 +1,4 @@
-"""Detects the image to deploy model"""
+"""Detects the image to deploy model."""
 
 from __future__ import absolute_import
 from typing import Tuple, List
@@ -18,8 +18,7 @@ _CASTING_WARNING = "Could not find the framework version %s in supported framewo
 
 
 def auto_detect_container(model, region: str, instance_type: str) -> str:
-    """Auto detect the container off of model and instance type"""
-
+    """Auto detect the container off of model and instance type."""
     logger.info("Autodetecting image since image_uri was not provided in ModelBuilder()")
 
     if not instance_type:
@@ -51,7 +50,7 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
                 py_version_to_use = "py3"  # SKLearn only supports py3
             else:
                 py_version_to_use = f"py{py_tuple[0]}{py_tuple[1]}"
-                
+
             dlc = image_uris.retrieve(
                 framework=fw,
                 region=region,
@@ -63,19 +62,19 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
             break
         except ValueError:
             pass
-    
+
     # If no compatible version found, try latest available version as fallback
     if not dlc and fw_version:
         try:
             config = image_uris._config_for_framework_and_scope(fw, "inference", None)
             latest_version = sorted(config["versions"].keys())[-1]  # Get latest version
-            
+
             # Framework-specific Python version handling
             if fw == "sklearn":
                 py_version_to_use = "py3"
             else:
                 py_version_to_use = f"py{py_tuple[0]}{py_tuple[1]}"
-                
+
             dlc = image_uris.retrieve(
                 framework=fw,
                 region=region,
@@ -86,7 +85,9 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
             )
             logger.warning(
                 "Using latest available version %s for framework %s (requested version %s not available)",
-                latest_version, fw, fw_version
+                latest_version,
+                fw,
+                fw_version,
             )
         except ValueError:
             pass
@@ -106,7 +107,7 @@ def auto_detect_container(model, region: str, instance_type: str) -> str:
 
 
 def _cast_to_compatible_version(framework: str, fw_version: str) -> Tuple[str]:
-    """Given fw_version, detect the available versions"""
+    """Given fw_version, detect the available versions."""
     config = image_uris._config_for_framework_and_scope(framework, "inference", None)
     available_versions = [version.parse(ver) for ver in list(config["versions"].keys())]
     available_versions.sort()
@@ -154,14 +155,14 @@ def _cast_to_compatible_version(framework: str, fw_version: str) -> Tuple[str]:
 
 
 def _process_version(ver: version.Version) -> str:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     if not ver:
         return None
     return str(ver).replace(".post", "-")
 
 
 def _later_version(current: str, found: str) -> bool:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     split_current = current.split(".")
     split_minor_current = split_current[1].split("-")
     split_found = found.split(".")
@@ -184,7 +185,7 @@ def _later_version(current: str, found: str) -> bool:
 
 
 def _find_compatible_vs(split_vs: List[int], supported_vs: str) -> Tuple[str, str, str]:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     earliest_upcast_version = None
     latest_downcast_version = None
     found_version = None
@@ -223,7 +224,7 @@ def _find_compatible_vs(split_vs: List[int], supported_vs: str) -> Tuple[str, st
 
 
 def _detect_framework_and_version(model_base: str) -> Tuple[str, str]:
-    """Parse fw based off the base model object and get version if possible"""
+    """Parse fw based off the base model object and get version if possible."""
     fw = ""
     vs = ""
     if "torch" in model_base:
@@ -255,10 +256,11 @@ def _detect_framework_and_version(model_base: str) -> Tuple[str, str]:
         fw = "sklearn"
         try:
             import sklearn
+
             vs = sklearn.__version__
         except ImportError:
             logger.warning(_VERSION_DETECTION_ERROR, fw)
-        
+
     else:
         raise Exception(
             "Unable to determine required container for model base %s.\
@@ -270,12 +272,12 @@ def _detect_framework_and_version(model_base: str) -> Tuple[str, str]:
 
 
 def _get_model_base(model: object) -> type:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     # Special case for XGBoost - use the actual class instead of base class
     module_name = model.__class__.__module__
     if module_name and "xgboost" in module_name:
         return model.__class__
-    
+
     model_base = model.__class__.__base__
 
     # for cases such as xgb.Booster where there is no inherited base class

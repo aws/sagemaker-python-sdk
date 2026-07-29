@@ -372,9 +372,7 @@ MOCK_MODEL_REFERENCE_ARN = (
     "my-private-hub/ModelReference/huggingface-llm-phi-4-mini-instruct/1.1.0"
 )
 MOCK_HUB_CONTENT_NAME = "my-team-phi4-mini"
-MOCK_IMAGE_URI = (
-    "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.27.0-lmi10.0.0-cu124"
-)
+MOCK_IMAGE_URI = "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.27.0-lmi10.0.0-cu124"
 
 
 def _init_kwargs_mock(model_reference_arn):
@@ -410,9 +408,7 @@ def _build_jumpstart_builder(
     with _PATCH_IS_JS, patch(
         "sagemaker.core.jumpstart.utils.validate_model_id_and_get_type",
         return_value=None,
-    ), patch(
-        "sagemaker.core.jumpstart.factory.utils.get_init_kwargs"
-    ) as mock_get_kwargs, patch(
+    ), patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs") as mock_get_kwargs, patch(
         "sagemaker.serve.model_builder.ModelBuilder._create_model"
     ) as mock_create, patch(
         "sagemaker.serve.model_builder.ModelBuilder._prepare_for_mode"
@@ -575,9 +571,7 @@ class TestHubContentNameSupport(unittest.TestCase):
             sagemaker_session=_mock_session(),
         )
 
-        self.assertEqual(
-            getattr(mb, "hub_content_name", None), MOCK_HUB_CONTENT_NAME
-        )
+        self.assertEqual(getattr(mb, "hub_content_name", None), MOCK_HUB_CONTENT_NAME)
 
 
 class TestCreateModelContainerDefinition(unittest.TestCase):
@@ -615,9 +609,7 @@ class TestCreateModelContainerDefinition(unittest.TestCase):
 
     def test_create_model_container_def_includes_hub_access_config(self):
         """Private hub build: CreateModel payload must include HubAccessConfig."""
-        c_def = self._container_def_after_build(
-            model_reference_arn=MOCK_MODEL_REFERENCE_ARN
-        )
+        c_def = self._container_def_after_build(model_reference_arn=MOCK_MODEL_REFERENCE_ARN)
 
         self.assertIn("ModelDataSource", c_def)
         s3_data_source = c_def["ModelDataSource"]["S3DataSource"]
@@ -632,14 +624,10 @@ class TestCreateModelContainerDefinition(unittest.TestCase):
 
     def test_create_model_container_def_no_hub_access_config_for_public(self):
         """Public catalog build: CreateModel payload must NOT include HubAccessConfig."""
-        c_def = self._container_def_after_build(
-            model_reference_arn=None, hub_arn=None
-        )
+        c_def = self._container_def_after_build(model_reference_arn=None, hub_arn=None)
 
         self.assertIn("ModelDataSource", c_def)
-        self.assertNotIn(
-            "HubAccessConfig", c_def["ModelDataSource"]["S3DataSource"]
-        )
+        self.assertNotIn("HubAccessConfig", c_def["ModelDataSource"]["S3DataSource"])
 
 
 if __name__ == "__main__":

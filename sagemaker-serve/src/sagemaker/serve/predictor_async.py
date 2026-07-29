@@ -10,7 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
+"""Placeholder docstring."""
+
 from __future__ import absolute_import
 import threading
 import time
@@ -161,7 +162,7 @@ class AsyncPredictor:
         data,
         input_path=None,
     ):
-        """Upload request data to Amazon S3 for users"""
+        """Upload request data to Amazon S3 for users."""
         if input_path:
             bucket, key = parse_s3_url(input_path)
         else:
@@ -209,7 +210,7 @@ class AsyncPredictor:
         initial_args,
         inference_id,
     ):
-        """Create request and invoke async endpoint with the request"""
+        """Create request and invoke async endpoint with the request."""
         request_args = self._create_request_args(input_path, initial_args, inference_id)
 
         response = self.sagemaker_session.sagemaker_runtime_client.invoke_endpoint_async(
@@ -228,8 +229,8 @@ class AsyncPredictor:
     def _check_output_path(self, output_path, waiter_config):
         """Check the Amazon S3 output path for the output.
 
-        Periodically check Amazon S3 output path for async inference result.
-        Timeout automatically after max attempts reached
+        Periodically check Amazon S3 output path for async inference result. Timeout automatically
+        after max attempts reached
         """
         bucket, key = parse_s3_url(output_path)
         s3_waiter = self.s3_client.get_waiter("object_exists")
@@ -371,7 +372,6 @@ class AsyncPredictor:
                 the data capture configuration of the existing endpoint configuration is used.
             wait (bool): Wait for updating to finish
         """
-
         self.predictor.update_endpoint(
             initial_instance_count=initial_instance_count,
             instance_type=instance_type,
@@ -439,7 +439,6 @@ class AsyncPredictor:
         Returns:
             [sagemaker.model_monitor.model_monitoring.ModelMonitor]: A list of
                 ModelMonitor (or DefaultModelMonitor) objects.
-
         """
         return self.predictor.list_monitors()
 

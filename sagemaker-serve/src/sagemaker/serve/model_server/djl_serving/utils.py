@@ -1,4 +1,4 @@
-"""DJL ModelBuilder Utils"""
+"""DJL ModelBuilder Utils."""
 
 from __future__ import absolute_import
 import math
@@ -14,7 +14,7 @@ TOKENS_PER_WORD = 0.75
 
 
 def _get_default_tensor_parallel_degree(hf_model_config: dict, gpu_count: int = None) -> int:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     available_gpus = _get_available_gpus()
     if not available_gpus and not gpu_count:
         return None
@@ -40,17 +40,17 @@ def _get_default_tensor_parallel_degree(hf_model_config: dict, gpu_count: int = 
 
 
 def _get_default_data_type() -> tuple:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return "bf16"
 
 
 def _get_default_batch_size() -> int:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return 1
 
 
 def _set_tokens_to_tokens_threshold(tokens: int) -> int:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     if tokens <= 128:
         return 128
     if tokens <= 256:
@@ -65,17 +65,17 @@ def _set_tokens_to_tokens_threshold(tokens: int) -> int:
 
 
 def _tokens_from_chars(text: str) -> int:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return len(text) / CHARS_PER_TOKEN
 
 
 def _tokens_from_words(text: str) -> int:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return math.ceil(len(text.split(" ")) * TOKENS_PER_WORD)
 
 
 def _get_default_max_tokens(sample_input, sample_output) -> tuple:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     inputs = sample_input.get("inputs")
     generated_text = sample_output[0].get("generated_text")
 
@@ -99,7 +99,7 @@ def _get_default_max_tokens(sample_input, sample_output) -> tuple:
 def _get_default_djl_configurations(
     model_id: str, hf_model_config: dict, schema_builder: SchemaBuilder
 ) -> tuple:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     default_tensor_parallel_degree = _get_default_tensor_parallel_degree(hf_model_config)
     if default_tensor_parallel_degree is None:
         default_tensor_parallel_degree = "max"
@@ -116,7 +116,7 @@ def _get_default_djl_configurations(
 
 
 def _get_admissible_tensor_parallel_degrees(hf_model_config: dict) -> int:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     available_gpus = _get_available_gpus()
 
     attention_heads = None
@@ -139,5 +139,5 @@ def _get_admissible_tensor_parallel_degrees(hf_model_config: dict) -> int:
 
 
 def _get_admissible_dtypes():
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return ["bf16"]

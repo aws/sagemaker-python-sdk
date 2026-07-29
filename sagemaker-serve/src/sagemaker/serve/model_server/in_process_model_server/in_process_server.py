@@ -1,4 +1,4 @@
-"""Module for In_process Serving"""
+"""Module for In_process Serving."""
 
 from __future__ import absolute_import
 
@@ -9,10 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class InProcessServing:
-    """In Process Mode server instance"""
+    """In Process Mode server instance."""
 
     def _start_serving(self):
-        """Initializes the start of the server"""
+        """Initializes the start of the server."""
         from sagemaker.serve.model_server.in_process_model_server.app import InProcessServer
 
         self.server = InProcessServer(
@@ -21,11 +21,11 @@ class InProcessServing:
         self.server.start_server()
 
     def _stop_serving(self):
-        """Stops the server"""
+        """Stops the server."""
         self.server.stop_server()
 
     def _invoke_serving(self, request: object, content_type: str, accept: str):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         try:
             response = requests.post(
                 f"http://{self.server.host}:{self.server.port}/invoke",

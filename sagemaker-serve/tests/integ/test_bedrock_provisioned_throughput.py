@@ -23,7 +23,7 @@ from urllib.parse import urlparse
 import boto3
 import pytest
 
-from sagemaker.core.helper.session_helper import Session, get_execution_role
+from sagemaker.core.helper.session_helper import get_execution_role
 from sagemaker.core.resources import TrainingJob
 from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 
@@ -108,9 +108,7 @@ def s3_client():
 @pytest.fixture(scope="module")
 def training_job(training_job_name):
     """Get the training job."""
-    return TrainingJob.get(
-        training_job_name=training_job_name, region=AWS_REGION
-    )
+    return TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
 
 
 def _setup_model_files(s3_artifacts_uri, s3_client):
@@ -187,9 +185,7 @@ class TestBedrockImportJobPolling:
         if self._imported_model_arn:
             try:
                 logger.info("Deleting imported model: %s", self._imported_model_arn)
-                self._bedrock_client.delete_imported_model(
-                    modelIdentifier=self._imported_model_arn
-                )
+                self._bedrock_client.delete_imported_model(modelIdentifier=self._imported_model_arn)
             except Exception as e:
                 logger.warning("Failed to delete imported model: %s", e)
 
@@ -221,9 +217,7 @@ class TestBedrockImportJobPolling:
         )
 
         # Verify the result is the completed job details
-        assert result["status"] == "Completed", (
-            f"Expected Completed, got {result.get('status')}"
-        )
+        assert result["status"] == "Completed", f"Expected Completed, got {result.get('status')}"
         assert "importedModelName" in result
         assert "importedModelArn" in result or "jobArn" in result
 
@@ -331,9 +325,9 @@ class TestBedrockProvisionedThroughput:
                 f"--role-arn <role> "
                 f"--base-model-identifier meta.llama3-1-8b-instruct-v1:0:128k "
                 f"--customization-type FINE_TUNING "
-                f"--training-data-config '{{\"s3Uri\":\"s3://mc-flows-sdk-testing/pt-test-data/train_llama31.jsonl\"}}' "
-                f"--output-data-config '{{\"s3Uri\":\"s3://mc-flows-sdk-testing/pt-test-output/\"}}' "
-                f"--hyper-parameters '{{\"epochCount\":\"1\",\"batchSize\":\"1\",\"learningRate\":\"0.00001\"}}' "
+                f'--training-data-config \'{{"s3Uri":"s3://mc-flows-sdk-testing/pt-test-data/train_llama31.jsonl"}}\' '
+                f'--output-data-config \'{{"s3Uri":"s3://mc-flows-sdk-testing/pt-test-output/"}}\' '
+                f'--hyper-parameters \'{{"epochCount":"1","batchSize":"1","learningRate":"0.00001"}}\' '
                 f"--region us-west-2"
             )
 
@@ -350,9 +344,9 @@ class TestBedrockProvisionedThroughput:
         )
 
         # Verify result contains provisioned model ARN
-        assert "provisionedModelArn" in pt_result, (
-            f"Expected 'provisionedModelArn' in result, got keys: {list(pt_result.keys())}"
-        )
+        assert (
+            "provisionedModelArn" in pt_result
+        ), f"Expected 'provisionedModelArn' in result, got keys: {list(pt_result.keys())}"
         self._provisioned_model_arn = pt_result["provisionedModelArn"]
 
         # Verify provisioned throughput is InService (create_provisioned_throughput
@@ -360,6 +354,6 @@ class TestBedrockProvisionedThroughput:
         pt_response = bedrock_client.get_provisioned_model_throughput(
             provisionedModelId=self._provisioned_model_arn
         )
-        assert pt_response["status"] == "InService", (
-            f"Expected InService, got {pt_response['status']}"
-        )
+        assert (
+            pt_response["status"] == "InService"
+        ), f"Expected InService, got {pt_response['status']}"

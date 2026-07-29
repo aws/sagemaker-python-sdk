@@ -39,7 +39,10 @@ class TestSecretFromString:
                     return client
 
             secret = Secret.from_string("my-token-value", session=_SessionStub())
-            assert secret.arn == "arn:aws:secretsmanager:us-east-1:123:secret:sagemaker-workload-abc-AbCdEf"
+            assert (
+                secret.arn
+                == "arn:aws:secretsmanager:us-east-1:123:secret:sagemaker-workload-abc-AbCdEf"
+            )
 
     def test_creates_secret_with_custom_name(self):
         session = boto3.session.Session(region_name="us-east-1")
@@ -99,9 +102,7 @@ class TestSecretFromString:
                 pass
             assert deleted["called"] is False
             # A secret this object created -> deleted on exit.
-            created = Secret(
-                arn="arn:aws:secretsmanager:us-east-1:123:secret:bar", _created=True
-            )
+            created = Secret(arn="arn:aws:secretsmanager:us-east-1:123:secret:bar", _created=True)
             with created:
                 pass
             assert deleted["called"] is True

@@ -73,7 +73,10 @@ class TestIsNovaModel:
         assert _is_nova_model(_make_container(hub_content_name="amazon-nova-lite")) is True
 
     def test_oss(self):
-        assert _is_nova_model(_make_container(recipe_name="llama-3-8b", hub_content_name="llama")) is False
+        assert (
+            _is_nova_model(_make_container(recipe_name="llama-3-8b", hub_content_name="llama"))
+            is False
+        )
 
     def test_no_base_model(self):
         assert _is_nova_model(_make_container()) is False
@@ -97,8 +100,9 @@ class TestInit:
 
     def test_with_model(self):
         m = Mock()
-        with patch.object(BedrockModelBuilder, "_fetch_model_package", return_value=Mock()), \
-             patch.object(BedrockModelBuilder, "_get_s3_artifacts", return_value="s3://b/k"):
+        with patch.object(
+            BedrockModelBuilder, "_fetch_model_package", return_value=Mock()
+        ), patch.object(BedrockModelBuilder, "_get_s3_artifacts", return_value="s3://b/k"):
             b = BedrockModelBuilder(model=m)
         assert b.model is m
         assert b.s3_model_artifacts == "s3://b/k"
@@ -155,9 +159,9 @@ class TestFetchModelPackage:
         b = _builder()
         b.model = Mock()
         # ModelPackage = type(b.model) so isinstance matches; others are sentinels
-        with patch(f"{MODULE}.ModelPackage", type(b.model)), \
-             patch(f"{MODULE}.TrainingJob", _SentinelA), \
-             patch(f"{MODULE}.ModelTrainer", _SentinelB):
+        with patch(f"{MODULE}.ModelPackage", type(b.model)), patch(
+            f"{MODULE}.TrainingJob", _SentinelA
+        ), patch(f"{MODULE}.ModelTrainer", _SentinelB):
             result = b._fetch_model_package()
         assert result is b.model
 
@@ -174,9 +178,9 @@ class TestFetchModelPackage:
             def get(arn):
                 return expected
 
-        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), \
-             patch(f"{MODULE}.TrainingJob", type(b.model)), \
-             patch(f"{MODULE}.ModelTrainer", _SentinelA):
+        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), patch(
+            f"{MODULE}.TrainingJob", type(b.model)
+        ), patch(f"{MODULE}.ModelTrainer", _SentinelA):
             result = b._fetch_model_package()
         assert result is expected
 
@@ -191,9 +195,9 @@ class TestFetchModelPackage:
             def get(arn):
                 return expected
 
-        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), \
-             patch(f"{MODULE}.TrainingJob", _SentinelA), \
-             patch(f"{MODULE}.ModelTrainer", type(b.model)):
+        with patch(f"{MODULE}.ModelPackage", _FakeModelPackage), patch(
+            f"{MODULE}.TrainingJob", _SentinelA
+        ), patch(f"{MODULE}.ModelTrainer", type(b.model)):
             result = b._fetch_model_package()
         assert result is expected
 
@@ -229,9 +233,9 @@ class TestGetS3Artifacts:
         b = _builder()
         b.model = Mock()
         b.model_package = _make_model_package(c)
-        with patch(f"{MODULE}.TrainingJob", type(b.model)), \
-             patch.object(BedrockModelBuilder, "_get_checkpoint_uri_from_manifest",
-                          return_value="s3://b/ckpt"):
+        with patch(f"{MODULE}.TrainingJob", type(b.model)), patch.object(
+            BedrockModelBuilder, "_get_checkpoint_uri_from_manifest", return_value="s3://b/ckpt"
+        ):
             result = b._get_s3_artifacts()
         assert result == "s3://b/ckpt"
 
@@ -247,8 +251,7 @@ class TestGetS3Artifacts:
 
 
 class TestGetCheckpointUri:
-    def _make_builder(self, s3_output_path, manifest_body=None, s3_error=None,
-                      job_name="myjob"):
+    def _make_builder(self, s3_output_path, manifest_body=None, s3_error=None, job_name="myjob"):
         mock_job = Mock()
         mock_job.output_data_config = Mock()
         mock_job.output_data_config.s3_output_path = s3_output_path
@@ -409,7 +412,9 @@ class TestCreateDeployment:
         }
         b._bedrock_client.get_custom_model_deployment.return_value = {"status": "Active"}
 
-        b.create_deployment(model_arn="arn:model", deployment_name="d", commitmentDuration="ONE_MONTH")
+        b.create_deployment(
+            model_arn="arn:model", deployment_name="d", commitmentDuration="ONE_MONTH"
+        )
         kw = b._bedrock_client.create_custom_model_deployment.call_args[1]
         assert kw["commitmentDuration"] == "ONE_MONTH"
 
@@ -505,8 +510,9 @@ class TestDeploy:
             "importedModelArn": "arn:aws:bedrock:us-west-2:123:imported-model/abc",
         }
 
-        with patch(f"{MODULE}.time.sleep"), \
-             patch.object(b, "_extract_tar_gz_to_s3", return_value="s3://b/extracted/checkpoints/hf/"):
+        with patch(f"{MODULE}.time.sleep"), patch.object(
+            b, "_extract_tar_gz_to_s3", return_value="s3://b/extracted/checkpoints/hf/"
+        ):
             result = b.deploy(job_name="j", imported_model_name="m", role_arn="r")
 
         b._bedrock_client.create_model_import_job.assert_called_once()
@@ -529,8 +535,9 @@ class TestDeploy:
             "importedModelName": "m",
         }
 
-        with patch(f"{MODULE}.time.sleep"), \
-             patch.object(b, "_extract_tar_gz_to_s3", return_value="s3://b/extracted/checkpoints/hf/"):
+        with patch(f"{MODULE}.time.sleep"), patch.object(
+            b, "_extract_tar_gz_to_s3", return_value="s3://b/extracted/checkpoints/hf/"
+        ):
             b.deploy(job_name="j", imported_model_name="m", role_arn="r")
 
         b._bedrock_client.create_provisioned_model_throughput.assert_not_called()
@@ -631,8 +638,11 @@ class TestDeploy:
         b._bedrock_client = Mock()
         b._bedrock_client.create_custom_model.return_value = {"modelArn": "model-arn"}
 
-        with patch(f"{MODULE}.resolve_and_validate_role", return_value="auto-role") as mock_resolve, \
-             patch.object(b, "create_deployment", return_value={"ok": True}) as mock_create_deploy:
+        with patch(
+            f"{MODULE}.resolve_and_validate_role", return_value="auto-role"
+        ) as mock_resolve, patch.object(
+            b, "create_deployment", return_value={"ok": True}
+        ) as mock_create_deploy:
             b.deploy(custom_model_name="m")
 
         mock_resolve.assert_called_once_with(
@@ -657,8 +667,9 @@ class TestDeploy:
             "importedModelName": "m",
         }
 
-        with patch(f"{MODULE}.resolve_and_validate_role", return_value="auto-role") as mock_resolve, \
-             patch(f"{MODULE}.time.sleep"):
+        with patch(
+            f"{MODULE}.resolve_and_validate_role", return_value="auto-role"
+        ) as mock_resolve, patch(f"{MODULE}.time.sleep"):
             b.deploy(job_name="j", imported_model_name="m")
 
         mock_resolve.assert_called_once_with(
@@ -693,15 +704,21 @@ class TestDeploy:
         b._bedrock_client = Mock()
         b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:model"}
 
-        with patch.object(b, "create_deployment", return_value={"customModelDeploymentArn": "arn:dep"}) as mock_deploy:
-            result = b.deploy(custom_model_name="my-nova-model", role_arn="arn:role")
+        with patch.object(
+            b, "create_deployment", return_value={"customModelDeploymentArn": "arn:dep"}
+        ) as mock_deploy:
+            b.deploy(custom_model_name="my-nova-model", role_arn="arn:role")
 
         b._bedrock_client.create_custom_model.assert_called_once()
         kw = b._bedrock_client.create_custom_model.call_args[1]
         assert kw["modelName"] == "my-nova-model"
-        assert kw["modelSourceConfig"] == {"s3DataSource": {"s3Uri": "s3://my-bucket/my-checkpoint/"}}
+        assert kw["modelSourceConfig"] == {
+            "s3DataSource": {"s3Uri": "s3://my-bucket/my-checkpoint/"}
+        }
         assert kw["roleArn"] == "arn:role"
-        mock_deploy.assert_called_once_with(model_arn="arn:model", deployment_name="my-nova-model-deployment")
+        mock_deploy.assert_called_once_with(
+            model_arn="arn:model", deployment_name="my-nova-model-deployment"
+        )
 
     def test_s3_uri_string_without_custom_model_name_uses_oss_path(self):
         """Direct S3 URI without custom_model_name triggers import job path."""
@@ -714,7 +731,7 @@ class TestDeploy:
         }
 
         with patch(f"{MODULE}.time.sleep"):
-            result = b.deploy(job_name="j", imported_model_name="my-imported", role_arn="arn:role")
+            b.deploy(job_name="j", imported_model_name="my-imported", role_arn="arn:role")
 
         b._bedrock_client.create_model_import_job.assert_called_once()
         kw = b._bedrock_client.create_model_import_job.call_args[1]
@@ -731,16 +748,22 @@ class TestDeploy:
         mock_training_job = Mock()
         mock_training_job.output_model_package_arn = None
         mock_training_job.model_artifacts = Mock()
-        mock_training_job.model_artifacts.s3_model_artifacts = "s3://bucket/hp-job/outputs/checkpoints/step_4/"
+        mock_training_job.model_artifacts.s3_model_artifacts = (
+            "s3://bucket/hp-job/outputs/checkpoints/step_4/"
+        )
         mock_trainer._latest_training_job = mock_training_job
 
-        with patch(f"{MODULE}.ModelPackage", _SentinelA), \
-             patch(f"{MODULE}.TrainingJob", _SentinelB), \
-             patch(f"{MODULE}.ModelTrainer", type(mock_trainer)), \
-             patch(f"{MODULE}.MultiTurnRLTrainer", _SentinelA), \
-             patch(f"{MODULE}.AgentRFTJob", _SentinelA), \
-             patch(f"{MODULE}.is_restricted_model_package", return_value=False), \
-             patch(f"{MODULE}.Session") as mock_session:
+        with patch(f"{MODULE}.ModelPackage", _SentinelA), patch(
+            f"{MODULE}.TrainingJob", _SentinelB
+        ), patch(f"{MODULE}.ModelTrainer", type(mock_trainer)), patch(
+            f"{MODULE}.MultiTurnRLTrainer", _SentinelA
+        ), patch(
+            f"{MODULE}.AgentRFTJob", _SentinelA
+        ), patch(
+            f"{MODULE}.is_restricted_model_package", return_value=False
+        ), patch(
+            f"{MODULE}.Session"
+        ) as mock_session:
             mock_session.return_value.boto_session = Mock()
             b = BedrockModelBuilder(model=mock_trainer)
 
@@ -755,7 +778,9 @@ class TestDeploy:
         b._bedrock_client = Mock()
         b._bedrock_client.create_custom_model.return_value = {"modelArn": "arn:model"}
 
-        with patch.object(b, "create_deployment", return_value={"customModelDeploymentArn": "arn:dep"}):
+        with patch.object(
+            b, "create_deployment", return_value={"customModelDeploymentArn": "arn:dep"}
+        ):
             b.deploy(custom_model_name="my-hp-model", role_arn="arn:role")
 
         kw = b._bedrock_client.create_custom_model.call_args[1]
@@ -783,9 +808,7 @@ class TestWaitForImportJobComplete:
         b._bedrock_client = Mock()
         b._bedrock_client.get_model_import_job.return_value = {"status": "Completed"}
         b._wait_for_import_job_complete("arn:job")
-        b._bedrock_client.get_model_import_job.assert_called_once_with(
-            jobIdentifier="arn:job"
-        )
+        b._bedrock_client.get_model_import_job.assert_called_once_with(jobIdentifier="arn:job")
 
     def test_polls_then_completed(self):
         b = _builder()
@@ -835,9 +858,7 @@ class TestCreateProvisionedThroughput:
         b._bedrock_client.create_provisioned_model_throughput.return_value = {
             "provisionedModelArn": "arn:pt"
         }
-        b._bedrock_client.get_provisioned_model_throughput.return_value = {
-            "status": "InService"
-        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
 
         result = b.create_provisioned_throughput(
             model_id="arn:model", provisioned_model_name="my-pt"
@@ -857,9 +878,7 @@ class TestCreateProvisionedThroughput:
         b._bedrock_client.create_provisioned_model_throughput.return_value = {
             "provisionedModelArn": "arn:pt"
         }
-        b._bedrock_client.get_provisioned_model_throughput.return_value = {
-            "status": "InService"
-        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
 
         b.create_provisioned_throughput(
             model_id="arn:model",
@@ -878,9 +897,7 @@ class TestCreateProvisionedThroughput:
         b._bedrock_client.create_provisioned_model_throughput.return_value = {
             "provisionedModelArn": "arn:pt"
         }
-        b._bedrock_client.get_provisioned_model_throughput.return_value = {
-            "status": "InService"
-        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
 
         tags = [{"Key": "team", "Value": "ml"}]
         b.create_provisioned_throughput(
@@ -895,9 +912,7 @@ class TestCreateProvisionedThroughput:
         b._bedrock_client = Mock()
         b._bedrock_client.create_provisioned_model_throughput.return_value = {}
 
-        b.create_provisioned_throughput(
-            model_id="arn:model", provisioned_model_name="pt"
-        )
+        b.create_provisioned_throughput(model_id="arn:model", provisioned_model_name="pt")
         b._bedrock_client.get_provisioned_model_throughput.assert_not_called()
 
     def test_empty_model_id_raises(self):
@@ -913,9 +928,7 @@ class TestCreateProvisionedThroughput:
     def test_empty_provisioned_model_name_raises(self):
         b = _builder()
         with pytest.raises(ValueError, match="provisioned_model_name is required"):
-            b.create_provisioned_throughput(
-                model_id="arn:model", provisioned_model_name=""
-            )
+            b.create_provisioned_throughput(model_id="arn:model", provisioned_model_name="")
 
     def test_uses_imported_model_id_from_deploy(self):
         """model_id falls back to _imported_model_id set by deploy()."""
@@ -925,9 +938,7 @@ class TestCreateProvisionedThroughput:
         b._bedrock_client.create_provisioned_model_throughput.return_value = {
             "provisionedModelArn": "arn:pt"
         }
-        b._bedrock_client.get_provisioned_model_throughput.return_value = {
-            "status": "InService"
-        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
 
         result = b.create_provisioned_throughput(provisioned_model_name="my-pt")
 
@@ -943,13 +954,9 @@ class TestCreateProvisionedThroughput:
         b._bedrock_client.create_provisioned_model_throughput.return_value = {
             "provisionedModelArn": "arn:pt"
         }
-        b._bedrock_client.get_provisioned_model_throughput.return_value = {
-            "status": "InService"
-        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
 
-        b.create_provisioned_throughput(
-            model_id="explicit-model", provisioned_model_name="my-pt"
-        )
+        b.create_provisioned_throughput(model_id="explicit-model", provisioned_model_name="my-pt")
 
         kw = b._bedrock_client.create_provisioned_model_throughput.call_args[1]
         assert kw["modelId"] == "explicit-model"
@@ -962,9 +969,7 @@ class TestWaitForProvisionedThroughputInService:
     def test_immediate_in_service(self):
         b = _builder()
         b._bedrock_client = Mock()
-        b._bedrock_client.get_provisioned_model_throughput.return_value = {
-            "status": "InService"
-        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "InService"}
         b._wait_for_provisioned_throughput_in_service("arn:pt")
         b._bedrock_client.get_provisioned_model_throughput.assert_called_once_with(
             provisionedModelId="arn:pt"
@@ -979,9 +984,7 @@ class TestWaitForProvisionedThroughputInService:
             {"status": "InService"},
         ]
         with patch(f"{MODULE}.time.sleep"):
-            b._wait_for_provisioned_throughput_in_service(
-                "arn:pt", poll_interval=1, max_wait=10
-            )
+            b._wait_for_provisioned_throughput_in_service("arn:pt", poll_interval=1, max_wait=10)
         assert b._bedrock_client.get_provisioned_model_throughput.call_count == 3
 
     def test_failed_raises(self):
@@ -997,23 +1000,17 @@ class TestWaitForProvisionedThroughputInService:
     def test_failed_unknown_reason(self):
         b = _builder()
         b._bedrock_client = Mock()
-        b._bedrock_client.get_provisioned_model_throughput.return_value = {
-            "status": "Failed"
-        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "Failed"}
         with pytest.raises(RuntimeError, match="Unknown"):
             b._wait_for_provisioned_throughput_in_service("arn:pt")
 
     def test_timeout_raises(self):
         b = _builder()
         b._bedrock_client = Mock()
-        b._bedrock_client.get_provisioned_model_throughput.return_value = {
-            "status": "Creating"
-        }
+        b._bedrock_client.get_provisioned_model_throughput.return_value = {"status": "Creating"}
         with patch(f"{MODULE}.time.sleep"):
             with pytest.raises(RuntimeError, match="Timed out"):
-                b._wait_for_provisioned_throughput_in_service(
-                    "arn:pt", poll_interval=1, max_wait=2
-                )
+                b._wait_for_provisioned_throughput_in_service("arn:pt", poll_interval=1, max_wait=2)
 
 
 def _apply_model_artifacts_postprocessing(training_job):
@@ -1028,9 +1025,7 @@ def _apply_model_artifacts_postprocessing(training_job):
             synthesized_path = (
                 f"{s3_output_path.rstrip('/')}/{training_job.training_job_name}/output/"
             )
-            training_job.model_artifacts = ModelArtifacts(
-                s3_model_artifacts=synthesized_path
-            )
+            training_job.model_artifacts = ModelArtifacts(s3_model_artifacts=synthesized_path)
     return training_job
 
 
@@ -1122,13 +1117,17 @@ class TestGetS3ArtifactsFromTrainingJob:
         mock_training_job.model_artifacts.s3_model_artifacts = "s3://bucket/checkpoint/"
         mock_trainer._latest_training_job = mock_training_job
 
-        with patch(f"{MODULE}.ModelPackage", _SentinelA), \
-             patch(f"{MODULE}.TrainingJob", _SentinelB), \
-             patch(f"{MODULE}.ModelTrainer", type(mock_trainer)), \
-             patch(f"{MODULE}.MultiTurnRLTrainer", _SentinelA), \
-             patch(f"{MODULE}.AgentRFTJob", _SentinelA), \
-             patch(f"{MODULE}.is_restricted_model_package", return_value=False), \
-             patch(f"{MODULE}.Session") as mock_session:
+        with patch(f"{MODULE}.ModelPackage", _SentinelA), patch(
+            f"{MODULE}.TrainingJob", _SentinelB
+        ), patch(f"{MODULE}.ModelTrainer", type(mock_trainer)), patch(
+            f"{MODULE}.MultiTurnRLTrainer", _SentinelA
+        ), patch(
+            f"{MODULE}.AgentRFTJob", _SentinelA
+        ), patch(
+            f"{MODULE}.is_restricted_model_package", return_value=False
+        ), patch(
+            f"{MODULE}.Session"
+        ) as mock_session:
             mock_session.return_value.boto_session = Mock()
             b = BedrockModelBuilder(model=mock_trainer)
 
@@ -1139,13 +1138,17 @@ class TestGetS3ArtifactsFromTrainingJob:
         mock_trainer = Mock()
         mock_trainer._latest_training_job = None
 
-        with patch(f"{MODULE}.ModelPackage", _SentinelA), \
-             patch(f"{MODULE}.TrainingJob", _SentinelB), \
-             patch(f"{MODULE}.ModelTrainer", type(mock_trainer)), \
-             patch(f"{MODULE}.MultiTurnRLTrainer", _SentinelA), \
-             patch(f"{MODULE}.AgentRFTJob", _SentinelA), \
-             patch(f"{MODULE}.is_restricted_model_package", return_value=False), \
-             patch(f"{MODULE}.Session") as mock_session:
+        with patch(f"{MODULE}.ModelPackage", _SentinelA), patch(
+            f"{MODULE}.TrainingJob", _SentinelB
+        ), patch(f"{MODULE}.ModelTrainer", type(mock_trainer)), patch(
+            f"{MODULE}.MultiTurnRLTrainer", _SentinelA
+        ), patch(
+            f"{MODULE}.AgentRFTJob", _SentinelA
+        ), patch(
+            f"{MODULE}.is_restricted_model_package", return_value=False
+        ), patch(
+            f"{MODULE}.Session"
+        ) as mock_session:
             mock_session.return_value.boto_session = Mock()
             b = BedrockModelBuilder(model=mock_trainer)
 

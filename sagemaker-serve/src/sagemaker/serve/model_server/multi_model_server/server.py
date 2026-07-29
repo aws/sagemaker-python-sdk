@@ -1,4 +1,4 @@
-"""Module for the MultiModel Local and Remote servers"""
+"""Module for the MultiModel Local and Remote servers."""
 
 from __future__ import absolute_import
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 class LocalMultiModelServer:
-    """Local Multi Model server instance"""
+    """Local Multi Model server instance."""
 
     def _start_serving(
         self,
@@ -31,7 +31,7 @@ class LocalMultiModelServer:
         secret_key: str,
         env_vars: dict,
     ):
-        """Initializes the start of the server"""
+        """Initializes the start of the server."""
         env = {
             "SAGEMAKER_SUBMIT_DIRECTORY": "/opt/ml/model/code",
             "SAGEMAKER_PROGRAM": "inference.py",
@@ -59,7 +59,7 @@ class LocalMultiModelServer:
         )
 
     def _invoke_multi_model_server_serving(self, request: object, content_type: str, accept: str):
-        """Invokes MMS server by hitting the docker host"""
+        """Invokes MMS server by hitting the docker host."""
         try:
             response = requests.post(
                 f"http://{get_docker_host()}:8080/invocations",
@@ -74,7 +74,7 @@ class LocalMultiModelServer:
 
 
 class SageMakerMultiModelServer:
-    """Sagemaker endpoint Multi Model Server"""
+    """Sagemaker endpoint Multi Model Server."""
 
     def _upload_server_artifacts(
         self,
@@ -139,7 +139,7 @@ class SageMakerMultiModelServer:
 
 
 def _update_env_vars(env_vars: dict) -> dict:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     updated_env_vars = {}
     updated_env_vars.update(_DEFAULT_ENV_VARS)
     if env_vars:

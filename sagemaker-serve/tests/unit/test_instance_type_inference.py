@@ -4,7 +4,7 @@ Tests the _infer_instance_type_from_jumpstart method with various scenarios.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch
 import pytest
 
 from sagemaker.serve.model_builder import ModelBuilder

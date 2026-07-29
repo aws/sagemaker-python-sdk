@@ -1,4 +1,4 @@
-"""Module for Local TEI Serving"""
+"""Module for Local TEI Serving."""
 
 from __future__ import absolute_import
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class LocalTeiServing:
-    """LocalTeiServing class"""
+    """LocalTeiServing class."""
 
     def _start_tei_serving(
         self, client: object, image: str, model_path: str, secret_key: str, env_vars: dict
@@ -38,7 +38,6 @@ class LocalTeiServing:
             secret_key: Secret key to use for authentication
             env_vars: Environment variables to set
         """
-
         self.container = client.containers.run(
             image,
             shm_size=_SHM_SIZE,
@@ -77,7 +76,7 @@ class LocalTeiServing:
 
 
 class SageMakerTeiServing:
-    """SageMakerTeiServing class"""
+    """SageMakerTeiServing class."""
 
     def _upload_tei_artifacts(
         self,
@@ -143,7 +142,7 @@ class SageMakerTeiServing:
 
 
 def _update_env_vars(env_vars: dict) -> dict:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     updated_env_vars = {}
     updated_env_vars.update(_DEFAULT_ENV_VARS)
     if env_vars:

@@ -1,4 +1,4 @@
-"""Implements class that holds custom load and invoke function of a model"""
+"""Implements class that holds custom load and invoke function of a model."""
 
 from __future__ import absolute_import
 import abc
@@ -29,13 +29,13 @@ class InferenceSpec(abc.ABC):
         """
 
     def preprocess(self, input_data: object):
-        """Custom pre-processing function"""
+        """Custom pre-processing function."""
 
     def postprocess(self, predictions: object):
-        """Custom post-processing function"""
+        """Custom post-processing function."""
 
     def prepare(self, *args, **kwargs):
-        """Custom prepare function"""
+        """Custom prepare function."""
 
     def get_model(self):
-        """Return HuggingFace model name for inference spec"""
+        """Return HuggingFace model name for inference spec."""

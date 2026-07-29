@@ -12,9 +12,10 @@
 # language governing permissions and limitations under the License.
 """Pretty-printing wrapper over an AIRecommendation row.
 
-Wraps each row to replace the default repr without owning the data;
-attribute access forwards to the underlying shape transparently.
+Wraps each row to replace the default repr without owning the data; attribute access forwards to the
+underlying shape transparently.
 """
+
 from __future__ import absolute_import
 
 from collections import defaultdict
@@ -63,9 +64,7 @@ class _ExpectedPerformanceMetric:
         return dict(self._stats)
 
     def __repr__(self) -> str:
-        parts = ", ".join(
-            f"{stat}={_fmt_number(v)}" for stat, v in self._stats.items()
-        )
+        parts = ", ".join(f"{stat}={_fmt_number(v)}" for stat, v in self._stats.items())
         unit = f" {self.unit}" if self.unit else ""
         return f"<{parts}{unit}>"
 
@@ -73,18 +72,15 @@ class _ExpectedPerformanceMetric:
 class _ExpectedPerformanceView:
     """Typed + dict-style accessor over a recommendation's expected_performance.
 
-    Service shape is ``List[AIRecommendationPerformanceMetric]`` with one row
-    per (metric, stat). This view groups rows by metric name so customers
-    can do ``view.request_throughput.avg`` (snake_case attribute), or
-    ``view.get("RequestThroughput").p99`` (raw service name).
+    Service shape is ``List[AIRecommendationPerformanceMetric]`` with one row per (metric, stat).
+    This view groups rows by metric name so customers can do ``view.request_throughput.avg``
+    (snake_case attribute), or ``view.get("RequestThroughput").p99`` (raw service name).
     """
 
     __slots__ = ("_by_metric",)
 
     def __init__(self, raw_rows: Optional[List[Any]]):
-        by_metric: Dict[str, Dict[str, Any]] = defaultdict(
-            lambda: {"unit": None, "stats": {}}
-        )
+        by_metric: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"unit": None, "stats": {}})
         for row in raw_rows or []:
             metric = getattr(row, "metric", None)
             if not metric:
@@ -139,9 +135,9 @@ class _ExpectedPerformanceView:
         return len(self._by_metric)
 
     def __repr__(self) -> str:
-        return "{" + ", ".join(
-            f"{name}: {metric!r}" for name, metric in self._by_metric.items()
-        ) + "}"
+        return (
+            "{" + ", ".join(f"{name}: {metric!r}" for name, metric in self._by_metric.items()) + "}"
+        )
 
 
 def _to_float(value):
@@ -219,12 +215,14 @@ class _RecommendationView:
 
         perf_rows = []
         for m in ep:
-            perf_rows.append([
-                _safe_str(m, "metric"),
-                _safe_str(m, "stat"),
-                _fmt_number(_safe_float(m, "value")),
-                _safe_str(m, "unit"),
-            ])
+            perf_rows.append(
+                [
+                    _safe_str(m, "metric"),
+                    _safe_str(m, "stat"),
+                    _fmt_number(_safe_float(m, "value")),
+                    _safe_str(m, "unit"),
+                ]
+            )
         perf_table = _format_table(
             headers=["metric", "stat", "value", "unit"],
             rows=perf_rows,
@@ -299,30 +297,39 @@ class _RecommendationsView(list):
         for view in self:
             dc = getattr(view.raw, "deployment_configuration", None)
             ep = view.expected_performance
-            rows.append([
-                f"[{view._index}]",
-                view.recommendation_spec_name or "-",
-                _safe_str(dc, "instance_type"),
-                _safe_str(dc, "instance_count"),
-                _safe_str(dc, "copy_count_per_instance"),
-                _short_container_tag(_safe_str(dc, "image_uri")),
-                _fmt_number(_get_metric_stat(ep, "request_throughput", "avg")),
-                _fmt_number(_get_metric_stat(ep, "output_token_throughput", "avg")),
-                _fmt_number(_get_metric_stat(ep, "request_latency", "p50")),
-                _fmt_number(_get_metric_stat(ep, "request_latency", "p90")),
-                _fmt_number(_get_metric_stat(ep, "request_latency", "p99")),
-                _fmt_number(_get_metric_stat(ep, "time_to_first_token", "p50")),
-                _fmt_number(_get_metric_stat(ep, "inter_token_latency", "p50")),
-            ])
+            rows.append(
+                [
+                    f"[{view._index}]",
+                    view.recommendation_spec_name or "-",
+                    _safe_str(dc, "instance_type"),
+                    _safe_str(dc, "instance_count"),
+                    _safe_str(dc, "copy_count_per_instance"),
+                    _short_container_tag(_safe_str(dc, "image_uri")),
+                    _fmt_number(_get_metric_stat(ep, "request_throughput", "avg")),
+                    _fmt_number(_get_metric_stat(ep, "output_token_throughput", "avg")),
+                    _fmt_number(_get_metric_stat(ep, "request_latency", "p50")),
+                    _fmt_number(_get_metric_stat(ep, "request_latency", "p90")),
+                    _fmt_number(_get_metric_stat(ep, "request_latency", "p99")),
+                    _fmt_number(_get_metric_stat(ep, "time_to_first_token", "p50")),
+                    _fmt_number(_get_metric_stat(ep, "inter_token_latency", "p50")),
+                ]
+            )
 
         table = _format_table(
             headers=[
-                "idx", "spec_name", "instance_type",
-                "instances", "copies/inst",
+                "idx",
+                "spec_name",
+                "instance_type",
+                "instances",
+                "copies/inst",
                 "container",
-                "req/s", "tok/s",
-                "lat_p50", "lat_p90", "lat_p99",
-                "ttft_p50", "itl_p50",
+                "req/s",
+                "tok/s",
+                "lat_p50",
+                "lat_p90",
+                "lat_p99",
+                "ttft_p50",
+                "itl_p50",
             ],
             rows=rows,
         )
@@ -345,10 +352,9 @@ def _get_metric_stat(ep_view, metric_name: str, stat: str):
 def _short_container_tag(image_uri: str) -> str:
     """Extract a comparison-friendly tag from a full container image URI.
 
-    ".../djl-inference:0.36.0-lmi25.0.0-cu130" -> "lmi25.0.0"
-    ".../image:vllm0.6.0-cu121"                -> "vllm0.6.0"
-    ".../image:1.2.3"                          -> "1.2.3"
-    Empty / "-"                                -> "-"
+    ".../djl-inference:0.36.0-lmi25.0.0-cu130" -> "lmi25.0.0" ".../image:vllm0.6.0-cu121"
+    -> "vllm0.6.0" ".../image:1.2.3"                          -> "1.2.3" Empty / "-"
+    -> "-"
     """
     if not image_uri or image_uri == "-":
         return "-"

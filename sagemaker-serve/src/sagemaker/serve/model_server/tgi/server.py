@@ -1,4 +1,4 @@
-"""Module for Local TGI Serving"""
+"""Module for Local TGI Serving."""
 
 from __future__ import absolute_import
 
@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 class LocalTgiServing:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
 
     def _start_tgi_serving(
         self,
@@ -35,7 +35,7 @@ class LocalTgiServing:
         env_vars: dict,
         jumpstart: bool,
     ):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         if jumpstart:
             self.container = client.containers.run(
                 image,
@@ -71,7 +71,7 @@ class LocalTgiServing:
             )
 
     def _invoke_tgi_serving(self, request: object, content_type: str, accept: str):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         try:
             response = requests.post(
                 f"http://{get_docker_host()}:8080/generate",
@@ -86,7 +86,7 @@ class LocalTgiServing:
 
 
 class SageMakerTgiServing:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
 
     def _upload_tgi_artifacts(
         self,
@@ -143,7 +143,7 @@ class SageMakerTgiServing:
 
 
 def _update_env_vars(env_vars: dict) -> dict:
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     updated_env_vars = {}
     updated_env_vars.update(_DEFAULT_ENV_VARS)
     if env_vars:

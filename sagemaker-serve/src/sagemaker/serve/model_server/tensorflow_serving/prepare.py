@@ -1,4 +1,4 @@
-"""Module for artifacts preparation for tensorflow_serving"""
+"""Module for artifacts preparation for tensorflow_serving."""
 
 from __future__ import absolute_import
 from pathlib import Path
@@ -31,7 +31,6 @@ def prepare_for_tf_serving(
     Returns:
         str: Secret key.
     """
-
     _model_path = Path(model_path)
     if not _model_path.exists():
         _model_path.mkdir()

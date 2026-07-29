@@ -1,4 +1,4 @@
-"""Placeholder docstring"""
+"""Placeholder docstring."""
 
 from __future__ import absolute_import
 
@@ -81,7 +81,7 @@ DEFAULT_DTYPE = "TYPE_FP32"
 
 
 class TritonSchemaBuilder:
-    """Mixin class for SchemaBuilder that holds Triton specific methods"""
+    """Mixin class for SchemaBuilder that holds Triton specific methods."""
 
     # pylint: disable=no-member, attribute-defined-outside-init
 
@@ -96,11 +96,11 @@ class TritonSchemaBuilder:
         self._sample_output_ndarray = None
 
     def _update_serializer_deserializer_for_triton(self) -> None:
-        """Update serializer and deserializer method for triton
+        """Update serializer and deserializer method for triton.
 
-        Update input_serializer, input_deserializer, output_serializer
-        and output_deserializer to use Triton specific converter.
-        This method is only meant to be called during ModelBuilder().build() for Triton.
+        Update input_serializer, input_deserializer, output_serializer and output_deserializer to
+        use Triton specific converter. This method is only meant to be called during
+        ModelBuilder().build() for Triton.
         """
         # Update for input
         self._detect_class_of_sample_input_and_output()
@@ -126,7 +126,7 @@ class TritonSchemaBuilder:
             )
 
     def _detect_class_of_sample_input_and_output(self):
-        """Detect the class of sample_input and sample_output"""
+        """Detect the class of sample_input and sample_output."""
         input_class_name = str(self.sample_input.__class__)
         for supported_type in SUPPORTED_TYPES:
             if supported_type in input_class_name:
@@ -159,7 +159,7 @@ class TritonSchemaBuilder:
             )
 
     def _detect_dtype_for_triton(self):
-        """Map sample_input and sample_output data type to Triton data type"""
+        """Map sample_input and sample_output data type to Triton data type."""
         # detect for input
         if self._input_class_name == TORCH_TENSOR:
             self._input_triton_dtype = self._detect_dtype_for_pytorch_tensor(data=self.sample_input)
@@ -183,13 +183,13 @@ class TritonSchemaBuilder:
             self._output_triton_dtype = DEFAULT_DTYPE
 
     def _detect_dtype_for_pytorch_tensor(self, data):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         return PYTORCH_TENSOR_TO_TRITON_DTYPE_MAP.get(str(data.dtype), DEFAULT_DTYPE)
 
     def _detect_dtype_for_numpy(self, data):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         return NUMPY_ARRAY_TRITON_DTYPE_MAP.get(data.dtype.name, DEFAULT_DTYPE)
 
     def _detect_dtype_for_tensorflow(self, data):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         return TENSORFLOW_TO_TRITON_DTYPE_MAP.get(data.dtype.name, DEFAULT_DTYPE)

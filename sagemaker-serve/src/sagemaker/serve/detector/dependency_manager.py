@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool = False):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     path = work_dir.joinpath("requirements.txt")
     if "auto" in dependencies and dependencies["auto"]:
         import site
@@ -91,14 +91,14 @@ def capture_dependencies(dependencies: dict, work_dir: Path, capture_all: bool =
 
 
 def _process_custom_dependencies(custom_dependencies: list, module_version_dict: dict):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     custom_module_version_dict = _parse_dependency_list(custom_dependencies)
     module_version_dict.update(custom_module_version_dict)
     return module_version_dict
 
 
 def _process_customer_provided_requirements(requirements_file: str, module_version_dict: dict):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     requirements_file = Path(requirements_file)
     if not requirements_file.is_file() or not _is_valid_requirement_file(requirements_file):
         raise Exception(f"Path: {requirements_file} to requirements.txt doesn't exist")
@@ -111,7 +111,7 @@ def _process_customer_provided_requirements(requirements_file: str, module_versi
 
 
 def _is_valid_requirement_file(path):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     # In the future, we can also check the if the content of customer provided file has valid format
     for suffix in _SUPPORTED_SUFFIXES:
         if path.name.endswith(suffix):
@@ -120,8 +120,7 @@ def _is_valid_requirement_file(path):
 
 
 def _parse_dependency_list(depedency_list: list) -> dict:
-    """Placeholder docstring"""
-
+    """Placeholder docstring."""
     # Divide a string into 2 part, first part is the module name
     # and second part is its version constraint or the url
     # checkout tests/unit/sagemaker/serve/detector/test_dependency_manager.py

@@ -10,7 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Placeholder docstring"""
+"""Placeholder docstring."""
+
 from __future__ import absolute_import
 import logging
 from time import perf_counter
@@ -87,7 +88,7 @@ SD_DRAFT_MODEL_SOURCE_TO_CODE = {
 
 
 def _capture_telemetry(func_name: str):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
 
     def decorator(func):
         def wrapper(self, *args, **kwargs):
@@ -199,7 +200,7 @@ def _send_telemetry(
     failure_type: str = None,
     extra_info: str = None,
 ) -> None:
-    """Make GET request to an empty object in S3 bucket"""
+    """Make GET request to an empty object in S3 bucket."""
     try:
         accountId = _get_accountId(session)
         region = _get_region_or_default(session)
@@ -227,8 +228,7 @@ def _construct_url(
     extra_info: str,
     region: str,
 ) -> str:
-    """Placeholder docstring"""
-
+    """Placeholder docstring."""
     base_url = (
         f"https://sm-pysdk-t-{region}.s3.{region}.amazonaws.com/telemetry?"
         f"x-accountId={accountId}"
@@ -244,8 +244,7 @@ def _construct_url(
 
 
 def _requests_helper(url, timeout):
-    """Placeholder docstring"""
-
+    """Placeholder docstring."""
     response = None
     try:
         response = requests.get(url, timeout)
@@ -255,8 +254,7 @@ def _requests_helper(url, timeout):
 
 
 def _get_accountId(session):
-    """Placeholder docstring"""
-
+    """Placeholder docstring."""
     try:
         sts = session.boto_session.client("sts")
         return sts.get_caller_identity()["Account"]
@@ -265,8 +263,7 @@ def _get_accountId(session):
 
 
 def _get_region_or_default(session):
-    """Placeholder docstring"""
-
+    """Placeholder docstring."""
     try:
         return session.boto_session.region_name
     except Exception:  # pylint: disable=W0703
@@ -274,7 +271,7 @@ def _get_region_or_default(session):
 
 
 def _get_image_uri_option(image_uri: str, is_custom_image: bool) -> int:
-    """Detect whether default values are used for ModelBuilder
+    """Detect whether default values are used for ModelBuilder.
 
     Args:
         image_uri (str): Image uri used by ModelBuilder.
@@ -282,7 +279,6 @@ def _get_image_uri_option(image_uri: str, is_custom_image: bool) -> int:
     Returns:
         bool: Integer code of image option types.
     """
-
     if not is_custom_image:
         return ImageUriOption.DEFAULT_IMAGE.value
 

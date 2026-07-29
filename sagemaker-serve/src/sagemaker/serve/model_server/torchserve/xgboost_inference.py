@@ -22,7 +22,7 @@ schema_builder = None
 
 
 def model_fn(model_dir):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     from sagemaker.serve.spec.inference_spec import InferenceSpec
     from sagemaker.serve.detector.image_detector import (
         _detect_framework_and_version,
@@ -75,7 +75,7 @@ def model_fn(model_dir):
 
 
 def input_fn(input_data, content_type):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     try:
         if hasattr(schema_builder, "custom_input_translator"):
             return schema_builder.custom_input_translator.deserialize(
@@ -110,12 +110,12 @@ def input_fn(input_data, content_type):
 
 
 def predict_fn(input_data, predict_callable):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     return predict_callable(input_data)
 
 
 def output_fn(predictions, accept_type):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     try:
         if hasattr(schema_builder, "custom_output_translator"):
             return schema_builder.custom_output_translator.serialize(predictions, accept_type)
@@ -155,7 +155,7 @@ def _pickle_file_integrity_check():
 
 
 def install_package(package_name, version=None):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     package_spec = f"{package_name}=={version}" if version else package_name
 
     try:

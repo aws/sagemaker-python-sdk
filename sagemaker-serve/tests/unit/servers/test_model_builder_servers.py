@@ -1,18 +1,16 @@
 """Unit tests for ModelBuilderServers class."""
 
 import os
-import sys
 import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch, MagicMock, PropertyMock
+from unittest.mock import Mock, patch
 import unittest
 
 # Prevent JumpStart from loading region config during import
 os.environ["SAGEMAKER_INTERNAL_SKIP_REGION_CONFIG"] = "1"
 
-from sagemaker.serve.utils.types import ModelServer
-from sagemaker.serve.mode.function_pointers import Mode
-from sagemaker.serve.model_builder_servers import _ModelBuilderServers
+from sagemaker.serve.utils.types import ModelServer  # noqa: E402
+from sagemaker.serve.mode.function_pointers import Mode  # noqa: E402
+from sagemaker.serve.model_builder_servers import _ModelBuilderServers  # noqa: E402
 
 
 class MockModelBuilderServers(_ModelBuilderServers):
@@ -221,7 +219,7 @@ class TestBuildForTorchServe(unittest.TestCase):
         self.builder.model = "bert-base-uncased"
         self.builder.env_vars = {"HUGGING_FACE_HUB_TOKEN": "test-token"}
 
-        result = self.builder._build_for_torchserve()
+        self.builder._build_for_torchserve()
 
         self.assertEqual(self.builder.env_vars["HF_MODEL_ID"], "bert-base-uncased")
         self.assertEqual(self.builder.env_vars["HF_TOKEN"], "test-token")
@@ -243,7 +241,7 @@ class TestBuildForTorchServe(unittest.TestCase):
         mock_ts_prepare.return_value = ""
         mock_create.return_value = Mock()
 
-        result = self.builder._build_for_torchserve()
+        self.builder._build_for_torchserve()
 
         mock_ts_prepare.assert_called_once()
         self.assertEqual(self.builder.secret_key, "")
@@ -264,7 +262,7 @@ class TestBuildForTorchServe(unittest.TestCase):
         mock_create.return_value = Mock()
         mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
 
-        result = self.builder._build_for_torchserve()
+        self.builder._build_for_torchserve()
 
         mock_ts_prepare.assert_called_once()
         self.assertEqual(self.builder.secret_key, "")
@@ -293,7 +291,7 @@ class TestBuildForTGI(unittest.TestCase):
         mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
         self.builder.model = Mock()
 
-        result = self.builder._build_for_tgi()
+        self.builder._build_for_tgi()
 
         self.assertEqual(self.builder.instance_type, "ml.g4dn.xlarge")
         mock_create.assert_called_once()
@@ -330,7 +328,7 @@ class TestBuildForTGI(unittest.TestCase):
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.env_vars = {"HUGGING_FACE_HUB_TOKEN": "token"}
 
-        result = self.builder._build_for_tgi()
+        self.builder._build_for_tgi()
 
         self.assertEqual(self.builder.env_vars["HF_MODEL_ID"], "gpt2")
         self.assertEqual(self.builder.env_vars["HF_TOKEN"], "token")
@@ -367,7 +365,7 @@ class TestBuildForTGI(unittest.TestCase):
         self.builder.model = Mock()
         self.builder.hf_model_config = {"model_type": "gpt2"}
 
-        result = self.builder._build_for_tgi()
+        self.builder._build_for_tgi()
 
         self.assertEqual(self.builder.env_vars["NUM_SHARD"], "2")
         self.assertEqual(self.builder.env_vars["SHARDED"], "true")
@@ -404,7 +402,7 @@ class TestBuildForTGI(unittest.TestCase):
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
         self.builder.model = Mock()
 
-        result = self.builder._build_for_tgi()
+        self.builder._build_for_tgi()
 
         mock_fallback.assert_called_once()
         mock_create.assert_called_once()
@@ -434,7 +432,7 @@ class TestBuildForDJL(unittest.TestCase):
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.model_data_download_timeout = 600
 
-        result = self.builder._build_for_djl()
+        self.builder._build_for_djl()
 
         self.assertEqual(self.builder.env_vars["MODEL_LOADING_TIMEOUT"], "600")
         mock_create.assert_called_once()
@@ -471,7 +469,7 @@ class TestBuildForDJL(unittest.TestCase):
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.env_vars = {"HUGGING_FACE_HUB_TOKEN": "token"}
 
-        result = self.builder._build_for_djl()
+        self.builder._build_for_djl()
 
         self.assertEqual(self.builder.env_vars["HF_MODEL_ID"], "gpt2")
         self.assertEqual(self.builder.env_vars["HF_TOKEN"], "token")
@@ -507,7 +505,7 @@ class TestBuildForDJL(unittest.TestCase):
         self.builder.model = Mock()
         self.builder.hf_model_config = {"model_type": "gpt2"}
 
-        result = self.builder._build_for_djl()
+        self.builder._build_for_djl()
 
         self.assertEqual(self.builder.env_vars["TENSOR_PARALLEL_DEGREE"], "4")
         mock_create.assert_called_once()
@@ -545,7 +543,7 @@ class TestBuildForTriton(unittest.TestCase):
         self.builder.model = "gpt2"
         self.builder.env_vars = {"HUGGING_FACE_HUB_TOKEN": "token"}
 
-        result = self.builder._build_for_triton()
+        self.builder._build_for_triton()
 
         self.assertEqual(self.builder.env_vars["HF_MODEL_ID"], "gpt2")
         self.assertEqual(self.builder.env_vars["HF_TASK"], "text-generation")
@@ -582,7 +580,7 @@ class TestBuildForTriton(unittest.TestCase):
         self.builder.model = Mock()
         self.builder.image_uri = None
 
-        result = self.builder._build_for_triton()
+        self.builder._build_for_triton()
 
         self.assertEqual(self.builder.framework_version, "1.8.0")
         mock_detect_img.assert_called_once()
@@ -607,7 +605,7 @@ class TestBuildForTensorFlowServing(unittest.TestCase):
         mock_create.return_value = Mock()
         mock_prepare_mode.return_value = ("s3://bucket/model.tar.gz", None)
 
-        result = self.builder._build_for_tensorflow_serving()
+        self.builder._build_for_tensorflow_serving()
 
         self.assertEqual(self.builder.secret_key, "")
         mock_save.assert_called_once()
@@ -656,7 +654,7 @@ class TestBuildForTEI(unittest.TestCase):
         self.builder.model = "bert-base-uncased"
         self.builder.env_vars = {"HUGGING_FACE_HUB_TOKEN": "token"}
 
-        result = self.builder._build_for_tei()
+        self.builder._build_for_tei()
 
         self.assertEqual(self.builder.env_vars["HF_MODEL_ID"], "bert-base-uncased")
         self.assertEqual(self.builder.env_vars["HF_TOKEN"], "token")
@@ -713,7 +711,7 @@ class TestBuildForSMD(unittest.TestCase):
         self.builder.image_uri = None
         self.builder.model = Mock()
 
-        result = self.builder._build_for_smd()
+        self.builder._build_for_smd()
 
         self.assertEqual(self.builder.image_uri, "smd-image-uri")
         self.assertEqual(self.builder.secret_key, "")
@@ -753,7 +751,7 @@ class TestBuildForTransformers(unittest.TestCase):
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.inference_spec = Mock()
 
-        result = self.builder._build_for_transformers()
+        self.builder._build_for_transformers()
 
         mock_save.assert_called_once()
         mock_mms_prepare.assert_called_once()
@@ -779,7 +777,7 @@ class TestBuildForTransformers(unittest.TestCase):
         self.builder.model = "gpt2"
         self.builder.env_vars = {"HUGGING_FACE_HUB_TOKEN": "token"}
 
-        result = self.builder._build_for_transformers()
+        self.builder._build_for_transformers()
 
         self.assertEqual(self.builder.env_vars["HF_MODEL_ID"], "gpt2")
         mock_hf_config.assert_called_once_with(
@@ -822,7 +820,7 @@ class TestBuildForTransformers(unittest.TestCase):
         self.builder.model = Mock()
         self.builder.env_vars["SAGEMAKER_SERVE_SECRET_KEY"] = ""
 
-        result = self.builder._build_for_transformers()
+        self.builder._build_for_transformers()
 
         self.assertNotIn("SAGEMAKER_SERVE_SECRET_KEY", self.builder.env_vars)
         mock_create.assert_called_once()
@@ -853,7 +851,7 @@ class TestBuildForJumpStart(unittest.TestCase):
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.image_uri = None
 
-        result = self.builder._build_for_jumpstart()
+        self.builder._build_for_jumpstart()
 
         self.assertEqual(self.builder.model_server, ModelServer.DJL_SERVING)
         self.assertTrue(self.builder.prepared_for_djl)
@@ -877,7 +875,7 @@ class TestBuildForJumpStart(unittest.TestCase):
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.image_uri = None
 
-        result = self.builder._build_for_jumpstart()
+        self.builder._build_for_jumpstart()
 
         self.assertEqual(self.builder.model_server, ModelServer.TGI)
         self.assertTrue(self.builder.prepared_for_tgi)
@@ -901,7 +899,7 @@ class TestBuildForJumpStart(unittest.TestCase):
         self.builder.mode = Mode.LOCAL_CONTAINER
         self.builder.image_uri = None
 
-        result = self.builder._build_for_jumpstart()
+        self.builder._build_for_jumpstart()
 
         self.assertEqual(self.builder.model_server, ModelServer.MMS)
         self.assertTrue(self.builder.prepared_for_mms)
@@ -1000,7 +998,7 @@ class TestBuildForJumpStart(unittest.TestCase):
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
         self.builder.image_uri = None
 
-        result = self.builder._build_for_jumpstart()
+        self.builder._build_for_jumpstart()
 
         mock_create.assert_called_once()
 
@@ -1017,7 +1015,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.IN_PROCESS
 
-        result = self.builder._djl_model_builder_deploy_wrapper()
+        self.builder._djl_model_builder_deploy_wrapper()
 
         mock_deploy.assert_called_once()
 
@@ -1027,7 +1025,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.LOCAL_CONTAINER
 
-        result = self.builder._djl_model_builder_deploy_wrapper()
+        self.builder._djl_model_builder_deploy_wrapper()
 
         mock_deploy.assert_called_once()
 
@@ -1037,7 +1035,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
 
-        result = self.builder._djl_model_builder_deploy_wrapper(model_data_download_timeout=600)
+        self.builder._djl_model_builder_deploy_wrapper(model_data_download_timeout=600)
 
         self.assertEqual(self.builder.env_vars["MODEL_LOADING_TIMEOUT"], "600")
         mock_deploy.assert_called_once()
@@ -1048,7 +1046,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
 
-        result = self.builder._djl_model_builder_deploy_wrapper()
+        self.builder._djl_model_builder_deploy_wrapper()
 
         call_kwargs = mock_deploy.call_args[1]
         self.assertEqual(call_kwargs["endpoint_logging"], True)
@@ -1060,7 +1058,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.LOCAL_CONTAINER
 
-        result = self.builder._tgi_model_builder_deploy_wrapper()
+        self.builder._tgi_model_builder_deploy_wrapper()
 
         mock_deploy.assert_called_once()
 
@@ -1070,7 +1068,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
 
-        result = self.builder._tgi_model_builder_deploy_wrapper()
+        self.builder._tgi_model_builder_deploy_wrapper()
 
         mock_deploy.assert_called_once()
 
@@ -1080,7 +1078,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.IN_PROCESS
 
-        result = self.builder._tei_model_builder_deploy_wrapper()
+        self.builder._tei_model_builder_deploy_wrapper()
 
         mock_deploy.assert_called_once()
 
@@ -1090,7 +1088,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
 
-        result = self.builder._tei_model_builder_deploy_wrapper()
+        self.builder._tei_model_builder_deploy_wrapper()
 
         mock_deploy.assert_called_once()
 
@@ -1100,7 +1098,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.LOCAL_CONTAINER
 
-        result = self.builder._js_builder_deploy_wrapper()
+        self.builder._js_builder_deploy_wrapper()
 
         mock_deploy.assert_called_once()
 
@@ -1111,7 +1109,7 @@ class TestDeployWrappers(unittest.TestCase):
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
         self.builder.instance_type = "ml.g5.xlarge"
 
-        result = self.builder._js_builder_deploy_wrapper()
+        self.builder._js_builder_deploy_wrapper()
 
         call_kwargs = mock_deploy.call_args[1]
         self.assertEqual(call_kwargs["instance_type"], "ml.g5.xlarge")
@@ -1123,7 +1121,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.LOCAL_CONTAINER
 
-        result = self.builder._transformers_model_builder_deploy_wrapper()
+        self.builder._transformers_model_builder_deploy_wrapper()
 
         mock_deploy.assert_called_once()
 
@@ -1133,7 +1131,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
 
-        result = self.builder._transformers_model_builder_deploy_wrapper()
+        self.builder._transformers_model_builder_deploy_wrapper()
 
         mock_deploy.assert_called_once()
 
@@ -1143,7 +1141,7 @@ class TestDeployWrappers(unittest.TestCase):
         mock_deploy.return_value = Mock()
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
 
-        result = self.builder._djl_model_builder_deploy_wrapper(
+        self.builder._djl_model_builder_deploy_wrapper(
             mode=Mode.LOCAL_CONTAINER, role="arn:aws:iam::123456789012:role/test"
         )
 
@@ -1172,7 +1170,7 @@ class TestJumpStartBuilders(unittest.TestCase):
         self.builder.model = "jumpstart-model-id"
         self.builder.s3_model_data_url = "s3://bucket/model.tar.gz"
 
-        result = self.builder._build_for_djl_jumpstart(mock_init_kwargs)
+        self.builder._build_for_djl_jumpstart(mock_init_kwargs)
 
         self.assertEqual(self.builder.model_server, ModelServer.DJL_SERVING)
         self.assertTrue(self.builder.prepared_for_djl)
@@ -1188,7 +1186,7 @@ class TestJumpStartBuilders(unittest.TestCase):
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
         self.builder.model = "jumpstart-model-id"
 
-        result = self.builder._build_for_djl_jumpstart(mock_init_kwargs)
+        self.builder._build_for_djl_jumpstart(mock_init_kwargs)
 
         self.assertEqual(self.builder.s3_upload_path, "s3://bucket/model.tar.gz")
         self.assertTrue(self.builder.prepared_for_djl)
@@ -1207,7 +1205,7 @@ class TestJumpStartBuilders(unittest.TestCase):
         self.builder.model = "jumpstart-model-id"
         self.builder.s3_model_data_url = "s3://bucket/model.tar.gz"
 
-        result = self.builder._build_for_tgi_jumpstart(mock_init_kwargs)
+        self.builder._build_for_tgi_jumpstart(mock_init_kwargs)
 
         self.assertEqual(self.builder.model_server, ModelServer.TGI)
         self.assertTrue(self.builder.prepared_for_tgi)
@@ -1227,7 +1225,7 @@ class TestJumpStartBuilders(unittest.TestCase):
         self.builder.model = "jumpstart-model-id"
         self.builder.s3_model_data_url = "s3://bucket/model.tar.gz"
 
-        result = self.builder._build_for_mms_jumpstart(mock_init_kwargs)
+        self.builder._build_for_mms_jumpstart(mock_init_kwargs)
 
         self.assertEqual(self.builder.model_server, ModelServer.MMS)
         self.assertTrue(self.builder.prepared_for_mms)

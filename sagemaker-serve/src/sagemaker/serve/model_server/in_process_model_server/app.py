@@ -1,4 +1,4 @@
-"""FastAPI requests"""
+"""FastAPI requests."""
 
 from __future__ import absolute_import
 
@@ -28,7 +28,7 @@ except ImportError:
 
 
 class InProcessServer:
-    """Generic In-Process Server for Serving Models using InferenceSpec"""
+    """Generic In-Process Server for Serving Models using InferenceSpec."""
 
     def __init__(
         self,
@@ -80,8 +80,7 @@ class InProcessServer:
 
         @self._router.post("/invoke")
         async def invoke(request: Request):
-            """Generate text based on the provided prompt"""
-
+            """Generate text based on the provided prompt."""
             request_header = request.headers
             request_body = await request.body()
             content_type = request_header.get("Content-Type", None)
@@ -103,7 +102,7 @@ class InProcessServer:
         self._create_server()
 
     def _create_server(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         app = FastAPI()
         app.include_router(self._router)
 
@@ -139,11 +138,11 @@ class InProcessServer:
         logger.info("Server shutdown complete.")
 
     def _start_run_async_in_thread(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(self._serve())
 
     async def _serve(self):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         await self.server.serve()

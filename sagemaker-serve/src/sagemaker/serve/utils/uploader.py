@@ -1,4 +1,4 @@
-"""Upload model artifacts to S3"""
+"""Upload model artifacts to S3."""
 
 from __future__ import absolute_import
 import logging
@@ -19,7 +19,7 @@ BUF_SIZE = 5 * 1024 * 1024
 
 
 def _get_dir_size(path):
-    """Calculate the size of a directory"""
+    """Calculate the size of a directory."""
     total = 0
     with os.scandir(path) as it:
         for entry in it:
@@ -31,14 +31,14 @@ def _get_dir_size(path):
 
 
 class Uploader(object):
-    """Uploader class that handles uploading data to S3 and display progress bar"""
+    """Uploader class that handles uploading data to S3 and display progress bar."""
 
     def __init__(self) -> None:
         self.total_left = None
         self.pbar = None
 
     def observe(self, bytes_amount):
-        """Placeholder docstring"""
+        """Placeholder docstring."""
         self.total_left -= bytes_amount
         self.pbar.update(bytes_amount)
 
@@ -51,7 +51,7 @@ class Uploader(object):
         bucket: str,
         key: str,
     ):
-        """Compress and upload the model tar object to S3"""
+        """Compress and upload the model tar object to S3."""
         self.total_left = total_size
         with tqdm.tqdm(
             total=total_size, desc="Uploading model artifacts", unit="bytes", ncols=100
@@ -80,7 +80,7 @@ class Uploader(object):
         key_prefix: str,
         total_size: int,
     ):
-        """Upload uncompressed model artifacts to S3"""
+        """Upload uncompressed model artifacts to S3."""
         self.total_left = total_size
         with tqdm.tqdm(
             total=total_size, desc="Uploading model artifacts", unit="bytes", ncols=100
@@ -95,7 +95,7 @@ class Uploader(object):
 
 
 def upload(sagemaker_session: Session, model_dir: str, bucket: str, key_prefix: str) -> str:
-    """Wrapper function of method upload"""
+    """Wrapper function of method upload."""
     key = key_prefix + "/serve.tar.gz"
     uploader = Uploader()
     uploader.upload(
@@ -112,7 +112,7 @@ def upload(sagemaker_session: Session, model_dir: str, bucket: str, key_prefix: 
 def upload_uncompressed(
     sagemaker_session: Session, model_dir: str, bucket: str, key_prefix: str
 ) -> str:
-    """Wrapper function of method upload_uncompressed"""
+    """Wrapper function of method upload_uncompressed."""
     uploader = Uploader()
     uploader.upload_uncompressed(
         model_dir, sagemaker_session, bucket, key_prefix, _get_dir_size(model_dir)

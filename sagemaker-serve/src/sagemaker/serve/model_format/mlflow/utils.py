@@ -10,7 +10,8 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Holds the util functions used for MLflow model format"""
+"""Holds the util functions used for MLflow model format."""
+
 from __future__ import absolute_import
 
 from pathlib import Path
@@ -55,7 +56,7 @@ def _get_default_model_server_for_mlflow(deployment_flavor: str) -> ModelServer:
 
 
 def _get_default_image_for_mlflow(python_version: str, region: str, instance_type: str) -> str:
-    """Retrieves the default Docker image URI for MLflow deployments based on the specified Python
+    """Retrieves the default Docker image URI for MLflow deployments based on the specified Python.
 
     version, AWS region, and instance type.
 
@@ -103,7 +104,7 @@ def _get_default_image_for_mlflow(python_version: str, region: str, instance_typ
 
 
 def _generate_mlflow_artifact_path(src_folder: str, artifact_name: str) -> str:
-    """Generates the path to a specific MLflow model artifacts based on the source folder and
+    """Generates the path to a specific MLflow model artifacts based on the source folder and.
 
     convention.
 
@@ -167,7 +168,6 @@ def _get_framework_version_from_requirements(flavor: str, requirements_path: str
     Raises:
     - ValueError: If the requirements.txt file is not found.
     """
-
     python_package = MLFLOW_FLAVOR_TO_PYTHON_PACKAGE_MAP.get(flavor)
     if python_package is not None:
         try:
@@ -197,7 +197,6 @@ def _get_deployment_flavor(flavor_metadata: Optional[Dict[str, Any]]) -> str:
     Returns:
     - str: The flavor mlflow model is saved with. Default to pyfunc if no other flavor is found.
     """
-
     if not flavor_metadata:
         raise ValueError("Flavor metadata is not found")
 
@@ -245,7 +244,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
     s3 = session.boto_session.client("s3")
 
     os.makedirs(dst_path, exist_ok=True)
-    dst_path_real = os.path.realpath(dst_path)
+    os.path.realpath(dst_path)
 
     paginator = s3.get_paginator("list_objects_v2")
     for page in paginator.paginate(Bucket=s3_bucket, Prefix=s3_key):
@@ -254,9 +253,7 @@ def _download_s3_artifacts(s3_path: str, dst_path: str, session: Session) -> Non
             rel_path = os.path.relpath(key, s3_key)
             local_file_path = os.path.join(dst_path, rel_path)
 
-            validate_path_within_directory(
-                local_file_path, dst_path, source_description=key
-            )
+            validate_path_within_directory(local_file_path, dst_path, source_description=key)
 
             if not key.endswith("/"):
                 local_file_dir = os.path.dirname(local_file_path)
@@ -438,7 +435,6 @@ def _move_contents(src_dir: Union[str, Path], dest_dir: Union[str, Path]) -> Non
     Args:
         src_dir (Union[str, Path]): The path to the source directory.
         dest_dir (Union[str, Path]): The path to the destination directory.
-
     """
     _src_dir = Path(os.path.normpath(src_dir))
     _dest_dir = Path(os.path.normpath(dest_dir))
@@ -448,5 +444,5 @@ def _move_contents(src_dir: Union[str, Path], dest_dir: Union[str, Path]) -> Non
     for item in _src_dir.iterdir():
         _dest_path = _dest_dir / item.name
         shutil.move(str(item), str(_dest_path))
-    
+
     _src_dir.rmdir()

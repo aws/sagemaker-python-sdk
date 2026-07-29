@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Classes for performing machine learning on serverless compute."""
+
 from sagemaker.serve.serverless.model import LambdaModel  # noqa: F401
 from sagemaker.core.inference_config import (  # noqa: F401
     ServerlessInferenceConfig,

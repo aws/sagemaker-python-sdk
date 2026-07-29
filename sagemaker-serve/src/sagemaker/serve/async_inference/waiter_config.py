@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""A class for WaiterConfig used in async inference
+"""A class for WaiterConfig used in async inference.
 
 Use it when using async inference and wait for the result.
 """
@@ -33,7 +33,6 @@ class WaiterConfig(object):
             exceeded, Amazon SageMaker will raise ``PollingTimeoutError``. (Default: 60)
             delay (int): The amount of time in seconds to wait between attempts. (Default: 15)
         """
-
         self.max_attempts = max_attempts
         self.delay = delay
 

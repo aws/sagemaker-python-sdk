@@ -1,4 +1,4 @@
-"""Module for pulling logs from container"""
+"""Module for pulling logs from container."""
 
 from __future__ import absolute_import
 import logging
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_logs(generator, logs, until):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     now = datetime.now()
     try:
         for next_entry in generator:
@@ -32,7 +32,7 @@ def _get_logs(generator, logs, until):
 
 
 def pull_logs(generator, stop, until, final_pull):
-    """Placeholder docstring"""
+    """Placeholder docstring."""
     now = datetime.now()
     if until < now:
         return
