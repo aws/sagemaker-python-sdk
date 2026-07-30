@@ -1,4 +1,17 @@
 # Changelog
+
+## v1.17.0 (2026-07-24)
+
+### New Features
+
+- feat: Wire BatchWriteRecord and ListRecords into ingest_dataframe (#6026)
+
+### Tests
+
+- test(feature-processor): Isolate pipeline names to fix flaky integ tests (#6095)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
 ## v1.16.0 (2026-07-15)
 
 ### Tests
