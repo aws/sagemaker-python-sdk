@@ -374,13 +374,25 @@ class TestDataSet:
             "HubContentDocument": "{}",
             "HubContentSearchKeywords": ["customization_technique:sft", "method:generated"]
         }
-        mock_create.return_value = Mock()
-        
-        dataset = DataSet("test", "arn", "1.0.0", "s3://bucket/prefix", HubContentStatus.AVAILABLE, "desc", CustomizationTechnique.SFT)
+        session = Mock()
+        session.sagemaker_config = {"SchemaVersion": "1.0"}
+        new_dataset = Mock(spec=DataSet)
+        new_dataset.arn = "test-arn-v2"
+        new_dataset.version = "2.0.0"
+        mock_create.return_value = new_dataset
+
+        dataset = DataSet(
+            "test", "arn", "1.0.0", "s3://bucket/prefix", HubContentStatus.AVAILABLE, "desc",
+            CustomizationTechnique.SFT, sagemaker_session=session,
+        )
         result = dataset.create_version("s3://bucket/new-data")
-        
-        assert result is True
+
+        assert result is new_dataset
         mock_create.assert_called_once()
+        _, create_kwargs = mock_create.call_args
+        assert create_kwargs["name"] == "test"
+        assert create_kwargs["source"] == "s3://bucket/new-data"
+        assert create_kwargs["sagemaker_session"] is session
 
     @patch('sagemaker.ai_registry.dataset.AIRHub')
     def test_create_version_failure(self, mock_air_hub):
@@ -389,7 +401,45 @@ class TestDataSet:
         dataset = DataSet("test", "arn", "1.0.0", "s3://bucket/prefix", HubContentStatus.AVAILABLE, "desc", CustomizationTechnique.SFT)
         result = dataset.create_version("s3://bucket/new-data")
         
-        assert result is False
+        assert result is None
+
+
+    @patch('sagemaker.train.defaults.resolve_and_validate_role', return_value="arn:aws:iam::123456789012:role/SageMakerRole")
+    @patch('boto3.client')
+    @patch('sagemaker.core.helper.session_helper.Session')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_current_domain_id')
+    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
+    @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
+    @patch('sagemaker.ai_registry.dataset.AIRHub')
+    def test_create_threads_description_to_import_hub_content(
+        self, mock_air_hub, mock_validate_format, mock_validate_file, mock_get_domain_id,
+        mock_session, mock_boto_client, mock_resolve_role
+    ):
+        """description passed to DataSet.create is forwarded to AIRHub.import_hub_content."""
+        mock_get_domain_id.return_value = None
+        mock_session_instance = Mock()
+        mock_session_instance.get_caller_identity_arn.return_value = "arn:aws:iam::123456789012:role/SageMakerRole"
+        mock_session.return_value = mock_session_instance
+        mock_sts_client = Mock()
+        mock_sts_client.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_boto_client.return_value = mock_sts_client
+        mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
+        mock_air_hub.describe_hub_content.return_value = {
+            "HubContentArn": "test-arn",
+            "HubContentVersion": "1.0.0",
+            "CreationTime": "2024-01-01",
+            "LastModifiedTime": "2024-01-01",
+        }
+
+        DataSet.create(
+            name="test-dataset",
+            source="s3://bucket/data.jsonl",
+            description="my description",
+            wait=False,
+        )
+
+        mock_air_hub.import_hub_content.assert_called_once()
+        assert mock_air_hub.import_hub_content.call_args.kwargs["description"] == "my description"
 
 
 class TestDataSetCreateWithContentMetadata:

@@ -98,6 +98,7 @@ class AIRHub:
         hub_content_document: str,
         hub_content_version: str = AIR_HUB_CONTENT_DEFAULT_VERSION,
         tags: Optional[tuple] = None,
+        description: Optional[str] = None,
         session: Optional[Session] = None,
     ):
         """Import hub content into the AI Registry hub.
@@ -108,6 +109,7 @@ class AIRHub:
             document_schema_version: Schema version of the document
             hub_content_document: JSON document content
             tags: Optional tuple of tags
+            description: Optional description of the hub content
             session: Boto3 session
 
         Returns:
@@ -127,6 +129,8 @@ class AIRHub:
         }
         if tags:
             request["HubContentSearchKeywords"] = [f"{tag[0]}:{tag[1]}" for tag in tags]
+        if description:
+            request["HubContentDescription"] = description
         return client.import_hub_content(**request)
 
     @classmethod
