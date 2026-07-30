@@ -218,8 +218,124 @@ def _bedrock_resource_has_tag(bedrock_client, resource_arn: str, tag_value: str)
     )
 
 
+def _find_resource_arn_by_tagging_api(
+    sagemaker_client, tag_value: str, resource_type: str
+) -> Optional[str]:
+    """Use Resource Groups Tagging API to find a resource by tag (fast path).
+
+    Makes a single server-side filtered query instead of iterating through all
+    resources and calling list_tags on each one.
+
+    Args:
+        sagemaker_client: A boto3 SageMaker client (used to derive the session).
+        tag_value: The normalized tag value to search for.
+        resource_type: The resource type filter (e.g. "sagemaker:model",
+            "sagemaker:endpoint").
+
+    Returns:
+        The resource ARN if found, empty string "" if no match (signals fast path
+        completed successfully with no results), or None if the tagging API is
+        unavailable (signals caller should fall back to the slow scan).
+    """
+    try:
+        # Extract region from the SageMaker client
+        import boto3 as _boto3
+
+        region = sagemaker_client.meta.region_name
+        if not region:
+            return None
+
+        tagging_client = _boto3.client(
+            "resourcegroupstaggingapi",
+            region_name=region,
+        )
+
+        pagination_token = ""
+        while True:
+            kwargs = {
+                "TagFilters": [
+                    {"Key": MODEL_SOURCE_TAG_KEY, "Values": [tag_value]}
+                ],
+                "ResourceTypeFilters": [resource_type],
+            }
+            if pagination_token:
+                kwargs["PaginationToken"] = pagination_token
+
+            response = tagging_client.get_resources(**kwargs)
+            for mapping in response.get("ResourceTagMappingList", []):
+                arn = mapping.get("ResourceARN")
+                if arn:
+                    return arn
+
+            pagination_token = response.get("PaginationToken", "")
+            if not pagination_token:
+                return ""  # Fast path succeeded, no matching resource found
+
+    except ClientError as e:
+        error_code = e.response.get("Error", {}).get("Code", "")
+        if error_code == _ACCESS_DENIED_CODE:
+            logger.debug(
+                "Resource Groups Tagging API access denied (tag:GetResources). "
+                "Falling back to paginated list+list_tags scan."
+            )
+            return None  # Signal caller to use fallback
+        logger.debug("Resource Groups Tagging API call failed: %s. Using fallback.", e)
+        return None
+    except Exception as e:
+        logger.debug("Resource Groups Tagging API unavailable: %s. Using fallback.", e)
+        return None
+
+
+def find_sagemaker_model_arn_by_tag(sagemaker_client, tag_value: str) -> Optional[str]:
+    """Return the ARN of the first SageMaker Model carrying the source tag.
+
+    Uses the Resource Groups Tagging API for efficient server-side filtering
+    when available, falling back to paginated list+list_tags if denied.
+
+    Args:
+        sagemaker_client: A boto3 SageMaker client.
+        tag_value: The normalized tag value to match.
+
+    Returns:
+        Model ARN if found, None otherwise.
+    """
+    # Try the fast path first: Resource Groups Tagging API
+    arn = _find_resource_arn_by_tagging_api(
+        sagemaker_client, tag_value, resource_type="sagemaker:model"
+    )
+    if arn is not None:
+        return arn if arn != "" else None
+
+    # Fallback: paginate through all models and check tags individually
+    next_token = None
+    while True:
+        kwargs = {"SortBy": "CreationTime", "SortOrder": "Descending"}
+        if next_token:
+            kwargs["NextToken"] = next_token
+        response = sagemaker_client.list_models(**kwargs)
+        for model_summary in response.get("Models", []):
+            model_arn = model_summary.get("ModelArn")
+            if model_arn and _sagemaker_resource_has_tag(sagemaker_client, model_arn, tag_value):
+                return model_arn
+        next_token = response.get("NextToken")
+        if not next_token:
+            return None
+
+
 def _find_sagemaker_endpoint_arn_by_tag(sagemaker_client, tag_value: str) -> Optional[str]:
-    """Return the ARN of the first SageMaker endpoint carrying the source tag."""
+    """Return the ARN of the first SageMaker endpoint carrying the source tag.
+
+    Uses the Resource Groups Tagging API for efficient server-side filtering
+    when available, falling back to paginated list+list_tags if denied.
+    """
+    # Try the fast path first: Resource Groups Tagging API
+    arn = _find_resource_arn_by_tagging_api(
+        sagemaker_client, tag_value, resource_type="sagemaker:endpoint"
+    )
+    if arn is not None:
+        return arn if arn != "" else None
+
+    # Fallback: paginate through all endpoints and check tags individually
     next_token = None
     while True:
         kwargs = {"NextToken": next_token} if next_token else {}
