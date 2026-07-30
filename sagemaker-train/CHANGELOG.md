@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.18.0 (2026-07-30)
+
+### Bug Fixes
+
+- fix(train): assign SDK-managed channels to instance groups on heterogeneous clusters (#6116)
+- fix: infer logic of agent_run_time from the attached input trainer (#6115)
+
+
 ## v1.17.0 (2026-07-24)
 
 ### Bug Fixes
