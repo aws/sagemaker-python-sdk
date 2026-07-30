@@ -647,3 +647,57 @@ class TestTelemetryLogging(unittest.TestCase):
         self.assertIn(15, feature_list)  # MODEL_CUSTOMIZATION still present
         self.assertNotIn(19, feature_list)  # No NOVA (detection failed gracefully)
         self.assertNotIn(20, feature_list)  # No OSS
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_opt_out_message_shown_only_once(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that the telemetry opt-out INFO message is logged only once per process."""
+        import sagemaker.core.telemetry.telemetry_logging as telemetry_module
+
+        mock_resolve_config.return_value = False
+        # Reset the flag to simulate a fresh process
+        telemetry_module._telemetry_msg_shown = False
+
+        mock_local_client = LocalSagemakerClientMock()
+
+        with patch.object(telemetry_module.logger, "info") as mock_logger_info:
+            mock_local_client.mock_create_model()
+            mock_local_client.mock_create_model()
+            mock_local_client.mock_create_model()
+
+            info_calls = [
+                call for call in mock_logger_info.call_args_list
+                if "telemetry" in str(call).lower() and "opt out" in str(call).lower()
+            ]
+            self.assertEqual(len(info_calls), 1, "Telemetry opt-out message should be logged exactly once")
+
+        # Reset the flag for other tests
+        telemetry_module._telemetry_msg_shown = False
+
+    @patch("sagemaker.core.telemetry.telemetry_logging._send_telemetry_request")
+    @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
+    def test_telemetry_opt_out_message_not_shown_when_opted_out(
+        self, mock_resolve_config, mock_send_telemetry_request
+    ):
+        """Test that the telemetry opt-out INFO message is not shown when user has opted out."""
+        import sagemaker.core.telemetry.telemetry_logging as telemetry_module
+
+        mock_resolve_config.return_value = True  # opted out
+        # Reset the flag to simulate a fresh process
+        telemetry_module._telemetry_msg_shown = False
+
+        mock_local_client = LocalSagemakerClientMock()
+
+        with patch.object(telemetry_module.logger, "info") as mock_logger_info:
+            mock_local_client.mock_create_model()
+
+            info_calls = [
+                call for call in mock_logger_info.call_args_list
+                if "telemetry" in str(call).lower() and "opt out" in str(call).lower()
+            ]
+            self.assertEqual(len(info_calls), 0, "Telemetry opt-out message should not appear when opted out")
+
+        # Reset the flag for other tests
+        telemetry_module._telemetry_msg_shown = False
