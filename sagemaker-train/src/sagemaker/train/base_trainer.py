@@ -399,11 +399,20 @@ class BaseTrainer(ABC):
             ValueError: If no training job has been run yet, no logs/metrics
                 are found, or MLflow is not configured for OSS models.
         """
-        # Validate that we have a training job to get metrics from
-        if not hasattr(self, '_latest_training_job') or self._latest_training_job is None:
-            raise ValueError(
-                "No training job found. Call .train() first, then call .show_metrics() "
-                "to view training metrics."
+        # Resolve the job reference. Prefer _latest_training_job (CreateTrainingJob),
+        # fall back to _latest_job (generic CreateJob API used by MTRL).
+        resolved_job = getattr(self, '_latest_training_job', None)
+        if resolved_job is None:
+            latest_job = getattr(self, '_latest_job', None)
+            if latest_job is None:
+                raise ValueError(
+                    "No training job found. Call .train() first, then call .show_metrics() "
+                    "to view training metrics. If training has already completed, set the "
+                    "job name directly via trainer._latest_training_job = '<job-name>' or "
+                    "trainer._latest_job = '<job-name>'."
+                )
+            resolved_job = (
+                latest_job.job_name if hasattr(latest_job, 'job_name') else str(latest_job)
             )
 
         # Route based on model type
@@ -411,18 +420,19 @@ class BaseTrainer(ABC):
         is_nova = _is_nova_model(model_name) if model_name else False
 
         if is_nova:
-            return self._show_metrics_cloudwatch(metrics, starting_step, ending_step, start_time, end_time)
+            return self._show_metrics_cloudwatch(resolved_job, metrics, starting_step, ending_step, start_time, end_time)
         else:
-            return self._show_metrics_mlflow(metrics, starting_step, ending_step)
+            return self._show_metrics_mlflow(resolved_job, metrics, starting_step, ending_step)
 
     def _show_metrics_mlflow(
         self,
+        resolved_job,
         metrics: Optional[List[str]] = None,
         starting_step: Optional[int] = None,
         ending_step: Optional[int] = None,
     ) -> None:
         """Pull and plot training metrics from MLflow for non-Nova models."""
-        training_job = self._latest_training_job
+        training_job = resolved_job
 
         # Resolve the TrainingJob object if it's a string
         if isinstance(training_job, str):
@@ -456,6 +466,7 @@ class BaseTrainer(ABC):
 
     def _show_metrics_cloudwatch(
         self,
+        resolved_job,
         metrics: Optional[List[str]] = None,
         starting_step: Optional[int] = None,
         ending_step: Optional[int] = None,
@@ -464,7 +475,7 @@ class BaseTrainer(ABC):
     ) -> Any:
         """Parse and plot training metrics from CloudWatch logs (Nova models)."""
         
-        training_job = self._latest_training_job
+        training_job = resolved_job
         if hasattr(training_job, 'training_job_name'):
             job_id = training_job.training_job_name
         elif isinstance(training_job, str):
@@ -631,10 +642,21 @@ class BaseTrainer(ABC):
         Raises:
             ValueError: If no training job has been run yet.
         """
-        if not hasattr(self, '_latest_training_job') or self._latest_training_job is None:
-            raise ValueError(
-                "No training job found. Call .train(wait=False) first, "
-                "then call .stream_logs() to stream logs in real-time."
+        # Resolve the job reference. Prefer _latest_training_job (CreateTrainingJob),
+        # fall back to _latest_job (generic CreateJob API used by MTRL).
+        resolved_job = getattr(self, '_latest_training_job', None)
+        if resolved_job is None:
+            latest_job = getattr(self, '_latest_job', None)
+            if latest_job is None:
+                raise ValueError(
+                    "No training job found. Call .train(wait=False) first, "
+                    "then call .stream_logs() to stream logs in real-time. "
+                    "If training has already completed, set the job name directly via "
+                    "trainer._latest_training_job = '<job-name>' or "
+                    "trainer._latest_job = '<job-name>'."
+                )
+            resolved_job = (
+                latest_job.job_name if hasattr(latest_job, 'job_name') else str(latest_job)
             )
 
         # Resolve start_time for SMHP jobs
@@ -645,7 +667,7 @@ class BaseTrainer(ABC):
             else:
                 start_time_ms = int(start_time)
 
-        training_job = self._latest_training_job
+        training_job = resolved_job
         compute = getattr(self, 'compute', None)
 
         if isinstance(compute, HyperPodCompute):

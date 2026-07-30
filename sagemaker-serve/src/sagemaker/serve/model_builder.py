@@ -4061,7 +4061,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 reusable_endpoint = self._find_reusable_endpoint()
                 if reusable_endpoint:
                     self._reused_endpoint_name = reusable_endpoint
-                logger.warning(
+                logger.info(
                     "Reusing existing Model %r (matched model-source tag). "
                     "No new Model will be created. Pass reuse_resources=False "
                     "to force a new Model.",
@@ -5528,7 +5528,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                         endpoint_name,
                         reusable_endpoint,
                     )
-                logger.warning(
+                logger.info(
                     "Reusing existing endpoint %r (matched model-source tag and "
                     "deployment configuration). No new resources were created. "
                     "Pass reuse_resources=False to force a new endpoint.",

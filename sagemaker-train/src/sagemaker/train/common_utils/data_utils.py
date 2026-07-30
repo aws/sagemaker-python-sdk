@@ -248,7 +248,7 @@ def is_multimodal_data(dataset: Union[str, "DataSet"]) -> bool:
         True if multimodal fields detected, False otherwise
     """
 
-    logger.info(f"Auto-detecting whether dataset is multimodal: {dataset}")
+    logger.debug(f"Auto-detecting whether dataset is multimodal: {dataset}")
 
     if isinstance(dataset, DataSet):
         data_s3_path = dataset.source

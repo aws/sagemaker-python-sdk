@@ -41,7 +41,6 @@ from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.core.training.constants import TrainingPlatform
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 
 class SFTTrainer(BaseTrainer):

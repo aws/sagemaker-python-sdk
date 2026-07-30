@@ -35,11 +35,13 @@ AVAILABLE_METRICS: Dict[str, Dict[str, Dict[str, str]]] = {
         "SFT": {"training_loss": TRAINING_LOSS_REGEX, "lr": LEARNING_RATE_REGEX},
         "CPT": {"training_loss": TRAINING_LOSS_REGEX, "lr": LEARNING_RATE_REGEX},
         "RLVR": {"reward_score": SMTJ_RLVR_REWARD_SCORE_REGEX},
+        "MTRL": {"reward_score": SMTJ_RLVR_REWARD_SCORE_REGEX},
     },
     "smhp": {
         "SFT": {"training_loss": TRAINING_LOSS_REGEX, "lr": LEARNING_RATE_REGEX},
         "CPT": {"training_loss": TRAINING_LOSS_REGEX, "lr": LEARNING_RATE_REGEX},
         "RLVR": {"reward_score": SMHP_RLVR_REWARD_SCORE_REGEX},
+        "MTRL": {"reward_score": SMHP_RLVR_REWARD_SCORE_REGEX},
     },
 }
 
