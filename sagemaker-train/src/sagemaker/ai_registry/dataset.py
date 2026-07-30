@@ -361,6 +361,7 @@ class DataSet(AIRHubEntity):
             document_schema_version=DATASET_DOCUMENT_SCHEMA_VERSION,
             hub_content_document=document_str,
             tags=tags,
+            description=description,
             session=sagemaker_session
         )
         

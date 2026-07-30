@@ -19,6 +19,8 @@ from sagemaker.ai_registry.evaluator import Evaluator, EvaluatorMethod
 from sagemaker.ai_registry.air_constants import (
     RESPONSE_KEY_HUB_CONTENT_VERSION, RESPONSE_KEY_HUB_CONTENT_ARN,
     RESPONSE_KEY_CREATION_TIME, RESPONSE_KEY_LAST_MODIFIED_TIME,
+    RESPONSE_KEY_HUB_CONTENT_NAME, RESPONSE_KEY_HUB_CONTENT_STATUS,
+    RESPONSE_KEY_HUB_CONTENT_DOCUMENT, RESPONSE_KEY_HUB_CONTENT_SEARCH_KEYWORDS,
     REWARD_FUNCTION, REWARD_PROMPT
 )
 
@@ -30,6 +32,50 @@ def _keywords_from_import_call(mock_air_hub):
 
 
 class TestEvaluator:
+    @patch('sagemaker.ai_registry.evaluator.AIRHub')
+    def test_create_threads_description_to_import_hub_content(self, mock_air_hub):
+        """description passed to Evaluator.create is forwarded to AIRHub.import_hub_content."""
+        mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
+        mock_air_hub.describe_hub_content.return_value = {
+            RESPONSE_KEY_HUB_CONTENT_VERSION: "1.0.0",
+            RESPONSE_KEY_HUB_CONTENT_ARN: "test-arn",
+            RESPONSE_KEY_CREATION_TIME: "2024-01-01",
+            RESPONSE_KEY_LAST_MODIFIED_TIME: "2024-01-01",
+        }
+
+        Evaluator.create(
+            name="test-evaluator",
+            source="arn:aws:lambda:us-west-2:123456789012:function:test",
+            type=REWARD_FUNCTION,
+            description="my evaluator description",
+            wait=False,
+        )
+
+        mock_air_hub.import_hub_content.assert_called_once()
+        assert mock_air_hub.import_hub_content.call_args.kwargs["description"] == "my evaluator description"
+
+    @patch('sagemaker.ai_registry.evaluator.AIRHub')
+    def test_get_reads_back_description(self, mock_air_hub):
+        """Evaluator.get() populates description from the HubContentDescription response field."""
+        mock_air_hub.describe_hub_content.return_value = {
+            RESPONSE_KEY_HUB_CONTENT_NAME: "test-evaluator",
+            RESPONSE_KEY_HUB_CONTENT_ARN: "test-arn",
+            RESPONSE_KEY_HUB_CONTENT_VERSION: "1.0.0",
+            RESPONSE_KEY_HUB_CONTENT_STATUS: "Available",
+            RESPONSE_KEY_HUB_CONTENT_DOCUMENT: json.dumps({
+                "SubType": "AWS/Evaluator",
+                "JsonContent": json.dumps({"Reference": "ref"}),
+            }),
+            "HubContentDescription": "stored description",
+            RESPONSE_KEY_HUB_CONTENT_SEARCH_KEYWORDS: [],
+            RESPONSE_KEY_CREATION_TIME: "2024-01-01",
+            RESPONSE_KEY_LAST_MODIFIED_TIME: "2024-01-01",
+        }
+
+        evaluator = Evaluator.get("test-evaluator")
+
+        assert evaluator.description == "stored description"
+
     @patch('sagemaker.ai_registry.evaluator.AIRHub')
     def test_create_with_lambda_arn(self, mock_air_hub):
         mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
@@ -193,6 +239,7 @@ class TestEvaluator:
     @patch('sagemaker.ai_registry.evaluator.Evaluator.create')
     def test_create_version_success(self, mock_create):
         session = MagicMock()
+        session.sagemaker_config = {"SchemaVersion": "1.0"}
         new_evaluator = MagicMock()
         new_evaluator.arn = "test-arn-v2"
         new_evaluator.version = "2.0.0"
