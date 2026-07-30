@@ -9,9 +9,11 @@ from __future__ import absolute_import
 
 import logging
 import re
+import time
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, validator
+from botocore.exceptions import ClientError
+from pydantic import BaseModel, PrivateAttr, validator
 
 from sagemaker.core.common_utils import TagsDict
 from sagemaker.core.helper.iam_role_resolver import (
@@ -31,6 +33,14 @@ from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.train.common_utils.finetune_utils import (
     _resolve_mlflow_resource_arn,
     _is_nova_model,
+)
+from sagemaker.train.common_utils.cloudwatch_metrics import _get_smhp_log_group
+from sagemaker.train.common_utils.log_streamer import (
+    LogStreamer,
+    _format_timestamp,
+    _resolve_start_time_ms,
+    _validate_poll,
+    stream_log_loop,
 )
 from sagemaker.train.common_utils.recipe_utils import resolve_recipe, get_resolved_recipe_from_context
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
@@ -145,7 +155,9 @@ class BaseEvaluator(BaseModel):
     training_image: Optional[str] = None
     recipe: Optional[str] = None
     overrides: Optional[Dict[str, Any]] = None
-    
+
+    _latest_execution: Any = PrivateAttr(default=None)
+
     class Config:
         arbitrary_types_allowed = True
     
@@ -984,7 +996,8 @@ class BaseEvaluator(BaseModel):
             region=region,
             tags=tags
         )
-        
+
+        self._latest_execution = execution
         return execution
     
     def _get_effective_hyperparameters(self) -> Dict[str, Any]:
@@ -1082,6 +1095,155 @@ class BaseEvaluator(BaseModel):
             ...         return EvaluationPipelineExecution.start(...)
         """
         raise NotImplementedError("Subclasses must implement evaluate method")
+
+    def stream_logs(self, poll: int = 5, start_time=None) -> None:
+        """Stream CloudWatch logs for the latest evaluation execution.
+
+        Dispatches to the underlying execution object's ``stream_logs()``
+        for pipeline-based evaluations, or streams directly from the
+        HyperPod cluster log group for HyperPod evaluations.
+
+        :param poll: Seconds between CloudWatch polling cycles (1-300).
+        :param start_time: Stream from this timestamp. Accepts datetime or
+            epoch milliseconds (int). If None, defaults depend on the backend.
+        :raises ValueError: If no evaluation has been executed yet or poll
+            is out of range.
+        """
+        if self._latest_execution is None:
+            raise ValueError(
+                "No evaluation executed yet. Call .evaluate() first, "
+                "then call .stream_logs() to stream logs."
+            )
+        _validate_poll(poll)
+
+        if isinstance(self.compute, HyperPodCompute):
+            self._stream_logs_hyperpod(self._latest_execution, poll, start_time)
+        else:
+            self._stream_logs_pipeline(self._latest_execution, poll, start_time)
+
+    def _stream_logs_hyperpod(self, job_name: str, poll: int, start_time) -> None:
+        """Stream logs for a HyperPod evaluation job."""
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+        log_group = _get_smhp_log_group(
+            self.compute.cluster_name, sagemaker_session.sagemaker_client
+        )
+
+        start_ms = _resolve_start_time_ms(start_time)
+        if start_ms is None:
+            start_ms = int(time.time() * 1000)
+
+        streamer = LogStreamer(
+            log_group=log_group,
+            job_name=job_name,
+            sagemaker_session=sagemaker_session,
+            filter_pattern=f'"{job_name}"',
+            start_time_ms=start_ms,
+        )
+
+        _logger.info("Streaming logs for HyperPod eval job: %s", job_name)
+        _logger.info("Log group: %s", log_group)
+        _logger.info("Press Ctrl+C to stop streaming.")
+
+        empty_cycles = 0
+        while True:
+            try:
+                events = streamer.poll_once()
+            except ClientError as e:
+                error_code = e.response["Error"]["Code"]
+                if error_code == "AccessDeniedException":
+                    raise
+                if error_code == "ResourceNotFoundException":
+                    empty_cycles += 1
+                    if empty_cycles == 1:
+                        _logger.info("Waiting for log group to become available...")
+                    elif empty_cycles >= 60:
+                        _logger.warning(
+                            "Log group still not found after %d attempts. "
+                            "Check IAM permissions.",
+                            empty_cycles,
+                        )
+                    time.sleep(poll)
+                    continue
+                raise
+
+            if events:
+                empty_cycles = 0
+                for ts_ms, message in events:
+                    _logger.info("[%s] %s", _format_timestamp(ts_ms), message)
+            else:
+                empty_cycles += 1
+                if empty_cycles == 3:
+                    _logger.info("No log events yet, still waiting...")
+
+            # HyperPod jobs don't have a simple status API to poll for completion.
+            # This polls till the user interrupts with Ctrl+C.
+            try:
+                time.sleep(poll)
+            except KeyboardInterrupt:
+                _logger.info("Streaming stopped by user.")
+                return
+
+    def _stream_logs_pipeline(self, execution, poll: int, start_time) -> None:
+        """Stream logs for a pipeline-based evaluation."""
+
+        start_ms = _resolve_start_time_ms(start_time)
+
+        execution.refresh()
+        job_arn = self._find_job_arn(execution)
+        if not job_arn:
+            _logger.warning("No pipeline step with a job ARN found.")
+            return
+
+        log_group = self._log_group_for_step_arn(job_arn)
+        job_name = self._job_name_from_arn(job_arn)
+
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+
+        streamer = LogStreamer(
+            log_group=log_group,
+            job_name=job_name,
+            sagemaker_session=sagemaker_session,
+            start_time_ms=start_ms,
+        )
+
+        _logger.info("Streaming logs for eval step: %s", job_name)
+        _logger.info("Log group: %s", log_group)
+
+        def _get_status() -> str:
+            execution.refresh()
+            return execution.status.overall_status
+
+        stream_log_loop(streamer, poll, _get_status)
+
+    @staticmethod
+    def _find_job_arn(execution) -> str | None:
+        """Find the first pipeline step with a job ARN."""
+        for step in execution.status.step_details:
+            if step.job_arn:
+                return step.job_arn
+        return None
+
+    @staticmethod
+    def _log_group_for_step_arn(arn: str) -> str:
+        """Resolve CloudWatch log group from a pipeline step's job ARN."""
+        if ":training-job/" in arn:
+            return "/aws/sagemaker/TrainingJobs"
+        elif ":job/" in arn:
+            # Only MTRL evals use Job-API steps in pipelines today
+            return "/aws/sagemaker/Job/AgentRFTEvaluation"
+        return "/aws/sagemaker/TrainingJobs"
+
+    @staticmethod
+    def _job_name_from_arn(arn: str) -> str | None:
+        """Extract job name from a SageMaker resource ARN."""
+        for prefix in (":training-job/", ":job/", ":processing-job/", ":transform-job/"):
+            if prefix in arn:
+                return arn.split(prefix, 1)[1].split("/")[0]
+        return None
 
     # ─── Shared SMTJ evaluation helpers ─────────────────────────────────────────
 
@@ -1866,4 +2028,6 @@ class BaseEvaluator(BaseModel):
         if not matched:
             raise ValueError(f"Could not find job name in output: {start_result.stdout}")
 
-        return matched.group(1)
+        job_name = matched.group(1)
+        self._latest_execution = job_name
+        return job_name
