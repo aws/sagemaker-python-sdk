@@ -140,12 +140,10 @@ def validate_data_path_exists(
     except ClientError as e:
         code = e.response["Error"]["Code"]
         if code == "403" or "AccessDenied" in str(e):
-            # Caller may not have access but the execution role might —
-            # log a warning and allow the job to proceed.
-            logger.warning(
-                "Cannot verify S3 %s path %s from caller identity "
-                "(AccessDenied). The execution role may still have access.",
-                label, data_path,
+            raise ValueError(
+                f"Cannot verify S3 {label} path '{data_path}': access denied. "
+                f"Ensure the path exists and the caller has s3:ListBucket and "
+                f"s3:GetObject permissions on the bucket."
             )
         else:
             raise ValueError(f"Error accessing S3 {label} path {data_path}: {e}")

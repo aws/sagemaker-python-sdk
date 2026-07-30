@@ -601,7 +601,7 @@ def resolve_and_validate_role(
             role_type,
         )
     else:
-        logger.info("Role '%s' validated for %s. Using it.", role_arn, role_type)
+        logger.debug("Role '%s' validated for %s. Using it.", role_arn, role_type)
     return role_arn
 
 

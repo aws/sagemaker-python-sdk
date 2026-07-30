@@ -1123,8 +1123,12 @@ def _validate_and_resolve_model_package_group(model, model_package_group_name):
     if isinstance(model, ModelPackage):
         return model.model_package_group_name
 
-    raise ValueError("model_package_group_name must be provided when model given is "
-                     "not a ModelPackage artifact/not continued finetuning")
+    raise ValueError(
+        "model_package_group is required for serverless training (when compute is not set). "
+        "Either provide model_package_group to store the fine-tuned model, or set "
+        "compute=TrainingJobCompute(...) / HyperPodCompute(...) to use managed compute "
+        "where model_package_group is optional."
+    )
 
 
 def _validate_eula_for_gated_model(model, accept_eula, is_gated_model):
