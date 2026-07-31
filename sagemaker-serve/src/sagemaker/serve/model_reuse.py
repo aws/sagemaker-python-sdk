@@ -373,10 +373,6 @@ def _resolve_ready_arn(
         logger.warning("Could not check resource status: %s. Proceeding without.", e)
         return None
 
-    logger.info(f"Current status: {status}")
-
-    logger.info("[reuse_resources] Existing resource %s has status '%s'", resource_arn, status)
-
     if status in _ACTIVE_STATUSES:
         return resource_arn
 
