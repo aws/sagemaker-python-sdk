@@ -4053,15 +4053,12 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         )
 
         # Resource reuse: if an existing Model built from the same source is
-        # found (by model-source tag), skip creating a new one. Also discover the
-        # endpoint for deploy() to reuse later.
+        # found (by model-source tag), skip creating a new one. Endpoint reuse is
+        # resolved separately at deploy() time; build() only handles the Model.
         if reuse_resources and not is_inference_component_build:
             self.serve_settings = self._get_serve_setting()
             reused_model = self._find_reusable_model()
             if reused_model is not None:
-                reusable_endpoint = self._find_reusable_endpoint()
-                if reusable_endpoint:
-                    self._reused_endpoint_name = reusable_endpoint
                 logger.info(
                     "Reusing existing Model %r (matched model-source tag). "
                     "No new Model will be created. Pass reuse_resources=False "
@@ -5505,21 +5502,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 "inference_component_name (IC update). The flag is ignored."
             )
 
-        # Resource reuse is opt-in per call. build() may have cached a candidate
-        # in _reused_endpoint_name, but without deploy-time context (instance_type
-        # is a deploy() arg), so re-validate the cache before trusting it and fall
-        # back to a fresh discovery on a miss or mismatch.
+        # Resource reuse is opt-in per call. Endpoint discovery happens here at
+        # deploy() time, where the deploy-time context (instance_type) is known;
+        # build() does not look for or cache an endpoint.
         if reuse_resources and not is_inference_component_deploy:
             requested_instance_type = instance_type or self.instance_type
-            cached_endpoint = getattr(self, "_reused_endpoint_name", None)
-            if cached_endpoint and self._reused_endpoint_matches_config(
-                cached_endpoint, instance_type=requested_instance_type
-            ):
-                reusable_endpoint = cached_endpoint
-            else:
-                reusable_endpoint = self._find_reusable_endpoint(
-                    instance_type=requested_instance_type
-                )
+            reusable_endpoint = self._find_reusable_endpoint(
+                instance_type=requested_instance_type
+            )
             if reusable_endpoint:
                 if endpoint_name and endpoint_name != reusable_endpoint:
                     logger.warning(
