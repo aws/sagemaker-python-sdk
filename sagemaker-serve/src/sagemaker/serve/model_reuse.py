@@ -381,6 +381,13 @@ def _resolve_ready_arn(
         return None
 
     if status in _CREATING_STATUSES:
+        logger.info(
+            "Existing resource %s is still Creating; polling every %ds up to %ds "
+            "before it can be reused",
+            resource_arn,
+            poll_interval,
+            max_wait,
+        )
         return _poll_until_ready(client, resource_arn, status_checker, poll_interval, max_wait)
 
     logger.warning("Resource %s has unexpected status '%s'. Proceeding to create new.", resource_arn, status)
@@ -405,6 +412,14 @@ def _poll_until_ready(
         except Exception as e:
             logger.warning("Could not check resource status during poll: %s. Proceeding without.", e)
             return None
+
+        logger.info(
+            "Polling resource %s: status='%s' (%ds/%ds elapsed)",
+            resource_arn,
+            status,
+            elapsed,
+            max_wait,
+        )
 
         if status in _ACTIVE_STATUSES:
             return resource_arn
