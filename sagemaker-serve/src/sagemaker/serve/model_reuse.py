@@ -20,6 +20,8 @@ from typing import Callable, Optional
 
 from botocore.exceptions import ClientError
 
+import boto3
+
 logger = logging.getLogger(__name__)
 
 MODEL_SOURCE_TAG_KEY = "sagemaker.amazonaws.com/model-source"
@@ -227,7 +229,8 @@ def _find_resource_arn_by_tagging_api(
     resources and calling list_tags on each one.
 
     Args:
-        sagemaker_client: A boto3 SageMaker client (used to derive the session).
+        sagemaker_client: A boto3 SageMaker client (used for region detection
+            and as fallback for creating the tagging client).
         tag_value: The normalized tag value to search for.
         resource_type: The resource type filter (e.g. "sagemaker:model",
             "sagemaker:endpoint").
@@ -238,17 +241,11 @@ def _find_resource_arn_by_tagging_api(
         unavailable (signals caller should fall back to the slow scan).
     """
     try:
-        # Extract region from the SageMaker client
-        import boto3 as _boto3
-
         region = sagemaker_client.meta.region_name
         if not region:
             return None
 
-        tagging_client = _boto3.client(
-            "resourcegroupstaggingapi",
-            region_name=region,
-        )
+        tagging_client = boto3.client("resourcegroupstaggingapi", region_name=region)
 
         pagination_token = ""
         while True:
