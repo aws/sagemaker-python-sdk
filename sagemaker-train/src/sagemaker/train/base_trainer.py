@@ -680,9 +680,9 @@ class BaseTrainer(ABC):
         if isinstance(compute, HyperPodCompute):
             self._stream_logs_smhp(training_job, compute, poll, start_time_ms, num_lines=num_lines)
         else:
-            self._stream_logs_smtj(training_job, poll, start_time_ms)
+            self._stream_logs_smtj(training_job, poll, start_time_ms, num_lines=num_lines)
 
-    def _stream_logs_smtj(self, training_job, poll: int, start_time_ms=None) -> None:
+    def _stream_logs_smtj(self, training_job, poll: int, start_time_ms=None, num_lines: Optional[int] = None) -> None:
         """Stream logs for an SMTJ training job."""
         from sagemaker.train.common_utils.log_streamer import (
             LogStreamer,
@@ -714,7 +714,7 @@ class BaseTrainer(ABC):
             job = TrainingJob.get(training_job_name=job_name)
             return job.training_job_status
 
-        stream_log_loop(streamer, poll, _get_status)
+        stream_log_loop(streamer, poll, _get_status, num_lines=num_lines)
 
     def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None, num_lines: Optional[int] = None) -> None:
         """Stream logs for a HyperPod job using filter_log_events polling."""
