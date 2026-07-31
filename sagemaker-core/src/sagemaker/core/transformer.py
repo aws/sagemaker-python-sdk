@@ -409,8 +409,9 @@ class Transformer(object):
         from sagemaker.core.utils.code_injection.codec import transform as transform_util
 
         transformed = transform_util(serialized_request, "CreateTransformJobRequest")
-        # Remove tags from transformed dict as TransformJob resource doesn't accept it
+        # TransformJob does not accept 'tags'/'Tags', so we must pop them to avoid pydantic ValidationError
         transformed.pop("tags", None)
+        transformed.pop("Tags", None)
         self.latest_transform_job = TransformJob(**transformed)
 
         if wait:
@@ -716,7 +717,16 @@ class Transformer(object):
             transform_request["Environment"] = env
 
         if tags is not None:
-            transform_request["Tags"] = tags
+            from sagemaker.core.common_utils import format_tags
+            formatted_tags = format_tags(tags)
+            
+            if isinstance(formatted_tags, list):
+                formatted_tags = [
+                    {"Key": t.get("Key", t.get("key", "")), "Value": t.get("Value", t.get("value", ""))}
+                    if isinstance(t, dict) else t
+                    for t in formatted_tags
+                ]
+            transform_request["Tags"] = formatted_tags
 
         if data_processing is not None:
             transform_request["DataProcessing"] = data_processing
