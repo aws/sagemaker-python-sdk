@@ -15,6 +15,7 @@ from urllib.parse import urlparse
 
 import yaml
 import boto3
+from botocore.exceptions import ClientError
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig, HyperPodCompute, TrainingJobCompute
@@ -679,65 +680,41 @@ class BaseTrainer(ABC):
         if isinstance(compute, HyperPodCompute):
             self._stream_logs_smhp(training_job, compute, poll, start_time_ms, num_lines=num_lines)
         else:
-            self._stream_logs_smtj(training_job, poll, num_lines=num_lines)
+            self._stream_logs_smtj(training_job, poll, start_time_ms)
 
-    def _stream_logs_smtj(self, training_job, poll: int, num_lines: Optional[int] = None) -> None:
-        """Stream logs for an SMTJ training job using MultiLogStreamHandler."""
+    def _stream_logs_smtj(self, training_job, poll: int, start_time_ms=None) -> None:
+        """Stream logs for an SMTJ training job."""
+        from sagemaker.train.common_utils.log_streamer import (
+            LogStreamer,
+            stream_log_loop,
+        )
 
-        # Resolve job name
         if hasattr(training_job, 'training_job_name'):
             job_name = training_job.training_job_name
         else:
             job_name = str(training_job)
 
         log_group = "/aws/sagemaker/TrainingJobs"
-        instance_count = 1
-        if hasattr(self, 'compute') and self.compute and hasattr(self.compute, 'instance_count'):
-            instance_count = self.compute.instance_count or 1
 
-        handler = MultiLogStreamHandler(
-            log_group_name=log_group,
-            log_stream_name_prefix=job_name,
-            expected_stream_count=instance_count,
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
         )
 
-        logger.info(f"Streaming logs for job: {job_name}")
-        logger.info(f"Log group: {log_group}")
+        streamer = LogStreamer(
+            log_group=log_group,
+            job_name=job_name,
+            sagemaker_session=sagemaker_session,
+            start_time_ms=start_time_ms,
+        )
 
-        terminal_statuses = {"Completed", "Failed", "Stopped"}
-        lines_printed = 0
-        _CW_PREFIX = "[CloudWatch] "
+        logger.info("Streaming logs for job: %s", job_name)
+        logger.info("Log group: %s", log_group)
 
-        while True:
-            for stream_name, event in handler.get_latest_log_events():
-                message = event.get("message", "").rstrip()
-                if message:
-                    print(f"{_CW_PREFIX}{message}")
-                    lines_printed += 1
-                    if num_lines and lines_printed >= num_lines:
-                        logger.info(f"Reached num_lines limit ({num_lines}). Stopping log stream.")
-                        return
+        def _get_status() -> str:
+            job = TrainingJob.get(training_job_name=job_name)
+            return job.training_job_status
 
-            # Check job status
-            try:
-                job = TrainingJob.get(training_job_name=job_name)
-                status = job.training_job_status
-                if status in terminal_statuses:
-                    # Final flush
-                    for stream_name, event in handler.get_latest_log_events():
-                        message = event.get("message", "").rstrip()
-                        if message:
-                            print(f"{_CW_PREFIX}{message}")
-                            lines_printed += 1
-                            if num_lines and lines_printed >= num_lines:
-                                logger.info(f"Reached num_lines limit ({num_lines}). Stopping log stream.")
-                                return
-                    logger.info(f"Job {job_name} finished with status: {status}")
-                    return
-            except Exception:
-                pass
-
-            time.sleep(poll)
+        stream_log_loop(streamer, poll, _get_status)
 
     def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None, num_lines: Optional[int] = None) -> None:
         """Stream logs for a HyperPod job using filter_log_events polling."""
@@ -775,6 +752,7 @@ class BaseTrainer(ABC):
         lines_printed = 0
         _CW_PREFIX = "[CloudWatch] "
 
+        empty_cycles = 0
         while True:
             try:
                 params = {
@@ -786,6 +764,8 @@ class BaseTrainer(ABC):
                 response = logs_client.filter_log_events(**params)
                 events = response.get("events", [])
 
+                if events:
+                    empty_cycles = 0
                 for event in events:
                     event_id = event.get("eventId", "")
                     if event_id not in seen_event_ids:
@@ -800,11 +780,32 @@ class BaseTrainer(ABC):
                         ts = event.get("timestamp", 0)
                         if ts > last_timestamp:
                             last_timestamp = ts
+                if not events:
+                    empty_cycles += 1
+                    if empty_cycles == 3:
+                        logger.info("No log events yet, still waiting...")
+            except ClientError as e:
+                error_code = e.response.get("Error", {}).get("Code", "")
+                if error_code == "AccessDeniedException":
+                    raise
+                if error_code == "ResourceNotFoundException":
+                    empty_cycles += 1
+                    if empty_cycles == 1:
+                        logger.info("Waiting for log group to become available...")
+                    elif empty_cycles >= 60:
+                        logger.warning(
+                            "Log group %s still not found after %d attempts. "
+                            "Check IAM permissions for logs:FilterLogEvents.",
+                            log_group,
+                            empty_cycles,
+                        )
+                else:
+                    logger.debug(f"Error fetching HP logs: {e}")
             except Exception as e:
                 logger.debug(f"Error fetching HP logs: {e}")
 
             # Note: HyperPod jobs don't have a simple status API to poll for completion.
-            # This polls till the user interrupts with Ctrl+C. 
+            # This polls till the user interrupts with Ctrl+C.
             try:
                 time.sleep(poll)
             except KeyboardInterrupt:
