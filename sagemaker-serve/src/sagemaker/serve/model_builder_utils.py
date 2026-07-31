@@ -138,6 +138,7 @@ from sagemaker.core.remote_function.core.serialization import _MetaData
 from sagemaker.serve.model_server.triton.config_template import CONFIG_TEMPLATE
 
 SPECULATIVE_DRAFT_MODEL = "/opt/ml/additional-model-data-sources"
+DEFAULT_NUM_SPECULATIVE_TOKENS = 5
 _DJL_MODEL_BUILDER_ENTRY_POINT = "inference.py"
 _NO_JS_MODEL_EX = "HuggingFace JumpStart Model ID not detected. Building for HuggingFace Model ID."
 _JS_SCOPE = "inference"
@@ -1838,6 +1839,46 @@ class _ModelBuilderUtils:
 
         return channel_name
 
+    def _set_speculative_draft_model_env(
+        self,
+        draft_model_path: str,
+        speculative_decoding_config: Optional[Dict] = None,
+    ) -> None:
+        """Set the environment variables that enable speculative decoding.
+
+        Emits two variables for the LMI container:
+
+        - ``OPTION_SPECULATIVE_DRAFT_MODEL``: the draft-model path, read by the
+          legacy ``lmi-dist`` rolling batcher.
+        - ``OPTION_SPECULATIVE_CONFIG``: a JSON blob read by the current vLLM
+          engine, which does not consume ``OPTION_SPECULATIVE_DRAFT_MODEL``.
+          Without this, the model deploys but vLLM leaves speculative decoding
+          disabled (``speculative_config=None``).
+
+        Args:
+            draft_model_path (str): Draft-model path or identifier passed to the container.
+            speculative_decoding_config (Optional[Dict]): The speculative decoding config; read
+                for ``NumSpeculativeTokens`` when present.
+        """
+        num_speculative_tokens = DEFAULT_NUM_SPECULATIVE_TOKENS
+        if speculative_decoding_config:
+            num_speculative_tokens = speculative_decoding_config.get(
+                "NumSpeculativeTokens", num_speculative_tokens
+            )
+
+        self.env_vars.update(
+            {
+                "OPTION_SPECULATIVE_DRAFT_MODEL": draft_model_path,
+                "OPTION_SPECULATIVE_CONFIG": json.dumps(
+                    {
+                        "method": "draft_model",
+                        "model": draft_model_path,
+                        "num_speculative_tokens": num_speculative_tokens,
+                    }
+                ),
+            }
+        )
+
     def _generate_additional_model_data_sources(
         self,
         model_source: str,
@@ -1963,7 +2004,9 @@ class _ModelBuilderUtils:
             else:
                 speculative_draft_model = additional_model_source
 
-            self.env_vars.update({"OPTION_SPECULATIVE_DRAFT_MODEL": speculative_draft_model})
+            self._set_speculative_draft_model_env(
+                speculative_draft_model, speculative_decoding_config
+            )
             self.add_tags(
                 {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "custom"},
             )
@@ -2034,8 +2077,8 @@ class _ModelBuilderUtils:
                 accept_eula,
             )
 
-            self.env_vars.update(
-                {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"}
+            self._set_speculative_draft_model_env(
+                f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/", speculative_decoding_config
             )
             self.add_tags(
                 {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": "jumpstart"},
@@ -2267,8 +2310,8 @@ class _ModelBuilderUtils:
                             "to `Auto` instead."
                         )
 
-                self.env_vars.update(
-                    {"OPTION_SPECULATIVE_DRAFT_MODEL": f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/"}
+                self._set_speculative_draft_model_env(
+                    f"{SPECULATIVE_DRAFT_MODEL}/{channel_name}/", speculative_decoding_config
                 )
                 self.add_tags(
                     {"Key": Tag.SPECULATIVE_DRAFT_MODEL_PROVIDER, "Value": model_provider},

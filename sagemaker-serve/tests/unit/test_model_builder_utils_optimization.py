@@ -3,11 +3,15 @@ Unit tests for optimization-related methods in _ModelBuilderUtils.
 Targets uncovered optimization and deployment config functionality.
 """
 
+import json
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 import tempfile
 
-from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
+from sagemaker.serve.model_builder_utils import (
+    _ModelBuilderUtils,
+    DEFAULT_NUM_SPECULATIVE_TOKENS,
+)
 from sagemaker.core.enums import Tag
 
 
@@ -122,13 +126,63 @@ class TestCustomSpeculativeDecoding(unittest.TestCase):
         utils.additional_model_data_sources = []
         utils.env_vars = {}
         utils._tags = []
-        
+
         config = {"ModelSource": "s3://bucket/draft-model", "AcceptEula": True}
-        
+
         utils._custom_speculative_decoding(config, False)
-        
+
         self.assertEqual(len(utils.additional_model_data_sources), 1)
         self.assertIn("ModelAccessConfig", utils.additional_model_data_sources[0]["S3DataSource"])
+
+    def test_custom_speculative_decoding_emits_speculative_config(self):
+        """Custom SD must emit OPTION_SPECULATIVE_CONFIG (read by the vLLM engine),
+        not only the legacy OPTION_SPECULATIVE_DRAFT_MODEL."""
+        utils = _ModelBuilderUtils()
+        utils.additional_model_data_sources = []
+        utils.env_vars = {}
+        utils._tags = []
+
+        utils._custom_speculative_decoding({"ModelSource": "/local/path/to/model"}, False)
+
+        self.assertIn("OPTION_SPECULATIVE_CONFIG", utils.env_vars)
+        spec = json.loads(utils.env_vars["OPTION_SPECULATIVE_CONFIG"])
+        self.assertEqual(spec["method"], "draft_model")
+        self.assertEqual(spec["model"], "/local/path/to/model")
+        self.assertEqual(spec["num_speculative_tokens"], DEFAULT_NUM_SPECULATIVE_TOKENS)
+
+    def test_custom_speculative_decoding_num_tokens_override(self):
+        """NumSpeculativeTokens in the config overrides the default."""
+        utils = _ModelBuilderUtils()
+        utils.additional_model_data_sources = []
+        utils.env_vars = {}
+        utils._tags = []
+
+        utils._custom_speculative_decoding(
+            {"ModelSource": "/local/path/to/model", "NumSpeculativeTokens": 3}, False
+        )
+
+        spec = json.loads(utils.env_vars["OPTION_SPECULATIVE_CONFIG"])
+        self.assertEqual(spec["num_speculative_tokens"], 3)
+
+
+class TestSetSpeculativeDraftModelEnv(unittest.TestCase):
+    """Test _set_speculative_draft_model_env helper directly."""
+
+    def test_emits_both_env_vars(self):
+        """Helper emits the legacy path var AND the vLLM JSON config."""
+        utils = _ModelBuilderUtils()
+        utils.env_vars = {}
+
+        utils._set_speculative_draft_model_env("/opt/ml/additional-model-data-sources/draft_model")
+
+        self.assertEqual(
+            utils.env_vars["OPTION_SPECULATIVE_DRAFT_MODEL"],
+            "/opt/ml/additional-model-data-sources/draft_model",
+        )
+        spec = json.loads(utils.env_vars["OPTION_SPECULATIVE_CONFIG"])
+        self.assertEqual(spec["method"], "draft_model")
+        self.assertEqual(spec["model"], "/opt/ml/additional-model-data-sources/draft_model")
+        self.assertEqual(spec["num_speculative_tokens"], DEFAULT_NUM_SPECULATIVE_TOKENS)
 
 
 class TestJumpStartSpeculativeDecoding(unittest.TestCase):
