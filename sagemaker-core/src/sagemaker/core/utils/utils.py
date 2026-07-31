@@ -369,10 +369,8 @@ class SageMakerClient(metaclass=SingletonMeta):
         self.session = session
         self.region_name = region_name
         # Read region from environment variable, default to us-west-2
-        import os
         env_region = os.environ.get('SAGEMAKER_REGION', region_name)
         env_stage = os.environ.get('SAGEMAKER_STAGE', 'prod')  # default to gamma
-        logger.info(f"Runs on sagemaker {env_stage}, region:{env_region}")
 
         endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
         runtime_endpoint_url = os.environ.get('SAGEMAKER_RUNTIME_ENDPOINT')

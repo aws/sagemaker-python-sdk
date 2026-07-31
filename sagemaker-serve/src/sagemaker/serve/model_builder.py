@@ -1811,6 +1811,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         # ModelTrainer with model customization
         if isinstance(self.model, ModelTrainer) and hasattr(self.model, "_latest_training_job"):
+            # Resolve string job name to TrainingJob object if needed
+            if isinstance(self.model._latest_training_job, str):
+                self.model._latest_training_job = TrainingJob.get(
+                    training_job_name=self.model._latest_training_job
+                )
             # Check model_package_config first (new location)
             if (
                 hasattr(self.model._latest_training_job, "model_package_config")
@@ -1845,6 +1850,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if isinstance(self.model, MultiTurnRLTrainer):
             return True
         if isinstance(self.model, BaseTrainer) and hasattr(self.model, "_latest_training_job"):
+            # Resolve string job name to TrainingJob object if needed
+            if isinstance(self.model._latest_training_job, str):
+                self.model._latest_training_job = TrainingJob.get(
+                    training_job_name=self.model._latest_training_job
+                )
             # Trainer built from an S3 checkpoint (e.g. Serverful SMTJ): no model
             # package, but the completed training job has an S3 output path that
             # holds the customized artifacts.
@@ -1926,6 +1936,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     return arn
 
             if hasattr(self.model, "_latest_training_job"):
+                # Resolve string job name to TrainingJob object if needed
+                if isinstance(self.model._latest_training_job, str):
+                    self.model._latest_training_job = TrainingJob.get(
+                        training_job_name=self.model._latest_training_job
+                    )
                 # Try output_model_package_arn first (preferred)
                 if hasattr(self.model._latest_training_job, "output_model_package_arn"):
                     arn = self.model._latest_training_job.output_model_package_arn
@@ -2049,38 +2064,24 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     def _find_reusable_model(self) -> Optional["Model"]:
         """Find an existing SageMaker Model tagged with the same model source.
 
-        Scans Models by creation time and checks for a matching model-source tag.
+        Uses the Resource Groups Tagging API for efficient server-side tag
+        filtering when available, falling back to paginated list+list_tags scan.
         Returns the Model resource if found (and it still exists), None otherwise.
         """
         source_id = self._resolve_model_source_id()
         if not source_id:
             return None
 
-        from sagemaker.serve.model_reuse import normalize_tag_value
+        from sagemaker.serve.model_reuse import normalize_tag_value, find_sagemaker_model_arn_by_tag
         tag_value = normalize_tag_value(source_id)
         sagemaker_client = self.sagemaker_session.sagemaker_client
 
         try:
-            next_token = None
-            while True:
-                kwargs = {"SortBy": "CreationTime", "SortOrder": "Descending"}
-                if next_token:
-                    kwargs["NextToken"] = next_token
-                response = sagemaker_client.list_models(**kwargs)
-                for model_summary in response.get("Models", []):
-                    model_name = model_summary.get("ModelName")
-                    model_arn = model_summary.get("ModelArn")
-                    if not model_arn:
-                        continue
-                    tags = sagemaker_client.list_tags(ResourceArn=model_arn).get("Tags", [])
-                    if any(
-                        t.get("Key") == MODEL_SOURCE_TAG_KEY and t.get("Value") == tag_value
-                        for t in tags
-                    ):
-                        return Model.get(model_name=model_name, region=self.region)
-                next_token = response.get("NextToken")
-                if not next_token:
-                    break
+            model_arn = find_sagemaker_model_arn_by_tag(sagemaker_client, tag_value)
+            if model_arn:
+                # Extract model name from ARN: arn:aws:sagemaker:region:account:model/name
+                model_name = model_arn.rsplit("/", 1)[-1]
+                return Model.get(model_name=model_name, region=self.region)
         except Exception as e:
             logger.warning("Could not search Models for reuse: %s", e)
 

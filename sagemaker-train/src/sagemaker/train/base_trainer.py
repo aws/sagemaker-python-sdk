@@ -18,9 +18,10 @@ import boto3
 from botocore.exceptions import ClientError
 
 from sagemaker.core.helper.session_helper import Session
-from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig, HyperPodCompute
+from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig, HyperPodCompute, TrainingJobCompute
 from sagemaker.core.utils.logs import MultiLogStreamHandler
 from sagemaker.core.shapes import shapes
+from sagemaker.core.shapes import S3DataSource
 from sagemaker.core.resources import TrainingJob
 from sagemaker.train.common_utils.recipe_utils import _is_nova_model, resolve_recipe, get_resolved_recipe_from_context, NoRecipeError
 from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
@@ -41,6 +42,7 @@ from sagemaker.train.common_utils.notifications import enable_notifications, del
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.common_utils.cloudwatch_metrics import fetch_and_plot_metrics, _get_smhp_log_group
 from sagemaker.train.defaults import TrainDefaults
+from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.train.utils import _get_unique_name
 
 logger = logging.getLogger(__name__)
@@ -114,7 +116,7 @@ class BaseTrainer(ABC):
         disable_output_compression: Optional[bool] = False,
         notifications: Optional[Dict[str, Any]] = None,
     ):
-        self.sagemaker_session = sagemaker_session
+        self.sagemaker_session = sagemaker_session or TrainDefaults.get_sagemaker_session()
         self.role = role
         self.base_job_name = base_job_name
         self.tags = tags
@@ -625,7 +627,7 @@ class BaseTrainer(ABC):
             event_bus_arn=event_bus_arn,
         )
 
-    def stream_logs(self, poll: int = 5, start_time: Optional[Any] = None) -> None:
+    def stream_logs(self, poll: int = 5, start_time: Optional[Any] = None, num_lines: Optional[int] = None) -> None:
         """Stream CloudWatch logs in real-time (like ``kubectl logs -f``).
 
         Continuously polls for new log events and prints them as they arrive.
@@ -639,6 +641,10 @@ class BaseTrainer(ABC):
                 attaching to a job that's already running. If not provided,
                 auto-resolved from the training job's start time (SMTJ) or
                 defaults to now (HyperPod).
+            num_lines: Optional maximum number of log lines to print. When
+                specified, streaming stops after this many lines have been
+                printed. Useful for long jobs where the full log is too verbose.
+                If not provided, streams all logs until the job completes.
 
         Raises:
             ValueError: If no training job has been run yet.
@@ -672,11 +678,11 @@ class BaseTrainer(ABC):
         compute = getattr(self, 'compute', None)
 
         if isinstance(compute, HyperPodCompute):
-            self._stream_logs_smhp(training_job, compute, poll, start_time_ms)
+            self._stream_logs_smhp(training_job, compute, poll, start_time_ms, num_lines=num_lines)
         else:
-            self._stream_logs_smtj(training_job, poll, start_time_ms)
+            self._stream_logs_smtj(training_job, poll, start_time_ms, num_lines=num_lines)
 
-    def _stream_logs_smtj(self, training_job, poll: int, start_time_ms=None) -> None:
+    def _stream_logs_smtj(self, training_job, poll: int, start_time_ms=None, num_lines: Optional[int] = None) -> None:
         """Stream logs for an SMTJ training job."""
         from sagemaker.train.common_utils.log_streamer import (
             LogStreamer,
@@ -708,9 +714,9 @@ class BaseTrainer(ABC):
             job = TrainingJob.get(training_job_name=job_name)
             return job.training_job_status
 
-        stream_log_loop(streamer, poll, _get_status)
+        stream_log_loop(streamer, poll, _get_status, num_lines=num_lines)
 
-    def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None) -> None:
+    def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None, num_lines: Optional[int] = None) -> None:
         """Stream logs for a HyperPod job using filter_log_events polling."""
 
         if isinstance(training_job, str):
@@ -743,6 +749,8 @@ class BaseTrainer(ABC):
         else:
             last_timestamp = int(time.time() * 1000)
         seen_event_ids = set()
+        lines_printed = 0
+        _CW_PREFIX = "[CloudWatch] "
 
         empty_cycles = 0
         while True:
@@ -764,7 +772,11 @@ class BaseTrainer(ABC):
                         seen_event_ids.add(event_id)
                         message = event.get("message", "").rstrip()
                         if message:
-                            logger.info(message)
+                            print(f"{_CW_PREFIX}{message}")
+                            lines_printed += 1
+                            if num_lines and lines_printed >= num_lines:
+                                logger.info(f"Reached num_lines limit ({num_lines}). Stopping log stream.")
+                                return
                         ts = event.get("timestamp", 0)
                         if ts > last_timestamp:
                             last_timestamp = ts
@@ -859,22 +871,10 @@ class BaseTrainer(ABC):
         from ``self._customization_technique``) and any extra hyperparameters
         from ``_get_extra_smtj_hyperparameters()``.
         """
-        import logging
-        import tempfile
-        from sagemaker.train.model_trainer import ModelTrainer
-        from sagemaker.core.training.configs import TrainingJobCompute, InputData, Networking
-        from sagemaker.core.shapes import S3DataSource
-        from sagemaker.train.common_utils.finetune_utils import (
-            get_recipe_s3_uri,
-            get_training_image,
-            _validate_hyperparameter_values,
-        )
-        from sagemaker.train.defaults import TrainDefaults
-
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
         )
-        role = TrainDefaults.get_role(role=self.role, sagemaker_session=sagemaker_session)
+        role = self.role
 
         compute = self.compute
         customization_technique = self._customization_technique
@@ -887,7 +887,7 @@ class BaseTrainer(ABC):
             sagemaker_session=sagemaker_session,
         )
 
-        logger.info(f"SMTJ recipe S3 URI: {recipe_s3_uri}")
+        logger.debug(f"SMTJ recipe S3 URI: {recipe_s3_uri}")
 
         # Download recipe from S3 to a local temp file
         recipe_s3_uri = resolve_s3_uri_placeholders(recipe_s3_uri, sagemaker_session)
@@ -1106,7 +1106,7 @@ class BaseTrainer(ABC):
         with open(recipe_local_path, "w") as f:
             f.write(recipe_content)
 
-        logger.info(f"Recipe downloaded and rendered to: {recipe_local_path}")
+        logger.debug(f"Recipe downloaded and rendered to: {recipe_local_path}")
 
         # Resolve training image
         training_image = self.training_image

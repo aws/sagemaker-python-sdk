@@ -1283,7 +1283,6 @@ class ModelTrainer(BaseModel):
             raise ValueError("training_image must be provided when using training_image_config.")
 
         sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session)
-        role = TrainDefaults.get_role(role=role, sagemaker_session=sagemaker_session)
 
         # The training recipe is used to prepare the following args:
         # - source_code

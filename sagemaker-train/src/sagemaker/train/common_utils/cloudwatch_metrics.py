@@ -445,9 +445,17 @@ def fetch_and_plot_metrics(
         )
 
     if not log_events:
+        time_hint = ""
+        if start_time or end_time:
+            time_hint = (
+                f" No logs were found in the specified time range "
+                f"(start_time={start_time}, end_time={end_time}). "
+                f"Try adjusting the time range or omitting start_time/end_time "
+                f"to search the full job duration."
+            )
         raise ValueError(
             f"No CloudWatch logs found for job '{job_id}' in log group '{log_group}'. "
-            f"The job may still be starting, or logs may not be available yet."
+            f"The job may still be starting, or logs may not be available yet.{time_hint}"
         )
 
     # Parse metrics from logs
