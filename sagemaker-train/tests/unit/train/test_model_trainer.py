@@ -1959,6 +1959,9 @@ def test_networking_intelligent_defaults_creates_networking(model_trainer):
     assert model_trainer.networking.enable_network_isolation is True
     assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
     assert model_trainer.networking.security_group_ids == NETWORKING_DEFAULT_SECURITY_GROUP_IDS
+    model_trainer.config_mgr.resolve_value_from_config.assert_any_call(
+        config_path=TRAINING_JOB_SECURITY_GROUP_IDS_PATH
+    )
 
 
 def test_networking_intelligent_defaults_no_vpc_config_leaves_networking_unset(model_trainer):
