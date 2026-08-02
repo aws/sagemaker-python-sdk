@@ -1017,7 +1017,7 @@ def _create_output_config(sagemaker_session, s3_output_path=None, kms_key_id=Non
         s3_output_path = _get_default_s3_output_path(sagemaker_session)
 
     # Validate S3 path exists
-    _validate_s3_path_exists(s3_output_path, sagemaker_session)
+    _validate_s3_path_exists(s3_output_path, sagemaker_session, kms_key_id=kms_key_id)
 
     config_kwargs = {
         "s3_output_path": s3_output_path,
@@ -1114,8 +1114,16 @@ def _validate_eula_for_gated_model(model, accept_eula, is_gated_model):
     return accept_eula
 
 
-def _validate_s3_path_exists(s3_path: str, sagemaker_session):
-    """Validate S3 path and create bucket/prefix if they don't exist."""
+def _validate_s3_path_exists(s3_path: str, sagemaker_session, kms_key_id: Optional[str] = None):
+    """Validate S3 path and create bucket/prefix if they don't exist.
+
+    Args:
+        s3_path: S3 path to validate.
+        sagemaker_session: SageMaker session used to create the S3 client.
+        kms_key_id: Optional KMS key ID. When provided, objects created to
+            initialize a missing prefix are written with SSE-KMS encryption so
+            that validation does not fail on buckets enforcing KMS encryption.
+    """
     if not s3_path.startswith("s3://"):
         raise ValueError(f"Invalid S3 path format: {s3_path}")
     
@@ -1151,7 +1159,11 @@ def _validate_s3_path_exists(s3_path: str, sagemaker_session):
                 # Create the prefix by putting an empty object
                 if not prefix.endswith('/'):
                     prefix += '/'
-                s3_client.put_object(Bucket=bucket_name, Key=prefix, Body=b'')
+                put_object_kwargs = {"Bucket": bucket_name, "Key": prefix, "Body": b''}
+                if kms_key_id:
+                    put_object_kwargs["ServerSideEncryption"] = "aws:kms"
+                    put_object_kwargs["SSEKMSKeyId"] = kms_key_id
+                s3_client.put_object(**put_object_kwargs)
                 
     except Exception as e:
         raise ValueError(f"Failed to validate/create S3 path '{s3_path}': {str(e)}")

@@ -620,7 +620,9 @@ class TestFinetuneUtils:
         
         assert config.s3_output_path == "s3://bucket/output"
         assert config.kms_key_id == "kms-key"
-        mock_validate_s3.assert_called_once_with("s3://bucket/output", mock_session)
+        mock_validate_s3.assert_called_once_with(
+            "s3://bucket/output", mock_session, kms_key_id="kms-key"
+        )
 
     def test__convert_input_data_to_channels(self):
 
@@ -725,6 +727,24 @@ class TestFinetuneUtils:
         mock_s3_client.head_bucket.assert_called_once_with(Bucket="test-bucket")
         mock_s3_client.list_objects_v2.assert_called_once_with(Bucket="test-bucket", Prefix="prefix", MaxKeys=1)
         mock_s3_client.put_object.assert_called_once_with(Bucket="test-bucket", Key="prefix/", Body=b'')
+
+    @patch('boto3.client')
+    def test__validate_s3_path_exists_with_prefix_not_exists_kms(self, mock_boto_client):
+        """Test S3 path validation uses SSE-KMS when kms_key_id is provided"""
+        mock_session = Mock()
+        mock_s3_client = Mock()
+        mock_session.boto_session.client.return_value = mock_s3_client
+        mock_s3_client.list_objects_v2.return_value = {}  # No contents
+
+        _validate_s3_path_exists("s3://test-bucket/prefix", mock_session, kms_key_id="kms-key")
+
+        mock_s3_client.put_object.assert_called_once_with(
+            Bucket="test-bucket",
+            Key="prefix/",
+            Body=b'',
+            ServerSideEncryption="aws:kms",
+            SSEKMSKeyId="kms-key",
+        )
 
 
 class TestMlflowVersionMeetsMinimum:
