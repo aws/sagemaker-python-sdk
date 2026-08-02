@@ -714,6 +714,8 @@ def test_train_with_distributed_config(
         )
 
         assert os.path.exists(expected_train_script_path)
+        with open(expected_train_script_path, "rb") as f:
+            assert b"\r\n" not in f.read()
         with open(expected_train_script_path, "r") as f:
             train_script_content = f.read()
             assert test_case["expected_template"] in train_script_content
