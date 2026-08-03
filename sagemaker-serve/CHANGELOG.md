@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.18.0 (2026-07-30)
+
+### New Features
+
+- feat(serve): make BenchmarkResult sweep-aware for concurrency search runs (#6098)
+
+### Bug Fixes
+
+- fix(serve): repack source_code for image_uri/ModelTrainer builds (#6112)
+
+
 ## v1.17.0 (2026-07-24)
 
 ### New Features
