@@ -23,7 +23,7 @@ class TestListHyperparametersInteg:
 
     def test_sft_lora_returns_expected_params(self):
         """SFT LORA returns a FineTuningOptions with known hyperparameters."""
-        hp = list_hyperparameters("huggingface-llm-qwen2-5-7b-instruct", "SFT", "LORA")
+        hp = list_hyperparameters("meta-textgeneration-llama-3-2-1b-instruct", "SFT", "LORA")
 
         assert isinstance(hp, FineTuningOptions)
         assert "learning_rate" in hp._specs
@@ -33,7 +33,7 @@ class TestListHyperparametersInteg:
 
     def test_dpo_lora_has_additional_params(self):
         """DPO LORA returns params including adam_beta (not present in SFT)."""
-        hp = list_hyperparameters("huggingface-llm-qwen2-5-7b-instruct", "DPO", "LORA")
+        hp = list_hyperparameters("meta-textgeneration-llama-3-2-1b-instruct", "DPO", "LORA")
 
         assert isinstance(hp, FineTuningOptions)
         assert "adam_beta" in hp._specs
@@ -41,7 +41,7 @@ class TestListHyperparametersInteg:
 
     def test_rlvr_lora_returns_params(self):
         """RLVR LORA returns FineTuningOptions with RL-specific params."""
-        hp = list_hyperparameters("meta-textgeneration-llama-3-1-8b-instruct", "RLVR", "LORA")
+        hp = list_hyperparameters("meta-textgeneration-llama-3-2-1b-instruct", "RLVR", "LORA")
 
         assert isinstance(hp, FineTuningOptions)
         assert "learning_rate" in hp._specs
@@ -50,7 +50,7 @@ class TestListHyperparametersInteg:
     def test_accepts_enum_values(self):
         """Accepts CustomizationTechnique and TrainingType enums."""
         hp = list_hyperparameters(
-            "huggingface-llm-qwen2-5-7b-instruct",
+            "meta-textgeneration-llama-3-2-1b-instruct",
             CustomizationTechnique.SFT,
             TrainingType.LORA,
         )
@@ -60,7 +60,7 @@ class TestListHyperparametersInteg:
 
     def test_get_info_does_not_raise(self):
         """get_info() runs without error on returned object."""
-        hp = list_hyperparameters("huggingface-llm-qwen2-5-7b-instruct", "SFT", "LORA")
+        hp = list_hyperparameters("meta-textgeneration-llama-3-2-1b-instruct", "SFT", "LORA")
         # Should print without raising
         hp.get_info("learning_rate")
 
@@ -71,6 +71,6 @@ class TestListHyperparametersInteg:
 
     def test_invalid_technique_raises(self):
         """Technique not available for model raises an error."""
-        # PPO is not available on Qwen 2.5
+        # PPO is not available on Llama 3.2
         with pytest.raises(Exception):
-            list_hyperparameters("huggingface-llm-qwen2-5-7b-instruct", "PPO", "LORA")
+            list_hyperparameters("meta-textgeneration-llama-3-2-1b-instruct", "PPO", "LORA")
