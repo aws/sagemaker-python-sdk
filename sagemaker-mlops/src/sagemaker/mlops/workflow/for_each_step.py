@@ -26,7 +26,7 @@ from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 MAX_CONCURRENCY_MIN = 1
 MAX_CONCURRENCY_MAX = 50
 
-_CHILD_OUTPUT_NAMESPACE = "ChildOutput"
+_ITERATION_OUTPUT_NAMESPACE = "IterationOutput"
 _CURRENT_ITEM_PATH = "ForEach.CurrentItem"
 
 # Step types that may not appear in a ForEachBody.
@@ -96,47 +96,49 @@ class CurrentItem(_ForEachPropertyReference):
         super().__init__(_CURRENT_ITEM_PATH)
 
 
-class ChildOutput(_ForEachPropertyReference):
+class IterationOutput(_ForEachPropertyReference):
     """Reference to a ForEach body step's output, for use in ``ForEachSelector.field``.
 
     Valid ONLY as the ``field`` of a :class:`ForEachSelector`, and must target a
     body step of the same ForEach step, drilling at least one member deep::
 
-        ChildOutput(process_step).OutputParameters["InstanceCount"].expr
-        # {"Get": "ChildOutput.ProcessItem.OutputParameters['InstanceCount']"}
+        IterationOutput(process_step).OutputParameters["InstanceCount"].expr
+        # {"Get": "IterationOutput.ProcessItem.OutputParameters['InstanceCount']"}
 
     Args:
         body_step (Union[str, Step]): The body step (or its name) whose output
-            the selector compares across children.
+            the selector compares across iterations.
     """
 
     def __init__(self, body_step: Union[str, Step]):
-        """Initialize a ChildOutput reference rooted at the given body step."""
+        """Initialize an IterationOutput reference rooted at the given body step."""
         step_name = body_step.name if isinstance(body_step, Step) else body_step
-        super().__init__(f"{_CHILD_OUTPUT_NAMESPACE}.{step_name}")
+        super().__init__(f"{_ITERATION_OUTPUT_NAMESPACE}.{step_name}")
 
 
-class _ChildOutputsAccessor:
-    """Indexed accessor for a ForEach step's per-child outputs.
+class _IterationOutputsAccessor:
+    """Indexed accessor for a ForEach step's per-iteration outputs.
 
-    ``ChildOutputs`` MUST be indexed (``properties.ChildOutputs[0].<member>``);
-    a bare ``ChildOutputs.<member>`` reference is invalid, so this accessor is
-    intentionally not a ``PipelineVariable`` itself.
+    ``IterationOutputs`` MUST be indexed (``properties.IterationOutputs[0].<bodyStepName>.<member>``);
+    a bare ``IterationOutputs.<member>`` reference is invalid, so this accessor
+    is intentionally not a ``PipelineVariable`` itself. The indexed reference
+    must then be drilled by body step name, since a ForEach body may contain
+    multiple steps.
     """
 
     def __init__(self, step: Step):
-        """Initialize a _ChildOutputsAccessor for the given ForEach step."""
+        """Initialize an _IterationOutputsAccessor for the given ForEach step."""
         self._step = step
 
     def __getitem__(self, index: int) -> _ForEachPropertyReference:
-        """Get a drillable reference to the output of the child at ``index``."""
+        """Get a drillable reference to the outputs of the iteration at ``index``."""
         if not isinstance(index, int):
             raise TypeError(
-                f"ChildOutputs of ForEach step '{self._step.name}' must be indexed "
-                f"with an integer, e.g. properties.ChildOutputs[0]."
+                f"IterationOutputs of ForEach step '{self._step.name}' must be indexed "
+                f"with an integer, e.g. properties.IterationOutputs[0].<bodyStepName>."
             )
         return _ForEachPropertyReference(
-            f"Steps.{self._step.name}.ChildOutputs[{index}]", [self._step]
+            f"Steps.{self._step.name}.IterationOutputs[{index}]", [self._step]
         )
 
 
@@ -150,14 +152,17 @@ class ForEachSelectorPickType(Enum):
 class ForEachSelector:
     """Selects a single child of a ForEach step by comparing a field across children.
 
-    The selected child's output is exposed to downstream steps via
-    ``Steps.<forEachName>.Selected.<member>``.
+    The selected iteration's output is exposed to downstream steps via
+    ``Steps.<forEachName>.Selected.<member>`` — no body step name qualifier
+    is required, because the selector's ``field`` already identifies which
+    body step's output was compared.
 
     Args:
         pick (Union[str, ForEachSelectorPickType]): The pick strategy,
             ``"MaxBy"`` or ``"MinBy"``.
-        field (ChildOutput): A ``ChildOutput`` reference targeting a body step
-            of the same ForEach step, drilled at least one member deep.
+        field (IterationOutput): An ``IterationOutput`` reference targeting a
+            body step of the same ForEach step, drilled at least one member
+            deep.
     """
 
     def __init__(
@@ -183,11 +188,11 @@ class ForEachSelector:
                 f"got: {type(pick)}."
             )
         if field is None:
-            raise ValueError("ForEachSelector requires 'field' (a ChildOutput reference).")
+            raise ValueError("ForEachSelector requires 'field' (an IterationOutput reference).")
         if not isinstance(field, PipelineVariable):
             raise ValueError(
-                "ForEachSelector 'field' must be a ChildOutput reference, e.g. "
-                'ChildOutput(body_step).OutputParameters["MyOutput"], '
+                "ForEachSelector 'field' must be an IterationOutput reference, e.g. "
+                'IterationOutput(body_step).OutputParameters["MyOutput"], '
                 f"got: {type(field)}."
             )
         self.pick = pick
@@ -205,19 +210,25 @@ class ForEachStep(Step):
     """ForEach step for dynamic fan-out in SageMaker Pipelines Workflows.
 
     A ForEach step takes a list of items (resolved at runtime), runs its body
-    step once per item as child steps, enforces a concurrency cap, and exposes
-    per-child outputs plus aggregate results to downstream steps.
+    step(s) once per item as child steps, enforces a concurrency cap, and
+    exposes per-iteration outputs plus aggregate results to downstream steps.
 
-    Child steps get IDs of the form ``<bodyStepName>-<index>`` (e.g.
-    ``ProcessItem-0``). Because of this, body step names must be unique across
-    all ForEach bodies in the pipeline, and no top-level step name may look
-    like ``<bodyStepName>-<digits>`` — the service rejects such collisions.
+    A body may contain multiple steps; each item spawns one child instance of
+    every body step. Child steps get IDs of the form ``<bodyStepName>-<index>``
+    (e.g. ``ProcessItem-0``). Because of this, body step names must be unique
+    across all ForEach bodies in the pipeline, and no top-level step name may
+    look like ``<bodyStepName>-<digits>`` — the service rejects such
+    collisions.
 
-    Downstream steps can reference the parent step's properties:
+    Downstream steps can reference the parent step's properties, drilling by
+    body step name to reach a specific output:
 
-    - ``properties.ChildOutputs[i].<member>`` — per-child output (delegates to
-      the body step's property schema; must be indexed)
-    - ``properties.Selected.<member>`` — output of the selector-picked child
+    - ``properties.IterationOutputs[i].<bodyStepName>.<member>`` — per-iteration
+      output for a specific body step (must be indexed; body step name is
+      required since the body may contain multiple steps)
+    - ``properties.Selected.<member>`` — output of the selector-picked
+      iteration (no body step name qualifier: the selector's ``field`` already
+      identifies which body step's output was compared)
     """
 
     def __init__(
@@ -247,12 +258,13 @@ class ForEachStep(Step):
             max_concurrency (int): REQUIRED. The maximum number of child steps
                 that run concurrently. Range: [1, 50].
             for_each_body (List[Step]): REQUIRED. The step(s) to run once per
-                item. v1 supports exactly ONE body step; the list signature is
-                future-proofing for multi-step bodies. Disallowed body step
-                types: Condition, Fail, ForEach (no nesting). Body steps may
-                reference the current item via :class:`CurrentItem`.
+                item. May contain one or more body steps; each item spawns one
+                child instance of every body step. Disallowed body step types:
+                Condition, Fail, ForEach (no nesting). Body steps may reference
+                the current item via :class:`CurrentItem`.
             selector (ForEachSelector): Optional selector that picks a single
-                child by comparing a ``ChildOutput`` field across children.
+                iteration by comparing an ``IterationOutput`` field across
+                iterations.
             display_name (str): The display name of the `ForEachStep`.
             description (str): The description of the `ForEachStep`.
             depends_on (List[Union[str, Step]]): The list of `Step` names or
@@ -273,7 +285,7 @@ class ForEachStep(Step):
         self.selector = selector
 
         root_prop = Properties(step_name=name)
-        root_prop.__dict__["ChildOutputs"] = _ChildOutputsAccessor(self)
+        root_prop.__dict__["IterationOutputs"] = _IterationOutputsAccessor(self)
         root_prop.__dict__["Selected"] = _ForEachPropertyReference(f"Steps.{name}.Selected", [self])
         self._properties = root_prop
 
@@ -316,12 +328,6 @@ class ForEachStep(Step):
             raise ValueError(
                 f"ForEach step '{name}': for_each_body must be a non-empty list " f"of steps."
             )
-        if len(for_each_body) != 1:
-            raise ValueError(
-                f"ForEach step '{name}': for_each_body currently supports exactly "
-                f"one step; got {len(for_each_body)}. Multi-step bodies are not "
-                f"yet supported by the service."
-            )
         for body_step in for_each_body:
             if not isinstance(body_step, Step):
                 raise ValueError(
@@ -348,12 +354,12 @@ class ForEachStep(Step):
                 f"instance. Got: {type(selector)}."
             )
         field_path = selector.field.expr.get("Get")
-        prefix = f"{_CHILD_OUTPUT_NAMESPACE}."
+        prefix = f"{_ITERATION_OUTPUT_NAMESPACE}."
         if not isinstance(field_path, str) or not field_path.startswith(prefix):
             raise ValueError(
-                f"ForEach step '{name}': Selector.Field must be a ChildOutput "
-                f"reference (e.g. ChildOutput(body_step).<member>); other "
-                f"namespaces are constant across children. Got: {field_path}."
+                f"ForEach step '{name}': Selector.Field must be an IterationOutput "
+                f"reference (e.g. IterationOutput(body_step).<member>); other "
+                f"namespaces are constant across iterations. Got: {field_path}."
             )
         remainder = field_path[len(prefix) :]
         match = re.match(r"^([^.\[\]]+)(.+)$", remainder)
@@ -392,6 +398,6 @@ class ForEachStep(Step):
     def properties(self):
         """A Properties object exposing the ForEach step's results.
 
-        Members: ``ChildOutputs[i]`` and ``Selected``.
+        Members: ``IterationOutputs[i].<bodyStepName>`` and ``Selected``.
         """
         return self._properties

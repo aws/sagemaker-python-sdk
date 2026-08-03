@@ -24,11 +24,11 @@ from sagemaker.core.workflow.properties import Properties
 from sagemaker.mlops.workflow.condition_step import ConditionStep
 from sagemaker.mlops.workflow.fail_step import FailStep
 from sagemaker.mlops.workflow.for_each_step import (
-    ChildOutput,
     CurrentItem,
     ForEachSelector,
     ForEachSelectorPickType,
     ForEachStep,
+    IterationOutput,
 )
 from sagemaker.mlops.workflow.lambda_step import (
     LambdaOutput,
@@ -105,7 +105,7 @@ def make_for_each_step(body_step=None, selector=None, **kwargs):
 
 
 # ---------------------------------------------------------------------------
-# CurrentItem / ChildOutput references
+# CurrentItem / IterationOutput references
 # ---------------------------------------------------------------------------
 
 
@@ -130,12 +130,17 @@ def test_current_item_has_no_referenced_steps():
     assert CurrentItem().name._referenced_steps == []
 
 
-def test_child_output_expr_from_step_and_str():
+# ---------------------------------------------------------------------------
+# IterationOutput references
+# ---------------------------------------------------------------------------
+
+
+def test_iteration_output_expr_from_step_and_str():
     body = make_lambda_body_step()
-    ref = ChildOutput(body).OutputParameters["ProcessedScore"]
-    assert ref.expr == {"Get": "ChildOutput.ProcessItem.OutputParameters['ProcessedScore']"}
-    ref_from_str = ChildOutput("ProcessItem").Loss
-    assert ref_from_str.expr == {"Get": "ChildOutput.ProcessItem.Loss"}
+    ref = IterationOutput(body).OutputParameters["ProcessedScore"]
+    assert ref.expr == {"Get": "IterationOutput.ProcessItem.OutputParameters['ProcessedScore']"}
+    ref_from_str = IterationOutput("ProcessItem").Loss
+    assert ref_from_str.expr == {"Get": "IterationOutput.ProcessItem.Loss"}
     assert ref._referenced_steps == []
 
 
@@ -170,13 +175,13 @@ def test_for_each_step_to_request_with_selector():
     body = make_lambda_body_step()
     selector = ForEachSelector(
         pick="MaxBy",
-        field=ChildOutput(body).OutputParameters["ProcessedScore"],
+        field=IterationOutput(body).OutputParameters["ProcessedScore"],
     )
     step = make_for_each_step(body_step=body, selector=selector)
     args = step.to_request()["Arguments"]
     assert args["Selector"]["Pick"] == "MaxBy"
     assert args["Selector"]["Field"].expr == {
-        "Get": "ChildOutput.ProcessItem.OutputParameters['ProcessedScore']"
+        "Get": "IterationOutput.ProcessItem.OutputParameters['ProcessedScore']"
     }
 
 
@@ -205,23 +210,27 @@ def test_step_only_arguments_excludes_body():
 # ---------------------------------------------------------------------------
 
 
-def test_for_each_step_child_outputs_property():
+def test_for_each_step_iteration_outputs_property():
     step = make_for_each_step()
-    ref = step.properties.ChildOutputs[3].OutputParameters["ResultPath"]
-    assert ref.expr == {"Get": "Steps.ForEachItems.ChildOutputs[3].OutputParameters['ResultPath']"}
+    ref = step.properties.IterationOutputs[3].ProcessItem.OutputParameters["ResultPath"]
+    assert ref.expr == {
+        "Get": "Steps.ForEachItems.IterationOutputs[3].ProcessItem.OutputParameters['ResultPath']"
+    }
     assert ref._referenced_steps == [step]
 
 
-def test_for_each_step_child_outputs_must_be_indexed():
+def test_for_each_step_iteration_outputs_must_be_indexed():
     step = make_for_each_step()
     with pytest.raises(TypeError, match="must be indexed"):
-        step.properties.ChildOutputs["ResultPath"]
+        step.properties.IterationOutputs["ResultPath"]
 
 
 def test_for_each_step_selected_property():
     step = make_for_each_step()
     ref = step.properties.Selected.OutputParameters["ProcessedScore"]
-    assert ref.expr == {"Get": "Steps.ForEachItems.Selected.OutputParameters['ProcessedScore']"}
+    assert ref.expr == {
+        "Get": "Steps.ForEachItems.Selected.OutputParameters['ProcessedScore']"
+    }
     assert ref._referenced_steps == [step]
 
 
@@ -258,14 +267,18 @@ def test_empty_body_rejected(body):
         make_for_each_step(for_each_body=body)
 
 
-def test_multi_step_body_rejected():
-    with pytest.raises(ValueError, match="exactly one step"):
-        ForEachStep(
-            name="ForEachItems",
-            iterable_items=ParameterString(name="ItemList"),
-            max_concurrency=2,
-            for_each_body=[CustomStep(name="A"), CustomStep(name="B")],
-        )
+def test_multi_step_body_accepted():
+    step_a = CustomStep(name="A")
+    step_b = CustomStep(name="B")
+    for_each = ForEachStep(
+        name="ForEachItems",
+        iterable_items=ParameterString(name="ItemList"),
+        max_concurrency=2,
+        for_each_body=[step_a, step_b],
+    )
+    assert for_each.for_each_body == [step_a, step_b]
+    request_body = for_each.to_request()["Arguments"]["ForEachBody"]
+    assert [entry["Name"] for entry in request_body] == ["A", "B"]
 
 
 def test_disallowed_body_step_types():
@@ -279,26 +292,26 @@ def test_disallowed_body_step_types():
 
 def test_selector_requires_pick_and_field():
     with pytest.raises(ValueError, match="requires 'pick'"):
-        ForEachSelector(pick=None, field=ChildOutput("ProcessItem").Loss)
+        ForEachSelector(pick=None, field=IterationOutput("ProcessItem").Loss)
     with pytest.raises(ValueError, match="requires 'field'"):
         ForEachSelector(pick="MinBy", field=None)
 
 
 def test_selector_invalid_pick():
     with pytest.raises(ValueError, match="Invalid ForEachSelector pick type"):
-        ForEachSelector(pick="Median", field=ChildOutput("ProcessItem").Loss)
+        ForEachSelector(pick="Median", field=IterationOutput("ProcessItem").Loss)
 
 
 def test_selector_pick_enum():
     selector = ForEachSelector(
-        pick=ForEachSelectorPickType.MIN_BY, field=ChildOutput("ProcessItem").Loss
+        pick=ForEachSelectorPickType.MIN_BY, field=IterationOutput("ProcessItem").Loss
     )
     assert selector.to_request()["Pick"] == "MinBy"
 
 
-def test_selector_field_must_be_child_output():
+def test_selector_field_must_be_iteration_output():
     body = make_lambda_body_step()
-    with pytest.raises(ValueError, match="must be a ChildOutput reference"):
+    with pytest.raises(ValueError, match="must be an IterationOutput reference"):
         make_for_each_step(
             body_step=body,
             selector=ForEachSelector(pick="MaxBy", field=ParameterString(name="Other")),
@@ -310,7 +323,7 @@ def test_selector_field_must_target_body_step():
     with pytest.raises(ValueError, match="must target a body step"):
         make_for_each_step(
             body_step=body,
-            selector=ForEachSelector(pick="MaxBy", field=ChildOutput("OtherStep").Loss),
+            selector=ForEachSelector(pick="MaxBy", field=IterationOutput("OtherStep").Loss),
         )
 
 
@@ -319,7 +332,7 @@ def test_selector_field_must_drill_into_member():
     with pytest.raises(ValueError, match="drill at least"):
         make_for_each_step(
             body_step=body,
-            selector=ForEachSelector(pick="MaxBy", field=ChildOutput(body)),
+            selector=ForEachSelector(pick="MaxBy", field=IterationOutput(body)),
         )
 
 
@@ -336,7 +349,7 @@ def test_pipeline_definition_wire_format(mock_session):
     body = make_lambda_body_step()
     selector = ForEachSelector(
         pick="MaxBy",
-        field=ChildOutput(body).OutputParameters["ProcessedScore"],
+        field=IterationOutput(body).OutputParameters["ProcessedScore"],
     )
     for_each = ForEachStep(
         name="ForEachItems",
@@ -359,7 +372,7 @@ def test_pipeline_definition_wire_format(mock_session):
     assert steps[0]["Arguments"]["MaxConcurrency"] == 2
     assert steps[0]["Arguments"]["Selector"] == {
         "Pick": "MaxBy",
-        "Field": {"Get": "ChildOutput.ProcessItem.OutputParameters['ProcessedScore']"},
+        "Field": {"Get": "IterationOutput.ProcessItem.OutputParameters['ProcessedScore']"},
     }
     body_request = steps[0]["Arguments"]["ForEachBody"][0]
     assert body_request["Name"] == "ProcessItem"
@@ -413,13 +426,15 @@ def test_pipeline_definition_downstream_references(mock_session):
         max_concurrency=2,
         for_each_body=[body],
         selector=ForEachSelector(
-            pick="MinBy", field=ChildOutput(body).OutputParameters["ProcessedScore"]
+            pick="MinBy", field=IterationOutput(body).OutputParameters["ProcessedScore"]
         ),
     )
     downstream = CustomStep(
         name="Consumer",
         input_data={
-            "child_0": for_each.properties.ChildOutputs[0].OutputParameters["ResultPath"],
+            "iter_0": for_each.properties.IterationOutputs[0].ProcessItem.OutputParameters[
+                "ResultPath"
+            ],
             "selected": for_each.properties.Selected.OutputParameters["ResultPath"],
         },
     )
@@ -432,8 +447,13 @@ def test_pipeline_definition_downstream_references(mock_session):
     steps = _definition_steps(pipeline)
     consumer = next(s for s in steps if s["Name"] == "Consumer")
     assert consumer["Arguments"]["input_data"] == {
-        "child_0": {"Get": "Steps.ForEachItems.ChildOutputs[0].OutputParameters['ResultPath']"},
-        "selected": {"Get": "Steps.ForEachItems.Selected.OutputParameters['ResultPath']"},
+        "iter_0": {
+            "Get": "Steps.ForEachItems.IterationOutputs[0].ProcessItem"
+            ".OutputParameters['ResultPath']"
+        },
+        "selected": {
+            "Get": "Steps.ForEachItems.Selected.OutputParameters['ResultPath']"
+        },
     }
     # dependency is inferred by the service from the Get expressions;
     # no explicit DependsOn is added for property references

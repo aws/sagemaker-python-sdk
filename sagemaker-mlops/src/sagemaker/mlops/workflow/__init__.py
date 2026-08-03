@@ -57,7 +57,7 @@ from sagemaker.mlops.workflow.for_each_step import (
     ForEachSelector,
     ForEachSelectorPickType,
     CurrentItem,
-    ChildOutput,
+    IterationOutput,
 )
 from sagemaker.mlops.workflow.lambda_step import LambdaStep, LambdaOutput
 from sagemaker.mlops.workflow.lineage_step import (
@@ -129,7 +129,7 @@ __all__ = [
     "ForEachSelector",
     "ForEachSelectorPickType",
     "CurrentItem",
-    "ChildOutput",
+    "IterationOutput",
     "LambdaStep",
     "LambdaOutput",
     "LineageAssociation",
