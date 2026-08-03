@@ -1604,3 +1604,95 @@ class TestGetSmhpInstanceTypeEnum:
     def test_returns_none_on_exception(self, mock_spec):
         mock_spec.side_effect = RuntimeError("hub content unavailable")
         assert self._call() is None
+
+
+class TestListHyperparameters:
+    """Tests for the list_hyperparameters public API."""
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    @patch('boto3.client')
+    def test_list_hyperparameters_returns_finetuning_options(self, mock_boto_client, mock_get_hub_content):
+        """list_hyperparameters returns a FineTuningOptions object with correct params."""
+        from sagemaker.train.common_utils.finetune_utils import list_hyperparameters
+        from sagemaker.train.common import FineTuningOptions
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-west-2:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params.json",
+                        "Peft": "LORA"
+                    }
+                ]
+            }
+        }
+
+        mock_s3_client = Mock()
+        mock_boto_client.return_value = mock_s3_client
+        mock_s3_client.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=json.dumps({
+                "learning_rate": {"type": "float", "default": 0.0001, "min": 5e-7, "max": 0.001, "required": True},
+                "global_batch_size": {"type": "integer", "default": 8, "required": True},
+                "max_epochs": {"type": "integer", "default": 5, "min": 1, "max": 100, "required": True},
+            }).encode()))
+        }
+
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        mock_session.boto_session.client.return_value = mock_s3_client
+
+        with patch('sagemaker.train.common_utils.finetune_utils.TrainDefaults.get_sagemaker_session', return_value=mock_session):
+            result = list_hyperparameters("test-model", "SFT", "LORA", sagemaker_session=mock_session)
+
+        assert isinstance(result, FineTuningOptions)
+        assert result.learning_rate == 0.0001
+        assert result.global_batch_size == 8
+        assert result.max_epochs == 5
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    @patch('boto3.client')
+    def test_list_hyperparameters_accepts_enum_values(self, mock_boto_client, mock_get_hub_content):
+        """list_hyperparameters accepts both string and enum values for technique/training_type."""
+        from sagemaker.train.common_utils.finetune_utils import list_hyperparameters
+        from sagemaker.train.common import CustomizationTechnique, TrainingType
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-west-2:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "DPO",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params.json",
+                        "Peft": "LORA"
+                    }
+                ]
+            }
+        }
+
+        mock_s3_client = Mock()
+        mock_boto_client.return_value = mock_s3_client
+        mock_s3_client.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=json.dumps({
+                "learning_rate": {"type": "float", "default": 0.0001, "required": True},
+            }).encode()))
+        }
+
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        mock_session.boto_session.client.return_value = mock_s3_client
+
+        with patch('sagemaker.train.common_utils.finetune_utils.TrainDefaults.get_sagemaker_session', return_value=mock_session):
+            result = list_hyperparameters(
+                "test-model",
+                CustomizationTechnique.DPO,
+                TrainingType.LORA,
+                sagemaker_session=mock_session,
+            )
+
+        assert result.learning_rate == 0.0001
