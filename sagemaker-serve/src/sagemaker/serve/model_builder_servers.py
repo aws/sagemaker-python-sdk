@@ -1014,6 +1014,24 @@ class _ModelBuilderServers(object):
         if getattr(init_kwargs, "model_reference_arn", None):
             self.model_reference_arn = init_kwargs.model_reference_arn
 
+        # Propagate additional model data sources from the JumpStart spec (e.g.
+        # speculative decoding draft models like EAGLE, LoRA adapters, or any
+        # extra S3 data channel). Without this, sources declared in the spec are
+        # silently dropped from the CreateModel call and the container fails to
+        # find the referenced artifacts at runtime.
+        additional_model_data_sources = getattr(
+            init_kwargs, "additional_model_data_sources", None
+        )
+        if isinstance(additional_model_data_sources, list) and additional_model_data_sources:
+            # Filter each source to only the keys the CreateModel API accepts.
+            # JumpStart specs may include extra metadata keys (e.g. HostingEulaKey)
+            # that the API rejects.
+            _api_keys = {"ChannelName", "S3DataSource"}
+            self.additional_model_data_sources = [
+                {key: value for key, value in source.items() if key in _api_keys}
+                for source in additional_model_data_sources
+            ]
+
         # Handle model artifacts for fine-tuned models
         if hasattr(init_kwargs, "model_data") and init_kwargs.model_data:
             if (

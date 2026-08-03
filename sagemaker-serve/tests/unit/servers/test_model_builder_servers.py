@@ -1004,6 +1004,75 @@ class TestBuildForJumpStart(unittest.TestCase):
 
         mock_create.assert_called_once()
 
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_propagates_additional_model_data_sources(
+        self, mock_create, mock_prepare, mock_init
+    ):
+        """additional_model_data_sources from the JumpStart spec are propagated
+        to the builder and filtered to only API-accepted keys."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        # JumpStart spec includes a metadata key (HostingEulaKey) that the
+        # CreateModel API does not accept; it must be filtered out.
+        mock_init_kwargs.additional_model_data_sources = [
+            {
+                "ChannelName": "draft_model",
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/eagle/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                },
+                "HostingEulaKey": None,
+            }
+        ]
+        mock_init.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.image_uri = None
+
+        self.builder._build_for_jumpstart()
+
+        self.assertEqual(
+            self.builder.additional_model_data_sources,
+            [
+                {
+                    "ChannelName": "draft_model",
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/eagle/",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                    },
+                }
+            ],
+        )
+
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_without_additional_model_data_sources(
+        self, mock_create, mock_prepare, mock_init
+    ):
+        """Models whose spec has no additional_model_data_sources are unaffected."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init_kwargs.additional_model_data_sources = None
+        mock_init.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.image_uri = None
+
+        self.builder._build_for_jumpstart()
+
+        self.assertIsNone(
+            getattr(self.builder, "additional_model_data_sources", None)
+        )
+
 
 class TestDeployWrappers(unittest.TestCase):
     """Test deploy wrapper methods."""
