@@ -1007,202 +1007,234 @@ class TestBuildForJumpStart(unittest.TestCase):
 
 
 class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
-    """User-flow tests for additional model data sources, driven by raw spec JSON.
+    """User-flow tests for additional model data sources, driven by REAL specs.
 
-    Unlike the Mock-based tests above, these tests exercise the code the way a
-    user calls it:
+    Each test calls the SDK exactly the way a customer does:
 
-        builder = ModelBuilder(model="<jumpstart-model-id>", ...)
+        builder = ModelBuilder(model="openai-reasoning-gpt-oss-20b",
+                               instance_type="ml.g7e.2xlarge", ...)
         builder.accept_eula = True   # the documented EULA knob
         builder.build()
 
-    Only the JSON-fetch boundary is mocked (the spec and manifest accessors,
-    fed from tests/unit/servers/data/jumpstart_specs.json) plus the AWS
-    boundary (_prepare_for_mode / _create_model). Everything in between --
-    JumpStartModelSpecs parsing, the factory shaping in get_init_kwargs
-    (bucket resolution, PascalCase conversion), JumpStart model-id detection,
-    and _build_for_jumpstart's EULA handling -- runs for real.
+    The spec fixtures under tests/unit/servers/data/jumpstart_specs/ are real,
+    unmodified specs captured from the production JumpStart content bucket
+    (jumpstart-cache-prod-us-west-2):
 
-    The fixture file holds one raw snake_case spec per use case (the shape
-    published to the JumpStart content bucket): public model without
-    additional sources, public model with a public source, gated model with a
-    gated source, and a public model with mixed public+gated sources.
+    - pytorch-ic-mobilenet-v2: public model, no additional data sources.
+    - openai-reasoning-gpt-oss-20b: public model whose default (lmi-optimized)
+      config carries an ungated EAGLE speculative-decoding source -- the model
+      that surfaced the propagation bug this suite guards.
+    - meta-textgeneration-llama-3-1-70b: gated model whose lmi-optimized
+      config carries a GATED draft_model source
+      (hosting_eula_key=fmhMetadata/eula/llama3_2Eula.txt).
+
+    Only two seams are patched, both once in setUp (the same seams the legacy
+    master-v2 JumpStartModel tests patched):
+
+    1. The spec-fetch boundary: JumpStartModelsAccessor.get_model_specs routes
+       by model id into the captured spec files (master-v2's
+       PROTOTYPICAL_MODEL_SPECS_DICT pattern), and _get_manifest serves the
+       captured manifest headers.
+    2. The AWS boundary: _prepare_for_mode / _create_model and a mock session.
+
+    Everything in between runs for real: JumpStart model-id detection,
+    JumpStartModelSpecs parsing, inference-config resolution, the
+    get_init_kwargs factory (image URI resolution, content-bucket injection,
+    PascalCase shaping), and _build_for_jumpstart's EULA translation.
     """
 
-    SPEC_FIXTURE_PATH = Path(__file__).parent / "data" / "jumpstart_specs.json"
-    MODEL_ID = "pytorch-ic-mobilenet-v2"
+    SPEC_DIR = Path(__file__).parent / "data" / "jumpstart_specs"
 
-    EXPECTED_PUBLIC_SOURCE = {
+    ROLE_ARN = "arn:aws:iam::123456789012:role/SageMakerRole"
+
+    # The real EAGLE source published in gpt-oss's default (lmi-optimized)
+    # config, after factory shaping: content bucket injected, PascalCase, and
+    # the null HostingEulaKey stripped by _build_for_jumpstart.
+    GPT_OSS_EAGLE_SOURCE = {
+        "ChannelName": "eagle",
+        "S3DataSource": {
+            "CompressionType": "None",
+            "S3DataType": "S3Prefix",
+            "S3Uri": "s3://jumpstart-cache-prod-us-west-2/lmi-eagle-heads/models/gpt-oss-20b-p-eagle/",
+        },
+    }
+
+    # The real gated llama-3.2-1b draft model published in llama-3-1-70b's
+    # lmi-optimized config: private content bucket, EULA acceptance folded
+    # into ModelAccessConfig, HostingEulaKey stripped.
+    LLAMA_GATED_DRAFT_SOURCE_ACCEPTED = {
         "ChannelName": "draft_model",
         "S3DataSource": {
             "CompressionType": "None",
             "S3DataType": "S3Prefix",
-            "S3Uri": "s3://jumpstart-cache-prod-us-west-2/key/to/draft/model/",
-        },
-    }
-    EXPECTED_GATED_SOURCE_ACCEPTED = {
-        "ChannelName": "gated_draft_model",
-        "S3DataSource": {
-            "CompressionType": "None",
-            "S3DataType": "S3Prefix",
-            "S3Uri": "s3://jumpstart-private-cache-prod-us-west-2/key/to/gated/draft/",
+            "S3Uri": (
+                "s3://jumpstart-private-cache-prod-us-west-2/meta-textgeneration/"
+                "meta-textgeneration-llama-3-2-1b/artifacts/inference-prepack/v1.0.0/"
+            ),
             "ModelAccessConfig": {"AcceptEula": True},
         },
     }
 
-    @classmethod
-    def setUpClass(cls):
-        with open(cls.SPEC_FIXTURE_PATH) as f:
-            cls.spec_fixture = json.load(f)
-
-    def _spec_json(self, variant):
-        """Returns the raw spec JSON for a named fixture variant."""
-        spec = json.loads(json.dumps(self.spec_fixture["base_spec"]))
-        spec.update(self.spec_fixture["variants"][variant])
-        return spec
-
-    def _make_builder(self, variant, accept_eula=None):
-        """Builds a real ModelBuilder the way a user would, with the JSON-fetch
-        boundary patched to serve the fixture variant."""
+    def setUp(self):
         from sagemaker.core.jumpstart.accessors import JumpStartModelsAccessor
         from sagemaker.core.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
         from sagemaker.serve.model_builder import ModelBuilder
 
-        spec_json = self._spec_json(variant)
+        with open(self.SPEC_DIR / "manifest.json") as f:
+            manifest = [JumpStartModelHeader(header) for header in json.load(f)]
 
-        session = Mock()
-        session.boto_region_name = "us-west-2"
-        session.get_caller_identity_arn = Mock(
-            return_value="arn:aws:iam::123456789012:role/SageMakerRole"
-        )
-        session.sagemaker_config = {}
-        session.config = None
+        spec_dir = self.SPEC_DIR
 
-        header = JumpStartModelHeader(
-            {
-                "model_id": self.MODEL_ID,
-                "version": "1.0.0",
-                "min_version": "2.49.0",
-                "spec_key": f"community_models_specs/{self.MODEL_ID}/specs_v1.0.0.json",
-            }
-        )
+        def get_captured_model_specs(*args, **kwargs):
+            """Routes spec lookups by model id into the captured real spec
+            files, like master-v2's PROTOTYPICAL_MODEL_SPECS_DICT loaders."""
+            model_id = kwargs.get("model_id") or args[1]
+            with open(spec_dir / f"{model_id}.json") as f:
+                return JumpStartModelSpecs(json.load(f))
 
         patchers = [
             patch.object(
-                JumpStartModelsAccessor,
-                "get_model_specs",
-                side_effect=lambda *a, **kw: JumpStartModelSpecs(
-                    json.loads(json.dumps(spec_json))
-                ),
+                JumpStartModelsAccessor, "get_model_specs", side_effect=get_captured_model_specs
             ),
-            patch.object(JumpStartModelsAccessor, "_get_manifest", return_value=[header]),
+            patch.object(JumpStartModelsAccessor, "_get_manifest", return_value=manifest),
             patch.object(ModelBuilder, "_prepare_for_mode", return_value=None),
             patch.object(ModelBuilder, "_create_model", return_value=Mock()),
         ]
-        for p in patchers:
-            p.start()
-            self.addCleanup(p.stop)
+        for patcher in patchers:
+            patcher.start()
+            self.addCleanup(patcher.stop)
 
-        builder = ModelBuilder(
-            model=self.MODEL_ID,
+        session = Mock()
+        session.boto_region_name = "us-west-2"
+        session.get_caller_identity_arn = Mock(return_value=self.ROLE_ARN)
+        session.sagemaker_config = {}
+        session.config = None
+        self.session = session
+
+    def _model_builder(self, model_id, instance_type=None):
+        """Constructs a ModelBuilder the way a customer does."""
+        from sagemaker.serve.model_builder import ModelBuilder
+
+        return ModelBuilder(
+            model=model_id,
             mode=Mode.SAGEMAKER_ENDPOINT,
-            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
-            sagemaker_session=session,
+            role_arn=self.ROLE_ARN,
+            sagemaker_session=self.session,
+            instance_type=instance_type,
         )
-        if accept_eula is not None:
-            builder.accept_eula = accept_eula
-        return builder
+
+    # ------------------------------------------------------------------
+    # pytorch-ic-mobilenet-v2: public model, no additional data sources
+    # ------------------------------------------------------------------
 
     def test_public_model_without_additional_sources(self):
-        """A spec with no additional data sources builds cleanly and sets none."""
-        builder = self._make_builder("public_model_no_additional_sources")
+        """The base case: a model with no additional data sources builds
+        cleanly and never sets the attribute."""
+        builder = self._model_builder("pytorch-ic-mobilenet-v2")
 
         builder.build()
 
         self.assertIsNone(getattr(builder, "additional_model_data_sources", None))
 
-    def test_public_additional_source_builds_without_accept_eula(self):
-        """A public (ungated) additional source deploys without the user ever
-        touching accept_eula; the internal HostingEulaKey is stripped."""
-        builder = self._make_builder("public_model_public_additional_sources")
+    # ------------------------------------------------------------------
+    # openai-reasoning-gpt-oss-20b: ungated EAGLE source in default config
+    # ------------------------------------------------------------------
 
-        builder.build()
-
-        self.assertEqual(
-            builder.additional_model_data_sources, [self.EXPECTED_PUBLIC_SOURCE]
-        )
-
-    def test_public_additional_source_unaffected_by_accept_eula(self):
-        """Passing accept_eula=True for a public source is harmless: no
-        ModelAccessConfig is added."""
-        builder = self._make_builder(
-            "public_model_public_additional_sources", accept_eula=True
+    def test_gpt_oss_eagle_source_propagates_without_accept_eula(self):
+        """The bug this suite guards: gpt-oss's default config ships an
+        ungated EAGLE draft model. A customer deploys it without ever touching
+        accept_eula, and the source must reach CreateModel."""
+        builder = self._model_builder(
+            "openai-reasoning-gpt-oss-20b", instance_type="ml.g7e.2xlarge"
         )
 
         builder.build()
 
         self.assertEqual(
-            builder.additional_model_data_sources, [self.EXPECTED_PUBLIC_SOURCE]
+            builder.additional_model_data_sources, [self.GPT_OSS_EAGLE_SOURCE]
         )
 
-    def test_gated_additional_source_with_accept_eula_builds(self):
-        """User sets accept_eula=True on the builder: the gated source deploys
-        with the acceptance recorded in its ModelAccessConfig."""
-        builder = self._make_builder(
-            "gated_model_gated_additional_sources", accept_eula=True
+    def test_gpt_oss_eagle_source_unaffected_by_accept_eula(self):
+        """Setting accept_eula=True for an ungated source is harmless: no
+        ModelAccessConfig is added to it."""
+        builder = self._model_builder(
+            "openai-reasoning-gpt-oss-20b", instance_type="ml.g7e.2xlarge"
         )
+        builder.accept_eula = True
 
         builder.build()
 
         self.assertEqual(
-            builder.additional_model_data_sources, [self.EXPECTED_GATED_SOURCE_ACCEPTED]
+            builder.additional_model_data_sources, [self.GPT_OSS_EAGLE_SOURCE]
         )
 
-    def test_gated_additional_source_without_accept_eula_raises(self):
-        """User never sets accept_eula: build() fails with the actionable
-        EULA error instead of silently deploying the gated source."""
-        builder = self._make_builder("gated_model_gated_additional_sources")
+    # ------------------------------------------------------------------
+    # meta-textgeneration-llama-3-1-70b: gated draft_model source in the
+    # lmi-optimized config (selected via the public set_deployment_config API)
+    # ------------------------------------------------------------------
 
-        with self.assertRaises(ValueError) as ctx:
-            builder.build()
-
-        self.assertIn("accept_eula must be set to True", str(ctx.exception))
-
-    def test_gated_additional_source_with_accept_eula_false_raises(self):
-        """User explicitly sets accept_eula=False: build() fails the same way."""
-        builder = self._make_builder(
-            "gated_model_gated_additional_sources", accept_eula=False
-        )
-
-        with self.assertRaises(ValueError) as ctx:
-            builder.build()
-
-        self.assertIn("accept_eula must be set to True", str(ctx.exception))
-
-    def test_mixed_additional_sources_with_accept_eula(self):
-        """Public + gated sources together with accept_eula=True: the public
-        source passes through untouched, the gated source gets the
+    def test_llama_gated_draft_source_with_accept_eula_builds(self):
+        """A customer selects the lmi-optimized config and accepts the EULA:
+        the gated draft model deploys with acceptance recorded in its
         ModelAccessConfig."""
-        builder = self._make_builder(
-            "public_model_mixed_additional_sources", accept_eula=True
+        builder = self._model_builder(
+            "meta-textgeneration-llama-3-1-70b", instance_type="ml.p4d.24xlarge"
         )
+        builder.set_deployment_config(
+            config_name="lmi-optimized", instance_type="ml.p4d.24xlarge"
+        )
+        builder.accept_eula = True
 
         builder.build()
 
         self.assertEqual(
             builder.additional_model_data_sources,
-            [self.EXPECTED_PUBLIC_SOURCE, self.EXPECTED_GATED_SOURCE_ACCEPTED],
+            [self.LLAMA_GATED_DRAFT_SOURCE_ACCEPTED],
         )
 
-    def test_mixed_additional_sources_without_accept_eula_raises(self):
-        """Public + gated sources together without accept_eula: the gated
-        source blocks the build."""
-        builder = self._make_builder("public_model_mixed_additional_sources")
+    def test_llama_gated_draft_source_without_accept_eula_raises(self):
+        """A customer selects the gated draft config but never accepts the
+        EULA: build() fails with the actionable error instead of silently
+        deploying the gated channel."""
+        builder = self._model_builder(
+            "meta-textgeneration-llama-3-1-70b", instance_type="ml.p4d.24xlarge"
+        )
+        builder.set_deployment_config(
+            config_name="lmi-optimized", instance_type="ml.p4d.24xlarge"
+        )
 
         with self.assertRaises(ValueError) as ctx:
             builder.build()
 
         self.assertIn("accept_eula must be set to True", str(ctx.exception))
+
+    def test_llama_gated_draft_source_with_accept_eula_false_raises(self):
+        """A customer explicitly sets accept_eula=False: build() fails the
+        same way."""
+        builder = self._model_builder(
+            "meta-textgeneration-llama-3-1-70b", instance_type="ml.p4d.24xlarge"
+        )
+        builder.set_deployment_config(
+            config_name="lmi-optimized", instance_type="ml.p4d.24xlarge"
+        )
+        builder.accept_eula = False
+
+        with self.assertRaises(ValueError) as ctx:
+            builder.build()
+
+        self.assertIn("accept_eula must be set to True", str(ctx.exception))
+
+    def test_llama_default_config_has_no_additional_sources(self):
+        """The same gated model on its default (lmi) config carries no
+        additional sources: builds without accept_eula, nothing propagated."""
+        builder = self._model_builder(
+            "meta-textgeneration-llama-3-1-70b", instance_type="ml.p4d.24xlarge"
+        )
+        builder.accept_eula = True
+
+        builder.build()
+
+        self.assertIsNone(getattr(builder, "additional_model_data_sources", None))
 
 
 class TestDeployWrappers(unittest.TestCase):
