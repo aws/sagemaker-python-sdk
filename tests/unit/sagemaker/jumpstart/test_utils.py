@@ -1812,6 +1812,110 @@ class TestConfigs:
             "ml.p3.2xlarge",
         ]
 
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_vulnerable_model_raises_by_default(
+        self,
+        patched_get_model_specs,
+    ):
+        def make_vulnerable_spec(*largs, **kwargs):
+            spec = get_base_spec_with_prototype_configs()
+            spec.inference_vulnerable = True
+            spec.inference_vulnerabilities = ["CVE-2024-11393"]
+            return spec
+
+        patched_get_model_specs.side_effect = make_vulnerable_spec
+
+        with pytest.raises(VulnerableJumpStartModelError):
+            utils.get_jumpstart_configs(
+                "mock-region", "mock-model", "mock-model-version", config_names=["gpu-inference"]
+            )
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_tolerates_vulnerable_model(
+        self,
+        patched_get_model_specs,
+    ):
+        def make_vulnerable_spec(*largs, **kwargs):
+            spec = get_base_spec_with_prototype_configs()
+            spec.inference_vulnerable = True
+            spec.inference_vulnerabilities = ["CVE-2024-11393"]
+            return spec
+
+        patched_get_model_specs.side_effect = make_vulnerable_spec
+
+        configs = utils.get_jumpstart_configs(
+            "mock-region",
+            "mock-model",
+            "mock-model-version",
+            config_names=["gpu-inference"],
+            tolerate_vulnerable_model=True,
+        )
+
+        assert configs.keys() == {"gpu-inference"}
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_deprecated_model_raises_by_default(
+        self,
+        patched_get_model_specs,
+    ):
+        def make_deprecated_spec(*largs, **kwargs):
+            spec = get_base_spec_with_prototype_configs()
+            spec.deprecated = True
+            return spec
+
+        patched_get_model_specs.side_effect = make_deprecated_spec
+
+        with pytest.raises(DeprecatedJumpStartModelError):
+            utils.get_jumpstart_configs(
+                "mock-region", "mock-model", "mock-model-version", config_names=["gpu-inference"]
+            )
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_tolerates_deprecated_model(
+        self,
+        patched_get_model_specs,
+    ):
+        def make_deprecated_spec(*largs, **kwargs):
+            spec = get_base_spec_with_prototype_configs()
+            spec.deprecated = True
+            return spec
+
+        patched_get_model_specs.side_effect = make_deprecated_spec
+
+        configs = utils.get_jumpstart_configs(
+            "mock-region",
+            "mock-model",
+            "mock-model-version",
+            config_names=["gpu-inference"],
+            tolerate_deprecated_model=True,
+        )
+
+        assert configs.keys() == {"gpu-inference"}
+
+    @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_tolerates_vulnerable_training_model(
+        self,
+        patched_get_model_specs,
+    ):
+        def make_vulnerable_spec(*largs, **kwargs):
+            spec = get_base_spec_with_prototype_configs()
+            spec.training_vulnerable = True
+            spec.training_vulnerabilities = ["CVE-2024-11393"]
+            return spec
+
+        patched_get_model_specs.side_effect = make_vulnerable_spec
+
+        configs = utils.get_jumpstart_configs(
+            "mock-region",
+            "mock-model",
+            "mock-model-version",
+            config_names=["gpu-training"],
+            scope=JumpStartScriptScope.TRAINING,
+            tolerate_vulnerable_model=True,
+        )
+
+        assert configs.keys() == {"gpu-training"}
+
 
 class TestBenchmarkStats:
     @patch("sagemaker.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
