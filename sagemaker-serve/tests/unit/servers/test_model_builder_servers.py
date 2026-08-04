@@ -1007,14 +1007,22 @@ class TestBuildForJumpStart(unittest.TestCase):
 
 
 class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
-    """User-flow tests for additional model data sources, driven by REAL specs.
+    """End-to-end tests for additional model data sources, asserting the
+    CreateModel request shape.
 
-    Each test calls the SDK exactly the way a customer does:
+    Each test uses the documented single-call customer API:
 
-        builder = ModelBuilder(model="openai-reasoning-gpt-oss-20b",
-                               instance_type="ml.g7e.2xlarge", ...)
-        builder.accept_eula = True   # the documented EULA knob
+        builder = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=JumpStartConfig(
+                model_id="...", accept_eula=True, inference_config_name="..."),
+            compute=Compute(instance_type="..."), ...)
         builder.build()
+
+    and asserts on what the SDK sends to the CreateModel API -- the
+    ``container_defs`` captured from ``sagemaker_session.create_model`` -- not
+    on builder internals. This is the request boto receives, so the assertions
+    cover the full downstream impact: primary container image, model data
+    source, and AdditionalModelDataSources.
 
     The spec fixtures under tests/unit/servers/data/jumpstart_specs/ are real,
     unmodified specs captured from the production JumpStart content bucket
@@ -1028,19 +1036,22 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
       config carries a GATED draft_model source
       (hosting_eula_key=fmhMetadata/eula/llama3_2Eula.txt).
 
-    Only two seams are patched, both once in setUp (the same seams the legacy
-    master-v2 JumpStartModel tests patched):
+    Patching is centralized in setUp on the same seams the legacy master-v2
+    JumpStartModel tests patched:
 
     1. The spec-fetch boundary: JumpStartModelsAccessor.get_model_specs routes
        by model id into the captured spec files (master-v2's
-       PROTOTYPICAL_MODEL_SPECS_DICT pattern), and _get_manifest serves the
+       PROTOTYPICAL_MODEL_SPECS_DICT pattern); _get_manifest serves the
        captured manifest headers.
-    2. The AWS boundary: _prepare_for_mode / _create_model and a mock session.
+    2. The AWS boundary: a mock session (whose create_model call is the
+       assertion target), IAM role validation, artifact staging
+       (_prepare_for_mode), and the post-create Model.get describe call.
 
     Everything in between runs for real: JumpStart model-id detection,
     JumpStartModelSpecs parsing, inference-config resolution, the
     get_init_kwargs factory (image URI resolution, content-bucket injection,
-    PascalCase shaping), and _build_for_jumpstart's EULA translation.
+    PascalCase shaping), _build_for_jumpstart's EULA translation, and
+    _prepare_container_def_base assembling the CreateModel request.
     """
 
     SPEC_DIR = Path(__file__).parent / "data" / "jumpstart_specs"
@@ -1048,9 +1059,9 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
     ROLE_ARN = "arn:aws:iam::123456789012:role/SageMakerRole"
 
     # The real EAGLE source published in gpt-oss's default (lmi-optimized)
-    # config, after factory shaping: content bucket injected, PascalCase, and
-    # the null HostingEulaKey stripped by _build_for_jumpstart.
-    GPT_OSS_EAGLE_SOURCE = {
+    # config, as it must appear in the CreateModel request: content bucket
+    # injected, PascalCase, no HostingEulaKey (the API rejects it).
+    UNGATED_EAGLE_SOURCE = {
         "ChannelName": "eagle",
         "S3DataSource": {
             "CompressionType": "None",
@@ -1060,9 +1071,10 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
     }
 
     # The real gated llama-3.2-1b draft model published in llama-3-1-70b's
-    # lmi-optimized config: private content bucket, EULA acceptance folded
-    # into ModelAccessConfig, HostingEulaKey stripped.
-    LLAMA_GATED_DRAFT_SOURCE_ACCEPTED = {
+    # lmi-optimized config, as it must appear in the CreateModel request:
+    # private content bucket, EULA acceptance folded into ModelAccessConfig,
+    # no HostingEulaKey.
+    GATED_DRAFT_SOURCE_ACCEPTED = {
         "ChannelName": "draft_model",
         "S3DataSource": {
             "CompressionType": "None",
@@ -1076,6 +1088,7 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
     }
 
     def setUp(self):
+        import sagemaker.serve.model_builder as model_builder_module
         from sagemaker.core.jumpstart.accessors import JumpStartModelsAccessor
         from sagemaker.core.jumpstart.types import JumpStartModelHeader, JumpStartModelSpecs
         from sagemaker.serve.model_builder import ModelBuilder
@@ -1098,7 +1111,10 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
             ),
             patch.object(JumpStartModelsAccessor, "_get_manifest", return_value=manifest),
             patch.object(ModelBuilder, "_prepare_for_mode", return_value=None),
-            patch.object(ModelBuilder, "_create_model", return_value=Mock()),
+            patch.object(
+                model_builder_module, "resolve_and_validate_role", return_value=self.ROLE_ARN
+            ),
+            patch.object(model_builder_module.Model, "get", return_value=Mock()),
         ]
         for patcher in patchers:
             patcher.start()
@@ -1109,132 +1125,129 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
         session.get_caller_identity_arn = Mock(return_value=self.ROLE_ARN)
         session.sagemaker_config = {}
         session.config = None
+        session.settings.include_jumpstart_tags = False
+        session.default_bucket = Mock(return_value="sagemaker-us-west-2-123456789012")
+        session.default_bucket_prefix = None
+        session.local_mode = False
         self.session = session
 
-    def _model_builder(self, model_id, instance_type=None):
-        """Constructs a ModelBuilder the way a customer does."""
+    def _build(self, model_id, accept_eula=None, inference_config_name=None, instance_type=None):
+        """The customer flow, verbatim: one from_jumpstart_config call carrying
+        the model id, EULA decision, and config selection, then build()."""
+        from sagemaker.core.jumpstart.configs import JumpStartConfig
+        from sagemaker.core.training.configs import Compute
         from sagemaker.serve.model_builder import ModelBuilder
 
-        return ModelBuilder(
-            model=model_id,
-            mode=Mode.SAGEMAKER_ENDPOINT,
+        builder = ModelBuilder.from_jumpstart_config(
+            jumpstart_config=JumpStartConfig(
+                model_id=model_id,
+                accept_eula=accept_eula,
+                inference_config_name=inference_config_name,
+            ),
             role_arn=self.ROLE_ARN,
+            compute=Compute(instance_type=instance_type) if instance_type else None,
             sagemaker_session=self.session,
-            instance_type=instance_type,
         )
-
-    # ------------------------------------------------------------------
-    # pytorch-ic-mobilenet-v2: public model, no additional data sources
-    # ------------------------------------------------------------------
-
-    def test_public_model_without_additional_sources(self):
-        """The base case: a model with no additional data sources builds
-        cleanly and never sets the attribute."""
-        builder = self._model_builder("pytorch-ic-mobilenet-v2")
-
         builder.build()
 
-        self.assertIsNone(getattr(builder, "additional_model_data_sources", None))
+    def _create_model_container_def(self):
+        """The container definition sent to the CreateModel API."""
+        self.session.create_model.assert_called_once()
+        return self.session.create_model.call_args.kwargs["container_defs"]
 
-    # ------------------------------------------------------------------
-    # openai-reasoning-gpt-oss-20b: ungated EAGLE source in default config
-    # ------------------------------------------------------------------
+    def test_model_without_additional_sources_sends_none_to_create_model(self):
+        """Base case: the CreateModel request carries no
+        AdditionalModelDataSources field at all."""
+        self._build("pytorch-ic-mobilenet-v2")
 
-    def test_gpt_oss_eagle_source_propagates_without_accept_eula(self):
-        """The bug this suite guards: gpt-oss's default config ships an
-        ungated EAGLE draft model. A customer deploys it without ever touching
-        accept_eula, and the source must reach CreateModel."""
-        builder = self._model_builder(
-            "openai-reasoning-gpt-oss-20b", instance_type="ml.g7e.2xlarge"
-        )
+        container_def = self._create_model_container_def()
+        self.assertNotIn("AdditionalModelDataSources", container_def)
 
-        builder.build()
+    def test_ungated_additional_source_reaches_create_model_without_eula(self):
+        """The bug this suite guards: an ungated speculative-decoding source
+        in the model's default config must reach CreateModel even though the
+        customer never touches accept_eula."""
+        self._build("openai-reasoning-gpt-oss-20b", instance_type="ml.g7e.2xlarge")
 
+        container_def = self._create_model_container_def()
         self.assertEqual(
-            builder.additional_model_data_sources, [self.GPT_OSS_EAGLE_SOURCE]
+            container_def["AdditionalModelDataSources"], [self.UNGATED_EAGLE_SOURCE]
         )
 
-    def test_gpt_oss_eagle_source_unaffected_by_accept_eula(self):
-        """Setting accept_eula=True for an ungated source is harmless: no
-        ModelAccessConfig is added to it."""
-        builder = self._model_builder(
-            "openai-reasoning-gpt-oss-20b", instance_type="ml.g7e.2xlarge"
+    def test_ungated_additional_source_gets_no_model_access_config(self):
+        """accept_eula=True must not add a ModelAccessConfig to an ungated
+        additional source (it applies to the primary model only)."""
+        self._build(
+            "openai-reasoning-gpt-oss-20b", accept_eula=True, instance_type="ml.g7e.2xlarge"
         )
-        builder.accept_eula = True
 
-        builder.build()
-
+        container_def = self._create_model_container_def()
         self.assertEqual(
-            builder.additional_model_data_sources, [self.GPT_OSS_EAGLE_SOURCE]
+            container_def["AdditionalModelDataSources"], [self.UNGATED_EAGLE_SOURCE]
         )
-
-    # ------------------------------------------------------------------
-    # meta-textgeneration-llama-3-1-70b: gated draft_model source in the
-    # lmi-optimized config (selected via the public set_deployment_config API)
-    # ------------------------------------------------------------------
-
-    def test_llama_gated_draft_source_with_accept_eula_builds(self):
-        """A customer selects the lmi-optimized config and accepts the EULA:
-        the gated draft model deploys with acceptance recorded in its
-        ModelAccessConfig."""
-        builder = self._model_builder(
-            "meta-textgeneration-llama-3-1-70b", instance_type="ml.p4d.24xlarge"
-        )
-        builder.set_deployment_config(
-            config_name="lmi-optimized", instance_type="ml.p4d.24xlarge"
-        )
-        builder.accept_eula = True
-
-        builder.build()
-
+        # The single accept_eula knob still covers the primary (base) model.
         self.assertEqual(
-            builder.additional_model_data_sources,
-            [self.LLAMA_GATED_DRAFT_SOURCE_ACCEPTED],
+            container_def["ModelDataSource"]["S3DataSource"]["ModelAccessConfig"],
+            {"AcceptEula": True},
         )
 
-    def test_llama_gated_draft_source_without_accept_eula_raises(self):
-        """A customer selects the gated draft config but never accepts the
-        EULA: build() fails with the actionable error instead of silently
-        deploying the gated channel."""
-        builder = self._model_builder(
-            "meta-textgeneration-llama-3-1-70b", instance_type="ml.p4d.24xlarge"
-        )
-        builder.set_deployment_config(
-            config_name="lmi-optimized", instance_type="ml.p4d.24xlarge"
+    def test_gated_additional_source_with_accepted_eula_sends_model_access_config(self):
+        """Accepting the EULA folds ModelAccessConfig into the gated
+        additional source AND the primary model in the CreateModel request."""
+        self._build(
+            "meta-textgeneration-llama-3-1-70b",
+            accept_eula=True,
+            inference_config_name="lmi-optimized",
+            instance_type="ml.p4d.24xlarge",
         )
 
+        container_def = self._create_model_container_def()
+        self.assertEqual(
+            container_def["AdditionalModelDataSources"], [self.GATED_DRAFT_SOURCE_ACCEPTED]
+        )
+        self.assertEqual(
+            container_def["ModelDataSource"]["S3DataSource"]["ModelAccessConfig"],
+            {"AcceptEula": True},
+        )
+
+    def test_gated_additional_source_without_eula_raises_and_never_calls_create_model(self):
+        """No EULA acceptance: build() fails with the actionable error and no
+        CreateModel call is ever made."""
         with self.assertRaises(ValueError) as ctx:
-            builder.build()
+            self._build(
+                "meta-textgeneration-llama-3-1-70b",
+                inference_config_name="lmi-optimized",
+                instance_type="ml.p4d.24xlarge",
+            )
 
         self.assertIn("accept_eula must be set to True", str(ctx.exception))
+        self.session.create_model.assert_not_called()
 
-    def test_llama_gated_draft_source_with_accept_eula_false_raises(self):
-        """A customer explicitly sets accept_eula=False: build() fails the
-        same way."""
-        builder = self._model_builder(
-            "meta-textgeneration-llama-3-1-70b", instance_type="ml.p4d.24xlarge"
-        )
-        builder.set_deployment_config(
-            config_name="lmi-optimized", instance_type="ml.p4d.24xlarge"
-        )
-        builder.accept_eula = False
-
+    def test_gated_additional_source_with_rejected_eula_raises_and_never_calls_create_model(self):
+        """Explicit accept_eula=False fails the same way."""
         with self.assertRaises(ValueError) as ctx:
-            builder.build()
+            self._build(
+                "meta-textgeneration-llama-3-1-70b",
+                accept_eula=False,
+                inference_config_name="lmi-optimized",
+                instance_type="ml.p4d.24xlarge",
+            )
 
         self.assertIn("accept_eula must be set to True", str(ctx.exception))
+        self.session.create_model.assert_not_called()
 
-    def test_llama_default_config_has_no_additional_sources(self):
-        """The same gated model on its default (lmi) config carries no
-        additional sources: builds without accept_eula, nothing propagated."""
-        builder = self._model_builder(
-            "meta-textgeneration-llama-3-1-70b", instance_type="ml.p4d.24xlarge"
+    def test_unselected_config_sources_do_not_leak_into_create_model(self):
+        """Config resolution gates which sources apply: the same gated model on
+        its default (lmi) config has no additional sources, so the CreateModel
+        request must not carry the lmi-optimized config's gated draft model."""
+        self._build(
+            "meta-textgeneration-llama-3-1-70b",
+            accept_eula=True,
+            instance_type="ml.p4d.24xlarge",
         )
-        builder.accept_eula = True
 
-        builder.build()
-
-        self.assertIsNone(getattr(builder, "additional_model_data_sources", None))
+        container_def = self._create_model_container_def()
+        self.assertNotIn("AdditionalModelDataSources", container_def)
 
 
 class TestDeployWrappers(unittest.TestCase):
