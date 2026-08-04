@@ -3,6 +3,45 @@
 Manages EventBridge rules that route SageMaker Training Job status change
 events to user-provided SNS topics. Supports SMTJ (serverless and serverful)
 training jobs only.
+
+Prerequisites:
+    Before using notifications, you need an SNS topic with a policy that allows
+    EventBridge to publish to it. You can create one via the AWS Console, CLI,
+    or CloudFormation/CDK:
+
+    **AWS CLI example**::
+
+        # Create the topic
+        aws sns create-topic --name my-training-alerts
+
+        # Allow EventBridge to publish to it
+        aws sns set-topic-attributes \\
+            --topic-arn arn:aws:sns:<region>:<account-id>:my-training-alerts \\
+            --attribute-name Policy \\
+            --attribute-value '{
+                "Version": "2008-10-17",
+                "Statement": [{
+                    "Sid": "AllowEventBridgePublish",
+                    "Effect": "Allow",
+                    "Principal": {"Service": "events.amazonaws.com"},
+                    "Action": "SNS:Publish",
+                    "Resource": "arn:aws:sns:<region>:<account-id>:my-training-alerts",
+                    "Condition": {"StringEquals": {"AWS:SourceAccount": "<account-id>"}}
+                }]
+            }'
+
+        # Subscribe your email
+        aws sns subscribe \\
+            --topic-arn arn:aws:sns:<region>:<account-id>:my-training-alerts \\
+            --protocol email \\
+            --notification-endpoint you@example.com
+
+    Then pass the topic ARN when constructing a trainer::
+
+        trainer = SFTTrainer(
+            ...,
+            notifications={"sns_topic_arn": "arn:aws:sns:<region>:<account-id>:my-training-alerts"},
+        )
 """
 
 from __future__ import absolute_import
@@ -148,85 +187,6 @@ def _validate_sns_topic(sns_client, topic_arn: str) -> None:
                 "Ensure you have sns:GetTopicAttributes permission."
             ) from e
         raise
-
-
-def _build_topic_policy(topic_arn: str, account_id: str) -> str:
-    """Build the SNS topic access policy for EventBridge notifications.
-
-    Includes the default owner statement (standard SNS actions scoped to the
-    topic's own account via ``AWS:SourceAccount``) plus an explicit statement
-    granting the EventBridge service principal ``SNS:Publish``.
-
-    Args:
-        topic_arn: The ARN of the SNS topic.
-        account_id: The AWS account ID that owns the topic.
-
-    Returns:
-        JSON string of the topic access policy.
-    """
-    policy = {
-        "Version": "2008-10-17",
-        "Id": "SageMakerNotificationsTopicPolicy",
-        "Statement": [
-            {
-                "Sid": "SNSTopicAdministration",
-                "Effect": "Allow",
-                "Principal": {"AWS": "*"},
-                "Action": [
-                    "SNS:Publish",
-                    "SNS:RemovePermission",
-                    "SNS:SetTopicAttributes",
-                    "SNS:DeleteTopic",
-                    "SNS:ListSubscriptionsByTopic",
-                    "SNS:GetTopicAttributes",
-                    "SNS:AddPermission",
-                    "SNS:Subscribe",
-                ],
-                "Resource": topic_arn,
-                "Condition": {"StringEquals": {"AWS:SourceAccount": account_id}},
-            },
-            {
-                "Sid": "AllowEventBridgePublish",
-                "Effect": "Allow",
-                "Principal": {"Service": "events.amazonaws.com"},
-                "Action": "SNS:Publish",
-                "Resource": topic_arn,
-                "Condition": {"StringEquals": {"AWS:SourceAccount": account_id}},
-            },
-        ],
-    }
-    return json.dumps(policy)
-
-
-def create_notification_topic(topic_name: str, sagemaker_session) -> str:
-    """Create an SNS topic configured for EventBridge notifications.
-
-    Creates a new SNS topic and sets an access policy that allows EventBridge
-    in the same account to publish to it. The returned ARN can be passed
-    straight to :func:`enable_notifications`.
-
-    Args:
-        topic_name: Name of the SNS topic to create.
-        sagemaker_session: SageMaker session (provides boto_session).
-
-    Returns:
-        The ARN of the created SNS topic.
-    """
-    region_name = sagemaker_session.boto_session.region_name
-    sns_client = sagemaker_session.boto_session.client("sns", region_name=region_name)
-
-    response = sns_client.create_topic(Name=topic_name)
-    topic_arn = response["TopicArn"]
-    # topic ARN: arn:aws:sns:<region>:<account_id>:<name>
-    account_id = topic_arn.split(":")[4]
-
-    policy = _build_topic_policy(topic_arn, account_id)
-    sns_client.set_topic_attributes(
-        TopicArn=topic_arn, AttributeName="Policy", AttributeValue=policy
-    )
-
-    logger.info(f"Created SNS topic with EventBridge publish policy: {topic_arn}")
-    return topic_arn
 
 
 def enable_notifications(

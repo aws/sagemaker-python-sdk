@@ -627,7 +627,7 @@ class BaseTrainer(ABC):
             event_bus_arn=event_bus_arn,
         )
 
-    def stream_logs(self, poll: int = 5, start_time: Optional[Any] = None, num_lines: Optional[int] = None) -> None:
+    def stream_logs(self, poll: int = 5, start_time: Optional[Any] = None, tail_lines: Optional[int] = None) -> None:
         """Stream CloudWatch logs in real-time (like ``kubectl logs -f``).
 
         Continuously polls for new log events and prints them as they arrive.
@@ -641,10 +641,13 @@ class BaseTrainer(ABC):
                 attaching to a job that's already running. If not provided,
                 auto-resolved from the training job's start time (SMTJ) or
                 defaults to now (HyperPod).
-            num_lines: Optional maximum number of log lines to print. When
-                specified, streaming stops after this many lines have been
-                printed. Useful for long jobs where the full log is too verbose.
-                If not provided, streams all logs until the job completes.
+            tail_lines: Optional maximum number of most recent log lines to
+                print. Logs are returned in chronological order; when specified,
+                only the last ``tail_lines`` entries are shown (similar to
+                ``kubectl logs --tail``). Useful for quickly checking the latest
+                output of long-running jobs without scrolling through the full
+                history. If not provided, streams all logs until the job
+                completes.
 
         Raises:
             ValueError: If no training job has been run yet.
@@ -678,11 +681,11 @@ class BaseTrainer(ABC):
         compute = getattr(self, 'compute', None)
 
         if isinstance(compute, HyperPodCompute):
-            self._stream_logs_smhp(training_job, compute, poll, start_time_ms, num_lines=num_lines)
+            self._stream_logs_smhp(training_job, compute, poll, start_time_ms, tail_lines=tail_lines)
         else:
-            self._stream_logs_smtj(training_job, poll, start_time_ms, num_lines=num_lines)
+            self._stream_logs_smtj(training_job, poll, start_time_ms, tail_lines=tail_lines)
 
-    def _stream_logs_smtj(self, training_job, poll: int, start_time_ms=None, num_lines: Optional[int] = None) -> None:
+    def _stream_logs_smtj(self, training_job, poll: int, start_time_ms=None, tail_lines: Optional[int] = None) -> None:
         """Stream logs for an SMTJ training job."""
         from sagemaker.train.common_utils.log_streamer import (
             LogStreamer,
@@ -714,9 +717,9 @@ class BaseTrainer(ABC):
             job = TrainingJob.get(training_job_name=job_name)
             return job.training_job_status
 
-        stream_log_loop(streamer, poll, _get_status, num_lines=num_lines)
+        stream_log_loop(streamer, poll, _get_status, tail_lines=tail_lines)
 
-    def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None, num_lines: Optional[int] = None) -> None:
+    def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None, tail_lines: Optional[int] = None) -> None:
         """Stream logs for a HyperPod job using filter_log_events polling."""
 
         if isinstance(training_job, str):
@@ -774,8 +777,8 @@ class BaseTrainer(ABC):
                         if message:
                             print(f"{_CW_PREFIX}{message}")
                             lines_printed += 1
-                            if num_lines and lines_printed >= num_lines:
-                                logger.info(f"Reached num_lines limit ({num_lines}). Stopping log stream.")
+                            if tail_lines and lines_printed >= tail_lines:
+                                logger.info(f"Reached tail_lines limit ({tail_lines}). Stopping log stream.")
                                 return
                         ts = event.get("timestamp", 0)
                         if ts > last_timestamp:
@@ -812,8 +815,14 @@ class BaseTrainer(ABC):
                 logger.info("Log streaming stopped by user.")
                 return
 
-    def _validate_instance_count(self, instance_count, sagemaker_session):
-        """Validate instance/node count against allowed values from SMHP recipe."""
+    def _validate_instance_count(self, instance_count, sagemaker_session, compute):
+        """Validate instance/node count against allowed values from SMHP recipe.
+
+        For HyperPod compute, raises ValueError on mismatch since the recipe's
+        node count constraints are hard requirements for distributed training.
+        For SMTJ compute, logs a warning instead since SMTJ may support counts
+        not listed in the SMHP recipe depending on the model.
+        """
         smhp_replicas_enum = _get_smhp_replicas_enum(
             model_name=self._model_name,
             customization_technique=self._customization_technique,
@@ -821,10 +830,18 @@ class BaseTrainer(ABC):
             sagemaker_session=sagemaker_session,
         )
         if smhp_replicas_enum and instance_count not in smhp_replicas_enum:
-            raise ValueError(
-                f"Node/Instance count '{instance_count}' is not supported. "
-                f"Allowed values: {sorted(smhp_replicas_enum)}."
-            )
+            if isinstance(compute, HyperPodCompute):
+                raise ValueError(
+                    f"Node/Instance count '{instance_count}' is not supported. "
+                    f"Allowed values: {sorted(smhp_replicas_enum)}."
+                )
+            else:
+                logger.warning(
+                    f"Instance count '{instance_count}' is not in the recommended values "
+                    f"{sorted(smhp_replicas_enum)} from the model recipe. "
+                    f"This may or may not work depending on the model. "
+                    f"Proceeding anyway for SMTJ compute."
+                )
         return smhp_replicas_enum
 
     def _validate_instance_type(self, instance_type, sagemaker_session):
@@ -954,7 +971,7 @@ class BaseTrainer(ABC):
             )
 
         # Validate instance count against allowed values from SMHP recipe.
-        smhp_replicas_enum = self._validate_instance_count(compute.instance_count, sagemaker_session)
+        smhp_replicas_enum = self._validate_instance_count(compute.instance_count, sagemaker_session, compute)
 
         if smhp_replicas_enum:
             override_spec.setdefault("replicas", {})["enum"] = smhp_replicas_enum
@@ -1436,7 +1453,7 @@ class BaseTrainer(ABC):
         job_base_name = self.base_job_name or f"{self._model_name}-{self._customization_technique}"
 
         # Validate node_count against allowed values from SMHP recipe
-        self._validate_instance_count(compute.node_count, sagemaker_session)
+        self._validate_instance_count(compute.node_count, sagemaker_session, compute)
 
         # Resolve and validate the recipe (3-level merge: base → user recipe → overrides)
         try:
