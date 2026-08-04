@@ -3072,47 +3072,6 @@ def _optimization_job_status(sagemaker_client, job_name):
     return desc
 
 
-def _apply_accept_eula_to_additional_model_data_sources(additional_model_data_sources, accept_eula):
-    """Apply EULA acceptance to additional model data sources.
-
-    This is the additional-source counterpart of the primary model handling in
-    ``container_def`` below, driven by the same ``accept_eula`` flag. Sources
-    resolved from JumpStart specs may carry a ``HostingEulaKey``: a truthy value
-    marks a gated source that requires explicit license acceptance. Acceptance
-    is folded into the source's ``S3DataSource.ModelAccessConfig`` and a gated
-    source without acceptance raises before any request is made. The
-    ``HostingEulaKey`` itself is JumpStart-internal metadata the CreateModel
-    API rejects, so it is always removed.
-
-    Args:
-        additional_model_data_sources (list[dict]): AdditionalModelDataSources
-            entries, possibly carrying JumpStart ``HostingEulaKey`` metadata.
-        accept_eula (bool): Whether model terms of use have been accepted.
-
-    Returns:
-        list[dict]: The sources in CreateModel API shape.
-
-    Raises:
-        ValueError: If a gated source is present and ``accept_eula`` is not True.
-    """
-    applied_sources = []
-    for source in additional_model_data_sources:
-        applied_source = dict(source)
-        if applied_source.pop("HostingEulaKey", None):
-            if not accept_eula:
-                raise ValueError(
-                    "accept_eula must be set to True to deploy this model. "
-                    "Please set accept_eula=True on the ModelBuilder instance "
-                    "to confirm you have read and accepted the end-user license "
-                    "agreement for this model."
-                )
-            s3_data_source = dict(applied_source.get("S3DataSource", {}))
-            s3_data_source["ModelAccessConfig"] = {"AcceptEula": True}
-            applied_source["S3DataSource"] = s3_data_source
-        applied_sources.append(applied_source)
-    return applied_sources
-
-
 def container_def(
     image_uri,
     model_data_url=None,
@@ -3156,13 +3115,7 @@ def container_def(
     c_def = {"Image": image_uri, "Environment": env}
 
     if additional_model_data_sources:
-        c_def["AdditionalModelDataSources"] = (
-            _apply_accept_eula_to_additional_model_data_sources(
-                additional_model_data_sources, accept_eula
-            )
-            if isinstance(additional_model_data_sources, list)
-            else additional_model_data_sources
-        )
+        c_def["AdditionalModelDataSources"] = additional_model_data_sources
 
     if isinstance(model_data_url, str) and (
         not (model_data_url.startswith("s3://") and model_data_url.endswith("tar.gz"))

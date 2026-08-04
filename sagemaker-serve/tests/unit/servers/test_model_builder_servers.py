@@ -1050,8 +1050,9 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
     Everything in between runs for real: JumpStart model-id detection,
     JumpStartModelSpecs parsing, inference-config resolution, the
     get_init_kwargs factory (image URI resolution, content-bucket injection,
-    PascalCase shaping), _build_for_jumpstart's EULA translation, and
-    _prepare_container_def_base assembling the CreateModel request.
+    PascalCase shaping), the propagation in _build_for_jumpstart, the
+    accept_eula application in container_def (shared with the primary model),
+    and _prepare_container_def_base assembling the CreateModel request.
     """
 
     SPEC_DIR = Path(__file__).parent / "data" / "jumpstart_specs"
@@ -1078,7 +1079,7 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
         return sources[0]
 
     @classmethod
-    def _expected_create_model_source(cls, model_id, bucket, accept_eula=False):
+    def _expected_create_model_source(cls, model_id, bucket, accept_eula=None):
         """The shape the CreateModel request must carry for the fixture's
         source. Data values (channel name, compression, data type, key prefix)
         come from the spec fixture so it stays the single source of truth; the
@@ -1088,8 +1089,8 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
         - snake_case spec keys become the PascalCase API keys
         - the bucket-less key prefix resolves into the given content bucket
         - HostingEulaKey never appears (the API rejects it)
-        - EULA acceptance, when given, is folded into
-          S3DataSource.ModelAccessConfig
+        - accept_eula, when set, is folded into S3DataSource.ModelAccessConfig
+          exactly like the primary model's ModelDataSource
         """
         raw = cls._spec_additional_source(model_id)
         expected = {
@@ -1100,8 +1101,8 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
                 "S3Uri": f"s3://{bucket}/{raw['s3_data_source']['s3_uri']}",
             },
         }
-        if accept_eula:
-            expected["S3DataSource"]["ModelAccessConfig"] = {"AcceptEula": True}
+        if accept_eula is not None:
+            expected["S3DataSource"]["ModelAccessConfig"] = {"AcceptEula": accept_eula}
         return expected
 
     def setUp(self):
@@ -1196,9 +1197,12 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
             ],
         )
 
-    def test_ungated_additional_source_gets_no_model_access_config(self):
-        """accept_eula=True must not add a ModelAccessConfig to an ungated
-        additional source (it applies to the primary model only)."""
+    def test_accept_eula_applies_to_every_model_data_source_uniformly(self):
+        """The single accept_eula knob folds the same ModelAccessConfig into
+        the primary model AND each additional source, exactly like the primary
+        model's ModelDataSource handling. Gatedness is not the SDK's call: the
+        service determines it from the artifact's bucket and ignores the config
+        on ungated sources."""
         self._build(
             "openai-reasoning-gpt-oss-20b", accept_eula=True, instance_type="ml.g7e.2xlarge"
         )
@@ -1208,11 +1212,12 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
             container_def["AdditionalModelDataSources"],
             [
                 self._expected_create_model_source(
-                    "openai-reasoning-gpt-oss-20b", bucket=self.PUBLIC_CONTENT_BUCKET
+                    "openai-reasoning-gpt-oss-20b",
+                    bucket=self.PUBLIC_CONTENT_BUCKET,
+                    accept_eula=True,
                 )
             ],
         )
-        # The single accept_eula knob still covers the primary (base) model.
         self.assertEqual(
             container_def["ModelDataSource"]["S3DataSource"]["ModelAccessConfig"],
             {"AcceptEula": True},
@@ -1244,31 +1249,53 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
             {"AcceptEula": True},
         )
 
-    def test_gated_additional_source_without_eula_raises_and_never_calls_create_model(self):
-        """No EULA acceptance: build() fails with the actionable error and no
-        CreateModel call is ever made."""
-        with self.assertRaises(ValueError) as ctx:
-            self._build(
-                "meta-textgeneration-llama-3-1-70b",
-                inference_config_name="lmi-optimized",
-                instance_type="ml.p4d.24xlarge",
-            )
+    def test_gated_additional_source_without_eula_sends_no_model_access_config(self):
+        """No EULA decision: the request carries the gated source without any
+        ModelAccessConfig. Enforcement is the service's: the SageMaker control
+        plane resolves the private-bucket URI as gated and rejects CreateModel
+        with an EULA validation error, the same as for a gated primary model."""
+        self._build(
+            "meta-textgeneration-llama-3-1-70b",
+            inference_config_name="lmi-optimized",
+            instance_type="ml.p4d.24xlarge",
+        )
 
-        self.assertIn("accept_eula must be set to True", str(ctx.exception))
-        self.session.create_model.assert_not_called()
+        container_def = self._create_model_container_def()
+        self.assertEqual(
+            container_def["AdditionalModelDataSources"],
+            [
+                self._expected_create_model_source(
+                    "meta-textgeneration-llama-3-1-70b", bucket=self.PRIVATE_CONTENT_BUCKET
+                )
+            ],
+        )
 
-    def test_gated_additional_source_with_rejected_eula_raises_and_never_calls_create_model(self):
-        """Explicit accept_eula=False fails the same way."""
-        with self.assertRaises(ValueError) as ctx:
-            self._build(
-                "meta-textgeneration-llama-3-1-70b",
-                accept_eula=False,
-                inference_config_name="lmi-optimized",
-                instance_type="ml.p4d.24xlarge",
-            )
+    def test_gated_additional_source_with_rejected_eula_sends_acceptance_false(self):
+        """Explicit accept_eula=False is transmitted faithfully as
+        ModelAccessConfig={"AcceptEula": False} on every source, exactly like
+        the primary model. The service rejects the gated sources."""
+        self._build(
+            "meta-textgeneration-llama-3-1-70b",
+            accept_eula=False,
+            inference_config_name="lmi-optimized",
+            instance_type="ml.p4d.24xlarge",
+        )
 
-        self.assertIn("accept_eula must be set to True", str(ctx.exception))
-        self.session.create_model.assert_not_called()
+        container_def = self._create_model_container_def()
+        self.assertEqual(
+            container_def["AdditionalModelDataSources"],
+            [
+                self._expected_create_model_source(
+                    "meta-textgeneration-llama-3-1-70b",
+                    bucket=self.PRIVATE_CONTENT_BUCKET,
+                    accept_eula=False,
+                )
+            ],
+        )
+        self.assertEqual(
+            container_def["ModelDataSource"]["S3DataSource"]["ModelAccessConfig"],
+            {"AcceptEula": False},
+        )
 
     def test_unselected_config_sources_do_not_leak_into_create_model(self):
         """Config resolution gates which sources apply: the same gated model on
