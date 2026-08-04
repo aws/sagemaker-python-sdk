@@ -71,6 +71,14 @@ class StepTypeEnum(Enum):
     EMR = "EMR"
     FAIL = "Fail"
     AUTOML = "AutoML"
+    ENDPOINT_CONFIG = "EndpointConfig"
+    ENDPOINT = "Endpoint"
+    INFERENCE_COMPONENT = "InferenceComponent"
+    BEDROCK_CUSTOM_MODEL = "BedrockCustomModel"
+    BEDROCK_CUSTOM_MODEL_DEPLOYMENT = "BedrockCustomModelDeployment"
+    BEDROCK_MODEL_IMPORT = "BedrockModelImport"
+    BEDROCK_PROVISIONED_MODEL_THROUGHPUT = "BedrockProvisionedModelThroughput"
+    LINEAGE = "Lineage"
 
 
 class Step(Entity):
