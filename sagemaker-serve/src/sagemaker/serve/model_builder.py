@@ -3075,7 +3075,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         self.sagemaker_session = (
             sagemaker_session or self.sagemaker_session or self._create_session_with_region()
         )
-        self.sagemaker_session.settings._local_download_dir = self.model_path
+        if isinstance(self.model_path, str) and not self.model_path.startswith("s3://"):
+            os.makedirs(self.model_path, exist_ok=True)
+            self.sagemaker_session.settings._local_download_dir = self.model_path
 
         client = self.sagemaker_session.sagemaker_client
         client._user_agent_creator.to_string = self._user_agent_decorator(
