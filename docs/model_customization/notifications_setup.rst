@@ -49,8 +49,9 @@ The topic needs a resource policy granting EventBridge publish access.
 
 **AWS Console**
 
-1. Open your topic → **Access policy** tab → **Edit**
-2. Add this statement to the policy's ``Statement`` array:
+1. Go to **Amazon SNS** → **Topics** → open your topic → **Access policy** tab → **Edit**
+2. Add this statement to the policy's ``Statement`` array (replace the ARN and
+   account ID with your own SNS topic ARN and AWS account ID):
 
 .. code-block:: json
 
@@ -64,6 +65,12 @@ The topic needs a resource policy granting EventBridge publish access.
            "StringEquals": {"AWS:SourceAccount": "123456789012"}
        }
    }
+
+.. note::
+
+   Replace ``arn:aws:sns:us-east-1:123456789012:my-training-alerts`` with your
+   actual SNS topic ARN, and ``123456789012`` with your AWS account ID. These
+   must match so that only EventBridge in your account can publish to your topic.
 
 **AWS CLI**
 
@@ -189,7 +196,8 @@ Delete a rule:
 Required IAM Permissions
 --------------------------
 
-The caller (your IAM role or user) needs these permissions:
+The caller (your IAM role or user) needs these permissions. Replace the SNS
+resource ARN with your actual topic ARN:
 
 .. code-block:: json
 
@@ -215,6 +223,12 @@ The caller (your IAM role or user) needs these permissions:
            }
        ]
    }
+
+.. note::
+
+   The ``sns:GetTopicAttributes`` resource must match the SNS topic you created
+   in Step 1. You can use a wildcard (``arn:aws:sns:*:*:*``) for broader access
+   or scope it to your specific topic ARN for least privilege.
 
 Troubleshooting
 -----------------
