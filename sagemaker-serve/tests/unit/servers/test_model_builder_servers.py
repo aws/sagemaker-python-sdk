@@ -1011,13 +1011,14 @@ class TestBuildForJumpStart(unittest.TestCase):
         self, mock_create, mock_prepare, mock_init
     ):
         """additional_model_data_sources from the JumpStart spec are propagated
-        to the builder and filtered to only API-accepted keys."""
+        to the builder with the JumpStart-internal HostingEulaKey metadata
+        stripped (mirroring _add_model_access_configs_to_model_data_sources)."""
         mock_init_kwargs = Mock()
         mock_init_kwargs.image_uri = "djl-inference:0.21.0"
         mock_init_kwargs.env = {}
         mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
-        # JumpStart spec includes a metadata key (HostingEulaKey) that the
-        # CreateModel API does not accept; it must be filtered out.
+        # JumpStart spec includes an internal metadata key (HostingEulaKey) that
+        # the CreateModel API does not accept; it must be stripped.
         mock_init_kwargs.additional_model_data_sources = [
             {
                 "ChannelName": "draft_model",
@@ -1071,6 +1072,391 @@ class TestBuildForJumpStart(unittest.TestCase):
 
         self.assertIsNone(
             getattr(self.builder, "additional_model_data_sources", None)
+        )
+
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_gated_additional_model_data_source_with_accept_eula(
+        self, mock_create, mock_prepare, mock_init
+    ):
+        """A gated additional source (truthy HostingEulaKey) has the acceptance
+        folded into its ModelAccessConfig when accept_eula is set, mirroring the
+        base model's EULA handling."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init_kwargs.additional_model_data_sources = [
+            {
+                "ChannelName": "draft_model",
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/gated/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                },
+                "HostingEulaKey": "fmhMetadata/eula/llama3Eula.txt",
+            }
+        ]
+        mock_init.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.image_uri = None
+        self.builder.accept_eula = True
+
+        self.builder._build_for_jumpstart()
+
+        self.assertEqual(
+            self.builder.additional_model_data_sources,
+            [
+                {
+                    "ChannelName": "draft_model",
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/gated/",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                        "ModelAccessConfig": {"AcceptEula": True},
+                    },
+                }
+            ],
+        )
+
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_gated_additional_model_data_source_without_accept_eula_raises(
+        self, mock_create, mock_prepare, mock_init
+    ):
+        """A gated additional source without accept_eula raises, matching the
+        base model's EULA enforcement."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init_kwargs.additional_model_data_sources = [
+            {
+                "ChannelName": "draft_model",
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/gated/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                },
+                "HostingEulaKey": "fmhMetadata/eula/llama3Eula.txt",
+            }
+        ]
+        mock_init.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.image_uri = None
+        self.builder.accept_eula = None
+
+        with self.assertRaises(ValueError) as ctx:
+            self.builder._build_for_jumpstart()
+        self.assertIn("accept_eula must be set to True", str(ctx.exception))
+
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_multiple_public_additional_model_data_sources_pass_through(
+        self, mock_create, mock_prepare, mock_init
+    ):
+        """Multiple ungated additional sources are all propagated with only the
+        HostingEulaKey metadata stripped."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init_kwargs.additional_model_data_sources = [
+            {
+                "ChannelName": "draft_model",
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/eagle/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                },
+                "HostingEulaKey": None,
+            },
+            {
+                "ChannelName": "scripts",
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/scripts/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                },
+                "HostingEulaKey": None,
+            },
+        ]
+        mock_init.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.image_uri = None
+
+        self.builder._build_for_jumpstart()
+
+        self.assertEqual(
+            self.builder.additional_model_data_sources,
+            [
+                {
+                    "ChannelName": "draft_model",
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/eagle/",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                    },
+                },
+                {
+                    "ChannelName": "scripts",
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/scripts/",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                    },
+                },
+            ],
+        )
+
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_public_additional_model_data_source_ignores_accept_eula(
+        self, mock_create, mock_prepare, mock_init
+    ):
+        """accept_eula on an ungated additional source is ignored: no
+        ModelAccessConfig is added (mirrors the v2 helper, which only applies
+        access configs to gated sources)."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init_kwargs.additional_model_data_sources = [
+            {
+                "ChannelName": "draft_model",
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/eagle/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                },
+                "HostingEulaKey": None,
+            }
+        ]
+        mock_init.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.image_uri = None
+        self.builder.accept_eula = True
+
+        self.builder._build_for_jumpstart()
+
+        self.assertEqual(
+            self.builder.additional_model_data_sources,
+            [
+                {
+                    "ChannelName": "draft_model",
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/eagle/",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                    },
+                }
+            ],
+        )
+
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_mixed_additional_model_data_sources_with_accept_eula(
+        self, mock_create, mock_prepare, mock_init
+    ):
+        """With a mix of ungated and gated sources and accept_eula=True, the
+        ungated source passes through untouched while the gated source gets
+        ModelAccessConfig folded into its S3DataSource."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init_kwargs.additional_model_data_sources = [
+            {
+                "ChannelName": "draft_model",
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/eagle/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                },
+                "HostingEulaKey": None,
+            },
+            {
+                "ChannelName": "gated_draft_model",
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/gated/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                },
+                "HostingEulaKey": "fmhMetadata/eula/llama3Eula.txt",
+            },
+        ]
+        mock_init.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.image_uri = None
+        self.builder.accept_eula = True
+
+        self.builder._build_for_jumpstart()
+
+        self.assertEqual(
+            self.builder.additional_model_data_sources,
+            [
+                {
+                    "ChannelName": "draft_model",
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/eagle/",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                    },
+                },
+                {
+                    "ChannelName": "gated_draft_model",
+                    "S3DataSource": {
+                        "S3Uri": "s3://bucket/gated/",
+                        "S3DataType": "S3Prefix",
+                        "CompressionType": "None",
+                        "ModelAccessConfig": {"AcceptEula": True},
+                    },
+                },
+            ],
+        )
+
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_gated_additional_model_data_source_accept_eula_false_raises(
+        self, mock_create, mock_prepare, mock_init
+    ):
+        """An explicit accept_eula=False on a gated additional source raises,
+        matching the v2 helper's rejection of a false acceptance."""
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init_kwargs.additional_model_data_sources = [
+            {
+                "ChannelName": "gated_draft_model",
+                "S3DataSource": {
+                    "S3Uri": "s3://bucket/gated/",
+                    "S3DataType": "S3Prefix",
+                    "CompressionType": "None",
+                },
+                "HostingEulaKey": "fmhMetadata/eula/llama3Eula.txt",
+            }
+        ]
+        mock_init.return_value = mock_init_kwargs
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.image_uri = None
+        self.builder.accept_eula = False
+
+        with self.assertRaises(ValueError) as ctx:
+            self.builder._build_for_jumpstart()
+        self.assertIn("accept_eula must be set to True", str(ctx.exception))
+
+    @patch("sagemaker.core.jumpstart.factory.utils.get_init_kwargs")
+    @patch.object(MockModelBuilderServers, "_prepare_for_mode")
+    @patch.object(MockModelBuilderServers, "_create_model")
+    def test_build_additional_model_data_sources_from_raw_spec_json(
+        self, mock_create, mock_prepare, mock_init
+    ):
+        """End-to-end from a raw JumpStart spec JSON: the real
+        JumpStartModelSpecs parsing and the real factory shaping helper
+        (_add_additional_model_data_sources_to_kwargs) produce the API-shape
+        init kwargs, and _build_for_jumpstart translates them into the final
+        CreateModel shape (HostingEulaKey stripped, EULA acceptance folded
+        into the gated source's ModelAccessConfig)."""
+        from sagemaker.core.jumpstart.factory.utils import (
+            _add_additional_model_data_sources_to_kwargs,
+        )
+        from sagemaker.core.jumpstart.types import JumpStartModelSpecs
+
+        # Raw spec JSON in the snake_case shape published to the JumpStart
+        # content bucket (hosting_additional_data_sources.speculative_decoding).
+        raw_spec_json = {
+            "model_id": "pytorch-ic-mobilenet-v2",
+            "hosting_additional_data_sources": {
+                "speculative_decoding": [
+                    {
+                        "channel_name": "draft_model",
+                        "artifact_version": "v1",
+                        "s3_data_source": {
+                            "compression_type": "None",
+                            "s3_data_type": "S3Prefix",
+                            "s3_uri": "key/to/draft/model/",
+                        },
+                        "provider": {"name": "JumpStart", "classification": "ungated"},
+                    },
+                    {
+                        "channel_name": "gated_draft_model",
+                        "artifact_version": "v1",
+                        "s3_data_source": {
+                            "compression_type": "None",
+                            "s3_data_type": "S3Prefix",
+                            "s3_uri": "key/to/gated/draft/",
+                        },
+                        "hosting_eula_key": "fmhMetadata/eula/llama3Eula.txt",
+                        "provider": {"name": "JumpStart", "classification": "gated"},
+                    },
+                ]
+            },
+        }
+
+        # Run the real factory shaping over the real parsed spec, exactly as
+        # get_init_kwargs does, to produce the API-shape init kwargs.
+        mock_init_kwargs = Mock()
+        mock_init_kwargs.specs = JumpStartModelSpecs(raw_spec_json)
+        mock_init_kwargs.region = "us-west-2"
+        mock_init_kwargs.additional_model_data_sources = None
+        mock_init_kwargs = _add_additional_model_data_sources_to_kwargs(
+            kwargs=mock_init_kwargs
+        )
+        mock_init_kwargs.image_uri = "djl-inference:0.21.0"
+        mock_init_kwargs.env = {}
+        mock_init_kwargs.model_data = "s3://bucket/model.tar.gz"
+        mock_init.return_value = mock_init_kwargs
+
+        # The factory shaping keeps HostingEulaKey (internal metadata) in the
+        # API-shape kwargs; that is what _build_for_jumpstart must translate.
+        self.assertEqual(
+            [s.get("HostingEulaKey") for s in mock_init_kwargs.additional_model_data_sources],
+            [None, "fmhMetadata/eula/llama3Eula.txt"],
+        )
+
+        mock_create.return_value = Mock()
+        self.builder.mode = Mode.SAGEMAKER_ENDPOINT
+        self.builder.image_uri = None
+        self.builder.accept_eula = True
+
+        self.builder._build_for_jumpstart()
+
+        self.assertEqual(
+            self.builder.additional_model_data_sources,
+            [
+                {
+                    "ChannelName": "draft_model",
+                    "S3DataSource": {
+                        "CompressionType": "None",
+                        "S3DataType": "S3Prefix",
+                        "S3Uri": "s3://jumpstart-cache-prod-us-west-2/key/to/draft/model/",
+                    },
+                },
+                {
+                    "ChannelName": "gated_draft_model",
+                    "S3DataSource": {
+                        "CompressionType": "None",
+                        "S3DataType": "S3Prefix",
+                        "S3Uri": (
+                            "s3://jumpstart-private-cache-prod-us-west-2/key/to/gated/draft/"
+                        ),
+                        "ModelAccessConfig": {"AcceptEula": True},
+                    },
+                },
+            ],
         )
 
 
