@@ -63,6 +63,7 @@ from sagemaker.serve.compute_resource_requirements import ResourceRequirements
 from sagemaker.serve.constants import (
     DEFAULT_SERIALIZERS_BY_FRAMEWORK,
     OMNI_TASKS,
+    VLLM_TASKS,
     Framework,
 )
 from sagemaker.serve.builder.schema_builder import SchemaBuilder
@@ -680,7 +681,7 @@ class _ModelBuilderUtils:
                 )
                 model_task = hf_model_md.get("pipeline_tag")
 
-                if model_task == "text-generation":
+                if model_task in VLLM_TASKS:
                     effective_model_server = ModelServer.VLLM
                 elif model_task in OMNI_TASKS:
                     effective_model_server = ModelServer.VLLM_OMNI

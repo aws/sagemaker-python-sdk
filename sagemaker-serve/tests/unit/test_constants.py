@@ -2,8 +2,10 @@ import unittest
 from sagemaker.serve.constants import (
     Framework,
     LOCAL_MODES,
+    OMNI_TASKS,
     SUPPORTED_MODEL_SERVERS,
-    DEFAULT_SERIALIZERS_BY_FRAMEWORK
+    DEFAULT_SERIALIZERS_BY_FRAMEWORK,
+    VLLM_TASKS,
 )
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.utils.types import ModelServer
@@ -50,6 +52,14 @@ class TestSupportedModelServers(unittest.TestCase):
             ModelServer.LLAMACPP,
         }
         self.assertEqual(SUPPORTED_MODEL_SERVERS, expected_servers)
+
+
+class TestHuggingFaceRoutingTasks(unittest.TestCase):
+    def test_text_output_multimodal_tasks_route_to_vllm(self):
+        self.assertIn("image-text-to-text", VLLM_TASKS)
+        self.assertIn("audio-text-to-text", VLLM_TASKS)
+        self.assertNotIn("image-text-to-text", OMNI_TASKS)
+        self.assertNotIn("audio-text-to-text", OMNI_TASKS)
 
 
 class TestDefaultSerializersByFramework(unittest.TestCase):
