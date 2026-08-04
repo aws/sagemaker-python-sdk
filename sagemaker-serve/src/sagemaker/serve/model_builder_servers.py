@@ -1017,41 +1017,18 @@ class _ModelBuilderServers(object):
         # Propagate additional model data sources resolved from the JumpStart
         # spec (e.g. speculative decoding draft models like EAGLE). The JumpStart
         # factory (_add_additional_model_data_sources_to_kwargs) already returns
-        # these in CreateModel API shape via camel_case_to_pascal_case(...).
-        #
-        # A source carrying a truthy ``HostingEulaKey`` is gated and requires the
-        # user to accept its end-user license agreement, exactly like the base
-        # model. ``container_def`` folds ``accept_eula`` into the base model's
-        # ModelAccessConfig but passes additional sources through untouched, so
-        # the acceptance must be translated onto each gated source here: enforce
-        # ``accept_eula`` and move it into the source's ``ModelAccessConfig``
-        # (mirroring _add_model_access_configs_to_model_data_sources and the base
-        # model's handling in _create_model). Ungated sources simply drop the
-        # JumpStart-internal ``HostingEulaKey`` metadata, which the CreateModel
-        # API rejects. Without any of this, sources declared in the spec are
-        # dropped from the CreateModel call and the container fails to find the
-        # referenced artifacts at runtime.
+        # these in CreateModel API shape via camel_case_to_pascal_case(...);
+        # EULA handling (enforcing accept_eula on gated sources and stripping
+        # the JumpStart-internal HostingEulaKey) happens in ``container_def``,
+        # the same place the primary model's accept_eula is applied. Without
+        # this propagation, sources declared in the spec are dropped from the
+        # CreateModel call and the container fails to find the referenced
+        # artifacts at runtime.
         additional_model_data_sources = getattr(
             init_kwargs, "additional_model_data_sources", None
         )
         if isinstance(additional_model_data_sources, list) and additional_model_data_sources:
-            accept_eula = getattr(self, "accept_eula", None)
-            sanitized_sources = []
-            for source in additional_model_data_sources:
-                sanitized_source = dict(source)
-                if sanitized_source.pop("HostingEulaKey", None):
-                    if not accept_eula:
-                        raise ValueError(
-                            "accept_eula must be set to True to deploy this model. "
-                            "Please set accept_eula=True on the ModelBuilder instance "
-                            "to confirm you have read and accepted the end-user license "
-                            "agreement for this model."
-                        )
-                    s3_data_source = dict(sanitized_source.get("S3DataSource", {}))
-                    s3_data_source["ModelAccessConfig"] = {"AcceptEula": True}
-                    sanitized_source["S3DataSource"] = s3_data_source
-                sanitized_sources.append(sanitized_source)
-            self.additional_model_data_sources = sanitized_sources
+            self.additional_model_data_sources = additional_model_data_sources
 
         # Handle model artifacts for fine-tuned models
         if hasattr(init_kwargs, "model_data") and init_kwargs.model_data:
