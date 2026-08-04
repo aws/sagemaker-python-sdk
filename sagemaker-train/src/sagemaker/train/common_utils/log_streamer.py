@@ -227,7 +227,7 @@ def stream_log_loop(
     streamer: LogStreamer,
     poll: int,
     status_fn: Callable[[], str],
-    num_lines: Optional[int] = None,
+    tail_lines: Optional[int] = None,
 ) -> None:
     """Run the standard log streaming loop.
 
@@ -238,19 +238,20 @@ def stream_log_loop(
     :param streamer: A configured LogStreamer instance.
     :param poll: Seconds between polls.
     :param status_fn: Callable that returns the current job status string.
-    :param num_lines: Optional maximum number of log lines to print.
-        When specified, streaming stops after this many lines.
+    :param tail_lines: Optional maximum number of most recent log lines to
+        print. When specified, streaming stops after this many lines have
+        been displayed.
     """
     _CW_PREFIX = "[CloudWatch] "
     lines_printed = 0
 
     def _print_event(ts_ms: int, message: str) -> bool:
-        """Print a log event. Returns True if num_lines limit reached."""
+        """Print a log event. Returns True if tail_lines limit reached."""
         nonlocal lines_printed
         print(f"{_CW_PREFIX}[{_format_timestamp(ts_ms)}] {message}")
         lines_printed += 1
-        if num_lines and lines_printed >= num_lines:
-            logger.info("Reached num_lines limit (%d). Stopping log stream.", num_lines)
+        if tail_lines and lines_printed >= tail_lines:
+            logger.info("Reached tail_lines limit (%d). Stopping log stream.", tail_lines)
             return True
         return False
 
