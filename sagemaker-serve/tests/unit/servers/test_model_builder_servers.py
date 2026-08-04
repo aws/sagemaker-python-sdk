@@ -1058,34 +1058,51 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
 
     ROLE_ARN = "arn:aws:iam::123456789012:role/SageMakerRole"
 
-    # The real EAGLE source published in gpt-oss's default (lmi-optimized)
-    # config, as it must appear in the CreateModel request: content bucket
-    # injected, PascalCase, no HostingEulaKey (the API rejects it).
-    UNGATED_EAGLE_SOURCE = {
-        "ChannelName": "eagle",
-        "S3DataSource": {
-            "CompressionType": "None",
-            "S3DataType": "S3Prefix",
-            "S3Uri": "s3://jumpstart-cache-prod-us-west-2/lmi-eagle-heads/models/gpt-oss-20b-p-eagle/",
-        },
-    }
+    # The content buckets the sources must resolve into (the raw specs publish
+    # bucket-less key prefixes): public sources land in the public content
+    # bucket, gated sources in the private one.
+    PUBLIC_CONTENT_BUCKET = "jumpstart-cache-prod-us-west-2"
+    PRIVATE_CONTENT_BUCKET = "jumpstart-private-cache-prod-us-west-2"
 
-    # The real gated llama-3.2-1b draft model published in llama-3-1-70b's
-    # lmi-optimized config, as it must appear in the CreateModel request:
-    # private content bucket, EULA acceptance folded into ModelAccessConfig,
-    # no HostingEulaKey.
-    GATED_DRAFT_SOURCE_ACCEPTED = {
-        "ChannelName": "draft_model",
-        "S3DataSource": {
-            "CompressionType": "None",
-            "S3DataType": "S3Prefix",
-            "S3Uri": (
-                "s3://jumpstart-private-cache-prod-us-west-2/meta-textgeneration/"
-                "meta-textgeneration-llama-3-2-1b/artifacts/inference-prepack/v1.0.0/"
-            ),
-            "ModelAccessConfig": {"AcceptEula": True},
-        },
-    }
+    @classmethod
+    def _spec_additional_source(cls, model_id, config_name="lmi-optimized"):
+        """The raw additional data source exactly as published in the captured
+        spec fixture: snake_case keys, bucket-less s3_uri key prefix, and
+        hosting_eula_key present when the source is gated."""
+        with open(cls.SPEC_DIR / f"{model_id}.json") as f:
+            spec = json.load(f)
+        sources = spec["inference_config_components"][config_name][
+            "hosting_additional_data_sources"
+        ]["speculative_decoding"]
+        assert len(sources) == 1, f"expected one source in {model_id}/{config_name}"
+        return sources[0]
+
+    @classmethod
+    def _expected_create_model_source(cls, model_id, bucket, accept_eula=False):
+        """The shape the CreateModel request must carry for the fixture's
+        source. Data values (channel name, compression, data type, key prefix)
+        come from the spec fixture so it stays the single source of truth; the
+        transformation under test is spelled out declaratively here instead of
+        reusing production code (which would make the assertion a tautology):
+
+        - snake_case spec keys become the PascalCase API keys
+        - the bucket-less key prefix resolves into the given content bucket
+        - HostingEulaKey never appears (the API rejects it)
+        - EULA acceptance, when given, is folded into
+          S3DataSource.ModelAccessConfig
+        """
+        raw = cls._spec_additional_source(model_id)
+        expected = {
+            "ChannelName": raw["channel_name"],
+            "S3DataSource": {
+                "CompressionType": raw["s3_data_source"]["compression_type"],
+                "S3DataType": raw["s3_data_source"]["s3_data_type"],
+                "S3Uri": f"s3://{bucket}/{raw['s3_data_source']['s3_uri']}",
+            },
+        }
+        if accept_eula:
+            expected["S3DataSource"]["ModelAccessConfig"] = {"AcceptEula": True}
+        return expected
 
     def setUp(self):
         import sagemaker.serve.model_builder as model_builder_module
@@ -1171,7 +1188,12 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
 
         container_def = self._create_model_container_def()
         self.assertEqual(
-            container_def["AdditionalModelDataSources"], [self.UNGATED_EAGLE_SOURCE]
+            container_def["AdditionalModelDataSources"],
+            [
+                self._expected_create_model_source(
+                    "openai-reasoning-gpt-oss-20b", bucket=self.PUBLIC_CONTENT_BUCKET
+                )
+            ],
         )
 
     def test_ungated_additional_source_gets_no_model_access_config(self):
@@ -1183,7 +1205,12 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
 
         container_def = self._create_model_container_def()
         self.assertEqual(
-            container_def["AdditionalModelDataSources"], [self.UNGATED_EAGLE_SOURCE]
+            container_def["AdditionalModelDataSources"],
+            [
+                self._expected_create_model_source(
+                    "openai-reasoning-gpt-oss-20b", bucket=self.PUBLIC_CONTENT_BUCKET
+                )
+            ],
         )
         # The single accept_eula knob still covers the primary (base) model.
         self.assertEqual(
@@ -1203,7 +1230,14 @@ class TestJumpStartAdditionalModelDataSourcesUserFlow(unittest.TestCase):
 
         container_def = self._create_model_container_def()
         self.assertEqual(
-            container_def["AdditionalModelDataSources"], [self.GATED_DRAFT_SOURCE_ACCEPTED]
+            container_def["AdditionalModelDataSources"],
+            [
+                self._expected_create_model_source(
+                    "meta-textgeneration-llama-3-1-70b",
+                    bucket=self.PRIVATE_CONTENT_BUCKET,
+                    accept_eula=True,
+                )
+            ],
         )
         self.assertEqual(
             container_def["ModelDataSource"]["S3DataSource"]["ModelAccessConfig"],
