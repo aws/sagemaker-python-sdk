@@ -26,12 +26,12 @@ import time
 import pytest
 import random
 from sagemaker.serve import ModelBuilder
+from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 from sagemaker.serve.model_reuse import MODEL_SOURCE_TAG_KEY
-from sagemaker.core.resources import TrainingJob
+from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.resources import TrainingJob, Endpoint
 
 logger = logging.getLogger(__name__)
-
-from sagemaker.core.helper.session_helper import Session
 
 # This test relies on resources in a specific region
 AWS_REGION = "us-east-1"
@@ -172,7 +172,6 @@ def cleanup_endpoints():
 
     for ep_name in endpoints_to_cleanup:
         try:
-            from sagemaker.core.resources import Endpoint
             endpoint = Endpoint.get(endpoint_name=ep_name, region=AWS_REGION)
             endpoint.delete()
         except Exception:
@@ -203,7 +202,13 @@ class TestModelCustomizationFromTrainingJob:
         assert model_builder.instance_type is not None
 
     def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
-        """Test deploying a Nova model from a training job and invoking it."""
+        """Test deploying a Nova model from a training job, invoking it, and reusing it.
+
+        For Nova models, this verifies:
+        1. Endpoint is created InService with model-source tag.
+        2. Endpoint is invokable.
+        3. deploy(reuse_resources=True) from a new ModelBuilder returns the same endpoint.
+        """
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(
             model=training_job,
@@ -251,6 +256,34 @@ class TestModelCustomizationFromTrainingJob:
         assert response_body is not None, f"Empty response from invoke on {endpoint_name}"
         assert isinstance(response_body, dict)
 
+        # Verify reuse: a new ModelBuilder with reuse_resources=True should
+        # find and return the same endpoint without creating a new one.
+        builder2 = ModelBuilder(
+            model=training_job,
+            instance_type=NOVA_INSTANCE_TYPE,
+            sagemaker_session=sagemaker_session,
+        )
+        builder2.accept_eula = True
+        builder2.build(region=AWS_REGION, reuse_resources=True)
+
+        # build(reuse_resources=True) should reuse the existing Model (no new one created)
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        model_name_1 = model_builder.built_model.model_name
+        models_with_prefix = sm_client.list_models(
+            NameContains=model_name_1, MaxResults=10
+        ).get("Models", [])
+        assert len(models_with_prefix) == 1, (
+            f"Expected 1 model with name '{model_name_1}', got {len(models_with_prefix)}. "
+            f"build(reuse_resources=True) should not create a new Model."
+        )
+
+        endpoint2 = builder2.deploy(reuse_resources=True)
+
+        assert endpoint2 is not None
+        assert endpoint2.endpoint_arn == endpoint.endpoint_arn, (
+            f"Expected reuse to return {endpoint.endpoint_arn}, got {endpoint2.endpoint_arn}"
+        )
+
     def test_fetch_endpoint_names_for_base_model(self, training_job_name, sagemaker_session):
         """Test fetching endpoint names for base model."""
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
@@ -258,6 +291,54 @@ class TestModelCustomizationFromTrainingJob:
         endpoint_names = model_builder.fetch_endpoint_names_for_base_model()
 
         assert isinstance(endpoint_names, set)
+
+    def test_build_reuse_skips_model_creation(self, training_job_name, sagemaker_session):
+        """build(reuse_resources=True) reuses an existing tagged Model.
+
+        First build creates a Model, second build with reuse finds it.
+        """
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        # Note: tiny collision risk if parallel CI runs share the same timestamp+random seed
+        unique_id = f"{int(time.time())}-{random.randint(100, 10000)}"
+        model_name = f"nova-reuse-build-{unique_id}"
+
+        # First build
+        builder1 = ModelBuilder(
+            model=training_job,
+            instance_type=NOVA_INSTANCE_TYPE,
+            sagemaker_session=sagemaker_session,
+        )
+        builder1.accept_eula = True
+        model1 = builder1.build(
+            model_name=model_name,
+            region=AWS_REGION,
+            reuse_resources=False,
+        )
+        assert model1 is not None
+        assert model1.model_arn is not None
+
+        # Second build with reuse
+        builder2 = ModelBuilder(
+            model=training_job,
+            instance_type=NOVA_INSTANCE_TYPE,
+            sagemaker_session=sagemaker_session,
+        )
+        builder2.accept_eula = True
+        model2 = builder2.build(
+            region=AWS_REGION,
+            reuse_resources=True,
+        )
+        assert model2 is not None
+        assert model2.model_arn == model1.model_arn, (
+            f"Expected build reuse to return {model1.model_arn}, got {model2.model_arn}"
+        )
+
+        # Cleanup: delete the model created during this test
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        try:
+            sm_client.delete_model(ModelName=model_name)
+        except Exception:
+            pass
 
 
 @pytest.mark.us_east_1
@@ -333,7 +414,6 @@ class TestModelCustomizationDetection:
 
     def test_is_model_customization_model_package(self, model_package_arn, sagemaker_session):
         """Test detection from a Nova model package."""
-        from sagemaker.core.resources import ModelPackage
 
         model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
         model_builder = ModelBuilder(model=model_package, sagemaker_session=sagemaker_session)
@@ -360,7 +440,6 @@ class TestTrainerIntegration:
 
     def test_sft_trainer_build(self, training_job_name, sagemaker_session):
         """Test building a model from a Nova SFTTrainer object."""
-        from sagemaker.train.sft_trainer import SFTTrainer
 
         training_job = TrainingJob.get(
             training_job_name=training_job_name, region=AWS_REGION
@@ -387,7 +466,6 @@ class TestTrainerIntegration:
 
     def test_rlvr_trainer_build(self, training_job_name, sagemaker_session):
         """Test building a model from a Nova RLVRTrainer object."""
-        from sagemaker.train.rlvr_trainer import RLVRTrainer
 
         training_job = TrainingJob.get(
             training_job_name=training_job_name, region=AWS_REGION
@@ -420,7 +498,6 @@ class TestNovaBedrockDeployment:
     @pytest.fixture(scope="class")
     def role_arn(self):
         """Execution role ARN with Bedrock permissions."""
-        from sagemaker.core.helper.session_helper import get_execution_role
         return get_execution_role()
 
     @pytest.fixture(scope="class")
@@ -440,8 +517,6 @@ class TestNovaBedrockDeployment:
         """Deploy a Nova model to Bedrock from its TrainingJob and yield the
         deployment details, cleaning up the custom model and deployment after.
         """
-        from sagemaker.core.resources import TrainingJob
-        from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 
         unique = f"{int(time.time())}-{random.randint(1000, 9999)}"
         custom_model_name = f"nova-integ-{unique}"
@@ -499,12 +574,31 @@ class TestNovaBedrockDeployment:
         )
         assert deployment.get("status") == "Active"
 
-    def test_nova_bedrock_custom_model_tagged_for_reuse(self, deployed_nova_model, bedrock_client):
-        """The Nova custom model should carry the model-source tag that powers reuse."""
+    def test_nova_bedrock_custom_model_tagged_for_reuse(self, deployed_nova_model, training_job_name, role_arn, bedrock_client):
+        """The Nova custom model should carry the model-source tag and be discoverable via reuse."""
+
         model_arn = deployed_nova_model["model_arn"]
         tags = bedrock_client.list_tags_for_resource(resourceARN=model_arn).get("tags", [])
         assert MODEL_SOURCE_TAG_KEY in {t["key"] for t in tags}, (
             f"Custom model {model_arn} missing model-source tag for reuse"
+        )
+
+        # Verify reuse: a second deploy with reuse_resources=True should find the
+        # existing model instead of creating a new one.
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        builder2 = BedrockModelBuilder(model=training_job)
+
+        unique = f"{int(time.time())}-{random.randint(1000, 9999)}"
+        response2 = builder2.deploy(
+            custom_model_name=f"nova-reuse-integ-{unique}",
+            deployment_name=f"nova-reuse-integ-{unique}-dep",
+            role_arn=role_arn,
+            reuse_resources=True,
+        )
+
+        reused_model_arn = response2.get("modelArn") or response2.get("importedModelArn")
+        assert reused_model_arn == model_arn, (
+            f"Expected reuse to return {model_arn}, got {reused_model_arn}"
         )
 
     @pytest.mark.slow
@@ -531,3 +625,33 @@ class TestNovaBedrockDeployment:
         assert isinstance(result, dict)
         text = result["output"]["message"]["content"][0]["text"]
         assert isinstance(text, str) and len(text) > 0
+
+    @pytest.mark.slow
+    def test_nova_bedrock_reuse_returns_existing_model(
+        self, deployed_nova_model, training_job_name, role_arn, bedrock_client
+    ):
+        """deploy(reuse_resources=True) finds the existing custom model instead of creating new.
+
+        Uses the model created by the deployed_nova_model fixture (already Active
+        and tagged with model-source). A second deploy with reuse should return
+        the same model ARN.
+        """
+
+        existing_model_arn = deployed_nova_model["model_arn"]
+
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+        builder2 = BedrockModelBuilder(model=training_job)
+
+        unique = f"{int(time.time())}-{random.randint(1000, 9999)}"
+        response2 = builder2.deploy(
+            custom_model_name=f"nova-reuse-integ-{unique}",
+            deployment_name=f"nova-reuse-integ-{unique}-dep",
+            role_arn=role_arn,
+            reuse_resources=True,
+        )
+
+        reused_model_arn = response2.get("modelArn") or response2.get("importedModelArn")
+
+        assert reused_model_arn == existing_model_arn, (
+            f"Expected reuse to return {existing_model_arn}, got {reused_model_arn}"
+        )

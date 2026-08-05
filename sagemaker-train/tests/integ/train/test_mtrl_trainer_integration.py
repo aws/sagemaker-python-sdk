@@ -247,3 +247,34 @@ class TestMTRLEvalIntegration:
             f"[{config['env_name']}] Comparison eval failed with status: {status}, "
             f"reason: {execution.status.failure_reason}"
         )
+
+
+@pytest.mark.gpu_intensive
+class TestMTRLShowMetrics:
+    """Integration tests for show_metrics() on completed MTRL jobs."""
+
+    def test_show_metrics_on_completed_job(self, config):
+        """show_metrics() and stream_logs() on a completed MTRL job run without error."""
+        job = MultiTurnRLTrainer.attach(job_name=config["existing_job_name"])
+        assert job.job_status == "Completed"
+
+        trainer = MultiTurnRLTrainer(
+            model=config["base_model"],
+            agent_env=config["agent_core_arn"],
+            training_dataset=config["dataset"],
+            output_model_package_group=config["model_package_group"],
+            mlflow_app_arn=config["mlflow_resource_arn"],
+            s3_output_path=config["s3_output_path"],
+            role=config["role"],
+            accept_eula=True,
+        )
+        trainer._latest_job = job
+
+        result = trainer.show_metrics()
+        logger.info(
+            f"[{config['env_name']}] show_metrics() returned: {type(result).__name__}"
+        )
+
+        # stream_logs() should exit quickly for a completed job
+        trainer.stream_logs(poll=2)
+        logger.info(f"[{config['env_name']}] stream_logs() completed without error")
