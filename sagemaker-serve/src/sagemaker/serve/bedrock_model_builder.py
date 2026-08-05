@@ -258,7 +258,9 @@ class BedrockModelBuilder:
         func_name="BedrockModelBuilder.deploy",
         telemetry_params=[
             ("model_package", TelemetryParamType.ATTR_EXISTS),
+            ("_is_nova_model_for_telemetry", TelemetryParamType.ATTR_CALL),
             ("imported_model_kms_key_id", TelemetryParamType.KWARG_EXISTS),
+            ("reuse_resources", TelemetryParamType.KWARG_EXISTS),
         ],
     )
     def deploy(

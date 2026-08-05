@@ -3948,9 +3948,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         func_name="model_builder.build",
         telemetry_params=[
             ("mode", TelemetryParamType.ATTR_VALUE),
+            ("_is_nova_model_for_telemetry", TelemetryParamType.ATTR_CALL),
             ("network", TelemetryParamType.ATTR_EXISTS),
             ("source_code", TelemetryParamType.ATTR_EXISTS),
             ("inference_spec", TelemetryParamType.ATTR_EXISTS),
+            ("reuse_resources", TelemetryParamType.KWARG_EXISTS),
         ],
     )
     @runnable_by_pipeline
@@ -5326,9 +5328,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             ("mode", TelemetryParamType.ATTR_VALUE),
             ("instance_type", TelemetryParamType.ATTR_VALUE),
             ("_is_model_customization", TelemetryParamType.ATTR_CALL),
+            ("_is_nova_model_for_telemetry", TelemetryParamType.ATTR_CALL),
             ("network", TelemetryParamType.ATTR_EXISTS),
             ("compute", TelemetryParamType.ATTR_EXISTS),
             ("update_endpoint", TelemetryParamType.KWARG_EXISTS),
+            ("reuse_resources", TelemetryParamType.KWARG_EXISTS),
         ],
     )
     def deploy(

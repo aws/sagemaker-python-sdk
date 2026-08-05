@@ -41,6 +41,8 @@ from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_trac
 from sagemaker.train.common_utils.notifications import enable_notifications, delete_notification_rule, list_notification_rules
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.common_utils.cloudwatch_metrics import fetch_and_plot_metrics, _get_smhp_log_group
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.model_trainer import ModelTrainer
 from sagemaker.train.utils import _get_unique_name
@@ -365,6 +367,13 @@ class BaseTrainer(ABC):
 
         return final_hyperparameters
 
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BaseTrainer.show_metrics",
+        telemetry_params=[
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ],
+    )
     def show_metrics(
         self,
         metrics: Optional[List[str]] = None,
@@ -627,6 +636,13 @@ class BaseTrainer(ABC):
             event_bus_arn=event_bus_arn,
         )
 
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BaseTrainer.stream_logs",
+        telemetry_params=[
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ],
+    )
     def stream_logs(self, poll: int = 5, start_time: Optional[Any] = None, tail_lines: Optional[int] = None) -> None:
         """Stream CloudWatch logs in real-time (like ``kubectl logs -f``).
 
