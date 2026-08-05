@@ -780,7 +780,9 @@ class TestDeploy:
 
         b._bedrock_client.create_model_import_job.assert_called_once()
         kw = b._bedrock_client.create_model_import_job.call_args[1]
-        assert kw["modelDataSource"] == {"s3DataSource": {"s3Uri": "s3://my-bucket/my-checkpoint/"}}
+        # _resolve_hf_model_path strips the trailing slash when no
+        # hf_merged/hf checkpoint is found under the base path.
+        assert kw["modelDataSource"] == {"s3DataSource": {"s3Uri": "s3://my-bucket/my-checkpoint"}}
 
     def test_s3_uri_string_invalid_raises(self):
         """Non-S3 string as model raises ValueError."""
@@ -1240,7 +1242,7 @@ class TestResolveModelSourceId:
         b.boto_session = session
 
         with patch(f"{MODULE}.TrainingJob", type(mock_job)):
-            result = b._resolve_model_source_id()
+            result = b._resolve_nova_model_source_id()
 
         assert result == "s3://bucket/ckpt/step_100"
 
@@ -1286,7 +1288,7 @@ class TestResolveModelSourceId:
         b.boto_session = session
 
         with patch(f"{MODULE}.TrainingJob", type(mock_job)):
-            result = b._resolve_model_source_id()
+            result = b._resolve_nova_model_source_id()
 
         assert result == "s3://bucket/ckpt/step_50"
 
@@ -1301,7 +1303,7 @@ class TestResolveModelSourceId:
         with patch(f"{MODULE}.TrainingJob", _SentinelA), \
              patch(f"{MODULE}.ModelTrainer", _SentinelB), \
              patch(f"{MODULE}.BaseTrainer", _SentinelC):
-            result = b._resolve_model_source_id()
+            result = b._resolve_nova_model_source_id()
 
         assert result == "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-pkg"
 
@@ -1315,7 +1317,7 @@ class TestResolveModelSourceId:
         with patch(f"{MODULE}.TrainingJob", _SentinelA), \
              patch(f"{MODULE}.ModelTrainer", _SentinelB), \
              patch(f"{MODULE}.BaseTrainer", _SentinelC):
-            result = b._resolve_model_source_id()
+            result = b._resolve_nova_model_source_id()
 
         assert result == "s3://my-bucket/checkpoints/"
 
@@ -1326,7 +1328,7 @@ class TestResolveModelSourceId:
         b.model_package = None
         b.s3_model_artifacts = None
 
-        result = b._resolve_model_source_id()
+        result = b._resolve_nova_model_source_id()
 
         assert result is None
 

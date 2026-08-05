@@ -169,7 +169,7 @@ class BedrockModelBuilder:
             self._sagemaker_client = self.boto_session.client("sagemaker")
         return self._sagemaker_client
 
-    def _resolve_model_source_id(self) -> Optional[str]:
+    def _resolve_nova_model_source_id(self) -> Optional[str]:
         """Determine the model source identifier for reuse lookups.
 
         Resolution order:
@@ -351,7 +351,7 @@ class BedrockModelBuilder:
                 sagemaker_session=self.sagemaker_session,
             )
 
-            source_id = self._resolve_model_source_id()
+            source_id = self._resolve_nova_model_source_id()
 
             if source_id and reuse_resources:
                 existing_arn = find_existing_bedrock_model(
@@ -445,7 +445,7 @@ class BedrockModelBuilder:
                 mp_arn = getattr(self.model_package, "model_package_arn", None)
                 if mp_arn and isinstance(mp_arn, str):
                     oss_source_id = mp_arn
-            if not oss_source_id and self.s3_model_artifacts:
+            if not oss_source_id and self.s3_model_artifacts and isinstance(self.s3_model_artifacts, str):
                 oss_source_id = self.s3_model_artifacts
             if not oss_source_id:
                 logger.warning(
@@ -995,7 +995,7 @@ class BedrockModelBuilder:
             logger.info("s3_uri already resolved (config.json present) at %s", s3_uri)
             return s3_uri.rstrip("/")
         except Exception as e:
-            print(f"[BedrockModelBuilder] Not a resolved dir, continuing: {e}")
+            logger.debug(f"[BedrockModelBuilder]{s3_uri} Not a resolved dir, continuing: {e}")
 
         hf_merged_uri = s3_uri + "checkpoints/hf_merged/"
         merged_config_key = urlparse(hf_merged_uri).path.lstrip("/") + "config.json"
