@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import logging
 import time
+from datetime import datetime, timezone
 
 import boto3
 import pytest
@@ -60,13 +61,17 @@ class TestMTRLStreamLogs:
         """AgentRFTJob.stream_logs() respects start_time parameter."""
         job = AgentRFTJob.get(MTRL_JOB_NAME, session=sagemaker_session.boto_session)
 
-        future_ms = int((time.time() + 86400) * 1000)
+        # Use a timestamp from when the job was running (extracted from job name)
+        
+        job_start = datetime(2026, 7, 29, 12, 9, 59, tzinfo=timezone.utc)
+        start_time_ms = int(job_start.timestamp() * 1000)
+
         start = time.time()
-        job.stream_logs(poll=2, start_time=future_ms)
+        job.stream_logs(poll=2, start_time=start_time_ms)
         elapsed = time.time() - start
 
         assert elapsed < 30
-        print(f"✓ stream_logs(start_time=future) completed in {elapsed:.1f}s")
+        print(f"✓ stream_logs(start_time=job_start) completed in {elapsed:.1f}s")
 
 
 
