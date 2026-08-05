@@ -377,7 +377,14 @@ class RLVRTrainer(BaseTrainer):
             f"{result['successful_samples']}/{result['total_samples']} sample(s) passed"
         )
 
-    @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLVRTrainer.train")
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="RLVRTrainer.train",
+        telemetry_params=BASE_TRAINER_TELEMETRY_PARAMS + [
+            ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ],
+    )
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None,
               validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
         """Execute the RLVR training job.
