@@ -371,7 +371,6 @@ class BaseTrainer(ABC):
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="BaseTrainer.show_metrics",
         telemetry_params=[
-            ("_model_name", TelemetryParamType.ATTR_VALUE),
             ("compute", TelemetryParamType.ATTR_TYPE),
         ],
     )
@@ -641,7 +640,6 @@ class BaseTrainer(ABC):
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="BaseTrainer.stream_logs",
         telemetry_params=[
-            ("_model_name", TelemetryParamType.ATTR_VALUE),
             ("compute", TelemetryParamType.ATTR_TYPE),
         ],
     )
