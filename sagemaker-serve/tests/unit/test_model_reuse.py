@@ -23,6 +23,8 @@ from sagemaker.serve.model_reuse import (
     normalize_tag_value,
     find_active_bedrock_deployment_for_model,
     find_existing_bedrock_model,
+    find_existing_imported_model,
+    find_existing_model_import_job,
     find_existing_sagemaker_endpoint,
     build_source_tag,
     check_bedrock_model_status,
@@ -358,3 +360,106 @@ def test_check_sagemaker_endpoint_status_raises_on_failure():
 
     with pytest.raises(Exception, match="Endpoint not found"):
         check_sagemaker_endpoint_status(sm_client, ENDPOINT_ARN)
+
+
+# ── find_existing_imported_model tests ──────────────────────────────────────
+
+IMPORTED_MODEL_ARN = "arn:aws:bedrock:us-east-1:123456789012:imported-model/my-model"
+
+
+def test_find_existing_imported_model_returns_arn_when_found(bedrock_client):
+    bedrock_client.list_imported_models.return_value = {
+        "modelSummaries": [{"modelArn": IMPORTED_MODEL_ARN}]
+    }
+    bedrock_client.list_tags_for_resource.return_value = {
+        "tags": [{"key": MODEL_SOURCE_TAG_KEY, "value": "s3://bucket/path/"}]
+    }
+
+    result = find_existing_imported_model(bedrock_client, "s3://bucket/path/")
+
+    assert result == IMPORTED_MODEL_ARN
+
+
+def test_find_existing_imported_model_returns_none_when_no_match(bedrock_client):
+    bedrock_client.list_imported_models.return_value = {
+        "modelSummaries": [{"modelArn": IMPORTED_MODEL_ARN}]
+    }
+    bedrock_client.list_tags_for_resource.return_value = {
+        "tags": [{"key": MODEL_SOURCE_TAG_KEY, "value": "s3://other/path/"}]
+    }
+
+    result = find_existing_imported_model(bedrock_client, "s3://bucket/path/")
+
+    assert result is None
+
+
+def test_find_existing_imported_model_ignores_import_jobs(bedrock_client):
+    """find_existing_imported_model only inspects completed models, not jobs."""
+    bedrock_client.list_imported_models.return_value = {"modelSummaries": []}
+    bedrock_client.list_tags_for_resource.return_value = {
+        "tags": [{"key": MODEL_SOURCE_TAG_KEY, "value": "s3://bucket/path/"}]
+    }
+
+    result = find_existing_imported_model(bedrock_client, "s3://bucket/path/")
+
+    assert result is None
+    bedrock_client.list_model_import_jobs.assert_not_called()
+
+
+def test_find_existing_imported_model_access_denied_raises_permission_error(bedrock_client):
+    """AccessDeniedException is surfaced as PermissionError."""
+    bedrock_client.list_imported_models.return_value = {
+        "modelSummaries": [{"modelArn": IMPORTED_MODEL_ARN}]
+    }
+    bedrock_client.list_tags_for_resource.side_effect = _access_denied_error(
+        "ListTagsForResource", "bedrock:ListTagsForResource"
+    )
+
+    with pytest.raises(PermissionError, match="bedrock:ListTagsForResource"):
+        find_existing_imported_model(bedrock_client, "s3://bucket/path/")
+
+
+# ── find_existing_model_import_job tests ─────────────────────────────────────
+
+IMPORT_JOB_ARN = "arn:aws:bedrock:us-east-1:123456789012:model-import-job/abcd1234wxyz"
+
+
+def test_find_existing_model_import_job_returns_arn_when_found(bedrock_client):
+    """Returns the in-progress import job ARN when its source tag matches."""
+    bedrock_client.list_model_import_jobs.return_value = {
+        "modelImportJobSummaries": [{"jobArn": IMPORT_JOB_ARN}]
+    }
+    bedrock_client.list_tags_for_resource.return_value = {
+        "tags": [{"key": MODEL_SOURCE_TAG_KEY, "value": "s3://bucket/path/"}]
+    }
+
+    result = find_existing_model_import_job(bedrock_client, "s3://bucket/path/")
+
+    assert result == IMPORT_JOB_ARN
+
+
+def test_find_existing_model_import_job_returns_none_when_no_match(bedrock_client):
+    """Returns None when no in-progress job carries a matching source tag."""
+    bedrock_client.list_model_import_jobs.return_value = {
+        "modelImportJobSummaries": [{"jobArn": IMPORT_JOB_ARN}]
+    }
+    bedrock_client.list_tags_for_resource.return_value = {
+        "tags": [{"key": MODEL_SOURCE_TAG_KEY, "value": "s3://other/path/"}]
+    }
+
+    result = find_existing_model_import_job(bedrock_client, "s3://bucket/path/")
+
+    assert result is None
+
+
+def test_find_existing_model_import_job_access_denied_raises_permission_error(bedrock_client):
+    """AccessDeniedException is surfaced as PermissionError."""
+    bedrock_client.list_model_import_jobs.return_value = {
+        "modelImportJobSummaries": [{"jobArn": IMPORT_JOB_ARN}]
+    }
+    bedrock_client.list_tags_for_resource.side_effect = _access_denied_error(
+        "ListTagsForResource", "bedrock:ListTagsForResource"
+    )
+
+    with pytest.raises(PermissionError, match="bedrock:ListTagsForResource"):
+        find_existing_model_import_job(bedrock_client, "s3://bucket/path/")

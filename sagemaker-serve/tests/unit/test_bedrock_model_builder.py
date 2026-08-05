@@ -780,7 +780,9 @@ class TestDeploy:
 
         b._bedrock_client.create_model_import_job.assert_called_once()
         kw = b._bedrock_client.create_model_import_job.call_args[1]
-        assert kw["modelDataSource"] == {"s3DataSource": {"s3Uri": "s3://my-bucket/my-checkpoint/"}}
+        # _resolve_hf_model_path strips the trailing slash when no
+        # hf_merged/hf checkpoint is found under the base path.
+        assert kw["modelDataSource"] == {"s3DataSource": {"s3Uri": "s3://my-bucket/my-checkpoint"}}
 
     def test_s3_uri_string_invalid_raises(self):
         """Non-S3 string as model raises ValueError."""
@@ -1240,7 +1242,7 @@ class TestResolveModelSourceId:
         b.boto_session = session
 
         with patch(f"{MODULE}.TrainingJob", type(mock_job)):
-            result = b._resolve_model_source_id()
+            result = b._resolve_nova_model_source_id()
 
         assert result == "s3://bucket/ckpt/step_100"
 
@@ -1286,7 +1288,7 @@ class TestResolveModelSourceId:
         b.boto_session = session
 
         with patch(f"{MODULE}.TrainingJob", type(mock_job)):
-            result = b._resolve_model_source_id()
+            result = b._resolve_nova_model_source_id()
 
         assert result == "s3://bucket/ckpt/step_50"
 
@@ -1301,7 +1303,7 @@ class TestResolveModelSourceId:
         with patch(f"{MODULE}.TrainingJob", _SentinelA), \
              patch(f"{MODULE}.ModelTrainer", _SentinelB), \
              patch(f"{MODULE}.BaseTrainer", _SentinelC):
-            result = b._resolve_model_source_id()
+            result = b._resolve_nova_model_source_id()
 
         assert result == "arn:aws:sagemaker:us-west-2:123456789012:model-package/my-pkg"
 
@@ -1315,7 +1317,7 @@ class TestResolveModelSourceId:
         with patch(f"{MODULE}.TrainingJob", _SentinelA), \
              patch(f"{MODULE}.ModelTrainer", _SentinelB), \
              patch(f"{MODULE}.BaseTrainer", _SentinelC):
-            result = b._resolve_model_source_id()
+            result = b._resolve_nova_model_source_id()
 
         assert result == "s3://my-bucket/checkpoints/"
 
@@ -1326,7 +1328,7 @@ class TestResolveModelSourceId:
         b.model_package = None
         b.s3_model_artifacts = None
 
-        result = b._resolve_model_source_id()
+        result = b._resolve_nova_model_source_id()
 
         assert result is None
 
@@ -1454,3 +1456,159 @@ class TestModelReuseDeploy:
         }
         assert source_tag in kw["modelTags"]
         assert result["customModelDeploymentArn"] == "arn:dep"
+
+
+class TestOSSModelReuseDeploy:
+    """Tests for OSS imported model reuse in deploy()."""
+
+    @pytest.fixture(autouse=True)
+    def _stub_role_resolver(self):
+        with patch(
+            f"{MODULE}.resolve_and_validate_role",
+            side_effect=lambda provided_role, **kwargs: provided_role or "auto-role",
+        ):
+            yield
+
+    def test_oss_reuse_existing_imported_model(self):
+        """When reuse_resources=True and a completed imported model exists, skip import."""
+        b = BedrockModelBuilder(model="s3://bucket/artifacts/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.get_imported_model.return_value = {
+            "modelArn": "arn:aws:bedrock:us-west-2:123:imported-model/existing",
+            "modelName": "existing",
+        }
+
+        with patch(
+            f"{MODULE}.find_existing_imported_model",
+            return_value="arn:aws:bedrock:us-west-2:123:imported-model/existing",
+        ), patch(f"{MODULE}.find_existing_model_import_job") as mock_find_job:
+            result = b.deploy(
+                job_name="j", imported_model_name="m", role_arn="r", reuse_resources=True
+            )
+
+        b._bedrock_client.create_model_import_job.assert_not_called()
+        # Completed model reuse resolves via get_imported_model, not the job API.
+        b._bedrock_client.get_imported_model.assert_called_once_with(
+            modelIdentifier="arn:aws:bedrock:us-west-2:123:imported-model/existing"
+        )
+        mock_find_job.assert_not_called()
+        assert result["modelArn"] == "arn:aws:bedrock:us-west-2:123:imported-model/existing"
+        assert b._imported_model_id == "existing"
+
+    def test_oss_reuse_existing_in_progress_job(self):
+        """When no completed model but an in-progress job matches, wait on it."""
+        b = BedrockModelBuilder(model="s3://bucket/artifacts/")
+        b._bedrock_client = Mock()
+        job_arn = "arn:aws:bedrock:us-west-2:123:model-import-job/abcd1234wxyz"
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "reused-model",
+        }
+
+        with patch(f"{MODULE}.find_existing_imported_model", return_value=None), \
+             patch(f"{MODULE}.find_existing_model_import_job", return_value=job_arn), \
+             patch(f"{MODULE}.time.sleep"):
+            result = b.deploy(
+                job_name="j", imported_model_name="m", role_arn="r", reuse_resources=True
+            )
+
+        b._bedrock_client.create_model_import_job.assert_not_called()
+        b._bedrock_client.get_model_import_job.assert_called_with(jobIdentifier=job_arn)
+        assert result["status"] == "Completed"
+        assert b._imported_model_id == "reused-model"
+
+    def test_oss_reuse_not_found_creates_new_import(self):
+        """When reuse_resources=True but nothing exists, create a new import."""
+        b = BedrockModelBuilder(model="s3://bucket/artifacts/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "new-model",
+        }
+
+        with patch(f"{MODULE}.find_existing_imported_model", return_value=None), \
+             patch(f"{MODULE}.find_existing_model_import_job", return_value=None), \
+             patch(f"{MODULE}.time.sleep"):
+            result = b.deploy(
+                job_name="j", imported_model_name="m", role_arn="r", reuse_resources=True
+            )
+
+        b._bedrock_client.create_model_import_job.assert_called_once()
+        assert result["status"] == "Completed"
+
+    def test_oss_reuse_false_skips_lookup_but_tags(self):
+        """Default reuse_resources=False: no lookup, but source tag is applied."""
+        b = BedrockModelBuilder(model="s3://bucket/artifacts/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(f"{MODULE}.find_existing_imported_model") as mock_find, \
+             patch(f"{MODULE}.time.sleep"):
+            b.deploy(job_name="j", imported_model_name="m", role_arn="r")
+
+        mock_find.assert_not_called()
+        # Source tag should still be applied to new imports
+        kw = b._bedrock_client.create_model_import_job.call_args[1]
+        source_tag = {
+            "key": "sagemaker.amazonaws.com/model-source",
+            "value": "s3://bucket/artifacts/",
+        }
+        assert source_tag in kw["importedModelTags"]
+
+    def test_oss_reuse_uses_model_package_arn_as_source(self):
+        """Source ID prefers model package ARN over S3 artifacts."""
+        c = _make_container(s3_uri="s3://b/m/")
+        b = _builder()
+        b.model_package = _make_model_package(c)
+        b.model_package.model_package_arn = "arn:aws:sagemaker:us-west-2:123:model-package/mp/1"
+        b.s3_model_artifacts = "s3://b/m/"
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+
+        with patch(f"{MODULE}.find_existing_imported_model") as mock_find, \
+             patch(f"{MODULE}.find_existing_model_import_job", return_value=None), \
+             patch(f"{MODULE}.time.sleep"):
+            mock_find.return_value = None
+            b.deploy(job_name="j", imported_model_name="m", role_arn="r", reuse_resources=True)
+
+        # Should pass model package ARN as source_id, not s3 artifacts
+        mock_find.assert_called_once()
+        call_source_id = mock_find.call_args[0][1]
+        assert call_source_id == "arn:aws:sagemaker:us-west-2:123:model-package/mp/1"
+
+    def test_oss_reuse_preserves_user_tags(self):
+        """User-provided imported_model_tags are preserved alongside the source tag."""
+        b = BedrockModelBuilder(model="s3://bucket/path/")
+        b._bedrock_client = Mock()
+        b._bedrock_client.create_model_import_job.return_value = {"jobArn": "arn:job"}
+        b._bedrock_client.get_model_import_job.return_value = {
+            "status": "Completed",
+            "importedModelName": "m",
+        }
+        user_tag = {"key": "team", "value": "ml-platform"}
+
+        with patch(f"{MODULE}.find_existing_imported_model", return_value=None), \
+             patch(f"{MODULE}.find_existing_model_import_job", return_value=None), \
+             patch(f"{MODULE}.time.sleep"):
+            b.deploy(
+                job_name="j",
+                imported_model_name="m",
+                role_arn="r",
+                imported_model_tags=[user_tag],
+                reuse_resources=True,
+            )
+
+        kw = b._bedrock_client.create_model_import_job.call_args[1]
+        tags = kw["importedModelTags"]
+        assert user_tag in tags
+        source_tag = {"key": "sagemaker.amazonaws.com/model-source", "value": "s3://bucket/path/"}
+        assert source_tag in tags
