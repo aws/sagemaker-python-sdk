@@ -12,10 +12,10 @@ Launch evaluation jobs with the following options:
 .. toctree::
    :maxdepth: 1
 
-   ../../v3-examples/model-customization-examples/llm_as_judge_demo
-   ../../v3-examples/model-customization-examples/inspect_ai_evaluation_demo
-   ../../v3-examples/model-customization-examples/custom_scorer_demo
-   ../../v3-examples/model-customization-examples/benchmark_demo
+   ../../v3-examples/model-customization-examples/evaluation/llm_as_judge_demo
+   ../../v3-examples/model-customization-examples/evaluation/inspect_ai_evaluation_demo
+   ../../v3-examples/model-customization-examples/evaluation/custom_scorer_demo
+   ../../v3-examples/model-customization-examples/evaluation/benchmark_demo
    ../../v3-examples/nova-examples/evaluation-benchmark-and-custom-scorer
 
 

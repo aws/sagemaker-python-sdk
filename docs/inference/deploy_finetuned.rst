@@ -7,4 +7,4 @@ Deploy models that have been fine-tuned through the :doc:`Model Customization <.
    :maxdepth: 1
 
    Deploy to SageMaker Endpoint <../model_customization/deploy_sagemaker_endpoint>
-   Deploy to Amazon Bedrock <../../v3-examples/model-customization-examples/bedrock-modelbuilder-deployment>
+   Deploy to Amazon Bedrock <../../v3-examples/model-customization-examples/deployment/bedrock-modelbuilder-deployment>
