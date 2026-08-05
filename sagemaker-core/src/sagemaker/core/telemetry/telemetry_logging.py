@@ -64,6 +64,7 @@ TELEMETRY_OPT_OUT_MESSAGING = (
     "For more information, refer to https://sagemaker.readthedocs.io/en/stable/overview.html"
     "#configuring-and-using-defaults-with-the-sagemaker-python-sdk."
 )
+_telemetry_msg_shown = False
 
 FEATURE_TO_CODE = {
     str(Feature.SDK_DEFAULTS): 11,
@@ -284,8 +285,8 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                 )
 
             if sagemaker_session:
+                global _telemetry_msg_shown
                 logger.debug("sagemaker_session found, preparing to emit telemetry...")
-                logger.info(TELEMETRY_OPT_OUT_MESSAGING)
                 response = None
                 caught_ex = None
                 studio_app_type = process_studio_metadata_file()
@@ -298,6 +299,10 @@ def _telemetry_emitter(feature: str, func_name: str, telemetry_params=None):
                     sagemaker_session=sagemaker_session,
                 )
                 logger.debug("TelemetryOptOut flag is set to: %s", telemetry_opt_out_flag)
+
+                if not telemetry_opt_out_flag and not _telemetry_msg_shown:
+                    logger.info(TELEMETRY_OPT_OUT_MESSAGING)
+                    _telemetry_msg_shown = True
 
                 # Construct the feature list to track feature combinations
                 feature_list: List[int] = [FEATURE_TO_CODE[str(feature)]]

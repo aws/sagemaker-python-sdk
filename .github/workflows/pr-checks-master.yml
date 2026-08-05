@@ -208,8 +208,18 @@ jobs:
       - name: Run Unit Tests for ${{ matrix.submodule }}
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-unit-tests
+          # Use the single CDK-managed V3 unit-test project (driven by the SUBMODULE
+          # env var), the same project the CI-health workflow uses. The previous
+          # per-submodule projects (sagemaker-python-sdk-ci-<submodule>-unit-tests)
+          # were created manually, are not CDK/pipeline-managed, and had drifted
+          # stale (e.g. still running `--cov=.` instead of the deployed
+          # `--cov=sagemaker`), so PR coverage never reflected buildspec fixes.
+          project-name: ${{ github.event.repository.name }}-ci-health-unit-test-v3
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+          env-vars-for-codebuild: |
+            SUBMODULE
+        env:
+          SUBMODULE: ${{ matrix.submodule }}
 
   integ-tests:
     runs-on: ubuntu-latest

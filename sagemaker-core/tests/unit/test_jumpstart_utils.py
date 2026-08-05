@@ -25,6 +25,7 @@ from sagemaker.core.jumpstart.types import (
     JumpStartBenchmarkStat,
     DeploymentConfigMetadata,
 )
+from sagemaker.core.jumpstart.exceptions import VulnerableJumpStartModelError
 from sagemaker.core.jumpstart.models import HubContentDocument
 from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
@@ -1354,6 +1355,98 @@ class TestGetJumpstartConfigs:
         mock_verify.return_value = mock_specs
 
         result = utils.get_jumpstart_configs("us-west-2", "test-model", "1.0.0")
+        assert result == {}
+
+    @patch("sagemaker.core.jumpstart.utils.verify_model_region_and_return_specs")
+    def test_get_jumpstart_configs_does_not_tolerate_by_default(self, mock_verify):
+        """Test the model gate is left enabled when the caller asks for nothing"""
+        mock_specs = Mock()
+        mock_specs.inference_configs = None
+        mock_verify.return_value = mock_specs
+
+        utils.get_jumpstart_configs("us-west-2", "test-model", "1.0.0")
+
+        assert mock_verify.call_args.kwargs["tolerate_vulnerable_model"] is False
+        assert mock_verify.call_args.kwargs["tolerate_deprecated_model"] is False
+
+    @patch("sagemaker.core.jumpstart.utils.verify_model_region_and_return_specs")
+    def test_get_jumpstart_configs_forwards_tolerance(self, mock_verify):
+        """Test tolerance reaches the spec lookup that runs the model gate"""
+        mock_specs = Mock()
+        mock_specs.inference_configs = None
+        mock_verify.return_value = mock_specs
+
+        utils.get_jumpstart_configs(
+            "us-west-2",
+            "test-model",
+            "1.0.0",
+            tolerate_vulnerable_model=True,
+            tolerate_deprecated_model=True,
+        )
+
+        assert mock_verify.call_args.kwargs["tolerate_vulnerable_model"] is True
+        assert mock_verify.call_args.kwargs["tolerate_deprecated_model"] is True
+
+    @patch("sagemaker.core.jumpstart.utils.verify_model_region_and_return_specs")
+    def test_get_jumpstart_configs_forwards_tolerance_for_training_scope(self, mock_verify):
+        """Test tolerance reaches the spec lookup on the training scope too"""
+        mock_specs = Mock()
+        mock_specs.training_configs = None
+        mock_verify.return_value = mock_specs
+
+        utils.get_jumpstart_configs(
+            "us-west-2",
+            "test-model",
+            "1.0.0",
+            scope=enums.JumpStartScriptScope.TRAINING,
+            tolerate_vulnerable_model=True,
+            tolerate_deprecated_model=True,
+        )
+
+        assert mock_verify.call_args.kwargs["tolerate_vulnerable_model"] is True
+        assert mock_verify.call_args.kwargs["tolerate_deprecated_model"] is True
+
+    @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_vulnerable_model_raises_by_default(self, mock_get_specs):
+        """Test a vulnerable model still trips the gate when tolerance is not requested"""
+        model_specs = Mock(spec=JumpStartModelSpecs)
+        model_specs.deprecated = False
+        model_specs.inference_vulnerable = True
+        model_specs.inference_vulnerabilities = ["CVE-2024-11393"]
+        mock_get_specs.return_value = model_specs
+
+        with pytest.raises(VulnerableJumpStartModelError):
+            utils.get_jumpstart_configs("us-west-2", "test-model", "1.0.0")
+
+    @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_tolerates_vulnerable_model(self, mock_get_specs):
+        """Test a vulnerable model resolves configs instead of tripping the gate"""
+        model_specs = Mock(spec=JumpStartModelSpecs)
+        model_specs.deprecated = False
+        model_specs.inference_vulnerable = True
+        model_specs.inference_vulnerabilities = ["CVE-2024-11393"]
+        model_specs.inference_configs = None
+        mock_get_specs.return_value = model_specs
+
+        result = utils.get_jumpstart_configs(
+            "us-west-2", "test-model", "1.0.0", tolerate_vulnerable_model=True
+        )
+
+        assert result == {}
+
+    @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_tolerates_deprecated_model(self, mock_get_specs):
+        """Test a deprecated model resolves configs instead of tripping the gate"""
+        model_specs = Mock(spec=JumpStartModelSpecs)
+        model_specs.deprecated = True
+        model_specs.inference_vulnerable = False
+        model_specs.inference_configs = None
+        mock_get_specs.return_value = model_specs
+
+        result = utils.get_jumpstart_configs(
+            "us-west-2", "test-model", "1.0.0", tolerate_deprecated_model=True
+        )
+
         assert result == {}
 
 

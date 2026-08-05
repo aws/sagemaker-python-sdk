@@ -247,10 +247,11 @@ class TestDeployRecommendationRoleFallback:
 
 
 class TestDeployRecommendationSpeculativeDecoding:
-    """Speculative-decoding / kernel-tuning recommendations (ModelPackage carries
-    AdditionalModelDataSources) are collapsed to a single ModelDataSource +
-    OPTION_SPECULATIVE_DRAFT_MODEL env so the model can be hosted (Inference
-    Components reject AdditionalModelDataSources)."""
+    """Optimized recommendations (kernel tuning / speculative decoding) carry
+    the base weights and any draft model as AdditionalModelDataSources on the
+    ModelPackage. The hosting stack (including Inference Components) now resolves
+    those channels itself, so deploy just passes the ModelPackage through — no
+    client-side collapsing of the additional sources into a primary source."""
 
     def _make_builder(self, mb_class, described):
         mb = mb_class(sagemaker_session=MagicMock())
@@ -291,52 +292,22 @@ class TestDeployRecommendationSpeculativeDecoding:
             },
         }
 
-    def test_base_model_channel_promoted_to_primary_source(self, mb_class):
-        # Optimized recs put the weights in a base_model channel with an empty
-        # primary ModelDataSource; the base_model S3 uri becomes the primary source,
-        # and env vars that pointed at the old channel path are repointed to
-        # /opt/ml/model (where the primary source mounts).
+    def test_optimized_recommendation_deploys_via_model_package(self, mb_class):
+        # An optimized rec exposes base_model + draft_model as additional data
+        # sources; deploy no longer collapses them — it passes the ModelPackage
+        # through and lets the hosting stack resolve the channels.
+        #
+        # The AdditionalModelDataSources below are intentionally present as a
+        # regression guard: the current path reads only ModelApprovalStatus and
+        # ignores them, so the two negative assertions (no model_data_source /
+        # no additional_model_data_sources) only fail if the client-side
+        # collapse logic is ever re-introduced.
         described = {
             "ModelApprovalStatus": "Approved",
             "InferenceSpecification": {
                 "Containers": [
                     {
                         "Image": "123.dkr.ecr.us-west-2.amazonaws.com/djl-inference:latest",
-                        "Environment": {
-                            "OPTION_TENSOR_PARALLEL_DEGREE": "1",
-                            "HF_MODEL_ID": "/opt/ml/additional-model-data-sources/base_model",
-                            "option.model_id": "/opt/ml/additional-model-data-sources/base_model",
-                        },
-                        "AdditionalModelDataSources": [
-                            self._channel("base_model", "s3://base/weights/")
-                        ],
-                    }
-                ]
-            },
-        }
-        mb = self._make_builder(mb_class, described)
-        container = self._deploy(mb).call_args.kwargs["primary_container"]
-
-        # No AdditionalModelDataSources on the created model (IC would reject it).
-        assert not getattr(container, "additional_model_data_sources", None)
-        assert not getattr(container, "model_package_name", None)
-        # base_model weights promoted to the primary source.
-        assert container.model_data_source.s3_data_source.s3_uri == "s3://base/weights/"
-        # Env vars that referenced the old channel path now point at the primary mount.
-        assert container.environment["HF_MODEL_ID"] == "/opt/ml/model"
-        assert container.environment["option.model_id"] == "/opt/ml/model"
-        # No draft channel here, so no draft env.
-        assert "OPTION_SPECULATIVE_DRAFT_MODEL" not in container.environment
-        assert container.environment["OPTION_TENSOR_PARALLEL_DEGREE"] == "1"
-
-    def test_draft_model_channel_mounted_via_env(self, mb_class):
-        described = {
-            "ModelApprovalStatus": "Approved",
-            "InferenceSpecification": {
-                "Containers": [
-                    {
-                        "Image": "123.dkr.ecr.us-west-2.amazonaws.com/djl-inference:latest",
-                        "Environment": {},
                         "AdditionalModelDataSources": [
                             self._channel("base_model", "s3://base/weights/"),
                             self._channel("draft_model", "s3://draft/model/"),
@@ -348,19 +319,15 @@ class TestDeployRecommendationSpeculativeDecoding:
         mb = self._make_builder(mb_class, described)
         container = self._deploy(mb).call_args.kwargs["primary_container"]
 
-        # base_model is the primary source.
-        assert container.model_data_source.s3_data_source.s3_uri == "s3://base/weights/"
-        # The draft channel stays attached as an additional model data source so
-        # the speculative-decoding env path is actually populated at runtime
-        # (a model-based endpoint supports additional model data sources).
-        assert len(container.additional_model_data_sources) == 1
-        draft = container.additional_model_data_sources[0]
-        assert draft.channel_name == "draft_model"
-        assert draft.s3_data_source.s3_uri == "s3://draft/model/"
-        assert (
-            container.environment["OPTION_SPECULATIVE_DRAFT_MODEL"]
-            == "/opt/ml/additional-model-data-sources/draft_model/"
-        )
+        # Deployed straight from the ModelPackage — no client-side collapsing.
+        assert container.model_package_name == "arn:.../p/A"
+        # The row's inference_specification_name is threaded onto the container
+        # (guards the `if inference_specification_name:` branch from regressing).
+        assert container.inference_specification_name == "A"
+        # No collapse: the additional sources above must NOT become a primary
+        # model_data_source / additional_model_data_sources on the container.
+        assert not getattr(container, "model_data_source", None)
+        assert not getattr(container, "additional_model_data_sources", None)
 
     def test_no_additional_sources_uses_model_package(self, mb_class):
         described = {
@@ -370,7 +337,7 @@ class TestDeployRecommendationSpeculativeDecoding:
         mb = self._make_builder(mb_class, described)
         model_create = self._deploy(mb)
         container = model_create.call_args.kwargs["primary_container"]
-        # Plain (non-speculative-decoding) recommendation still deploys via the ModelPackage.
+        # Plain (non-optimized) recommendation also deploys via the ModelPackage.
         assert container.model_package_name == "arn:.../p/A"
 
 

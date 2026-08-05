@@ -345,3 +345,178 @@ class TestDatasetBuilderValidation:
 
         with pytest.raises(ValueError, match="must be either"):
             builder.to_csv_file()
+
+
+class TestDatasetBuilderRegisterAsDataset:
+    """Tests for the register_as_dataset lineage feature."""
+
+    @pytest.fixture
+    def mock_session(self):
+        return Mock()
+
+    @pytest.fixture
+    def mock_feature_group(self):
+        fg = MagicMock(spec=FeatureGroup)
+        fg.feature_group_name = "customers-fg"
+        fg.feature_group_arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/customers-fg"
+        return fg
+
+    def test_register_as_dataset_default_false(self, mock_session):
+        """Default register_as_dataset is False."""
+        builder = DatasetBuilder.create(
+            base=MagicMock(spec=FeatureGroup),
+            output_path="s3://bucket/output",
+            session=mock_session,
+        )
+        assert builder._register_as_dataset is False
+
+    def test_register_as_dataset_true_sets_flag(self, mock_session):
+        """register_as_dataset=True is stored correctly."""
+        builder = DatasetBuilder.create(
+            base=MagicMock(spec=FeatureGroup),
+            output_path="s3://bucket/output",
+            session=mock_session,
+            register_as_dataset=True,
+        )
+        assert builder._register_as_dataset is True
+
+    def test_collect_source_fg_arns_from_base(self, mock_session, mock_feature_group):
+        """Collects base FG ARN."""
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=mock_feature_group,
+            _output_path="s3://bucket/output",
+            _register_as_dataset=True,
+        )
+        arns = builder._collect_source_feature_group_arns()
+        assert arns == ["arn:aws:sagemaker:us-west-2:123456789012:feature-group/customers-fg"]
+
+    def test_collect_source_fg_arns_with_merged_fg(self, mock_session, mock_feature_group):
+        """Collects base + merged FG ARNs."""
+        merged_fg = MagicMock(spec=FeatureGroup)
+        merged_fg.feature_group_arn = "arn:aws:sagemaker:us-west-2:123456789012:feature-group/orders-fg"
+
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=mock_feature_group,
+            _output_path="s3://bucket/output",
+            _register_as_dataset=True,
+        )
+        builder._source_feature_groups.append(merged_fg)
+
+        arns = builder._collect_source_feature_group_arns()
+        assert len(arns) == 2
+        assert "arn:aws:sagemaker:us-west-2:123456789012:feature-group/customers-fg" in arns
+        assert "arn:aws:sagemaker:us-west-2:123456789012:feature-group/orders-fg" in arns
+
+    def test_collect_source_fg_arns_deduplicates(self, mock_session, mock_feature_group):
+        """Doesn't duplicate ARNs if same FG used twice."""
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=mock_feature_group,
+            _output_path="s3://bucket/output",
+            _register_as_dataset=True,
+        )
+        builder._source_feature_groups.append(mock_feature_group)
+
+        arns = builder._collect_source_feature_group_arns()
+        assert len(arns) == 1
+
+    def test_collect_source_fg_arns_dataframe_base_empty(self, mock_session):
+        """DataFrame base has no FG ARN."""
+        df = pd.DataFrame({"id": [1], "event_time": ["2024-01-01"]})
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=df,
+            _output_path="s3://bucket/output",
+            _record_identifier_feature_name="id",
+            _event_time_identifier_feature_name="event_time",
+            _register_as_dataset=True,
+        )
+        arns = builder._collect_source_feature_group_arns()
+        assert arns == []
+
+    def test_register_hub_content_called_on_success(self, mock_session, mock_feature_group):
+        """DataSet.create is called with correct params."""
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=mock_feature_group,
+            _output_path="s3://bucket/output",
+            _register_as_dataset=True,
+        )
+
+        with patch(
+            "sagemaker.ai_registry.dataset.DataSet.create",
+        ) as mock_create:
+            builder._register_as_hub_content_dataset(
+                csv_path="s3://bucket/output/result.csv",
+                query_execution_id="abc-123",
+            )
+            mock_create.assert_called_once()
+            call_kwargs = mock_create.call_args[1]
+            assert "customers-fg" in call_kwargs["name"]
+            assert call_kwargs["source"] == "s3://bucket/output/result.csv"
+            assert call_kwargs["content_metadata"]["SourceFeatureGroups"] == [
+                "arn:aws:sagemaker:us-west-2:123456789012:feature-group/customers-fg"
+            ]
+            assert call_kwargs["content_metadata"]["ExtractionMethod"] == "FeatureStoreDatasetBuilder"
+            assert call_kwargs["content_metadata"]["AthenaQueryExecutionId"] == "abc-123"
+            assert call_kwargs["sagemaker_session"] == mock_session
+            assert call_kwargs["wait"] is False
+
+    def test_register_graceful_on_access_denied(self, mock_session, mock_feature_group, caplog):
+        """AccessDeniedException logs warning, doesn't raise."""
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=mock_feature_group,
+            _output_path="s3://bucket/output",
+            _register_as_dataset=True,
+        )
+
+        with patch(
+            "sagemaker.ai_registry.dataset.DataSet.create",
+        ) as mock_create:
+            mock_create.side_effect = Exception("AccessDenied: not authorized")
+            # Should NOT raise
+            builder._register_as_hub_content_dataset(
+                csv_path="s3://bucket/output/result.csv",
+            )
+
+    def test_register_graceful_on_generic_error(self, mock_session, mock_feature_group):
+        """Generic errors log warning, don't raise."""
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=mock_feature_group,
+            _output_path="s3://bucket/output",
+            _register_as_dataset=True,
+        )
+
+        with patch(
+            "sagemaker.ai_registry.dataset.DataSet.create",
+        ) as mock_create:
+            mock_create.side_effect = Exception("Some service error")
+            # Should NOT raise
+            builder._register_as_hub_content_dataset(
+                csv_path="s3://bucket/output/result.csv",
+            )
+
+    def test_register_skipped_when_no_fg_arns(self, mock_session):
+        """Skips registration when no FG ARNs available (DataFrame base, no merged FGs)."""
+        df = pd.DataFrame({"id": [1], "event_time": ["2024-01-01"]})
+        builder = DatasetBuilder(
+            _sagemaker_session=mock_session,
+            _base=df,
+            _output_path="s3://bucket/output",
+            _record_identifier_feature_name="id",
+            _event_time_identifier_feature_name="event_time",
+            _register_as_dataset=True,
+        )
+
+        with patch(
+            "sagemaker.ai_registry.dataset.DataSet.create",
+        ) as mock_create:
+            builder._register_as_hub_content_dataset(
+                csv_path="s3://bucket/output/result.csv",
+            )
+            # Should NOT call DataSet.create since no FG ARNs
+            mock_create.assert_not_called()

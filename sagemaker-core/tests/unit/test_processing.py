@@ -14,7 +14,7 @@
 import pytest
 import os
 import tempfile
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, patch
 from sagemaker.core.processing import (
     Processor,
     ScriptProcessor,
@@ -48,9 +48,6 @@ def mock_session():
 
 class TestProcessorNormalizeArgs:
     def test_normalize_args_with_pipeline_variable_code(self, mock_session):
-        from sagemaker.core.workflow.pipeline_context import PipelineSession
-        from sagemaker.core.workflow import is_pipeline_variable
-
         processor = Processor(
             role="arn:aws:iam::123456789012:role/SageMakerRole",
             image_uri="test-image:latest",
@@ -236,8 +233,6 @@ class TestProcessorNormalizeOutputs:
 
         with pytest.raises(TypeError, match="must be provided as ProcessingOutput objects"):
             processor._normalize_outputs(["invalid"])
-
-
 
 
 class TestBugConditionFileUriReplacedInLocalMode:
@@ -444,7 +439,9 @@ class TestPreservationNonLocalFileBehavior:
             [{"key": "value"}],
         ],
     )
-    def test_non_processing_output_raises_type_error(self, invalid_output, session_local_mode_false):
+    def test_non_processing_output_raises_type_error(
+        self, invalid_output, session_local_mode_false
+    ):
         """Non-ProcessingOutput objects must raise TypeError.
 
         **Validates: Requirements 3.4**
@@ -882,9 +879,7 @@ class TestFrameworkProcessor:
             entry_point_path = f.name
 
         try:
-            script = processor._generate_framework_script(
-                "train.py", entry_point=entry_point_path
-            )
+            script = processor._generate_framework_script("train.py", entry_point=entry_point_path)
             assert custom_script_content in script
             assert "python3 train.py" in script
             assert "tar -xzf sourcedir.tar.gz" not in script
@@ -1042,7 +1037,7 @@ class TestProcessorStartNewWithSubmit:
             },
         ):
             with patch("sagemaker.core.processing.serialize", return_value={}):
-                with patch("sagemaker.core.processing.ProcessingJob") as mock_job:
+                with patch("sagemaker.core.processing.ProcessingJob"):
                     with patch(
                         "sagemaker.core.utils.code_injection.codec.transform",
                         return_value={"processing_job_name": "test-job"},
@@ -1219,7 +1214,6 @@ class TestFrameworkProcessorPackageCode:
                 job_name="test-job",
                 kms_key=None,
             )
-
 
     def test_package_code_with_code_location(self, mock_session):
         processor = FrameworkProcessor(
@@ -1477,8 +1471,6 @@ class TestProcessorGenerateJobName:
 
 class TestProcessorWithPipelineVariable:
     def test_get_process_args_with_pipeline_variable_role(self, mock_session):
-        from sagemaker.core.workflow import is_pipeline_variable
-
         role_var = Mock()
 
         with patch("sagemaker.core.processing.is_pipeline_variable", return_value=True):
@@ -1524,11 +1516,17 @@ class TestProcessorStartNewWithTags:
                 "tags": [{"Key": "Key", "Value": "Value"}],
             },
         ):
-            with patch("sagemaker.core.processing.serialize", return_value={"tags": [{"Key": "Key", "Value": "Value"}]}):
+            with patch(
+                "sagemaker.core.processing.serialize",
+                return_value={"tags": [{"Key": "Key", "Value": "Value"}]},
+            ):
                 with patch("sagemaker.core.processing.ProcessingJob") as mock_job_class:
                     with patch(
                         "sagemaker.core.utils.code_injection.codec.transform",
-                        return_value={"processing_job_name": "test-job", "tags": [{"Key": "Key", "Value": "Value"}]},
+                        return_value={
+                            "processing_job_name": "test-job",
+                            "tags": [{"Key": "Key", "Value": "Value"}],
+                        },
                     ):
                         processor._start_new([], [], None)
                         # Verify ProcessingJob was called without tags
@@ -1763,3 +1761,277 @@ class TestProcessorJobTracking:
 
         assert processor.latest_job == mock_job2
         assert len(processor.jobs) == 2
+
+
+class TestFrameworkProcessorS3SourceDir:
+    """Tests for FrameworkProcessor S3 source_dir support (v2 parity regression fix)."""
+
+    def _make_processor(self, mock_session, **kwargs):
+        return FrameworkProcessor(
+            role="arn:aws:iam::123456789012:role/SageMakerRole",
+            image_uri="test-image:latest",
+            instance_count=1,
+            instance_type="ml.m5.xlarge",
+            sagemaker_session=mock_session,
+            **kwargs,
+        )
+
+    # --- _is_s3_uri helper ---
+
+    def test_is_s3_uri_with_s3_path(self, mock_session):
+        processor = self._make_processor(mock_session)
+        assert processor._is_s3_uri("s3://bucket/path") is True
+
+    def test_is_s3_uri_with_uppercase(self, mock_session):
+        processor = self._make_processor(mock_session)
+        assert processor._is_s3_uri("S3://bucket/path") is True
+
+    def test_is_s3_uri_with_local_path(self, mock_session):
+        processor = self._make_processor(mock_session)
+        assert processor._is_s3_uri("/local/path") is False
+
+    def test_is_s3_uri_with_none(self, mock_session):
+        processor = self._make_processor(mock_session)
+        assert processor._is_s3_uri(None) is False
+
+    def test_is_s3_uri_with_empty_string(self, mock_session):
+        processor = self._make_processor(mock_session)
+        assert processor._is_s3_uri("") is False
+
+    # --- _resolve_s3_source_dir helper ---
+
+    def test_resolve_s3_source_dir_with_tar_gz(self, mock_session):
+        processor = self._make_processor(mock_session)
+        result = processor._resolve_s3_source_dir("s3://bucket/code/sourcedir.tar.gz")
+        assert result == "s3://bucket/code/sourcedir.tar.gz"
+
+    def test_resolve_s3_source_dir_with_prefix(self, mock_session):
+        processor = self._make_processor(mock_session)
+        result = processor._resolve_s3_source_dir("s3://bucket/code/")
+        assert result == "s3://bucket/code/sourcedir.tar.gz"
+
+    def test_resolve_s3_source_dir_with_prefix_no_trailing_slash(self, mock_session):
+        processor = self._make_processor(mock_session)
+        result = processor._resolve_s3_source_dir("s3://bucket/code")
+        assert result == "s3://bucket/code/sourcedir.tar.gz"
+
+    # --- _package_code with S3 source_dir ---
+
+    def test_package_code_with_s3_tar_gz(self, mock_session):
+        processor = self._make_processor(mock_session)
+        result = processor._package_code(
+            entry_point="train.py",
+            source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+            requirements=None,
+            job_name="test-job",
+            kms_key=None,
+        )
+        assert result == "s3://my-bucket/code/sourcedir.tar.gz"
+
+    def test_package_code_with_s3_prefix(self, mock_session):
+        processor = self._make_processor(mock_session)
+        result = processor._package_code(
+            entry_point="train.py",
+            source_dir="s3://my-bucket/code/",
+            requirements=None,
+            job_name="test-job",
+            kms_key=None,
+        )
+        assert result == "s3://my-bucket/code/sourcedir.tar.gz"
+
+    def test_package_code_with_s3_prefix_no_trailing_slash(self, mock_session):
+        processor = self._make_processor(mock_session)
+        result = processor._package_code(
+            entry_point="train.py",
+            source_dir="s3://my-bucket/code",
+            requirements=None,
+            job_name="test-job",
+            kms_key=None,
+        )
+        assert result == "s3://my-bucket/code/sourcedir.tar.gz"
+
+    def test_package_code_with_s3_does_not_upload(self, mock_session):
+        """S3 source_dir should not trigger any S3 upload."""
+        processor = self._make_processor(mock_session)
+        with patch("sagemaker.core.s3.S3Uploader.upload_string_as_file_body") as mock_upload:
+            processor._package_code(
+                entry_point="train.py",
+                source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+                requirements=None,
+                job_name="test-job",
+                kms_key=None,
+            )
+            mock_upload.assert_not_called()
+
+    # --- _pack_and_upload_code with S3 source_dir ---
+
+    def test_pack_and_upload_code_with_s3_source_dir(self, mock_session):
+        processor = self._make_processor(mock_session)
+
+        with patch(
+            "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+            return_value="s3://test-bucket/sagemaker/test-job/source/runproc.sh",
+        ) as mock_upload:
+            result_uri, result_inputs, result_job_name = processor._pack_and_upload_code(
+                code="train.py",
+                source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+                requirements=None,
+                job_name="test-job",
+                inputs=None,
+                kms_key=None,
+            )
+
+            # Should have uploaded install_requirements.py and runproc.sh
+            assert mock_upload.call_count == 2
+            upload_uris = [
+                call.kwargs.get("desired_s3_uri") or call.args[1]
+                for call in mock_upload.call_args_list
+            ]
+            assert any("install_requirements.py" in uri for uri in upload_uris)
+            assert any("runproc.sh" in uri for uri in upload_uris)
+
+            # Helpers should go to the managed prefix, not the user's S3 location
+            for uri in upload_uris:
+                assert not uri.startswith("s3://my-bucket/code/")
+
+    def test_pack_and_upload_code_with_s3_source_dir_creates_code_input(self, mock_session):
+        processor = self._make_processor(mock_session)
+
+        with patch(
+            "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+            return_value="s3://test-bucket/sagemaker/test-job/source/runproc.sh",
+        ):
+            _, result_inputs, _ = processor._pack_and_upload_code(
+                code="train.py",
+                source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+                requirements=None,
+                job_name="test-job",
+                inputs=None,
+                kms_key=None,
+            )
+
+            # Should have a 'code' input pointing to the S3 source dir plus an 'aux' input
+            # that mounts the managed install_requirements.py helper into the container.
+            assert len(result_inputs) == 2
+            inputs_by_name = {i.input_name: i for i in result_inputs}
+
+            code_input = inputs_by_name["code"]
+            assert "s3://my-bucket/code/" in code_input.s3_input.s3_uri
+
+            aux_input = inputs_by_name["aux"]
+            assert aux_input.s3_input.local_path == "/opt/ml/processing/input/aux"
+            assert aux_input.s3_input.s3_uri.endswith("install_requirements.py")
+            # The helper must NOT come from the user's (possibly read-only) S3 location.
+            assert not aux_input.s3_input.s3_uri.startswith("s3://my-bucket/code/")
+
+    # --- _generate_custom_framework_script with S3 source_dir ---
+
+    def test_generate_custom_framework_script_with_s3_source_dir(self, mock_session):
+        processor = self._make_processor(mock_session)
+        script = processor._generate_custom_framework_script(
+            user_script="train.py",
+            entry_point="setup.sh",
+            source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+        )
+
+        # Should not try to read local files — generates a container script instead
+        assert "#!/bin/bash" in script
+        assert "tar -xzf sourcedir.tar.gz" in script
+        assert "chmod +x setup.sh" in script
+        assert "./setup.sh" in script
+        assert "python train.py" in script
+
+    def test_s3_source_dir_script_references_mounted_install_requirements(self, mock_session):
+        """The install_requirements.py path in the generated script must match the aux mount.
+
+        For an S3 source_dir, /opt/ml/processing/input/code maps to the user's location and
+        does NOT contain install_requirements.py; the helper is mounted at the aux path. The
+        generated script must invoke it from there, not from the code dir.
+        """
+        processor = self._make_processor(mock_session)
+        aux_dir = FrameworkProcessor._AUX_CONTAINER_DIR
+
+        # Both the plain framework script and the custom-entrypoint script must point at
+        # the aux mount when told the helper lives there.
+        plain = processor._generate_framework_script(
+            user_script="train.py",
+            source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+            install_requirements_dir=aux_dir,
+        )
+        custom = processor._generate_custom_framework_script(
+            user_script="train.py",
+            entry_point="setup.sh",
+            source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+            install_requirements_dir=aux_dir,
+        )
+        for script in (plain, custom):
+            assert f"{aux_dir}/install_requirements.py" in script
+            assert "/opt/ml/processing/input/code/install_requirements.py" not in script
+
+    def test_local_source_dir_script_references_code_dir_install_requirements(self, mock_session):
+        """For a local source_dir the helper is co-located under /input/code (unchanged)."""
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(user_script="train.py")
+        assert "/opt/ml/processing/input/code/install_requirements.py" in script
+
+    def test_generate_custom_framework_script_with_local_source_dir(self, mock_session):
+        processor = self._make_processor(mock_session)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            entry_point_path = os.path.join(tmpdir, "setup.sh")
+            with open(entry_point_path, "w") as f:
+                f.write("#!/bin/bash\necho setup")
+
+            script = processor._generate_custom_framework_script(
+                user_script="train.py",
+                entry_point="setup.sh",
+                source_dir=tmpdir,
+            )
+
+            # Should have read and embedded the local entry_point file content
+            assert "echo setup" in script
+
+    # --- _generate_framework_script (no custom entry_point) ---
+
+    def test_generate_framework_script_contains_extraction(self, mock_session):
+        processor = self._make_processor(mock_session)
+        script = processor._generate_framework_script(user_script="train.py")
+
+        assert "tar -xzf sourcedir.tar.gz" in script
+        assert "python train.py" in script
+
+    # --- Full run() integration with S3 source_dir ---
+
+    def test_run_with_s3_source_dir(self, mock_session):
+        """End-to-end: run() with S3 source_dir should not raise ValueError."""
+        processor = self._make_processor(mock_session)
+        mock_job = Mock()
+
+        with patch.object(processor, "_start_new", return_value=mock_job):
+            with patch(
+                "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                return_value="s3://test-bucket/sagemaker/test-job/source/runproc.sh",
+            ):
+                processor.run(
+                    code="train.py",
+                    source_dir="s3://my-bucket/code/sourcedir.tar.gz",
+                    wait=False,
+                )
+                assert processor.latest_job == mock_job
+
+    def test_run_with_s3_source_dir_prefix(self, mock_session):
+        """run() with S3 prefix (no .tar.gz) should also work."""
+        processor = self._make_processor(mock_session)
+        mock_job = Mock()
+
+        with patch.object(processor, "_start_new", return_value=mock_job):
+            with patch(
+                "sagemaker.core.s3.S3Uploader.upload_string_as_file_body",
+                return_value="s3://test-bucket/sagemaker/test-job/source/runproc.sh",
+            ):
+                processor.run(
+                    code="train.py",
+                    source_dir="s3://my-bucket/code/",
+                    wait=False,
+                )
+                assert processor.latest_job == mock_job

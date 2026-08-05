@@ -33,6 +33,7 @@ SERVE_SAGEMAKER_ENDPOINT_TIMEOUT = 15
 
 
 @pytest.mark.slow_test
+@pytest.mark.gpu_intensive
 def test_jumpstart_build_deploy_invoke_cleanup():
     """Integration test for JumpStart model build, deploy, invoke, and cleanup workflow"""
     logger.info("Starting JumpStart integration test...")

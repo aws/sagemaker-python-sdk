@@ -1196,8 +1196,19 @@ def get_jumpstart_configs(
     scope: enums.JumpStartScriptScope = enums.JumpStartScriptScope.INFERENCE,
     model_type: enums.JumpStartModelType = enums.JumpStartModelType.OPEN_WEIGHTS,
     hub_arn: Optional[str] = None,
+    tolerate_vulnerable_model: bool = False,
+    tolerate_deprecated_model: bool = False,
 ) -> Dict[str, JumpStartMetadataConfig]:
     """Returns metadata configs for the given model ID and region.
+
+    Args:
+        tolerate_vulnerable_model (bool): True if vulnerable versions of model
+            specifications should be tolerated (exception not raised). If False, raises an
+            exception if the script used by this version of the model has dependencies with known
+            security vulnerabilities. (Default: False).
+        tolerate_deprecated_model (bool): True if deprecated models should be tolerated
+            (exception not raised). False if these models should raise an exception.
+            (Default: False).
 
     Raises:
         ValueError: If the script scope is not supported by JumpStart.
@@ -1210,6 +1221,8 @@ def get_jumpstart_configs(
         scope=scope,
         model_type=model_type,
         hub_arn=hub_arn,
+        tolerate_vulnerable_model=tolerate_vulnerable_model,
+        tolerate_deprecated_model=tolerate_deprecated_model,
     )
 
     if scope == enums.JumpStartScriptScope.INFERENCE:
