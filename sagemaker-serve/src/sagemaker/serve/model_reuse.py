@@ -153,6 +153,75 @@ def find_active_bedrock_deployment_for_model(bedrock_client, model_arn: str) -> 
         return None
 
 
+def find_existing_imported_model(
+    bedrock_client,
+    source_id: str,
+) -> Optional[str]:
+    """Find an existing completed Bedrock imported model matching a source id.
+
+    Enumerates imported models (via ``list_imported_models``) and matches on the
+    ``sagemaker.amazonaws.com/model-source`` tag.
+
+    Args:
+        bedrock_client: A boto3 Bedrock client.
+        source_id: Raw source identifier (will be normalized).
+
+    Returns:
+        The imported-model ARN (``.../imported-model/...``) if a match is found,
+        None otherwise.
+    """
+    tag_value = normalize_tag_value(source_id)
+
+    try:
+        resource_arn = _find_imported_model_arn_by_tag(bedrock_client, tag_value)
+    except ClientError as e:
+        _reraise_if_access_denied(e, "bedrock:ListTagsForResource")
+        logger.warning("Could not list Bedrock imported models: %s. Proceeding without.", e)
+        return None
+    except Exception as e:
+        logger.warning("Could not list Bedrock imported models: %s. Proceeding without.", e)
+        return None
+
+    return resource_arn
+
+
+def find_existing_model_import_job(
+    bedrock_client,
+    source_id: str,
+) -> Optional[str]:
+    """Find an in-progress Bedrock model import job matching a source id.
+
+    Enumerates in-progress import jobs (via ``list_model_import_jobs``) and
+    matches on the ``sagemaker.amazonaws.com/model-source`` tag. Use this when
+    ``find_existing_imported_model`` returns None to detect an import that is
+    already running for the same source.
+
+    Args:
+        bedrock_client: A boto3 Bedrock client.
+        source_id: Raw source identifier (will be normalized).
+
+    Returns:
+        The import-job ARN (``.../model-import-job/...``) if a matching
+        in-progress job is found, None otherwise.
+    """
+    tag_value = normalize_tag_value(source_id)
+
+    try:
+        job_arn = _find_in_progress_import_job_by_tag(bedrock_client, tag_value)
+    except ClientError as e:
+        _reraise_if_access_denied(e, "bedrock:ListTagsForResource")
+        logger.warning("Could not list Bedrock import jobs: %s. Proceeding without.", e)
+        return None
+    except Exception as e:
+        logger.warning("Could not list Bedrock import jobs: %s. Proceeding without.", e)
+        return None
+
+    if job_arn:
+        logger.info("Found in-progress import job %s with matching model-source tag.", job_arn)
+
+    return job_arn
+
+
 def find_existing_sagemaker_endpoint(
     sagemaker_client,
     source_id: str,
@@ -209,6 +278,47 @@ def _find_bedrock_model_arn_by_tag(bedrock_client, tag_value: str) -> Optional[s
         next_token = response.get("nextToken")
         if not next_token:
             return None
+
+
+def _find_imported_model_arn_by_tag(bedrock_client, tag_value: str) -> Optional[str]:
+    """Return the ARN of the first Bedrock imported model carrying the source tag."""
+    next_token = None
+    while True:
+        kwargs = {"nextToken": next_token} if next_token else {}
+        response = bedrock_client.list_imported_models(**kwargs)
+        for summary in response.get("modelSummaries", []):
+            arn = summary.get("modelArn")
+            if arn and _bedrock_resource_has_tag(bedrock_client, arn, tag_value):
+                return arn
+        next_token = response.get("nextToken")
+        if not next_token:
+            return None
+
+
+# The Bedrock ListModelImportJobs API only accepts the enum values
+# {Completed, InProgress, Failed} for statusEquals.
+_IMPORT_JOB_IN_PROGRESS_STATUSES = {"InProgress"}
+
+def _find_in_progress_import_job_by_tag(bedrock_client, tag_value: str) -> Optional[str]:
+    """Return the job ARN of an in-progress import job carrying the source tag.
+
+    Searches jobs in the InProgress state.
+    """
+    for status_filter in _IMPORT_JOB_IN_PROGRESS_STATUSES:
+        next_token = None
+        while True:
+            kwargs = {"statusEquals": status_filter}
+            if next_token:
+                kwargs["nextToken"] = next_token
+            response = bedrock_client.list_model_import_jobs(**kwargs)
+            for summary in response.get("modelImportJobSummaries", []):
+                job_arn = summary.get("jobArn")
+                if job_arn and _bedrock_resource_has_tag(bedrock_client, job_arn, tag_value):
+                    return job_arn
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
+    return None
 
 
 def _bedrock_resource_has_tag(bedrock_client, resource_arn: str, tag_value: str) -> bool:

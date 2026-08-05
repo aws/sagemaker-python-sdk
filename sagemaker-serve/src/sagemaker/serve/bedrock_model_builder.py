@@ -26,6 +26,8 @@ from sagemaker.serve.model_reuse import (
     build_source_tag,
     find_active_bedrock_deployment_for_model,
     find_existing_bedrock_model,
+    find_existing_imported_model,
+    find_existing_model_import_job,
 )
 from sagemaker.core.training.utils import (
     build_nova_manifest_s3_uri,
@@ -435,23 +437,104 @@ class BedrockModelBuilder:
                 role_type="bedrock",
                 sagemaker_session=self.sagemaker_session,
             )
-            model_data_source = {"s3DataSource": {"s3Uri": self.s3_model_artifacts}}
+
+            # Resolve model source identifier for reuse tagging.
+            # Priority: model package ARN > S3 artifact URI > None (with warning).
+            oss_source_id = None
+            if self.model_package:
+                mp_arn = getattr(self.model_package, "model_package_arn", None)
+                if mp_arn and isinstance(mp_arn, str):
+                    oss_source_id = mp_arn
+            if not oss_source_id and self.s3_model_artifacts:
+                oss_source_id = self.s3_model_artifacts
+            if not oss_source_id:
+                logger.warning(
+                    "Cannot determine model source identifier for OSS model resource reuse. "
+                    "Neither Model package ARN nor model artifacts S3 URI is available. "
+                )
+
+            # Reuse: first look for an already-completed imported model, then
+            # fall back to an in-progress import job for the same source.
+            if oss_source_id and reuse_resources:
+                # 1. A completed imported model can be reused directly; there is
+                #    no import job to wait on.
+                model_arn = find_existing_imported_model(
+                    self._get_bedrock_client(),
+                    oss_source_id,
+                )
+                if model_arn:
+                    logger.info(
+                        "Reusing existing imported model %s (matched model-source tag). "
+                        "No new import job was created. Pass reuse_resources=False to "
+                        "force a new import.",
+                        model_arn,
+                    )
+                    model_details = self._get_bedrock_client().get_imported_model(
+                        modelIdentifier=model_arn
+                    )
+                    self._imported_model_id = model_details.get("modelName")
+                    return model_details
+
+                # 2. Otherwise, an import job may already be running for this
+                #    source; wait for it to complete instead of starting a new one.
+                job_arn = find_existing_model_import_job(
+                    self._get_bedrock_client(),
+                    oss_source_id,
+                )
+                if job_arn:
+                    logger.info(
+                        "Reusing in-progress import job %s (matched model-source tag). "
+                        "No new import job was created. Pass reuse_resources=False to "
+                        "force a new import.",
+                        job_arn,
+                    )
+                    self._wait_for_import_job_complete(job_arn)
+                    job_details = self._get_bedrock_client().get_model_import_job(
+                        jobIdentifier=job_arn
+                    )
+                    self._imported_model_id = job_details.get("importedModelName")
+                    return job_details
+
+
             # If artifacts are a tar.gz, extract to S3 first (Bedrock requires uncompressed format)
             if self.s3_model_artifacts.endswith(".tar.gz") or self.s3_model_artifacts.endswith(".tar.gz/"):
                 extracted_uri = self._extract_tar_gz_to_s3(self.s3_model_artifacts.rstrip("/"))
                 resolved_uri = self._resolve_hf_model_path(extracted_uri)
                 model_data_source = {"s3DataSource": {"s3Uri": resolved_uri}}
+            else:
+                resolved_uri = self._resolve_hf_model_path(self.s3_model_artifacts)
+                model_data_source = {"s3DataSource": {"s3Uri": resolved_uri}}
+
             # Auto-generate job_name if not provided
             if not job_name:
                 import time
                 job_name = f"{imported_model_name or 'import'}-{int(time.time())}"
+
+            # Inject the source tag into both the imported model tags and the
+            # import job tags. The model tags let a completed model be reused;
+            # the job tags let an in-progress import job be discovered and reused
+            # (reuse discovery matches the tag on the job ARN while the model
+            # does not yet exist).
+            merged_imported_tags = list(imported_model_tags) if imported_model_tags else []
+            merged_job_tags = list(job_tags) if job_tags else []
+            if oss_source_id:
+                source_tag = build_source_tag(oss_source_id)
+                merged_imported_tags = [
+                    t for t in merged_imported_tags if t.get("key") != source_tag["key"]
+                ]
+                merged_imported_tags.append(source_tag)
+                merged_job_tags = [
+                    t for t in merged_job_tags if t.get("key") != source_tag["key"]
+                ]
+                merged_job_tags.append(source_tag)
+
             params = {
                 "jobName": job_name,
                 "importedModelName": imported_model_name,
                 "roleArn": role_arn,
                 "modelDataSource": model_data_source,
-                "jobTags": job_tags,
-                "importedModelTags": imported_model_tags,
+                "jobTags": merged_job_tags if merged_job_tags else None,
+                "importedModelTags": merged_imported_tags if merged_imported_tags else None,
                 "clientRequestToken": client_request_token,
                 "importedModelKmsKeyId": imported_model_kms_key_id,
             }
@@ -901,6 +984,18 @@ class BedrockModelBuilder:
         s3_client = self.boto_session.client("s3")
 
         print(f"[BedrockModelBuilder] Base s3_uri from model package: {s3_uri}")
+
+        # Idempotency guard: if the given URI already points directly at a
+        # resolved model directory (contains config.json), it is already
+        # correct. Return it as-is instead of appending another checkpoints/
+        # prefix, so repeated calls are a no-op.
+        base_config_key = parsed_base.path.lstrip("/") + "config.json"
+        try:
+            s3_client.head_object(Bucket=bucket, Key=base_config_key)
+            logger.info("s3_uri already resolved (config.json present) at %s", s3_uri)
+            return s3_uri.rstrip("/")
+        except Exception as e:
+            print(f"[BedrockModelBuilder] Not a resolved dir, continuing: {e}")
 
         hf_merged_uri = s3_uri + "checkpoints/hf_merged/"
         merged_config_key = urlparse(hf_merged_uri).path.lstrip("/") + "config.json"
