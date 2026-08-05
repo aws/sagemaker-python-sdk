@@ -4,7 +4,6 @@ from __future__ import absolute_import
 from pathlib import Path
 import logging
 import os
-import re
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Type
 import base64
@@ -26,18 +25,18 @@ from sagemaker.serve.model_server.triton.server import LocalTritonServer
 from sagemaker.serve.model_server.tgi.server import LocalTgiServing
 from sagemaker.serve.model_server.tei.server import LocalTeiServing
 from sagemaker.serve.model_server.multi_model_server.server import LocalMultiModelServer
+from sagemaker.serve.validations.check_image_uri import ECR_HOST_RE
 from sagemaker.core.helper.session_helper import Session
 
 logger = logging.getLogger(__name__)
 
-# Strict allowlist for a real ECR registry host: <12-digit-account>.dkr.ecr.<region>.amazonaws.com
-# Also matches AWS China (.amazonaws.com.cn). This is intentionally an exact host match so that the
-# "is this an ECR image?" classifier and the "which host do I docker login to?" extractor operate on
-# the SAME value, preventing a crafted URI (e.g. attacker.com/x.dkr.ecr.<region>.amazonaws.com/repo)
-# from being classified as ECR while login is pointed at an attacker-controlled host.
-_ECR_HOST_RE = re.compile(
-    r"^[0-9]{12}\.dkr\.ecr\.[a-z0-9-]+\.amazonaws\.com(\.cn)?$"
-)
+# Strict ECR registry host pattern, shared with the hub-consumption validation in
+# check_image_uri so the "is this an ECR image?" classifier, the "which host do I docker login
+# to?" extractor, and the hub EcrAddress validation all operate on the SAME value. This is
+# intentionally an exact host match, preventing a crafted URI (e.g.
+# attacker.com/x.dkr.ecr.<region>.amazonaws.com/repo) from being classified as ECR while login is
+# pointed at an attacker-controlled host.
+_ECR_HOST_RE = ECR_HOST_RE
 
 _PING_HEALTH_CHECK_INTERVAL_SEC = 5
 
