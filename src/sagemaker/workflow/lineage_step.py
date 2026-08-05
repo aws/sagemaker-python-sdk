@@ -70,11 +70,19 @@ class LineageStep(Step):
         )
         if arguments is None:
             raise ValueError("arguments is required for LineageStep.")
+        if not isinstance(arguments, dict) or not arguments:
+            raise ValueError("LineageStep: arguments must be a non-empty dict.")
         recognized = {"Actions", "Artifacts", "Contexts", "Associations"}
         if not recognized & set(arguments.keys()):
             raise ValueError(
                 "LineageStep.arguments must contain at least one of: "
                 + ", ".join(sorted(recognized))
+            )
+        unknown = sorted(set(arguments) - recognized)
+        if unknown:
+            raise ValueError(
+                f"LineageStep: unknown argument field(s) {unknown}. "
+                "Allowed top-level fields: " + ", ".join(sorted(recognized)) + "."
             )
         self._arguments = arguments
 

@@ -12,8 +12,11 @@
 # language governing permissions and limitations under the License.
 """Unit tests for Zimmer pipeline step types (v2).
 
-Passthrough ``arguments: Dict[str, Any]`` API. The service validates
-the argument schema server-side; this SDK does not duplicate that.
+Passthrough ``arguments: Dict[str, Any]`` API. Top-level argument keys
+are validated client-side against the public AWS API input shape
+(botocore service model); fields known to be rejected by SageMaker
+Pipelines fail fast at construction. Values are not validated -- they
+may be pipeline variables. Full schema validation remains server-side.
 """
 
 from __future__ import absolute_import
@@ -330,3 +333,114 @@ def test_depends_on_accepts_string_list():
     )
     req = step.to_request()
     assert req["DependsOn"] == ["Prev"]
+
+
+# ---------- Client-side argument validation ----------
+
+
+def test_endpoint_config_step_rejects_unsupported_fields():
+    """DataCaptureConfig and ExplainerConfig exist in the public API but
+    are rejected by SageMaker Pipelines -- fail fast with a clear error."""
+    for field in ("DataCaptureConfig", "ExplainerConfig"):
+        with pytest.raises(ValueError, match=field):
+            EndpointConfigStep(
+                name="Cfg",
+                arguments={
+                    "EndpointConfigName": "cfg",
+                    "ProductionVariants": [],
+                    field: {},
+                },
+            )
+
+
+def test_endpoint_step_rejects_unsupported_deployment_config():
+    with pytest.raises(ValueError, match="DeploymentConfig"):
+        EndpointStep(
+            name="Deploy",
+            arguments={
+                "EndpointName": "ep",
+                "EndpointConfigName": "cfg",
+                "DeploymentConfig": {},
+            },
+        )
+
+
+def test_unknown_argument_key_rejected():
+    """Keys outside the operation's input shape fail fast at construction."""
+    with pytest.raises(ValueError, match="Bogus"):
+        EndpointConfigStep(
+            name="Cfg",
+            arguments={"EndpointConfigName": "cfg", "Bogus": 1},
+        )
+    with pytest.raises(ValueError, match="Bogus"):
+        InferenceComponentStep(
+            name="IC",
+            arguments={"InferenceComponentName": "ic", "Bogus": 1},
+        )
+
+
+def test_bedrock_steps_validate_pascal_case_keys():
+    """Valid PascalCase keys (converted from Bedrock's camelCase API
+    members) are accepted; unknown keys are rejected."""
+    step = BedrockCustomModelStep(
+        name="CM",
+        arguments={
+            "ModelName": {"Get": "Parameters.ModelName"},
+            "RoleArn": "arn:aws:iam:...",
+            "ModelSourceConfig": {},
+        },
+    )
+    assert "ModelName" in step.arguments
+    with pytest.raises(ValueError, match="Bogus"):
+        BedrockCustomModelStep(
+            name="CM",
+            arguments={"ModelName": {"Get": "Parameters.ModelName"}, "Bogus": 1},
+        )
+    with pytest.raises(ValueError, match="Bogus"):
+        BedrockProvisionedModelThroughputStep(
+            name="PT",
+            arguments={"ProvisionedModelName": "pm", "Bogus": 1},
+        )
+
+
+def test_empty_arguments_rejected():
+    for cls, valid_key in (
+        (EndpointConfigStep, "EndpointConfigName"),
+        (EndpointStep, "EndpointName"),
+        (InferenceComponentStep, "InferenceComponentName"),
+        (BedrockModelImportStep, "JobName"),
+    ):
+        with pytest.raises(ValueError):
+            cls(name="x", arguments={})
+        # sanity: a single valid key constructs fine
+        assert cls(name="x", arguments={valid_key: "v"}).arguments == {valid_key: "v"}
+
+
+def test_pipeline_variable_values_pass_validation():
+    """Only top-level keys are validated -- values may be pipeline
+    variables (Get expressions) at any position."""
+    step = EndpointStep(
+        name="Deploy",
+        arguments={
+            "EndpointName": {"Get": "Parameters.EndpointName"},
+            "EndpointConfigName": {"Get": "Steps.Cfg.EndpointConfigName"},
+        },
+    )
+    assert step.arguments["EndpointName"] == {"Get": "Parameters.EndpointName"}
+
+
+def test_post_construction_mutation_caught_at_serialization():
+    """Injecting an unsupported field after construction is caught when
+    the arguments property is read (i.e., at pipeline serialization)."""
+    step = EndpointConfigStep(
+        name="Cfg",
+        arguments={"EndpointConfigName": "cfg", "ProductionVariants": []},
+    )
+    step._arguments["DataCaptureConfig"] = {}
+    with pytest.raises(ValueError, match="DataCaptureConfig"):
+        _ = step.arguments
+
+
+def test_lineage_step_rejects_unknown_keys_alongside_recognized():
+    with pytest.raises(ValueError, match="Bogus"):
+        LineageStep(name="Rec", arguments={"Actions": [], "Bogus": []})

@@ -16,6 +16,7 @@ from __future__ import absolute_import
 
 from typing import Any, Dict, List, Optional, Union
 
+from sagemaker.workflow._argument_validation import validate_step_arguments
 from sagemaker.workflow.entities import RequestType
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.retry import RetryPolicy
@@ -73,6 +74,13 @@ class EndpointConfigStep(ConfigurableRetryStep):
         )
         if arguments is None:
             raise ValueError("arguments is required for EndpointConfigStep.")
+        validate_step_arguments(
+            "EndpointConfigStep",
+            arguments,
+            service_name="sagemaker",
+            operation_name="CreateEndpointConfig",
+            unsupported_fields=("DataCaptureConfig", "ExplainerConfig"),
+        )
         self._arguments = arguments
         self.cache_config = cache_config
         self._properties = Properties(
@@ -82,6 +90,13 @@ class EndpointConfigStep(ConfigurableRetryStep):
     @property
     def arguments(self) -> RequestType:
         """The ``Arguments`` block for the ``CreateEndpointConfig`` call."""
+        validate_step_arguments(
+            "EndpointConfigStep",
+            self._arguments,
+            service_name="sagemaker",
+            operation_name="CreateEndpointConfig",
+            unsupported_fields=("DataCaptureConfig", "ExplainerConfig"),
+        )
         return self._arguments
 
     @property
@@ -138,6 +153,13 @@ class EndpointStep(Step):
         )
         if arguments is None:
             raise ValueError("arguments is required for EndpointStep.")
+        validate_step_arguments(
+            "EndpointStep",
+            arguments,
+            service_name="sagemaker",
+            operation_name="CreateEndpoint",
+            unsupported_fields=("DeploymentConfig",),
+        )
         self._arguments = arguments
         self.cache_config = cache_config
         self._properties = Properties(
@@ -147,6 +169,13 @@ class EndpointStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The ``Arguments`` block for the ``CreateEndpoint``/``UpdateEndpoint`` call."""
+        validate_step_arguments(
+            "EndpointStep",
+            self._arguments,
+            service_name="sagemaker",
+            operation_name="CreateEndpoint",
+            unsupported_fields=("DeploymentConfig",),
+        )
         return self._arguments
 
     @property
