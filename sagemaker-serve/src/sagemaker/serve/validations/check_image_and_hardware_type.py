@@ -3,6 +3,7 @@
 from __future__ import absolute_import
 import logging
 
+from sagemaker.core.helper.pipeline_variable import PipelineVariable
 from sagemaker.serve.utils.types import ModelServer, HardwareType
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,10 @@ GRAVITON_INSTANCE_FAMILIES = {
 
 def validate_image_uri_and_hardware(image_uri: str, instance_type: str, model_server: ModelServer):
     """Placeholder docstring"""
+    if isinstance(image_uri, PipelineVariable):
+        # Skip validation since the value is not known at build time
+        return
+
     if "xgboost" in image_uri:
         # xgboost container does not care about hardware type
         # hence skipping validation
