@@ -22,4 +22,5 @@ BASE_EVALUATOR_TELEMETRY_PARAMS = [
     ("networking", TelemetryParamType.ATTR_EXISTS),
     ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
     ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
+    ("dry_run", TelemetryParamType.KWARG_EXISTS),
 ]

@@ -35,6 +35,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _is_nova_model,
 )
 from sagemaker.train.common_utils.cloudwatch_metrics import _get_smhp_log_group
+from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
+from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.common_utils.log_streamer import (
     LogStreamer,
     _format_timestamp,
@@ -1096,6 +1098,13 @@ class BaseEvaluator(BaseModel):
         """
         raise NotImplementedError("Subclasses must implement evaluate method")
 
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BaseEvaluator.stream_logs",
+        telemetry_params=[
+            ("compute", TelemetryParamType.ATTR_TYPE),
+        ],
+    )
     def stream_logs(self, poll: int = 5, start_time=None) -> None:
         """Stream CloudWatch logs for the latest evaluation execution.
 
