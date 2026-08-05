@@ -18,8 +18,11 @@ Design note: these classes mirror Tioga's own step definitions
 ``Arguments`` block as an opaque ``StructureArgument`` validated against
 the underlying SageMaker Coral request model (``CreateEndpointConfigInput``
 or ``CreateEndpointInput``) minus a small exclusion set. This SDK
-mirrors that: the caller passes an ``arguments`` dict, we forward it
-verbatim. See the deserializer classes for the authoritative field lists.
+validates the **top-level keys** of the ``arguments`` dict against the
+public ``CreateEndpointConfig``/``CreateEndpoint`` API input shape at
+construction time (values are not validated -- they may be pipeline
+variables) and forwards the dict to the service, which remains the
+authority on full schema validation.
 
 Excluded fields (Tioga will reject the pipeline if present):
 
@@ -34,6 +37,7 @@ from typing import Any, Dict, List, Optional, Union
 from sagemaker.core.helper.pipeline_variable import RequestType
 from sagemaker.core.workflow.properties import Properties
 
+from sagemaker.mlops.workflow._argument_validation import validate_step_arguments
 from sagemaker.mlops.workflow.retry import RetryPolicy
 from sagemaker.mlops.workflow.step_collections import StepCollection
 from sagemaker.mlops.workflow.steps import (
@@ -98,6 +102,13 @@ class EndpointConfigStep(ConfigurableRetryStep):
         )
         if arguments is None:
             raise ValueError("arguments is required for EndpointConfigStep.")
+        validate_step_arguments(
+            "EndpointConfigStep",
+            arguments,
+            service_name="sagemaker",
+            operation_name="CreateEndpointConfig",
+            unsupported_fields=("DataCaptureConfig", "ExplainerConfig"),
+        )
         self._arguments = arguments
         self.cache_config = cache_config
         self._properties = Properties(
@@ -107,6 +118,13 @@ class EndpointConfigStep(ConfigurableRetryStep):
     @property
     def arguments(self) -> RequestType:
         """The ``Arguments`` block for the ``CreateEndpointConfig`` call."""
+        validate_step_arguments(
+            "EndpointConfigStep",
+            self._arguments,
+            service_name="sagemaker",
+            operation_name="CreateEndpointConfig",
+            unsupported_fields=("DataCaptureConfig", "ExplainerConfig"),
+        )
         return self._arguments
 
     @property
@@ -169,6 +187,13 @@ class EndpointStep(Step):
         )
         if arguments is None:
             raise ValueError("arguments is required for EndpointStep.")
+        validate_step_arguments(
+            "EndpointStep",
+            arguments,
+            service_name="sagemaker",
+            operation_name="CreateEndpoint",
+            unsupported_fields=("DeploymentConfig",),
+        )
         self._arguments = arguments
         self.cache_config = cache_config
         self._properties = Properties(
@@ -178,6 +203,13 @@ class EndpointStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The ``Arguments`` block for the ``CreateEndpoint``/``UpdateEndpoint`` call."""
+        validate_step_arguments(
+            "EndpointStep",
+            self._arguments,
+            service_name="sagemaker",
+            operation_name="CreateEndpoint",
+            unsupported_fields=("DeploymentConfig",),
+        )
         return self._arguments
 
     @property

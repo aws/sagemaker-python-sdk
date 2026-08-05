@@ -39,8 +39,28 @@ from typing import Any, Dict, List, Optional, Union
 from sagemaker.core.helper.pipeline_variable import RequestType
 from sagemaker.core.workflow.properties import Properties
 
+from sagemaker.mlops.workflow._argument_validation import validate_step_arguments
 from sagemaker.mlops.workflow.step_collections import StepCollection
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
+
+
+def _validate_bedrock_arguments(
+    step_class_name: str, arguments: Dict[str, Any], operation_name: str
+) -> None:
+    """Validate a Bedrock step's arguments against the botocore input shape.
+
+    Bedrock's JSON API members are camelCase, but pipeline ``Arguments``
+    fields are PascalCase (matching Tioga's property-path resolver), so
+    shape member names are PascalCase-converted before comparison.
+    """
+    validate_step_arguments(
+        step_class_name,
+        arguments,
+        service_name="bedrock",
+        operation_name=operation_name,
+        pascal_case=True,
+    )
+
 
 # PascalCase property paths for each Bedrock step, sourced from each
 # ``Get*Response`` shape. Users reference these via
@@ -161,12 +181,14 @@ class BedrockCustomModelStep(Step):
         )
         if arguments is None:
             raise ValueError("arguments is required for BedrockCustomModelStep.")
+        _validate_bedrock_arguments("BedrockCustomModelStep", arguments, "CreateCustomModel")
         self._arguments = arguments
         self._properties = _bedrock_properties(name, self, _BEDROCK_CUSTOM_MODEL_FIELDS)
 
     @property
     def arguments(self) -> RequestType:
         """The ``Arguments`` block for the ``CreateCustomModel`` call."""
+        _validate_bedrock_arguments("BedrockCustomModelStep", self._arguments, "CreateCustomModel")
         return self._arguments
 
     @property
@@ -218,12 +240,18 @@ class BedrockCustomModelDeploymentStep(Step):
         )
         if arguments is None:
             raise ValueError("arguments is required for BedrockCustomModelDeploymentStep.")
+        _validate_bedrock_arguments(
+            "BedrockCustomModelDeploymentStep", arguments, "CreateCustomModelDeployment"
+        )
         self._arguments = arguments
         self._properties = _bedrock_properties(name, self, _BEDROCK_CUSTOM_MODEL_DEPLOYMENT_FIELDS)
 
     @property
     def arguments(self) -> RequestType:
         """The ``Arguments`` block for the ``CreateCustomModelDeployment`` call."""
+        _validate_bedrock_arguments(
+            "BedrockCustomModelDeploymentStep", self._arguments, "CreateCustomModelDeployment"
+        )
         return self._arguments
 
     @property
@@ -270,12 +298,16 @@ class BedrockModelImportStep(Step):
         )
         if arguments is None:
             raise ValueError("arguments is required for BedrockModelImportStep.")
+        _validate_bedrock_arguments("BedrockModelImportStep", arguments, "CreateModelImportJob")
         self._arguments = arguments
         self._properties = _bedrock_properties(name, self, _BEDROCK_MODEL_IMPORT_FIELDS)
 
     @property
     def arguments(self) -> RequestType:
         """The ``Arguments`` block for the ``CreateModelImportJob`` call."""
+        _validate_bedrock_arguments(
+            "BedrockModelImportStep", self._arguments, "CreateModelImportJob"
+        )
         return self._arguments
 
     @property
@@ -323,6 +355,9 @@ class BedrockProvisionedModelThroughputStep(Step):
         )
         if arguments is None:
             raise ValueError("arguments is required for BedrockProvisionedModelThroughputStep.")
+        _validate_bedrock_arguments(
+            "BedrockProvisionedModelThroughputStep", arguments, "CreateProvisionedModelThroughput"
+        )
         self._arguments = arguments
         self._properties = _bedrock_properties(
             name, self, _BEDROCK_PROVISIONED_MODEL_THROUGHPUT_FIELDS
@@ -331,6 +366,11 @@ class BedrockProvisionedModelThroughputStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The ``Arguments`` block for the ``CreateProvisionedModelThroughput`` call."""
+        _validate_bedrock_arguments(
+            "BedrockProvisionedModelThroughputStep",
+            self._arguments,
+            "CreateProvisionedModelThroughput",
+        )
         return self._arguments
 
     @property

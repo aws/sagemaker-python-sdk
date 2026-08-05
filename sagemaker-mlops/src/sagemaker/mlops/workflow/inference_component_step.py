@@ -26,6 +26,7 @@ from typing import Any, Dict, List, Optional, Union
 from sagemaker.core.helper.pipeline_variable import RequestType
 from sagemaker.core.workflow.properties import Properties
 
+from sagemaker.mlops.workflow._argument_validation import validate_step_arguments
 from sagemaker.mlops.workflow.step_collections import StepCollection
 from sagemaker.mlops.workflow.steps import Step, StepTypeEnum
 
@@ -79,6 +80,12 @@ class InferenceComponentStep(Step):
         )
         if arguments is None:
             raise ValueError("arguments is required for InferenceComponentStep.")
+        validate_step_arguments(
+            "InferenceComponentStep",
+            arguments,
+            service_name="sagemaker",
+            operation_name="CreateInferenceComponent",
+        )
         self._arguments = arguments
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeInferenceComponentOutput"
@@ -87,6 +94,12 @@ class InferenceComponentStep(Step):
     @property
     def arguments(self) -> RequestType:
         """The ``Arguments`` block for the Create/Update InferenceComponent call."""
+        validate_step_arguments(
+            "InferenceComponentStep",
+            self._arguments,
+            service_name="sagemaker",
+            operation_name="CreateInferenceComponent",
+        )
         return self._arguments
 
     @property
