@@ -1,5 +1,4 @@
 import copy
-import os
 import time
 import yaml
 from abc import ABC, abstractmethod
@@ -15,11 +14,9 @@ from urllib.parse import urlparse
 
 import yaml
 import boto3
-from botocore.exceptions import ClientError
 
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.training.configs import Tag, Networking, InputData, Channel, OutputDataConfig, HyperPodCompute, TrainingJobCompute
-from sagemaker.core.utils.logs import MultiLogStreamHandler
 from sagemaker.core.shapes import shapes
 from sagemaker.core.shapes import S3DataSource
 from sagemaker.core.resources import TrainingJob
@@ -41,6 +38,7 @@ from sagemaker.train.common_utils.mlflow_config_utils import resolve_mlflow_trac
 from sagemaker.train.common_utils.notifications import enable_notifications, delete_notification_rule, list_notification_rules
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.common_utils.cloudwatch_metrics import fetch_and_plot_metrics, _get_smhp_log_group
+from sagemaker.train.common_utils.log_streamer import LogStreamer, stream_log_loop
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.defaults import TrainDefaults
@@ -703,10 +701,6 @@ class BaseTrainer(ABC):
 
     def _stream_logs_smtj(self, training_job, poll: int, start_time_ms=None, tail_lines: Optional[int] = None) -> None:
         """Stream logs for an SMTJ training job."""
-        from sagemaker.train.common_utils.log_streamer import (
-            LogStreamer,
-            stream_log_loop,
-        )
 
         if hasattr(training_job, 'training_job_name'):
             job_name = training_job.training_job_name
@@ -736,7 +730,12 @@ class BaseTrainer(ABC):
         stream_log_loop(streamer, poll, _get_status, tail_lines=tail_lines)
 
     def _stream_logs_smhp(self, training_job, compute, poll: int, start_time_ms=None, tail_lines: Optional[int] = None) -> None:
-        """Stream logs for a HyperPod job using filter_log_events polling."""
+        """Stream logs for a HyperPod job using LogStreamer with filter mode.
+
+        Delegates to stream_log_loop for consistent behavior with SMTJ/MTRL paths.
+        HyperPod jobs have no simple status API, so the status function always
+        returns "InProgress" — the loop exits via KeyboardInterrupt or tail_lines.
+        """
 
         if isinstance(training_job, str):
             job_id = training_job
@@ -748,8 +747,6 @@ class BaseTrainer(ABC):
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
         )
-        region_name = sagemaker_session.boto_session.region_name
-        logs_client = sagemaker_session.boto_session.client("logs", region_name=region_name)
         log_group = _get_smhp_log_group(compute.cluster_name, sagemaker_session.sagemaker_client)
 
         logger.info(f"Streaming logs for HyperPod job: {job_id}")
@@ -758,78 +755,29 @@ class BaseTrainer(ABC):
         logger.info("Press Ctrl+C to stop streaming.")
 
         # Pick start time (user-provided > training job start time > now)
-        if start_time_ms is not None:
-            last_timestamp = start_time_ms
-        elif hasattr(training_job, 'training_start_time') and training_job.training_start_time:
-            try:
-                last_timestamp = int(training_job.training_start_time.timestamp() * 1000)
-            except Exception:
-                last_timestamp = int(time.time() * 1000)
-        else:
-            last_timestamp = int(time.time() * 1000)
-        seen_event_ids = set()
-        lines_printed = 0
-        _CW_PREFIX = "[CloudWatch] "
+        if start_time_ms is None:
+            if hasattr(training_job, 'training_start_time') and training_job.training_start_time:
+                try:
+                    start_time_ms = int(training_job.training_start_time.timestamp() * 1000)
+                except Exception:
+                    start_time_ms = int(time.time() * 1000)
+            else:
+                start_time_ms = int(time.time() * 1000)
 
-        empty_cycles = 0
-        while True:
-            try:
-                params = {
-                    "logGroupName": log_group,
-                    "logStreamNamePrefix": "SagemakerHyperPodTrainingJob",
-                    "filterPattern": f'"{job_id}"',
-                    "startTime": last_timestamp,
-                }
-                response = logs_client.filter_log_events(**params)
-                events = response.get("events", [])
+        streamer = LogStreamer(
+            log_group=log_group,
+            job_name=job_id,
+            sagemaker_session=sagemaker_session,
+            filter_pattern=f'"{job_id}"',
+            start_time_ms=start_time_ms,
+        )
 
-                if events:
-                    empty_cycles = 0
-                for event in events:
-                    event_id = event.get("eventId", "")
-                    if event_id not in seen_event_ids:
-                        seen_event_ids.add(event_id)
-                        message = event.get("message", "").rstrip()
-                        if message:
-                            print(f"{_CW_PREFIX}{message}")
-                            lines_printed += 1
-                            if tail_lines and lines_printed >= tail_lines:
-                                logger.info(f"Reached tail_lines limit ({tail_lines}). Stopping log stream.")
-                                return
-                        ts = event.get("timestamp", 0)
-                        if ts > last_timestamp:
-                            last_timestamp = ts
-                if not events:
-                    empty_cycles += 1
-                    if empty_cycles == 3:
-                        logger.info("No log events yet, still waiting...")
-            except ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code", "")
-                if error_code == "AccessDeniedException":
-                    raise
-                if error_code == "ResourceNotFoundException":
-                    empty_cycles += 1
-                    if empty_cycles == 1:
-                        logger.info("Waiting for log group to become available...")
-                    elif empty_cycles >= 60:
-                        logger.warning(
-                            "Log group %s still not found after %d attempts. "
-                            "Check IAM permissions for logs:FilterLogEvents.",
-                            log_group,
-                            empty_cycles,
-                        )
-                else:
-                    logger.debug(f"Error fetching HP logs: {e}")
-            except Exception as e:
-                logger.debug(f"Error fetching HP logs: {e}")
+        # HyperPod jobs have no simple status API — always report "InProgress"
+        # so the loop runs until KeyboardInterrupt or tail_lines completes.
+        def _get_status() -> str:
+            return "InProgress"
 
-            # Note: HyperPod jobs don't have a simple status API to poll for completion.
-            # This polls till the user interrupts with Ctrl+C.
-            try:
-                time.sleep(poll)
-            except KeyboardInterrupt:
-                logger.info("Log streaming stopped by user.")
-                return
+        stream_log_loop(streamer, poll, _get_status, tail_lines=tail_lines)
 
     def _validate_instance_count(self, instance_count, sagemaker_session, compute):
         """Validate instance/node count against allowed values from SMHP recipe.

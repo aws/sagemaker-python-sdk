@@ -443,3 +443,249 @@ class TestLogStreamerErrorHandling:
         )
         with pytest.raises(ClientError):
             streamer.poll_once()
+
+
+class TestPollTailStreamMode:
+    """Unit tests for LogStreamer.poll_tail() in stream mode (SMTJ)."""
+
+    def test_poll_tail_returns_last_n_events(self):
+        """poll_tail(n) returns the last N events in chronological order."""
+        session = _make_mock_session()
+        mock_logs = session.boto_session.client.return_value
+
+        # describe_log_streams returns one stream
+        mock_logs.get_paginator.return_value.paginate.return_value = [
+            {"logStreams": [{"logStreamName": "job/algo-1-123"}]}
+        ]
+
+        # get_log_events: first call (startFromHead=False) returns events via backward pagination
+        mock_logs.get_log_events.side_effect = [
+            # First call: startFromHead=False, no token → returns empty + backward token
+            {"events": [], "nextBackwardToken": "btoken1"},
+            # Second call: with backward token + limit → returns last N events
+            {
+                "events": [
+                    {"timestamp": 300, "message": "third"},
+                    {"timestamp": 200, "message": "second"},
+                    {"timestamp": 100, "message": "first"},
+                ],
+                "nextBackwardToken": "btoken1",
+            },
+        ]
+
+        streamer = LogStreamer(
+            log_group="/aws/sagemaker/TrainingJobs",
+            job_name="job",
+            sagemaker_session=session,
+        )
+
+        result = streamer.poll_tail(3)
+
+        assert len(result) == 3
+        # Should be sorted by timestamp (chronological)
+        assert result[0] == (100, "first")
+        assert result[1] == (200, "second")
+        assert result[2] == (300, "third")
+
+    def test_poll_tail_multi_stream_merges_by_timestamp(self):
+        """poll_tail merges events across multiple streams and returns globally last N."""
+        session = _make_mock_session()
+        mock_logs = session.boto_session.client.return_value
+
+        mock_logs.get_paginator.return_value.paginate.return_value = [
+            {"logStreams": [
+                {"logStreamName": "job/algo-1-123"},
+                {"logStreamName": "job/algo-2-456"},
+            ]}
+        ]
+
+        # Stream 1: events at ts 100, 300
+        # Stream 2: events at ts 200, 400
+        mock_logs.get_log_events.side_effect = [
+            # Stream 1: first call (startFromHead=False)
+            {"events": [], "nextBackwardToken": "bt1"},
+            # Stream 1: second call with token
+            {
+                "events": [
+                    {"timestamp": 300, "message": "s1-late"},
+                    {"timestamp": 100, "message": "s1-early"},
+                ],
+                "nextBackwardToken": "bt1",
+            },
+            # Stream 2: first call (startFromHead=False)
+            {"events": [], "nextBackwardToken": "bt2"},
+            # Stream 2: second call with token
+            {
+                "events": [
+                    {"timestamp": 400, "message": "s2-latest"},
+                    {"timestamp": 200, "message": "s2-mid"},
+                ],
+                "nextBackwardToken": "bt2",
+            },
+        ]
+
+        streamer = LogStreamer(
+            log_group="/aws/sagemaker/TrainingJobs",
+            job_name="job",
+            sagemaker_session=session,
+        )
+
+        result = streamer.poll_tail(3)
+
+        # Should take globally last 3 by timestamp: 200, 300, 400
+        assert len(result) == 3
+        assert result[0] == (200, "s2-mid")
+        assert result[1] == (300, "s1-late")
+        assert result[2] == (400, "s2-latest")
+
+
+class TestPollTailFilterMode:
+    """Unit tests for LogStreamer.poll_tail() in filter mode (SMHP)."""
+
+    def test_poll_tail_filter_mode_returns_events(self):
+        """poll_tail in filter mode paginates with startFromHead=False."""
+        session = _make_mock_session()
+        mock_logs = session.boto_session.client.return_value
+
+        # First page: 0 events (API scanning streams), second page: events found
+        mock_logs.filter_log_events.side_effect = [
+            {"events": [], "nextToken": "page2"},
+            {
+                "events": [
+                    {"timestamp": 300, "message": "newest"},
+                    {"timestamp": 200, "message": "middle"},
+                    {"timestamp": 100, "message": "oldest"},
+                ],
+            },
+        ]
+
+        streamer = LogStreamer(
+            log_group="/aws/sagemaker/Clusters/c/id",
+            job_name="job",
+            sagemaker_session=session,
+            filter_pattern='"job"',
+            start_time_ms=1784833626000,  # Must be on or after 2024-01-01
+        )
+
+        result = streamer.poll_tail(3)
+
+        # Events come reverse-chronological, should be reversed to chronological
+        assert len(result) == 3
+        assert result[0] == (100, "oldest")
+        assert result[1] == (200, "middle")
+        assert result[2] == (300, "newest")
+
+        # Verify startFromHead=False was passed
+        call_args = mock_logs.filter_log_events.call_args_list[0]
+        assert call_args[1]["startFromHead"] is False
+
+    def test_poll_tail_filter_mode_warns_without_start_time(self):
+        """poll_tail logs a warning when no start_time is set."""
+        session = _make_mock_session()
+        mock_logs = session.boto_session.client.return_value
+
+        mock_logs.filter_log_events.return_value = {
+            "events": [{"timestamp": 100, "message": "msg"}],
+        }
+
+        streamer = LogStreamer(
+            log_group="/aws/sagemaker/Clusters/c/id",
+            job_name="job",
+            sagemaker_session=session,
+            filter_pattern='"job"',
+            start_time_ms=None,  # No start time
+        )
+
+        with patch("sagemaker.train.common_utils.log_streamer.logger") as mock_logger:
+            streamer.poll_tail(1)
+            mock_logger.warning.assert_called_once()
+            assert "start_time" in mock_logger.warning.call_args[0][0]
+
+
+class TestStreamLogLoopTailLines:
+    """Unit tests for stream_log_loop with tail_lines parameter."""
+
+    def test_tail_lines_calls_poll_tail_and_returns(self, capsys):
+        """When tail_lines is set, stream_log_loop calls poll_tail and prints."""
+        streamer = MagicMock()
+        streamer.poll_tail.return_value = [
+            (1000, "line one"),
+            (2000, "line two"),
+            (3000, "line three"),
+        ]
+        status_fn = MagicMock(return_value="Completed")
+
+        stream_log_loop(streamer, poll=5, status_fn=status_fn, tail_lines=3)
+
+        streamer.poll_tail.assert_called_once_with(3)
+        # status_fn should NOT be called — tail_lines returns immediately
+        status_fn.assert_not_called()
+
+        captured = capsys.readouterr()
+        assert "line one" in captured.out
+        assert "line two" in captured.out
+        assert "line three" in captured.out
+
+    def test_tail_lines_none_does_not_call_poll_tail(self):
+        """When tail_lines is None, stream_log_loop uses normal streaming."""
+        streamer = MagicMock()
+        streamer.poll_once.return_value = []
+        status_fn = MagicMock(return_value="Completed")
+
+        stream_log_loop(streamer, poll=5, status_fn=status_fn, tail_lines=None)
+
+        streamer.poll_tail.assert_not_called()
+        status_fn.assert_called()
+
+
+    def test_poll_tail_filter_mode_raises_for_pre_2024_start_time(self):
+        """poll_tail raises ValueError when start_time is before 2024-01-01."""
+        session = _make_mock_session()
+
+        streamer = LogStreamer(
+            log_group="/aws/sagemaker/Clusters/c/id",
+            job_name="job",
+            sagemaker_session=session,
+            filter_pattern='"job"',
+            start_time_ms=1000,  # Way before 2024-01-01
+        )
+
+        with pytest.raises(ValueError, match="before 2024-01-01"):
+            streamer.poll_tail(5)
+
+    def test_poll_tail_filter_mode_paginates_multiple_pages(self):
+        """poll_tail paginates until enough events are found."""
+        session = _make_mock_session()
+        mock_logs = session.boto_session.client.return_value
+
+        # Simulate: first 3 pages return empty (scanning streams), 4th has events
+        mock_logs.filter_log_events.side_effect = [
+            {"events": [], "nextToken": "page2"},
+            {"events": [], "nextToken": "page3"},
+            {"events": [], "nextToken": "page4"},
+            {
+                "events": [
+                    {"timestamp": 300, "message": "third"},
+                    {"timestamp": 200, "message": "second"},
+                    {"timestamp": 100, "message": "first"},
+                ],
+            },
+        ]
+
+        streamer = LogStreamer(
+            log_group="/aws/sagemaker/Clusters/c/id",
+            job_name="job",
+            sagemaker_session=session,
+            filter_pattern='"job"',
+            start_time_ms=1784833626000,
+        )
+
+        result = streamer.poll_tail(3)
+
+        assert len(result) == 3
+        # Should be reversed to chronological order
+        assert result[0] == (100, "first")
+        assert result[1] == (200, "second")
+        assert result[2] == (300, "third")
+        # Should have made 4 API calls
+        assert mock_logs.filter_log_events.call_count == 4
