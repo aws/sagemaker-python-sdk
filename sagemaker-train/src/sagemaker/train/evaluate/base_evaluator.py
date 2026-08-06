@@ -30,9 +30,6 @@ from sagemaker.train.common_utils.finetune_utils import (
     _is_nova_model,
 )
 from sagemaker.train.common_utils.recipe_utils import resolve_recipe, get_resolved_recipe_from_context
-from sagemaker.train.common_utils.role_permission_validator import (
-    validate_evaluation_role_permissions,
-)
 from sagemaker.train.common_utils.validator import validate_hyperpod_compute
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.recipe_resolver import flatten_resolved_recipe
@@ -737,10 +734,10 @@ class BaseEvaluator(BaseModel):
         # This is the job execution role for the
         # serverless / SMTJ evaluation backends. The HyperPod backend submits via
         # the CLI under the caller's own credentials (see _submit_hyperpod_eval_job)
-        # and does not resolve a role here, so "training" is always correct here.
+        # and does not resolve a role here, so "evaluation" is correct here.
         role_arn = resolve_and_validate_role(
             provided_role=self.role,
-            role_type="training",
+            role_type="evaluation",
             sagemaker_session=self.sagemaker_session,
         )
         
@@ -751,13 +748,6 @@ class BaseEvaluator(BaseModel):
         
         # Extract account ID from role ARN
         account_id = role_arn.split(':')[4] if ':' in role_arn else '052150106756'
-
-        # Validate execution role has permissions required for evaluation
-        validate_evaluation_role_permissions(
-            role_arn,
-            self.sagemaker_session,
-            mlflow_enabled=bool(getattr(self, 'mlflow_resource_arn', None)),
-        )
         
         return {
             'role_arn': role_arn,
