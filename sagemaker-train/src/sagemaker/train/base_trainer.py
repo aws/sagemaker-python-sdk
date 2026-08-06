@@ -43,6 +43,7 @@ from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, Telem
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.model_trainer import ModelTrainer
+from sagemaker.train.agent_rft_job import AgentRFTJob
 from sagemaker.train.utils import _get_unique_name
 
 logger = logging.getLogger(__name__)
@@ -421,6 +422,10 @@ class BaseTrainer(ABC):
                     "job name directly via trainer._latest_training_job = '<job-name>' or "
                     "trainer._latest_job = '<job-name>'."
                 )
+            # For AgentRFTJob (MTRL), delegate to its own get_training_metrics()
+            # which fetches metrics from MLflow via the Job API (not TrainingJob).
+            if isinstance(latest_job, AgentRFTJob):
+                return latest_job.get_training_metrics()
             resolved_job = (
                 latest_job.job_name if hasattr(latest_job, 'job_name') else str(latest_job)
             )
@@ -679,6 +684,12 @@ class BaseTrainer(ABC):
                     "trainer._latest_training_job = '<job-name>' or "
                     "trainer._latest_job = '<job-name>'."
                 )
+            # For AgentRFTJob (MTRL), delegate to its own stream_logs which
+            # uses the correct log group (/aws/sagemaker/Job/AgentRFT).
+            if isinstance(latest_job, AgentRFTJob):
+                latest_job.sagemaker_session = self.sagemaker_session
+                latest_job.stream_logs(poll=poll, start_time=start_time)
+                return
             resolved_job = (
                 latest_job.job_name if hasattr(latest_job, 'job_name') else str(latest_job)
             )
