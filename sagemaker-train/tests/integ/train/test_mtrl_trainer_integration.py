@@ -44,6 +44,7 @@ def _get_account_id():
     boto_session = boto3.Session(region_name=_REGION)
     return boto_session.client("sts").get_caller_identity()["Account"]
 
+
 # ============================================================
 # Per-account resource configuration
 # ============================================================
@@ -59,8 +60,7 @@ ACCOUNT_CONFIGS = {
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
-        "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
-        "role": "arn:aws:iam::729646638167:role/Admin",
+        "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/mock-oss-test-mtrl-mpg",
     },
     # PREPROD — Staging account (391266019386)
     "391266019386": {
@@ -72,7 +72,6 @@ ACCOUNT_CONFIGS = {
         "s3_output_path": "s3://sagemaker-us-west-2-391266019386/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:391266019386:mlflow-app/app-P3FRQFRQTNGI",
         "model_package_group": "arn:aws:sagemaker:us-west-2:391266019386:model-package-group/mtrl-integ-gpt-oss-agentcore",
-        "role": "arn:aws:iam::391266019386:role/Admin",
     },
     # BETA — Dev/test account (742774200982)
     "742774200982": {
@@ -84,7 +83,6 @@ ACCOUNT_CONFIGS = {
         "s3_output_path": "s3://sagemaker-us-west-2-742774200982/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:742774200982:mlflow-app/app-6ZU5TXXH2GUX",
         "model_package_group": "arn:aws:sagemaker:us-west-2:742774200982:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
-        "role": "arn:aws:iam::742774200982:role/Admin",
     },
 }
 
@@ -133,7 +131,6 @@ def attached_trainer(config):
         output_model_package_group=config["model_package_group"],
         mlflow_app_arn=config["mlflow_resource_arn"],
         s3_output_path=config["s3_output_path"],
-        role=config["role"],
         accept_eula=True,
     )
     trainer._latest_job = job
@@ -165,7 +162,6 @@ class TestMTRLEvalIntegration:
             dataset=config["dataset"],
             s3_output_path=f'{config["s3_output_path"]}finetuned/',
             mlflow_resource_arn=config["mlflow_resource_arn"],
-            role=config["role"],
             region=_REGION,
         )
 
@@ -195,7 +191,6 @@ class TestMTRLEvalIntegration:
             agent_config=config["agent_core_arn"],
             s3_output_path=f'{config["s3_output_path"]}basemodel/',
             mlflow_resource_arn=config["mlflow_resource_arn"],
-            role=config["role"],
             region=_REGION,
         )
 
@@ -225,7 +220,6 @@ class TestMTRLEvalIntegration:
             dataset=config["dataset"],
             s3_output_path=f'{config["s3_output_path"]}comparison/',
             mlflow_resource_arn=config["mlflow_resource_arn"],
-            role=config["role"],
             region=_REGION,
             evaluate_base_model=True,
         )

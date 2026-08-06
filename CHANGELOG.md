@@ -1,4 +1,53 @@
 # Changelog
+
+## v3.18.0 (2026-07-30)
+
+### New Features
+
+- feat(serve): make BenchmarkResult sweep-aware for concurrency search runs (#6098)
+- feat(feature-store): Add lineage registration to DatasetBuilder (#6014)
+
+### Bug Fixes
+
+- fix(sagemaker-core): remove dev-only endpoint override and fix client singleton pinning (#6120)
+- fix(sagemaker-core): use caller session for sagemaker control-plane client (#6107)
+- fix(sagemaker-core): drop tags before rebuilding TransformJob in transform() (#6110)
+- fix(train): assign SDK-managed channels to instance groups on heterogeneous clusters (#6116)
+- fix: infer logic of agent_run_time from the attached input trainer (#6115)
+- fix(serve): repack source_code for image_uri/ModelTrainer builds (#6112)
+- fix: Telemetry INFO logging to print only once per process (#6083)
+
+
+## v3.17.0 (2026-07-24)
+
+### New Features
+
+- feat: update SDK to use latest LMI v27 image for sdk v3.x (#5976)
+- feat(serve): support fine-tuned models in deployment-config API (#6041)
+- feat: Wire BatchWriteRecord and ListRecords into ingest_dataframe (#6026)
+
+### Bug Fixes
+
+- fix: Fix source_dir in FrameworkProcessor (#6047)
+- fix(train): correct Networking field names in ModelTrainer intelligent defaults (#6064)
+- fix: resolve MTRL eval base-model ARN against the configured hub (#6040)
+- fix(train): Fall back to public hub when private hub lacks base model (#6092)
+- fix: datamixing recipe path fix (#6073)
+- fix: Fix private hub (#6036)
+- fix(serve): support aliased hub content names in private hub deploys (#6039)
+- fix(serve): dedicated INFERENCE_RECOMMENDER telemetry feature + type workload param (#6028)
+- fix: Fixing EULA check, relying on HostingEulaUri field (#6077)
+
+### Tests
+
+- test: Doc update and added SFT integ test (#6018)
+- test: Fix role issue in mtrl integ tests (#6070)
+- test: Fix gpu integ test failure due to outdated MPG (#6097)
+- test: move two tests in serve to gpu-integ-tests (#6096)
+- test(feature-processor): Isolate pipeline names to fix flaky integ tests (#6095)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
 ## v3.16.0 (2026-07-15)
 
 ### New Features

@@ -480,16 +480,18 @@ def build_hyperpod_datamix_recipe_from_context(
     4. Inject customer_data_percent and nova_data_percentages into data_mixing.sources
     5. Validate non-zero categories exist in template's nova_data section
     6. Write final YAML to HyperPod CLI recipes directory
-    7. Return (relative_recipe_path, image_uri)
+    7. Return (recipe_path, image_uri)
 
     Args:
         context: The HyperPodTemplateContext from resolve_hyperpod_datamix_context.
         validated_config: A DataMixingConfig validated via validate_data_mixing_categories.
 
     Returns:
-        Tuple of (relative_recipe_path, image_uri). relative_recipe_path is relative
-        to the HyperPod CLI recipes_collection/recipes directory with .yaml extension
-        removed. image_uri is the container image URI from the context (or None).
+        Tuple of (recipe_path, image_uri). recipe_path is the absolute filesystem
+        path (including the .yaml extension) of the generated recipe written under
+        the HyperPod CLI recipes_collection/recipes directory; it is consumed by the
+        recipe resolver as a user recipe file. image_uri is the container image URI
+        from the context (or None).
 
     Raises:
         RuntimeError: If hyperpod_cli is not installed.
@@ -652,18 +654,11 @@ def build_hyperpod_datamix_recipe_from_context(
     with open(recipe_path, "w") as f:
         f.write(recipe_output)
 
-    relative_path = (
-        recipe_path.split(HYPERPOD_RECIPE_PATH, 1)[1]
-        .lstrip("/").lstrip("\\")
-        .removesuffix(".yaml")
-    )
-
     logger.info(
-        "Generated HyperPod datamix recipe at '%s' (relative: '%s') from context '%s'.",
+        "Generated HyperPod datamix recipe at '%s' from context '%s'.",
         recipe_path,
-        relative_path,
         context.recipe_name,
     )
 
-    return relative_path, context.image_uri
+    return recipe_path, context.image_uri
 

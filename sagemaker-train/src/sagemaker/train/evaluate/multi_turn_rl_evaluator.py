@@ -253,10 +253,16 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 or getattr(trainer, "_agent_config", None)
                 or getattr(trainer, "agent_env", None)
             )
-            # AgentRFTJob.agent_config returns a dict like {"AgentRuntimeArn": "..."}
+            # AgentRFTJob.agent_config returns a nested dict like
+            # {"BedrockAgentCoreConfig": {"AgentRuntimeArn": "arn:..."}} or
+            # {"CustomAgentLambdaConfig": {"LambdaArn": "arn:..."}}
             if isinstance(resolved_agent, dict):
+                bedrock_cfg = resolved_agent.get("BedrockAgentCoreConfig", {})
+                lambda_cfg = resolved_agent.get("CustomAgentLambdaConfig", {})
                 self.agent_config = (
-                    resolved_agent.get("AgentRuntimeArn")
+                    bedrock_cfg.get("AgentRuntimeArn")
+                    or lambda_cfg.get("LambdaArn")
+                    or resolved_agent.get("AgentRuntimeArn")
                     or resolved_agent.get("AgentLambdaArn")
                     or resolved_agent.get("LambdaArn")
                 )

@@ -73,6 +73,7 @@ from sagemaker.train.configs import (
     Channel,
     DataSource,
     MetricDefinition,
+    InstanceGroup,
 )
 from sagemaker.train.distributed import Torchrun, SMP, MPI
 from sagemaker.train.sm_recipes.utils import _load_recipes_cfg, _is_nova_recipe, _get_args_from_nova_recipe
@@ -470,6 +471,153 @@ def test_create_input_data_channel(mock_default_bucket, mock_upload_data, model_
             assert channel.data_source.file_system_data_source == test_case["data_source"]
         else:
             assert channel.data_source.s3_data_source.s3_uri == expected_s3_uri
+
+
+def test_create_input_data_channel_with_instance_group_names(model_trainer):
+    """instance_group_names is propagated onto the channel's S3DataSource."""
+    channel = model_trainer.create_input_data_channel(
+        channel_name="code",
+        data_source=f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code",
+        instance_group_names=["head-instance-group", "worker-instance-group-1"],
+    )
+    assert channel.data_source.s3_data_source.instance_group_names == [
+        "head-instance-group",
+        "worker-instance-group-1",
+    ]
+
+
+HETEROGENEOUS_INSTANCE_GROUPS = [
+    InstanceGroup(
+        instance_type="ml.t3.large", instance_count=1, instance_group_name="head-instance-group"
+    ),
+    InstanceGroup(
+        instance_type="ml.m5.2xlarge",
+        instance_count=2,
+        instance_group_name="worker-instance-group-1",
+    ),
+]
+
+
+def _instance_group_names(channel):
+    """Return the channel's assigned instance_group_names as a list (or None)."""
+    s3_data_source = channel.data_source.s3_data_source if channel.data_source else None
+    names = getattr(s3_data_source, "instance_group_names", None) if s3_data_source else None
+    return names if isinstance(names, list) else None
+
+
+def _managed_channel_names(input_data_config):
+    return {
+        channel.channel_name: _instance_group_names(channel) for channel in input_data_config
+    }
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_managed_channels_assigned_instance_groups_when_user_channel_assigns(
+    mock_default_bucket, mock_upload_data
+):
+    """Regression test for issue #6089.
+
+    On a heterogeneous cluster, when a user assigns instance_group_names to any of their
+    channels, the SDK-managed ``code``/``sm_drivers`` channels must also be assigned to the
+    full set of instance groups, otherwise CreateTrainingJob fails validation with
+    "Some channels have assigned instance groups ... while others not".
+    """
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code"
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+    expected_names = ["head-instance-group", "worker-instance-group-1"]
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=Compute(instance_groups=HETEROGENEOUS_INSTANCE_GROUPS),
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+
+    user_channel = InputData(
+        channel_name="processing",
+        data_source=S3DataSource(
+            s3_data_type="S3Prefix",
+            s3_uri=f"s3://{DEFAULT_BUCKET}/data/",
+            s3_data_distribution_type="FullyReplicated",
+            instance_group_names=expected_names,
+        ),
+    )
+
+    args = trainer._create_training_job_args(input_data_config=[user_channel])
+    channels = _managed_channel_names(args["input_data_config"])
+
+    assert channels["processing"] == expected_names
+    assert channels["code"] == expected_names
+    assert channels["sm_drivers"] == expected_names
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_managed_channels_not_assigned_when_user_channel_unassigned(
+    mock_default_bucket, mock_upload_data
+):
+    """Managed channels stay unassigned when the user does not use instance groups.
+
+    Even on a heterogeneous cluster, if no user channel assigns instance_group_names, the
+    SDK must not assign them to managed channels (which would itself violate the
+    all-or-nothing rule against the unassigned user channel).
+    """
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code"
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=Compute(instance_groups=HETEROGENEOUS_INSTANCE_GROUPS),
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+
+    user_channel = InputData(
+        channel_name="processing",
+        data_source=S3DataSource(
+            s3_data_type="S3Prefix",
+            s3_uri=f"s3://{DEFAULT_BUCKET}/data/",
+            s3_data_distribution_type="FullyReplicated",
+        ),
+    )
+
+    args = trainer._create_training_job_args(input_data_config=[user_channel])
+    channels = _managed_channel_names(args["input_data_config"])
+
+    assert channels["code"] is None
+    assert channels["sm_drivers"] is None
+
+
+@patch("sagemaker.train.model_trainer.Session.upload_data")
+@patch("sagemaker.train.model_trainer.Session.default_bucket")
+def test_managed_channels_not_assigned_on_homogeneous_cluster(
+    mock_default_bucket, mock_upload_data
+):
+    """No instance groups configured -> managed channels are never assigned."""
+    mock_upload_data.return_value = f"s3://{DEFAULT_BUCKET}/{DEFAULT_BASE_NAME}-job/input/code"
+    mock_default_bucket.return_value = DEFAULT_BUCKET
+
+    trainer = ModelTrainer(
+        training_image=DEFAULT_IMAGE,
+        role=DEFAULT_ROLE,
+        source_code=DEFAULT_SOURCE_CODE,
+        compute=DEFAULT_COMPUTE_CONFIG,
+        stopping_condition=DEFAULT_STOPPING_CONDITION,
+        output_data_config=DEFAULT_OUTPUT_DATA_CONFIG,
+    )
+
+    user_channel = InputData(channel_name="train", data_source=f"s3://{DEFAULT_BUCKET}/train/")
+
+    args = trainer._create_training_job_args(input_data_config=[user_channel])
+    channels = _managed_channel_names(args["input_data_config"])
+
+    assert channels["code"] is None
+    assert channels["sm_drivers"] is None
 
 
 @pytest.mark.parametrize(
