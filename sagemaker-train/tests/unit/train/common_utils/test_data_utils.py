@@ -272,14 +272,16 @@ class TestValidateDataPathExists(unittest.TestCase):
             )
         self.assertIn("does not exist", str(ctx.exception))
 
-    def test_access_denied_warns_not_raises(self):
+    def test_access_denied_raises_valueerror(self):
         session = self._make_session()
         self.s3.list_objects_v2.side_effect = ClientError(
             {"Error": {"Code": "403", "Message": "Forbidden"}}, "ListObjectsV2"
         )
 
-        # Should not raise — caller may lack access but execution role might have it
-        validate_data_path_exists("s3://locked-bucket/data.jsonl", session, label="data")
+        # Access denied now raises ValueError with guidance message
+        with self.assertRaises(ValueError) as ctx:
+            validate_data_path_exists("s3://locked-bucket/data.jsonl", session, label="data")
+        self.assertIn("access denied", str(ctx.exception))
 
     def test_unrecognized_format_raises(self):
         session = Mock()

@@ -1248,10 +1248,12 @@ class TestModelReuse(unittest.TestCase):
     def test_deploy_ignores_cached_endpoint_when_instance_type_mismatches(
         self, mock_find, mock_endpoint_get
     ):
-        # A build-time cached endpoint must be re-validated against the deploy-time
-        # instance_type, not returned blindly. Cache is g5.xlarge; deploy asks p4d.
+        # An endpoint found by source tag must be re-validated against the deploy-time
+        # instance_type; a config mismatch falls through to create a new endpoint.
         self._stub_endpoint_config_client(instance_type="ml.g5.xlarge")
-        mock_find.return_value = None
+        mock_find.return_value = (
+            "arn:aws:sagemaker:us-west-2:123456789012:endpoint/existing-ep"
+        )
 
         with (
             patch.object(ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"),
@@ -1265,7 +1267,6 @@ class TestModelReuse(unittest.TestCase):
             builder = self._make_builder()
             builder.built_model = Mock()
             builder.region = "us-west-2"
-            builder._reused_endpoint_name = "cached-ep"
 
             builder.deploy(
                 endpoint_name="new-ep",
@@ -1282,10 +1283,13 @@ class TestModelReuse(unittest.TestCase):
     def test_deploy_reuses_cached_endpoint_when_instance_type_matches(
         self, mock_find, mock_endpoint_get
     ):
-        # A matching instance_type still reuses the cached endpoint (no over-correction).
+        # A matching instance_type still reuses the endpoint (no over-correction).
         self._stub_endpoint_config_client(instance_type="ml.p4d.24xlarge")
         mock_endpoint = Mock()
         mock_endpoint_get.return_value = mock_endpoint
+        mock_find.return_value = (
+            "arn:aws:sagemaker:us-west-2:123456789012:endpoint/cached-ep"
+        )
 
         with (
             patch.object(ModelBuilder, "_resolve_model_source_id", return_value="s3://bucket/model"),
@@ -1299,7 +1303,6 @@ class TestModelReuse(unittest.TestCase):
             builder = self._make_builder()
             builder.built_model = Mock()
             builder.region = "us-west-2"
-            builder._reused_endpoint_name = "cached-ep"
 
             result = builder.deploy(
                 endpoint_name="new-ep",
@@ -1307,9 +1310,8 @@ class TestModelReuse(unittest.TestCase):
                 reuse_resources=True,
             )
 
-        # Cache hit: endpoint reused, not recreated, and no fresh discovery scan.
+        # Config match: endpoint reused, not recreated.
         mock_deploy.assert_not_called()
-        mock_find.assert_not_called()
         assert result == mock_endpoint
 
 

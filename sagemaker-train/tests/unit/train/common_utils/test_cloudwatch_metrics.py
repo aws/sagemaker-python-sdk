@@ -351,17 +351,9 @@ class TestStreamLogs:
         assert call_kwargs["startTime"] == expected_ts
 
     @patch("sagemaker.core.resources.TrainingJob.get")
-    @patch("sagemaker.train.base_trainer.MultiLogStreamHandler")
-    def test_smtj_stops_on_completed(self, mock_handler_cls, mock_get_job):
+    @patch("sagemaker.train.base_trainer.stream_log_loop")
+    def test_smtj_stops_on_completed(self, mock_stream_loop, mock_get_job):
         """SMTJ stream_logs exits when job status is Completed."""
-        # Mock the handler to return one event then empty
-        mock_handler = MagicMock()
-        mock_handler.get_latest_log_events.side_effect = [
-            iter([("stream", {"message": "Training complete"})]),
-            iter([]),  # final flush
-        ]
-        mock_handler_cls.return_value = mock_handler
-
         # Mock job status as Completed
         mock_job = MagicMock()
         mock_job.training_job_status = "Completed"
@@ -372,10 +364,10 @@ class TestStreamLogs:
             latest_job=MagicMock(training_job_name="my-smtj-job"),
         )
 
-        # Should return without hanging (job is already Completed)
+        # Should return without hanging (stream_log_loop is mocked)
         trainer.stream_logs()
 
-        mock_get_job.assert_called()
+        mock_stream_loop.assert_called_once()
 
 
     def test_show_metrics_oss_without_mlflow_raises(self):

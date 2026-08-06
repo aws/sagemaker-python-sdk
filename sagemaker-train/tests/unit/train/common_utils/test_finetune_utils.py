@@ -527,7 +527,7 @@ class TestFinetuneUtils:
         assert result == "extracted-group"
 
     def test__validate_and_resolve_model_package_group_missing_both(self):
-        with pytest.raises(ValueError, match="model_package_group_name must be provided"):
+        with pytest.raises(ValueError, match="model_package_group is required"):
             _validate_and_resolve_model_package_group("string-model", None)
 
     @patch('sagemaker.core.resources.ModelPackage.get')

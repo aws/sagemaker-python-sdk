@@ -1484,15 +1484,25 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             if containers:
                 base_model = getattr(containers[0], "base_model", None)
                 if base_model:
-                    recipe_name = getattr(base_model, "recipe_name", "") or ""
-                    hub_content_name = getattr(base_model, "hub_content_name", "") or ""
-                    if "nova" in recipe_name.lower() or "nova" in hub_content_name.lower():
+                    recipe_name = getattr(base_model, "recipe_name", None) or ""
+                    hub_content_name = getattr(base_model, "hub_content_name", None) or ""
+                    if (
+                        isinstance(recipe_name, str)
+                        and "nova" in recipe_name.lower()
+                    ) or (
+                        isinstance(hub_content_name, str)
+                        and "nova" in hub_content_name.lower()
+                    ):
                         return True
 
         # No (or non-Nova) model package: fall back to the base model name carried
         # by a trainer or supplied via model_metadata for a raw S3 checkpoint.
         base_model_name = self._base_model_name()
-        return bool(base_model_name) and "nova" in base_model_name.lower()
+        return (
+            isinstance(base_model_name, str)
+            and bool(base_model_name)
+            and "nova" in base_model_name.lower()
+        )
 
     def _is_nova_model_for_telemetry(self) -> bool:
         """Check if the model is a Nova model for telemetry tracking."""
