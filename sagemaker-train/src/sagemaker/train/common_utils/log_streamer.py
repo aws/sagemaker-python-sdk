@@ -125,6 +125,132 @@ class LogStreamer:
             logger.debug("Transient CloudWatch error: %s", e)
             return []
 
+    def poll_tail(self, n: int) -> list[tuple[int, str]]:
+        """Fetch the last N log events in chronological order.
+
+        Behaves like ``tail -n`` or ``kubectl logs --tail=N``.
+
+        For stream mode (SMTJ): uses get_log_events backward pagination to
+        fetch the last N events per stream, merges by timestamp, returns the
+        globally last N.
+
+        For filter mode (SMHP): uses filter_log_events with startFromHead=False
+        to fetch recent events. Requires startTime to be set for CloudWatch to
+        scope the search efficiently.
+
+        :param n: Number of most recent log events to return.
+        :returns: List of (timestamp_ms, message) tuples in chronological order.
+        """
+        if self._filter_pattern is not None:
+            return self._tail_filter_mode(n)
+        return self._tail_stream_mode(n)
+
+    def _tail_stream_mode(self, n: int) -> list[tuple[int, str]]:
+        """Get last N events via get_log_events backward pagination.
+
+        For multi-stream jobs, fetches last N from each stream, merges by
+        timestamp, and returns the globally last N events in chronological order.
+        """
+        if self._stream_handlers is None:
+            self._stream_handlers = self._discover_streams()
+            if not self._stream_handlers:
+                return []
+
+        all_results = []
+        for handler in self._stream_handlers:
+            events = []
+            next_token = None
+
+            while len(events) < n:
+                kwargs = {
+                    "logGroupName": self._log_group,
+                    "logStreamName": handler["stream_name"],
+                    "limit": n - len(events),
+                    "startFromHead": False,
+                }
+                if next_token:
+                    kwargs["nextToken"] = next_token
+
+                response = self._logs_client.get_log_events(**kwargs)
+                if response.get("events"):
+                    events.extend(response["events"])
+
+                backward_token = response.get("nextBackwardToken")
+                if backward_token and backward_token != next_token:
+                    next_token = backward_token
+                else:
+                    break
+
+            for event in events:
+                message = event.get("message", "").rstrip()
+                ts = event.get("timestamp", 0)
+                if message:
+                    all_results.append((ts, message))
+
+        # Sort by timestamp across all streams, take the last N globally
+        all_results.sort(key=lambda x: x[0])
+        return all_results[-n:]
+
+    def _tail_filter_mode(self, n: int) -> list[tuple[int, str]]:
+        """Get last N events via filter_log_events with startFromHead=False.
+
+        Uses reverse-chronological order to get the most recent events first.
+        Requires startTime to be set for CloudWatch to scope the search.
+        Paginates without limit (faster scanning), then slices client-side.
+
+        Note: startFromHead=False with logStreamNamePrefix may require several
+        pagination calls before CloudWatch locates the matching streams.
+        """
+        # CloudWatch requires startTime on or after 2024-01-01 for
+        # startFromHead=False with filter_log_events.
+        _JAN_1_2024_MS = 1704067200000
+        if self._last_timestamp_ms and self._last_timestamp_ms < _JAN_1_2024_MS:
+            raise ValueError(
+                "stream_logs does not support tail_lines when start_time is before 2024-01-01."
+            )
+        params = {
+            "logGroupName": self._log_group,
+            "logStreamNamePrefix": _SMHP_STREAM_PREFIX,
+            "filterPattern": self._filter_pattern,
+            "startFromHead": False,
+        }
+        if self._last_timestamp_ms is not None:
+            params["startTime"] = self._last_timestamp_ms
+        else:
+            logger.warning(
+                "No start_time provided for tail_lines. Scanning without time "
+                "bounds may take a while to identify matching log streams."
+            )
+
+        results = []
+        next_token = None
+
+        # filter_log_events bounds pages by scan volume, not result count.
+        # Must follow nextToken until N matching events are collected.
+        while True:
+            if next_token:
+                params["nextToken"] = next_token
+
+            response = self._logs_client.filter_log_events(**params)
+            for event in response.get("events", []):
+                message = event.get("message", "").rstrip()
+                ts = event.get("timestamp", 0)
+                if message:
+                    results.append((ts, message))
+
+            # Stop once we have enough events
+            if len(results) >= n:
+                break
+
+            next_token = response.get("nextToken")
+            if not next_token:
+                break
+
+        # Events come in reverse chronological order; take first N and reverse
+        results = results[:n]
+        results.reverse()
+        return results
+
     def _poll_filter_mode(self) -> list[tuple[int, str]]:
         """Poll using filter_log_events (HyperPod style)."""
         params = {
@@ -238,22 +364,23 @@ def stream_log_loop(
     :param streamer: A configured LogStreamer instance.
     :param poll: Seconds between polls.
     :param status_fn: Callable that returns the current job status string.
-    :param tail_lines: Optional maximum number of most recent log lines to
-        print. When specified, streaming stops after this many lines have
-        been displayed.
+    :param tail_lines: Optional number of most recent log events to return.
+        Fetches the last N events (like ``tail -n`` or ``kubectl logs --tail``),
+        regardless of whether the job is still running or completed.
+        If not provided, streams all logs until the job completes.
     """
     _CW_PREFIX = "[CloudWatch] "
-    lines_printed = 0
 
-    def _print_event(ts_ms: int, message: str) -> bool:
-        """Print a log event. Returns True if tail_lines limit reached."""
-        nonlocal lines_printed
+    def _print_event(ts_ms: int, message: str):
+        """Print a formatted CloudWatch log event."""
         print(f"{_CW_PREFIX}[{_format_timestamp(ts_ms)}] {message}")
-        lines_printed += 1
-        if tail_lines and lines_printed >= tail_lines:
-            logger.info("Reached tail_lines limit (%d). Stopping log stream.", tail_lines)
-            return True
-        return False
+
+    # When tail_lines is set, fetch the last N events and return immediately.
+    if tail_lines:
+        events = streamer.poll_tail(tail_lines)
+        for ts_ms, message in events:
+            _print_event(ts_ms, message)
+        return
 
     status = status_fn()
     if status in TERMINAL_STATUSES:
@@ -264,8 +391,7 @@ def stream_log_loop(
                 if not events:
                     break
                 for ts_ms, message in events:
-                    if _print_event(ts_ms, message):
-                        return
+                    _print_event(ts_ms, message)
         except ClientError:
             pass
         logger.info("Job finished with status: %s", status)
@@ -303,8 +429,7 @@ def stream_log_loop(
         if events:
             empty_cycles = 0
             for ts_ms, message in events:
-                if _print_event(ts_ms, message):
-                    return
+                _print_event(ts_ms, message)
         else:
             empty_cycles += 1
             if empty_cycles == warn_cycle:
@@ -316,8 +441,7 @@ def stream_log_loop(
         status = status_fn()
         if status in TERMINAL_STATUSES:
             for ts_ms, message in streamer.poll_once():
-                if _print_event(ts_ms, message):
-                    return
+                _print_event(ts_ms, message)
             logger.info("Job finished with status: %s", status)
             return
 
