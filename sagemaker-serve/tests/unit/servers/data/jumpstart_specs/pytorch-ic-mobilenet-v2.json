@@ -1,0 +1,1093 @@
+{
+ "default_inference_instance_type": "ml.m5.large",
+ "default_training_dataset_key": "training-datasets/tf_flowers/",
+ "default_training_instance_type": "ml.m5.xlarge",
+ "deploy_kwargs": {},
+ "deprecated": false,
+ "dynamic_container_deployment_supported": false,
+ "estimator_kwargs": {
+  "encrypt_inter_container_traffic": true,
+  "max_run": 360000
+ },
+ "fine_tuning_supported": true,
+ "fit_kwargs": {},
+ "hosting_artifact_compression_type": "None",
+ "hosting_artifact_key": "pytorch-ic/pytorch-ic-mobilenet-v2/artifacts/inference/v2.0.0/",
+ "hosting_artifact_s3_data_type": "S3Prefix",
+ "hosting_ecr_specs": {
+  "framework": "pytorch",
+  "framework_version": "1.10.0",
+  "py_version": "py38"
+ },
+ "hosting_instance_type_variants": {
+  "regional_aliases": {
+   "af-south-1": {
+    "cpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "626614931356.dkr.ecr.af-south-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-east-1": {
+    "cpu_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-east-2": {
+    "cpu_ecr_uri_1": "975050140332.dkr.ecr.ap-east-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "975050140332.dkr.ecr.ap-east-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-northeast-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-northeast-2": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-northeast-3": {
+    "cpu_ecr_uri_1": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-south-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-south-2": {
+    "alias_ecr_uri_3": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-southeast-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-southeast-2": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-southeast-3": {
+    "cpu_ecr_uri_1": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-southeast-4": {
+    "alias_ecr_uri_3": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-southeast-5": {
+    "cpu_ecr_uri_1": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-southeast-6": {
+    "cpu_ecr_uri_1": "633930458069.dkr.ecr.ap-southeast-6.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "633930458069.dkr.ecr.ap-southeast-6.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ap-southeast-7": {
+    "cpu_ecr_uri_1": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ca-central-1": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "ca-west-1": {
+    "alias_ecr_uri_3": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "cn-north-1": {
+    "cpu_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "cn-northwest-1": {
+    "cpu_ecr_uri_1": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "eu-central-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "eu-central-2": {
+    "alias_ecr_uri_3": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "eu-north-1": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "eu-south-1": {
+    "cpu_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "eu-south-2": {
+    "alias_ecr_uri_3": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "eu-west-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "eu-west-2": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "eu-west-3": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "il-central-1": {
+    "alias_ecr_uri_3": "780543022126.dkr.ecr.il-central-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "780543022126.dkr.ecr.il-central-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "780543022126.dkr.ecr.il-central-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "me-central-1": {
+    "cpu_ecr_uri_1": "914824155844.dkr.ecr.me-central-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "914824155844.dkr.ecr.me-central-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "me-south-1": {
+    "cpu_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "217643126080.dkr.ecr.me-south-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "mx-central-1": {
+    "cpu_ecr_uri_1": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "sa-east-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "us-east-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "us-east-2": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.us-east-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "us-gov-east-1": {
+    "cpu_ecr_uri_1": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "us-gov-west-1": {
+    "cpu_ecr_uri_1": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "us-iso-east-1": {
+    "cpu_ecr_uri_1": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "us-isob-east-1": {
+    "cpu_ecr_uri_1": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "us-west-1": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-1.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   },
+   "us-west-2": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-inference:1.10.0-gpu-py38"
+   }
+  },
+  "variants": {
+   "c4": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c5": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c5d": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c5n": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c6i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c6id": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c7i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c8g": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "dl1": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "eia1": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "eia2": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "g4dn": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "g5": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "g6": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "g6e": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "g7e": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "i3en": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "local": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "local_gpu": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "m": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m4": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m5": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m5d": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m6i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m6id": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m7g": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m7gd": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m7i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "p2": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p3": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p3dn": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p4d": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p4de": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p5": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p5e": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p5en": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p6": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p6e": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "r5": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r5d": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r6i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r6id": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r7g": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r7gd": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r7i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r8g": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "t": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "t2": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "t3": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "trn1": {
+    "regional_properties": {
+     "image_uri": "$alias_ecr_uri_3"
+    }
+   },
+   "trn1n": {
+    "regional_properties": {
+     "image_uri": "$alias_ecr_uri_3"
+    }
+   },
+   "trn2": {
+    "regional_properties": {
+     "image_uri": "$alias_ecr_uri_3"
+    }
+   }
+  }
+ },
+ "hosting_prepacked_artifact_key": "pytorch-ic/pytorch-ic-mobilenet-v2/artifacts/inference-prepack/v1.0.0/",
+ "hosting_prepacked_artifact_version": "1.0.0",
+ "hosting_script_key": "source-directory-tarballs/pytorch/inference/ic/v2.0.0/sourcedir.tar.gz",
+ "hosting_use_script_uri": false,
+ "hyperparameters": [
+  {
+   "default": "True",
+   "name": "train_only_top_layer",
+   "options": [
+    "True",
+    "False"
+   ],
+   "scope": "algorithm",
+   "type": "text"
+  },
+  {
+   "default": 5,
+   "max": 1000,
+   "min": 1,
+   "name": "epochs",
+   "scope": "algorithm",
+   "type": "int"
+  },
+  {
+   "default": 0.001,
+   "max": 1,
+   "min": 1e-08,
+   "name": "learning_rate",
+   "scope": "algorithm",
+   "type": "float"
+  },
+  {
+   "default": 4,
+   "max": 1024,
+   "min": 1,
+   "name": "batch_size",
+   "scope": "algorithm",
+   "type": "int"
+  },
+  {
+   "default": "Auto",
+   "name": "reinitialize_top_layer",
+   "options": [
+    "Auto",
+    "True",
+    "False"
+   ],
+   "scope": "algorithm",
+   "type": "text"
+  },
+  {
+   "default": "/opt/ml/input/data/code/sourcedir.tar.gz",
+   "name": "sagemaker_submit_directory",
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "transfer_learning.py",
+   "name": "sagemaker_program",
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "20",
+   "name": "sagemaker_container_log_level",
+   "scope": "container",
+   "type": "text"
+  }
+ ],
+ "incremental_training_supported": true,
+ "inference_dependencies": [],
+ "inference_enable_network_isolation": true,
+ "inference_environment_variables": [
+  {
+   "default": 3600,
+   "name": "ENDPOINT_SERVER_TIMEOUT",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "int"
+  },
+  {
+   "default": "/opt/ml/model",
+   "name": "MODEL_CACHE_ROOT",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "20",
+   "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+   "required_for_model_class": false,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "1",
+   "name": "SAGEMAKER_ENV",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "3600",
+   "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": 1,
+   "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "int"
+  },
+  {
+   "default": "inference.py",
+   "name": "SAGEMAKER_PROGRAM",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "/opt/ml/model/code",
+   "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+   "required_for_model_class": false,
+   "scope": "container",
+   "type": "text"
+  }
+ ],
+ "inference_vulnerabilities": [],
+ "inference_vulnerable": false,
+ "metrics": [
+  {
+   "Name": "pytorch-ic:val-accuracy",
+   "Regex": "val_accuracy: ([0-9\\.]+)"
+  }
+ ],
+ "min_sdk_version": "2.189.0",
+ "model_id": "pytorch-ic-mobilenet-v2",
+ "model_kwargs": {},
+ "predictor_specs": {
+  "default_accept_type": "application/json",
+  "default_content_type": "application/x-image",
+  "supported_accept_types": [
+   "application/json;verbose",
+   "application/json"
+  ],
+  "supported_content_types": [
+   "application/x-image"
+  ]
+ },
+ "provider": "pytorch",
+ "resource_name_base": "pt-ic-mobilenet-v2",
+ "supported_inference_instance_types": [
+  "ml.m5.large",
+  "ml.m5.xlarge",
+  "ml.c5.xlarge",
+  "ml.c5.2xlarge",
+  "ml.m4.xlarge"
+ ],
+ "supported_training_instance_types": [
+  "ml.m5.xlarge",
+  "ml.c5.2xlarge",
+  "ml.m4.xlarge"
+ ],
+ "training_artifact_key": "pytorch-training/v2.0.0/train-pytorch-ic-mobilenet-v2.tar.gz",
+ "training_dependencies": [
+  "sagemaker_jumpstart_prepack_script_utilities==1.0.0"
+ ],
+ "training_ecr_specs": {
+  "framework": "pytorch",
+  "framework_version": "1.10.0",
+  "py_version": "py38"
+ },
+ "training_enable_network_isolation": true,
+ "training_instance_type_variants": {
+  "regional_aliases": {
+   "af-south-1": {
+    "cpu_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "626614931356.dkr.ecr.af-south-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-east-1": {
+    "cpu_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-east-2": {
+    "cpu_ecr_uri_1": "975050140332.dkr.ecr.ap-east-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "975050140332.dkr.ecr.ap-east-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-northeast-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-northeast-2": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-northeast-3": {
+    "cpu_ecr_uri_1": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-south-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-south-2": {
+    "alias_ecr_uri_3": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-southeast-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-southeast-2": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-southeast-3": {
+    "cpu_ecr_uri_1": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-southeast-4": {
+    "alias_ecr_uri_3": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-southeast-5": {
+    "cpu_ecr_uri_1": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-southeast-6": {
+    "cpu_ecr_uri_1": "633930458069.dkr.ecr.ap-southeast-6.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "633930458069.dkr.ecr.ap-southeast-6.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ap-southeast-7": {
+    "cpu_ecr_uri_1": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ca-central-1": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "ca-west-1": {
+    "alias_ecr_uri_3": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "cn-north-1": {
+    "cpu_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/pytorch-training:1.10.0-gpu-py38"
+   },
+   "cn-northwest-1": {
+    "cpu_ecr_uri_1": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/pytorch-training:1.10.0-gpu-py38"
+   },
+   "eu-central-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "eu-central-2": {
+    "alias_ecr_uri_3": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "eu-north-1": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "eu-south-1": {
+    "cpu_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "eu-south-2": {
+    "alias_ecr_uri_3": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "eu-west-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "eu-west-2": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "eu-west-3": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "il-central-1": {
+    "alias_ecr_uri_3": "780543022126.dkr.ecr.il-central-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "780543022126.dkr.ecr.il-central-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "780543022126.dkr.ecr.il-central-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "me-central-1": {
+    "cpu_ecr_uri_1": "914824155844.dkr.ecr.me-central-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "914824155844.dkr.ecr.me-central-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "me-south-1": {
+    "cpu_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "217643126080.dkr.ecr.me-south-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "mx-central-1": {
+    "cpu_ecr_uri_1": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "sa-east-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "us-east-1": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "us-east-2": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.us-east-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "us-gov-east-1": {
+    "cpu_ecr_uri_1": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "us-gov-west-1": {
+    "cpu_ecr_uri_1": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "us-iso-east-1": {
+    "cpu_ecr_uri_1": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/pytorch-training:1.10.0-gpu-py38"
+   },
+   "us-isob-east-1": {
+    "cpu_ecr_uri_1": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/pytorch-training:1.10.0-gpu-py38"
+   },
+   "us-west-1": {
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-1.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   },
+   "us-west-2": {
+    "alias_ecr_uri_3": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training-neuron:1.11.0-neuron-py38-sdk2.4.0-ubuntu20.04",
+    "cpu_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.10.0-cpu-py38",
+    "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:1.10.0-gpu-py38"
+   }
+  },
+  "variants": {
+   "c4": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c5": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c5d": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c5n": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c6i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c6id": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c7i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "c8g": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "dl1": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "eia1": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "eia2": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "g4dn": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "g5": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "g6": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "g6e": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "g7e": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "i3en": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "local": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "local_gpu": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "m": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m4": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m5": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m5d": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m6i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m6id": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m7g": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m7gd": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "m7i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "p2": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p3": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p3dn": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p4d": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p4de": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p5": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p5e": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p5en": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p6": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "p6e": {
+    "regional_properties": {
+     "image_uri": "$gpu_ecr_uri_2"
+    }
+   },
+   "r5": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r5d": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r6i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r6id": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r7g": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r7gd": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r7i": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "r8g": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "t": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "t2": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "t3": {
+    "regional_properties": {
+     "image_uri": "$cpu_ecr_uri_1"
+    }
+   },
+   "trn1": {
+    "regional_properties": {
+     "image_uri": "$alias_ecr_uri_3"
+    }
+   },
+   "trn1n": {
+    "regional_properties": {
+     "image_uri": "$alias_ecr_uri_3"
+    }
+   },
+   "trn2": {
+    "regional_properties": {
+     "image_uri": "$alias_ecr_uri_3"
+    }
+   }
+  }
+ },
+ "training_prepacked_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/prepack/v1.1.0/sourcedir.tar.gz",
+ "training_prepacked_script_version": "1.1.0",
+ "training_script_key": "source-directory-tarballs/pytorch/transfer_learning/ic/v2.3.0/sourcedir.tar.gz",
+ "training_supported": true,
+ "training_vulnerabilities": [],
+ "training_vulnerable": false,
+ "url": "https://pytorch.org/hub/pytorch_vision_mobilenet_v2/",
+ "validation_supported": false,
+ "version": "3.0.25"
+}
