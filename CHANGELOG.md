@@ -1,5 +1,23 @@
 # Changelog
 
+## v3.18.0 (2026-07-30)
+
+### New Features
+
+- feat(serve): make BenchmarkResult sweep-aware for concurrency search runs (#6098)
+- feat(feature-store): Add lineage registration to DatasetBuilder (#6014)
+
+### Bug Fixes
+
+- fix(sagemaker-core): remove dev-only endpoint override and fix client singleton pinning (#6120)
+- fix(sagemaker-core): use caller session for sagemaker control-plane client (#6107)
+- fix(sagemaker-core): drop tags before rebuilding TransformJob in transform() (#6110)
+- fix(train): assign SDK-managed channels to instance groups on heterogeneous clusters (#6116)
+- fix: infer logic of agent_run_time from the attached input trainer (#6115)
+- fix(serve): repack source_code for image_uri/ModelTrainer builds (#6112)
+- fix: Telemetry INFO logging to print only once per process (#6083)
+
+
 ## v3.17.0 (2026-07-24)
 
 ### New Features

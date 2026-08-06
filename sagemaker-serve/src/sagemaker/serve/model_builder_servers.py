@@ -1014,6 +1014,39 @@ class _ModelBuilderServers(object):
         if getattr(init_kwargs, "model_reference_arn", None):
             self.model_reference_arn = init_kwargs.model_reference_arn
 
+        # Propagate additional model data sources resolved from the JumpStart
+        # spec (e.g. speculative decoding draft models like EAGLE). The JumpStart
+        # factory (_add_additional_model_data_sources_to_kwargs) already returns
+        # these in CreateModel API shape via camel_case_to_pascal_case(...),
+        # except for two adjustments applied here, mirroring how ``container_def``
+        # treats the primary model's ``ModelDataSource``:
+        # - the JumpStart-internal ``HostingEulaKey`` is removed (it is not part
+        #   of the CreateModel API shape, request validation rejects it), and
+        # - when ``accept_eula`` is set, it is folded into each source's
+        #   ``S3DataSource.ModelAccessConfig``.
+        # Gated-source EULA enforcement is server-side, same as for the primary
+        # model: the control plane determines gatedness from the artifact's
+        # bucket and rejects CreateModel with an EULA validation error when a
+        # gated source lacks ``ModelAccessConfig`` with ``AcceptEula`` true.
+        # Without this propagation, sources declared in the spec are dropped
+        # from the CreateModel call and the container fails to find the
+        # referenced artifacts at runtime.
+        additional_model_data_sources = getattr(
+            init_kwargs, "additional_model_data_sources", None
+        )
+        if isinstance(additional_model_data_sources, list) and additional_model_data_sources:
+            accept_eula = getattr(self, "accept_eula", None)
+            prepared_sources = []
+            for source in additional_model_data_sources:
+                prepared_source = dict(source)
+                prepared_source.pop("HostingEulaKey", None)
+                if accept_eula is not None:
+                    s3_data_source = dict(prepared_source.get("S3DataSource", {}))
+                    s3_data_source["ModelAccessConfig"] = {"AcceptEula": accept_eula}
+                    prepared_source["S3DataSource"] = s3_data_source
+                prepared_sources.append(prepared_source)
+            self.additional_model_data_sources = prepared_sources
+
         # Handle model artifacts for fine-tuned models
         if hasattr(init_kwargs, "model_data") and init_kwargs.model_data:
             if (

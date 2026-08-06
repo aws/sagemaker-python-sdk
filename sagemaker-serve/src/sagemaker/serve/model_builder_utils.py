@@ -2850,6 +2850,8 @@ class _ModelBuilderUtils:
                 model_id=model,
                 model_version=getattr(self, "model_version", None) or "*",
                 sagemaker_session=getattr(self, "sagemaker_session", None),
+                tolerate_vulnerable_model=getattr(self, "tolerate_vulnerable_model", None) or False,
+                tolerate_deprecated_model=getattr(self, "tolerate_deprecated_model", None) or False,
             )
 
     def _user_agent_decorator(self, func):

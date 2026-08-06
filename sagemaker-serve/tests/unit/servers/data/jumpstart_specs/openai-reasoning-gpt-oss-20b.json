@@ -1,0 +1,3801 @@
+{
+ "context_window": "32K-128K",
+ "default_inference_instance_type": "ml.g7e.2xlarge",
+ "deprecated": false,
+ "dynamic_container_deployment_supported": true,
+ "fine_tuning_supported": false,
+ "hosting_artifact_compression_type": "None",
+ "hosting_artifact_key": "openai-reasoning/openai-reasoning-gpt-oss-20b/artifacts/inference/v1.0.0/",
+ "hosting_artifact_s3_data_type": "S3Prefix",
+ "hosting_ecr_specs": {
+  "framework": "vllm",
+  "framework_version": "0.18.0",
+  "py_version": "py312"
+ },
+ "hosting_prepacked_artifact_key": "openai-reasoning/openai-reasoning-gpt-oss-20b/artifacts/inference-prepack/v1.0.0/",
+ "hosting_prepacked_artifact_version": "1.0.0",
+ "hosting_script_key": "source-directory-tarballs/inference/openai-reasoning/v1.0.0/sourcedir.tar.gz",
+ "hosting_use_script_uri": false,
+ "huggingface_id": "openai/gpt-oss-20b",
+ "incremental_training_supported": false,
+ "inference_config_components": {
+  "lmi": {
+   "default_inference_instance_type": "ml.g7e.2xlarge",
+   "default_payloads": {
+    "marketing": {
+     "body": {
+      "max_tokens": 200,
+      "messages": [
+       {
+        "content": "Olly has just promoted you to the marketing department.",
+        "role": "system"
+       },
+       {
+        "content": "Create ad text promoting Olly supplements for woman over 40 years using the following keywords: mental, health, sleep, energy, mood, cognitive, adult, children, supplement, and support. Include a slogan.",
+        "role": "user"
+       }
+      ],
+      "temperature": 0.7,
+      "top_p": 1
+     },
+     "content_type": "application/json"
+    }
+   },
+   "deploy_kwargs": {
+    "container_startup_health_check_timeout": 1200,
+    "model_data_download_timeout": 1200
+   },
+   "hosting_artifact_compression_type": "None",
+   "hosting_artifact_key": "openai-reasoning/openai-reasoning-gpt-oss-20b/artifacts/inference/v1.0.0/",
+   "hosting_artifact_s3_data_type": "S3Prefix",
+   "hosting_ecr_specs": {
+    "framework": "djl-lmi",
+    "framework_version": "0.34.0",
+    "py_version": "py310"
+   },
+   "hosting_instance_type_variants": {
+    "regional_aliases": {
+     "af-south-1": {
+      "alias_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-east-1": {
+      "alias_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-east-2": {
+      "alias_ecr_uri_1": "975050140332.dkr.ecr.ap-east-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-northeast-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-northeast-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-northeast-3": {
+      "alias_ecr_uri_1": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-south-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-south-2": {
+      "alias_ecr_uri_1": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-southeast-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-southeast-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-southeast-3": {
+      "alias_ecr_uri_1": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-southeast-4": {
+      "alias_ecr_uri_1": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-southeast-5": {
+      "alias_ecr_uri_1": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-southeast-6": {
+      "alias_ecr_uri_1": "633930458069.dkr.ecr.ap-southeast-6.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ap-southeast-7": {
+      "alias_ecr_uri_1": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ca-central-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "ca-west-1": {
+      "alias_ecr_uri_1": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "cn-north-1": {
+      "alias_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "cn-northwest-1": {
+      "alias_ecr_uri_1": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eu-central-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eu-central-2": {
+      "alias_ecr_uri_1": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eu-isoe-west-1": {
+      "alias_ecr_uri_1": "371248457586.dkr.ecr.eu-isoe-west-1.cloud.adc-e.uk/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eu-north-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eu-south-1": {
+      "alias_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eu-south-2": {
+      "alias_ecr_uri_1": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eu-west-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eu-west-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eu-west-3": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "eusc-de-east-1": {
+      "alias_ecr_uri_1": "204133271717.dkr.ecr.eusc-de-east-1.amazonaws.eu/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "il-central-1": {
+      "alias_ecr_uri_1": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "me-central-1": {
+      "alias_ecr_uri_1": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "me-south-1": {
+      "alias_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "mx-central-1": {
+      "alias_ecr_uri_1": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "sa-east-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-east-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-east-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-gov-east-1": {
+      "alias_ecr_uri_1": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-gov-west-1": {
+      "alias_ecr_uri_1": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-iso-east-1": {
+      "alias_ecr_uri_1": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-isob-east-1": {
+      "alias_ecr_uri_1": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-isof-east-1": {
+      "alias_ecr_uri_1": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-isof-south-1": {
+      "alias_ecr_uri_1": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-west-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     },
+     "us-west-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128"
+     }
+    },
+    "variants": {
+     "g4dn": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "g5": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "g6": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "g6e": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "g6f": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "g7": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "g7e": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "gr6": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "local_gpu": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "ml.g5.12xlarge": {
+      "properties": {
+       "environment_variables": {
+        "MAX_BATCH_SIZE": "16",
+        "MAX_CONCURRENT_REQUESTS": "32",
+        "OPTION_DTYPE": "bf16",
+        "OPTION_ENABLE_CHUNCKED_PREFILL": "True",
+        "OPTION_GPU_MEMORY_UTILIZATION": "0.88",
+        "OPTION_MAX_MODEL_LEN": "131072",
+        "OPTION_MAX_NUM_BATCHED_TOKENS": "131072",
+        "TENSOR_PARALLEL_DEGREE": "4"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 98304,
+        "num_accelerators": 4
+       }
+      }
+     },
+     "ml.g5.24xlarge": {
+      "properties": {
+       "environment_variables": {
+        "MAX_BATCH_SIZE": "16",
+        "MAX_CONCURRENT_REQUESTS": "32",
+        "OPTION_DTYPE": "bf16",
+        "OPTION_ENABLE_CHUNCKED_PREFILL": "True",
+        "OPTION_GPU_MEMORY_UTILIZATION": "0.88",
+        "OPTION_MAX_MODEL_LEN": "131072",
+        "OPTION_MAX_NUM_BATCHED_TOKENS": "131072",
+        "TENSOR_PARALLEL_DEGREE": "4"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 196608,
+        "num_accelerators": 4
+       }
+      }
+     },
+     "ml.g6.12xlarge": {
+      "properties": {
+       "environment_variables": {
+        "MAX_BATCH_SIZE": "16",
+        "MAX_CONCURRENT_REQUESTS": "32",
+        "OPTION_DTYPE": "bf16",
+        "OPTION_ENABLE_CHUNCKED_PREFILL": "True",
+        "OPTION_GPU_MEMORY_UTILIZATION": "0.88",
+        "OPTION_MAX_MODEL_LEN": "131072",
+        "OPTION_MAX_NUM_BATCHED_TOKENS": "131072",
+        "TENSOR_PARALLEL_DEGREE": "4"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 98304,
+        "num_accelerators": 4
+       }
+      }
+     },
+     "ml.g6.24xlarge": {
+      "properties": {
+       "environment_variables": {
+        "MAX_BATCH_SIZE": "16",
+        "MAX_CONCURRENT_REQUESTS": "32",
+        "OPTION_DTYPE": "bf16",
+        "OPTION_ENABLE_CHUNCKED_PREFILL": "True",
+        "OPTION_GPU_MEMORY_UTILIZATION": "0.88",
+        "OPTION_MAX_MODEL_LEN": "131072",
+        "OPTION_MAX_NUM_BATCHED_TOKENS": "131072",
+        "TENSOR_PARALLEL_DEGREE": "4"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 196608,
+        "num_accelerators": 4
+       }
+      }
+     },
+     "ml.g7e.2xlarge": {
+      "properties": {
+       "environment_variables": {
+        "TENSOR_PARALLEL_DEGREE": "1"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 32768,
+        "num_accelerators": 1
+       }
+      }
+     },
+     "ml.p5.48xlarge": {
+      "properties": {
+       "environment_variables": {
+        "TENSOR_PARALLEL_DEGREE": "8"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 1048576,
+        "num_accelerators": 8
+       }
+      }
+     },
+     "ml.p5e.48xlarge": {
+      "properties": {
+       "environment_variables": {
+        "TENSOR_PARALLEL_DEGREE": "8"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 1048576,
+        "num_accelerators": 8
+       }
+      }
+     },
+     "ml.p5en.48xlarge": {
+      "properties": {
+       "environment_variables": {
+        "TENSOR_PARALLEL_DEGREE": "8"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 1048576,
+        "num_accelerators": 8
+       }
+      }
+     },
+     "p3": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "p3dn": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "p4d": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "p4de": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "p5": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "p5e": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "p5en": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "p6-b200": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "p6-b300": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     }
+    }
+   },
+   "hosting_prepacked_artifact_key": "openai-reasoning/openai-reasoning-gpt-oss-20b/artifacts/inference-prepack/v1.0.0/",
+   "hosting_prepacked_artifact_version": "1.0.0",
+   "hosting_resource_requirements": {
+    "min_memory_mb": 32768,
+    "num_accelerators": 1
+   },
+   "hosting_script_key": "source-directory-tarballs/inference/openai-reasoning/v1.0.0/sourcedir.tar.gz",
+   "hosting_use_script_uri": false,
+   "inference_dependencies": [],
+   "inference_enable_network_isolation": true,
+   "inference_environment_variables": [
+    {
+     "default": "/opt/ml/model",
+     "name": "HF_MODEL_ID",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "/opt/ml/model",
+     "name": "MODEL_CACHE_ROOT",
+     "required_for_model_class": false,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "20",
+     "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+     "required_for_model_class": false,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "1",
+     "name": "SAGEMAKER_ENV",
+     "required_for_model_class": false,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "3600",
+     "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "1",
+     "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+     "required_for_model_class": false,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "inference.py",
+     "name": "SAGEMAKER_PROGRAM",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "/opt/ml/model/code",
+     "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "/opt/ml/model",
+     "name": "TIKTOKEN_ENCODINGS_BASE",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    }
+   ],
+   "inference_vulnerabilities": [],
+   "inference_vulnerable": false,
+   "model_kwargs": {},
+   "predictor_specs": {
+    "default_accept_type": "application/json",
+    "default_content_type": "application/json",
+    "supported_accept_types": [
+     "application/json"
+    ],
+    "supported_content_types": [
+     "application/json"
+    ]
+   },
+   "supported_inference_instance_types": [
+    "ml.g7e.2xlarge",
+    "ml.p5.48xlarge",
+    "ml.p5en.48xlarge",
+    "ml.p5e.48xlarge",
+    "ml.g6.12xlarge",
+    "ml.g5.12xlarge",
+    "ml.g6.24xlarge",
+    "ml.g5.24xlarge"
+   ]
+  },
+  "lmi-optimized": {
+   "default_inference_instance_type": "ml.g7e.2xlarge",
+   "default_payloads": {
+    "marketing": {
+     "body": {
+      "max_tokens": 200,
+      "messages": [
+       {
+        "content": "Olly has just promoted you to the marketing department.",
+        "role": "system"
+       },
+       {
+        "content": "Create ad text promoting Olly supplements for woman over 40 years using the following keywords: mental, health, sleep, energy, mood, cognitive, adult, children, supplement, and support. Include a slogan.",
+        "role": "user"
+       }
+      ],
+      "temperature": 0.7,
+      "top_p": 1
+     },
+     "content_type": "application/json"
+    }
+   },
+   "deploy_kwargs": {
+    "container_startup_health_check_timeout": 3600,
+    "model_data_download_timeout": 3600
+   },
+   "hosting_additional_data_sources": {
+    "speculative_decoding": [
+     {
+      "artifact_version": "v1.0.0",
+      "channel_name": "eagle",
+      "provider": {
+       "classification": "non-gated",
+       "name": "JumpStart"
+      },
+      "s3_data_source": {
+       "compression_type": "None",
+       "s3_data_type": "S3Prefix",
+       "s3_uri": "lmi-eagle-heads/models/gpt-oss-20b-p-eagle/"
+      }
+     }
+    ]
+   },
+   "hosting_artifact_compression_type": "None",
+   "hosting_artifact_key": "openai-reasoning/openai-reasoning-gpt-oss-20b/artifacts/inference/v1.0.0/",
+   "hosting_artifact_s3_data_type": "S3Prefix",
+   "hosting_ecr_specs": {
+    "framework": "vllm",
+    "framework_version": "0.18.0",
+    "py_version": "py312"
+   },
+   "hosting_instance_type_variants": {
+    "regional_aliases": {
+     "af-south-1": {
+      "alias_ecr_uri_1": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "626614931356.dkr.ecr.af-south-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-east-1": {
+      "alias_ecr_uri_1": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-east-2": {
+      "alias_ecr_uri_1": "975050140332.dkr.ecr.ap-east-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "975050140332.dkr.ecr.ap-east-2.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-northeast-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-northeast-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-northeast-3": {
+      "alias_ecr_uri_1": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-south-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-south-2": {
+      "alias_ecr_uri_1": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-southeast-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-southeast-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-southeast-3": {
+      "alias_ecr_uri_1": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-southeast-4": {
+      "alias_ecr_uri_1": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-southeast-5": {
+      "alias_ecr_uri_1": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-southeast-6": {
+      "alias_ecr_uri_1": "633930458069.dkr.ecr.ap-southeast-6.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "633930458069.dkr.ecr.ap-southeast-6.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ap-southeast-7": {
+      "alias_ecr_uri_1": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ca-central-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "ca-west-1": {
+      "alias_ecr_uri_1": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "cn-north-1": {
+      "alias_ecr_uri_1": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "cn-northwest-1": {
+      "alias_ecr_uri_1": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eu-central-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eu-central-2": {
+      "alias_ecr_uri_1": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eu-isoe-west-1": {
+      "alias_ecr_uri_1": "371248457586.dkr.ecr.eu-isoe-west-1.cloud.adc-e.uk/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "371248457586.dkr.ecr.eu-isoe-west-1.cloud.adc-e.uk/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eu-north-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eu-south-1": {
+      "alias_ecr_uri_1": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eu-south-2": {
+      "alias_ecr_uri_1": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eu-west-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eu-west-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eu-west-3": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "eusc-de-east-1": {
+      "alias_ecr_uri_1": "204133271717.dkr.ecr.eusc-de-east-1.amazonaws.eu/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "204133271717.dkr.ecr.eusc-de-east-1.amazonaws.eu/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "il-central-1": {
+      "alias_ecr_uri_1": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "780543022126.dkr.ecr.il-central-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "me-central-1": {
+      "alias_ecr_uri_1": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "914824155844.dkr.ecr.me-central-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "me-south-1": {
+      "alias_ecr_uri_1": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "217643126080.dkr.ecr.me-south-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "mx-central-1": {
+      "alias_ecr_uri_1": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "sa-east-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-east-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-east-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-east-2.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-gov-east-1": {
+      "alias_ecr_uri_1": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-gov-west-1": {
+      "alias_ecr_uri_1": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-iso-east-1": {
+      "alias_ecr_uri_1": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-isob-east-1": {
+      "alias_ecr_uri_1": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-isof-east-1": {
+      "alias_ecr_uri_1": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-isof-south-1": {
+      "alias_ecr_uri_1": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-west-1": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-1.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     },
+     "us-west-2": {
+      "alias_ecr_uri_1": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.34.0-lmi16.0.0-cu128",
+      "gpu_ecr_uri_2": "763104351884.dkr.ecr.us-west-2.amazonaws.com/vllm:0.18.0-gpu-py312-cu129-ubuntu22.04-sagemaker"
+     }
+    },
+    "variants": {
+     "g4dn": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "g5": {
+      "regional_properties": {
+       "image_uri": "$alias_ecr_uri_1"
+      }
+     },
+     "g6": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "g6e": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "g6f": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "g7": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "g7e": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "gr6": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "local_gpu": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "ml.g5.12xlarge": {
+      "properties": {
+       "environment_variables": {
+        "MAX_BATCH_SIZE": "16",
+        "MAX_CONCURRENT_REQUESTS": "32",
+        "OPTION_DTYPE": "bf16",
+        "OPTION_ENABLE_CHUNCKED_PREFILL": "True",
+        "OPTION_GPU_MEMORY_UTILIZATION": "0.88",
+        "OPTION_MAX_MODEL_LEN": "131072",
+        "OPTION_MAX_NUM_BATCHED_TOKENS": "131072",
+        "TENSOR_PARALLEL_DEGREE": "4"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 98304,
+        "num_accelerators": 4
+       }
+      }
+     },
+     "ml.g5.24xlarge": {
+      "properties": {
+       "environment_variables": {
+        "MAX_BATCH_SIZE": "16",
+        "MAX_CONCURRENT_REQUESTS": "32",
+        "OPTION_DTYPE": "bf16",
+        "OPTION_ENABLE_CHUNCKED_PREFILL": "True",
+        "OPTION_GPU_MEMORY_UTILIZATION": "0.88",
+        "OPTION_MAX_MODEL_LEN": "131072",
+        "OPTION_MAX_NUM_BATCHED_TOKENS": "131072",
+        "TENSOR_PARALLEL_DEGREE": "4"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 196608,
+        "num_accelerators": 4
+       }
+      }
+     },
+     "ml.g6.12xlarge": {
+      "properties": {
+       "environment_variables": {
+        "MAX_BATCH_SIZE": "16",
+        "MAX_CONCURRENT_REQUESTS": "32",
+        "OPTION_DTYPE": "bf16",
+        "OPTION_ENABLE_CHUNCKED_PREFILL": "True",
+        "OPTION_GPU_MEMORY_UTILIZATION": "0.88",
+        "OPTION_MAX_MODEL_LEN": "131072",
+        "OPTION_MAX_NUM_BATCHED_TOKENS": "131072",
+        "TENSOR_PARALLEL_DEGREE": "4"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 98304,
+        "num_accelerators": 4
+       }
+      }
+     },
+     "ml.g6.24xlarge": {
+      "properties": {
+       "environment_variables": {
+        "MAX_BATCH_SIZE": "16",
+        "MAX_CONCURRENT_REQUESTS": "32",
+        "OPTION_DTYPE": "bf16",
+        "OPTION_ENABLE_CHUNCKED_PREFILL": "True",
+        "OPTION_GPU_MEMORY_UTILIZATION": "0.88",
+        "OPTION_MAX_MODEL_LEN": "131072",
+        "OPTION_MAX_NUM_BATCHED_TOKENS": "131072",
+        "TENSOR_PARALLEL_DEGREE": "4"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 196608,
+        "num_accelerators": 4
+       }
+      }
+     },
+     "ml.g7e.2xlarge": {
+      "properties": {
+       "environment_variables": {
+        "TENSOR_PARALLEL_DEGREE": "1"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 32768,
+        "num_accelerators": 1
+       }
+      }
+     },
+     "ml.p5.48xlarge": {
+      "properties": {
+       "environment_variables": {
+        "TENSOR_PARALLEL_DEGREE": "8"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 1048576,
+        "num_accelerators": 8
+       }
+      }
+     },
+     "ml.p5e.48xlarge": {
+      "properties": {
+       "environment_variables": {
+        "TENSOR_PARALLEL_DEGREE": "8"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 1048576,
+        "num_accelerators": 8
+       }
+      }
+     },
+     "ml.p5en.48xlarge": {
+      "properties": {
+       "environment_variables": {
+        "TENSOR_PARALLEL_DEGREE": "8"
+       },
+       "resource_requirements": {
+        "min_memory_mb": 1048576,
+        "num_accelerators": 8
+       }
+      }
+     },
+     "p3": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "p3dn": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "p4d": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "p4de": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "p5": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "p5e": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "p5en": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "p6-b200": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     },
+     "p6-b300": {
+      "regional_properties": {
+       "image_uri": "$gpu_ecr_uri_2"
+      }
+     }
+    }
+   },
+   "hosting_prepacked_artifact_key": "openai-reasoning/openai-reasoning-gpt-oss-20b/artifacts/inference-prepack/v1.0.0/",
+   "hosting_prepacked_artifact_version": "1.0.0",
+   "hosting_resource_requirements": {
+    "min_memory_mb": 32768,
+    "num_accelerators": 1
+   },
+   "hosting_script_key": "source-directory-tarballs/inference/openai-reasoning/v1.0.0/sourcedir.tar.gz",
+   "hosting_use_script_uri": false,
+   "inference_dependencies": [],
+   "inference_enable_network_isolation": true,
+   "inference_environment_variables": [
+    {
+     "default": "/opt/ml/model",
+     "name": "HF_MODEL_ID",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "/opt/ml/model",
+     "name": "MODEL_CACHE_ROOT",
+     "required_for_model_class": false,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "20",
+     "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+     "required_for_model_class": false,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "1",
+     "name": "SAGEMAKER_ENV",
+     "required_for_model_class": false,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "3600",
+     "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": 1,
+     "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "int"
+    },
+    {
+     "default": "inference.py",
+     "name": "SAGEMAKER_PROGRAM",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "/opt/ml/model/code",
+     "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "8192",
+     "name": "SM_VLLM_MAX_MODEL_LEN",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "{\"model\": \"/opt/ml/additional-model-data-sources/eagle\", \"method\": \"eagle3\", \"num_speculative_tokens\": 3, \"parallel_drafting\": true}",
+     "name": "SM_VLLM_SPECULATIVE_CONFIG",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "1",
+     "name": "SM_VLLM_TENSOR_PARALLEL_SIZE",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    },
+    {
+     "default": "/opt/ml/model",
+     "name": "TIKTOKEN_ENCODINGS_BASE",
+     "required_for_model_class": true,
+     "scope": "container",
+     "type": "text"
+    }
+   ],
+   "inference_vulnerabilities": [],
+   "inference_vulnerable": false,
+   "model_kwargs": {},
+   "predictor_specs": {
+    "default_accept_type": "application/json",
+    "default_content_type": "application/json",
+    "supported_accept_types": [
+     "application/json"
+    ],
+    "supported_content_types": [
+     "application/json"
+    ]
+   },
+   "supported_inference_instance_types": [
+    "ml.g7e.2xlarge",
+    "ml.p5.48xlarge",
+    "ml.p5en.48xlarge",
+    "ml.p5e.48xlarge",
+    "ml.g6.12xlarge",
+    "ml.g5.12xlarge",
+    "ml.g6.24xlarge",
+    "ml.g5.24xlarge"
+   ]
+  }
+ },
+ "inference_config_rankings": {
+  "overall": {
+   "description": "default",
+   "rankings": [
+    "lmi-optimized",
+    "lmi"
+   ]
+  }
+ },
+ "inference_configs": {
+  "lmi": {
+   "component_names": [
+    "lmi"
+   ]
+  },
+  "lmi-optimized": {
+   "acceleration_configs": [
+    {
+     "enabled": true,
+     "type": "Speculative-Decoding"
+    }
+   ],
+   "benchmark_metrics": {
+    "ml.g7e.2xlarge": [
+     {
+      "concurrency": "1",
+      "name": "throughput",
+      "unit": "tokens/sec",
+      "value": "40"
+     },
+     {
+      "concurrency": "1",
+      "name": "latency",
+      "unit": "sec",
+      "value": "50.0"
+     },
+     {
+      "concurrency": "2",
+      "name": "throughput",
+      "unit": "tokens/sec",
+      "value": "80"
+     },
+     {
+      "concurrency": "2",
+      "name": "latency",
+      "unit": "sec",
+      "value": "25.0"
+     },
+     {
+      "concurrency": "4",
+      "name": "throughput",
+      "unit": "tokens/sec",
+      "value": "160"
+     },
+     {
+      "concurrency": "4",
+      "name": "latency",
+      "unit": "sec",
+      "value": "12.5"
+     },
+     {
+      "concurrency": "8",
+      "name": "throughput",
+      "unit": "tokens/sec",
+      "value": "320"
+     },
+     {
+      "concurrency": "8",
+      "name": "latency",
+      "unit": "sec",
+      "value": "6.25"
+     },
+     {
+      "concurrency": "16",
+      "name": "throughput",
+      "unit": "tokens/sec",
+      "value": "320"
+     },
+     {
+      "concurrency": "16",
+      "name": "latency",
+      "unit": "sec",
+      "value": "3.12"
+     },
+     {
+      "concurrency": "32",
+      "name": "throughput",
+      "unit": "tokens/sec",
+      "value": "320"
+     },
+     {
+      "concurrency": "32",
+      "name": "latency",
+      "unit": "sec",
+      "value": "1.56"
+     },
+     {
+      "concurrency": "64",
+      "name": "throughput",
+      "unit": "tokens/sec",
+      "value": "320"
+     },
+     {
+      "concurrency": "64",
+      "name": "latency",
+      "unit": "sec",
+      "value": "1.0"
+     },
+     {
+      "concurrency": "128",
+      "name": "throughput",
+      "unit": "tokens/sec",
+      "value": "320"
+     },
+     {
+      "concurrency": "128",
+      "name": "latency",
+      "unit": "sec",
+      "value": "1.0"
+     }
+    ]
+   },
+   "component_names": [
+    "lmi-optimized"
+   ]
+  }
+ },
+ "inference_dependencies": [],
+ "inference_enable_network_isolation": true,
+ "inference_environment_variables": [
+  {
+   "default": "/opt/ml/model",
+   "name": "HF_MODEL_ID",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "/opt/ml/model",
+   "name": "MODEL_CACHE_ROOT",
+   "required_for_model_class": false,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "20",
+   "name": "SAGEMAKER_CONTAINER_LOG_LEVEL",
+   "required_for_model_class": false,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "1",
+   "name": "SAGEMAKER_ENV",
+   "required_for_model_class": false,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "3600",
+   "name": "SAGEMAKER_MODEL_SERVER_TIMEOUT",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": 1,
+   "name": "SAGEMAKER_MODEL_SERVER_WORKERS",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "int"
+  },
+  {
+   "default": "inference.py",
+   "name": "SAGEMAKER_PROGRAM",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "/opt/ml/model/code",
+   "name": "SAGEMAKER_SUBMIT_DIRECTORY",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "8192",
+   "name": "SM_VLLM_MAX_MODEL_LEN",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "{\"model\": \"/opt/ml/additional-model-data-sources/eagle\", \"method\": \"eagle3\", \"num_speculative_tokens\": 3, \"parallel_drafting\": true}",
+   "name": "SM_VLLM_SPECULATIVE_CONFIG",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "1",
+   "name": "SM_VLLM_TENSOR_PARALLEL_SIZE",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  },
+  {
+   "default": "/opt/ml/model",
+   "name": "TIKTOKEN_ENCODINGS_BASE",
+   "required_for_model_class": true,
+   "scope": "container",
+   "type": "text"
+  }
+ ],
+ "inference_vulnerabilities": [],
+ "inference_vulnerable": false,
+ "input_modalities": [
+  "Text"
+ ],
+ "languages": [
+  "English"
+ ],
+ "license": "Apache 2.0",
+ "metrics": [],
+ "min_sdk_version": "2.244.2",
+ "ml_framework": "PyTorch",
+ "model_access": "Open Weight",
+ "model_id": "openai-reasoning-gpt-oss-20b",
+ "model_kwargs": {},
+ "model_size": "10B-70B",
+ "output_modalities": [
+  "Text"
+ ],
+ "provider": "openai",
+ "recipe_collection": [
+  {
+   "customization_technique": "DPO",
+   "display_name": "GPT OSS 20B Direct Preference Optimization on GPU, 4K sequence length",
+   "hardware": "GPU",
+   "hosting_configs": [
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 196608,
+      "number_of_accelerator_devices_required": 4,
+      "number_of_cpu_cores_required": 36
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "32",
+      "OPTION_MAX_LORAS": "4",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "4",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "64"
+     },
+     "instance_type": "ml.g6e.12xlarge",
+     "profile": "Default"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1024000,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "64",
+      "OPTION_MAX_LORAS": "8",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "128"
+     },
+     "instance_type": "ml.g6e.48xlarge"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1539316,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "64",
+      "OPTION_MAX_LORAS": "8",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "128"
+     },
+     "instance_type": "ml.p5.48xlarge"
+    }
+   ],
+   "hp_eks_override_params_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_dpo_override_params_k8s_v2.2.4.json",
+   "hp_eks_payload_template_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_dpo_payload_template_k8s_v2.2.4.yaml",
+   "instance_count": 1,
+   "is_subscription_model": false,
+   "name": "llmft_gpt_oss_20b_seq4k_gpu_dpo",
+   "peft": "LORA",
+   "recipe_file_path": "recipes/fine-tuning/gpt_oss/llmft_gpt_oss_20b_seq4k_gpu_dpo.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-DPO-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-DPO-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-DPO-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    },
+    "prod": {
+     "af-south-1": {
+      "inference": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-east-1": {
+      "inference": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "APN1-ServerlessTraining:FineTuning-DPO-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "ap-northeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-3": {
+      "inference": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-1": {
+      "hp_eks_regional_ecr_uri": "423350936952.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-2": {
+      "inference": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-1": {
+      "hp_eks_regional_ecr_uri": "885852567298.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "304708117039.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-3": {
+      "inference": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-4": {
+      "inference": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-5": {
+      "inference": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-7": {
+      "inference": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-central-1": {
+      "inference": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-west-1": {
+      "inference": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-north-1": {
+      "inference": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-northwest-1": {
+      "inference": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "391061375763.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-2": {
+      "inference": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-north-1": {
+      "hp_eks_regional_ecr_uri": "963403601044.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-1": {
+      "inference": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-2": {
+      "hp_eks_regional_ecr_uri": "330290781619.dkr.ecr.eu-south-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "EU-ServerlessTraining:FineTuning-DPO-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "eu-west-2": {
+      "hp_eks_regional_ecr_uri": "016839105697.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-3": {
+      "inference": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "il-central-1": {
+      "inference": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-central-1": {
+      "inference": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-south-1": {
+      "inference": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "mx-central-1": {
+      "inference": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "sa-east-1": {
+      "hp_eks_regional_ecr_uri": "311136344257.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-DPO-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "us-east-2": {
+      "hp_eks_regional_ecr_uri": "556809692997.dkr.ecr.us-east-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-east-1": {
+      "inference": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-west-1": {
+      "inference": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-iso-east-1": {
+      "inference": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isob-east-1": {
+      "inference": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-east-1": {
+      "inference": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-south-1": {
+      "inference": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-1": {
+      "hp_eks_regional_ecr_uri": "827510180725.dkr.ecr.us-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-DPO-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    }
+   },
+   "sequence_length": "4K",
+   "serverless_metering_type": "Token-based",
+   "smtj_override_params_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_dpo_override_params_sm_jobs_v2.2.4.json",
+   "smtj_recipe_template_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_dpo_payload_template_sm_jobs_v2.2.4.yaml",
+   "supported_instance_types": [
+    "ml.p5.48xlarge",
+    "ml.p5e.48xlarge",
+    "ml.p5en.48xlarge"
+   ],
+   "type": "FineTuning",
+   "versions": [
+    "2.2.4"
+   ]
+  },
+  {
+   "customization_technique": "SFT",
+   "display_name": "GPT OSS 20B Supervised Fine-Tuning with LoRA on GPU, 4K sequence length",
+   "hardware": "GPU",
+   "hosting_configs": [
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 196608,
+      "number_of_accelerator_devices_required": 4,
+      "number_of_cpu_cores_required": 36
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "32",
+      "OPTION_MAX_LORAS": "4",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "4",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "64"
+     },
+     "instance_type": "ml.g6e.12xlarge",
+     "profile": "Default"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1024000,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "64",
+      "OPTION_MAX_LORAS": "8",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "128"
+     },
+     "instance_type": "ml.g6e.48xlarge"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1539316,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "64",
+      "OPTION_MAX_LORAS": "8",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "128"
+     },
+     "instance_type": "ml.p5.48xlarge"
+    }
+   ],
+   "hp_eks_override_params_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_sft_lora_override_params_k8s_v2.3.1.json",
+   "hp_eks_payload_template_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_sft_lora_payload_template_k8s_v2.3.1.yaml",
+   "instance_count": 1,
+   "is_subscription_model": false,
+   "name": "llmft_gpt_oss_20b_seq4k_gpu_sft_lora",
+   "peft": "LORA",
+   "recipe_file_path": "recipes/fine-tuning/gpt_oss/llmft_gpt_oss_20b_seq4k_gpu_sft_lora.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-SFT-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-SFT-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-SFT-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    },
+    "prod": {
+     "af-south-1": {
+      "inference": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-east-1": {
+      "inference": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "APN1-ServerlessTraining:FineTuning-SFT-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "ap-northeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-3": {
+      "inference": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-1": {
+      "hp_eks_regional_ecr_uri": "423350936952.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-2": {
+      "inference": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-1": {
+      "hp_eks_regional_ecr_uri": "885852567298.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "304708117039.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-3": {
+      "inference": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-4": {
+      "inference": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-5": {
+      "inference": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-7": {
+      "inference": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-central-1": {
+      "inference": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-west-1": {
+      "inference": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-north-1": {
+      "inference": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-northwest-1": {
+      "inference": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "391061375763.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-2": {
+      "inference": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-north-1": {
+      "hp_eks_regional_ecr_uri": "963403601044.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-1": {
+      "inference": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-2": {
+      "hp_eks_regional_ecr_uri": "330290781619.dkr.ecr.eu-south-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "EU-ServerlessTraining:FineTuning-SFT-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "eu-west-2": {
+      "hp_eks_regional_ecr_uri": "016839105697.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-3": {
+      "inference": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "il-central-1": {
+      "inference": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-central-1": {
+      "inference": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-south-1": {
+      "inference": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "mx-central-1": {
+      "inference": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "sa-east-1": {
+      "hp_eks_regional_ecr_uri": "311136344257.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-SFT-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "us-east-2": {
+      "hp_eks_regional_ecr_uri": "556809692997.dkr.ecr.us-east-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-east-1": {
+      "inference": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-west-1": {
+      "inference": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-iso-east-1": {
+      "inference": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isob-east-1": {
+      "inference": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-east-1": {
+      "inference": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-south-1": {
+      "inference": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-1": {
+      "hp_eks_regional_ecr_uri": "827510180725.dkr.ecr.us-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-SFT-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    }
+   },
+   "sequence_length": "4K",
+   "serverless_metering_type": "Token-based",
+   "smtj_override_params_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_sft_lora_override_params_sm_jobs_v2.3.1.json",
+   "smtj_recipe_template_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_sft_lora_payload_template_sm_jobs_v2.3.1.yaml",
+   "supported_instance_types": [
+    "ml.p5.48xlarge",
+    "ml.p5e.48xlarge",
+    "ml.p5en.48xlarge"
+   ],
+   "type": "FineTuning",
+   "versions": [
+    "2.3.1"
+   ]
+  },
+  {
+   "customization_technique": "RLAIF",
+   "display_name": "GPT OSS 20B GRPO RLAIF Fine-Tuning with LoRA",
+   "hardware": "GPU",
+   "hosting_configs": [
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 196608,
+      "number_of_accelerator_devices_required": 4,
+      "number_of_cpu_cores_required": 36
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "32",
+      "OPTION_MAX_LORAS": "4",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "4",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "64"
+     },
+     "instance_type": "ml.g6e.12xlarge",
+     "profile": "Default"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1539316,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "64",
+      "OPTION_MAX_LORAS": "8",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "128"
+     },
+     "instance_type": "ml.p5.48xlarge"
+    }
+   ],
+   "hp_eks_override_params_s3_key": "recipes/verl-grpo-rlaif-gpt-oss-20b-lora_override_params_k8s_v2.2.3.json",
+   "hp_eks_payload_template_s3_key": "recipes/verl-grpo-rlaif-gpt-oss-20b-lora_payload_template_k8s_v2.2.3.yaml",
+   "instance_count": 1,
+   "is_subscription_model": false,
+   "name": "verl-grpo-rlaif-gpt-oss-20b-lora",
+   "peft": "LORA",
+   "recipe_file_path": "recipes/fine-tuning/gpt_oss/verl-grpo-rlaif-gpt-oss-20b-lora.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLAIF-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-RLAIF-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLAIF-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    },
+    "prod": {
+     "af-south-1": {
+      "inference": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-east-1": {
+      "inference": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "APN1-ServerlessTraining:FineTuning-RLAIF-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "ap-northeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-3": {
+      "inference": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-1": {
+      "hp_eks_regional_ecr_uri": "423350936952.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-2": {
+      "inference": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-1": {
+      "hp_eks_regional_ecr_uri": "885852567298.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "304708117039.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-3": {
+      "inference": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-4": {
+      "inference": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-5": {
+      "inference": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-7": {
+      "inference": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-central-1": {
+      "inference": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-west-1": {
+      "inference": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-north-1": {
+      "inference": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-northwest-1": {
+      "inference": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "391061375763.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-2": {
+      "inference": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-north-1": {
+      "hp_eks_regional_ecr_uri": "963403601044.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-1": {
+      "inference": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-2": {
+      "hp_eks_regional_ecr_uri": "330290781619.dkr.ecr.eu-south-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "EU-ServerlessTraining:FineTuning-RLAIF-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "eu-west-2": {
+      "hp_eks_regional_ecr_uri": "016839105697.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-3": {
+      "inference": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "il-central-1": {
+      "inference": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-central-1": {
+      "inference": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-south-1": {
+      "inference": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "mx-central-1": {
+      "inference": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "sa-east-1": {
+      "hp_eks_regional_ecr_uri": "311136344257.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-RLAIF-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "us-east-2": {
+      "hp_eks_regional_ecr_uri": "556809692997.dkr.ecr.us-east-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-east-1": {
+      "inference": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-west-1": {
+      "inference": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-iso-east-1": {
+      "inference": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isob-east-1": {
+      "inference": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-east-1": {
+      "inference": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-south-1": {
+      "inference": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-1": {
+      "hp_eks_regional_ecr_uri": "827510180725.dkr.ecr.us-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLAIF-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    }
+   },
+   "sequence_length": "4K",
+   "serverless_metering_type": "Hourly",
+   "smtj_override_params_s3_key": "recipes/verl-grpo-rlaif-gpt-oss-20b-lora_override_params_sm_jobs_v2.2.3.json",
+   "smtj_recipe_template_s3_key": "recipes/verl-grpo-rlaif-gpt-oss-20b-lora_payload_template_sm_jobs_v2.2.3.yaml",
+   "supported_instance_types": [
+    "ml.p5.48xlarge"
+   ],
+   "type": "FineTuning",
+   "versions": [
+    "2.2.3"
+   ]
+  },
+  {
+   "customization_technique": "RLVR",
+   "display_name": "GPT OSS 20B GRPO RLVR Fine-Tuning with LoRA",
+   "hardware": "GPU",
+   "hosting_configs": [
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 196608,
+      "number_of_accelerator_devices_required": 4,
+      "number_of_cpu_cores_required": 36
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "32",
+      "OPTION_MAX_LORAS": "4",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "4",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "64"
+     },
+     "instance_type": "ml.g6e.12xlarge",
+     "profile": "Default"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1539316,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "64",
+      "OPTION_MAX_LORAS": "8",
+      "OPTION_MAX_LORA_RANK": "128",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "128"
+     },
+     "instance_type": "ml.p5.48xlarge"
+    }
+   ],
+   "hp_eks_override_params_s3_key": "recipes/verl-grpo-rlvr-gpt-oss-20b-lora_override_params_k8s_v2.2.2.json",
+   "hp_eks_payload_template_s3_key": "recipes/verl-grpo-rlvr-gpt-oss-20b-lora_payload_template_k8s_v2.2.2.yaml",
+   "instance_count": 1,
+   "is_subscription_model": false,
+   "name": "verl-grpo-rlvr-gpt-oss-20b-lora",
+   "peft": "LORA",
+   "recipe_file_path": "recipes/fine-tuning/gpt_oss/verl-grpo-rlvr-gpt-oss-20b-lora.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLVR-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-RLVR-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLVR-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    },
+    "prod": {
+     "af-south-1": {
+      "inference": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-east-1": {
+      "inference": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "APN1-ServerlessTraining:FineTuning-RLVR-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "ap-northeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-3": {
+      "inference": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-1": {
+      "hp_eks_regional_ecr_uri": "423350936952.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-2": {
+      "inference": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-1": {
+      "hp_eks_regional_ecr_uri": "885852567298.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "304708117039.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-3": {
+      "inference": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-4": {
+      "inference": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-5": {
+      "inference": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-7": {
+      "inference": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-central-1": {
+      "inference": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-west-1": {
+      "inference": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-north-1": {
+      "inference": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-northwest-1": {
+      "inference": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "391061375763.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-2": {
+      "inference": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-north-1": {
+      "hp_eks_regional_ecr_uri": "963403601044.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-1": {
+      "inference": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-2": {
+      "hp_eks_regional_ecr_uri": "330290781619.dkr.ecr.eu-south-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "EU-ServerlessTraining:FineTuning-RLVR-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "eu-west-2": {
+      "hp_eks_regional_ecr_uri": "016839105697.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-3": {
+      "inference": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "il-central-1": {
+      "inference": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-central-1": {
+      "inference": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-south-1": {
+      "inference": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "mx-central-1": {
+      "inference": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "sa-east-1": {
+      "hp_eks_regional_ecr_uri": "311136344257.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-RLVR-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "us-east-2": {
+      "hp_eks_regional_ecr_uri": "556809692997.dkr.ecr.us-east-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-east-1": {
+      "inference": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-west-1": {
+      "inference": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-iso-east-1": {
+      "inference": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isob-east-1": {
+      "inference": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-east-1": {
+      "inference": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-south-1": {
+      "inference": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-1": {
+      "hp_eks_regional_ecr_uri": "827510180725.dkr.ecr.us-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLVR-LORA-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    }
+   },
+   "sequence_length": "1K",
+   "serverless_metering_type": "Hourly",
+   "smtj_override_params_s3_key": "recipes/verl-grpo-rlvr-gpt-oss-20b-lora_override_params_sm_jobs_v2.2.2.json",
+   "smtj_recipe_template_s3_key": "recipes/verl-grpo-rlvr-gpt-oss-20b-lora_payload_template_sm_jobs_v2.2.2.yaml",
+   "supported_instance_types": [
+    "ml.p5.48xlarge"
+   ],
+   "type": "FineTuning",
+   "versions": [
+    "2.2.2"
+   ]
+  },
+  {
+   "display_name": "Open Source Evaluation Evaluation on GPU - Openai Reasoning Gpt Oss 20B",
+   "evaluation_type": "DeterministicEvaluation",
+   "hardware": "GPU",
+   "hp_eks_override_params_s3_key": "recipes/openai_reasoning_gpt_oss_20b_override_params_k8s_v2.0.2.json",
+   "hp_eks_payload_template_s3_key": "recipes/openai_reasoning_gpt_oss_20b_payload_template_k8s_v2.0.2.yaml",
+   "name": "open-source-eval-openai-reasoning-gpt-oss-20b-deterministic",
+   "regional_parameters": {
+    "gamma": {
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "APN1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "APN1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "APS2-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "APS2-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "EUC1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "EUC1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "EUW1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "EUW1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "USE1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "USE1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "USW2-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "USW2-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/sagemaker-evaluation:latest"
+     }
+    },
+    "prod": {
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "APN1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "APN1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "APS2-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "APS2-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "EUC1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "EUC1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "EUW1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "EUW1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "USE1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "USE1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "USW2-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "USW2-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/sagemaker-evaluation:latest"
+     }
+    }
+   },
+   "smtj_override_params_s3_key": "recipes/open-source-eval-openai-reasoning-gpt-oss-20b-deterministic_override_params_sm_jobs_v2.0.2.json",
+   "smtj_recipe_template_s3_key": "recipes/open-source-eval-openai-reasoning-gpt-oss-20b-deterministic_payload_template_sm_jobs_v2.0.2.yaml",
+   "supported_instance_types": [
+    "ml.g5.12xlarge",
+    "ml.g5.24xlarge",
+    "ml.g5.48xlarge",
+    "ml.g6.24xlarge",
+    "ml.g6.48xlarge",
+    "ml.p4d.24xlarge",
+    "ml.p4de.24xlarge"
+   ],
+   "type": "Evaluation",
+   "versions": [
+    "2.0.1"
+   ]
+  },
+  {
+   "display_name": "Open Source Evaluation Evaluation on GPU - Openai Reasoning Gpt Oss 20B",
+   "evaluation_type": "LLMAJEvaluation",
+   "hardware": "CPU",
+   "hp_eks_override_params_s3_key": "recipes/openai_reasoning_gpt_oss_20b_override_params_k8s_v2.0.2.json",
+   "hp_eks_payload_template_s3_key": "recipes/openai_reasoning_gpt_oss_20b_payload_template_k8s_v2.0.2.yaml",
+   "name": "open-source-eval-openai-reasoning-gpt-oss-20b-llmaj",
+   "regional_parameters": {
+    "gamma": {
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "APN1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "APN1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "APS2-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "APS2-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "EUC1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "EUC1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "EUW1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "EUW1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "USE1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "USE1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "USW2-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "USW2-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/sagemaker-evaluation:latest"
+     }
+    },
+    "prod": {
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "APN1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "APN1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "APS2-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "APS2-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "EUC1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "EUC1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "EUW1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "EUW1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "USE1-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "USE1-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.us-east-1.amazonaws.com/sagemaker-evaluation:latest"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/sagemaker-evaluation:latest",
+      "serverless_sku_input": "USW2-ServerlessTraining:Evaluation-Input-openai-reasoning-gpt-oss-20b",
+      "serverless_sku_output": "USW2-ServerlessTraining:Evaluation-Output-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "763104351884.dkr.ecr.us-west-2.amazonaws.com/sagemaker-evaluation:latest"
+     }
+    }
+   },
+   "smtj_override_params_s3_key": "recipes/open-source-eval-openai-reasoning-gpt-oss-20b-llmaj_override_params_sm_jobs_v2.0.2.json",
+   "smtj_recipe_template_s3_key": "recipes/open-source-eval-openai-reasoning-gpt-oss-20b-llmaj_payload_template_sm_jobs_v2.0.2.yaml",
+   "supported_instance_types": [
+    "ml.t3.large"
+   ],
+   "type": "Evaluation",
+   "versions": [
+    "2.0.1"
+   ]
+  },
+  {
+   "customization_technique": "MTRL",
+   "display_name": "Agentic RFT for GPT OSS 20B Lora",
+   "hosting_configs": [
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 196608,
+      "number_of_accelerator_devices_required": 4,
+      "number_of_cpu_cores_required": 36
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "32",
+      "OPTION_MAX_LORAS": "4",
+      "OPTION_MAX_LORA_RANK": "256",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "4",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "64"
+     },
+     "instance_type": "ml.g6e.12xlarge",
+     "profile": "Default"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1024000,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "64",
+      "OPTION_MAX_LORAS": "8",
+      "OPTION_MAX_LORA_RANK": "256",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "128"
+     },
+     "instance_type": "ml.g6e.48xlarge"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1539316,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENABLE_LORA": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_CPU_LORAS": "64",
+      "OPTION_MAX_LORAS": "8",
+      "OPTION_MAX_LORA_RANK": "256",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1",
+      "SAGEMAKER_MAX_NUMBER_OF_ADAPTERS_IN_MEMORY": "128"
+     },
+     "instance_type": "ml.p5.48xlarge"
+    }
+   ],
+   "name": "mtrl-gpt-oss-20b-lora",
+   "peft": "LORA",
+   "recipe_file_path": "recipes/fine-tuning/gpt_oss/mtrl-gpt-oss-20b-lora.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130",
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130",
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     },
+     "us-west-2": {
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130",
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     }
+    },
+    "prod": {
+     "af-south-1": {
+      "inference": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.36.0-lmi24.0.0-cu129"
+     },
+     "ap-east-1": {
+      "inference": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.36.0-lmi24.0.0-cu129"
+     },
+     "ap-northeast-1": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.36.0-lmi24.0.0-cu129"
+     },
+     "ap-northeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.36.0-lmi24.0.0-cu129"
+     },
+     "ap-northeast-3": {
+      "inference": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.36.0-lmi24.0.0-cu129"
+     },
+     "ap-south-1": {
+      "inference": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.36.0-lmi24.0.0-cu129"
+     },
+     "ap-south-2": {
+      "inference": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "ap-southeast-1": {
+      "inference": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "ap-southeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "ap-southeast-3": {
+      "inference": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "ap-southeast-4": {
+      "inference": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "ap-southeast-5": {
+      "inference": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "ap-southeast-7": {
+      "inference": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "ca-central-1": {
+      "inference": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "ca-west-1": {
+      "inference": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "cn-north-1": {
+      "inference": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "cn-northwest-1": {
+      "inference": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "eu-central-1": {
+      "inference": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "eu-central-2": {
+      "inference": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "eu-north-1": {
+      "inference": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "eu-south-1": {
+      "inference": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "eu-south-2": {
+      "inference": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "eu-west-1": {
+      "inference": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "eu-west-2": {
+      "inference": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "eu-west-3": {
+      "inference": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "il-central-1": {
+      "inference": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "me-central-1": {
+      "inference": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "me-south-1": {
+      "inference": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "mx-central-1": {
+      "inference": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "sa-east-1": {
+      "inference": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "us-east-1": {
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130",
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     },
+     "us-east-2": {
+      "inference": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "us-gov-east-1": {
+      "inference": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "us-gov-west-1": {
+      "inference": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "us-iso-east-1": {
+      "inference": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "us-isob-east-1": {
+      "inference": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "us-isof-east-1": {
+      "inference": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "us-isof-south-1": {
+      "inference": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "us-west-1": {
+      "inference": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130"
+     },
+     "us-west-2": {
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.36.0-lmi25.0.0-cu130",
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     }
+    }
+   },
+   "sequence_length": "64K",
+   "smtj_override_params_s3_key": "recipes/mtrl-gpt-oss-20b-lora_override_params_sm_jobs_v1.0.22.json",
+   "smtj_recipe_template_s3_key": "recipes/mtrl-gpt-oss-20b-lora_payload_template_sm_jobs_v1.0.22.yaml",
+   "type": "FineTuning",
+   "versions": [
+    "1.0.22"
+   ]
+  },
+  {
+   "display_name": "MTRL Evaluation",
+   "evaluation_type": "MTRLEvaluation",
+   "name": "mtrl-eval-openai-reasoning-gpt-oss-20b",
+   "recipe_file_path": "recipes/evaluation/mtrl/mtrl_eval.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     },
+     "us-west-2": {
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     }
+    },
+    "prod": {
+     "us-east-1": {
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     },
+     "us-west-2": {
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/mtrl-recipes:rft-trainer-v1.0.0"
+     }
+    }
+   },
+   "smtj_override_params_s3_key": "recipes/mtrl-eval-openai-reasoning-gpt-oss-20b_override_params_sm_jobs_v1.0.12.json",
+   "smtj_recipe_template_s3_key": "recipes/mtrl-eval-openai-reasoning-gpt-oss-20b_payload_template_sm_jobs_v1.0.12.yaml",
+   "type": "Evaluation",
+   "versions": [
+    "1.0.12"
+   ]
+  },
+  {
+   "customization_technique": "SFT",
+   "display_name": "GPT-OSS 20B Supervised Fine-Tuning Full Fine-Tuning on GPU",
+   "hardware": "GPU",
+   "hosting_configs": [
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 196608,
+      "number_of_accelerator_devices_required": 4,
+      "number_of_cpu_cores_required": 36
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "4",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.g6e.12xlarge",
+     "profile": "Default"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1024000,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.g6e.48xlarge"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1539316,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.p5.48xlarge"
+    }
+   ],
+   "hp_eks_override_params_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_sft_fft_override_params_k8s_v1.2.2.json",
+   "hp_eks_payload_template_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_sft_fft_payload_template_k8s_v1.2.2.yaml",
+   "instance_count": 1,
+   "is_subscription_model": false,
+   "name": "llmft_gpt_oss_20b_seq4k_gpu_sft_fft",
+   "recipe_file_path": "recipes/fine-tuning/gpt_oss/llmft_gpt_oss_20b_seq4k_gpu_sft_fft.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-SFT-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-SFT-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-SFT-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    },
+    "prod": {
+     "af-south-1": {
+      "inference": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-east-1": {
+      "inference": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "APN1-ServerlessTraining:FineTuning-SFT-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "ap-northeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-3": {
+      "inference": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-1": {
+      "hp_eks_regional_ecr_uri": "423350936952.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-2": {
+      "inference": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-1": {
+      "hp_eks_regional_ecr_uri": "885852567298.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "304708117039.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-3": {
+      "inference": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-4": {
+      "inference": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-5": {
+      "inference": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-7": {
+      "inference": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-central-1": {
+      "inference": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-west-1": {
+      "inference": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-north-1": {
+      "inference": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-northwest-1": {
+      "inference": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "391061375763.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-2": {
+      "inference": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-north-1": {
+      "hp_eks_regional_ecr_uri": "963403601044.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-1": {
+      "inference": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-2": {
+      "hp_eks_regional_ecr_uri": "330290781619.dkr.ecr.eu-south-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "EU-ServerlessTraining:FineTuning-SFT-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "eu-west-2": {
+      "hp_eks_regional_ecr_uri": "016839105697.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-3": {
+      "inference": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "il-central-1": {
+      "inference": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-central-1": {
+      "inference": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-south-1": {
+      "inference": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "mx-central-1": {
+      "inference": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "sa-east-1": {
+      "hp_eks_regional_ecr_uri": "311136344257.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-SFT-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "us-east-2": {
+      "hp_eks_regional_ecr_uri": "556809692997.dkr.ecr.us-east-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-east-1": {
+      "inference": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-west-1": {
+      "inference": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-iso-east-1": {
+      "inference": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isob-east-1": {
+      "inference": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-east-1": {
+      "inference": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-south-1": {
+      "inference": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-1": {
+      "hp_eks_regional_ecr_uri": "827510180725.dkr.ecr.us-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-SFT-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    }
+   },
+   "sequence_length": "4K",
+   "serverless_metering_type": "Token-based",
+   "smtj_override_params_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_sft_fft_override_params_sm_jobs_v1.2.2.json",
+   "smtj_recipe_template_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_sft_fft_payload_template_sm_jobs_v1.2.2.yaml",
+   "supported_instance_types": [
+    "ml.p5.48xlarge",
+    "ml.p5e.48xlarge",
+    "ml.p5en.48xlarge"
+   ],
+   "type": "FineTuning",
+   "versions": [
+    "1.2.2"
+   ]
+  },
+  {
+   "customization_technique": "DPO",
+   "display_name": "GPT-OSS 20B Direct Preference Optimization Full Fine-Tuning on GPU",
+   "hardware": "GPU",
+   "hosting_configs": [
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 196608,
+      "number_of_accelerator_devices_required": 4,
+      "number_of_cpu_cores_required": 36
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "4",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.g6e.12xlarge",
+     "profile": "Default"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1024000,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.g6e.48xlarge"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1539316,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.p5.48xlarge"
+    }
+   ],
+   "hp_eks_override_params_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_dpo_fft_override_params_k8s_v1.3.2.json",
+   "hp_eks_payload_template_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_dpo_fft_payload_template_k8s_v1.3.2.yaml",
+   "instance_count": 2,
+   "is_subscription_model": false,
+   "name": "llmft_gpt_oss_20b_seq4k_gpu_dpo_fft",
+   "recipe_file_path": "recipes/fine-tuning/gpt_oss/llmft_gpt_oss_20b_seq4k_gpu_dpo_fft.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-DPO-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-DPO-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-DPO-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    },
+    "prod": {
+     "af-south-1": {
+      "inference": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-east-1": {
+      "inference": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "APN1-ServerlessTraining:FineTuning-DPO-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "ap-northeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-3": {
+      "inference": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-1": {
+      "hp_eks_regional_ecr_uri": "423350936952.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-2": {
+      "inference": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-1": {
+      "hp_eks_regional_ecr_uri": "885852567298.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "304708117039.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-3": {
+      "inference": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-4": {
+      "inference": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-5": {
+      "inference": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-7": {
+      "inference": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-central-1": {
+      "inference": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-west-1": {
+      "inference": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-north-1": {
+      "inference": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-northwest-1": {
+      "inference": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "391061375763.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-2": {
+      "inference": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-north-1": {
+      "hp_eks_regional_ecr_uri": "963403601044.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-1": {
+      "inference": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-2": {
+      "hp_eks_regional_ecr_uri": "330290781619.dkr.ecr.eu-south-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "EU-ServerlessTraining:FineTuning-DPO-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "eu-west-2": {
+      "hp_eks_regional_ecr_uri": "016839105697.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-3": {
+      "inference": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "il-central-1": {
+      "inference": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-central-1": {
+      "inference": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-south-1": {
+      "inference": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "mx-central-1": {
+      "inference": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "sa-east-1": {
+      "hp_eks_regional_ecr_uri": "311136344257.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-DPO-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     },
+     "us-east-2": {
+      "hp_eks_regional_ecr_uri": "556809692997.dkr.ecr.us-east-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-east-1": {
+      "inference": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-west-1": {
+      "inference": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-iso-east-1": {
+      "inference": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isob-east-1": {
+      "inference": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-east-1": {
+      "inference": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-south-1": {
+      "inference": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-1": {
+      "hp_eks_regional_ecr_uri": "827510180725.dkr.ecr.us-west-1.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-DPO-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:llmft-v1.0.0"
+     }
+    }
+   },
+   "sequence_length": "4K",
+   "serverless_metering_type": "Token-based",
+   "smtj_override_params_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_dpo_fft_override_params_sm_jobs_v1.3.2.json",
+   "smtj_recipe_template_s3_key": "recipes/llmft_gpt_oss_20b_seq4k_gpu_dpo_fft_payload_template_sm_jobs_v1.3.2.yaml",
+   "supported_instance_types": [
+    "ml.p5.48xlarge",
+    "ml.p5e.48xlarge",
+    "ml.p5en.48xlarge"
+   ],
+   "type": "FineTuning",
+   "versions": [
+    "1.3.2"
+   ]
+  },
+  {
+   "customization_technique": "RLAIF",
+   "display_name": "GPT OSS 20B GRPO RLAIF Fine-Tuning",
+   "hardware": "GPU",
+   "hosting_configs": [
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 196608,
+      "number_of_accelerator_devices_required": 4,
+      "number_of_cpu_cores_required": 36
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "4",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.g6e.12xlarge",
+     "profile": "Default"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1024000,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.g6e.48xlarge"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1539316,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.p5.48xlarge"
+    }
+   ],
+   "hp_eks_override_params_s3_key": "recipes/verl-grpo-rlaif-gpt-oss-20b-fft_override_params_k8s_v1.2.3.json",
+   "hp_eks_payload_template_s3_key": "recipes/verl-grpo-rlaif-gpt-oss-20b-fft_payload_template_k8s_v1.2.3.yaml",
+   "instance_count": 2,
+   "is_subscription_model": false,
+   "name": "verl-grpo-rlaif-gpt-oss-20b-fft",
+   "recipe_file_path": "recipes/fine-tuning/gpt_oss/verl-grpo-rlaif-gpt-oss-20b-fft.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLAIF-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-RLAIF-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLAIF-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    },
+    "prod": {
+     "af-south-1": {
+      "inference": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-east-1": {
+      "inference": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "APN1-ServerlessTraining:FineTuning-RLAIF-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "ap-northeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-3": {
+      "inference": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-1": {
+      "hp_eks_regional_ecr_uri": "423350936952.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-2": {
+      "inference": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-1": {
+      "hp_eks_regional_ecr_uri": "885852567298.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "304708117039.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-3": {
+      "inference": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-4": {
+      "inference": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-5": {
+      "inference": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-7": {
+      "inference": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-central-1": {
+      "inference": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-west-1": {
+      "inference": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-north-1": {
+      "inference": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-northwest-1": {
+      "inference": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "391061375763.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-2": {
+      "inference": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-north-1": {
+      "hp_eks_regional_ecr_uri": "963403601044.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-1": {
+      "inference": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-2": {
+      "hp_eks_regional_ecr_uri": "330290781619.dkr.ecr.eu-south-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "EU-ServerlessTraining:FineTuning-RLAIF-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "eu-west-2": {
+      "hp_eks_regional_ecr_uri": "016839105697.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-3": {
+      "inference": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "il-central-1": {
+      "inference": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-central-1": {
+      "inference": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-south-1": {
+      "inference": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "mx-central-1": {
+      "inference": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "sa-east-1": {
+      "hp_eks_regional_ecr_uri": "311136344257.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-RLAIF-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "us-east-2": {
+      "hp_eks_regional_ecr_uri": "556809692997.dkr.ecr.us-east-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-east-1": {
+      "inference": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-west-1": {
+      "inference": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-iso-east-1": {
+      "inference": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isob-east-1": {
+      "inference": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-east-1": {
+      "inference": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-south-1": {
+      "inference": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-1": {
+      "hp_eks_regional_ecr_uri": "827510180725.dkr.ecr.us-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLAIF-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    }
+   },
+   "sequence_length": "4K",
+   "serverless_metering_type": "Hourly",
+   "smtj_override_params_s3_key": "recipes/verl-grpo-rlaif-gpt-oss-20b-fft_override_params_sm_jobs_v1.2.3.json",
+   "smtj_recipe_template_s3_key": "recipes/verl-grpo-rlaif-gpt-oss-20b-fft_payload_template_sm_jobs_v1.2.3.yaml",
+   "supported_instance_types": [
+    "ml.p5.48xlarge"
+   ],
+   "type": "FineTuning",
+   "versions": [
+    "1.2.3"
+   ]
+  },
+  {
+   "customization_technique": "RLVR",
+   "display_name": "GPT OSS 20B GRPO RLVR Fine-Tuning",
+   "hardware": "GPU",
+   "hosting_configs": [
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 196608,
+      "number_of_accelerator_devices_required": 4,
+      "number_of_cpu_cores_required": 36
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "4",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "4",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.g6e.12xlarge",
+     "profile": "Default"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1024000,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.g6e.48xlarge"
+    },
+    {
+     "compute_resource_requirements": {
+      "min_memory_required_in_mb": 1539316,
+      "number_of_accelerator_devices_required": 8,
+      "number_of_cpu_cores_required": 100
+     },
+     "ecr_address": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+     "environment": {
+      "OPTION_ASYNC_MODE": "true",
+      "OPTION_ENABLE_AUTO_TOOL_CHOICE": "true",
+      "OPTION_ENTRYPOINT": "djl_python.lmi_vllm.vllm_async_service",
+      "OPTION_MAX_ROLLING_BATCH_SIZE": "8",
+      "OPTION_ROLLING_BATCH": "disable",
+      "OPTION_TENSOR_PARALLEL_DEGREE": "8",
+      "OPTION_TOOL_CALL_PARSER": "openai",
+      "SAGEMAKER_ENABLE_LOAD_AWARE": "1"
+     },
+     "instance_type": "ml.p5.48xlarge"
+    }
+   ],
+   "hp_eks_override_params_s3_key": "recipes/verl-grpo-rlvr-gpt-oss-20b-fft_override_params_k8s_v1.3.2.json",
+   "hp_eks_payload_template_s3_key": "recipes/verl-grpo-rlvr-gpt-oss-20b-fft_payload_template_k8s_v1.3.2.yaml",
+   "instance_count": 2,
+   "is_subscription_model": false,
+   "name": "verl-grpo-rlvr-gpt-oss-20b-fft",
+   "recipe_file_path": "recipes/fine-tuning/gpt_oss/verl-grpo-rlvr-gpt-oss-20b-fft.yaml",
+   "regional_parameters": {
+    "beta": {
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLVR-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "300869608763.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    },
+    "gamma": {
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-RLVR-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "190594010507.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLVR-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "839249767557.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    },
+    "prod": {
+     "af-south-1": {
+      "inference": "626614931356.dkr.ecr.af-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-east-1": {
+      "inference": "871362719292.dkr.ecr.ap-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-1": {
+      "hp_eks_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-northeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "APN1-ServerlessTraining:FineTuning-RLVR-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "356859066553.dkr.ecr.ap-northeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "ap-northeast-2": {
+      "inference": "763104351884.dkr.ecr.ap-northeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-northeast-3": {
+      "inference": "364406365360.dkr.ecr.ap-northeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-1": {
+      "hp_eks_regional_ecr_uri": "423350936952.dkr.ecr.ap-south-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-south-2": {
+      "inference": "772153158452.dkr.ecr.ap-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-1": {
+      "hp_eks_regional_ecr_uri": "885852567298.dkr.ecr.ap-southeast-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-southeast-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-2": {
+      "hp_eks_regional_ecr_uri": "304708117039.dkr.ecr.ap-southeast-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.ap-southeast-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-3": {
+      "inference": "907027046896.dkr.ecr.ap-southeast-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-4": {
+      "inference": "457447274322.dkr.ecr.ap-southeast-4.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-5": {
+      "inference": "550225433462.dkr.ecr.ap-southeast-5.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ap-southeast-7": {
+      "inference": "590183813437.dkr.ecr.ap-southeast-7.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-central-1": {
+      "inference": "763104351884.dkr.ecr.ca-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "ca-west-1": {
+      "inference": "204538143572.dkr.ecr.ca-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-north-1": {
+      "inference": "727897471807.dkr.ecr.cn-north-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "cn-northwest-1": {
+      "inference": "727897471807.dkr.ecr.cn-northwest-1.amazonaws.com.cn/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-1": {
+      "hp_eks_regional_ecr_uri": "391061375763.dkr.ecr.eu-central-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-central-2": {
+      "inference": "380420809688.dkr.ecr.eu-central-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-north-1": {
+      "hp_eks_regional_ecr_uri": "963403601044.dkr.ecr.eu-north-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-north-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-1": {
+      "inference": "692866216735.dkr.ecr.eu-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-south-2": {
+      "hp_eks_regional_ecr_uri": "330290781619.dkr.ecr.eu-south-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "503227376785.dkr.ecr.eu-south-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-1": {
+      "hp_eks_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "EU-ServerlessTraining:FineTuning-RLVR-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "942446708630.dkr.ecr.eu-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "eu-west-2": {
+      "hp_eks_regional_ecr_uri": "016839105697.dkr.ecr.eu-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.eu-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "eu-west-3": {
+      "inference": "763104351884.dkr.ecr.eu-west-3.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "il-central-1": {
+      "inference": "780543022126.dkr.ecr.il-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-central-1": {
+      "inference": "914824155844.dkr.ecr.me-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "me-south-1": {
+      "inference": "217643126080.dkr.ecr.me-south-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "mx-central-1": {
+      "inference": "637423239942.dkr.ecr.mx-central-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "sa-east-1": {
+      "hp_eks_regional_ecr_uri": "311136344257.dkr.ecr.sa-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.sa-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-east-1": {
+      "hp_eks_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USE1-ServerlessTraining:FineTuning-RLVR-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "327873000638.dkr.ecr.us-east-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     },
+     "us-east-2": {
+      "hp_eks_regional_ecr_uri": "556809692997.dkr.ecr.us-east-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-east-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-east-1": {
+      "inference": "446045086412.dkr.ecr.us-gov-east-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-gov-west-1": {
+      "inference": "442386744353.dkr.ecr.us-gov-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-iso-east-1": {
+      "inference": "886529160074.dkr.ecr.us-iso-east-1.c2s.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isob-east-1": {
+      "inference": "094389454867.dkr.ecr.us-isob-east-1.sc2s.sgov.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-east-1": {
+      "inference": "303241398832.dkr.ecr.us-isof-east-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-isof-south-1": {
+      "inference": "454834333376.dkr.ecr.us-isof-south-1.csp.hci.ic.gov/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-1": {
+      "hp_eks_regional_ecr_uri": "827510180725.dkr.ecr.us-west-1.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-1.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128"
+     },
+     "us-west-2": {
+      "hp_eks_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-eks",
+      "inference": "763104351884.dkr.ecr.us-west-2.amazonaws.com/djl-inference:0.35.0-lmi17.0.0-cu128",
+      "serverless_sku": "USW2-ServerlessTraining:FineTuning-RLVR-FULLRANK-openai-reasoning-gpt-oss-20b",
+      "smtj_regional_ecr_uri": "920498770698.dkr.ecr.us-west-2.amazonaws.com/hyperpod-recipes:verl-v1.0.0-smtj"
+     }
+    }
+   },
+   "sequence_length": "1K",
+   "serverless_metering_type": "Hourly",
+   "smtj_override_params_s3_key": "recipes/verl-grpo-rlvr-gpt-oss-20b-fft_override_params_sm_jobs_v1.3.2.json",
+   "smtj_recipe_template_s3_key": "recipes/verl-grpo-rlvr-gpt-oss-20b-fft_payload_template_sm_jobs_v1.3.2.yaml",
+   "supported_instance_types": [
+    "ml.p5.48xlarge"
+   ],
+   "type": "FineTuning",
+   "versions": [
+    "1.3.2"
+   ]
+  }
+ ],
+ "resource_name_base": "openai-reasoning-gpt-oss-20b",
+ "supported_inference_instance_types": [
+  "ml.g7e.2xlarge",
+  "ml.p5.48xlarge",
+  "ml.p5en.48xlarge",
+  "ml.p5e.48xlarge",
+  "ml.g6.12xlarge",
+  "ml.g5.12xlarge",
+  "ml.g6.24xlarge",
+  "ml.g5.24xlarge"
+ ],
+ "training_artifact_key": "openai-reasoning/openai-reasoning-gpt-oss-20b/artifacts/training/v2.0.0/",
+ "training_dependencies": [],
+ "training_supported": false,
+ "training_vulnerabilities": [],
+ "training_vulnerable": false,
+ "url": "https://huggingface.co/openai/gpt-oss-20b",
+ "validation_supported": true,
+ "version": "3.38.0"
+}

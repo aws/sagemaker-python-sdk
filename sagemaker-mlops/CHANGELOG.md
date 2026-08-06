@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.18.0 (2026-07-30)
+
+### New Features
+
+- feat(feature-store): Add lineage registration to DatasetBuilder (#6014)
+
+
 ## v1.17.0 (2026-07-24)
 
 ### New Features
