@@ -251,7 +251,7 @@ class TestDryRunServerful:
             training_type=TrainingType.LORA,
             model_package_group=MODEL_PACKAGE_GROUP,
             training_dataset=valid_dataset,
-            compute=TrainingJobCompute(instance_type="ml.g5.2xlarge", instance_count=1),
+            compute=TrainingJobCompute(instance_type="ml.g5.12xlarge", instance_count=1),
             accept_eula=True,
         )
 
@@ -264,7 +264,7 @@ class TestDryRunServerful:
             training_type=TrainingType.LORA,
             model_package_group=MODEL_PACKAGE_GROUP,
             training_dataset=valid_dataset,
-            compute=TrainingJobCompute(instance_type="ml.g5.2xlarge", instance_count=1),
+            compute=TrainingJobCompute(instance_type="ml.g5.12xlarge", instance_count=1),
             accept_eula=True,
         )
 
@@ -277,7 +277,7 @@ class TestDryRunServerful:
             training_type=TrainingType.LORA,
             model_package_group=MODEL_PACKAGE_GROUP,
             training_dataset=valid_dataset,
-            compute=TrainingJobCompute(instance_type="ml.g5.2xlarge", instance_count=1),
+            compute=TrainingJobCompute(instance_type="ml.g5.12xlarge", instance_count=1),
             accept_eula=True,
         )
 
