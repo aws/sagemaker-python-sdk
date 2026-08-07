@@ -1288,7 +1288,8 @@ class _ModelBuilderUtils:
         """
         framework_enum = self._normalize_framework_to_enum(framework)
         if framework_enum and framework_enum in DEFAULT_SERIALIZERS_BY_FRAMEWORK:
-            return DEFAULT_SERIALIZERS_BY_FRAMEWORK[framework_enum]
+            serializer_cls, deserializer_cls = DEFAULT_SERIALIZERS_BY_FRAMEWORK[framework_enum]
+            return serializer_cls(), deserializer_cls()
         return NumpySerializer(), JSONDeserializer()
 
     def _normalize_framework_to_enum(
@@ -3036,9 +3037,10 @@ class _ModelBuilderUtils:
 
         except ModuleNotFoundError:
             raise ImportError(
-                "Launching Triton with ModelBuilder for a PyTorch model requires onnx module "
-                "but it was not found in your environment. "
-                "Checkout the instructions on the installation page of its repo: "
+                "Launching Triton with ModelBuilder for a PyTorch model requires the torch and "
+                "onnx modules but one of them was not found in your environment. "
+                "Install torch with: pip install 'sagemaker-serve[torch]'. "
+                "For onnx, check the instructions on the installation page of its repo: "
                 "https://onnxruntime.ai/docs/install/ "
                 "And follow the ones that match your environment. "
                 "Please note that you may need to restart your runtime after installation."
