@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """The `Step` definitions for SageMaker Pipelines Workflows."""
+
 from __future__ import absolute_import
 
 import abc
@@ -62,6 +63,14 @@ class StepTypeEnum(Enum):
     EMR_SERVERLESS = "EMRServerless"
     FAIL = "Fail"
     AUTOML = "AutoML"
+    ENDPOINT_CONFIG = "EndpointConfig"
+    ENDPOINT = "Endpoint"
+    INFERENCE_COMPONENT = "InferenceComponent"
+    BEDROCK_CUSTOM_MODEL = "BedrockCustomModel"
+    BEDROCK_CUSTOM_MODEL_DEPLOYMENT = "BedrockCustomModelDeployment"
+    BEDROCK_MODEL_IMPORT = "BedrockModelImport"
+    BEDROCK_PROVISIONED_MODEL_THROUGHPUT = "BedrockProvisionedModelThroughput"
+    LINEAGE = "Lineage"
 
 
 class Step(Entity):
