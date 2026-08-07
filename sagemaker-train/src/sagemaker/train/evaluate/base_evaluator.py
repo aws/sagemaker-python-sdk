@@ -138,6 +138,8 @@ class BaseEvaluator(BaseModel):
             3. Model package group name string (will fetch the object and extract ARN)
             Required when model is a JumpStart model ID. Optional when model is a ModelPackage
             ARN/object (will be inferred automatically).
+        tags (Optional[List[TagsDict]]): Tags applied to the evaluation pipeline when it is
+            created, which cascade to the pipeline's step jobs.
     """
     
     region: Optional[str] = None
@@ -153,6 +155,7 @@ class BaseEvaluator(BaseModel):
     networking: Optional[VpcConfig] = None
     kms_key_id: Optional[str] = None
     model_package_group: Optional[Union[str, ModelPackageGroup]] = None
+    tags: Optional[List[TagsDict]] = None
     compute: Optional[Union[Compute, HyperPodCompute]] = None
     training_image: Optional[str] = None
     recipe: Optional[str] = None
@@ -987,6 +990,9 @@ class BaseEvaluator(BaseModel):
         if self._is_jumpstart_model:
             from sagemaker.core.jumpstart.utils import add_jumpstart_model_info_tags
             tags = add_jumpstart_model_info_tags(tags, self.model, "*")
+
+        # Merge user-provided tags
+        tags.extend(self.tags or [])
         
         execution = EvaluationPipelineExecution.start(
             eval_type=eval_type,

@@ -414,6 +414,9 @@ class SFTTrainer(BaseTrainer):
         vpc_config = self.networking if self.networking else None
         tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
+        # Merge user-provided tags with the JumpStart tags
+        tags.extend(self.tags or [])
+
         # Build TrainingJob.create() arguments
         create_args = {
             "training_job_name": current_training_job_name,
