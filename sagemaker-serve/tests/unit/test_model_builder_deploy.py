@@ -602,3 +602,75 @@ class TestModelBuilderResetState(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDeployNovaModelTags(unittest.TestCase):
+    """Test tag propagation through the Nova model-customization deploy path.
+
+    ``deploy(tags=...)`` previously dropped tags on this path, so they never reached the
+    created Endpoint.
+    """
+
+    PROJECT_TAG = {"key": "sagemaker:project-id", "value": "p-12345"}
+
+    def _make_builder(self):
+        """Build a ModelBuilder without running __init__, for private-method testing."""
+        builder = ModelBuilder.__new__(ModelBuilder)
+        builder.instance_type = "ml.g5.xlarge"
+        builder.role_arn = "arn:aws:iam::123456789012:role/TestRole"
+        builder.built_model = MagicMock(model_name="test-model")
+
+        base_model = MagicMock(hub_content_name="nova-lite", recipe_name="test-recipe")
+        model_package = MagicMock()
+        model_package.inference_specification.containers = [MagicMock(base_model=base_model)]
+        builder._fetch_model_package = MagicMock(return_value=model_package)
+        return builder
+
+    @patch("sagemaker.serve.model_builder.Endpoint")
+    @patch("sagemaker.serve.model_builder.EndpointConfig")
+    def test_user_tags_merged_with_jumpstart_tags(self, mock_endpoint_config, mock_endpoint):
+        """User tags must be merged in without displacing the JumpStart tags."""
+        builder = self._make_builder()
+
+        builder._deploy_nova_model(
+            endpoint_name="test-endpoint", wait=False, tags=[self.PROJECT_TAG]
+        )
+
+        created_tags = mock_endpoint.create.call_args.kwargs["tags"]
+        self.assertIn(self.PROJECT_TAG, created_tags)
+        self.assertIn(
+            {"key": "sagemaker-sdk:jumpstart-model-id", "value": "nova-lite"}, created_tags
+        )
+        self.assertIn(
+            {"key": "sagemaker-sdk:recipe-name", "value": "test-recipe"}, created_tags
+        )
+
+    @patch("sagemaker.serve.model_builder.Endpoint")
+    @patch("sagemaker.serve.model_builder.EndpointConfig")
+    def test_dict_form_tags_accepted(self, mock_endpoint_config, mock_endpoint):
+        """deploy() accepts a single {key: value} mapping, which must be expanded."""
+        builder = self._make_builder()
+
+        builder._deploy_nova_model(
+            endpoint_name="test-endpoint",
+            wait=False,
+            tags={"sagemaker:project-id": "p-12345"},
+        )
+
+        self.assertIn(self.PROJECT_TAG, mock_endpoint.create.call_args.kwargs["tags"])
+
+    @patch("sagemaker.serve.model_builder.Endpoint")
+    @patch("sagemaker.serve.model_builder.EndpointConfig")
+    def test_no_tags_leaves_jumpstart_tags_only(self, mock_endpoint_config, mock_endpoint):
+        """Omitting tags must not change existing behaviour."""
+        builder = self._make_builder()
+
+        builder._deploy_nova_model(endpoint_name="test-endpoint", wait=False)
+
+        self.assertEqual(
+            mock_endpoint.create.call_args.kwargs["tags"],
+            [
+                {"key": "sagemaker-sdk:jumpstart-model-id", "value": "nova-lite"},
+                {"key": "sagemaker-sdk:recipe-name", "value": "test-recipe"},
+            ],
+        )

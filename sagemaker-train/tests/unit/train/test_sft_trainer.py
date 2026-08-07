@@ -1,5 +1,6 @@
 import pytest
 from unittest.mock import Mock, patch, MagicMock
+from sagemaker.core.shapes import Tag
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
 from sagemaker.core.resources import ModelPackage
@@ -287,6 +288,124 @@ class TestSFTTrainer:
             {"key": "sagemaker-sdk:jumpstart-model-id", "value": "test-model"},
             {"key": "sagemaker-sdk:jumpstart-hub-name", "value": "SageMakerPublicHub"}
         ]
+
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_merges_user_tags_with_jumpstart_tags(
+        self,
+        mock_training_job_create,
+        mock_model_package_config,
+        mock_mlflow_config,
+        mock_output_config,
+        mock_convert_channels,
+        mock_input_config,
+        mock_validate_group,
+        mock_unique_name,
+        mock_get_sagemaker_session,
+        mock_get_role,
+        mock_get_options,
+        mock_resolve_model,
+    ):
+        """User-supplied tags must be propagated to the TrainingJob, not dropped."""
+        mock_validate_group.return_value = "test-group"
+        mock_resolve_model.return_value = ("test-model", "test-model")
+        mock_get_sagemaker_session.return_value = Mock()
+        mock_fine_tuning_options = Mock()
+        mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
+        mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
+        mock_get_role.return_value = "test-role"
+        mock_unique_name.return_value = "test-job-name"
+        mock_input_config.return_value = [Mock()]
+        mock_convert_channels.return_value = [Mock()]
+        mock_output_config.return_value = Mock()
+        mock_mlflow_config.return_value = Mock()
+        mock_model_package_config.return_value = Mock()
+        mock_training_job = Mock()
+        mock_training_job.arn = "arn:aws:sagemaker:us-east-1:123456789012:training-job/test-job"
+        mock_training_job.wait = Mock()
+        mock_training_job_create.return_value = mock_training_job
+
+        trainer = SFTTrainer(
+            model="test-model",
+            model_package_group="test-group",
+            training_dataset="s3://bucket/train",
+            tags=[{"key": "sagemaker:project-id", "value": "p-12345"}],
+        )
+        trainer.train(wait=False)
+
+        call_kwargs = mock_training_job_create.call_args[1]
+        assert call_kwargs["tags"] == [
+            {"key": "sagemaker-sdk:jumpstart-model-id", "value": "test-model"},
+            {"key": "sagemaker-sdk:jumpstart-hub-name", "value": "SageMakerPublicHub"},
+            {"key": "sagemaker:project-id", "value": "p-12345"},
+        ]
+
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_accepts_tag_objects(
+        self,
+        mock_training_job_create,
+        mock_model_package_config,
+        mock_mlflow_config,
+        mock_output_config,
+        mock_convert_channels,
+        mock_input_config,
+        mock_validate_group,
+        mock_unique_name,
+        mock_get_sagemaker_session,
+        mock_get_role,
+        mock_get_options,
+        mock_resolve_model,
+    ):
+        """Tag objects must be accepted alongside the plain JumpStart tag dicts."""
+        mock_validate_group.return_value = "test-group"
+        mock_resolve_model.return_value = ("test-model", "test-model")
+        mock_get_sagemaker_session.return_value = Mock()
+        mock_fine_tuning_options = Mock()
+        mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
+        mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
+        mock_get_role.return_value = "test-role"
+        mock_unique_name.return_value = "test-job-name"
+        mock_input_config.return_value = [Mock()]
+        mock_convert_channels.return_value = [Mock()]
+        mock_output_config.return_value = Mock()
+        mock_mlflow_config.return_value = Mock()
+        mock_model_package_config.return_value = Mock()
+        mock_training_job = Mock()
+        mock_training_job.arn = "arn:aws:sagemaker:us-east-1:123456789012:training-job/test-job"
+        mock_training_job.wait = Mock()
+        mock_training_job_create.return_value = mock_training_job
+
+        trainer = SFTTrainer(
+            model="test-model",
+            model_package_group="test-group",
+            training_dataset="s3://bucket/train",
+            tags=[Tag(key="sagemaker:project-id", value="p-12345")],
+        )
+        trainer.train(wait=False)
+
+        call_kwargs = mock_training_job_create.call_args[1]
+        assert Tag(key="sagemaker:project-id", value="p-12345") in call_kwargs["tags"]
 
     def test_process_hyperparameters_removes_constructor_handled_keys(self):
         """Test that _process_hyperparameters removes keys handled by constructor inputs."""
