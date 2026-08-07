@@ -752,7 +752,6 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             'evaluate_base_model': self.evaluate_base_model,
         }
     
-    
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="LLMAsJudgeEvaluator.evaluate",

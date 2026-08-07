@@ -22,15 +22,20 @@ class TestEvaluationRoleType:
         from sagemaker.core.helper.iam_policies import IAM_POLICY_CONFIG
         assert "evaluation" in IAM_POLICY_CONFIG
 
-    def test_evaluation_trust_includes_bedrock(self):
-        """Evaluation role type should require bedrock.amazonaws.com trust."""
-        expected = _expected_trust_services("evaluation")
-        assert "bedrock.amazonaws.com" in expected
-
     def test_evaluation_trust_includes_sagemaker(self):
         """Evaluation role type should require sagemaker.amazonaws.com trust."""
         expected = _expected_trust_services("evaluation")
         assert "sagemaker.amazonaws.com" in expected
+
+    def test_evaluation_trust_does_not_require_bedrock(self):
+        """Evaluation role type should NOT require bedrock.amazonaws.com trust.
+
+        The serverless evaluation backend runs as the SageMaker execution role
+        and calls Bedrock APIs using the role's own credentials. Bedrock does
+        not need to assume the role, so trust is not required.
+        """
+        expected = _expected_trust_services("evaluation")
+        assert "bedrock.amazonaws.com" not in expected
 
     def test_evaluation_smoke_actions_include_bedrock(self):
         """Smoke test actions should include Bedrock evaluation actions."""
@@ -84,8 +89,8 @@ class TestEvaluationRoleType:
         assert verdict is True
         assert denied == []
 
-    def test_trust_check_fails_without_bedrock(self):
-        """Should return False when trust policy lacks bedrock.amazonaws.com."""
+    def test_trust_check_passes_with_sagemaker(self):
+        """Should pass when trust policy includes sagemaker.amazonaws.com."""
         mock_iam = MagicMock()
         mock_iam.get_role.return_value = {
             "Role": {
@@ -101,29 +106,10 @@ class TestEvaluationRoleType:
         }
 
         result = _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "evaluation")
-        assert result is False
-
-    def test_trust_check_passes_with_bedrock(self):
-        """Should return True when trust policy includes both services."""
-        mock_iam = MagicMock()
-        mock_iam.get_role.return_value = {
-            "Role": {
-                "AssumeRolePolicyDocument": {
-                    "Version": "2012-10-17",
-                    "Statement": [{
-                        "Effect": "Allow",
-                        "Principal": {"Service": ["sagemaker.amazonaws.com", "bedrock.amazonaws.com"]},
-                        "Action": "sts:AssumeRole",
-                    }],
-                }
-            }
-        }
-
-        result = _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "evaluation")
         assert result is True
 
-    def test_resolve_and_validate_raises_on_trust_failure(self):
-        """Full resolve_and_validate_role should raise when trust fails."""
+    def test_resolve_and_validate_passes_with_sagemaker_trust(self):
+        """Full resolve_and_validate_role should pass with sagemaker trust only."""
         with patch("sagemaker.core.helper.iam_role_resolver._get_boto_session") as mock_session:
             mock_boto = MagicMock()
             mock_session.return_value = mock_boto
@@ -131,7 +117,7 @@ class TestEvaluationRoleType:
             mock_iam = MagicMock()
             mock_boto.client.return_value = mock_iam
 
-            # Role exists
+            # Role exists with sagemaker trust only (no bedrock needed)
             mock_iam.get_role.return_value = {
                 "Role": {
                     "Arn": "arn:aws:iam::123456789012:role/MyRole",
@@ -146,7 +132,7 @@ class TestEvaluationRoleType:
                 }
             }
 
-            # Permissions all allowed
+            # All permissions allowed
             actions = _get_smoke_test_actions("evaluation")
             paginator = MagicMock()
             paginator.paginate.return_value = [
@@ -154,11 +140,11 @@ class TestEvaluationRoleType:
             ]
             mock_iam.get_paginator.return_value = paginator
 
-            with pytest.raises(RoleValidationError, match="bedrock.amazonaws.com"):
-                resolve_and_validate_role(
-                    provided_role="arn:aws:iam::123456789012:role/MyRole",
-                    role_type="evaluation",
-                )
+            result = resolve_and_validate_role(
+                provided_role="arn:aws:iam::123456789012:role/MyRole",
+                role_type="evaluation",
+            )
+            assert result == "arn:aws:iam::123456789012:role/MyRole"
 
     def test_resolve_and_validate_passes_with_correct_role(self):
         """Full resolve_and_validate_role should pass with correct permissions and trust."""

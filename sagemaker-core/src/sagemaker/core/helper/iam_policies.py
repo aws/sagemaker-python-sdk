@@ -820,10 +820,7 @@ IAM_POLICY_CONFIG = {
                 {
                     "Effect": "Allow",
                     "Principal": {
-                        "Service": [
-                            "sagemaker.amazonaws.com",
-                            "bedrock.amazonaws.com",
-                        ]
+                        "Service": "sagemaker.amazonaws.com"
                     },
                     "Action": "sts:AssumeRole",
                     "Condition": {

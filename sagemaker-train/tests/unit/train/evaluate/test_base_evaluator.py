@@ -734,7 +734,7 @@ class TestAWSExecutionContext:
         assert context['account_id'] == '123456789012'
         mock_role.assert_called_once_with(
             provided_role=None,
-            role_type="training",
+            role_type="evaluation",
             sagemaker_session=mock_session,
         )
 
@@ -761,7 +761,7 @@ class TestAWSExecutionContext:
         assert context['role_arn'] == explicit_role
         mock_role.assert_called_once_with(
             provided_role=explicit_role,
-            role_type="training",
+            role_type="evaluation",
             sagemaker_session=mock_session,
         )
 
