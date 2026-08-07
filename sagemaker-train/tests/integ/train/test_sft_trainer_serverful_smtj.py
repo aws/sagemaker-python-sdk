@@ -115,7 +115,7 @@ def test_sft_trainer_serverful_smtj(sagemaker_session_us_east_1, training_resour
         training_dataset=training_resources["training_dataset"],
         s3_output_path=training_resources["s3_output_path"],
         compute=TrainingJobCompute(
-            instance_type="ml.g6.48xlarge",
+            instance_type="ml.g6.12xlarge",
             instance_count=1,
         ),
         sagemaker_session=sagemaker_session_us_east_1,

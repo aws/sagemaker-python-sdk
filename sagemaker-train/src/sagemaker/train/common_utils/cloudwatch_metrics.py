@@ -484,4 +484,10 @@ def fetch_and_plot_metrics(
         ending_step=ending_step,
     )
 
-    return metrics_df
+    # Apply step range filter to returned DataFrame to match documented behavior
+    if starting_step is not None:
+        metrics_df = metrics_df[metrics_df["global_step"] >= starting_step]
+    if ending_step is not None:
+        metrics_df = metrics_df[metrics_df["global_step"] <= ending_step]
+
+    return metrics_df.reset_index(drop=True)
