@@ -734,10 +734,10 @@ class BaseEvaluator(BaseModel):
         # This is the job execution role for the
         # serverless / SMTJ evaluation backends. The HyperPod backend submits via
         # the CLI under the caller's own credentials (see _submit_hyperpod_eval_job)
-        # and does not resolve a role here, so "training" is always correct here.
+        # and does not resolve a role here, so "evaluation" is correct here.
         role_arn = resolve_and_validate_role(
             provided_role=self.role,
-            role_type="training",
+            role_type="evaluation",
             sagemaker_session=self.sagemaker_session,
         )
         
