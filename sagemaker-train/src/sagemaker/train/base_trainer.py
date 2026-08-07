@@ -568,6 +568,10 @@ class BaseTrainer(ABC):
                 if hp_value is not None:
                     _set_spec_default(override_spec, hp_key, _yaml_safe_default(hp_value))
 
+        # Enforce selected lengths fit the recipe's supported sequence length.
+        if hasattr(self.hyperparameters, "validate_length_constraints"):
+            self.hyperparameters.validate_length_constraints()
+
         # Build hyperparameters early to inject into recipe template before runtime.
         final_hyperparameters = self.hyperparameters.to_dict()
         _validate_hyperparameter_values(final_hyperparameters)

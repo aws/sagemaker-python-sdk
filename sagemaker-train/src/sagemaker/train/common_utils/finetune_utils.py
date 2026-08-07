@@ -568,8 +568,28 @@ def _resolve_model_package_arn(model_package) -> Optional[str]:
         return None
 
 
+def _parse_sequence_length(value) -> int:
+    """Parse a sequence length value like '8K', '32K', '128K' into an integer (e.g., 8192)."""
+    if not value:
+        return 0
+    value = str(value).strip().upper()
+    if not value.endswith("K"):
+        raise ValueError(
+            f"Invalid sequence_length '{value}'. "
+            f"Expected a value ending in 'K', e.g. '8K' or '128K'."
+        )
+    try:
+        return int(value[:-1]) * 1024
+    except ValueError:
+        raise ValueError(
+            f"Invalid sequence_length '{value}'. "
+            f"Expected a numeric value followed by 'K', e.g. '8K' or '128K'."
+        )
+
+
 def _get_fine_tuning_options_and_model_arn(model_name: str, customization_technique: str, training_type, sagemaker_session,
-                                         hub_name: Optional[str] = None, compute: Optional[Union[HyperPodCompute, TrainingJobCompute]] = None) -> tuple:
+                                         sequence_length=None, hub_name: Optional[str] = None,
+                                         compute: Optional[Union[HyperPodCompute, TrainingJobCompute]] = None) -> tuple:
     """Get fine-tuning options and model ARN for given customization technique.
     Returns:
         tuple: (FineTuningOptions, model_arn, is_gated_model)
@@ -620,6 +640,29 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         
         if not recipes_with_template:
             raise ValueError(f"No recipes found with {platform_label} for technique: {customization_technique}")
+
+        # Filter by SequenceLength before recipe selection if sequence_length is requested.
+        # Multiple recipes may share the same SequenceLength (e.g. LORA and FULL
+        # variants); keep every exact match so _select_recipe_by_training_type can
+        # pick the right one for the requested training type.
+        if sequence_length:
+            requested = _parse_sequence_length(sequence_length)
+            candidates_with_sequence = [r for r in recipes_with_template if r.get("SequenceLength")]
+            if candidates_with_sequence:
+                filtered = [r for r in candidates_with_sequence if _parse_sequence_length(r.get("SequenceLength")) == requested]
+                if filtered:
+                    recipes_with_template = filtered
+                else:
+                    available = sorted(set(r.get("SequenceLength") for r in candidates_with_sequence))
+                    raise ValueError(
+                        f"No recipes found with SequenceLength == {sequence_length}. "
+                        f"Available sequence lengths: {available}"
+                    )
+            else:
+                raise ValueError(
+                    f"No recipes found with {platform_label} for technique: {customization_technique},training_type:{training_type}, "
+                    f"and sequence length:{sequence_length}"
+                )
 
         # Select recipe based on training type
         recipe = _select_recipe_by_training_type(recipes_with_template, training_type)
@@ -679,10 +722,16 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             except Exception as e:
                 logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
 
+        # Supported sequence-length ceiling: the recipe's SequenceLength ("<n>K")
+        # is the single source of truth. Parse it to an int so we can validate that
+        # max_prompt_length + max_response_length (or max_length) stays within
+        # what the recipe's hardware can serve. 0 if absent/unparseable (no-op).
+        sequence_length_ceiling = _parse_sequence_length(recipe.get("SequenceLength")) or None
+
         if options_dict:
-            return FineTuningOptions(options_dict), model_arn, is_gated_model
+            return FineTuningOptions(options_dict, sequence_length=sequence_length_ceiling), model_arn, is_gated_model
         else:
-            return FineTuningOptions({}), model_arn, is_gated_model
+            return FineTuningOptions({}, sequence_length=sequence_length_ceiling), model_arn, is_gated_model
             
     except Exception as e:
         logger.debug("Exception getting fine-tuning options: %s", e)
@@ -881,7 +930,8 @@ def _resolve_model_and_name(model, sagemaker_session=None):
 
 
 def _create_serverless_config(model_arn, customization_technique,
-                           training_type, accept_eula, evaluator_arn=None, job_type=JOB_TYPE) -> Optional['ServerlessJobConfig']:
+                           training_type, accept_eula, evaluator_arn=None,
+                           sequence_length=None, job_type=JOB_TYPE) -> Optional['ServerlessJobConfig']:
     """Create serverless job configuration for fine-tuning.
     
     Args:
@@ -890,6 +940,7 @@ def _create_serverless_config(model_arn, customization_technique,
         training_type: Training type (TrainingType enum or string)
         accept_eula: Boolean indicating if EULA is accepted
         evaluator_arn: Optional evaluator ARN for RLVR/RLAIF
+        sequence_length: Optional sequence length enum value (e.g., "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K")
         job_type: Type of job (default: "FineTuning")
     
     Returns:
@@ -905,7 +956,8 @@ def _create_serverless_config(model_arn, customization_technique,
         customization_technique=customization_technique,
         peft=peft,
         evaluator_arn=evaluator_arn,
-        accept_eula=accept_eula
+        accept_eula=accept_eula,
+        sequence_length=sequence_length,
     )
 
     return serverless_config
