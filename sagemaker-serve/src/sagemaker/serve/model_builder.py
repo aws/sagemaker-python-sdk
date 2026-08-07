@@ -114,6 +114,7 @@ from sagemaker.core.explainer.explainer_config import ExplainerConfig
 from sagemaker.core.enums import EndpointType
 from sagemaker.core.common_utils import (
     Tags,
+    TagsDict,
     ModelApprovalStatusEnum,
     _resolve_routing_config,
     format_tags,
@@ -166,6 +167,19 @@ JOB_NAME_PARAM_NAME = "sagemaker_job_name"
 MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
 SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
 SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
+
+
+def _tags_as_list(tags: Optional[Tags]) -> Optional[List[TagsDict]]:
+    """Expand a single ``{key: value}`` tag mapping into the list form.
+
+    ``deploy()`` accepts tags either as a list of tag dicts or as one ``{key: value}``
+    mapping (see the ``Tags`` alias), but the resource ``create()`` calls are typed
+    ``List[Tag]`` and reject a bare mapping. A list is returned unchanged, for pydantic
+    to validate and coerce.
+    """
+    if isinstance(tags, dict):
+        return [{"key": k, "value": v} for k, v in tags.items()]
+    return tags
 
 
 @dataclass
@@ -5678,7 +5692,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 endpoint_name=endpoint_name,
                 initial_instance_count=initial_instance_count,
                 wait=kwargs.get("wait", True),
+                tags=kwargs.get("tags"),
             )
+
+        # Passed to whichever endpoint-creation path runs below.
+        endpoint_tags = _tags_as_list(kwargs.get("tags"))
 
         # Fetch model package
         model_package = self._fetch_model_package()
@@ -5700,7 +5718,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ],
             )
             endpoint = Endpoint.create(
-                endpoint_name=endpoint_name, endpoint_config_name=endpoint_name
+                endpoint_name=endpoint_name, endpoint_config_name=endpoint_name,
+                tags=endpoint_tags,
             )
             if kwargs.get("wait", True):
                 endpoint.wait_for_status("InService")
@@ -5723,7 +5742,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             )
             logger.info("Endpoint core call starting")
             endpoint = Endpoint.create(
-                endpoint_name=endpoint_name, endpoint_config_name=endpoint_name
+                endpoint_name=endpoint_name, endpoint_config_name=endpoint_name,
+                tags=endpoint_tags,
             )
             endpoint.wait_for_status("InService")
         else:
@@ -5953,6 +5973,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         endpoint_name: str,
         initial_instance_count: int = 1,
         wait: bool = True,
+        tags: Optional[Tags] = None,
     ) -> Endpoint:
         """Deploy a Nova model directly to an endpoint without inference components.
 
@@ -5981,16 +6002,21 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             ],
         )
 
-        tags = [
+        endpoint_tags = [
             {"key": "sagemaker-sdk:jumpstart-model-id", "value": base_model.hub_content_name},
         ]
         if base_model.recipe_name:
-            tags.append({"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name})
+            endpoint_tags.append(
+                {"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name}
+            )
+
+        # Merge user-provided tags
+        endpoint_tags.extend(_tags_as_list(tags) or [])
 
         endpoint = Endpoint.create(
             endpoint_name=endpoint_name,
             endpoint_config_name=endpoint_name,
-            tags=tags,
+            tags=endpoint_tags,
         )
 
         if wait:
