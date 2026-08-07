@@ -29,7 +29,7 @@ from sagemaker.serve import ModelBuilder
 from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
 from sagemaker.serve.model_reuse import MODEL_SOURCE_TAG_KEY
 from sagemaker.core.helper.session_helper import Session, get_execution_role
-from sagemaker.core.resources import TrainingJob, Endpoint
+from sagemaker.core.resources import TrainingJob, Endpoint, ModelPackage
 from sagemaker.train import SFTTrainer, RLVRTrainer
 
 logger = logging.getLogger(__name__)
