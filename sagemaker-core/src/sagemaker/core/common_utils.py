@@ -1768,7 +1768,7 @@ def _is_bad_link(info, base):
     return _is_bad_path(info.linkname, base=tip)
 
 
-def _get_safe_members(members):
+def _get_safe_members(members, base_path):
     """A generator that yields members that are safe to extract.
 
     It filters out bad paths and bad links.
@@ -1779,7 +1779,7 @@ def _get_safe_members(members):
     Yields:
         tarfile.TarInfo: The tar file info.
     """
-    base = _get_resolved_path("")
+    base = _get_resolved_path(base_path)
 
     for file_info in members:
         if _is_bad_path(file_info.name, base):
@@ -1843,7 +1843,7 @@ def custom_extractall_tarfile(tar, extract_path):
     if hasattr(tarfile, "data_filter"):
         tar.extractall(path=extract_path, filter="data")
     else:
-        tar.extractall(path=extract_path, members=_get_safe_members(tar))
+        tar.extractall(path=extract_path, members=_get_safe_members(tar, extract_path))
         # Re-validate extracted paths to catch symlink race conditions
         _validate_extracted_paths(extract_path)
 
