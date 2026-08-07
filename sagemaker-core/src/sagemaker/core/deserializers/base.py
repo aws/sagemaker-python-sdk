@@ -368,7 +368,8 @@ class TorchTensorDeserializer(SimpleBaseDeserializer):
         except ImportError as e:
             raise ImportError(
                 "Unable to import torch. Please install torch to use TorchTensorDeserializer: "
-                "pip install 'sagemaker-core[torch]'"
+                "pip install 'sagemaker-core[torch]' "
+                "(or 'sagemaker-serve[torch]' if you installed sagemaker-serve)"
             ) from e
 
     def deserialize(self, stream, content_type="tensor/pt"):
