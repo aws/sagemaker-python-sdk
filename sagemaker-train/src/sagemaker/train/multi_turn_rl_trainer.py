@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
 import boto3
 
@@ -41,6 +41,13 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_s3_path_exists,
 )
 from sagemaker.train.common_utils.constants import MIN_MLFLOW_VERSION
+from sagemaker.train.common_utils.log_streamer import (
+    AGENT_RFT_LOG_GROUP,
+    LogStreamer,
+    _resolve_start_time_ms,
+    _validate_poll,
+    stream_log_loop,
+)
 from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe, _is_nova_model
 from sagemaker.train.constants import get_sagemaker_hub_name
 from sagemaker.train.defaults import TrainDefaults
@@ -167,7 +174,13 @@ class MultiTurnRLTrainer(BaseTrainer):
         kms_key_arn: KMS key ID for output encryption (optional).
         accept_eula: Boolean for EULA acceptance (optional).
         **kwargs: Passed to BaseTrainer (sagemaker_session, role, base_job_name, tags).
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
     """
+
+    _customization_technique = "MTRL"
 
     def __init__(
         self,
@@ -187,9 +200,10 @@ class MultiTurnRLTrainer(BaseTrainer):
         accept_eula: bool = False,
         recipe: Optional[str] = None,
         overrides: Optional[dict] = None,
+        notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(notifications=notifications, **kwargs)
         self._recipe_path = recipe
         self._overrides = overrides
         self._resolved_recipe_cache = None
@@ -267,15 +281,18 @@ class MultiTurnRLTrainer(BaseTrainer):
         self,
         training_dataset: Optional[Union[str, DataSet]] = None,
         wait: bool = True,
+        dry_run: bool = False,
     ) -> AgentRFTJob:
         """Launch an Agentic RFT job.
 
         Args:
             training_dataset: Training dataset override.
             wait: If True (default), block until job reaches terminal status.
+            dry_run: If True, runs validation without submitting a job.
+                Returns None on success.
 
         Returns:
-            AgentRFTJob instance for tracking the job.
+            AgentRFTJob instance for tracking the job, or None if dry_run=True.
         """
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
@@ -296,7 +313,11 @@ class MultiTurnRLTrainer(BaseTrainer):
 
         if training_dataset is not None:
             self.training_dataset = training_dataset
-        job_config_doc = self._build_job_config_document()
+        job_config_doc = self._build_job_config_document(dry_run=dry_run)
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
 
         tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
@@ -338,6 +359,46 @@ class MultiTurnRLTrainer(BaseTrainer):
             return self._latest_job.output_model_package_arn
         return None
 
+    def stream_logs(self, poll: int = 5, start_time=None) -> None:
+        """Stream CloudWatch logs for the latest MTRL training job.
+
+        Polls the correct log group (``/aws/sagemaker/Job/AgentRFT``) and
+        checks job status via the Job API.
+
+        :param poll: Seconds between CloudWatch polling cycles (1-300).
+        :param start_time: Stream from this timestamp. Accepts datetime or
+            epoch milliseconds (int). If None, streams from the beginning.
+        :raises ValueError: If no training job has been launched yet or poll
+            is out of range.
+        """
+        if self._latest_job is None:
+            raise ValueError(
+                "No training job found. Call .train(wait=False) first, "
+                "then call .stream_logs() to stream logs in real-time."
+            )
+        _validate_poll(poll)
+
+        job_name = self._latest_job.job_name
+        start_ms = _resolve_start_time_ms(start_time)
+        sagemaker_session = TrainDefaults.get_sagemaker_session(
+            sagemaker_session=self.sagemaker_session
+        )
+
+        streamer = LogStreamer(
+            log_group=AGENT_RFT_LOG_GROUP,
+            job_name=job_name,
+            sagemaker_session=sagemaker_session,
+            start_time_ms=start_ms,
+        )
+
+        logger.info("Streaming logs for job: %s", job_name)
+        logger.info("Log group: %s", AGENT_RFT_LOG_GROUP)
+
+        def _get_status() -> str:
+            return Job.get(job_name=job_name, job_category=JOB_CATEGORY).job_status
+
+        stream_log_loop(streamer, poll, _get_status)
+
     @classmethod
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION, func_name="MultiTurnRLTrainer.attach"
@@ -356,14 +417,14 @@ class MultiTurnRLTrainer(BaseTrainer):
 
     # ---- Private: JobConfigDocument construction ----
 
-    def _build_job_config_document(self) -> str:
+    def _build_job_config_document(self, dry_run: bool = False) -> str:
         """Build the JobConfigDocument JSON string conforming to v1_0_0 schema."""
         config = {
             "AgentConfig": self._build_agent_config(),
             "InputDataConfig": self._build_input_data_config(),
             "OutputDataConfig": self._build_output_data_config(),
             "ModelPackageConfig": self._build_model_package_config(),
-            "TrainingConfig": self._build_training_config(),
+            "TrainingConfig": self._build_training_config(dry_run=dry_run),
         }
         if self.networking:
             config["VpcConfig"] = {
@@ -439,12 +500,12 @@ class MultiTurnRLTrainer(BaseTrainer):
         )
         return config
 
-    def _build_training_config(self) -> dict:
+    def _build_training_config(self, dry_run: bool = False) -> dict:
         hyperparameters = getattr(self, "_final_hyperparameters", {})
         config = {
             "BaseModelArn": self._model_arn,
         }
-        mlflow_config = self._build_mlflow_config()
+        mlflow_config = self._build_mlflow_config(dry_run=dry_run)
         if mlflow_config:
             config["MlflowConfig"] = mlflow_config
         if self.accept_eula is not None:
@@ -457,7 +518,7 @@ class MultiTurnRLTrainer(BaseTrainer):
                 config["HyperParameters"] = user_set
         return config
 
-    def _build_mlflow_config(self) -> Optional[dict]:
+    def _build_mlflow_config(self, dry_run: bool = False) -> Optional[dict]:
         arn = (
             self.mlflow_app_arn.arn
             if isinstance(self.mlflow_app_arn, MlflowApp)
@@ -467,7 +528,9 @@ class MultiTurnRLTrainer(BaseTrainer):
             session = self.sagemaker_session or TrainDefaults.get_sagemaker_session(
                 sagemaker_session=self.sagemaker_session
             )
-            arn = _resolve_mlflow_resource_arn(session, None, min_mlflow_version=MIN_MLFLOW_VERSION)
+            arn = _resolve_mlflow_resource_arn(
+                session, None, min_mlflow_version=MIN_MLFLOW_VERSION, dry_run=dry_run
+            )
             if not arn:
                 return None
             logger.info("MLflow resource ARN: %s", arn)

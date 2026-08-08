@@ -795,6 +795,7 @@ class ModelTrainer(BaseModel):
         input_data_config: Optional[List[Union[Channel, InputData]]] = None,
         wait: Optional[bool] = True,
         logs: Optional[bool] = True,
+        dry_run: bool = False,
     ):
         """Train a model using AWS SageMaker.
 
@@ -810,9 +811,21 @@ class ModelTrainer(BaseModel):
             logs (Optional[bool]):
                 Whether to display the training container logs while training.
                 Defaults to True.
+            dry_run (bool):
+                If True, runs all validation (configuration, input resolution, hyperparameters)
+                without submitting a job. Returns None on success, raises on validation failure.
+                Defaults to False.
         """
         training_request = self._create_training_job_args(input_data_config=input_data_config)
-            
+
+        job_name = training_request.get("training_job_name")
+        if job_name:
+            logger.info(f"Training Job Name: {job_name}")
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
+
         # Handle PipelineSession
         if self.training_mode == Mode.SAGEMAKER_TRAINING_JOB:
             if isinstance(self.sagemaker_session, PipelineSession):
@@ -1335,7 +1348,6 @@ class ModelTrainer(BaseModel):
             raise ValueError("training_image must be provided when using training_image_config.")
 
         sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session)
-        role = TrainDefaults.get_role(role=role, sagemaker_session=sagemaker_session)
 
         # The training recipe is used to prepare the following args:
         # - source_code
