@@ -552,7 +552,7 @@ class TestRLVRTrainer:
             mock_get_role, mock_get_options, mock_resolve_model):
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
