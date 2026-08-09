@@ -529,7 +529,7 @@ class TestFinetuneUtils:
         assert result == "extracted-group"
 
     def test__validate_and_resolve_model_package_group_missing_both(self):
-        with pytest.raises(ValueError, match="model_package_group_name must be provided"):
+        with pytest.raises(ValueError, match="model_package_group is required"):
             _validate_and_resolve_model_package_group("string-model", None)
 
     @patch('sagemaker.core.resources.ModelPackage.get')
@@ -1266,6 +1266,69 @@ class TestExtractRecipeFromHelmTemplate:
         with pytest.raises(ValueError, match="template format may have changed"):
             fu._extract_recipe_from_helm_template(template)
 
+    def test_strips_task_type_storm_rbs(self):
+        """task_type: storm_rbs is internal RFT metadata and should be stripped."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      peft_scheme: lora\n"
+            "      lora_tuning:\n"
+            "        alpha: 32\n"
+            "      task_type: storm_rbs\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template, customization_technique="RLVR")
+
+        assert "task_type" not in extracted
+        assert "storm_rbs" not in extracted
+        assert "peft_scheme: lora" in extracted
+
+    def test_preserves_non_storm_rbs_task_type(self):
+        """task_type: other task types (used by OSS) should NOT be stripped."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      lora_tuning:\n"
+            "        task_type: OTHER_TASK\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template)
+
+        assert "task_type: OTHER_TASK" in extracted
+
+    def test_does_not_strip_task_type_for_non_rlvr(self):
+        """task_type: storm_rbs is preserved when technique is not RLVR/RFT."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      task_type: storm_rbs\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template, customization_technique="SFT")
+
+        assert "task_type: storm_rbs" in extracted
+
 
 class TestGetRecipeS3Uri:
     @patch(f"{_MOD}._normalize_model_name", side_effect=lambda m: m)
@@ -1501,3 +1564,43 @@ class TestIsLambdaArn:
         # Both call sites must share the same compiled pattern, not copies.
         from sagemaker.train.common_utils import rlvr_reward_verifier
         assert fu.LAMBDA_ARN_REGEX is rlvr_reward_verifier.LAMBDA_ARN_REGEX
+
+
+class TestGetSmhpInstanceTypeEnum:
+    """Unit tests for _get_smhp_instance_type_enum (SMHP override-spec enum lookup)."""
+
+    def _call(self):
+        return fu._get_smhp_instance_type_enum(
+            model_name="my-model",
+            customization_technique="SFT",
+            training_type=TrainingType.LORA,
+            sagemaker_session=MagicMock(),
+        )
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_enum_when_present(self, mock_spec):
+        mock_spec.return_value = (
+            {},
+            {"instance_type": {"enum": ["ml.p5.48xlarge", "ml.p4d.24xlarge"]}},
+        )
+        assert self._call() == ["ml.p5.48xlarge", "ml.p4d.24xlarge"]
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_none_when_enum_missing(self, mock_spec):
+        mock_spec.return_value = ({}, {"instance_type": {}})
+        assert self._call() is None
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_none_when_instance_type_key_absent(self, mock_spec):
+        mock_spec.return_value = ({}, {})
+        assert self._call() is None
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_none_when_enum_empty_list(self, mock_spec):
+        mock_spec.return_value = ({}, {"instance_type": {"enum": []}})
+        assert self._call() is None
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_none_on_exception(self, mock_spec):
+        mock_spec.side_effect = RuntimeError("hub content unavailable")
+        assert self._call() is None

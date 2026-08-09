@@ -53,7 +53,7 @@ class TestSFTTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
@@ -97,7 +97,7 @@ class TestSFTTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
@@ -262,7 +262,7 @@ class TestSFTTrainer:
                             mock_get_options, mock_resolve_model):
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
@@ -416,7 +416,7 @@ class TestSFTTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
@@ -459,7 +459,7 @@ class TestSFTTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
@@ -502,7 +502,7 @@ class TestSFTTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
@@ -563,7 +563,7 @@ class TestSFTTrainer:
             mock_get_role, mock_get_options, mock_resolve_model):
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
@@ -735,6 +735,7 @@ class TestSFTTrainerDataMixingIntegration:
         mock_session = Mock()
         mock_session.boto_session = Mock()
         mock_session.boto_session.region_name = "us-east-1"
+        mock_session.sagemaker_config = {}
         mock_get_sagemaker_session.return_value = mock_session
 
         mock_fine_tuning_options = Mock()
@@ -814,6 +815,7 @@ class TestSFTTrainerDataMixingIntegration:
         mock_session = Mock()
         mock_session.boto_session = Mock()
         mock_session.boto_session.region_name = "us-east-1"
+        mock_session.sagemaker_config = {}
         mock_get_sagemaker_session.return_value = mock_session
 
         mock_fine_tuning_options = Mock()
@@ -880,6 +882,7 @@ class TestSFTTrainerDataMixingIntegration:
         mock_session = Mock()
         mock_session.boto_session = Mock()
         mock_session.boto_session.region_name = "us-east-1"
+        mock_session.sagemaker_config = {}
         mock_get_sagemaker_session.return_value = mock_session
 
         mock_fine_tuning_options = Mock()
@@ -1217,6 +1220,7 @@ class TestSFTTrainerSmtjS3DataType:
         mock_session = Mock()
         mock_session.boto_session.region_name = "us-east-1"
         mock_session.boto_session.client.return_value = mock_s3_client
+        mock_session.sagemaker_config = {}
 
         with patch('sagemaker.train.defaults.TrainDefaults') as mock_defaults, \
              patch('sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri', return_value="s3://bucket/recipe.yaml"), \
@@ -1225,7 +1229,10 @@ class TestSFTTrainerSmtjS3DataType:
              patch('sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders', return_value="content"), \
              patch('tempfile.NamedTemporaryFile') as mock_tmp, \
              patch('sagemaker.train.base_trainer.open', mock_open, create=True), \
-             patch.dict('sys.modules', {'sagemaker.train.model_trainer': Mock(ModelTrainer=mock_model_trainer_cls)}):
+             patch('sagemaker.train.base_trainer._get_smhp_instance_type_enum', return_value=None), \
+             patch('sagemaker.train.base_trainer._get_smhp_replicas_enum', return_value=None), \
+             patch('sagemaker.train.base_trainer.validate_data_path_exists'), \
+             patch('sagemaker.train.model_trainer.ModelTrainer.from_recipe', mock_model_trainer_cls.from_recipe):
 
             mock_defaults.get_sagemaker_session.return_value = mock_session
             mock_defaults.get_role.return_value = "arn:aws:iam::123456789012:role/test"
@@ -1348,3 +1355,85 @@ class TestSFTTrainerBaseModelName:
         )
 
         assert trainer.disable_output_compression is True
+
+
+class TestSFTTrainerDryRun:
+    """Tests for SFTTrainer.train(dry_run=True)."""
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_serverless_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.train.sft_trainer._validate_hyperparameter_values')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    @patch('sagemaker.train.common_utils.data_utils.validate_data_path_exists')
+    def test_dry_run_returns_none_without_submitting(
+        self, mock_validate_s3, mock_create, mock_validate_hp, mock_model_pkg,
+        mock_mlflow, mock_serverless, mock_output, mock_channels, mock_input,
+        mock_name, mock_session, mock_role, mock_options, mock_group,
+    ):
+        mock_group.return_value = "test-group"
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {"lr": "0.001"}
+        mock_hp._specs = {}
+        mock_options.return_value = (mock_hp, "model-arn", False)
+
+        sess = Mock()
+        sess.boto_session.region_name = "us-east-1"
+        sess.boto_region_name = "us-east-1"
+        sess.sagemaker_config = {}
+        mock_session.return_value = sess
+        mock_role.return_value = "test-role"
+        mock_name.return_value = "job-name"
+        mock_input.return_value = [Mock()]
+        mock_channels.return_value = [Mock()]
+        mock_output.return_value = Mock()
+        mock_serverless.return_value = Mock()
+        mock_mlflow.return_value = Mock()
+        mock_model_pkg.return_value = Mock()
+
+        trainer = SFTTrainer(
+            model="test-model", model_package_group="test-group",
+            training_dataset="s3://bucket/train.jsonl",
+        )
+        trainer.train(dry_run=True)
+
+        mock_create.assert_not_called()
+        # Existing validation still ran
+        mock_role.assert_called_once()
+        mock_validate_hp.assert_called_once()
+
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    def test_dry_run_raises_on_role_validation_failure(
+        self, mock_role, mock_session, mock_options, mock_group,
+    ):
+        mock_group.return_value = "test-group"
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_hp._specs = {}
+        mock_options.return_value = (mock_hp, "model-arn", False)
+
+        sess = Mock()
+        sess.boto_session.region_name = "us-east-1"
+        sess.boto_region_name = "us-east-1"
+        sess.sagemaker_config = {}
+        mock_session.return_value = sess
+        mock_role.side_effect = ValueError("Missing permissions")
+
+        trainer = SFTTrainer(
+            model="test-model", model_package_group="test-group",
+            training_dataset="s3://bucket/train.jsonl",
+        )
+
+        with pytest.raises(ValueError, match="Missing permissions"):
+            trainer.train(dry_run=True)
