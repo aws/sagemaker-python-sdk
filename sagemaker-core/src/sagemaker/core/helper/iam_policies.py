@@ -831,7 +831,10 @@ EVALUATION_CALLER_ACTIONS = (
     "sagemaker:ListTags",
     "sagemaker:AddTags",
     "sagemaker:DescribeTrainingJob",
-    "iam:PassRole",
+    # NOTE: iam:PassRole is intentionally excluded. The AmazonSageMakerFullAccess
+    # policy conditions it on iam:PassedToService=sagemaker.amazonaws.com, and
+    # SimulatePrincipalPolicy without that context value returns implicitDeny —
+    # a false positive that blocks callers who actually have the permission.
     # Model resolution (DescribeHubContent called at construction time under caller creds)
     "sagemaker:DescribeHubContent",
     "sagemaker:ListHubContents",
