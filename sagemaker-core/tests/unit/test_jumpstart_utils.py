@@ -1679,6 +1679,53 @@ class TestGetMetricsFromDeploymentConfigs:
         assert "Instance Type" in result
         assert "Config Name" in result
 
+    def test_get_metrics_ragged_pricing_stays_equal_length_and_aligned(self):
+        """One instance with a pricing overlay, one without: columns stay equal
+        length and the rate stays aligned to its instance (None for the other)."""
+
+        def _stat(name, unit, value, concurrency):
+            stat = Mock()
+            stat.name = name
+            stat.unit = unit
+            stat.value = value
+            stat.concurrency = concurrency
+            return stat
+
+        mock_args = Mock()
+        mock_args.default_instance_type = "ml.g5.xlarge"
+        mock_args.instance_type = "ml.g5.xlarge"
+
+        mock_config = Mock(spec=DeploymentConfigMetadata)
+        mock_config.deployment_args = mock_args
+        mock_config.deployment_config_name = "config1"
+        # priced instance carries an "Instance Rate" stat; the other does not.
+        mock_config.benchmark_metrics = {
+            "ml.g5.xlarge": [
+                _stat("Latency", "ms", 100, "1"),
+                _stat("Instance Rate", "USD/Hr", 1.23, "1"),
+            ],
+            "ml.g5.2xlarge": [
+                _stat("Latency", "ms", 90, "1"),
+            ],
+        }
+
+        result = utils.get_metrics_from_deployment_configs([mock_config])
+
+        # Equal-length columns -> pd.DataFrame(result) will not raise.
+        lengths = {column: len(values) for column, values in result.items()}
+        assert len(set(lengths.values())) == 1, lengths
+
+        # Rate value stays on the priced row, None on the other (not shifted).
+        rate_cols = [c for c in result if "Instance Rate" in c]
+        assert rate_cols, result.keys()
+        rate_col = rate_cols[0]
+        by_instance = dict(zip(result["Instance Type"], result[rate_col]))
+        assert by_instance["ml.g5.xlarge (Default)"] == 1.23
+        assert by_instance["ml.g5.2xlarge"] is None
+
+        # Rate column stays last, after the metric columns (layout unchanged).
+        assert list(result).index(rate_col) == len(result) - 1
+
 
 class TestNormalizeBenchmarkMetricColumnName:
     """Test cases for _normalize_benchmark_metric_column_name function"""
