@@ -4,7 +4,7 @@
 
 ### New Features
 
-- feat(serve): Nova follow-ups (#6051)
+- feat(serve): Model Reuse — reuse previously built models across deployments (#6051)
 
 ### Bug Fixes
 

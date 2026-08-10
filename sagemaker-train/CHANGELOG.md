@@ -5,7 +5,7 @@
 ### New Features
 
 - feat(train): Add SequenceLength support for SFT, DPO, RLVR, RLAIF trainers (#5965)
-- feat(train): Nova trainer follow-ups (#6051)
+- feat(train): Job notifications, log streaming, and metrics visualization for training jobs (#6051)
 
 
 ## v1.18.0 (2026-07-30)

@@ -5,7 +5,9 @@
 ### New Features
 
 - feat(train): Add SequenceLength support for SFT, DPO, RLVR, RLAIF trainers (#5965)
-- feat: Nova follow-ups across core/train/serve (#6051)
+- feat(train): Job notifications, log streaming, and metrics visualization for training jobs (#6051)
+- feat(serve): Model Reuse — reuse previously built models across deployments (#6051)
+- feat(core): Nova follow-ups — IAM role resolution and training utils (#6051)
 
 ### Bug Fixes
 
