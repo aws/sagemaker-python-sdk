@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.19.0 (2026-08-10)
+
+### New Features
+
+- feat(train): Add SequenceLength support for SFT, DPO, RLVR, RLAIF trainers (#5965)
+- feat(train): Nova trainer follow-ups (#6051)
+
+
 ## v1.18.0 (2026-07-30)
 
 ### Bug Fixes

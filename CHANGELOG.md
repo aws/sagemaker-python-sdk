@@ -1,5 +1,20 @@
 # Changelog
 
+## v3.19.0 (2026-08-10)
+
+### New Features
+
+- feat(train): Add SequenceLength support for SFT, DPO, RLVR, RLAIF trainers (#5965)
+- feat: Nova follow-ups across core/train/serve (#6051)
+
+### Bug Fixes
+
+- fix(serve): propagate additional_model_data_sources for JumpStart models (#6151)
+- fix(serve): forward tolerance flags from get_jumpstart_configs (#6137)
+- fix(serve): create local model_path dir before using it as download dir (#6147)
+- fix(serve): remove IC data-source collapse hack from recommendation deploy (#6101)
+
+
 ## v3.18.0 (2026-07-30)
 
 ### New Features
