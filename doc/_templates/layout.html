@@ -8,3 +8,20 @@
   {{ super() }}
   <meta name="robots" content="noindex">
 {% endblock %}
+
+{# Deprecation banner. Overriding the "document" block places this note at the #}
+{# top of the main content area of EVERY page -- including theme-generated pages #}
+{# with no .rst source (genindex, py-modindex, search) that rst_prolog cannot #}
+{# reach. The markup mirrors a Sphinx ".. note::" admonition so it picks up the #}
+{# exact same sphinx_rtd_theme styling as the original landing-page note. #}
+{% block document %}
+  <div class="admonition note">
+    <p class="admonition-title">Note</p>
+    <p>Version 2.x of the SageMaker Python SDK is on a deprecation path.
+    For the latest features and continued support, see the SageMaker Python SDK
+    <a class="reference external" href="https://sagemaker.readthedocs.io/">V3 documentation</a>.
+    For version lifecycle, see
+    <a class="reference external" href="https://sagemaker.readthedocs.io/en/stable/lifecycle.html">this page</a>.</p>
+  </div>
+  {{ super() }}
+{% endblock %}
