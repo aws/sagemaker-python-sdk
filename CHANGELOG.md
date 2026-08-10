@@ -1,5 +1,18 @@
 # Changelog
 
+## v2.257.6 (2026-08-10)
+
+### Enhancements
+* Add Zimmer deployment and lineage pipeline step types (v2 backport) (#6153)
+* Update SDK to use latest LMI v27 image for sdk v2.x (#5977)
+
+### Bug Fixes
+* Forward tolerance flags from get_jumpstart_configs (#6136)
+
+### Documentation Changes
+* Show V2 deprecation note on every documentation page (#6172)
+
+
 ## v2.257.5 (2026-07-14)
 
 ### Bug Fixes
