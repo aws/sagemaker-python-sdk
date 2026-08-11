@@ -113,6 +113,7 @@ def inspect_ai_resources(sagemaker_session_us_east_1):
 class TestInspectAIEvaluatorIntegration:
     """Integration tests for InspectAI evaluation with Bedrock inference."""
 
+    @pytest.mark.gpu_intensive
     def test_inspect_ai_bedrock_evaluation(
         self, sagemaker_session_us_east_1, inspect_ai_resources
     ):
@@ -161,6 +162,7 @@ class TestInspectAIEvaluatorIntegration:
         execution.show_results()
         logger.info("InspectAI Bedrock evaluation completed successfully.")
 
+    @pytest.mark.gpu_intensive
     def test_inspect_ai_upload_benchmarks(
         self, sagemaker_session_us_east_1, inspect_ai_resources
     ):

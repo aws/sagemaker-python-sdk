@@ -100,6 +100,7 @@ def _get_latest_model_package_arn():
 class TestLLMAsJudgeBaseModelFix:
     """Integration test for base model fix in LLMAsJudgeEvaluator"""
 
+    @pytest.mark.gpu_intensive
     def test_base_model_evaluation_uses_correct_weights(self, mlflow_resource_arn):
         """
         Test that base model evaluation uses original base model weights.
@@ -278,6 +279,7 @@ class TestLLMAsJudgeBaseModelFix:
             # Re-raise to fail the test
             raise
 
+    @pytest.mark.gpu_intensive
     def test_base_model_false_still_works(self, mlflow_resource_arn):
         """
         Test that evaluate_base_model=False still works correctly (backward compatibility).

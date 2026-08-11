@@ -1,0 +1,142 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License"). You
+# may not use this file except in compliance with the License. A copy of
+# the License is located at
+#
+#     http://aws.amazon.com/apache2.0/
+#
+# or in the "license" file accompanying this file. This file is
+# distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+# ANY KIND, either express or implied. See the License for the specific
+# language governing permissions and limitations under the License.
+"""Fixtures for the shallow (submit-then-stop) training-job suite.
+
+Inherits ``sagemaker_session``, ``ensure_default_region`` and the adaptive-retry
+configuration from the parent ``tests/integ/train/conftest.py`` and
+``tests/integ/conftest.py``; only fixtures specific to shallow submission live
+here.
+
+Everything here is session- or module-scoped and idempotent: these tests run
+in parallel across xdist workers, so any fixture creating an AWS-side artifact must
+tolerate a dozen workers racing to create the same thing.
+"""
+
+from __future__ import absolute_import
+
+import json
+import logging
+
+import pytest
+
+logger = logging.getLogger(__name__)
+
+# Uploaded once and reused. A tiny object is enough: the backend's role-assuming
+# validators check that the S3 prefix resolves, not what it contains.
+_TRAIN_DATA_KEY = "shallow-integ-test/train/data.jsonl"
+_VALIDATION_DATA_KEY = "shallow-integ-test/validation/data.jsonl"
+
+_SAMPLE_RECORDS = [
+    {
+        "messages": [
+            {"role": "user", "content": [{"text": "What is 2+2?"}]},
+            {"role": "assistant", "content": [{"text": "4"}]},
+        ]
+    },
+    {
+        "messages": [
+            {"role": "user", "content": [{"text": "Capital of France?"}]},
+            {"role": "assistant", "content": [{"text": "Paris"}]},
+        ]
+    },
+]
+
+
+def _ensure_object(sagemaker_session, key):
+    """Upload the sample dataset at ``key`` if absent; return its S3 URI.
+
+    Idempotent so concurrent xdist workers converge instead of colliding. The
+    object is intentionally left behind: it is a few hundred bytes and reusing
+    it removes an upload from every subsequent run.
+    """
+    bucket = sagemaker_session.default_bucket()
+    s3 = sagemaker_session.boto_session.client("s3")
+
+    response = s3.list_objects_v2(Bucket=bucket, Prefix=key, MaxKeys=1)
+    if response.get("KeyCount", 0) == 0:
+        body = "\n".join(json.dumps(record) for record in _SAMPLE_RECORDS)
+        s3.put_object(Bucket=bucket, Key=key, Body=body.encode("utf-8"))
+        logger.info("Uploaded shallow-test fixture data to s3://%s/%s", bucket, key)
+
+    return f"s3://{bucket}/{key}"
+
+
+@pytest.fixture(scope="module")
+def train_data_uri(sagemaker_session):
+    """S3 URI of a real, existing training-data prefix."""
+    return _ensure_object(sagemaker_session, _TRAIN_DATA_KEY)
+
+
+@pytest.fixture(scope="module")
+def validation_data_uri(sagemaker_session):
+    """S3 URI of a real, existing validation-data prefix."""
+    return _ensure_object(sagemaker_session, _VALIDATION_DATA_KEY)
+
+
+@pytest.fixture(scope="module")
+def nova_train_data_uri(sagemaker_session_us_east_1):
+    """Training data in us-east-1, for Nova-only paths (e.g. data mixing).
+
+    Nova models are exercised in us-east-1 in this repo (see the
+    ``sagemaker_session_us_east_1`` fixture in the parent conftest), and an S3
+    prefix must be in the same region as the job that reads it -- so this cannot
+    reuse ``train_data_uri``, which lives in the default region's bucket.
+    """
+    return _ensure_object(sagemaker_session_us_east_1, _TRAIN_DATA_KEY)
+
+
+@pytest.fixture(scope="module")
+def output_path(sagemaker_session):
+    """S3 prefix for training output.
+
+    Nothing is ever written here -- the jobs are stopped long before they upload
+    artifacts -- but the backend validates the output location, so it must be a
+    real, writable prefix.
+    """
+    return f"s3://{sagemaker_session.default_bucket()}/shallow-integ-test/output/"
+
+
+@pytest.fixture(scope="module")
+def nonexistent_data_uri(sagemaker_session):
+    """S3 URI, in a real bucket, that does not exist.
+
+    Used by negative tests to prove input validation actually reaches S3 rather
+    than being skipped.
+    """
+    bucket = sagemaker_session.default_bucket()
+    return f"s3://{bucket}/shallow-integ-test/definitely-not-here-04c1f9/"
+
+
+@pytest.fixture(scope="module")
+def execution_role(sagemaker_session):
+    """The validated training execution role for this account.
+
+    Resolved through the SDK's own resolver so these tests exercise the same
+    role-discovery path real users hit, and so a broken/unassumable default role
+    surfaces here rather than as a confusing per-test PassRole failure.
+    """
+    from sagemaker.train.defaults import TrainDefaults
+
+    return TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
+
+
+@pytest.fixture(scope="module")
+def account_id(sagemaker_session):
+    """Caller's AWS account id, for building ARNs in negative tests."""
+    return sagemaker_session.boto_session.client("sts").get_caller_identity()["Account"]
+
+
+@pytest.fixture(scope="module")
+def region(sagemaker_session):
+    """Region under test, for building ARNs and region-sensitive assertions."""
+    return sagemaker_session.boto_session.region_name

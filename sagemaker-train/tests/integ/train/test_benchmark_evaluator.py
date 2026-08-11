@@ -97,6 +97,7 @@ class TestBenchmarkEvaluatorIntegration:
         
         logger.info(f"MMLU properties: {properties}")
 
+    @pytest.mark.gpu_intensive
     def test_benchmark_evaluation_full_flow(self):
         """
         Test complete benchmark evaluation flow with fine-tuned model package.

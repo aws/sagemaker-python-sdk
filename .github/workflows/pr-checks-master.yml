@@ -221,6 +221,13 @@ jobs:
         env:
           SUBMODULE: ${{ matrix.submodule }}
 
+  # sagemaker-train's PR-gate integ tests are handled by the shallow-integ-tests
+  # job below, so it is filtered out of this matrix. Every other submodule keeps
+  # the existing full CodeBuild integ suite unchanged.
+  #
+  # The filter is computed with fromJson/contains rather than by editing
+  # detect-changes, so the dependency-propagation logic there (and the submodule
+  # list consumed by codestyle-doc-tests and unit-tests) is untouched.
   integ-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
@@ -229,6 +236,8 @@ jobs:
       fail-fast: false
       matrix:
         submodule: ${{ fromJson(needs.detect-changes.outputs.submodules) }}
+        exclude:
+          - submodule: sagemaker-train
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -242,6 +251,102 @@ jobs:
         with:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-integ-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+
+  # Replaces the CodeBuild integ suite for sagemaker-train on the PR gate.
+  #
+  # What runs here (~191 of 251 tests):
+  #   * ~170 client-side tests that make no service call -- recipe resolution,
+  #     data utils, dry-run, log streaming, docker-compose detection. These were
+  #     always cheap and stay on the gate.
+  #   * the shallow (submit-then-stop) suite under tests/integ/train/shallow.
+  #
+  # Why submit-then-stop is worth gating on: CreateTrainingJob returns a
+  # TrainingJobArn only after the request has cleared public-model validation,
+  # SigV4, sagemaker:CreateTrainingJob authorization, iam:PassRole, the training
+  # backend's request validators (including the role-assuming ones that resolve
+  # S3 and ECR as the customer) and the final duplicate-name write. So a returned
+  # ARN proves the payload and the caller's permissions are both good -- without
+  # paying for a training run. The job is stopped immediately.
+  #
+  # What no longer runs here: the ~54 tests that submit a job and wait for it.
+  # They are marked gpu_intensive and keep running on the scheduled CI-health
+  # workflows. This is a deliberate scope reduction -- training *behaviour*
+  # (artifacts, metrics, convergence) is not asserted on the PR gate.
+  #
+  # Runs directly on the runner rather than via CodeBuild because the sagemaker-
+  # train CodeBuild project's buildspec is CDK-managed outside this repo; running
+  # here keeps the test selection reviewable in the PR that changes it.
+  fast-integ-tests:
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    if: contains(fromJson(needs.detect-changes.outputs.submodules), 'sagemaker-train')
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # pull_request_target checks out the base ref by default; these tests
+          # must run against the PR's code.
+          ref: 'refs/pull/${{ github.event.pull_request.number }}/head'
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+
+      - name: Install sagemaker-train and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ./sagemaker-core
+          pip install ./sagemaker-train
+          pip install -r requirements/extras/test_requirements.txt
+
+      - name: Run fast sagemaker-train integ tests
+        working-directory: sagemaker-train
+        env:
+          AWS_DEFAULT_REGION: us-west-2
+          # Role resolution goes through iam:SimulatePrincipalPolicy, which is
+          # low-TPS; adaptive retries keep parallel workers from throttling each
+          # other.
+          AWS_RETRY_MODE: adaptive
+          AWS_MAX_ATTEMPTS: '10'
+        run: |
+          # Runs the WHOLE tests/integ/train tree, not just shallow/, and lets the
+          # markers decide what is affordable on a PR. That keeps the ~170
+          # client-side tests (recipe resolution, data utils, dry-run, log
+          # streaming, docker-compose detection) on the gate -- they make no
+          # service call and were never the expensive part.
+          #
+          # Deselected, per the marker conventions already in tox.ini:
+          #   gpu_intensive -- every test that submits a real job and waits for
+          #                    it. Now applied to the 19 submitters that were
+          #                    previously unmarked, so the shallow suite is the
+          #                    only thing on this gate that creates a job.
+          #   us_east_1     -- this job holds us-west-2 credentials only; those
+          #                    tests run in the us-east-1 integ job.
+          #
+          # Note the shallow suite is NOT separately marked: it is intended to
+          # run here, and its own MTRL/Nova cases carry these markers themselves.
+          python -m pytest tests/integ/train \
+            -m "not gpu_intensive and not us_east_1" \
+            -n 8 \
+            --dist loadfile \
+            -v \
+            --durations=15 \
+            --junitxml=fast-integ-results.xml
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fast-integ-test-results
+          path: sagemaker-train/fast-integ-results.xml
+          if-no-files-found: warn
 
   integ-tests-us-east-1:
     runs-on: ubuntu-latest

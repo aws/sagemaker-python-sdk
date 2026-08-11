@@ -160,6 +160,7 @@ def sqs_subscriber(sm_session):
         logger.warning(f"Failed to delete queue: {e}")
 
 
+@pytest.mark.gpu_intensive
 @pytest.mark.us_east_1
 def test_notifications_creates_eventbridge_rule_and_cleanup(
     sm_session, training_data_uri, sqs_subscriber
