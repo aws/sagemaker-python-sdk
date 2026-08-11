@@ -190,11 +190,22 @@ class TestServerlessSubmission:
     def test_cpt_trainer_is_accepted(self, sagemaker_session, train_data_uri):
         """Continued pre-training uses a distinct recipe family from SFT/DPO/RLVR.
 
-        Kept separate from RECIPE_TRAINERS because CPT is not a preference/
-        instruction-tuning trainer and its accepted arguments differ.
+        Kept out of RECIPE_TRAINERS because its constructor genuinely differs:
+        verified against the SDK, ``CPTTrainer`` accepts no ``training_type``
+        (there is no LoRA/full distinction for continued pre-training) and its
+        ``compute`` is ``HyperPodCompute``-only, so it cannot take the
+        serverful ``TrainingJobCompute`` the others accept.
         """
         name = unique_name("shallow-cpt")
-        trainer = _trainer(CPTTrainer, sagemaker_session, train_data_uri, name)
+        trainer = CPTTrainer(
+            model=MODEL_ID,
+            model_package_group=MODEL_PACKAGE_GROUP,
+            training_dataset=train_data_uri,
+            accept_eula=True,
+            sagemaker_session=sagemaker_session,
+            base_job_name=name,
+            stopping_condition=_stopping_condition(),
+        )
 
         with submitted(trainer) as job:
             assert_submitted(job)

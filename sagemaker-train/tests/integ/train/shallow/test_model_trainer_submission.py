@@ -605,26 +605,36 @@ class TestRejectedRequests:
         )
 
     def test_unassumable_role_is_rejected(self, sagemaker_session, account_id):
-        """PassRole / AssumeRole failures must surface at submit time.
+        """A role that cannot be used for training must be refused.
 
-        Directly covers the "does the caller hold the required permissions" half
-        of what this suite exists to assert.
+        Covers the "does the caller hold the required permissions" half of what
+        this suite exists to assert.
+
+        Note where this is caught: ``ModelTrainer.__init__`` resolves and
+        validates the role via ``iam:SimulatePrincipalPolicy``, so a bad role is
+        rejected at *construction* -- the request never reaches
+        CreateTrainingJob. That is strictly better than a server-side rejection
+        (faster, clearer message), so this asserts around the constructor rather
+        than around ``train()``. Verified against AWS: the SDK raises
+        ``RoleValidationError`` naming the role and the permissions it lacks.
         """
         bogus_role = f"arn:aws:iam::{account_id}:role/shallow-integ-test-no-such-role"
-        trainer = _trainer(sagemaker_session, unique_name("shallow-bad-role"), role=bogus_role)
 
-        assert_rejected(
-            trainer,
-            (
-                "role",
-                "Role",
+        with pytest.raises(Exception) as excinfo:
+            _trainer(sagemaker_session, unique_name("shallow-bad-role"), role=bogus_role)
+
+        message = str(excinfo.value)
+        assert any(
+            token in message
+            for token in (
+                "cannot be used",
+                "RoleValidationError",
                 "AccessDenied",
                 "not authorized",
                 "cannot be assumed",
-                "ValidationException",
-                "ValidationError",
-            ),
-        )
+                "does not exist",
+            )
+        ), f"unexpected rejection reason: {message}"
 
     def test_duplicate_job_name_is_rejected(self, sagemaker_session, execution_role, output_path):
         """The final gate before the ARN is a conditional write that rejects
