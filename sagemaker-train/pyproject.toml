@@ -32,7 +32,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.18.0",
+    "sagemaker-core>=2.19.0",
     "graphene>=3,<4",
     "typing_extensions>=4.9.0",
     "tblib>=1.7.0",
@@ -68,6 +68,7 @@ notebook = [
     "ipywidgets>=8.0.0",
     "rich>=13.0.0",
     "matplotlib>=3.5.0",
+    "pandas",
 ]
 
 [tool.setuptools.packages.find]

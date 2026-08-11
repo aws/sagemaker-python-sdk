@@ -53,7 +53,7 @@ class TestRLAIFTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
@@ -97,7 +97,7 @@ class TestRLAIFTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
@@ -252,7 +252,7 @@ class TestRLAIFTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
@@ -578,7 +578,7 @@ class TestRLAIFTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
@@ -621,7 +621,7 @@ class TestRLAIFTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
@@ -664,7 +664,7 @@ class TestRLAIFTrainer:
         mock_validate_group.return_value = "test-group"
         mock_resolve_model.return_value = ("test-model", "test-model")
         mock_get_session.return_value = Mock()
-        mock_get_sagemaker_session.return_value = Mock()
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
         mock_fine_tuning_options = Mock()
         mock_fine_tuning_options.to_dict.return_value = {"learning_rate": "0.001"}
         mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
@@ -683,3 +683,125 @@ class TestRLAIFTrainer:
         trainer.train(wait=False, wait_timeout=600)
 
         mock_wait.assert_not_called()
+
+
+class TestRLAIFTrainerDryRun:
+    """Tests for RLAIFTrainer.train(dry_run=True)."""
+
+    @patch('sagemaker.train.rlaif_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.rlaif_trainer._get_fine_tuning_options_and_model_arn')
+    def test_init_sequence_length_default_none(self, mock_finetuning_options, mock_validate_group):
+        mock_validate_group.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_hyperparams._specs = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+        trainer = RLAIFTrainer(model="test-model", model_package_group="test-group")
+        assert trainer.sequence_length is None
+
+    @patch('sagemaker.train.rlaif_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.rlaif_trainer._get_fine_tuning_options_and_model_arn')
+    def test_init_with_sequence_length(self, mock_finetuning_options, mock_validate_group):
+        mock_validate_group.return_value = "test-group"
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {}
+        mock_hyperparams._specs = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+        trainer = RLAIFTrainer(model="test-model", model_package_group="test-group", sequence_length="128K")
+        assert trainer.sequence_length == "128K"
+
+    @patch('sagemaker.train.rlaif_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.rlaif_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.rlaif_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.rlaif_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.rlaif_trainer._get_unique_name')
+    @patch('sagemaker.train.rlaif_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.rlaif_trainer._create_input_data_config')
+    @patch('sagemaker.train.rlaif_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.rlaif_trainer._create_output_config')
+    @patch('sagemaker.train.rlaif_trainer._create_serverless_config')
+    @patch('sagemaker.train.rlaif_trainer._create_mlflow_config')
+    @patch('sagemaker.train.rlaif_trainer._create_model_package_config')
+    @patch('sagemaker.train.rlaif_trainer._validate_hyperparameter_values')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_dry_run_returns_none_without_submitting(
+        self, mock_create, mock_validate_hp, mock_model_pkg,
+        mock_mlflow, mock_serverless, mock_output, mock_channels, mock_input,
+        mock_group, mock_name, mock_session, mock_role, mock_options, mock_resolve_model,
+    ):
+        mock_group.return_value = "test-group"
+        mock_resolve_model.return_value = ("test-model", "test-model-name")
+        mock_hp = Mock()
+        mock_hp.to_dict.return_value = {}
+        mock_hp._specs = {}
+        mock_options.return_value = (mock_hp, "model-arn", False)
+
+        sess = Mock()
+        sess.boto_session.region_name = "us-east-1"
+        sess.boto_region_name = "us-east-1"
+        sess.sagemaker_config = {}
+        mock_session.return_value = sess
+        mock_role.return_value = "test-role"
+        mock_name.return_value = "job-name"
+        mock_input.return_value = [Mock()]
+        mock_channels.return_value = [Mock()]
+        mock_output.return_value = Mock()
+        mock_serverless.return_value = Mock()
+        mock_mlflow.return_value = Mock()
+        mock_model_pkg.return_value = Mock()
+
+        trainer = RLAIFTrainer(
+            model="test-model", model_package_group="test-group",
+            training_dataset="s3://bucket/train.jsonl",
+        )
+        trainer.train(dry_run=True)
+
+        mock_create.assert_not_called()
+        mock_role.assert_called_once()
+        mock_validate_hp.assert_called_once()
+        
+    @patch('sagemaker.train.rlaif_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.rlaif_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.rlaif_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.rlaif_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.rlaif_trainer._get_unique_name')
+    @patch('sagemaker.train.rlaif_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.rlaif_trainer._create_input_data_config')
+    @patch('sagemaker.train.rlaif_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.rlaif_trainer._create_output_config')
+    @patch('sagemaker.train.rlaif_trainer._create_serverless_config')
+    @patch('sagemaker.train.rlaif_trainer._create_mlflow_config')
+    @patch('sagemaker.train.rlaif_trainer._create_model_package_config')
+    @patch('sagemaker.train.rlaif_trainer._validate_hyperparameter_values')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_passes_sequence_length_to_serverless_config(
+            self, mock_training_job_create,
+            mock_validate_hp, mock_model_package_config, mock_mlflow_config, mock_serverless_config,
+            mock_output_config, mock_convert_channels, mock_input_config,
+            mock_validate_group, mock_unique_name, mock_get_sagemaker_session,
+            mock_get_role, mock_get_options, mock_resolve_model):
+        mock_validate_group.return_value = "test-group"
+        mock_resolve_model.return_value = ("test-model", "test-model")
+        mock_get_sagemaker_session.return_value = Mock(sagemaker_config={})
+        mock_fine_tuning_options = Mock()
+        mock_fine_tuning_options.to_dict.return_value = {}
+        mock_fine_tuning_options._specs = {}
+        mock_get_options.return_value = (mock_fine_tuning_options, "model-arn", False)
+        mock_get_role.return_value = "test-role"
+        mock_unique_name.return_value = "test-job-name"
+        mock_input_config.return_value = [Mock()]
+        mock_convert_channels.return_value = [Mock()]
+        mock_output_config.return_value = Mock()
+        mock_serverless_config.return_value = Mock()
+        mock_mlflow_config.return_value = Mock()
+        mock_model_package_config.return_value = Mock()
+        mock_training_job = Mock()
+        mock_training_job_create.return_value = mock_training_job
+
+        trainer = RLAIFTrainer(model="test-model", model_package_group="test-group",
+                              training_dataset="s3://bucket/train", sequence_length="64K")
+        trainer.train(wait=False)
+
+        mock_serverless_config.assert_called_once()
+        call_kwargs = mock_serverless_config.call_args[1]
+        assert call_kwargs["sequence_length"] == "64K"
