@@ -30,9 +30,11 @@ two produce materially different payloads.
 
 from __future__ import absolute_import
 
+import os
+
 import pytest
 from sagemaker.core import shapes
-from sagemaker.core.training.configs import TrainingJobCompute
+from sagemaker.core.training.configs import HyperPodCompute, TrainingJobCompute
 from sagemaker.train.common import TrainingType
 from sagemaker.train.cpt_trainer import CPTTrainer
 from sagemaker.train.dpo_trainer import DPOTrainer
@@ -90,6 +92,11 @@ RECIPE_TRAINERS = [
     pytest.param(RLVRTrainer, id="rlvr"),
     pytest.param(RLAIFTrainer, id="rlaif"),
 ]
+
+# Subset that accepts an explicit TrainingJobCompute. RLAIFTrainer takes no
+# ``compute`` argument at all (verified against the SDK), so it has no serverful
+# path and is excluded rather than being expected to fail.
+SERVERFUL_CAPABLE_TRAINERS = [t for t in RECIPE_TRAINERS if t.values[0] is not RLAIFTrainer]
 
 
 def _stopping_condition():
@@ -170,7 +177,14 @@ class TestServerlessSubmission:
         with submitted(trainer, training_dataset=train_data_uri) as job:
             assert_submitted(job)
 
-    @pytest.mark.parametrize("training_type", [TrainingType.LORA, TrainingType.FULL])
+    # Only LORA is parametrized. Verified against AWS: for MODEL_ID there is no
+    # serverless (SMTJ) recipe for full fine-tuning --
+    #   ValueError: No recipes found with Smtj for technique: SFT,
+    #   training_type:TrainingType.FULL
+    # so a FULL case here would assert a recipe-catalogue limitation rather than
+    # SDK behaviour. Kept parametrized so FULL can be re-added against a model
+    # that supports it, rather than the distinction being silently dropped.
+    @pytest.mark.parametrize("training_type", [TrainingType.LORA])
     def test_training_types(self, sagemaker_session, train_data_uri, training_type):
         """LoRA and full fine-tuning select different recipes, so each must be
         independently accepted."""
@@ -187,15 +201,30 @@ class TestServerlessSubmission:
         with submitted(trainer) as job:
             assert_submitted(job)
 
+    @pytest.mark.gpu_intensive
     def test_cpt_trainer_is_accepted(self, sagemaker_session, train_data_uri):
-        """Continued pre-training uses a distinct recipe family from SFT/DPO/RLVR.
+        """Continued pre-training, which submits only via HyperPod.
 
         Kept out of RECIPE_TRAINERS because its constructor genuinely differs:
         verified against the SDK, ``CPTTrainer`` accepts no ``training_type``
         (there is no LoRA/full distinction for continued pre-training) and its
-        ``compute`` is ``HyperPodCompute``-only, so it cannot take the
-        serverful ``TrainingJobCompute`` the others accept.
+        ``compute`` is ``HyperPodCompute``-only.
+
+        Marked ``gpu_intensive`` and skipped unless a cluster is configured. CPT
+        refuses to submit without one --
+
+            ValueError: CPT requires HyperPod compute.
+            Pass compute=HyperPodCompute(...) when creating the CPTTrainer.
+
+        -- and HyperPod submits to a pre-provisioned cluster rather than through
+        CreateTrainingJob, so there is nothing this suite can create on demand.
+        Written in the shallow style anyway so it becomes gate-eligible by
+        dropping one marker once a cluster exists in the PR account.
         """
+        cluster_name = os.environ.get("SHALLOW_HYPERPOD_CLUSTER")
+        if not cluster_name:
+            pytest.skip("CPT requires HyperPod; set SHALLOW_HYPERPOD_CLUSTER to run")
+
         name = unique_name("shallow-cpt")
         trainer = CPTTrainer(
             model=MODEL_ID,
@@ -205,6 +234,7 @@ class TestServerlessSubmission:
             sagemaker_session=sagemaker_session,
             base_job_name=name,
             stopping_condition=_stopping_condition(),
+            compute=HyperPodCompute(cluster_name=cluster_name),
         )
 
         with submitted(trainer) as job:
@@ -214,9 +244,15 @@ class TestServerlessSubmission:
 class TestServerfulSubmission:
     """Explicit ``TrainingJobCompute`` produces a materially different payload
     from the recipe-derived serverless path, including a resource config the
-    backend validates against the recipe."""
+    backend validates against the recipe.
 
-    @pytest.mark.parametrize("trainer_cls", RECIPE_TRAINERS)
+    RLAIF is absent from this class on purpose: verified against the SDK,
+    ``RLAIFTrainer.__init__`` has no ``compute`` parameter at all, so it has no
+    serverful path to exercise. It is still covered by every serverless case in
+    ``TestServerlessSubmission``.
+    """
+
+    @pytest.mark.parametrize("trainer_cls", SERVERFUL_CAPABLE_TRAINERS)
     def test_explicit_compute_is_accepted(self, trainer_cls, sagemaker_session, train_data_uri):
         name = unique_name(f"shallow-{trainer_cls.__name__.lower()}-serverful")
         trainer = _trainer(

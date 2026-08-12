@@ -162,10 +162,24 @@ class TestRecipeOverrides:
 
 
 class TestSequenceLength:
-    """``sequence_length`` selects a different recipe variant, so each supported
-    value is a distinct accepted-payload case."""
+    """``sequence_length`` selects a different recipe variant.
 
-    @pytest.mark.parametrize("sequence_length", ["4K", "16K"])
+    Only ``4K`` is parametrized. Verified against AWS: for ``MODEL_ID`` the recipe
+    catalogue offers exactly one sequence length --
+
+        ValueError: No recipes found with SequenceLength == 16K.
+        Available sequence lengths: ['4K']
+
+    so a ``16K`` case would assert a service-side limitation rather than SDK
+    behaviour. Left parametrized (rather than inlined) so another value can be
+    added when a model in this account supports one.
+
+    Note this field also requires the bundled service model -- see the
+    ``bundled_service_model`` fixture in conftest; the public botocore model has
+    no ``ServerlessJobConfig.SequenceLength`` yet.
+    """
+
+    @pytest.mark.parametrize("sequence_length", ["4K"])
     def test_sequence_length_variants(self, sagemaker_session, train_data_uri, sequence_length):
         trainer = _sft(
             sagemaker_session,

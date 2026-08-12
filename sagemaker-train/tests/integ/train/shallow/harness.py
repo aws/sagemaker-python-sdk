@@ -94,22 +94,33 @@ MAX_RUNTIME_IN_SECONDS = 600
 _UNSTOPPABLE_STATUSES = frozenset({"Completed", "Failed", "Stopped", "Stopping"})
 
 
-def unique_name(prefix):
-    """Build a collision-free job name.
+# Name length limits differ per resource, and the service enforces them strictly.
+# Verified against AWS: a 34-character tuning job name is rejected with
+#   Value '...' at 'hyperParameterTuningJobName' failed to satisfy constraint:
+#   Member must have length less than or equal to 32
+MAX_TRAINING_JOB_NAME = 63
+MAX_TUNING_JOB_NAME = 32
+
+
+def unique_name(prefix, max_length=MAX_TRAINING_JOB_NAME):
+    """Build a collision-free job name that fits the resource's length limit.
 
     The backend rejects duplicate job names per account with ``ResourceInUse``,
-    and these tests run in parallel across many xdist workers, so the
-    name must be unique per invocation rather than per test function. Includes
-    randomness as well as a timestamp because two xdist workers can enter the
-    same second.
+    and these tests run in parallel across many xdist workers, so the name must
+    be unique per invocation rather than per test function. Includes randomness
+    as well as a timestamp because two xdist workers can enter the same second.
 
-    SageMaker training job names are limited to 63 characters, so the prefix is
-    truncated rather than allowed to silently push the suffix over the limit.
+    The uniqueness suffix is preserved and the *prefix* is truncated, so a long
+    descriptive prefix degrades readability rather than silently reintroducing
+    collisions. Pass ``max_length=MAX_TUNING_JOB_NAME`` for tuning jobs, whose
+    limit is roughly half that of training jobs.
     """
     suffix = f"{int(time.time())}-{random.randint(1000, 9999)}"
-    # 63 total, minus the suffix, minus the joining hyphen.
-    head = prefix[: 63 - len(suffix) - 1]
-    return f"{head}-{suffix}"
+    # Budget: total, minus the suffix, minus the joining hyphen.
+    head = prefix[: max_length - len(suffix) - 1]
+    name = f"{head}-{suffix}"
+    assert len(name) <= max_length, f"generated name {name!r} exceeds {max_length} chars"
+    return name
 
 
 def stop_quietly(training_job):

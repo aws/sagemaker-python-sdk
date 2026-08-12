@@ -37,6 +37,7 @@ from __future__ import absolute_import
 
 import logging
 import os
+from contextlib import contextmanager
 
 import pytest
 from sagemaker.core import shapes
@@ -52,6 +53,7 @@ from .harness import (
     DEFAULT_INSTANCE_COUNT,
     DEFAULT_INSTANCE_TYPE,
     MAX_RUNTIME_IN_SECONDS,
+    MAX_TUNING_JOB_NAME,
     assert_submitted,
     submitted,
     unique_name,
@@ -109,6 +111,33 @@ def _tuner(model_trainer, **overrides):
     return HyperparameterTuner(**kwargs)
 
 
+@contextmanager
+def _tuning(tuner, job_name):
+    """Submit a tuning job under an explicit name, then always stop it.
+
+    The explicit ``job_name`` is load-bearing. Left to itself the tuner derives a
+    name from the training image plus a second-granularity timestamp
+    (``pytorch-training-260811-1621``) and ignores ``base_job_name`` entirely, so
+    two tuner tests starting in the same second collide with ``ResourceInUse``.
+    Verified against AWS: that is exactly how this failed before.
+
+    Teardown goes through ``tuner.stop_tuning_job()`` rather than the harness's
+    ``stop_quietly``, because the tuner wraps the resource and stopping it also
+    stops the child training jobs it launched.
+    """
+    try:
+        tuner.tune(job_name=job_name, wait=False)
+        yield
+    finally:
+        try:
+            tuner.stop_tuning_job()
+            logger.info("Stopped tuning job %s", job_name)
+        except Exception as e:  # pragma: no cover - best-effort teardown
+            # A tuning job that never started, or already reached a terminal
+            # state, cannot be stopped; that must not fail the test.
+            logger.warning("Could not stop tuning job %s: %s", job_name, e)
+
+
 class TestTuningJobSubmission:
     """HyperParameterTuningJob acceptance.
 
@@ -118,18 +147,15 @@ class TestTuningJobSubmission:
 
     def test_minimal_tuning_job_is_accepted(self, sagemaker_session):
         """Baseline: the service accepts a well-formed tuning job."""
-        name = unique_name("shallow-tuner")
+        name = unique_name("shallow-tuner", max_length=MAX_TUNING_JOB_NAME)
         tuner = _tuner(_model_trainer(sagemaker_session, name))
 
-        try:
-            tuner.tune(wait=False)
-            assert_submitted(tuner.latest_tuning_job, resource="hyper-parameter-tuning-job")
-        finally:
-            # Tuner exposes its own stop method rather than the resource's.
-            try:
-                tuner.stop_tuning_job()
-            except Exception as e:  # pragma: no cover - best-effort teardown
-                logger.warning("Could not stop tuning job: %s", e)
+        with _tuning(tuner, name):
+            assert_submitted(
+                tuner.latest_tuning_job,
+                expected_name=name,
+                resource="hyper-parameter-tuning-job",
+            )
 
     def test_distributed_tuning_job_is_accepted(self, sagemaker_session):
         """A tuning job wrapping a Torchrun trainer must include the
@@ -140,31 +166,30 @@ class TestTuningJobSubmission:
         proves the channel is present and the definition is accepted, which is
         the part that regressed; the log assertion stays in the deep suite.
         """
-        name = unique_name("shallow-tuner-dist")
+        name = unique_name("shallow-tune-dist", max_length=MAX_TUNING_JOB_NAME)
         model_trainer = _model_trainer(sagemaker_session, name, distributed=Torchrun())
         tuner = _tuner(model_trainer)
 
-        try:
-            tuner.tune(wait=False)
-            arn = assert_submitted(tuner.latest_tuning_job, resource="hyper-parameter-tuning-job")
+        with _tuning(tuner, name):
+            arn = assert_submitted(
+                tuner.latest_tuning_job,
+                expected_name=name,
+                resource="hyper-parameter-tuning-job",
+            )
 
             # The sm_drivers channel lives in the tuning job's training
             # definition; read it back to prove it survived submission rather
-            # than inferring from acceptance alone.
+            # than inferring it from acceptance alone.
             described = tuner.latest_tuning_job.refresh()
             definition = getattr(described, "training_job_definition", None)
-            if definition is not None:
-                channels = [
-                    channel.channel_name for channel in (definition.input_data_config or [])
-                ]
-                assert "sm_drivers" in channels, (
-                    f"tuning job {arn} is missing the sm_drivers channel; " f"channels={channels}"
-                )
-        finally:
-            try:
-                tuner.stop_tuning_job()
-            except Exception as e:  # pragma: no cover - best-effort teardown
-                logger.warning("Could not stop tuning job: %s", e)
+            assert definition is not None, (
+                f"tuning job {arn} has no training_job_definition to inspect; "
+                "cannot verify the sm_drivers channel"
+            )
+            channels = [channel.channel_name for channel in (definition.input_data_config or [])]
+            assert (
+                "sm_drivers" in channels
+            ), f"tuning job {arn} is missing the sm_drivers channel; channels={channels}"
 
 
 @pytest.mark.gpu_intensive

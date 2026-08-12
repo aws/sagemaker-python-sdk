@@ -26,6 +26,7 @@ from __future__ import absolute_import
 
 import json
 import logging
+import os
 
 import pytest
 
@@ -69,6 +70,48 @@ def _ensure_object(sagemaker_session, key):
         logger.info("Uploaded shallow-test fixture data to s3://%s/%s", bucket, key)
 
     return f"s3://{bucket}/{key}"
+
+
+@pytest.fixture(autouse=True, scope="session")
+def bundled_service_model():
+    """Point botocore at the service model bundled in ``sagemaker-core/sample``.
+
+    Some request fields this suite exercises are not in the public botocore model
+    yet -- ``ServerlessJobConfig.SequenceLength`` is the current example. Without
+    this, botocore rejects the request client-side with
+
+        Unknown parameter in ServerlessJobConfig: "SequenceLength"
+
+    and the test fails before reaching the service, which tells us nothing about
+    whether the payload is acceptable. Verified against AWS: setting AWS_DATA_PATH
+    adds ``SequenceLength`` to the shape.
+
+    Session-scoped and autouse because botocore caches loaded models per client;
+    setting this after a client exists would not take effect. Mirrors the
+    ``setup_aws_data_path`` fixture in ``test_recipe_override_integration.py``,
+    which solves the same problem for the client-side recipe tests.
+    """
+    # tests/integ/train/shallow/conftest.py -> repo root is five levels up.
+    repo_root = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "..")
+    )
+    sample_path = os.path.join(repo_root, "sagemaker-core", "sample")
+
+    previous = os.environ.get("AWS_DATA_PATH")
+    if os.path.isdir(sample_path):
+        os.environ["AWS_DATA_PATH"] = sample_path
+        logger.info("Using bundled service model at %s", sample_path)
+    else:
+        # Don't fail the run: on an installed-package layout the bundled model may
+        # not be present, and only the few tests using unreleased fields break.
+        logger.warning("Bundled service model not found at %s", sample_path)
+
+    yield
+
+    if previous is None:
+        os.environ.pop("AWS_DATA_PATH", None)
+    else:
+        os.environ["AWS_DATA_PATH"] = previous
 
 
 @pytest.fixture(scope="module")
