@@ -321,6 +321,9 @@ class MultiTurnRLTrainer(BaseTrainer):
 
         tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
+        # Merge user-provided tags with the JumpStart tags
+        tags.extend(self.tags or [])
+
         try:
             job = Job.create(
                 job_name=current_job_name,
@@ -328,6 +331,7 @@ class MultiTurnRLTrainer(BaseTrainer):
                 role_arn=role,
                 job_config_schema_version=JOB_CONFIG_SCHEMA_VERSION,
                 job_config_document=job_config_doc,
+                tags=tags,
                 session=sagemaker_session.boto_session,
                 region=sagemaker_session.boto_session.region_name,
             )

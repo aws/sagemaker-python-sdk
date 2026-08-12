@@ -1209,6 +1209,7 @@ class BaseTrainer(ABC):
             sagemaker_session=sagemaker_session,
             role=role,
             base_job_name=base_job_name,
+            tags=self.tags,
         )
 
         # Validate data paths exist before submission

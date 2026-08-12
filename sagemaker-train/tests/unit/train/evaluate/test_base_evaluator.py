@@ -14,7 +14,7 @@
 from __future__ import absolute_import
 
 import pytest
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock, Mock, PropertyMock
 from pydantic import ValidationError
 
 from sagemaker.core.shapes import VpcConfig
@@ -24,6 +24,7 @@ from sagemaker.core.utils.utils import Unassigned
 from sagemaker.train.base_trainer import BaseTrainer
 
 from sagemaker.train.evaluate.base_evaluator import BaseEvaluator
+from sagemaker.train.evaluate.constants import EvalType
 
 
 # Test constants
@@ -1840,3 +1841,57 @@ class TestEvalValueMapTypeCoercion:
             {"x": {"default": "5"}}, semantic_values={"x": "5"}
         )
         assert value_map["x"] == "5"
+
+
+class TestStartExecutionTags:
+    """Tests for merging the ``tags`` field into the evaluation pipeline tags."""
+
+    @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
+    def _make_evaluator(self, mock_resolve, mock_session, mock_model_info, tags=None):
+        mock_resolve.return_value = mock_model_info
+        return BaseEvaluator(
+            model=DEFAULT_MODEL,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+            tags=tags,
+        )
+
+    def _start(self, evaluator):
+        """Run _start_execution with the pipeline submit mocked out."""
+        with (
+            patch(
+                "sagemaker.train.evaluate.execution.EvaluationPipelineExecution"
+            ) as mock_execution,
+            patch.object(
+                BaseEvaluator, "_is_jumpstart_model", new_callable=PropertyMock
+            ) as mock_is_js,
+        ):
+            mock_is_js.return_value = False
+            evaluator._start_execution(
+                eval_type=EvalType.BENCHMARK,
+                name="test-eval",
+                pipeline_definition='{"Steps": []}',
+                role_arn=DEFAULT_ROLE_ARN,
+                region=DEFAULT_REGION,
+            )
+            return mock_execution.start.call_args.kwargs["tags"]
+
+    def test_user_tags_reach_the_pipeline(self, mock_session, mock_model_info):
+        """Tags set on the evaluator must be passed to the pipeline execution."""
+        evaluator = self._make_evaluator(
+            mock_session=mock_session,
+            mock_model_info=mock_model_info,
+            tags=[{"key": "sagemaker:project-id", "value": "p-12345"}],
+        )
+
+        assert self._start(evaluator) == [{"key": "sagemaker:project-id", "value": "p-12345"}]
+
+    def test_no_tags_yields_empty_list(self, mock_session, mock_model_info):
+        """Omitting tags must not fail, and must not invent any tags."""
+        evaluator = self._make_evaluator(
+            mock_session=mock_session, mock_model_info=mock_model_info, tags=None
+        )
+
+        assert self._start(evaluator) == []
