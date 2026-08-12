@@ -88,7 +88,6 @@ TEST_CONFIG = {
 class TestLLMAsJudgeEvaluatorIntegration:
     """Integration tests for LLMAsJudgeEvaluator"""
 
-    @pytest.mark.gpu_intensive
     def test_llm_as_judge_evaluation_full_flow(self):
         """
         Test complete LLM-as-Judge evaluation flow with custom and built-in metrics.

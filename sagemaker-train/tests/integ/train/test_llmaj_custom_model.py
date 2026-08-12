@@ -98,7 +98,6 @@ def test_resources(sagemaker_session_us_east_1):
 class TestLLMAJCustomModelIntegration:
     """Integration tests for LLMAsJudgeEvaluator with InspectAI inference path."""
 
-    @pytest.mark.gpu_intensive
     def test_llmaj_bedrock_inference_end_to_end(
         self, sagemaker_session_us_east_1, test_resources
     ):

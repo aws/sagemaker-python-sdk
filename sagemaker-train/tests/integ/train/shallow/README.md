@@ -35,45 +35,65 @@ Concretely, a regression that makes training itself fail — a broken entry scri
 a bad container command, a distributed-launch bug — **will still pass here.** That
 is the accepted trade for the runtime and cost reduction.
 
-## Coverage vs. the suite this replaces
+## Layout
 
-`tests/integ/train` has 181 pre-existing tests, but only ~50 actually submit a
-job — the rest are client-side (recipe resolution, data utils, log streaming,
-docker-compose detection). Mapping the *submitting* ones against this suite:
+One file per trainer, mirroring the existing deep suite so the shallow counterpart
+of any deep test is easy to find:
 
-| Existing area | Ported here | Notes |
-|---|---|---|
-| `test_model_trainer.py` (8) | yes | hyperparameter contract (dict/JSON/YAML), MPI, Torchrun, local tar source, `.sh` entry script, custom distributed driver |
-| `test_sft_trainer_integration.py` (4) | partly | LoRA/FULL, validation dataset, `sequence_length`. **Nova workflow not ported** (us-east-1 + gated model) |
-| `test_dpo_trainer_integration.py` (2) | yes | via `RECIPE_TRAINERS` parametrization |
-| `test_rlvr_trainer_integration.py` (7) | partly | base + recipe/overrides + direct hyperparameter mutation. **Custom reward function / evaluator objects not ported** |
-| `test_rlaif_trainer_integration.py` (3) | yes | RLAIF is in `RECIPE_TRAINERS`; its reward model/prompt come from `_TRAINER_EXTRA_KWARGS` |
-| `test_cpt_hyperpod.py`, `test_nova_sft_hyperpod.py`, `test_sft_data_mixing_hyperpod.py` (3) | no | HyperPod submits to a pre-provisioned cluster, not `CreateTrainingJob` — the pattern does not apply |
-| `test_sft_trainer_data_mixing_integration.py` (1) | yes | `DataMixingConfig`, both explicit and recipe-default |
-| `test_tuner_distributed.py` (1) | yes | `HyperParameterTuningJob`; also asserts the `sm_drivers` channel survived submission |
-| `test_multi_turn_rl_trainer_integration.py` (7) | partly | AgentRFT `Job` submission, marked `gpu_intensive` — see below |
-| `test_recipe_override_integration.py` (35) | n/a | client-side `get_resolved_recipe`; keep as-is, cheap already |
-| Evaluators (`test_benchmark_evaluator.py`, `test_llm_as_judge_*`, `test_mtrl_*`, ~20) | no | `evaluate()` not `train()`; the same pattern applies and is the clearest next extension |
-| `test_notifications.py`, `test_local_model_trainer.py` | no | EventBridge/SNS side effects and local-container mode (no service call) |
+| Shallow file | Deep counterpart |
+|---|---|
+| `test_model_trainer.py` | `test_model_trainer.py` |
+| `test_sft_trainer.py` | `test_sft_trainer_integration.py` |
+| `test_dpo_trainer.py` | `test_dpo_trainer_integration.py` |
+| `test_rlvr_trainer.py` | `test_rlvr_trainer_integration.py` |
+| `test_rlaif_trainer.py` | `test_rlaif_trainer_integration.py` |
+| `test_cpt_trainer.py` | `test_cpt_hyperpod.py` |
+| `test_multi_turn_rl_trainer.py` | `test_multi_turn_rl_trainer_integration.py` |
+| `test_tuner.py` | `test_tuner_distributed.py` |
+| `test_nova_data_mixing.py` | `test_sft_trainer_data_mixing_integration.py` |
 
-Note that not every trainer creates a `TrainingJob`. `HyperparameterTuner` creates
-a `HyperParameterTuningJob` and `MultiTurnRLTrainer` creates an AgentRFT `Job`, so
-`assert_submitted` takes a `resource=` argument for the expected ARN segment and
-the harness resolves the submitted job across four different attribute names.
+`recipe_cases.py` holds the cases every recipe trainer shares (minimal submit,
+validation dataset, dataset override, output path, serverful compute, and the two
+negative cases). Each per-trainer class subclasses `RecipeTrainerCases` and sets
+`TRAINER`, so a new trainer is a two-line file. Override the class attributes only
+where the trainer genuinely differs:
 
-**Deliberately out of scope for this pattern:** HyperPod (different submission
-API), local container mode (no service call), and anything asserting a job's
-*outcome*.
+* `EXTRA_KWARGS` — required constructor args (RLAIF's reward model/prompt)
+* `SUPPORTS_SERVERFUL = False` — trainer takes no `compute` (RLAIF)
+* `SUPPORTS_TRAINING_TYPE = False` — no LoRA/full distinction (CPT)
 
-**Requires prerequisites, so marked `gpu_intensive` and skipped on the PR gate:**
-the MTRL tests. Unlike everything else here they cannot be made self-contained —
-they need a pre-provisioned agent runtime and MLflow app. They read those from
-`SHALLOW_MTRL_AGENT_ENV` / `SHALLOW_MTRL_MLFLOW_APP_ARN` / `SHALLOW_MTRL_DATASET`
-and skip when unset, so once the PR account has them, dropping one marker makes
-them PR-gate-eligible.
+It is deliberately not named `test_*` so pytest does not collect the base class.
 
-**Genuine remaining gap:** evaluator `evaluate()` submissions (~20 existing
-tests). Same pattern, distinct API surface; not yet written.
+## What was marked `gpu_intensive`, and why only those
+
+A deep test is only marked `gpu_intensive` (i.e. moved off the PR gate) when this
+suite has a shallow test covering the same code path. 10 tests met that bar:
+
+| Deep test (now marked) | Shallow equivalent |
+|---|---|
+| `test_model_trainer.py::test_source_dir_local_tar_file` | `TestSourceCodePackaging::test_local_tar_file_source_dir` |
+| `::test_hp_contract_basic_py_script` | `TestMinimalSubmission::test_minimal_request_is_accepted` |
+| `::test_hp_contract_basic_sh_script` | `TestSourceCodePackaging::test_shell_entry_script` |
+| `::test_hp_contract_mpi_script` | `TestComputeConfiguration::test_mpi_distributed` |
+| `::test_hp_contract_torchrun_script` | `TestComputeConfiguration::test_torchrun_distributed` |
+| `::test_hp_contract_hyperparameter_json` | `TestPayloadShaping::test_hyperparameters_from_json_file` |
+| `::test_hp_contract_hyperparameter_yaml` | `TestPayloadShaping::test_hyperparameters_from_yaml_file` |
+| `::test_custom_distributed_driver` | `TestSourceCodePackaging::test_custom_distributed_driver` |
+| `test_sft_trainer_integration.py::test_sft_trainer_lora_with_sequence_length` | `test_sft_trainer.py::test_sequence_length_is_accepted` |
+| `test_tuner_distributed.py::test_tuner_includes_sm_drivers_channel` | `test_tuner.py::test_distributed_tuning_job_is_accepted` |
+
+**Deliberately NOT marked**, because this suite does not cover them — marking them
+would remove coverage with nothing replacing it:
+
+* every evaluator test (`test_benchmark_evaluator.py`, `test_custom_scorer_evaluator.py`,
+  `test_inspect_ai_evaluator.py`, `test_llm_as_judge_*`, `test_llmaj_custom_model.py`)
+  — `evaluate()` is a different API surface returning pipeline executions, and there
+  is no shallow coverage for it yet
+* `test_notifications.py` — asserts EventBridge/SNS side effects, not submission
+* `test_local_model_trainer.py` — local container mode makes no service call
+
+**The rule to preserve:** do not add `gpu_intensive` to a deep test unless a shallow
+test covers the same path. Otherwise the PR gate silently loses coverage.
 
 ## Relationship to `dry_run=True`
 
