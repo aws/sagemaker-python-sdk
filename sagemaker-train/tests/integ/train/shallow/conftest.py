@@ -139,6 +139,103 @@ def nova_train_data_uri(sagemaker_session_us_east_1):
 
 
 @pytest.fixture(scope="module")
+def nova_sft_data_uri(sagemaker_session_us_east_1):
+    """Nova-shaped SFT training data in the caller's own us-east-1 bucket.
+
+    Cannot reuse ``nova_train_data_uri``: Nova SFT records carry a
+    ``schemaVersion`` ("nova-sft-2025-01-01") that this suite's generic chat-format
+    fixture does not. Rather than inventing a second inline copy, this uploads the
+    file the deep suite already ships
+    (``tests/data/train/sft_smtj_sample_data.jsonl``), so both suites train on the
+    same shape and a schema change updates one file.
+
+    Idempotent, for the same xdist reason as ``_ensure_object``.
+    """
+    local_path = os.path.join(
+        os.path.dirname(__file__), "..", "..", "..", "data", "train", "sft_smtj_sample_data.jsonl"
+    )
+    if not os.path.isfile(local_path):
+        pytest.skip(f"Nova sample data not found at {local_path}")
+
+    bucket = sagemaker_session_us_east_1.default_bucket()
+    key = "shallow-integ-test/nova-sft/sft_smtj_sample_data.jsonl"
+    s3 = sagemaker_session_us_east_1.boto_session.client("s3")
+
+    if s3.list_objects_v2(Bucket=bucket, Prefix=key, MaxKeys=1).get("KeyCount", 0) == 0:
+        s3.upload_file(local_path, bucket, key)
+        logger.info("Uploaded Nova SFT fixture data to s3://%s/%s", bucket, key)
+
+    return f"s3://{bucket}/{key}"
+
+
+@pytest.fixture(scope="module")
+def nova_rlvr_data_uri(sagemaker_session_us_east_1, reward_scored_data_uri):
+    """GSM8k-shaped RLVR data copied into the caller's own us-east-1 bucket.
+
+    Two constraints force a copy rather than a reference:
+
+    * The reward function is *invoked* over sample records before submission, so
+      the data must be GSM8k-shaped (see ``reward_scored_data_uri``).
+    * An S3 input must be in the same region as the job, and
+      ``reward_scored_data_uri`` lives in us-west-2.
+
+    The deep test points at ``grpo-64-sample.jsonl`` in account 784379639078, which
+    is not readable from every account this runs in, so this copies the dataset the
+    us-west-2 RLVR tests already use. Idempotent, and skips rather than failing if
+    the source is unreadable.
+    """
+    bucket = sagemaker_session_us_east_1.default_bucket()
+    key = "shallow-integ-test/nova-rlvr/train_285.jsonl"
+    s3 = sagemaker_session_us_east_1.boto_session.client("s3")
+
+    if s3.list_objects_v2(Bucket=bucket, Prefix=key, MaxKeys=1).get("KeyCount", 0) == 0:
+        source = reward_scored_data_uri[len("s3://") :]
+        source_bucket, source_key = source.split("/", 1)
+        try:
+            s3.copy_object(
+                Bucket=bucket, Key=key, CopySource={"Bucket": source_bucket, "Key": source_key}
+            )
+        except Exception as e:
+            pytest.skip(f"Could not copy RLVR sample data into {bucket}: {e}")
+        logger.info("Copied RLVR fixture data to s3://%s/%s", bucket, key)
+
+    return f"s3://{bucket}/{key}"
+
+
+@pytest.fixture(scope="module")
+def nova_output_path(sagemaker_session_us_east_1):
+    """S3 prefix for Nova training output, in the caller's own us-east-1 bucket.
+
+    Deliberately derived rather than hardcoded. The deep Nova tests name a bucket
+    in a specific test account (``sagemaker-us-east-1-784379639078``), which is not
+    readable from every account the suite runs in -- verified: ``AccessDenied`` on
+    ``ListObjectsV2`` from 729646638167. Using ``default_bucket()`` makes these
+    tests work in any account, the same way
+    ``test_sft_trainer_serverful_smtj.py::training_resources`` does.
+    """
+    return f"s3://{sagemaker_session_us_east_1.default_bucket()}/shallow-integ-test/output/"
+
+
+@pytest.fixture(scope="module")
+def nova_reward_function_arn(sagemaker_session_us_east_1):
+    """ARN of the Nova RLVR reward function in the caller's own account.
+
+    Look-up-and-skip, like the other reward fixtures. The deep test hardcodes this
+    ARN in account 784379639078; resolving it per-account instead means the test
+    runs wherever the hub content has been provisioned and skips cleanly elsewhere,
+    rather than failing with a confusing cross-account hub error.
+    """
+    client = sagemaker_session_us_east_1.boto_session.client("sagemaker")
+    hub, name = "sdktest", "rlvr-nova-test-rf"
+    try:
+        return client.describe_hub_content(
+            HubName=hub, HubContentType="JsonDoc", HubContentName=name
+        )["HubContentArn"]
+    except Exception as e:
+        pytest.skip(f"Reward function {name!r} not in hub {hub!r}: {e}")
+
+
+@pytest.fixture(scope="module")
 def reward_scored_data_uri():
     """Dataset the RLVR reward functions can actually score.
 

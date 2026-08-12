@@ -51,6 +51,7 @@ of any deep test is easy to find:
 | `test_multi_turn_rl_trainer.py` | `test_multi_turn_rl_trainer_integration.py` |
 | `test_tuner.py` | `test_tuner_distributed.py` |
 | `test_nova_data_mixing.py` | `test_sft_trainer_data_mixing_integration.py` |
+| `test_nova_trainers.py` | `::test_sft_trainer_nova_workflow`, `::test_rlvr_trainer_nova_workflow`, `test_sft_trainer_serverful_smtj.py` |
 
 `recipe_cases.py` holds the cases every recipe trainer shares (minimal submit,
 validation dataset, dataset override, output path, serverful compute, and the two
@@ -87,10 +88,10 @@ below accounts for all of them.
 | `::test_rlvr_trainer_with_custom_reward_function` | `test_rlvr_trainer.py::test_custom_reward_function_arn` |
 | `::test_rlvr_trainer_with_lambda_arn_auto_creates_evaluator` | `::test_custom_reward_function_lambda_arn` |
 | `::test_rlvr_trainer_with_evaluator_object` | `::test_custom_reward_function_evaluator_object` |
-| `::test_rlvr_trainer_nemotron_with_kl_and_recipe` | `::test_explicit_recipe_file`, `::test_recipe_and_overrides_together` |
+| `::test_rlvr_trainer_nemotron_with_kl_and_recipe` | `::test_explicit_recipe_file`, `::test_recipe_and_overrides_together`, `::test_kl_and_clipping_hyperparameters` |
 | `::test_rlvr_trainer_lora_with_sequence_length` | `test_sft_trainer.py::test_sequence_length_is_accepted` (same code path) |
 | `::test_rlvr_trainer_nova_workflow` | `test_nova_trainers.py::test_nova_rlvr_is_accepted` |
-| `test_sft_trainer_serverful_smtj.py` | `test_explicit_compute_is_accepted` |
+| `test_sft_trainer_serverful_smtj.py` | `test_explicit_compute_is_accepted` (OSS/us-west-2), `test_sft_trainer.py::test_recipe_overrides_are_accepted` (the override half), `test_nova_trainers.py::TestNovaServerfulSubmission` (Nova/us-east-1) |
 | `test_sft_trainer_data_mixing_integration.py` | `test_nova_data_mixing.py` |
 | `test_tuner_distributed.py::test_tuner_includes_sm_drivers_channel` | `test_tuner.py::test_distributed_tuning_job_is_accepted` |
 | `test_multi_turn_rl_trainer_integration.py` — 3 submit tests | `test_multi_turn_rl_trainer.py` (needs prerequisites) |
@@ -127,10 +128,35 @@ path**, or the PR gate silently loses coverage.
 
 ### Fixtures that skip rather than create
 
-`mlflow_arn`, `reward_lambda_arn` and `reward_evaluator` only *look up* their
-resources and skip when absent. The deep suite's equivalents create them (IAM
-roles, Lambdas, MLflow apps, registry entries) — durable side effects that a fast
-PR-gate suite should not perform.
+`mlflow_arn`, `reward_lambda_arn`, `reward_evaluator` and `nova_reward_function_arn`
+only *look up* their resources and skip when absent. The deep suite's equivalents
+create them (IAM roles, Lambdas, MLflow apps, registry entries) — durable side
+effects that a fast PR-gate suite should not perform.
+
+### Fixtures that derive rather than hardcode
+
+The Nova tests (`us_east_1`) build every S3 path from `default_bucket()` and
+resolve the reward function from the calling account's own hub, rather than naming
+the resources the deep Nova tests use.
+
+This is not stylistic. The deep tests hardcode
+`s3://sagemaker-us-east-1-784379639078/...`, which other accounts cannot read —
+verified: `AccessDenied` on `ListObjectsV2` from 729646638167. A hardcoded path
+means the test only runs in one account and fails everywhere else, which is how
+these five ended up never having been executed. `test_sft_trainer_serverful_smtj.py`
+already takes the derived approach (`training_resources`); these follow it, and
+upload the Nova-shaped sample data the deep suite already ships
+(`tests/data/train/sft_smtj_sample_data.jsonl`) rather than adding a second copy.
+
+Two region constraints are worth knowing before adding a Nova test, both verified
+against the service:
+
+* the model package group must be in the **job's** region — passing the us-west-2
+  ARN from `MODEL_PACKAGE_GROUP` is rejected with `Model package group ARN region
+  'us-west-2' does not match expected region 'us-east-1'`, so Nova files use
+  `NOVA_MODEL_PACKAGE_GROUP` (a bare name, which resolves per-session);
+* an S3 input must be in the job's region, so `nova_rlvr_data_uri` copies the
+  us-west-2 RLVR dataset into the us-east-1 bucket rather than referencing it.
 
 ## Relationship to `dry_run=True`
 

@@ -56,6 +56,17 @@ MODEL_PACKAGE_GROUP = (
     "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models"
 )
 
+# The Nova files (us-east-1) cannot reuse the ARN above. Verified against AWS: the
+# model package group must be in the same region as the job, and passing the
+# us-west-2 ARN is rejected with
+#
+#     Model package group ARN region 'us-west-2' does not match expected region
+#     'us-east-1'
+#
+# A bare name resolves in whichever region the session is in. Shared here rather
+# than duplicated per Nova file so the two cannot drift apart.
+NOVA_MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
+
 # An accelerator type is required for the serverful recipe path: these recipes do
 # not resolve onto a CPU instance, so unlike the ModelTrainer suite we cannot use
 # ml.m5.large here. The job is still stopped immediately, so this holds capacity

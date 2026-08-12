@@ -20,9 +20,13 @@ Nova is a distinct path: a different recipe family, a different region
 ``RecipeTrainerCases`` -- its ``MODEL_ID``, dataset fixtures and default session
 are all us-west-2. Marked ``us_east_1`` so they run in that region's integ job.
 
-Datasets and reward functions are the same pre-provisioned ones the deep suite
-uses, in account 784379639078. If those move, both suites break together, which
-is preferable to this suite silently drifting onto its own copies.
+Datasets, output paths and the reward function are all *derived from the calling
+account* rather than hardcoded. The deep Nova tests name resources in one specific
+test account (``sagemaker-us-east-1-784379639078``), which other accounts cannot
+read -- verified: ``AccessDenied`` on ``ListObjectsV2`` from 729646638167. Using
+``default_bucket()`` and resolving the reward function from the caller's own hub
+follows what ``test_sft_trainer_serverful_smtj.py`` already does, and means these
+tests actually run wherever the suite runs instead of only in one account.
 """
 
 from __future__ import absolute_import
@@ -35,18 +39,9 @@ from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.sft_trainer import SFTTrainer
 
 from .harness import MAX_RUNTIME_IN_SECONDS, assert_submitted, submitted, unique_name
+from .recipe_cases import NOVA_MODEL_PACKAGE_GROUP
 
 NOVA_MODEL = "nova-textgeneration-lite-v2"
-MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
-
-# Pre-provisioned in the us-east-1 test account, shared with the deep suite.
-_NOVA_BUCKET = "s3://sagemaker-us-east-1-784379639078"
-SFT_DATASET = f"{_NOVA_BUCKET}/input_data/sft-nova/sft_200_samples.jsonl"
-RLVR_DATASET = f"{_NOVA_BUCKET}/input_data/rlvr-nova/grpo-64-sample.jsonl"
-OUTPUT_PATH = f"{_NOVA_BUCKET}/output/"
-RLVR_REWARD_FUNCTION = (
-    "arn:aws:sagemaker:us-east-1:784379639078:hub-content/sdktest/JsonDoc/rlvr-nova-test-rf/0.0.1"
-)
 
 
 def _stopping_condition():
@@ -57,13 +52,15 @@ def _stopping_condition():
 class TestNovaSFTSubmission:
     """Nova SFT selects a Nova-specific recipe family."""
 
-    def test_nova_sft_is_accepted(self, sagemaker_session_us_east_1):
+    def test_nova_sft_is_accepted(
+        self, sagemaker_session_us_east_1, nova_sft_data_uri, nova_output_path
+    ):
         trainer = SFTTrainer(
             model=NOVA_MODEL,
             training_type=TrainingType.LORA,
-            model_package_group=MODEL_PACKAGE_GROUP,
-            training_dataset=SFT_DATASET,
-            s3_output_path=OUTPUT_PATH,
+            model_package_group=NOVA_MODEL_PACKAGE_GROUP,
+            training_dataset=nova_sft_data_uri,
+            s3_output_path=nova_output_path,
             accept_eula=True,
             sagemaker_session=sagemaker_session_us_east_1,
             base_job_name=unique_name("shallow-nova-sft"),
@@ -78,19 +75,39 @@ class TestNovaSFTSubmission:
 class TestNovaRLVRSubmission:
     """Nova RLVR additionally carries a Nova-specific reward function."""
 
-    def test_nova_rlvr_is_accepted(self, sagemaker_session_us_east_1):
+    def test_nova_rlvr_is_accepted(
+        self,
+        sagemaker_session_us_east_1,
+        nova_rlvr_data_uri,
+        nova_output_path,
+        nova_reward_function_arn,
+    ):
         trainer = RLVRTrainer(
             model=NOVA_MODEL,
             training_type=TrainingType.LORA,
-            model_package_group=MODEL_PACKAGE_GROUP,
-            training_dataset=RLVR_DATASET,
-            validation_dataset=RLVR_DATASET,
-            s3_output_path=OUTPUT_PATH,
-            custom_reward_function=RLVR_REWARD_FUNCTION,
+            model_package_group=NOVA_MODEL_PACKAGE_GROUP,
+            training_dataset=nova_rlvr_data_uri,
+            validation_dataset=nova_rlvr_data_uri,
+            s3_output_path=nova_output_path,
+            custom_reward_function=nova_reward_function_arn,
             accept_eula=True,
             sagemaker_session=sagemaker_session_us_east_1,
             base_job_name=unique_name("shallow-nova-rlvr"),
             stopping_condition=_stopping_condition(),
+            # Before submitting, the SDK *invokes* the reward function over sample
+            # records and refuses the call if their scores do not parse. That gate
+            # is real, but it asserts the contents of a hub artifact provisioned
+            # per-account rather than anything about this payload -- verified: the
+            # function registered under this name in 729646638167 returns a shape
+            # the verifier rejects ("Each output must include 'id',
+            # 'aggregate_reward_score'"), so the test would fail on account state
+            # rather than on a regression.
+            #
+            # The verifier itself is already covered, against a known-compatible
+            # function, by the three us-west-2 reward-function cases in
+            # test_rlvr_trainer.py. What is unique here is the Nova recipe family
+            # and region, which is what this test is for.
+            skip_reward_validation=True,
         )
 
         with submitted(trainer) as job:
@@ -114,12 +131,14 @@ class TestNovaServerfulSubmission:
     SERVERFUL_INSTANCE_TYPE = "ml.g6.12xlarge"
     NOVA_MICRO = "amazon.nova-micro-v1"
 
-    def test_nova_serverful_with_overrides_is_accepted(self, sagemaker_session_us_east_1):
+    def test_nova_serverful_with_overrides_is_accepted(
+        self, sagemaker_session_us_east_1, nova_sft_data_uri, nova_output_path
+    ):
         trainer = SFTTrainer(
             model=self.NOVA_MICRO,
             training_type=TrainingType.LORA,
-            training_dataset=SFT_DATASET,
-            s3_output_path=OUTPUT_PATH,
+            training_dataset=nova_sft_data_uri,
+            s3_output_path=nova_output_path,
             compute=TrainingJobCompute(
                 instance_type=self.SERVERFUL_INSTANCE_TYPE, instance_count=1
             ),
