@@ -332,6 +332,18 @@ jobs:
           #
           # Note the shallow suite is NOT separately marked: it is intended to
           # run here, and its own MTRL/Nova cases carry these markers themselves.
+          #
+          # One caveat for reviewers: tests/integ/train/test_local_model_trainer.py
+          # runs real containers, so it needs Docker and pulls
+          # pytorch-training:2.0.0-cpu-py310 (2.3 GB compressed). Docker is
+          # preinstalled on GitHub-hosted Ubuntu runners, and the pull needs ECR
+          # read on 763104351884, which the assumed role already has for the
+          # shallow tests. It stays on the gate because it makes no service call
+          # and catches local-mode regressions nothing else covers -- but it is
+          # the slowest thing here and the only step with a disk-space floor. If
+          # this job ever goes flaky on runner capacity, these three tests are the
+          # first thing to deselect (the unused `local_mode` marker in tox.ini
+          # exists for exactly that).
           python -m pytest tests/integ/train \
             -m "not gpu_intensive and not us_east_1" \
             -n 8 \

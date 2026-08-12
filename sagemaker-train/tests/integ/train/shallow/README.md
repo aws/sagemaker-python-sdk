@@ -110,6 +110,29 @@ is a different API surface returning pipeline executions rather than jobs, so it
 needs its own harness support. **These were already `gpu_intensive` on master, so
 this PR loses no coverage** — but closing this gap is the clearest follow-up.
 
+Worth knowing before that follow-up: five evaluator tests are **not** marked
+`gpu_intensive` and each blocks on `execution.wait(..., timeout=14400)` — a 4-hour
+ceiling, and a measured ~33 minutes per execution in practice:
+
+| Test | Marks |
+|---|---|
+| `test_benchmark_evaluator.py::test_benchmark_evaluation_full_flow` | none |
+| `test_custom_scorer_evaluator.py::test_custom_scorer_evaluation_full_flow` | `xdist_group` |
+| `test_llm_as_judge_evaluator.py::test_llm_as_judge_evaluation_full_flow` | none |
+| `test_llm_as_judge_base_model_fix.py::test_base_model_evaluation_uses_correct_weights` | `serial` |
+| `test_llm_as_judge_base_model_fix.py::test_base_model_false_still_works` | `serial` |
+
+They run on master's gate too, so this PR does not add them — but they now dominate
+its wall clock. Measured on a full gate run: **201 of 204 tests finished in ~7
+minutes, and these held the run open for another 40+** before it was killed. The
+whole shallow suite costs less than any one of them.
+
+Marking them is not a call this PR makes, because unlike every other
+`gpu_intensive` test they have no shallow counterpart yet — marking them would
+remove coverage, which is exactly what the rule above forbids. The right order is:
+add evaluator support to the harness, then mark them. Until then the gate is
+bounded by evaluation-pipeline latency rather than by anything in this suite.
+
 **HyperPod (3)** — `test_nova_sft_hyperpod.py`, `test_sft_data_mixing_hyperpod.py`,
 `test_cpt_data_mixing_hyperpod.py`. HyperPod submits to a pre-provisioned cluster
 rather than through `CreateTrainingJob`, so the pattern does not apply.
