@@ -83,7 +83,7 @@ from sagemaker.serve.mode.in_process_mode import InProcessMode
 from sagemaker.serve.utils.types import ModelServer, ModelHub
 from sagemaker.serve.detector.image_detector import _get_model_base, _detect_framework_and_version
 from sagemaker.serve.detector.pickler import save_pkl, save_xgboost
-from sagemaker.serve.validations.check_image_uri import is_1p_image_uri
+from sagemaker.serve.validations.check_image_uri import is_1p_image_uri, validate_hub_ecr_address
 from sagemaker.core.inference_config import ResourceRequirements
 from sagemaker.serve.inference_recommendation_mixin import _InferenceRecommenderMixin
 from sagemaker.serve.model_builder_utils import _ModelBuilderUtils
@@ -1289,6 +1289,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self._is_nova_model():
             nova_config = self._get_nova_hosting_config(instance_type=self.instance_type)
             if not self.image_uri:
+                # Defense-in-depth: reject a hub-sourced image URI that spoofs an ECR host before
+                # it can propagate to LocalContainerMode's docker login (see check_image_uri).
+                validate_hub_ecr_address(nova_config["image_uri"])
                 self.image_uri = nova_config["image_uri"]
             if self.env_vars:
                 user_overrides = dict(self.env_vars)
@@ -1309,6 +1312,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if hosting_configs:
             config = self._select_recipe_hosting_config(hosting_configs)
             if not self.image_uri:
+                # Defense-in-depth: reject a hub-sourced image URI that spoofs an ECR host before
+                # it can propagate to LocalContainerMode's docker login (see check_image_uri).
+                validate_hub_ecr_address(config.get("EcrAddress"))
                 self.image_uri = config.get("EcrAddress")
 
             # Cache environment variables from recipe config. Use `or {}` (not a `{}` default) so a
