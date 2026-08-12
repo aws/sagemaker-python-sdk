@@ -48,6 +48,23 @@ class TestRLVRTrainerSubmission(RecipeTrainerCases):
         with submitted(trainer) as job:
             assert_submitted(job)
 
+    def test_kl_and_clipping_hyperparameters(self, sagemaker_session, train_data_uri):
+        """RLVR-specific GRPO hyperparameters must reach the payload.
+
+        The deep test (test_rlvr_trainer_nemotron_with_kl_and_recipe) sets these
+        five fields on a 30B model behind a two-hour poll loop. They are separate
+        recipe fields, not one flag, so setting only max_epochs -- as
+        test_direct_hyperparameter_mutation does -- would not prove they serialize.
+        """
+        trainer = self.build(sagemaker_session, train_data_uri, self.name("-kl"))
+        trainer.hyperparameters.use_kl_loss = True
+        trainer.hyperparameters.kl_loss_coef = 0.05
+        trainer.hyperparameters.clip_ratio = 0.2
+        trainer.hyperparameters.max_epochs = 1
+
+        with submitted(trainer) as job:
+            assert_submitted(job)
+
     def test_explicit_recipe_file(self, sagemaker_session, train_data_uri):
         """A caller-supplied recipe YAML must render into an accepted request.
 

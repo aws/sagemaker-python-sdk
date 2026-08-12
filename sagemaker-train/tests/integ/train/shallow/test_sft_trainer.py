@@ -73,3 +73,47 @@ class TestSFTTrainerSubmission(RecipeTrainerCases):
 
         with submitted(trainer) as job:
             assert_submitted(job)
+
+    def test_recipe_overrides_are_accepted(self, sagemaker_session, train_data_uri):
+        """``overrides`` is merged into the rendered recipe before submission.
+
+        Shallow counterpart of the override half of
+        ``test_sft_trainer_serverful_smtj.py``, which applies
+        ``overrides={"training_config": {"max_epochs": 1}}`` and then asserts the
+        merge via ``get_resolved_recipe()``.
+
+        Two distinct things are checked, and both matter:
+
+        * ``get_resolved_recipe()`` -- the override reached the *rendered recipe*.
+          This is client-side, so it is cheap and exact, and it is what the deep
+          test asserts.
+        * submission -- the resulting payload is still *accepted* by the service.
+          Recipe filtering runs after the request validators and rejects with
+          "No valid recipes found for the given request", so a bad merge is only
+          caught here.
+        """
+        trainer = self.build(
+            sagemaker_session,
+            train_data_uri,
+            self.name("-overrides"),
+            overrides={"training_config": {"max_epochs": 1, "learning_rate": 2e-5}},
+        )
+
+        resolved = trainer.get_resolved_recipe()
+        training_args = resolved["training_config"]["training_args"]
+
+        # Overrides are written flat under training_config but land nested in
+        # training_args -- verified against AWS by probing the resolver:
+        #   overrides {"training_config": {"max_epochs": 3}}
+        #     -> resolved training_config.training_args.max_epochs == 3
+        # The recipe default for this model is 5, so asserting 1 proves the
+        # override was applied rather than coinciding with the default.
+        assert (
+            training_args["max_epochs"] == 1
+        ), f"max_epochs override did not reach the resolved recipe: {training_args}"
+        assert (
+            training_args["learning_rate"] == 2e-5
+        ), f"learning_rate override did not reach the resolved recipe: {training_args}"
+
+        with submitted(trainer) as job:
+            assert_submitted(job)

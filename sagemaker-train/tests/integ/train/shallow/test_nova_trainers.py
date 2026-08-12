@@ -29,6 +29,7 @@ from __future__ import absolute_import
 
 import pytest
 from sagemaker.core import shapes
+from sagemaker.core.training.configs import TrainingJobCompute
 from sagemaker.train.common import TrainingType
 from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.sft_trainer import SFTTrainer
@@ -91,6 +92,57 @@ class TestNovaRLVRSubmission:
             base_job_name=unique_name("shallow-nova-rlvr"),
             stopping_condition=_stopping_condition(),
         )
+
+        with submitted(trainer) as job:
+            assert_submitted(job)
+
+
+@pytest.mark.us_east_1
+class TestNovaServerfulSubmission:
+    """Nova on explicit TrainingJobCompute (serverful SMTJ).
+
+    Shallow counterpart of ``test_sft_trainer_serverful_smtj.py``. Distinct from
+    ``RecipeTrainerCases::test_explicit_compute_is_accepted``, which covers the
+    serverful path for an OSS model in us-west-2: this is a Nova model, a Nova
+    recipe family, a Nova-only instance type, and a different region, so the
+    payload differs throughout.
+
+    Also carries recipe overrides, as the deep test does, since Nova recipes nest
+    epoch control differently from OSS ones.
+    """
+
+    SERVERFUL_INSTANCE_TYPE = "ml.g6.12xlarge"
+    NOVA_MICRO = "amazon.nova-micro-v1"
+
+    def test_nova_serverful_with_overrides_is_accepted(self, sagemaker_session_us_east_1):
+        trainer = SFTTrainer(
+            model=self.NOVA_MICRO,
+            training_type=TrainingType.LORA,
+            training_dataset=SFT_DATASET,
+            s3_output_path=OUTPUT_PATH,
+            compute=TrainingJobCompute(
+                instance_type=self.SERVERFUL_INSTANCE_TYPE, instance_count=1
+            ),
+            sagemaker_session=sagemaker_session_us_east_1,
+            overrides={"training_config": {"max_epochs": 1}},
+            base_job_name=unique_name("shallow-nova-smtj"),
+            stopping_condition=_stopping_condition(),
+        )
+
+        # The deep test asserts the override reached the resolved recipe; keep that,
+        # since it is client-side and exact.
+        #
+        # Recipe families nest epoch control differently: Nova puts it under
+        # ``trainer`` (which is what test_sft_trainer_serverful_smtj.py asserts),
+        # while the OSS Llama recipes use ``training_args`` -- verified against AWS
+        # by probing the resolver. Accept whichever this family uses rather than
+        # hard-coding one shape, so the test fails on a lost override rather than
+        # on a recipe-layout difference.
+        training_config = trainer.get_resolved_recipe()["training_config"]
+        epochs = training_config.get("trainer", {}).get(
+            "max_epochs", training_config.get("training_args", {}).get("max_epochs")
+        )
+        assert epochs == 1, f"override did not reach the resolved recipe: {training_config}"
 
         with submitted(trainer) as job:
             assert_submitted(job)
