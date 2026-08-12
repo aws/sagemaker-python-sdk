@@ -140,6 +140,35 @@ def _citation(metadata: dict) -> str:
     return " | ".join(parts) or "unattributed"
 
 
+#: Sources this script is allowed to surface, as an allowlist rather than a
+#: denylist: the knowledge base is a private corpus that may also hold documents
+#: from non-public sources, and this script's output is posted as comments on a
+#: public pull request. "github" is the only source whose contents are already
+#: public in this very repository, so it is the only source safe to echo back
+#: into it. A new source is excluded until it is added here deliberately.
+#:
+#: This is enforced server-side, in the Retrieve filter, rather than by dropping
+#: results after the fact: a filter cannot be defeated by a chunk whose metadata
+#: is missing or malformed, and nothing internal ever crosses into this process.
+#: Belt-and-braces, _allowed() re-checks each result client-side.
+PUBLIC_SOURCES = ("github",)
+
+
+def _retrieval_filter() -> dict:
+    if len(PUBLIC_SOURCES) == 1:
+        return {"equals": {"key": "source", "value": PUBLIC_SOURCES[0]}}
+    return {"orAll": [{"equals": {"key": "source", "value": s}} for s in PUBLIC_SOURCES]}
+
+
+def _allowed(metadata: dict) -> bool:
+    """Second check on a result's source, after the server-side filter.
+
+    A chunk with no `source` at all is refused: unlabelled provenance is exactly
+    the case where echoing it into a public comment would be a mistake.
+    """
+    return str((metadata or {}).get("source") or "") in PUBLIC_SOURCES
+
+
 def retrieve(client, knowledge_base_id: str, queries: list, top_k: int) -> list:
     """Retrieve for each query and merge, keeping each chunk's best score.
 
@@ -151,7 +180,12 @@ def retrieve(client, knowledge_base_id: str, queries: list, top_k: int) -> list:
             response = client.retrieve(
                 knowledgeBaseId=knowledge_base_id,
                 retrievalQuery={"text": query},
-                retrievalConfiguration={"vectorSearchConfiguration": {"numberOfResults": top_k}},
+                retrievalConfiguration={
+                    "vectorSearchConfiguration": {
+                        "numberOfResults": top_k,
+                        "filter": _retrieval_filter(),
+                    }
+                },
             )
         except Exception as exc:  # pylint: disable=broad-except
             print(f"  query failed ({query[:48]}...): {exc}", file=sys.stderr)
@@ -161,12 +195,28 @@ def retrieve(client, knowledge_base_id: str, queries: list, top_k: int) -> list:
             text = (result.get("content") or {}).get("text", "")
             if not text.strip():
                 continue
+            metadata = result.get("metadata") or {}
+            if not _allowed(metadata):
+                # Should be unreachable given the server-side filter; if it is
+                # ever reached, the filter regressed and silence is the safe
+                # failure. Counted rather than printed: the source name itself
+                # could be the sensitive part.
+                merged.setdefault("__refused__", (0.0, {}))
+                continue
             score = result.get("score") or 0.0
             existing = merged.get(text)
             # Same chunk can surface for several queries; keep the strongest
             # score it earned so ranking reflects its best match.
             if existing is None or score > existing[0]:
-                merged[text] = (score, result.get("metadata") or {})
+                merged[text] = (score, metadata)
+
+    refused = merged.pop("__refused__", None)
+    if refused is not None:
+        print(
+            "Refused one or more non-public chunks; the source filter may have "
+            "regressed. Please report this.",
+            file=sys.stderr,
+        )
 
     ranked = sorted(merged.items(), key=lambda item: item[1][0], reverse=True)
     return [(text, score, metadata) for text, (score, metadata) in ranked]
