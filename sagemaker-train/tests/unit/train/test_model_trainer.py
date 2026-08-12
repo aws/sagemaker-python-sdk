@@ -1570,6 +1570,44 @@ def test_nova_recipe(mock_training_job, mock_unique_name, modules_session):
             ]
 
 
+def test_nova_recipe_with_hyperparameters_file(modules_session):
+    recipe_data = {
+        "run": {
+            "name": "dummy-model",
+            "model_type": "amazon.nova",
+            "model_name_or_path": "dummy-model",
+        }
+    }
+    hyperparameters = {
+        "custom_parameter": "custom-value",
+        "custom_int": 5,
+    }
+
+    with NamedTemporaryFile(suffix=".yaml", delete=False) as recipe, NamedTemporaryFile(
+        suffix=".json", delete=False
+    ) as hyperparameters_file:
+        with open(recipe.name, "w") as file:
+            yaml.dump(recipe_data, file)
+        with open(hyperparameters_file.name, "w") as file:
+            json.dump(hyperparameters, file)
+
+        trainer = ModelTrainer.from_recipe(
+            training_recipe=recipe.name,
+            role=DEFAULT_ROLE,
+            sagemaker_session=modules_session,
+            compute=DEFAULT_COMPUTE_CONFIG,
+            training_image=DEFAULT_IMAGE,
+            hyperparameters=hyperparameters_file.name,
+        )
+
+        assert trainer.hyperparameters["base_model"] == "dummy-model"
+        assert trainer.hyperparameters["custom_parameter"] == "custom-value"
+        assert trainer.hyperparameters["custom_int"] == 5
+
+        os.unlink(recipe.name)
+        os.unlink(hyperparameters_file.name)
+
+
 def test_nova_recipe_with_distillation(modules_session):
     recipe_data = {"training_config": {"distillation_data": "true", "kms_key": "alias/my-kms-key"}}
 
