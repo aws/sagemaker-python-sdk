@@ -118,6 +118,7 @@ from sagemaker.core.explainer.explainer_config import ExplainerConfig
 from sagemaker.core.enums import EndpointType
 from sagemaker.core.common_utils import (
     Tags,
+    TagsDict,
     ModelApprovalStatusEnum,
     _resolve_routing_config,
     format_tags,
@@ -178,6 +179,61 @@ JOB_NAME_PARAM_NAME = "sagemaker_job_name"
 MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
 SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
 SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
+
+
+def _tags_as_key_value_list(tags: Optional[Tags]) -> List[TagsDict]:
+    """Normalize any accepted tag form into the ``{"key": ..., "value": ...}`` list form.
+
+    ``deploy()`` and ``add_tags()`` accept tags either as a list of dicts using
+    ``key``/``value`` or ``Key``/``Value``, or as a single ``{key: value}`` mapping, so
+    ``self._tags`` can hold any of those. The ``sagemaker.core.resources`` ``create()``
+    calls are typed ``List[Tag]`` whose fields are lowercase and which forbid extra
+    fields, so they reject the capitalized form and reject a bare mapping outright.
+
+    Note this differs from :func:`format_tags`, which emits the capitalized form the
+    legacy ``sagemaker_session.create_*`` APIs expect and passes a list through
+    unchanged whatever its casing.
+
+    Args:
+        tags: Tags in any accepted form, or None.
+
+    Returns:
+        The tags as a list of lowercase key/value dicts; empty when none were supplied.
+        Entries missing a key or value are skipped, since SageMaker rejects them.
+    """
+    if not tags:
+        return []
+    if isinstance(tags, dict):
+        return [{"key": k, "value": v} for k, v in tags.items()]
+
+    normalized = []
+    for tag in tags:
+        if isinstance(tag, dict):
+            key = tag.get("key", tag.get("Key"))
+            value = tag.get("value", tag.get("Value"))
+        else:
+            key = getattr(tag, "key", None)
+            value = getattr(tag, "value", None)
+        if key is not None and value is not None:
+            normalized.append({"key": key, "value": value})
+    return normalized
+
+
+def _merge_tags(*tag_sets: Optional[Tags]) -> List[TagsDict]:
+    """Merge tag sets into one key/value list, keeping the first entry for a repeated key.
+
+    SageMaker rejects duplicate tag keys, so a later set cannot override an earlier one.
+    Callers pass the tags SageMaker manages first so a caller-supplied tag cannot displace
+    one the SDK relies on (for example the model-source tag used for resource reuse).
+    """
+    merged: List[TagsDict] = []
+    seen = set()
+    for tags in tag_sets:
+        for tag in _tags_as_key_value_list(tags):
+            if tag["key"] not in seen:
+                merged.append(tag)
+                seen.add(tag["key"])
+    return merged
 
 
 @dataclass
@@ -6185,6 +6241,14 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         from sagemaker.core.resources import InferenceComponent
         from sagemaker.core.resources import Tag as CoreTag
 
+        # Tags passed to deploy() arrive here in kwargs, and the tags ModelBuilder
+        # manages itself are on self._tags. Merge both for the endpoint created
+        # below, whichever path creates it. This deliberately avoids add_tags():
+        # tag_exists() indexes tags as tag["Key"], so writing the lowercase form
+        # the resource create() calls require back onto the accumulator raises
+        # KeyError once self._tags is non-empty (which build() leaves it).
+        endpoint_tags = _merge_tags(getattr(self, "_tags", None), kwargs.get("tags"))
+
         # An inference_config of ResourceRequirements requests an inference
         # component deployment; otherwise the model is placed directly on the
         # production variant.
@@ -6201,6 +6265,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 endpoint_name=endpoint_name,
                 initial_instance_count=initial_instance_count,
                 wait=kwargs.get("wait", True),
+                tags=endpoint_tags,
             )
 
         # The model package may be absent (e.g. a Nova CPTTrainer or raw-S3
@@ -6226,7 +6291,9 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 ],
             )
             endpoint = Endpoint.create(
-                endpoint_name=endpoint_name, endpoint_config_name=endpoint_name
+                endpoint_name=endpoint_name,
+                endpoint_config_name=endpoint_name,
+                tags=endpoint_tags or None,
             )
             if kwargs.get("wait", True):
                 endpoint.wait_for_status("InService")
@@ -6266,10 +6333,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             # tag) to the endpoint so it is discoverable. Stored tags are in
             # {"Key":..,"Value":..} form; normalize to the key/value form the
             # core resource expects.
-            endpoint_tags = [
-                {"key": tag["Key"], "value": tag["Value"]}
-                for tag in format_tags(getattr(self, "_tags", None) or [])
-            ]
             endpoint = Endpoint.create(
                 endpoint_name=endpoint_name,
                 endpoint_config_name=endpoint_name,
@@ -6500,6 +6563,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         endpoint_name: str,
         initial_instance_count: int = 1,
         wait: bool = True,
+        tags: Optional[Tags] = None,
     ) -> Endpoint:
         """Deploy a Nova model directly to an endpoint without inference components.
 
@@ -6528,29 +6592,28 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # The jumpstart-model-id tag always applies (resolved from the model
         # package or the trainer's base_model_name). The recipe-name tag is only
         # available when a model package is present.
-        tags = [
+        nova_tags = [
             {"key": "sagemaker-sdk:jumpstart-model-id", "value": self._base_model_name()},
         ]
         model_package = self._fetch_model_package()
         if model_package is not None:
             base_model = model_package.inference_specification.containers[0].base_model
             if base_model is not None and base_model.recipe_name:
-                tags.append({"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name})
+                nova_tags.append(
+                    {"key": "sagemaker-sdk:recipe-name", "value": base_model.recipe_name}
+                )
 
-        # Merge tags accumulated via add_tags (e.g. the model-source reuse tag).
-        # Those are stored in {"Key": ..., "Value": ...} form, so normalize to the
-        # {"key": ..., "value": ...} form Endpoint.create expects and de-duplicate.
-        existing_keys = {tag["key"] for tag in tags}
-        for tag in format_tags(getattr(self, "_tags", None) or []):
-            key = tag["Key"]
-            if key not in existing_keys:
-                tags.append({"key": key, "value": tag["Value"]})
-                existing_keys.add(key)
+        # ``tags`` carries the tags resolved by the caller: those ModelBuilder
+        # manages plus any passed to deploy(). When this method is called directly,
+        # fall back to the accumulator so its tags are still applied.
+        endpoint_tags = _merge_tags(
+            nova_tags, tags if tags is not None else getattr(self, "_tags", None)
+        )
 
         endpoint = Endpoint.create(
             endpoint_name=endpoint_name,
             endpoint_config_name=endpoint_name,
-            tags=tags,
+            tags=endpoint_tags,
         )
 
         if wait:

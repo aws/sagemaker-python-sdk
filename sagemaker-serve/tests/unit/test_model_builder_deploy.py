@@ -7,7 +7,7 @@ import unittest
 from unittest.mock import Mock, patch, MagicMock, call
 import tempfile
 
-from sagemaker.serve.model_builder import ModelBuilder
+from sagemaker.serve.model_builder import ModelBuilder, _tags_as_key_value_list
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.serve.mode.function_pointers import Mode
 from sagemaker.serve.constants import Framework
@@ -602,3 +602,168 @@ class TestModelBuilderResetState(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTagsAsKeyValueList(unittest.TestCase):
+    """Tests for the tag normalization used by the model-customization deploy paths."""
+
+    def test_lowercase_list_passes_through(self):
+        self.assertEqual(
+            _tags_as_key_value_list([{"key": "a", "value": "b"}]), [{"key": "a", "value": "b"}]
+        )
+
+    def test_capitalized_list_is_lowercased(self):
+        self.assertEqual(
+            _tags_as_key_value_list([{"Key": "a", "Value": "b"}]), [{"key": "a", "value": "b"}]
+        )
+
+    def test_bare_mapping_is_expanded(self):
+        self.assertEqual(_tags_as_key_value_list({"a": "b"}), [{"key": "a", "value": "b"}])
+
+    def test_none_and_empty_yield_empty_list(self):
+        self.assertEqual(_tags_as_key_value_list(None), [])
+        self.assertEqual(_tags_as_key_value_list([]), [])
+
+    def test_empty_value_is_kept(self):
+        """Tag.Value has a minimum length of 0, so an empty value is a legal tag."""
+        self.assertEqual(
+            _tags_as_key_value_list([{"key": "a", "value": ""}]), [{"key": "a", "value": ""}]
+        )
+
+    def test_entry_missing_key_or_value_is_skipped(self):
+        self.assertEqual(
+            _tags_as_key_value_list([{"key": "a"}, {"value": "b"}, {"key": "c", "value": "d"}]),
+            [{"key": "c", "value": "d"}],
+        )
+
+    def test_output_validates_as_core_tag(self):
+        """The output must satisfy the List[Tag] shape the create() calls are typed with."""
+        from pydantic import TypeAdapter
+        from typing import List as TypingList
+        from sagemaker.core.shapes import Tag
+
+        coerced = TypeAdapter(TypingList[Tag]).validate_python(
+            _tags_as_key_value_list([{"Key": "a", "Value": "b"}])
+        )
+        self.assertEqual([(t.key, t.value) for t in coerced], [("a", "b")])
+
+
+class TestDeployNovaModelTags(unittest.TestCase):
+    """Tag propagation through the Nova model-customization deploy path.
+
+    ``deploy(tags=...)`` previously never reached ``self._tags`` on the
+    model-customization paths, so user tags were dropped before Endpoint.create.
+    """
+
+    PROJECT_TAG = {"key": "sagemaker:project-id", "value": "p-12345"}
+
+    def _make_builder(self, tags=None):
+        builder = ModelBuilder.__new__(ModelBuilder)
+        builder.instance_type = "ml.g5.12xlarge"
+        builder.built_model = MagicMock(model_name="model-1")
+        builder._tags = None
+        base_model = MagicMock(hub_content_name="amazon-nova-lite-v1", recipe_name="nova-sft")
+        package = MagicMock()
+        package.inference_specification.containers = [MagicMock(base_model=base_model)]
+        builder._fetch_model_package = MagicMock(return_value=package)
+        builder._base_model_name = MagicMock(return_value="amazon-nova-lite-v1")
+        builder._is_raw_s3_model = MagicMock(return_value=False)
+        if tags:
+            builder.add_tags(_tags_as_key_value_list(tags))
+        return builder
+
+    def _created_tags(self, builder):
+        with patch("sagemaker.serve.model_builder.EndpointConfig"), patch(
+            "sagemaker.serve.model_builder.Endpoint"
+        ) as mock_endpoint:
+            mock_endpoint.create.return_value = MagicMock()
+            builder._deploy_nova_model(endpoint_name="endpoint-1", wait=False)
+            return mock_endpoint.create.call_args.kwargs["tags"]
+
+    def test_user_tags_merged_with_jumpstart_tags(self):
+        tags = self._created_tags(self._make_builder(tags=[self.PROJECT_TAG]))
+        self.assertIn(self.PROJECT_TAG, tags)
+        self.assertTrue(any("jumpstart-model-id" in tag["key"] for tag in tags))
+
+    def test_capitalized_user_tags_accepted(self):
+        builder = self._make_builder(tags=[{"Key": "sagemaker:project-id", "Value": "p-12345"}])
+        self.assertIn(self.PROJECT_TAG, self._created_tags(builder))
+
+    def test_no_user_tags_leaves_jumpstart_tags_only(self):
+        tags = self._created_tags(self._make_builder())
+        self.assertEqual(len(tags), 2)
+        self.assertTrue(all(tag["key"].startswith("sagemaker-sdk:") for tag in tags))
+
+    def test_deploy_tags_reach_the_endpoint_through_model_customization(self):
+        """Covers the full chain: deploy(tags=...) -> kwargs -> Endpoint.create.
+
+        _deploy_model_customization() is the entry point the customization deploy path
+        takes, and it is where the deploy-time tags are resolved for every endpoint
+        branch below it.
+        """
+        builder = self._make_builder()
+        builder._is_nova_model = MagicMock(return_value=True)
+
+        with patch("sagemaker.serve.model_builder.EndpointConfig"), patch(
+            "sagemaker.serve.model_builder.Endpoint"
+        ) as mock_endpoint:
+            mock_endpoint.create.return_value = MagicMock()
+            builder._deploy_model_customization(
+                endpoint_name="endpoint-1", wait=False, tags=[self.PROJECT_TAG]
+            )
+            tags = mock_endpoint.create.call_args.kwargs["tags"]
+
+        self.assertIn(self.PROJECT_TAG, tags)
+        self.assertTrue(any("jumpstart-model-id" in tag["key"] for tag in tags))
+
+    def test_deploy_tags_merge_with_tags_already_on_the_builder(self):
+        """The realistic build()-then-deploy() flow: self._tags is already populated.
+
+        build() leaves capitalized entries on self._tags (JumpStart tags) and can leave
+        Tag objects there for trainer-backed models, so the deploy-time merge has to cope
+        with a non-empty accumulator in a different form than the caller's tags.
+        """
+        from sagemaker.core.shapes import Tag as CoreTag
+
+        builder = self._make_builder()
+        builder._is_nova_model = MagicMock(return_value=True)
+        builder._tags = [
+            {"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "llama"},
+            CoreTag(key="from-trainer", value="yes"),
+        ]
+
+        with patch("sagemaker.serve.model_builder.EndpointConfig"), patch(
+            "sagemaker.serve.model_builder.Endpoint"
+        ) as mock_endpoint:
+            mock_endpoint.create.return_value = MagicMock()
+            builder._deploy_model_customization(
+                endpoint_name="endpoint-1", wait=False, tags=[self.PROJECT_TAG]
+            )
+            tags = mock_endpoint.create.call_args.kwargs["tags"]
+
+        self.assertIn(self.PROJECT_TAG, tags)
+        self.assertIn({"key": "from-trainer", "value": "yes"}, tags)
+        self.assertTrue(any(tag["key"] == "sagemaker-sdk:jumpstart-model-id" for tag in tags))
+
+    def test_a_managed_tag_is_not_displaced_by_a_colliding_deploy_tag(self):
+        """SageMaker rejects duplicate keys, so the tag the SDK relies on must win."""
+        builder = self._make_builder()
+        builder._is_nova_model = MagicMock(return_value=True)
+        builder._tags = [{"Key": "sagemaker-sdk:jumpstart-model-id", "Value": "managed"}]
+
+        with patch("sagemaker.serve.model_builder.EndpointConfig"), patch(
+            "sagemaker.serve.model_builder.Endpoint"
+        ) as mock_endpoint:
+            mock_endpoint.create.return_value = MagicMock()
+            builder._deploy_model_customization(
+                endpoint_name="endpoint-1",
+                wait=False,
+                tags=[{"key": "sagemaker-sdk:jumpstart-model-id", "value": "user-override"}],
+            )
+            tags = mock_endpoint.create.call_args.kwargs["tags"]
+
+        keys = [tag["key"] for tag in tags]
+        self.assertEqual(keys.count("sagemaker-sdk:jumpstart-model-id"), 1)
+        self.assertNotIn(
+            {"key": "sagemaker-sdk:jumpstart-model-id", "value": "user-override"}, tags
+        )
