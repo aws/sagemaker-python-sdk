@@ -27,6 +27,12 @@ from sagemaker.train.rlvr_trainer import RLVRTrainer
 from .harness import assert_submitted, submitted
 from .recipe_cases import RecipeTrainerCases
 
+# Pre-provisioned reward function in the test account, same one the deep suite
+# uses (test_rlvr_trainer_integration.py).
+REWARD_FUNCTION_ARN = (
+    "arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1"
+)
+
 
 class TestRLVRTrainerSubmission(RecipeTrainerCases):
     """RLVR accepts every shared case, plus recipe customization."""
@@ -92,6 +98,67 @@ class TestRLVRTrainerSubmission(RecipeTrainerCases):
             train_data_uri,
             self.name("-overrides"),
             overrides={"training_config": {"learning_rate": 2e-5, "max_epochs": 1}},
+        )
+
+        with submitted(trainer) as job:
+            assert_submitted(job)
+
+    # -- reward-function variants -------------------------------------------
+    #
+    # RLVR is the only trainer with a pluggable reward function, and the deep
+    # suite covers three distinct forms. Each changes what the SDK puts in the
+    # payload, so each needs its own acceptance case.
+
+    def test_custom_reward_function_arn(self, sagemaker_session, reward_scored_data_uri):
+        """A hub-content reward-function ARN must be accepted.
+
+        Shallow counterpart of test_rlvr_trainer_with_custom_reward_function.
+        """
+        trainer = self.build(
+            sagemaker_session,
+            reward_scored_data_uri,
+            self.name("-rf-arn"),
+            custom_reward_function=REWARD_FUNCTION_ARN,
+        )
+
+        with submitted(trainer) as job:
+            assert_submitted(job)
+
+    def test_custom_reward_function_lambda_arn(
+        self, sagemaker_session, reward_scored_data_uri, reward_lambda_arn
+    ):
+        """A Lambda ARN as the reward function auto-creates an AI Registry
+        Evaluator, then submits.
+
+        Shallow counterpart of
+        test_rlvr_trainer_with_lambda_arn_auto_creates_evaluator. The Lambda is
+        reused from the parent train conftest rather than created here, and the
+        test skips if it is unavailable.
+        """
+        trainer = self.build(
+            sagemaker_session,
+            reward_scored_data_uri,
+            self.name("-rf-lambda"),
+            custom_reward_function=reward_lambda_arn,
+        )
+
+        with submitted(trainer) as job:
+            assert_submitted(job)
+
+    def test_custom_reward_function_evaluator_object(
+        self, sagemaker_session, reward_scored_data_uri, reward_evaluator
+    ):
+        """A pre-created ``Evaluator`` object as the reward function must
+        serialize to the same accepted payload as an ARN.
+
+        Shallow counterpart of test_rlvr_trainer_with_evaluator_object. Skips when
+        the evaluator is absent rather than creating one.
+        """
+        trainer = self.build(
+            sagemaker_session,
+            reward_scored_data_uri,
+            self.name("-rf-obj"),
+            custom_reward_function=reward_evaluator,
         )
 
         with submitted(trainer) as job:

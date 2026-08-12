@@ -183,6 +183,47 @@ class RecipeTrainerCases:
         with submitted(trainer) as job:
             assert_submitted(job)
 
+    def test_mlflow_experiment_tracking(self, sagemaker_session, train_data_uri):
+        """MLflow experiment/run names must be accepted.
+
+        The ``*_complete_workflow`` tests in the deep suites all configure MLflow
+        (either ``mlflow_resource_arn`` or the experiment/run names), so without
+        this the shallow counterpart of those tests would miss the MLflow half of
+        the payload entirely.
+
+        Uses the experiment/run *names* rather than ``mlflow_resource_arn``: the
+        names travel the same serialization path but need no pre-provisioned
+        tracking server, so this stays self-contained. ``test_mlflow_resource_arn``
+        below covers the ARN form when one is available.
+        """
+        trainer = self.build(
+            sagemaker_session,
+            train_data_uri,
+            self.name("-mlflow"),
+            mlflow_experiment_name="shallow-integ-test-exp",
+            mlflow_run_name="shallow-integ-test-run",
+        )
+
+        with submitted(trainer) as job:
+            assert_submitted(job)
+
+    def test_mlflow_resource_arn(self, sagemaker_session, train_data_uri, mlflow_arn):
+        """An explicit MLflow tracking-server ARN must be accepted.
+
+        Skips when no MLflow app exists in the account (see the ``mlflow_arn``
+        fixture) rather than creating one, which would be slow and would leave a
+        durable resource behind.
+        """
+        trainer = self.build(
+            sagemaker_session,
+            train_data_uri,
+            self.name("-mlflow-arn"),
+            mlflow_resource_arn=mlflow_arn,
+        )
+
+        with submitted(trainer) as job:
+            assert_submitted(job)
+
     # -- serverful (explicit TrainingJobCompute) -----------------------------
 
     def test_explicit_compute_is_accepted(self, sagemaker_session, train_data_uri):

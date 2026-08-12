@@ -139,6 +139,84 @@ def nova_train_data_uri(sagemaker_session_us_east_1):
 
 
 @pytest.fixture(scope="module")
+def reward_scored_data_uri():
+    """Dataset the RLVR reward functions can actually score.
+
+    The reward-function tests cannot use ``train_data_uri``. Verified against AWS:
+    before submitting, the SDK *invokes* the reward function over sample records
+    and fails the call if they do not score --
+
+        OSS reward function returned non-200 status code: 500.
+        Body: {"error": "GSM8k scoring failed: 'list' object has no attribute 'strip'"}
+
+    The pre-provisioned reward functions expect GSM8k-shaped records, so this
+    reuses the same dataset the deep RLVR suite uses rather than this suite's
+    generic chat-format fixture.
+    """
+    return "s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl"
+
+
+@pytest.fixture(scope="module")
+def reward_evaluator(sagemaker_session):
+    """An existing AI Registry Evaluator object, if present; skip otherwise.
+
+    Look-up only, for the same reason as ``reward_lambda_arn``: the deep suite's
+    fixture will *create* an evaluator (and wait for it), which is a durable
+    registry write this suite should not make.
+    """
+    from sagemaker.ai_registry.evaluator import Evaluator
+
+    name = "test-integ-rlvr-trainer"
+    try:
+        return Evaluator.get(name, sagemaker_session=sagemaker_session)
+    except Exception:
+        pytest.skip(f"Evaluator {name!r} not present; skipping")
+
+
+@pytest.fixture(scope="module")
+def reward_lambda_arn(sagemaker_session):
+    """ARN of the OSS reward-function Lambda, if it already exists.
+
+    The parent train conftest creates this Lambda on demand
+    (``oss_lambda_arn``), including an IAM role and a 15-second propagation
+    sleep. This suite only looks it up: creating IAM roles and Lambdas is a
+    durable side effect that a fast PR-gate suite should not perform. Skips when
+    absent, so the account state decides rather than the test.
+    """
+    client = sagemaker_session.boto_session.client("lambda")
+    name = "pysdk-integ-test-sm-train-oss-reward-fn"
+    try:
+        return client.get_function(FunctionName=name)["Configuration"]["FunctionArn"]
+    except Exception:
+        pytest.skip(f"Reward-function Lambda {name!r} not present; skipping")
+
+
+@pytest.fixture(scope="module")
+def mlflow_arn(sagemaker_session):
+    """ARN of an existing, ready MLflow app; skip if the account has none.
+
+    Deliberately does NOT create one. The parent train conftest's
+    ``mlflow_resource_arn`` fixture will create and delete an app if none exists,
+    which takes minutes and provisions a durable resource -- far too heavy for a
+    suite whose whole point is to be cheap. Here a missing app just skips the two
+    tests that need an ARN; the experiment/run-name path is covered unconditionally.
+    """
+    client = sagemaker_session.boto_session.client("sagemaker")
+    try:
+        # Not a paginatable operation ("Operation cannot be paginated:
+        # list_mlflow_apps"), so call it directly rather than via get_paginator.
+        summaries = client.list_mlflow_apps().get("Summaries", [])
+    except Exception as e:
+        pytest.skip(f"Could not list MLflow apps: {e}")
+
+    for app in summaries:
+        if app.get("Status") in ("Created", "Updated"):
+            return app["Arn"]
+
+    pytest.skip("No ready MLflow app in this account; skipping ARN-based test")
+
+
+@pytest.fixture(scope="module")
 def output_path(sagemaker_session):
     """S3 prefix for training output.
 

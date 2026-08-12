@@ -64,36 +64,73 @@ where the trainer genuinely differs:
 
 It is deliberately not named `test_*` so pytest does not collect the base class.
 
-## What was marked `gpu_intensive`, and why only those
+## Coverage of every `gpu_intensive` test
 
-A deep test is only marked `gpu_intensive` (i.e. moved off the PR gate) when this
-suite has a shallow test covering the same code path. 10 tests met that bar:
+The rule: **a deep test belongs off the PR gate only if this suite covers the same
+code path.** There are 46 `gpu_intensive` tests in `tests/integ/train`; the table
+below accounts for all of them.
 
-| Deep test (now marked) | Shallow equivalent |
+### Covered by this suite
+
+| Deep test | Shallow equivalent |
 |---|---|
-| `test_model_trainer.py::test_source_dir_local_tar_file` | `TestSourceCodePackaging::test_local_tar_file_source_dir` |
-| `::test_hp_contract_basic_py_script` | `TestMinimalSubmission::test_minimal_request_is_accepted` |
-| `::test_hp_contract_basic_sh_script` | `TestSourceCodePackaging::test_shell_entry_script` |
-| `::test_hp_contract_mpi_script` | `TestComputeConfiguration::test_mpi_distributed` |
-| `::test_hp_contract_torchrun_script` | `TestComputeConfiguration::test_torchrun_distributed` |
-| `::test_hp_contract_hyperparameter_json` | `TestPayloadShaping::test_hyperparameters_from_json_file` |
-| `::test_hp_contract_hyperparameter_yaml` | `TestPayloadShaping::test_hyperparameters_from_yaml_file` |
-| `::test_custom_distributed_driver` | `TestSourceCodePackaging::test_custom_distributed_driver` |
-| `test_sft_trainer_integration.py::test_sft_trainer_lora_with_sequence_length` | `test_sft_trainer.py::test_sequence_length_is_accepted` |
+| `test_model_trainer.py` — 8 tests (tar source, py/sh entry, MPI, torchrun, HP json/yaml, custom driver) | `test_model_trainer.py` — `TestSourceCodePackaging`, `TestPayloadShaping`, `TestComputeConfiguration` |
+| `test_sft_trainer_integration.py::test_sft_trainer_lora_complete_workflow` | `test_minimal_request_is_accepted` + `test_mlflow_resource_arn` |
+| `::test_sft_trainer_with_validation_dataset` | `test_with_validation_dataset` |
+| `::test_sft_trainer_lora_with_sequence_length` | `test_sft_trainer.py::test_sequence_length_is_accepted` |
+| `::test_sft_trainer_nova_workflow` | `test_nova_trainers.py::test_nova_sft_is_accepted` |
+| `test_dpo_trainer_integration.py` — both tests | `test_dpo_trainer.py` (inherits the shared cases) |
+| `test_rlaif_trainer_integration.py::test_rlaif_trainer_lora_complete_workflow` | `test_minimal_request_is_accepted` |
+| `::test_rlaif_trainer_with_custom_reward_settings` | `test_rlaif_trainer.py::test_reward_prompt_as_arn` |
+| `::test_rlaif_trainer_continued_finetuning` | `::test_continued_finetuning_from_model_package` |
+| `test_rlvr_trainer_integration.py::test_rlvr_trainer_lora_complete_workflow` | `test_minimal_request_is_accepted` |
+| `::test_rlvr_trainer_with_custom_reward_function` | `test_rlvr_trainer.py::test_custom_reward_function_arn` |
+| `::test_rlvr_trainer_with_lambda_arn_auto_creates_evaluator` | `::test_custom_reward_function_lambda_arn` |
+| `::test_rlvr_trainer_with_evaluator_object` | `::test_custom_reward_function_evaluator_object` |
+| `::test_rlvr_trainer_nemotron_with_kl_and_recipe` | `::test_explicit_recipe_file`, `::test_recipe_and_overrides_together` |
+| `::test_rlvr_trainer_lora_with_sequence_length` | `test_sft_trainer.py::test_sequence_length_is_accepted` (same code path) |
+| `::test_rlvr_trainer_nova_workflow` | `test_nova_trainers.py::test_nova_rlvr_is_accepted` |
+| `test_sft_trainer_serverful_smtj.py` | `test_explicit_compute_is_accepted` |
+| `test_sft_trainer_data_mixing_integration.py` | `test_nova_data_mixing.py` |
 | `test_tuner_distributed.py::test_tuner_includes_sm_drivers_channel` | `test_tuner.py::test_distributed_tuning_job_is_accepted` |
+| `test_multi_turn_rl_trainer_integration.py` — 3 submit tests | `test_multi_turn_rl_trainer.py` (needs prerequisites) |
+| `test_cpt_hyperpod.py` | `test_cpt_trainer.py` (needs a HyperPod cluster) |
 
-**Deliberately NOT marked**, because this suite does not cover them — marking them
-would remove coverage with nothing replacing it:
+MLflow is worth calling out: every `*_complete_workflow` deep test configures it,
+so `RecipeTrainerCases` covers both forms — `test_mlflow_experiment_tracking`
+(experiment/run names, always runs) and `test_mlflow_resource_arn` (tracking-server
+ARN, skips when the account has no app).
 
-* every evaluator test (`test_benchmark_evaluator.py`, `test_custom_scorer_evaluator.py`,
-  `test_inspect_ai_evaluator.py`, `test_llm_as_judge_*`, `test_llmaj_custom_model.py`)
-  — `evaluate()` is a different API surface returning pipeline executions, and there
-  is no shallow coverage for it yet
-* `test_notifications.py` — asserts EventBridge/SNS side effects, not submission
-* `test_local_model_trainer.py` — local container mode makes no service call
+### Not covered, and why
 
-**The rule to preserve:** do not add `gpu_intensive` to a deep test unless a shallow
-test covers the same path. Otherwise the PR gate silently loses coverage.
+**Evaluator tests (11)** — `test_benchmark_evaluator.py`, `test_custom_scorer_evaluator.py`,
+`test_mtrl_evaluator_3p_agent.py`, `test_mtrl_trainer_integration.py`. `evaluate()`
+is a different API surface returning pipeline executions rather than jobs, so it
+needs its own harness support. **These were already `gpu_intensive` on master, so
+this PR loses no coverage** — but closing this gap is the clearest follow-up.
+
+**HyperPod (3)** — `test_nova_sft_hyperpod.py`, `test_sft_data_mixing_hyperpod.py`,
+`test_cpt_data_mixing_hyperpod.py`. HyperPod submits to a pre-provisioned cluster
+rather than through `CreateTrainingJob`, so the pattern does not apply.
+`test_cpt_trainer.py` is written in the shallow style and activates when
+`SHALLOW_HYPERPOD_CLUSTER` is set.
+
+### Tests this PR newly marks
+
+Only these 10 gained `gpu_intensive` here — the 8 in `test_model_trainer.py`,
+`test_sft_trainer_lora_with_sequence_length`, and
+`test_tuner_includes_sm_drivers_channel`. Everything else in the table above was
+already marked on master.
+
+**Do not add `gpu_intensive` to a deep test unless a shallow test covers the same
+path**, or the PR gate silently loses coverage.
+
+### Fixtures that skip rather than create
+
+`mlflow_arn`, `reward_lambda_arn` and `reward_evaluator` only *look up* their
+resources and skip when absent. The deep suite's equivalents create them (IAM
+roles, Lambdas, MLflow apps, registry entries) — durable side effects that a fast
+PR-gate suite should not perform.
 
 ## Relationship to `dry_run=True`
 
