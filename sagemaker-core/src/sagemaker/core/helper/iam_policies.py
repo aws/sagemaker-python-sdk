@@ -904,11 +904,20 @@ IAM_POLICY_CONFIG = {
                         "Action": [
                             "bedrock:CreateEvaluationJob",
                             "bedrock:GetEvaluationJob",
+                        ],
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
                             "bedrock:InvokeModel",
                             "bedrock:InvokeModelWithResponseStream",
                         ],
-                        "Resource": "*",
-                    }
+                        "Resource": [
+                            "arn:aws:bedrock:*:*:foundation-model/*",
+                            "arn:aws:bedrock:*::foundation-model/*",
+                        ],
+                    },
                 ],
             },
             "mlflow_policy": {

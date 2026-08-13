@@ -41,10 +41,11 @@ class TestEvaluationRoleType:
         assert "bedrock:CreateEvaluationJob" in actions
         assert "bedrock:GetEvaluationJob" in actions
 
-    def test_evaluation_smoke_actions_include_bedrock_invoke(self):
-        """Smoke test actions should include Bedrock invoke actions."""
+    def test_evaluation_smoke_actions_exclude_bedrock_invoke(self):
+        """InvokeModel is resource-scoped, not gated."""
         actions = _get_smoke_test_actions("model_eval")
-        assert "bedrock:InvokeModel" in actions
+        assert "bedrock:InvokeModel" not in actions
+        assert "bedrock:InvokeModelWithResponseStream" not in actions
 
     def test_resolve_raises_when_bedrock_permissions_denied(self):
         """Should raise RoleValidationError when Bedrock permissions are denied."""
@@ -57,8 +58,6 @@ class TestEvaluationRoleType:
                 "EvaluationResults": [
                     {"EvalActionName": "bedrock:CreateEvaluationJob", "EvalDecision": "implicitDeny"},
                     {"EvalActionName": "bedrock:GetEvaluationJob", "EvalDecision": "allowed"},
-                    {"EvalActionName": "bedrock:InvokeModel", "EvalDecision": "allowed"},
-                    {"EvalActionName": "bedrock:InvokeModelWithResponseStream", "EvalDecision": "allowed"},
                 ]
             }
         ]
