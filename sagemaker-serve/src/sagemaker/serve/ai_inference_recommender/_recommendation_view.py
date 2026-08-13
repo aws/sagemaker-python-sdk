@@ -21,9 +21,11 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from sagemaker.serve.ai_inference_recommender.result import (
+    _coerce_numeric,
     _fmt_number,
     _format_table,
     _indent,
+    _require_pandas,
 )
 
 
@@ -63,9 +65,7 @@ class _ExpectedPerformanceMetric:
         return dict(self._stats)
 
     def __repr__(self) -> str:
-        parts = ", ".join(
-            f"{stat}={_fmt_number(v)}" for stat, v in self._stats.items()
-        )
+        parts = ", ".join(f"{stat}={_fmt_number(v)}" for stat, v in self._stats.items())
         unit = f" {self.unit}" if self.unit else ""
         return f"<{parts}{unit}>"
 
@@ -82,9 +82,7 @@ class _ExpectedPerformanceView:
     __slots__ = ("_by_metric",)
 
     def __init__(self, raw_rows: Optional[List[Any]]):
-        by_metric: Dict[str, Dict[str, Any]] = defaultdict(
-            lambda: {"unit": None, "stats": {}}
-        )
+        by_metric: Dict[str, Dict[str, Any]] = defaultdict(lambda: {"unit": None, "stats": {}})
         for row in raw_rows or []:
             metric = getattr(row, "metric", None)
             if not metric:
@@ -139,9 +137,9 @@ class _ExpectedPerformanceView:
         return len(self._by_metric)
 
     def __repr__(self) -> str:
-        return "{" + ", ".join(
-            f"{name}: {metric!r}" for name, metric in self._by_metric.items()
-        ) + "}"
+        return (
+            "{" + ", ".join(f"{name}: {metric!r}" for name, metric in self._by_metric.items()) + "}"
+        )
 
 
 def _to_float(value):
@@ -195,7 +193,6 @@ class _RecommendationView:
     def __str__(self) -> str:
         md = getattr(self._raw, "model_details", None)
         dc = getattr(self._raw, "deployment_configuration", None)
-        ep = getattr(self._raw, "expected_performance", None) or []
 
         config_lines = [
             f"instance_type:        {_safe_str(dc, 'instance_type')}",
@@ -217,14 +214,16 @@ class _RecommendationView:
                 env_lines = [f"  {k} = {v}" for k, v in items]
                 env_block = "\nenv vars ({0}):\n{1}".format(len(items), "\n".join(env_lines))
 
-        perf_rows = []
-        for m in ep:
-            perf_rows.append([
-                _safe_str(m, "metric"),
-                _safe_str(m, "stat"),
-                _fmt_number(_safe_float(m, "value")),
-                _safe_str(m, "unit"),
-            ])
+        # Same records to_dataframe() uses, formatted for display here.
+        perf_rows = [
+            [
+                rec["metric"] if rec["metric"] not in (None, "") else "-",
+                rec["stat"] if rec["stat"] not in (None, "") else "-",
+                _fmt_number(rec["value"]),
+                rec["unit"] if rec["unit"] not in (None, "") else "-",
+            ]
+            for rec in self._perf_records()
+        ]
         perf_table = _format_table(
             headers=["metric", "stat", "value", "unit"],
             rows=perf_rows,
@@ -248,6 +247,30 @@ class _RecommendationView:
     def _repr_pretty_(self, p, cycle):
         # Render the full table in notebooks (Jupyter uses this hook).
         p.text("..." if cycle else str(self))
+
+    def _perf_records(self) -> List[Dict[str, Any]]:
+        """(metric, stat, value, unit) records for this row's expected
+        performance — the rows of the printed table, one per (metric, stat)."""
+        ep = getattr(self._raw, "expected_performance", None) or []
+        return [
+            {
+                "metric": getattr(m, "metric", None),
+                "stat": getattr(m, "stat", None),
+                "value": _safe_float(m, "value"),
+                "unit": getattr(m, "unit", None),
+            }
+            for m in ep
+        ]
+
+    def to_dataframe(self):
+        """Return this recommendation's expected performance as a pandas
+        ``DataFrame`` — the same ``metric``/``stat``/``value``/``unit`` rows the
+        printed ``expected performance`` table shows, one row per (metric, stat).
+
+        Requires pandas.
+        """
+        pd = _require_pandas()
+        return pd.DataFrame(self._perf_records(), columns=["metric", "stat", "value", "unit"])
 
 
 def _safe_str(obj, attr) -> str:
@@ -291,47 +314,114 @@ class _RecommendationsView(list):
         # Render the full table in notebooks (Jupyter uses this hook).
         p.text("..." if cycle else str(self))
 
+    # Column labels for the comparative table / DataFrame, in display order.
+    _TABLE_COLUMNS = (
+        "idx",
+        "spec_name",
+        "instance_type",
+        "instances",
+        "copies/inst",
+        "container",
+        "req/s",
+        "tok/s",
+        "lat_p50",
+        "lat_p90",
+        "lat_p99",
+        "ttft_p50",
+        "itl_p50",
+    )
+    # Metric columns holding numbers; the rest are strings or the idx.
+    _NUMERIC_COLUMNS = (
+        "req/s",
+        "tok/s",
+        "lat_p50",
+        "lat_p90",
+        "lat_p99",
+        "ttft_p50",
+        "itl_p50",
+    )
+
+    def _row_records(self) -> List[Dict[str, Any]]:
+        """One record per row, keyed by ``_TABLE_COLUMNS``, with native values.
+
+        Shared by ``__str__`` and ``to_dataframe()`` so they cannot drift.
+        """
+        records = []
+        for view in self:
+            dc = getattr(view.raw, "deployment_configuration", None)
+            ep = view.expected_performance
+            records.append(
+                {
+                    "idx": view._index,
+                    "spec_name": view.recommendation_spec_name,
+                    "instance_type": getattr(dc, "instance_type", None) if dc else None,
+                    "instances": getattr(dc, "instance_count", None) if dc else None,
+                    "copies/inst": (getattr(dc, "copy_count_per_instance", None) if dc else None),
+                    # None when absent (not "-"), so the DataFrame keeps it as
+                    # missing; __str__ renders the dash.
+                    "container": (
+                        _short_container_tag(dc.image_uri)
+                        if dc is not None and getattr(dc, "image_uri", None)
+                        else None
+                    ),
+                    "req/s": _get_metric_stat(ep, "request_throughput", "avg"),
+                    "tok/s": _get_metric_stat(ep, "output_token_throughput", "avg"),
+                    "lat_p50": _get_metric_stat(ep, "request_latency", "p50"),
+                    "lat_p90": _get_metric_stat(ep, "request_latency", "p90"),
+                    "lat_p99": _get_metric_stat(ep, "request_latency", "p99"),
+                    "ttft_p50": _get_metric_stat(ep, "time_to_first_token", "p50"),
+                    "itl_p50": _get_metric_stat(ep, "inter_token_latency", "p50"),
+                }
+            )
+        return records
+
     def __str__(self) -> str:
         if not self:
             return "Recommendations[0]  (no rows)"
 
         rows = []
-        for view in self:
-            dc = getattr(view.raw, "deployment_configuration", None)
-            ep = view.expected_performance
-            rows.append([
-                f"[{view._index}]",
-                view.recommendation_spec_name or "-",
-                _safe_str(dc, "instance_type"),
-                _safe_str(dc, "instance_count"),
-                _safe_str(dc, "copy_count_per_instance"),
-                _short_container_tag(_safe_str(dc, "image_uri")),
-                _fmt_number(_get_metric_stat(ep, "request_throughput", "avg")),
-                _fmt_number(_get_metric_stat(ep, "output_token_throughput", "avg")),
-                _fmt_number(_get_metric_stat(ep, "request_latency", "p50")),
-                _fmt_number(_get_metric_stat(ep, "request_latency", "p90")),
-                _fmt_number(_get_metric_stat(ep, "request_latency", "p99")),
-                _fmt_number(_get_metric_stat(ep, "time_to_first_token", "p50")),
-                _fmt_number(_get_metric_stat(ep, "inter_token_latency", "p50")),
-            ])
+        for rec in self._row_records():
+            row = []
+            for col in self._TABLE_COLUMNS:
+                value = rec[col]
+                if col == "idx":
+                    row.append(f"[{value}]")
+                elif col in self._NUMERIC_COLUMNS:
+                    row.append(_fmt_number(value))
+                else:
+                    row.append("-" if value in (None, "") else str(value))
+            rows.append(row)
 
-        table = _format_table(
-            headers=[
-                "idx", "spec_name", "instance_type",
-                "instances", "copies/inst",
-                "container",
-                "req/s", "tok/s",
-                "lat_p50", "lat_p90", "lat_p99",
-                "ttft_p50", "itl_p50",
-            ],
-            rows=rows,
-        )
+        table = _format_table(headers=list(self._TABLE_COLUMNS), rows=rows)
 
         return (
             f"Recommendations[{len(self)}]  (.best = top row; index by [N] for full detail)\n"
             f"{table}\n"
             f"lat/ttft/itl in ms; req/s = requests/sec; tok/s = output tokens/sec"
         )
+
+    def to_dataframe(self):
+        """Return the recommendations as a pandas ``DataFrame`` — one row per
+        recommendation, columns matching the printed comparative table
+        (``instance_type``, ``instances``, ``req/s``, ``lat_p50``, ...), indexed
+        by the recommendation index ``idx``.
+
+        Latency columns are milliseconds; ``req/s`` is requests/sec and ``tok/s``
+        is output tokens/sec, same as the printed table's footnote. Numeric
+        columns hold real numbers (``NaN`` where a metric is absent), not
+        preformatted strings.
+
+        Requires pandas.
+        """
+        pd = _require_pandas()
+        columns = [c for c in self._TABLE_COLUMNS if c != "idx"]
+        records = self._row_records()
+        frame = pd.DataFrame(
+            [{c: rec[c] for c in columns} for rec in records],
+            columns=columns,
+            index=pd.Index([rec["idx"] for rec in records], name="idx"),
+        )
+        return _coerce_numeric(pd, frame, self._NUMERIC_COLUMNS)
 
 
 def _get_metric_stat(ep_view, metric_name: str, stat: str):

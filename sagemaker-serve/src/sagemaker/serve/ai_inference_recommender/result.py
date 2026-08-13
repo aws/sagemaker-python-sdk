@@ -17,7 +17,7 @@ import io
 import json
 import tarfile
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Sequence
 from urllib.parse import urlparse
 
 import boto3
@@ -28,6 +28,11 @@ OUTPUT_ARCHIVE_FILENAME = "output.tar.gz"
 # instead of a single top-level profile_export_aiperf.json. Its presence in the
 # archive is how we tell a sweep run apart from a single run.
 SEARCH_HISTORY_FILENAME = "search_history.json"
+
+# Statistic columns exposed by ``to_dataframe()``. Superset of the printed
+# table's avg/p50/p90/p99 — the DataFrame also carries min/max/p95/stddev,
+# which the text table omits for width.
+_METRIC_STAT_COLUMNS = ("avg", "min", "max", "p50", "p90", "p95", "p99", "stddev")
 
 
 @dataclass
@@ -82,12 +87,18 @@ class BenchmarkMetrics:
     def get(self, name: str) -> Optional[BenchmarkMetric]:
         return self.all_metrics.get(name)
 
-    def __str__(self) -> str:
+    def _ordered_metric_pairs(self):
+        """(name, metric) pairs in display order: non-HTTP metrics alphabetically,
+        then ``http_*`` transport metrics last. Shared by ``__str__`` and
+        ``to_dataframe()`` so the printed table and the frame stay in sync."""
         rest, http = [], []
         for name in sorted(self.all_metrics):
             bucket = http if name.startswith("http_") else rest
             bucket.append((name, self.all_metrics[name]))
-        return _format_metrics_table(rest + http)
+        return rest + http
+
+    def __str__(self) -> str:
+        return _format_metrics_table(self._ordered_metric_pairs())
 
     def __repr__(self) -> str:
         return f"BenchmarkMetrics({len(self.all_metrics)} metrics; print() for the table)"
@@ -95,6 +106,20 @@ class BenchmarkMetrics:
     def _repr_pretty_(self, p, cycle):
         # Render the full table in notebooks (Jupyter uses this hook).
         p.text("..." if cycle else str(self))
+
+    def to_dataframe(self):
+        """Return the metrics as a pandas ``DataFrame`` indexed by metric name.
+
+        One row per metric, one column per statistic (``unit`` plus
+        ``avg``/``min``/``max``/``p50``/``p90``/``p95``/``p99``/``stddev``).
+        Rows are ordered exactly as the printed table: non-HTTP metrics
+        alphabetically, then ``http_*`` transport metrics last. Unlike the text
+        table, the frame keeps ``min``/``max``/``p95``/``stddev``.
+
+        Requires pandas.
+        """
+        pd = _require_pandas()
+        return _metrics_dataframe(pd, self._ordered_metric_pairs())
 
     @classmethod
     def from_profile_json(cls, profile: Dict[str, Any]) -> "BenchmarkMetrics":
@@ -239,9 +264,22 @@ class BenchmarkResult:
                 f"  s3_output_location: {self.s3_output_location}\n"
                 f"  search:\n{_indent(str(self.search), '    ')}"
             )
-        # Order: well-known headline metrics first, then everything else
-        # alphabetized, then HTTP-level transport metrics last (they're
-        # noise for most readers, useful only for debugging).
+        table = _format_metrics_table(self._ordered_metric_pairs())
+        return (
+            f"BenchmarkResult\n"
+            f"  endpoint:           {self.endpoint or '-'}\n"
+            f"  workload_config:    {self.workload_config or '-'}\n"
+            f"  tool_version:       {self.tool_version or '-'}\n"
+            f"  s3_output_location: {self.s3_output_location}\n"
+            f"  metrics:\n{_indent(table, '    ')}\n"
+            f"  raw profile available via .profile"
+        )
+
+    def _ordered_metric_pairs(self):
+        """(name, metric) pairs in display order: well-known headline metrics
+        first (canonical order), then the rest alphabetized, then ``http_*``
+        transport metrics last. Shared by ``__str__`` and ``to_dataframe()`` so
+        the printed table and the frame stay in the same order."""
         seen = set()
         headline = []
         for name in _KEY_METRIC_FIELDS:
@@ -256,18 +294,28 @@ class BenchmarkResult:
                 continue
             bucket = http if name.startswith("http_") else rest
             bucket.append((name, self.metrics.all_metrics[name]))
+        return headline + rest + http
 
-        ordered = headline + rest + http
-        table = _format_metrics_table(ordered)
-        return (
-            f"BenchmarkResult\n"
-            f"  endpoint:           {self.endpoint or '-'}\n"
-            f"  workload_config:    {self.workload_config or '-'}\n"
-            f"  tool_version:       {self.tool_version or '-'}\n"
-            f"  s3_output_location: {self.s3_output_location}\n"
-            f"  metrics:\n{_indent(table, '    ')}\n"
-            f"  raw profile available via .profile"
-        )
+    def to_dataframe(self):
+        """Return this result's metrics as a pandas ``DataFrame``.
+
+        One row per metric (indexed by metric name), one column per statistic —
+        the same shape as :meth:`BenchmarkMetrics.to_dataframe`, but ordered as
+        this result prints: headline metrics first, then the rest alphabetized,
+        then ``http_*`` transport metrics last.
+
+        A search/sweep result has no single metric profile; call
+        ``result.search`` for its outcome instead.
+
+        Requires pandas.
+        """
+        pd = _require_pandas()
+        if self.search is not None:
+            raise ValueError(
+                "This is a search/sweep result with no single metric profile to "
+                "tabulate. Inspect result.search for the sweep outcome instead."
+            )
+        return _metrics_dataframe(pd, self._ordered_metric_pairs())
 
     def __repr__(self) -> str:
         return (
@@ -319,9 +367,7 @@ class BenchmarkResult:
                 f"(status={status}). Call job.wait() (or pass wait=True to "
                 f"start_benchmark) before BenchmarkResult.from_job()."
             )
-        if job.output_config is None or not getattr(
-            job.output_config, "s3_output_location", None
-        ):
+        if job.output_config is None or not getattr(job.output_config, "s3_output_location", None):
             failure_reason = getattr(job, "failure_reason", None)
             hint = (
                 f"Job failed: {failure_reason or 'no reason provided'}."
@@ -449,9 +495,7 @@ def _find_object(s3_client, bucket: str, prefix: str, suffix: str) -> str:
             key = obj.get("Key", "")
             if key.endswith(suffix):
                 return key
-    raise FileNotFoundError(
-        f"No object ending in {suffix!r} under s3://{bucket}/{prefix}"
-    )
+    raise FileNotFoundError(f"No object ending in {suffix!r} under s3://{bucket}/{prefix}")
 
 
 def _read_member_from_tar_gz(archive_bytes: bytes, suffix: str) -> Optional[bytes]:
@@ -473,6 +517,19 @@ def _as_float(value: Any) -> Optional[float]:
         return None
 
 
+def _require_pandas():
+    """Import pandas lazily, only when ``to_dataframe()`` is called, so this
+    module's printed tables stay stdlib-only."""
+    try:
+        import pandas as pd
+    except ImportError as exc:  # pragma: no cover - trivial re-raise
+        raise ImportError(
+            "to_dataframe() requires pandas, which is not installed. "
+            "Install it with `pip install pandas`."
+        ) from exc
+    return pd
+
+
 def _fmt_number(value: Optional[float]) -> str:
     """Render a number compact for the metrics table; '-' for None."""
     if value is None:
@@ -486,18 +543,48 @@ def _indent(text: str, prefix: str) -> str:
     return "\n".join(prefix + line if line else line for line in text.splitlines())
 
 
+def _coerce_numeric(pd, frame, numeric_cols):
+    """Cast the named columns to float64 so an all-missing column is ``NaN``,
+    not ``object`` holding ``None`` (on which sort/nlargest/mean would raise)."""
+    for col in numeric_cols:
+        if col in frame.columns:
+            frame[col] = pd.to_numeric(frame[col], errors="coerce")
+    return frame
+
+
+def _metrics_dataframe(pd, name_metric_pairs):
+    """Build a metric-indexed DataFrame from (name, BenchmarkMetric) pairs.
+
+    Columns are ``unit`` plus every stat in ``_METRIC_STAT_COLUMNS``; row order
+    follows the input. Empty input yields an empty frame with the same columns.
+    """
+    columns = ["unit", *_METRIC_STAT_COLUMNS]
+    names = [name for name, _ in name_metric_pairs]
+    data = [
+        {
+            "unit": metric.unit,
+            **{stat: getattr(metric, stat, None) for stat in _METRIC_STAT_COLUMNS},
+        }
+        for _name, metric in name_metric_pairs
+    ]
+    frame = pd.DataFrame(data, columns=columns, index=pd.Index(names, name="metric"))
+    return _coerce_numeric(pd, frame, _METRIC_STAT_COLUMNS)
+
+
 def _format_metrics_table(name_metric_pairs) -> str:
     """Render an iterable of (name, BenchmarkMetric) pairs as a table."""
     rows = []
     for _name, metric in name_metric_pairs:
-        rows.append([
-            metric.name,
-            metric.unit or "-",
-            _fmt_number(metric.avg),
-            _fmt_number(metric.p50),
-            _fmt_number(metric.p90),
-            _fmt_number(metric.p99),
-        ])
+        rows.append(
+            [
+                metric.name,
+                metric.unit or "-",
+                _fmt_number(metric.avg),
+                _fmt_number(metric.p50),
+                _fmt_number(metric.p90),
+                _fmt_number(metric.p99),
+            ]
+        )
     return _format_table(
         headers=["metric", "unit", "avg", "p50", "p90", "p99"],
         rows=rows,
@@ -524,7 +611,219 @@ def _format_table(headers, rows) -> str:
     header_line = "  ".join(str(h).ljust(widths[i]) for i, h in enumerate(headers))
     sep_line = "  ".join("─" * widths[i] for i in range(len(headers)))
     body = "\n".join(
-        "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row))
-        for row in str_rows
+        "  ".join(cell.ljust(widths[i]) for i, cell in enumerate(row)) for row in str_rows
     )
     return f"{header_line}\n{sep_line}\n{body}"
+
+
+# Per-metric direction, used to orient a delta so "+" reads as an improvement.
+# Metrics absent from both sets (sequence lengths, token counts, HTTP counters)
+# have no better/worse direction, so they get no signed delta.
+_HIGHER_IS_BETTER = frozenset(
+    {
+        "request_throughput",
+        "output_token_throughput",
+        "e2e_output_token_throughput",
+    }
+)
+_LOWER_IS_BETTER = frozenset(
+    {
+        "request_latency",
+        "time_to_first_token",
+        "inter_token_latency",
+        "benchmark_duration",
+    }
+)
+
+
+@dataclass
+class BenchmarkComparison:
+    """Side-by-side comparison of two or more ``BenchmarkResult`` runs.
+
+    The first run is the baseline; each other run's ``__str__`` shows its value
+    for every key metric alongside the percentage change from the baseline,
+    signed so a ``+`` is always an improvement (higher throughput / lower
+    latency) regardless of the metric's direction.
+
+    Attributes:
+        results: the compared results, baseline first.
+        names: display label per result (defaults to ``run1``, ``run2``, ...).
+        stat: which per-metric statistic is compared (``avg`` by default; any of
+            ``avg``/``p50``/``p90``/``p95``/``p99``/``min``/``max``).
+    """
+
+    results: List["BenchmarkResult"]
+    names: List[str]
+    stat: str = "avg"
+
+    def _metric_names(self) -> List[str]:
+        """Key metrics first (in canonical order), then any other metric present
+        in at least one run — so the table covers everything, headline first."""
+        ordered = [
+            name
+            for name in _KEY_METRIC_FIELDS
+            if any(name in r.metrics.all_metrics for r in self.results)
+        ]
+        seen = set(ordered)
+        for r in self.results:
+            for name in sorted(r.metrics.all_metrics):
+                if name not in seen:
+                    ordered.append(name)
+                    seen.add(name)
+        return ordered
+
+    def _value(self, result: "BenchmarkResult", metric_name: str) -> Optional[float]:
+        metric = result.metrics.all_metrics.get(metric_name)
+        return getattr(metric, self.stat, None) if metric is not None else None
+
+    def _delta_value(self, metric_name: str, baseline, value) -> Optional[float]:
+        """Signed percentage change vs. baseline, oriented so ``+`` is better.
+
+        Only computed for metrics with a known direction (throughput = higher
+        better, latency/duration = lower better). A directionless metric
+        (sequence length, token count, HTTP transport counter) has no
+        better/worse orientation, so a signed "improvement" delta would be
+        misleading under the ``+Δ = better`` header — it returns ``None``.
+        ``None`` is also returned when the delta is undefined (missing value or
+        zero baseline). ``__str__`` formats it; ``to_dataframe()`` keeps it
+        numeric (``NaN`` for ``None``).
+        """
+        if metric_name not in _HIGHER_IS_BETTER and metric_name not in _LOWER_IS_BETTER:
+            return None
+        if baseline is None or value is None or baseline == 0:
+            return None
+        pct = (value - baseline) / abs(baseline) * 100.0
+        if metric_name in _LOWER_IS_BETTER:
+            # Lower-is-better: flip the sign so a drop reads as +.
+            pct = -pct
+        return pct
+
+    def _delta_cell(self, metric_name: str, baseline, value) -> str:
+        """Signed percentage change vs. baseline as a display string; ``-`` when
+        no oriented delta applies (directionless or undefined)."""
+        pct = self._delta_value(metric_name, baseline, value)
+        return "-" if pct is None else f"{pct:+.1f}%"
+
+    def _unit_for(self, metric_name: str) -> Optional[str]:
+        for r in self.results:
+            m = r.metrics.all_metrics.get(metric_name)
+            if m is not None and m.unit:
+                return m.unit
+        return None
+
+    def __str__(self) -> str:
+        metric_names = self._metric_names()
+        if not metric_names:
+            return "BenchmarkComparison (no metrics to compare)"
+
+        # Columns: metric, unit, one value column per run, and a Δ% column per
+        # non-baseline run (vs. the baseline, the first run).
+        headers = ["metric", "unit"]
+        headers += list(self.names)
+        headers += [f"Δ% {name}" for name in self.names[1:]]
+
+        rows = []
+        for metric_name in metric_names:
+            unit = self._unit_for(metric_name) or "-"
+            values = [self._value(r, metric_name) for r in self.results]
+            row = [metric_name, unit] + [_fmt_number(v) for v in values]
+            baseline = values[0]
+            row += [self._delta_cell(metric_name, baseline, v) for v in values[1:]]
+            rows.append(row)
+
+        table = _format_table(headers=headers, rows=rows)
+        baseline_note = f"baseline: {self.names[0]}  |  stat: {self.stat}  (+Δ = better)"
+        return f"BenchmarkComparison\n  {baseline_note}\n{_indent(table, '  ')}"
+
+    def to_dataframe(self):
+        """Return the comparison as a pandas ``DataFrame``.
+
+        Mirrors the printed table: one row per metric (indexed by metric name),
+        a ``unit`` column, one column per run (named by :attr:`names`, holding
+        the compared ``stat``), and a ``Δ% <run>`` column per non-baseline run —
+        signed so ``+`` is always an improvement. Delta values are numeric
+        percentages (``NaN`` where undefined), not preformatted strings.
+
+        Requires pandas.
+        """
+        pd = _require_pandas()
+        columns = ["unit", *self.names, *(f"Δ% {name}" for name in self.names[1:])]
+        metric_names = self._metric_names()
+        data = []
+        for metric_name in metric_names:
+            values = [self._value(r, metric_name) for r in self.results]
+            baseline = values[0]
+            record = {"unit": self._unit_for(metric_name)}
+            for name, value in zip(self.names, values):
+                record[name] = value
+            for name, value in zip(self.names[1:], values[1:]):
+                record[f"Δ% {name}"] = self._delta_value(metric_name, baseline, value)
+            data.append(record)
+        frame = pd.DataFrame(data, columns=columns, index=pd.Index(metric_names, name="metric"))
+        return _coerce_numeric(pd, frame, [c for c in columns if c != "unit"])
+
+    def __repr__(self) -> str:
+        return (
+            f"BenchmarkComparison({len(self.results)} runs: "
+            f"{', '.join(self.names)}; print() for the table)"
+        )
+
+    def _repr_pretty_(self, p, cycle):
+        p.text("..." if cycle else str(self))
+
+
+def compare_benchmarks(
+    *results: "BenchmarkResult",
+    names: Optional[Sequence[str]] = None,
+    stat: str = "avg",
+) -> BenchmarkComparison:
+    """Compare two or more benchmark runs and return a tabular comparison.
+
+    The first result is the baseline; each subsequent run is reported with a
+    signed percentage change from it (oriented so ``+`` is always better —
+    higher throughput or lower latency). ``print()`` the returned object for the
+    table.
+
+    Args:
+        *results: two or more ``BenchmarkResult`` objects (from
+            ``job.show_result()``). The first is the baseline.
+        names: optional display label per result; defaults to ``run1``,
+            ``run2``, .... Must match the number of results when given.
+        stat: which per-metric statistic to compare — one of ``avg`` (default),
+            ``p50``, ``p90``, ``p95``, ``p99``, ``min``, ``max``.
+
+    Returns:
+        BenchmarkComparison: renders a metric-by-run table with per-run deltas.
+
+    Raises:
+        ValueError: if fewer than two results are given, if ``names`` length
+            does not match, if ``stat`` is not a known statistic, or if any
+            result is a concurrency-search/sweep run (which has no single metric
+            profile to compare).
+    """
+    if len(results) < 2:
+        raise ValueError("compare_benchmarks() needs at least two results to compare.")
+    if any(r.is_search for r in results):
+        raise ValueError(
+            "compare_benchmarks() compares single-run results; a search/sweep "
+            "result has no single metric profile. Compare the winning runs instead."
+        )
+    valid_stats = {"avg", "p50", "p90", "p95", "p99", "min", "max"}
+    if stat not in valid_stats:
+        raise ValueError(f"stat must be one of {sorted(valid_stats)}, got {stat!r}.")
+    if names is not None:
+        if len(names) != len(results):
+            raise ValueError(
+                f"names has {len(names)} entries but {len(results)} results were given."
+            )
+        labels = list(names)
+        # Each name is a distinct DataFrame column; a duplicate or "unit" would
+        # collide and make the frame disagree with the printed table.
+        if len(set(labels)) != len(labels):
+            duplicates = sorted({n for n in labels if labels.count(n) > 1})
+            raise ValueError(f"names must be unique; duplicated: {duplicates}.")
+        if "unit" in labels:
+            raise ValueError("names cannot include the reserved column name 'unit'.")
+    else:
+        labels = [f"run{i + 1}" for i in range(len(results))]
+    return BenchmarkComparison(results=list(results), names=labels, stat=stat)
