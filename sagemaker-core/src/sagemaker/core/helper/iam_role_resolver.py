@@ -25,7 +25,7 @@ from sagemaker.core.helper.iam_policies import IAM_POLICY_CONFIG
 
 logger = logging.getLogger(__name__)
 
-ROLE_TYPES = ("training", "serving", "pipeline", "feature_store", "bedrock", "hyperpod")
+ROLE_TYPES = ("training", "serving", "pipeline", "feature_store", "bedrock", "hyperpod", "model_eval")
 
 # Permissions the HyperPod CLI flow needs on the *caller* identity — the local
 # principal that runs `hyperpod connect-cluster` and `hyperpod start-job`. The CLI
