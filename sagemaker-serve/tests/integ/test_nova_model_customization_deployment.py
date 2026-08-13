@@ -469,6 +469,7 @@ class TestTrainerIntegration:
 
 
 @pytest.mark.us_east_1
+@pytest.mark.xdist_group("bedrock_deployment")
 class TestNovaBedrockDeployment:
     """Test deploying a fine-tuned Nova model to Amazon Bedrock as a custom model."""
 
