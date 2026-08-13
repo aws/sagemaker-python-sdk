@@ -1,7 +1,12 @@
 # Shallow (submit-then-stop) integration tests
 
-These tests replace the full `sagemaker-train` integ suite **on the PR gate only**.
-The deep suites still run on the scheduled CI-health workflows.
+These tests add fast acceptance coverage on the PR gate. They run in their own
+`fast-integ-tests` job, **alongside** the existing `integ-tests` CodeBuild suite,
+which is unchanged. The deep suites still run on the scheduled CI-health workflows.
+
+What this suite changes about the gate is not which job runs, but what the existing
+one selects: the `gpu_intensive` marks added here deselect the deep tests that
+submit a job and wait for it, and this suite covers those code paths instead.
 
 ## What a passing test proves
 
@@ -122,16 +127,20 @@ ceiling, and a measured ~33 minutes per execution in practice:
 | `test_llm_as_judge_base_model_fix.py::test_base_model_evaluation_uses_correct_weights` | `serial` |
 | `test_llm_as_judge_base_model_fix.py::test_base_model_false_still_works` | `serial` |
 
-They run on master's gate too, so this PR does not add them — but they now dominate
-its wall clock. Measured on a full gate run: **201 of 204 tests finished in ~7
-minutes, and these held the run open for another 40+** before it was killed. The
+They are selected by the `integ-tests` CodeBuild job, whose buildspec filters
+`-m "not gpu_intensive and not us_east_1"` — so they run on master's gate today and
+continue to after this PR. They dominate that job's wall clock. Measured locally on
+the same selection: **201 of 204 tests finished in ~7 minutes, and these held the
+run open for another 40+** before it was killed. Against the project's 180-minute
+build timeout, five tests with a 4-hour ceiling each are the standing risk. The
 whole shallow suite costs less than any one of them.
 
 Marking them is not a call this PR makes, because unlike every other
 `gpu_intensive` test they have no shallow counterpart yet — marking them would
 remove coverage, which is exactly what the rule above forbids. The right order is:
-add evaluator support to the harness, then mark them. Until then the gate is
-bounded by evaluation-pipeline latency rather than by anything in this suite.
+add evaluator support to the harness, then mark them. Until then the `integ-tests`
+job is bounded by evaluation-pipeline latency rather than by anything in this suite,
+and the `fast-integ-tests` job is where quick feedback comes from.
 
 **HyperPod (3)** — `test_nova_sft_hyperpod.py`, `test_sft_data_mixing_hyperpod.py`,
 `test_cpt_data_mixing_hyperpod.py`. HyperPod submits to a pre-provisioned cluster

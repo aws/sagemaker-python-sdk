@@ -221,13 +221,6 @@ jobs:
         env:
           SUBMODULE: ${{ matrix.submodule }}
 
-  # sagemaker-train's PR-gate integ tests are handled by the shallow-integ-tests
-  # job below, so it is filtered out of this matrix. Every other submodule keeps
-  # the existing full CodeBuild integ suite unchanged.
-  #
-  # The filter is computed with fromJson/contains rather than by editing
-  # detect-changes, so the dependency-propagation logic there (and the submodule
-  # list consumed by codestyle-doc-tests and unit-tests) is untouched.
   integ-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
@@ -236,8 +229,6 @@ jobs:
       fail-fast: false
       matrix:
         submodule: ${{ fromJson(needs.detect-changes.outputs.submodules) }}
-        exclude:
-          - submodule: sagemaker-train
     steps:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -252,13 +243,21 @@ jobs:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-integ-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
 
-  # Replaces the CodeBuild integ suite for sagemaker-train on the PR gate.
+  # Additive: runs the shallow (submit-then-stop) suite for sagemaker-train
+  # alongside the existing integ-tests job above, which is unchanged.
   #
-  # What runs here (~191 of 251 tests):
-  #   * ~170 client-side tests that make no service call -- recipe resolution,
-  #     data utils, dry-run, log streaming, docker-compose detection. These were
-  #     always cheap and stay on the gate.
-  #   * the shallow (submit-then-stop) suite under tests/integ/train/shallow.
+  # Why a separate job rather than folding this into the CodeBuild suite: this
+  # job's selection is reviewable in the PR that changes it, whereas the
+  # sagemaker-train CodeBuild buildspec is CDK-managed outside this repo. It also
+  # reports as its own check, so a shallow failure is distinguishable at a glance
+  # from a deep-suite failure, and it finishes in minutes -- fast feedback that
+  # does not wait on the 2XLARGE CodeBuild container.
+  #
+  # What runs here: only tests/integ/train/shallow. The client-side tests
+  # (recipe resolution, data utils, dry-run, log streaming) are deliberately NOT
+  # repeated -- the CodeBuild suite already runs the whole tests/integ tree, so
+  # widening this job's scope would duplicate them and double the job creation
+  # the shallow suite performs.
   #
   # Why submit-then-stop is worth gating on: CreateTrainingJob returns a
   # TrainingJobArn only after the request has cleared public-model validation,
@@ -268,14 +267,8 @@ jobs:
   # ARN proves the payload and the caller's permissions are both good -- without
   # paying for a training run. The job is stopped immediately.
   #
-  # What no longer runs here: the ~54 tests that submit a job and wait for it.
-  # They are marked gpu_intensive and keep running on the scheduled CI-health
-  # workflows. This is a deliberate scope reduction -- training *behaviour*
-  # (artifacts, metrics, convergence) is not asserted on the PR gate.
-  #
-  # Runs directly on the runner rather than via CodeBuild because the sagemaker-
-  # train CodeBuild project's buildspec is CDK-managed outside this repo; running
-  # here keeps the test selection reviewable in the PR that changes it.
+  # It asserts nothing about training *behaviour* (artifacts, metrics,
+  # convergence); that remains the deep suites' job.
   fast-integ-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
@@ -306,7 +299,7 @@ jobs:
           pip install ./sagemaker-train
           pip install -r requirements/extras/test_requirements.txt
 
-      - name: Run fast sagemaker-train integ tests
+      - name: Run shallow sagemaker-train integ tests
         working-directory: sagemaker-train
         env:
           AWS_DEFAULT_REGION: us-west-2
@@ -316,48 +309,35 @@ jobs:
           AWS_RETRY_MODE: adaptive
           AWS_MAX_ATTEMPTS: '10'
         run: |
-          # Runs the WHOLE tests/integ/train tree, not just shallow/, and lets the
-          # markers decide what is affordable on a PR. That keeps the ~170
-          # client-side tests (recipe resolution, data utils, dry-run, log
-          # streaming, docker-compose detection) on the gate -- they make no
-          # service call and were never the expensive part.
+          # Scoped to shallow/ only -- see the comment above this job for why the
+          # rest of tests/integ/train is not repeated here.
           #
-          # Deselected, per the marker conventions already in tox.ini:
-          #   gpu_intensive -- every test that submits a real job and waits for
-          #                    it. Now applied to the 19 submitters that were
-          #                    previously unmarked, so the shallow suite is the
-          #                    only thing on this gate that creates a job.
-          #   us_east_1     -- this job holds us-west-2 credentials only; those
-          #                    tests run in the us-east-1 integ job.
-          #
-          # Note the shallow suite is NOT separately marked: it is intended to
-          # run here, and its own MTRL/Nova cases carry these markers themselves.
-          #
-          # One caveat for reviewers: tests/integ/train/test_local_model_trainer.py
-          # runs real containers, so it needs Docker and pulls
-          # pytorch-training:2.0.0-cpu-py310 (2.3 GB compressed). Docker is
-          # preinstalled on GitHub-hosted Ubuntu runners, and the pull needs ECR
-          # read on 763104351884, which the assumed role already has for the
-          # shallow tests. It stays on the gate because it makes no service call
-          # and catches local-mode regressions nothing else covers -- but it is
-          # the slowest thing here and the only step with a disk-space floor. If
-          # this job ever goes flaky on runner capacity, these three tests are the
-          # first thing to deselect (the unused `local_mode` marker in tox.ini
-          # exists for exactly that).
-          python -m pytest tests/integ/train \
+          # 84 of the suite's 100 tests run; the 16 deselected are:
+          #   us_east_1 (5)     -- Nova cases; this job holds us-west-2
+          #                        credentials only, so they run in the
+          #                        integ-tests-us-east-1 job instead.
+          #   gpu_intensive (11) -- the CPT and MTRL classes. These are written in
+          #                        the shallow style but cannot be made
+          #                        self-contained: CPT submits only via HyperPod
+          #                        (a pre-provisioned cluster, not
+          #                        CreateTrainingJob) and MTRL needs an agent
+          #                        runtime plus an MLflow app. Both become
+          #                        gate-eligible by dropping one marker once those
+          #                        prerequisites exist in the PR account.
+          python -m pytest tests/integ/train/shallow \
             -m "not gpu_intensive and not us_east_1" \
             -n 8 \
             --dist loadfile \
             -v \
             --durations=15 \
-            --junitxml=fast-integ-results.xml
+            --junitxml=shallow-integ-results.xml
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: fast-integ-test-results
-          path: sagemaker-train/fast-integ-results.xml
+          name: shallow-integ-test-results
+          path: sagemaker-train/shallow-integ-results.xml
           if-no-files-found: warn
 
   integ-tests-us-east-1:
