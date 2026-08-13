@@ -812,7 +812,7 @@ IAM_POLICY_CONFIG = {
             },
         },
     },
-    "evaluation": {
+    "model_eval": {
         "role_name": "SageMaker-AutoRole-Evaluation",
         "trust_policy": {
             "Version": "2012-10-17",

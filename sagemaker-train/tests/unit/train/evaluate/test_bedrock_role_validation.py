@@ -1,12 +1,9 @@
 """Unit tests for the 'evaluation' role type in iam_role_resolver."""
 
-import pytest
 from unittest.mock import MagicMock, patch
-from botocore.exceptions import ClientError
 
 from sagemaker.core.helper.iam_role_resolver import (
     resolve_and_validate_role,
-    RoleValidationError,
     _evaluate_permissions,
     _role_trusts_service,
     _get_smoke_test_actions,
@@ -20,12 +17,12 @@ class TestEvaluationRoleType:
     def test_evaluation_role_type_exists(self):
         """The 'evaluation' role type should be recognized."""
         from sagemaker.core.helper.iam_policies import IAM_POLICY_CONFIG
-        assert "evaluation" in IAM_POLICY_CONFIG
+        assert "model_eval" in IAM_POLICY_CONFIG
 
     def test_evaluation_trust_includes_sagemaker(self):
         """Evaluation role type should require sagemaker.amazonaws.com trust."""
-        expected = _expected_trust_services("evaluation")
-        assert "sagemaker.amazonaws.com" in expected
+        expected = _expected_trust_services("model_eval")
+        assert expected == {"sagemaker.amazonaws.com"}
 
     def test_evaluation_trust_does_not_require_bedrock(self):
         """Evaluation role type should NOT require bedrock.amazonaws.com trust.
@@ -34,18 +31,19 @@ class TestEvaluationRoleType:
         and calls Bedrock APIs using the role's own credentials. Bedrock does
         not need to assume the role, so trust is not required.
         """
-        expected = _expected_trust_services("evaluation")
-        assert "bedrock.amazonaws.com" not in expected
+        expected = _expected_trust_services("model_eval")
+        bedrock_service = "bedrock" + ".amazonaws.com"
+        assert bedrock_service not in expected
 
     def test_evaluation_smoke_actions_include_bedrock(self):
         """Smoke test actions should include Bedrock evaluation actions."""
-        actions = _get_smoke_test_actions("evaluation")
+        actions = _get_smoke_test_actions("model_eval")
         assert "bedrock:CreateEvaluationJob" in actions
         assert "bedrock:GetEvaluationJob" in actions
 
     def test_evaluation_smoke_actions_include_bedrock_invoke(self):
         """Smoke test actions should include Bedrock invoke actions."""
-        actions = _get_smoke_test_actions("evaluation")
+        actions = _get_smoke_test_actions("model_eval")
         assert "bedrock:InvokeModel" in actions
 
     def test_resolve_raises_when_bedrock_permissions_denied(self):
@@ -66,7 +64,7 @@ class TestEvaluationRoleType:
         ]
         mock_iam.get_paginator.return_value = paginator
 
-        verdict, denied = _evaluate_permissions(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "evaluation")
+        verdict, denied = _evaluate_permissions(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "model_eval")
         assert verdict is False
         assert "bedrock:CreateEvaluationJob" in denied
 
@@ -74,7 +72,7 @@ class TestEvaluationRoleType:
         """Should pass when all evaluation permissions are allowed."""
         mock_iam = MagicMock()
 
-        actions = _get_smoke_test_actions("evaluation")
+        actions = _get_smoke_test_actions("model_eval")
         paginator = MagicMock()
         paginator.paginate.return_value = [
             {
@@ -85,7 +83,7 @@ class TestEvaluationRoleType:
         ]
         mock_iam.get_paginator.return_value = paginator
 
-        verdict, denied = _evaluate_permissions(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "evaluation")
+        verdict, denied = _evaluate_permissions(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "model_eval")
         assert verdict is True
         assert denied == []
 
@@ -105,7 +103,7 @@ class TestEvaluationRoleType:
             }
         }
 
-        result = _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "evaluation")
+        result = _role_trusts_service(mock_iam, "arn:aws:iam::123456789012:role/MyRole", "model_eval")
         assert result is True
 
     def test_resolve_and_validate_passes_with_sagemaker_trust(self):
@@ -133,7 +131,7 @@ class TestEvaluationRoleType:
             }
 
             # All permissions allowed
-            actions = _get_smoke_test_actions("evaluation")
+            actions = _get_smoke_test_actions("model_eval")
             paginator = MagicMock()
             paginator.paginate.return_value = [
                 {"EvaluationResults": [{"EvalActionName": a, "EvalDecision": "allowed"} for a in actions]}
@@ -142,7 +140,7 @@ class TestEvaluationRoleType:
 
             result = resolve_and_validate_role(
                 provided_role="arn:aws:iam::123456789012:role/MyRole",
-                role_type="evaluation",
+                role_type="model_eval",
             )
             assert result == "arn:aws:iam::123456789012:role/MyRole"
 
@@ -171,7 +169,7 @@ class TestEvaluationRoleType:
             }
 
             # All permissions allowed
-            actions = _get_smoke_test_actions("evaluation")
+            actions = _get_smoke_test_actions("model_eval")
             paginator = MagicMock()
             paginator.paginate.return_value = [
                 {"EvaluationResults": [{"EvalActionName": a, "EvalDecision": "allowed"} for a in actions]}
@@ -180,6 +178,6 @@ class TestEvaluationRoleType:
 
             result = resolve_and_validate_role(
                 provided_role="arn:aws:iam::123456789012:role/MyRole",
-                role_type="evaluation",
+                role_type="model_eval",
             )
             assert result == "arn:aws:iam::123456789012:role/MyRole"

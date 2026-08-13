@@ -735,7 +735,7 @@ class TestAWSExecutionContext:
         assert context['account_id'] == '123456789012'
         mock_role.assert_called_once_with(
             provided_role=None,
-            role_type="evaluation",
+            role_type="training",
             sagemaker_session=mock_session,
         )
 
@@ -762,7 +762,7 @@ class TestAWSExecutionContext:
         assert context['role_arn'] == explicit_role
         mock_role.assert_called_once_with(
             provided_role=explicit_role,
-            role_type="evaluation",
+            role_type="training",
             sagemaker_session=mock_session,
         )
 
@@ -786,6 +786,35 @@ class TestAWSExecutionContext:
         assert context['role_arn'] == DEFAULT_ROLE_ARN
         assert context['region'] == DEFAULT_REGION  # From mock_session
         assert context['account_id'] == '123456789012'
+
+    @patch("sagemaker.train.evaluate.base_evaluator.resolve_and_validate_role")
+    @patch("sagemaker.train.common_utils.model_resolution._resolve_base_model")
+    def test_get_aws_execution_context_role_type_override(self, mock_resolve, mock_role, mock_session, mock_model_info):
+        """An explicit role_type (e.g. LLM-as-Judge's "model_eval") is forwarded.
+
+        Only the Bedrock-backed LLM-as-Judge path passes role_type="model_eval";
+        all other evaluators keep the "training" default so they are not gated on
+        Bedrock permissions they never use.
+        """
+        mock_resolve.return_value = mock_model_info
+        mock_role.return_value = DEFAULT_ROLE_ARN
+
+        evaluator = BaseEvaluator(
+            model=DEFAULT_MODEL,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+            region=DEFAULT_REGION,
+        )
+
+        evaluator._get_aws_execution_context(role_type="model_eval")
+
+        mock_role.assert_called_once_with(
+            provided_role=None,
+            role_type="model_eval",
+            sagemaker_session=mock_session,
+        )
 
 
 class TestTemplateRendering:
