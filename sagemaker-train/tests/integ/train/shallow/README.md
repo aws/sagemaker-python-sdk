@@ -115,32 +115,53 @@ is a different API surface returning pipeline executions rather than jobs, so it
 needs its own harness support. **These were already `gpu_intensive` on master, so
 this PR loses no coverage** — but closing this gap is the clearest follow-up.
 
-Worth knowing before that follow-up: five evaluator tests are **not** marked
-`gpu_intensive` and each blocks on `execution.wait(..., timeout=14400)` — a 4-hour
-ceiling, and a measured ~33 minutes per execution in practice:
+Six more evaluator tests **were** unmarked and each blocks on
+`execution.wait(..., timeout=14400)` — a 4-hour ceiling per test. They are now
+marked `gpu_intensive`:
 
-| Test | Marks |
+| Test | Measured |
 |---|---|
-| `test_benchmark_evaluator.py::test_benchmark_evaluation_full_flow` | none |
-| `test_custom_scorer_evaluator.py::test_custom_scorer_evaluation_full_flow` | `xdist_group` |
-| `test_llm_as_judge_evaluator.py::test_llm_as_judge_evaluation_full_flow` | none |
-| `test_llm_as_judge_base_model_fix.py::test_base_model_evaluation_uses_correct_weights` | `serial` |
-| `test_llm_as_judge_base_model_fix.py::test_base_model_false_still_works` | `serial` |
+| `test_llm_as_judge_base_model_fix.py::test_base_model_evaluation_uses_correct_weights` | **2783s** |
+| `test_llm_as_judge_base_model_fix.py::test_base_model_false_still_works` | **2504s** |
+| `test_benchmark_evaluator.py::test_benchmark_evaluation_full_flow` | held a run open 40+ min |
+| `test_custom_scorer_evaluator.py::test_custom_scorer_evaluation_full_flow` | held a run open 40+ min |
+| `test_llm_as_judge_evaluator.py::test_llm_as_judge_evaluation_full_flow` | held a run open 40+ min |
+| `test_llmaj_custom_model.py::TestLLMAJCustomModelIntegration` | `@pytest.mark.slow`, unregistered |
 
-They are selected by the `integ-tests` CodeBuild job, whose buildspec filters
-`-m "not gpu_intensive and not us_east_1"` — so they run on master's gate today and
-continue to after this PR. They dominate that job's wall clock. Measured locally on
-the same selection: **201 of 204 tests finished in ~7 minutes, and these held the
-run open for another 40+** before it was killed. Against the project's 180-minute
-build timeout, five tests with a 4-hour ceiling each are the standing risk. The
-whole shallow suite costs less than any one of them.
+The first two figures come from a real PR-gate CodeBuild run: 88 minutes for the
+two of them, against the project's **180-minute build timeout**. Everything else in
+that serial pass finished in under 92s, so they were the entire tail.
 
-Marking them is not a call this PR makes, because unlike every other
-`gpu_intensive` test they have no shallow counterpart yet — marking them would
-remove coverage, which is exactly what the rule above forbids. The right order is:
-add evaluator support to the harness, then mark them. Until then the `integ-tests`
-job is bounded by evaluation-pipeline latency rather than by anything in this suite,
-and the `fast-integ-tests` job is where quick feedback comes from.
+The last row was a genuine mismarking: the registered name is `slow_test`, so
+`@pytest.mark.slow` silently did nothing. `us_east_1` already kept it off the
+us-west-2 gate, so marking it changes nothing there — but it no longer waits on a
+pipeline in the us-east-1 job either.
+
+This is a real, if narrow, coverage reduction, so it is worth being precise about
+what is lost. Three of the files are marked per-test and keep their cheap
+constructor/validation tests on the gate — `test_benchmark_evaluator.py` keeps
+`test_get_benchmarks_and_properties` and two `*_validation` tests,
+`test_custom_scorer_evaluator.py` keeps `test_get_builtin_metrics` and
+`test_custom_scorer_evaluator_validation`, `test_llm_as_judge_evaluator.py` keeps
+`test_llm_as_judge_evaluator_validation` and
+`test_llm_as_judge_builtin_metrics_prefix_handling`. Those are what catch SDK-side
+regressions, and they still run.
+
+The other two are marked at class level and so leave nothing behind:
+`test_llm_as_judge_base_model_fix.py` (both tests wait on a pipeline) and
+`test_llmaj_custom_model.py` (one test, already `us_east_1`). What the gate stops
+checking there is that a submitted evaluation pipeline is *accepted and succeeds* —
+genuinely useful signal, traded for 88 minutes of a 180-minute budget. Their
+already-marked siblings elsewhere in the suite
+(`test_benchmark_evaluation_base_model_only`, `test_custom_scorer_base_model_only`)
+show this trade was already the established call for this kind of test; these two
+were unmarked by omission, not by decision.
+
+The follow-up that closes the gap is shallow `evaluate()` coverage — asserting the
+pipeline execution ARN comes back without waiting for it to finish, the same
+submit-then-stop bargain this suite makes for training jobs. Until that exists the
+gate verifies that evaluators construct and validate correctly, but not that a
+submitted pipeline is accepted.
 
 **HyperPod (3)** — `test_nova_sft_hyperpod.py`, `test_sft_data_mixing_hyperpod.py`,
 `test_cpt_data_mixing_hyperpod.py`. HyperPod submits to a pre-provisioned cluster
