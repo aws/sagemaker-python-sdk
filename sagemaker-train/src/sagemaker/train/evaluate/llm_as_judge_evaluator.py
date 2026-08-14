@@ -753,7 +753,7 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
             'top_p': str(1.0),
             'evaluate_base_model': self.evaluate_base_model,
         }
-    
+
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="LLMAsJudgeEvaluator.evaluate",
@@ -819,8 +819,11 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
                 "Please use a Model Package ARN or JumpStart model ID instead."
             )
 
-        # Get AWS execution context (role ARN, region, account ID)
-        aws_context = self._get_aws_execution_context()
+        # Get AWS execution context (role ARN, region, account ID).
+        # LLM-as-Judge is the only evaluator backed by Amazon Bedrock Evaluations,
+        # so it validates the execution role against the "model_eval" role type,
+        # which additionally gates the required Bedrock permissions.
+        aws_context = self._get_aws_execution_context(role_type="model_eval")
         region = aws_context['region']
         role_arn = aws_context['role_arn']
         

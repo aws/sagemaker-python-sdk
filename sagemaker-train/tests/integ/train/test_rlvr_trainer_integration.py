@@ -378,7 +378,7 @@ def test_rlvr_trainer_lora_with_sequence_length(sagemaker_session):
     training_job = rlvr_trainer.train(wait=False)
     logger.info(f"Training job submitted: {training_job.training_job_arn}")
 
-    max_wait_time = 3600
+    max_wait_time = 7200  # 2 hour timeout (sequence_length training takes >1 hour)
     poll_interval = 30
     start_time = time.time()
 
