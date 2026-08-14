@@ -491,6 +491,109 @@ class TestResolveModelPackageGroup:
         call_kwargs = mock_create.call_args[1]
         assert call_kwargs["managed_configuration"].managed_storage_type == "Restricted"
 
+    @staticmethod
+    def _mock_mpg(storage_type=None, name="my-group", arn=MPG_ARN):
+        mpg = MagicMock()
+        mpg.model_package_group_name = name
+        mpg.model_package_group_arn = arn
+        if storage_type is None:
+            mpg.managed_configuration = None
+        else:
+            mpg.managed_configuration = MagicMock()
+            mpg.managed_configuration.managed_storage_type = storage_type
+        return mpg
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_nova_explicit_standard_group_raises(self, mock_get):
+        """Nova + explicit output group with Standard storage must fail fast."""
+        mock_get.return_value = self._mock_mpg(storage_type=None)
+
+        trainer = self._make_trainer()
+        trainer._model_name = "amazon-nova-pro"
+        with pytest.raises(ValueError, match="requires 'Restricted'"):
+            trainer._resolve_model_package_group("amazon-nova-pro", "my-group", self._mock_session())
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_nova_explicit_restricted_group_passes(self, mock_get):
+        mock_get.return_value = self._mock_mpg(storage_type="Restricted")
+
+        trainer = self._make_trainer()
+        trainer._model_name = "amazon-nova-pro"
+        result = trainer._resolve_model_package_group(
+            "amazon-nova-pro", "my-group", self._mock_session()
+        )
+        assert result == MPG_ARN
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_nova_mpg_object_standard_group_raises(self, mock_get):
+        """Nova + explicit ModelPackageGroup object is validated via a fresh fetch."""
+        from sagemaker.core.resources import ModelPackageGroup as MPG
+
+        mock_get.return_value = self._mock_mpg(storage_type=None)
+        mpg_obj = MagicMock(spec=MPG)
+        mpg_obj.model_package_group_name = "my-group"
+        mpg_obj.model_package_group_arn = MPG_ARN
+
+        trainer = self._make_trainer()
+        trainer._model_name = "amazon-nova-pro"
+        with pytest.raises(ValueError, match="requires 'Restricted'"):
+            trainer._resolve_model_package_group("amazon-nova-pro", mpg_obj, self._mock_session())
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_nova_derived_standard_group_raises(self, mock_get):
+        """Nova continued-customization: group derived from source ModelPackage must be Restricted."""
+        mock_get.return_value = self._mock_mpg(storage_type=None, name="derived-group")
+        mock_model = MagicMock(spec=ModelPackage)
+        mock_model.model_package_group_name = "derived-group"
+
+        trainer = self._make_trainer()
+        trainer._model_name = "amazon-nova-pro"
+        with pytest.raises(ValueError, match="requires 'Restricted'"):
+            trainer._resolve_model_package_group(mock_model, None, self._mock_session())
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_nova_derived_restricted_group_passes(self, mock_get):
+        mock_get.return_value = self._mock_mpg(storage_type="Restricted", name="derived-group")
+        mock_model = MagicMock(spec=ModelPackage)
+        mock_model.model_package_group_name = "derived-group"
+
+        trainer = self._make_trainer()
+        trainer._model_name = "amazon-nova-pro"
+        result = trainer._resolve_model_package_group(mock_model, None, self._mock_session())
+        assert result == MPG_ARN
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_nova_existing_default_named_standard_group_raises(self, mock_get):
+        """Nova auto-create path: a pre-existing default-named Standard group must not be reused."""
+        mock_get.return_value = self._mock_mpg(
+            storage_type=None, name="amazon-nova-pro-mtrl-mpg"
+        )
+
+        trainer = self._make_trainer()
+        trainer._model_name = "amazon-nova-pro"
+        with pytest.raises(ValueError, match="requires 'Restricted'"):
+            trainer._resolve_model_package_group("amazon-nova-pro", None, self._mock_session())
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_oss_model_standard_group_passes_unvalidated(self, mock_get):
+        """Non-Nova models keep the existing behavior: no storage validation."""
+        mock_get.return_value = self._mock_mpg(storage_type=None)
+
+        trainer = self._make_trainer()
+        result = trainer._resolve_model_package_group("test-model", "my-group", self._mock_session())
+        assert result == MPG_ARN
+
+    @patch("sagemaker.train.multi_turn_rl_trainer.ModelPackageGroup.get")
+    def test_nova_intermediate_explicit_standard_group_raises(self, mock_get):
+        """Nova + explicit intermediate checkpoint group with Standard storage must fail."""
+        mock_get.return_value = self._mock_mpg(storage_type=None, name="my-ckpt-group")
+
+        trainer = self._make_trainer()
+        trainer._model_name = "amazon-nova-pro"
+        trainer.output_model_package_group = "arn:other"
+        with pytest.raises(ValueError, match="requires 'Restricted'"):
+            trainer._resolve_intermediate_checkpoint_mpg("my-ckpt-group", self._mock_session())
+
 
 class TestAgentRuntimeIdPattern:
     def test_valid_runtime_id(self):
