@@ -64,9 +64,12 @@ stopped and that is not a failure.
 
 from __future__ import absolute_import
 
+import errno
 import inspect
 import logging
+import os
 import random
+import tempfile
 import time
 from contextlib import contextmanager
 
@@ -74,6 +77,174 @@ import pytest
 from botocore.exceptions import ClientError
 
 logger = logging.getLogger(__name__)
+
+# --------------------------------------------------------------------------
+# Concurrency cap (training-job service quotas)
+# --------------------------------------------------------------------------
+# Two different quotas apply, in two different units, and the cap has to be safe
+# for both:
+#
+#   * serverless (the default recipe-trainer path, no explicit `compute`) is
+#     bounded by "Maximum number of concurrent model customization serverless
+#     jobs per Region" -- a count of *jobs*, currently 20. Instance-type quotas
+#     do not apply to these at all.
+#   * serverful (an explicit `TrainingJobCompute`/`Compute`, i.e. the
+#     `ModelTrainer` tests, the tuner, and `test_explicit_compute_is_accepted`)
+#     is bounded by the per-instance-type quota, e.g. "ml.m5.large for training
+#     job usage" -- a count of *instances*.
+#
+# A slot therefore means "one concurrent job" and a job costs
+# `max(1, instance_count)` slots: 1 for a serverless job, and its instance count
+# for a serverful one. That is deliberately the stricter of the two readings, so
+# one cap keeps the suite inside both quotas without needing to know which kind
+# of job a given test produces.
+#
+# What a slot has to track -- and the trap it is easy to fall into. The service
+# counts a job against the concurrency quota from `CreateTrainingJob` until the
+# job reaches a *terminal* state, NOT until `StopTrainingJob` returns. Those are
+# far apart: measured against the service, `stop()` returns in a few seconds but
+# the job does not reach `Stopped` for ~1-3 minutes afterwards while the backend
+# tears down the (never-billed) reservation. An earlier version of this cap
+# released the slot when `stop()` returned, and it did not bound anything: with
+# the cap at 10 and 8 workers, each slot recycled ~20 times inside a single
+# job's counted lifetime, so the suite peaked at ~37 concurrent jobs and tripped
+# `ResourceLimitExceeded` at a utilization of 21 against the limit of 20. The
+# slot must therefore be held until the job is terminal (see
+# `_wait_until_terminal`), which is the point of `SHALLOW_MAX_CONCURRENT_JOBS`.
+#
+# Why a cap rather than batches: capping bounds the *peak* directly and keeps
+# bounding it if `-n` is raised or a test starts asking for more instances,
+# whereas batches of N only serialize submission. The two are equivalent when
+# the slot is held to terminal -- a cap of 10 is exactly "at most 10 jobs
+# counted at once" -- but the cap needs no bookkeeping of which test is in which
+# batch. `SHALLOW_MAX_CONCURRENT_JOBS=0` disables it for a single-worker
+# debugging run.
+#
+# Cost of holding to terminal: the suite's wall-clock floor becomes roughly
+# (#jobs * drain_seconds) / cap rather than tracking the worker count. At ~84
+# jobs, a ~75s median drain and cap 10 that is ~8-12 min (versus ~2 min if the
+# slot were released early -- but that "fast" run is the one that breaches the
+# quota). 10 is under the serverless job quota (20) with room for the deep
+# CodeBuild suite, which runs against the same account+region concurrently and
+# also submits serverless jobs, to take the rest without the two together
+# breaching 20.
+DEFAULT_MAX_CONCURRENT_JOBS = 10
+
+
+def _max_concurrent_jobs():
+    """Read the cap at call time so tests can monkeypatch the environment."""
+    raw = os.environ.get("SHALLOW_MAX_CONCURRENT_JOBS")
+    if raw is None:
+        return DEFAULT_MAX_CONCURRENT_JOBS
+    try:
+        return max(0, int(raw))
+    except ValueError:
+        logger.warning(
+            "Ignoring non-integer SHALLOW_MAX_CONCURRENT_JOBS=%r; using %d",
+            raw,
+            DEFAULT_MAX_CONCURRENT_JOBS,
+        )
+        return DEFAULT_MAX_CONCURRENT_JOBS
+
+
+# The slot directory must be shared by every xdist worker, and workers are
+# separate processes, so an in-process semaphore would not bound anything. Slots
+# are files in a directory keyed to the run: creating one with O_EXCL is atomic
+# on POSIX, which is all the mutual exclusion this needs. Keyed on the xdist
+# session id (falling back to the parent pid) so two concurrent local runs get
+# their own budgets rather than deadlocking against each other -- and so a
+# stale directory from a killed run is never mistaken for live slots.
+def _slot_dir():
+    key = os.environ.get("PYTEST_XDIST_TESTRUNUID") or str(os.getppid())
+    return os.path.join(tempfile.gettempdir(), f"sm-shallow-slots-{key}")
+
+
+# Waiting for a *free* slot is bounded so a leaked slot degrades into a slower
+# run rather than a hung one. With the slot now held until the job is terminal
+# (~1-3 min), a worker can legitimately queue behind several jobs' drains, so
+# this is generous; anything approaching it means slots leaked. The wait logs
+# and proceeds instead of failing the test, because the quota is a throttle
+# rather than a correctness property.
+_SLOT_WAIT_TIMEOUT = 900
+_SLOT_POLL_INTERVAL = 0.5
+
+
+@contextmanager
+def job_slots(count=1):
+    """Hold ``count`` concurrency slots for the duration of the block.
+
+    Bounds what this suite has in flight at once, across all xdist workers, to
+    ``SHALLOW_MAX_CONCURRENT_JOBS`` (default ``DEFAULT_MAX_CONCURRENT_JOBS``).
+    A slot is one concurrent job; a serverful job also takes one per additional
+    instance, which keeps a single cap valid against both the serverless
+    job-count quota and the per-instance-type quota.
+
+    Slots are always released, including when the body raises, so a failing
+    assertion cannot strand capacity for the rest of the run.
+    """
+    cap = _max_concurrent_jobs()
+    if cap <= 0 or count <= 0:
+        yield
+        return
+
+    # A single test asking for more than the cap must not deadlock against
+    # itself: clamp, and say so, rather than waiting for slots that can never
+    # all be free.
+    if count > cap:
+        logger.warning(
+            "Test requests %d slots but the cap is %d; clamping. "
+            "Raise SHALLOW_MAX_CONCURRENT_JOBS if this is intentional.",
+            count,
+            cap,
+        )
+        count = cap
+
+    directory = _slot_dir()
+    os.makedirs(directory, exist_ok=True)
+
+    held = []
+    deadline = time.time() + _SLOT_WAIT_TIMEOUT
+    try:
+        while len(held) < count:
+            for index in range(cap):
+                if len(held) == count:
+                    break
+                path = os.path.join(directory, f"slot-{index}")
+                try:
+                    fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                except OSError as e:
+                    if e.errno == errno.EEXIST:
+                        continue  # taken by another worker
+                    raise
+                os.close(fd)
+                held.append(path)
+
+            if len(held) == count:
+                break
+
+            if time.time() > deadline:
+                # Proceed rather than fail: the cap is a courtesy to the
+                # account's quota, not an assertion about the SDK.
+                logger.warning(
+                    "Waited %ds for %d job slot(s) and got %d. Proceeding anyway "
+                    "(slots may have leaked from a killed run: %s).",
+                    _SLOT_WAIT_TIMEOUT,
+                    count,
+                    len(held),
+                    directory,
+                )
+                break
+
+            time.sleep(_SLOT_POLL_INTERVAL)
+
+        yield
+    finally:
+        for path in held:
+            try:
+                os.unlink(path)
+            except OSError:  # pragma: no cover - already gone
+                pass
+
 
 # A small CPU instance is sufficient: acceptance of the request does not depend
 # on the instance type being an accelerator, and asking for GPU capacity we
@@ -92,6 +263,19 @@ MAX_RUNTIME_IN_SECONDS = 600
 
 # Terminal/near-terminal states that make StopTrainingJob a no-op or an error.
 _UNSTOPPABLE_STATUSES = frozenset({"Completed", "Failed", "Stopped", "Stopping"})
+
+# States in which the service no longer counts the job against the concurrency
+# quota. A slot is held until the job reaches one of these -- see
+# `_wait_until_terminal` and the note on `DEFAULT_MAX_CONCURRENT_JOBS`.
+_TERMINAL_STATUSES = frozenset({"Completed", "Failed", "Stopped"})
+
+# How long a slot waits for its job to actually drain before giving up and
+# releasing anyway. Measured drains are ~1-3 min; this is a ceiling, not an
+# expectation. Releasing early (like the timeout on acquiring a slot) trades a
+# possible brief quota overshoot for not hanging the whole suite on one stuck
+# job -- the quota is a throttle, not a correctness property.
+_DRAIN_WAIT_TIMEOUT = 300
+_DRAIN_POLL_INTERVAL = 5
 
 
 # Name length limits differ per resource, and the service enforces them strictly.
@@ -149,6 +333,71 @@ def stop_quietly(training_job):
         logger.warning("Unexpected error stopping job %s (%s): %s", name, code, message)
     except Exception as e:  # pragma: no cover - defensive teardown
         logger.warning("Unexpected error stopping job %s: %s", name, e)
+
+
+# Attributes under which the different job resources expose their status. As
+# with the ARN, the SDK is not consistent: a TrainingJob uses
+# ``training_job_status``, an AgentRFTJob ``job_status`` and a
+# HyperParameterTuningJob ``hyper_parameter_tuning_job_status``. Read whichever
+# is present.
+_STATUS_ATTRS = (
+    "training_job_status",
+    "job_status",
+    "hyper_parameter_tuning_job_status",
+)
+
+
+def _wait_until_terminal(training_job):
+    """Block until ``training_job`` leaves the concurrency-quota count.
+
+    The service counts a job against the concurrency quota until it reaches a
+    terminal state, not until ``stop()`` returns, so the slot has to be held for
+    this whole interval (see the note on ``DEFAULT_MAX_CONCURRENT_JOBS``). This
+    is what makes ``SHALLOW_MAX_CONCURRENT_JOBS`` an actual bound on what the
+    service sees rather than on how fast slots recycle.
+
+    Best-effort, like ``stop_quietly``: it refreshes and polls the job's status,
+    and on timeout or any error it logs and returns so the slot is released
+    anyway. A stuck job should slow the suite, not hang it or fail a test that
+    already made its assertion. Jobs that expose no readable status (or none of
+    the refresh/status plumbing) fall through immediately -- the small quota
+    risk there is bounded by the cap itself.
+    """
+    if training_job is None:
+        return
+
+    name = _first_attr(training_job, _NAME_ATTRS)
+    refresh = getattr(training_job, "refresh", None)
+    deadline = time.time() + _DRAIN_WAIT_TIMEOUT
+    while True:
+        try:
+            if callable(refresh):
+                refresh()
+            status = _first_attr(training_job, _STATUS_ATTRS)
+        except Exception as e:  # pragma: no cover - defensive polling
+            logger.info("Could not read status for job %s (%s); releasing slot", name, e)
+            return
+
+        if status is None:
+            # Nothing to poll on; do not hold a slot forever waiting for a field
+            # this job type never exposes.
+            logger.info("Job %s exposes no status; releasing slot", name)
+            return
+        if status in _TERMINAL_STATUSES:
+            logger.info("Job %s reached %s; releasing slot", name, status)
+            return
+
+        if time.time() > deadline:
+            logger.warning(
+                "Job %s still %s after %ds; releasing slot anyway "
+                "(it may still count against the quota briefly).",
+                name,
+                status,
+                _DRAIN_WAIT_TIMEOUT,
+            )
+            return
+
+        time.sleep(_DRAIN_POLL_INTERVAL)
 
 
 # Attributes under which the different job resources expose their ARN and name.
@@ -249,6 +498,12 @@ def submitted(trainer, **train_kwargs):
     value is rejected loudly rather than silently overridden, so a copy-pasted
     ``wait=True`` cannot quietly reintroduce a full training run into the fast
     suite.
+
+    Holds a concurrency slot (see ``job_slots``) until the submitted job reaches
+    a terminal state, so the number of jobs the *service* counts against the
+    training-job quota across all xdist workers stays inside the cap. Slots are
+    taken here rather than in each test so a new test is capped by default
+    instead of by remembering to opt in.
     """
     if "wait" in train_kwargs:
         raise TypeError(
@@ -256,13 +511,21 @@ def submitted(trainer, **train_kwargs):
             "These tests must never wait for a job to run."
         )
 
-    training_job = None
-    try:
-        trainer.train(**_train_kwargs_for(trainer, train_kwargs))
-        training_job = _resolve_job(trainer)
-        yield training_job
-    finally:
-        stop_quietly(training_job)
+    with job_slots(_requested_slots(trainer)):
+        training_job = None
+        try:
+            trainer.train(**_train_kwargs_for(trainer, train_kwargs))
+            training_job = _resolve_job(trainer)
+            yield training_job
+        finally:
+            # Stop, then hold the slot until the job is actually terminal. The
+            # service counts the job against the concurrency quota until it
+            # drains, not until stop() returns, so releasing the slot at stop()
+            # would let the next test start while this job still counts -- which
+            # is exactly how an earlier version peaked at ~37 jobs against a
+            # limit of 20.
+            stop_quietly(training_job)
+            _wait_until_terminal(training_job)
 
 
 # Attributes under which trainers stash the job they just submitted. The SDK is
@@ -284,6 +547,39 @@ _JOB_ATTRS = (
 def _resolve_job(trainer):
     """Return the job resource the trainer just submitted, whatever its type."""
     return _first_attr(trainer, _JOB_ATTRS)
+
+
+# Where the different trainers keep an explicit compute spec, when they have one.
+_COMPUTE_ATTRS = ("compute", "_compute", "compute_config")
+
+
+def _requested_slots(trainer):
+    """Slots the job ``trainer`` is about to submit should consume.
+
+    One slot per concurrent job, plus one per additional instance when the job is
+    serverful. See the note on ``DEFAULT_MAX_CONCURRENT_JOBS`` for why the two
+    quotas make this the right unit.
+
+    Returns 1 when no explicit compute is set. That is not a fallback but the
+    correct answer for the default recipe-trainer path: leaving ``compute=None``
+    submits a *serverless* model-customization job, which is bounded by a
+    per-Region job count and consumes no instance-type quota at all.
+
+    Falls back to 1 if a compute object exists but exposes no usable count.
+    Under-counting is the safe direction to be wrong here: the cap remains a
+    useful bound, whereas guessing high would throttle the suite for no reason.
+    Tuning jobs are the notable inexact case -- their fan-out is set by the
+    tuner's own ``max_parallel_jobs`` rather than a compute block -- and there
+    are only two of them, both single-instance.
+    """
+    for attr in _COMPUTE_ATTRS:
+        compute = getattr(trainer, attr, None)
+        if compute is None:
+            continue
+        count = getattr(compute, "instance_count", None)
+        if isinstance(count, int) and count > 0:
+            return count
+    return 1
 
 
 def assert_rejected(trainer, expected_tokens, **train_kwargs):
@@ -309,16 +605,24 @@ def assert_rejected(trainer, expected_tokens, **train_kwargs):
     if "wait" in train_kwargs:
         raise TypeError("assert_rejected() controls 'wait'; remove it from the call.")
 
-    training_job = None
-    try:
-        with pytest.raises(Exception) as excinfo:
-            trainer.train(**_train_kwargs_for(trainer, train_kwargs))
-            # Reached only if the service accepted a request we expected it to
-            # refuse. Capture the job so the finally-block can stop it, then let
-            # pytest.raises report the missing exception.
-            training_job = _resolve_job(trainer)
-    finally:
-        stop_quietly(training_job)
+    # Slot-guarded too: a negative test is expected *not* to consume capacity,
+    # but if a validation regression let the request through it would, and that
+    # is exactly the case where staying inside the quota matters.
+    with job_slots(_requested_slots(trainer)):
+        training_job = None
+        try:
+            with pytest.raises(Exception) as excinfo:
+                trainer.train(**_train_kwargs_for(trainer, train_kwargs))
+                # Reached only if the service accepted a request we expected it to
+                # refuse. Capture the job so the finally-block can stop it, then let
+                # pytest.raises report the missing exception.
+                training_job = _resolve_job(trainer)
+        finally:
+            # Normally a no-op (the request was rejected, so no job exists). If a
+            # regression let it through, drain it inside the slot for the same
+            # reason submitted() does.
+            stop_quietly(training_job)
+            _wait_until_terminal(training_job)
 
     message = str(excinfo.value)
     assert any(token in message for token in expected_tokens), (

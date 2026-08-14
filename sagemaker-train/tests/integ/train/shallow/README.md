@@ -244,6 +244,70 @@ Two design rules follow, and should be preserved:
 2. **Never set `keep_alive_period_in_seconds`.** A warm pool would outlive the stop
    and keep instances provisioned after the test finished.
 
+### Concurrency cap (training-job quotas)
+
+`submitted()` and `assert_rejected()` hold a slot from `job_slots()` until the job
+reaches a **terminal state**, bounding the number of jobs the *service* counts
+against the quota **across all xdist workers** to `SHALLOW_MAX_CONCURRENT_JOBS`
+(default 10). Set it to `0` to disable the gating for a single-worker debugging run.
+
+Two quotas apply, in two different units, and the cap has to be safe for both:
+
+| Path | Bounded by | Unit |
+|---|---|---|
+| serverless — the default recipe-trainer path, no explicit `compute` | *Maximum number of concurrent model customization serverless jobs per Region* (20) | jobs |
+| serverful — an explicit `Compute`/`TrainingJobCompute`: the `ModelTrainer` tests, the tuner, `test_explicit_compute_is_accepted` | e.g. *ml.m5.large for training job usage* (100) | instances |
+
+Instance-type quotas do **not** apply to the serverless jobs. So a slot means "one
+concurrent job", and a job costs `max(1, instance_count)` slots — 1 for a serverless
+job, its instance count for a serverful one (the four `instance_count=2` tests in
+`test_model_trainer.py` take two). That is the stricter of the two readings, so one
+cap holds the suite inside both quotas without the harness needing to know which
+kind of job a test produces. 10 sits under the serverless job quota with room for
+the deep CodeBuild suite to run against the same account concurrently.
+
+Slots are `O_EXCL`-created files under a
+run-keyed temp directory (`PYTEST_XDIST_TESTRUNUID`, falling back to the parent
+pid), since xdist workers are separate processes and an in-process semaphore would
+bound nothing. Keying on the run id means two concurrent local runs get separate
+budgets instead of deadlocking, and a stale directory from a killed run is never
+mistaken for live slots.
+
+The slot has to be held until the job is *terminal*, and getting this wrong is
+subtle. The service counts a job against the concurrency quota from
+`CreateTrainingJob` until the job reaches `Completed`/`Failed`/`Stopped` — **not**
+until `StopTrainingJob` returns. Those are far apart: `stop()` returns in a few
+seconds, but the job takes ~1–3 minutes to actually drain (the reservation is torn
+down without ever becoming billable). An earlier version released the slot when
+`stop()` returned; it bounded nothing. With the cap at 10 and 8 workers, each slot
+recycled ~20× inside one job's counted lifetime, the suite peaked at **~37**
+concurrent jobs, and it tripped `ResourceLimitExceeded` at a utilization of 21
+against the limit of 20. `_wait_until_terminal` closes that gap.
+
+Why a cap rather than literally splitting into batches of 10: holding the slot to
+terminal *is* "at most 10 jobs counted at once", the same guarantee batches give,
+but the cap bounds the peak directly with no per-batch bookkeeping and keeps
+bounding it if `-n` is raised or a test asks for more instances. The cost is
+runtime: with the slot held to terminal, the suite's floor is roughly
+`(#jobs × drain) / cap` — about **8–12 min** at ~84 jobs, a ~75s median drain and
+cap 10, versus ~2 min if slots released early (the "fast" run that breaches the
+quota). That is the trade the whole cap makes: correctness against the quota in
+exchange for wall-clock.
+
+Two consequences worth knowing:
+
+* The stop *and the terminal-wait* happen inside the slot. Releasing before the
+  job is terminal is exactly the bug above — the next test starts while this job
+  still counts against the quota.
+* Both waits are bounded and then proceed with a warning rather than failing:
+  acquiring a slot waits up to 900s, and `_wait_until_terminal` waits up to 300s
+  for the job to drain. The cap is a courtesy to the account's quota, not an
+  assertion about the SDK, so a leaked slot or a stuck drain degrades into a
+  slower run rather than a red build.
+
+The cap is enforced in the harness rather than per test, so a newly added test is
+capped by default instead of by remembering to opt in.
+
 ## Writing a new test
 
 Use the harness; do not call `trainer.train()` directly.

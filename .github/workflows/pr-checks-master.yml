@@ -308,6 +308,21 @@ jobs:
           # other.
           AWS_RETRY_MODE: adaptive
           AWS_MAX_ATTEMPTS: '10'
+          # Cap the training jobs the *service* counts against the concurrency
+          # quota, across all xdist workers, so the suite stays inside the
+          # "concurrent model customization serverless jobs per Region" quota
+          # (20) with room for the deep integ-tests suite running the same
+          # account concurrently. The harness holds each slot until the job is
+          # terminal, not until stop() returns -- the service counts a job for
+          # ~1-3 min after the stop -- so 10 means "at most 10 jobs counted at
+          # once", the batches-of-10 behaviour, not "10 stops in flight".
+          #
+          # Not redundant with -n 8. -n caps worker processes; this caps what
+          # the service counts, and with the slot held to terminal those diverge
+          # sharply (each drain outlives the worker's stop() by minutes). It is
+          # also what keeps the ceiling stable if -n is raised. A serverful job
+          # counts one slot per instance.
+          SHALLOW_MAX_CONCURRENT_JOBS: '10'
         run: |
           # Scoped to shallow/ only -- see the comment above this job for why the
           # rest of tests/integ/train is not repeated here.
