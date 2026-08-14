@@ -197,6 +197,7 @@ class TestDryRunPassesWithValidInputs:
             training_dataset=valid_dataset,
             accept_eula=True,
         )
+        trainer.hyperparameters.preset_reward_function = "prime_code"
 
         result = trainer.train(dry_run=True)
         assert result is None
@@ -280,6 +281,7 @@ class TestDryRunServerful:
             compute=TrainingJobCompute(instance_type="ml.g5.12xlarge", instance_count=1),
             accept_eula=True,
         )
+        trainer.hyperparameters.preset_reward_function = "prime_code"
 
         result = trainer.train(dry_run=True)
         assert result is None
