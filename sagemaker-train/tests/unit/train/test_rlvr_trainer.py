@@ -201,6 +201,32 @@ class TestRLVRTrainer:
             trainer.train(wait=False)
 
     @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
+    def test_train_raises_when_no_reward_signal(self, mock_finetuning_options, mock_validate_group, mock_get_session):
+        """Test train() raises ValueError when no reward signal is configured.
+
+        Neither custom_reward_function nor the preset_reward_function hyperparameter
+        is set, so the guard in train() must raise. Using Mock(spec=[]) ensures
+        getattr(hyperparameters, "preset_reward_function", None) returns None rather
+        than an auto-created (truthy) Mock attribute.
+        """
+        mock_validate_group.return_value = "test-group"
+        mock_get_session.return_value = Mock()
+        mock_hyperparams = Mock(spec=["to_dict"])  # no preset_reward_function attr
+        mock_hyperparams.to_dict.return_value = {}
+        mock_finetuning_options.return_value = (mock_hyperparams, "model-arn", False)
+
+        trainer = RLVRTrainer(
+            model="test-model",
+            model_package_group="test-group",
+            training_dataset="s3://bucket/train",
+        )  # no custom_reward_function
+
+        with pytest.raises(ValueError, match="requires a reward signal"):
+            trainer.train(wait=False)
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
     @patch('sagemaker.train.common_utils.finetune_utils._resolve_model_name')
     @patch('sagemaker.train.rlvr_trainer._get_fine_tuning_options_and_model_arn')
     @patch('sagemaker.train.rlvr_trainer._validate_and_resolve_model_package_group')
