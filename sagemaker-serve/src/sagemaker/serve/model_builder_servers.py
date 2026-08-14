@@ -221,16 +221,11 @@ class _ModelBuilderServers(object):
 
         from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
 
-        # Detect an S3 weight source (model_path="s3://..." or
-        # s3_model_data_url="s3://...") before any local directory is created. TGI's
-        # HF_MODEL_ID does not accept an S3 URI, so an S3 source is attached as an
-        # uncompressed ModelDataSource (mounted at /opt/ml/model) instead of being
-        # downloaded from the HuggingFace Hub.
-        s3_model_source = None
-        if _is_s3_uri(self.model_path):
-            s3_model_source = self.model_path
-        elif _is_s3_uri(self.s3_model_data_url):
-            s3_model_source = self.s3_model_data_url
+        # Detect an S3 weight source from model_path before any local directory is
+        # created. TGI's HF_MODEL_ID does not accept an S3 URI, so an S3 source is
+        # attached as an uncompressed ModelDataSource (mounted at /opt/ml/model)
+        # instead of being downloaded from the HuggingFace Hub.
+        s3_model_source = self.model_path if _is_s3_uri(self.model_path) else None
 
         # Skip the local mkdir for an S3 source so we do not create a literal
         # local "s3:/..." directory tree; only create it for genuine local paths.

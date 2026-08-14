@@ -610,7 +610,7 @@ class TestBuildForTGI(unittest.TestCase):
     @patch.object(MockModelBuilderServers, "_auto_detect_image_uri")
     @patch.object(MockModelBuilderServers, "_prepare_for_mode")
     @patch.object(MockModelBuilderServers, "_create_model")
-    def test_fixed_s3_model_data_url_routed_to_s3_branch(
+    def test_generated_s3_model_data_url_remains_upload_destination(
         self,
         mock_create,
         mock_prepare,
@@ -624,16 +624,14 @@ class TestBuildForTGI(unittest.TestCase):
         mock_tp,
         mock_gpu,
     ):
-        """Property 2 (clause 2.4): an s3_model_data_url weight source is honored.
+        """An auto-generated S3 destination does not select TGI model weights.
 
-        On the FIXED code the non-local branch detects the S3 weight source
-        supplied via ``s3_model_data_url`` and calls
-        ``_prepare_for_mode(model_path=<s3 url>)`` so it reaches the
-        ``_upload_tgi_artifacts`` S3 upload branch, and the container env
-        (captured at ``_create_model`` time) has ``HF_MODEL_ID=/opt/ml/model``.
-        EXPECTED OUTCOME: this test PASSES on fixed code.
+        ``_get_serve_setting()`` populates ``s3_model_data_url`` for a normal
+        HuggingFace Hub build even when the user did not provide an S3 weight
+        source. The destination must not enable offline mode, replace the repo
+        id, or be routed to ``_prepare_for_mode`` as ``model_path``.
 
-        Validates: Requirements 2.4
+        Validates: Requirements 2.5, 3.2, 3.3, 4.2
         """
         mock_js.return_value = False
         mock_nb.return_value = None
@@ -641,12 +639,15 @@ class TestBuildForTGI(unittest.TestCase):
         mock_tgi_config.return_value = ({"MAX_INPUT_LENGTH": "1024"}, 512)
         mock_gpu.return_value = 1
         mock_tp.return_value = 1
-        mock_prepare.return_value = ("s3://bucket/model.tar.gz", None)
+        mock_create.return_value = Mock()
         self.builder.mode = Mode.SAGEMAKER_ENDPOINT
         self.builder.model = "org/model"
-        # model_path stays the genuine local default; the S3 weight source is
-        # supplied via s3_model_data_url.
-        self.builder.s3_model_data_url = "s3://bucket/weights/"
+        self.builder.model_path = "/tmp/local-model"
+        generated_destination = (
+            "s3://default-bucket/model-builder/model/0123456789abcdef0123456789abcdef/"
+        )
+        self.builder.s3_model_data_url = generated_destination
+        mock_prepare.return_value = (generated_destination, None)
 
         captured_env = {}
 
@@ -658,11 +659,22 @@ class TestBuildForTGI(unittest.TestCase):
 
         self.builder._build_for_tgi()
 
-        # Property 2 (2.4): the s3_model_data_url is routed through the S3
-        # upload branch via _prepare_for_mode(model_path=...).
-        mock_prepare.assert_called_once_with(model_path="s3://bucket/weights/")
-        self.assertEqual(captured_env["HF_MODEL_ID"], "/opt/ml/model")
-        self.assertEqual(captured_env["HF_HUB_OFFLINE"], "1")
+        mock_prepare.assert_called_once()
+        routed_model_path = mock_prepare.call_args.kwargs.get("model_path")
+        self.assertEqual(
+            {
+                "hf_model_id": captured_env.get("HF_MODEL_ID"),
+                "hf_hub_offline": captured_env.get("HF_HUB_OFFLINE"),
+                "routed_model_path": routed_model_path,
+                "s3_source_created": routed_model_path is not None,
+            },
+            {
+                "hf_model_id": "org/model",
+                "hf_hub_offline": None,
+                "routed_model_path": None,
+                "s3_source_created": False,
+            },
+        )
 
     @patch("sagemaker.serve.model_builder_servers._get_gpu_info")
     @patch("sagemaker.serve.model_builder_servers._get_default_tensor_parallel_degree")
