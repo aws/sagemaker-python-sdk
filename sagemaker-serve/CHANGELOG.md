@@ -1,5 +1,20 @@
 # Changelog
 
+## v1.20.0 (2026-08-14)
+
+### New Features
+
+- feat(serve): list/filter jobs, deploy from recommendation row, compare benchmarks, DataFrame views (#6148)
+
+### Bug Fixes
+
+- fix(serve): validate ECR registry host before docker login (#6160)
+
+### Tests
+
+- test(serve): SD/KT-IC integ must use g6.2xlarge, not g4dn (#6141)
+
+
 ## v1.19.0 (2026-08-10)
 
 ### New Features
