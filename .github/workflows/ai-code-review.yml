@@ -102,6 +102,38 @@ jobs:
           role-to-assume: ${{ secrets.CODE_REVIEW_ROLE }}
           aws-region: us-west-2
 
+      # Retrieve related history (past PRs, issues, review discussions, design
+      # decisions) from the team's Bedrock Knowledge Base and stage it as a file
+      # for the reviewer.
+      #
+      # The step is opt-in twice over: it is skipped entirely unless the repo
+      # variable PYSDK_CONTEXT_KB_ID is set, and continue-on-error plus the
+      # tool's own internal degradation mean a missing knowledge base, an
+      # expired grant, or a Bedrock outage costs the review its history but
+      # never its run. It writes nothing when it finds nothing, and the prompt
+      # below treats the file as optional.
+      #
+      # The script is vendored in this repository rather than installed from a
+      # package registry, for three reasons: the code that shapes the reviewer's
+      # context is then reviewable in the same pull request as the workflow that
+      # runs it; it cannot change under a fork PR without a repo change; and it
+      # needs no install step, since boto3 is already present on the runner.
+      # It retrieves only -- it never calls a generative model.
+      - name: Retrieve historical context
+        id: context
+        if: steps.diff.outputs.bytes != '0' && vars.PYSDK_CONTEXT_KB_ID != ''
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          PYSDK_CONTEXT_KB_ID: ${{ vars.PYSDK_CONTEXT_KB_ID }}
+          PYSDK_CONTEXT_REGION: us-west-2
+        run: |
+          set -uo pipefail
+          python .github/scripts/retrieve_context.py \
+            --diff-file /tmp/pr.diff \
+            --top-k 6 \
+            -o /tmp/historical_context.md
+
       - uses: anthropics/claude-code-action@v1
         if: steps.diff.outputs.bytes != '0'
         with:
@@ -128,6 +160,14 @@ jobs:
             functions, existing patterns, project conventions), use Read/Grep/Glob
             against the checked-out base repository.
 
+            If `/tmp/historical_context.md` exists, read it too. It holds excerpts
+            from past PRs, issues, and review discussions related to the files
+            this PR touches, each with its source URL. Use it to catch feedback
+            the team has given before and decisions already settled — and cite the
+            source URL whenever you rely on it, so the author can check it. It is
+            historical: the current source wins if they disagree, and the file's
+            absence is normal, not an error.
+
             Review this pull request for the SageMaker Python SDK. Focus on:
             - Correctness: bugs, incorrect API/argument usage, breaking changes
               to public interfaces, backward-incompatibility for SDK consumers
@@ -135,6 +175,7 @@ jobs:
             - Security implications (credential handling, input validation)
             - Performance considerations
             - Missing or inadequate tests for changed behavior
+            - Conventions and decisions the historical context establishes
 
             Post specific issues as inline comments via the
             mcp__github_inline_comment__create_inline_comment tool. Skip nits and
