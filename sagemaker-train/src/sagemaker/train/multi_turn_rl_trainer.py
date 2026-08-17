@@ -643,23 +643,78 @@ class MultiTurnRLTrainer(BaseTrainer):
                 "VPC config requires both non-empty 'security_group_ids' and 'subnets'."
             )
 
+    def _nova_managed_configuration(self):
+        """Return the ManagedConfiguration required for the base model, or None.
+
+        Nova (closed-source) models require every ModelPackageGroup used by the
+        job — output and intermediate checkpoint — to use Restricted managed
+        storage. Open-source models have no managed-storage requirement.
+        """
+        if not _is_nova_model(self._model_name):
+            return None
+        from sagemaker.core.shapes import ManagedConfiguration
+
+        return ManagedConfiguration(managed_storage_type="Restricted")
+
+    def _validate_mpg_managed_storage(self, mpg, managed_configuration) -> None:
+        """Validate an existing ModelPackageGroup against a required ManagedConfiguration.
+
+        Raises:
+            ValueError: If ``managed_configuration`` is required and the existing
+                group's managed storage type does not match. Existing groups
+                cannot be converted, so failing fast here (at trainer
+                construction) is preferable to a late job-submission rejection.
+        """
+        if managed_configuration is None:
+            return
+        required = managed_configuration.managed_storage_type
+        existing = getattr(mpg, "managed_configuration", None)
+        existing_type = getattr(existing, "managed_storage_type", None)
+        if not isinstance(existing_type, str):
+            existing_type = None
+        if existing_type != required:
+            group_name = getattr(mpg, "model_package_group_name", None) or getattr(
+                mpg, "model_package_group_arn", "<unknown>"
+            )
+            raise ValueError(
+                f"ModelPackageGroup '{group_name}' uses "
+                f"'{existing_type or 'Standard'}' managed storage, but model "
+                f"'{self._model_name}' requires '{required}'. Existing groups cannot "
+                "be converted. Pass a ModelPackageGroup created with "
+                f"ManagedConfiguration(managed_storage_type='{required}'), or omit "
+                "the parameter to auto-create a compliant group."
+            )
+
     def _get_or_create_mpg(self, value, default_name: str, session, managed_configuration=None) -> str:
         """Resolve an existing ModelPackageGroup or auto-create one.
 
         If ``value`` is provided (object or string), validates it exists and returns its ARN.
         If ``value`` is None, creates a ModelPackageGroup with ``default_name`` (get-or-create).
+        When ``managed_configuration`` is provided, every resolution path validates
+        that the resulting group satisfies it (auto-created groups are created
+        with it).
 
         Returns:
             The ModelPackageGroup ARN.
         """
         if value:
             if isinstance(value, ModelPackageGroup):
+                if managed_configuration is not None:
+                    # A caller-constructed object may not carry managed_configuration;
+                    # fetch the authoritative record before validating.
+                    fetched = ModelPackageGroup.get(
+                        model_package_group_name=value.model_package_group_name,
+                        session=session.boto_session,
+                        region=session.boto_session.region_name,
+                    )
+                    self._validate_mpg_managed_storage(fetched, managed_configuration)
                 return value.model_package_group_arn
             mpg = ModelPackageGroup.get(
                 model_package_group_name=value,
                 session=session.boto_session,
                 region=session.boto_session.region_name,
             )
+            self._validate_mpg_managed_storage(mpg, managed_configuration)
             return mpg.model_package_group_arn
 
         # Auto-create (get-or-create with deterministic name)
@@ -670,6 +725,9 @@ class MultiTurnRLTrainer(BaseTrainer):
                 session=session.boto_session,
                 region=session.boto_session.region_name,
             )
+            self._validate_mpg_managed_storage(mpg, managed_configuration)
+        except ValueError:
+            raise
         except Exception:
             try:
                 create_kwargs = {
@@ -695,22 +753,27 @@ class MultiTurnRLTrainer(BaseTrainer):
         2. If ``model`` is a ModelPackage, derives the group from it.
         3. Otherwise, auto-creates ``{model_name}-mtrl-mpg`` (get-or-create).
 
+        For Nova models, every branch validates (or creates) the group with
+        Restricted managed storage — including the explicit and
+        continued-customization (ModelPackage-derived) branches.
+
         Returns:
             The ModelPackageGroup ARN.
         """
+        managed_config = self._nova_managed_configuration()
+
         if output_model_package_group:
-            return self._get_or_create_mpg(output_model_package_group, None, session)
+            return self._get_or_create_mpg(
+                output_model_package_group, None, session, managed_configuration=managed_config
+            )
 
         # Derive from ModelPackage
         if isinstance(model, ModelPackage):
             group_name = model.model_package_group_name
             if group_name:
-                return self._get_or_create_mpg(group_name, None, session)
-
-        managed_config = None
-        if _is_nova_model(self._model_name):
-            from sagemaker.core.shapes import ManagedConfiguration
-            managed_config = ManagedConfiguration(managed_storage_type="Restricted")
+                return self._get_or_create_mpg(
+                    group_name, None, session, managed_configuration=managed_config
+                )
 
         return self._get_or_create_mpg(
             None, f"{self._model_name}-mtrl-mpg", session, managed_configuration=managed_config
@@ -719,17 +782,15 @@ class MultiTurnRLTrainer(BaseTrainer):
     def _resolve_intermediate_checkpoint_mpg(self, intermediate_checkpoint_mpg, session) -> str:
         """Resolve or auto-create the intermediate checkpoint ModelPackageGroup.
 
-        If provided, validates it exists. Otherwise auto-creates
+        If provided, validates it exists (and, for Nova models, that it uses
+        Restricted managed storage). Otherwise auto-creates
         ``{model_name}-mtrl-checkpoint-mpg`` (get-or-create).
         Raises ValueError if the resolved ARN is the same as ``output_model_package_group``.
 
         Returns:
             The ModelPackageGroup ARN.
         """
-        managed_config = None
-        if not intermediate_checkpoint_mpg and _is_nova_model(self._model_name):
-            from sagemaker.core.shapes import ManagedConfiguration
-            managed_config = ManagedConfiguration(managed_storage_type="Restricted")
+        managed_config = self._nova_managed_configuration()
 
         arn = self._get_or_create_mpg(
             intermediate_checkpoint_mpg,
