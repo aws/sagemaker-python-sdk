@@ -9,8 +9,10 @@ BASE_TRAINER_TELEMETRY_PARAMS = [
     ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
     ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
     ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
+    ("notification_rule_arn", TelemetryParamType.ATTR_EXISTS),
     ("validation_dataset", TelemetryParamType.KWARG_EXISTS),
     ("wait", TelemetryParamType.KWARG_EXISTS),
+    ("dry_run", TelemetryParamType.KWARG_EXISTS),
 ]
 
 # Common params for all evaluators
@@ -20,4 +22,5 @@ BASE_EVALUATOR_TELEMETRY_PARAMS = [
     ("networking", TelemetryParamType.ATTR_EXISTS),
     ("kms_key_id", TelemetryParamType.ATTR_EXISTS),
     ("mlflow_resource_arn", TelemetryParamType.ATTR_EXISTS),
+    ("dry_run", TelemetryParamType.KWARG_EXISTS),
 ]

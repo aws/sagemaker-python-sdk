@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(mlops): Add pre-validation for Bedrock and MLflow role permissions (#6162)
+
+
+## v1.19.0 (2026-08-10)
+
+- Update module dependencies
+
+
 ## v1.18.0 (2026-07-30)
 
 ### New Features
