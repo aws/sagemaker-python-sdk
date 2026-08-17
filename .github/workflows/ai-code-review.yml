@@ -12,8 +12,6 @@ name: AI Code Review (Claude on Bedrock)
 on:
   pull_request_target:
     types: [opened, synchronize, ready_for_review, reopened]
-    branches:
-      - "master"
     # Scope to the same product directories the other PR checks use, so pure
     # docs/example PRs don't trigger a model review. Remove this block to
     # review every PR.

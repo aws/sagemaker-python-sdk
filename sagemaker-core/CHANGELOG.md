@@ -1,5 +1,19 @@
 # Changelog
 
+## v2.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(core): propagate user-supplied tags to created resources (#6167)
+
+
+## v2.19.0 (2026-08-10)
+
+### New Features
+
+- feat(core): Nova follow-ups — IAM role resolution and training utils (#6051)
+
+
 ## v2.18.0 (2026-07-30)
 
 ### Bug Fixes

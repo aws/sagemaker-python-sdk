@@ -2709,6 +2709,11 @@ class _ModelBuilderUtils:
             selected_config_name (Optional[str]): The name of the selected deployment config.
             selected_instance_type (Optional[str]): The selected instance type.
         """
+        # Lazily load the JumpStart metadata configs. Without this a pre-deploy
+        # builder (model set, build()/deploy() not yet called) has
+        # _metadata_configs=None, so both list_deployment_configs() and the
+        # benchmark-metrics data would come back empty.
+        self._ensure_metadata_configs()
         deployment_configs = []
         if not self._metadata_configs:
             return deployment_configs

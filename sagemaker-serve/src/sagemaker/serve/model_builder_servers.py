@@ -996,6 +996,12 @@ class _ModelBuilderServers(object):
         init_kwargs = get_init_kwargs(**init_kwargs_params)
 
         # Configure image URI and environment variables
+        if not self.image_uri:
+            # Defense-in-depth: reject a hub-sourced image URI that spoofs an ECR host before it can
+            # propagate to LocalContainerMode's docker login (see check_image_uri).
+            from sagemaker.serve.validations.check_image_uri import validate_hub_ecr_address
+
+            validate_hub_ecr_address(init_kwargs.image_uri)
         self.image_uri = self.image_uri or init_kwargs.image_uri
 
         if hasattr(init_kwargs, "env") and init_kwargs.env:

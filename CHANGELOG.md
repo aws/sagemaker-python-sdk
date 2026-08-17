@@ -1,5 +1,42 @@
 # Changelog
 
+## v3.20.0 (2026-08-14)
+
+### New Features
+
+- feat(serve): list/filter jobs, deploy from recommendation row, compare benchmarks, DataFrame views (#6148)
+
+### Bug Fixes
+
+- fix(train): revert preset reward function deletion from hyperparams dict (#6181)
+- fix(serve): validate ECR registry host before docker login (#6160)
+- fix(mlops): Add pre-validation for Bedrock and MLflow role permissions (#6162)
+- fix(core): propagate user-supplied tags to created resources (#6167)
+
+### Tests
+
+- test(train): Fix RLVR integ test (#6183)
+- test(train): update timeout of RLVR sequence_length test (#6180)
+- test(serve): SD/KT-IC integ must use g6.2xlarge, not g4dn (#6141)
+
+
+## v3.19.0 (2026-08-10)
+
+### New Features
+
+- feat(train): Add SequenceLength support for SFT, DPO, RLVR, RLAIF trainers (#5965)
+- feat(train): Job notifications, log streaming, and metrics visualization for training jobs (#6051)
+- feat(serve): Model Reuse — reuse previously built models across deployments (#6051)
+- feat(core): Nova follow-ups — IAM role resolution and training utils (#6051)
+
+### Bug Fixes
+
+- fix(serve): propagate additional_model_data_sources for JumpStart models (#6151)
+- fix(serve): forward tolerance flags from get_jumpstart_configs (#6137)
+- fix(serve): create local model_path dir before using it as download dir (#6147)
+- fix(serve): remove IC data-source collapse hack from recommendation deploy (#6101)
+
+
 ## v3.18.0 (2026-07-30)
 
 ### New Features

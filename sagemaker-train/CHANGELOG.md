@@ -1,5 +1,25 @@
 # Changelog
 
+## v1.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(train): revert preset reward function deletion from hyperparams dict (#6181)
+
+### Tests
+
+- test(train): Fix RLVR integ test (#6183)
+- test(train): update timeout of RLVR sequence_length test (#6180)
+
+
+## v1.19.0 (2026-08-10)
+
+### New Features
+
+- feat(train): Add SequenceLength support for SFT, DPO, RLVR, RLAIF trainers (#5965)
+- feat(train): Job notifications, log streaming, and metrics visualization for training jobs (#6051)
+
+
 ## v1.18.0 (2026-07-30)
 
 ### Bug Fixes

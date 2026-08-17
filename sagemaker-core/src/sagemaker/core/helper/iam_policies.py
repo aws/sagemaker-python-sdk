@@ -812,4 +812,191 @@ IAM_POLICY_CONFIG = {
             },
         },
     },
+    "model_eval": {
+        "role_name": "SageMaker-AutoRole-Evaluation",
+        "trust_policy": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "sagemaker.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole",
+                    "Condition": {
+                        "StringEquals": {"aws:SourceAccount": "ACCOUNT_PLACEHOLDER"}
+                    },
+                }
+            ],
+        },
+        "policies": {
+            # --- Training permissions (superset of "training" role type) ---
+            "s3_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "s3:GetObject",
+                            "s3:PutObject",
+                            "s3:ListBucket",
+                            "s3:GetBucketLocation",
+                        ],
+                        "Resource": "S3_PLACEHOLDER",
+                    }
+                ],
+            },
+            "ecr_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["ecr:GetAuthorizationToken"],
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "ecr:GetDownloadUrlForLayer",
+                            "ecr:BatchGetImage",
+                            "ecr:BatchCheckLayerAvailability",
+                        ],
+                        "Resource": "arn:aws:ecr:*:*:repository/*",
+                    },
+                ],
+            },
+            "cloudwatch_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["cloudwatch:PutMetricData"],
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "logs:CreateLogGroup",
+                            "logs:CreateLogStream",
+                            "logs:PutLogEvents",
+                            "logs:DescribeLogStreams",
+                        ],
+                        "Resource": "arn:aws:logs:*:*:log-group:/aws/sagemaker/TrainingJobs*",
+                    },
+                ],
+            },
+            "kms_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"],
+                        "Resource": "KMS_PLACEHOLDER",
+                    }
+                ],
+            },
+            # --- Evaluation-specific permissions ---
+            "bedrock_evaluation_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "bedrock:CreateEvaluationJob",
+                            "bedrock:GetEvaluationJob",
+                        ],
+                        "Resource": "*",
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "bedrock:InvokeModel",
+                            "bedrock:InvokeModelWithResponseStream",
+                        ],
+                        "Resource": [
+                            "arn:aws:bedrock:*:*:foundation-model/*",
+                            "arn:aws:bedrock:*::foundation-model/*",
+                        ],
+                    },
+                ],
+            },
+            "mlflow_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "sagemaker-mlflow:GetExperimentByName",
+                            "sagemaker-mlflow:CreateExperiment",
+                            "sagemaker-mlflow:CreateRun",
+                            "sagemaker-mlflow:LogBatch",
+                            "sagemaker-mlflow:LogMetric",
+                            "sagemaker-mlflow:LogParam",
+                            "sagemaker-mlflow:SetTag",
+                            "sagemaker-mlflow:UpdateRun",
+                        ],
+                        "Resource": "arn:aws:sagemaker:*:*:mlflow-app/*",
+                    }
+                ],
+            },
+            "sagemaker_evaluation_policy": {
+                "Version": "2012-10-17",
+                "Statement": [
+                    {
+                        "Effect": "Allow",
+                        "Action": [
+                            "sagemaker:CreateTrainingJob",
+                            "sagemaker:DescribeTrainingJob",
+                            "sagemaker:StopTrainingJob",
+                            "sagemaker:CreatePipeline",
+                            "sagemaker:DescribePipeline",
+                            "sagemaker:StartPipelineExecution",
+                            "sagemaker:DescribePipelineExecution",
+                            "sagemaker:AddTags",
+                        ],
+                        "Resource": [
+                            "arn:aws:sagemaker:*:*:training-job/*",
+                            "arn:aws:sagemaker:*:*:pipeline/*",
+                        ],
+                    }
+                ],
+            },
+        },
+    },
 }
+
+# Actions the *caller* must have to orchestrate Pipeline-based evaluations
+# directly. These actions must be held by whoever calls evaluator.evaluate(),
+# NOT by the job execution role (which is covered by role_type="training").
+# See verify_evaluation_caller_permissions() in iam_role_resolver.
+EVALUATION_CALLER_ACTIONS = (
+    # Pipeline orchestration
+    "sagemaker:CreatePipeline",
+    "sagemaker:UpdatePipeline",
+    "sagemaker:DescribePipeline",
+    "sagemaker:ListPipelines",
+    "sagemaker:StartPipelineExecution",
+    "sagemaker:DescribePipelineExecution",
+    "sagemaker:ListPipelineExecutionSteps",
+    "sagemaker:StopPipelineExecution",
+    "sagemaker:ListTags",
+    "sagemaker:AddTags",
+    "sagemaker:DescribeTrainingJob",
+    # NOTE: iam:PassRole is intentionally excluded. The AmazonSageMakerFullAccess
+    # policy conditions it on iam:PassedToService=sagemaker.amazonaws.com, and
+    # SimulatePrincipalPolicy without that context value returns implicitDeny —
+    # a false positive that blocks callers who actually have the permission.
+    # Model resolution (DescribeHubContent called at construction time under caller creds)
+    "sagemaker:DescribeHubContent",
+    "sagemaker:ListHubContents",
+    "sagemaker:DescribeHub",
+    "sagemaker:ListHubs",
+    # Lineage (artifact creation/lookup runs under caller before pipeline starts)
+    "sagemaker:CreateArtifact",
+    "sagemaker:ListArtifacts",
+    "sagemaker:DescribeArtifact",
+    # S3 access (config/benchmark upload + output path validation)
+    "s3:PutObject",
+    "s3:GetObject",
+    "s3:ListBucket",
+)

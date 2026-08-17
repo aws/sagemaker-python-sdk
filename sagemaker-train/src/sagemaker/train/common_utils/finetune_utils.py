@@ -6,7 +6,6 @@ import time
 import logging
 import json
 from typing import Any, Dict, Optional, Union
-import time
 import boto3
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
@@ -188,7 +187,12 @@ def _get_prod_sm_client(sagemaker_session) -> "boto3.client":
     return boto3.client("sagemaker", region_name=region)
 
 
-def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optional[str] = None, min_mlflow_version: Optional[str] = None) -> Optional[str]:
+def _resolve_mlflow_resource_arn(
+    sagemaker_session,
+    mlflow_resource_arn: Optional[str] = None,
+    min_mlflow_version: Optional[str] = None,
+    dry_run: bool = False,
+) -> Optional[str]:
     """Resolve MLflow resource ARN using default experience logic.
 
     All MLflow API calls use a raw boto3 client against prod (no custom endpoint),
@@ -199,6 +203,8 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
         mlflow_resource_arn: Explicit ARN to use (returned as-is if provided).
         min_mlflow_version: Minimum required MLflow version (e.g. "3.10").
             If the resolved app's version is below this, a new app is created.
+        dry_run: If True, only performs read-only checks (list/describe) without
+            creating new apps or waiting for apps in Creating status.
     """
     if mlflow_resource_arn:
         return mlflow_resource_arn
@@ -240,10 +246,24 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
                 logger.warning("Resolved MLflow app %s is in failed state: %s. Skipping.",
                                resolved_arn, resolved_app.get("Status"))
                 resolved_app = None
+            elif dry_run and resolved_app.get("Status") in ["Creating", "Updating"]:
+                logger.warning(
+                    "dry_run: MLflow app %s is in '%s' state. "
+                    "Job submission would block until the app is ready.",
+                    resolved_arn, resolved_app.get("Status"),
+                )
+                return resolved_arn
 
         # Version check: if resolved app is below min version, create a new one as default
         if resolved_app and min_mlflow_version and not _mlflow_version_meets_minimum_dict(resolved_app, min_mlflow_version):
             resolved_arn = resolved_app["Arn"]
+            if dry_run:
+                logger.warning(
+                    "dry_run: MLflow app %s has version below %s. "
+                    "Job submission would create a new app (may take several minutes).",
+                    resolved_arn, min_mlflow_version,
+                )
+                return resolved_arn
             logger.info(
                 "Existing MLflow app %s has version below %s. Creating new app as default.",
                 resolved_arn, min_mlflow_version
@@ -257,6 +277,21 @@ def _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn: Optiona
 
         if resolved_app:
             return resolved_app["Arn"]
+
+        # In dry_run mode, don't create a new app — just warn and return None
+        if dry_run:
+            if mlflow_apps_list:
+                # Apps exist but none are in a ready/usable state
+                logger.warning(
+                    "dry_run: No MLflow app in ready state found. "
+                    "Job submission would create a new app (may take several minutes)."
+                )
+            else:
+                logger.warning(
+                    "dry_run: No MLflow app exists. "
+                    "Job submission would create a new app (may take several minutes)."
+                )
+            return None
 
         # Create new app
         new_arn = _create_mlflow_app(sagemaker_session)
@@ -568,8 +603,28 @@ def _resolve_model_package_arn(model_package) -> Optional[str]:
         return None
 
 
+def _parse_sequence_length(value) -> int:
+    """Parse a sequence length value like '8K', '32K', '128K' into an integer (e.g., 8192)."""
+    if not value:
+        return 0
+    value = str(value).strip().upper()
+    if not value.endswith("K"):
+        raise ValueError(
+            f"Invalid sequence_length '{value}'. "
+            f"Expected a value ending in 'K', e.g. '8K' or '128K'."
+        )
+    try:
+        return int(value[:-1]) * 1024
+    except ValueError:
+        raise ValueError(
+            f"Invalid sequence_length '{value}'. "
+            f"Expected a numeric value followed by 'K', e.g. '8K' or '128K'."
+        )
+
+
 def _get_fine_tuning_options_and_model_arn(model_name: str, customization_technique: str, training_type, sagemaker_session,
-                                         hub_name: Optional[str] = None, compute: Optional[Union[HyperPodCompute, TrainingJobCompute]] = None) -> tuple:
+                                         sequence_length=None, hub_name: Optional[str] = None,
+                                         compute: Optional[Union[HyperPodCompute, TrainingJobCompute]] = None) -> tuple:
     """Get fine-tuning options and model ARN for given customization technique.
     Returns:
         tuple: (FineTuningOptions, model_arn, is_gated_model)
@@ -620,6 +675,29 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
         
         if not recipes_with_template:
             raise ValueError(f"No recipes found with {platform_label} for technique: {customization_technique}")
+
+        # Filter by SequenceLength before recipe selection if sequence_length is requested.
+        # Multiple recipes may share the same SequenceLength (e.g. LORA and FULL
+        # variants); keep every exact match so _select_recipe_by_training_type can
+        # pick the right one for the requested training type.
+        if sequence_length:
+            requested = _parse_sequence_length(sequence_length)
+            candidates_with_sequence = [r for r in recipes_with_template if r.get("SequenceLength")]
+            if candidates_with_sequence:
+                filtered = [r for r in candidates_with_sequence if _parse_sequence_length(r.get("SequenceLength")) == requested]
+                if filtered:
+                    recipes_with_template = filtered
+                else:
+                    available = sorted(set(r.get("SequenceLength") for r in candidates_with_sequence))
+                    raise ValueError(
+                        f"No recipes found with SequenceLength == {sequence_length}. "
+                        f"Available sequence lengths: {available}"
+                    )
+            else:
+                raise ValueError(
+                    f"No recipes found with {platform_label} for technique: {customization_technique},training_type:{training_type}, "
+                    f"and sequence length:{sequence_length}"
+                )
 
         # Select recipe based on training type
         recipe = _select_recipe_by_training_type(recipes_with_template, training_type)
@@ -679,10 +757,16 @@ def _get_fine_tuning_options_and_model_arn(model_name: str, customization_techni
             except Exception as e:
                 logger.debug(f"Could not fetch subscription recipe override_params: {type(e).__name__}: {e}")
 
+        # Supported sequence-length ceiling: the recipe's SequenceLength ("<n>K")
+        # is the single source of truth. Parse it to an int so we can validate that
+        # max_prompt_length + max_response_length (or max_length) stays within
+        # what the recipe's hardware can serve. 0 if absent/unparseable (no-op).
+        sequence_length_ceiling = _parse_sequence_length(recipe.get("SequenceLength")) or None
+
         if options_dict:
-            return FineTuningOptions(options_dict), model_arn, is_gated_model
+            return FineTuningOptions(options_dict, sequence_length=sequence_length_ceiling), model_arn, is_gated_model
         else:
-            return FineTuningOptions({}), model_arn, is_gated_model
+            return FineTuningOptions({}, sequence_length=sequence_length_ceiling), model_arn, is_gated_model
             
     except Exception as e:
         logger.debug("Exception getting fine-tuning options: %s", e)
@@ -881,7 +965,8 @@ def _resolve_model_and_name(model, sagemaker_session=None):
 
 
 def _create_serverless_config(model_arn, customization_technique,
-                           training_type, accept_eula, evaluator_arn=None, job_type=JOB_TYPE) -> Optional['ServerlessJobConfig']:
+                           training_type, accept_eula, evaluator_arn=None,
+                           sequence_length=None, job_type=JOB_TYPE) -> Optional['ServerlessJobConfig']:
     """Create serverless job configuration for fine-tuning.
     
     Args:
@@ -890,6 +975,7 @@ def _create_serverless_config(model_arn, customization_technique,
         training_type: Training type (TrainingType enum or string)
         accept_eula: Boolean indicating if EULA is accepted
         evaluator_arn: Optional evaluator ARN for RLVR/RLAIF
+        sequence_length: Optional sequence length enum value (e.g., "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K")
         job_type: Type of job (default: "FineTuning")
     
     Returns:
@@ -905,7 +991,8 @@ def _create_serverless_config(model_arn, customization_technique,
         customization_technique=customization_technique,
         peft=peft,
         evaluator_arn=evaluator_arn,
-        accept_eula=accept_eula
+        accept_eula=accept_eula,
+        sequence_length=sequence_length,
     )
 
     return serverless_config
@@ -969,7 +1056,8 @@ def _create_model_package_config(model_package_group_name, model, sagemaker_sess
 
 
 def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None, 
-                       mlflow_experiment_name=None, mlflow_run_name=None):
+                       mlflow_experiment_name=None, mlflow_run_name=None,
+                       dry_run=False):
     """Create MLflow configuration with resolved resource ARN.
     
     Args:
@@ -977,6 +1065,8 @@ def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None,
         mlflow_resource_arn: MLflow resource ARN (if None, uses default experience)
         mlflow_experiment_name: MLflow experiment name
         mlflow_run_name: MLflow run name
+        dry_run: If True, only performs read-only checks without creating
+            new MLflow apps or waiting for apps in Creating status.
     
     Returns:
         MlflowConfig object or None if no MLflow resource ARN is resolved
@@ -984,7 +1074,9 @@ def _create_mlflow_config(sagemaker_session, mlflow_resource_arn=None,
 
     
     # Derive mlflow_resource_arn with default experience
-    resolved_mlflow_arn = _resolve_mlflow_resource_arn(sagemaker_session, mlflow_resource_arn)
+    resolved_mlflow_arn = _resolve_mlflow_resource_arn(
+        sagemaker_session, mlflow_resource_arn, dry_run=dry_run
+    )
     logger.info(f"MLflow resource ARN: {resolved_mlflow_arn}")
 
     # Create MlflowConfig using shapes
@@ -1082,8 +1174,12 @@ def _validate_and_resolve_model_package_group(model, model_package_group_name):
     if isinstance(model, ModelPackage):
         return model.model_package_group_name
 
-    raise ValueError("model_package_group_name must be provided when model given is "
-                     "not a ModelPackage artifact/not continued finetuning")
+    raise ValueError(
+        "model_package_group is required for serverless training (when compute is not set). "
+        "Either provide model_package_group to store the fine-tuned model, or set "
+        "compute=TrainingJobCompute(...) / HyperPodCompute(...) to use managed compute "
+        "where model_package_group is optional."
+    )
 
 
 def _validate_eula_for_gated_model(model, accept_eula, is_gated_model):
@@ -1410,23 +1506,64 @@ def _get_smhp_replicas_enum(model_name: str, customization_technique: str, train
         if isinstance(enum_val, list) and enum_val:
             return enum_val
     except Exception as e:
-        logger.warning(
+        # Caller emits the user-facing warning when None is returned; keep the
+        # exception detail at debug level to avoid a duplicate warning.
+        logger.debug(
             f"Could not fetch valid instance counts from SMHP recipe for "
-            f"{model_name}/{customization_technique}: {e}. "
-            "Instance count validation will be skipped."
+            f"{model_name}/{customization_technique}: {e}."
         )
     return None
 
 
-def _extract_recipe_from_helm_template(template_content: str) -> str:
+def _get_smhp_instance_type_enum(model_name: str, customization_technique: str, training_type,
+                                 sagemaker_session, hub_name: Optional[str] = None) -> Optional[list]:
+    """Fetch the instance_type enum from the SMHP override spec for the same model/technique.
+
+    SMTJ hub content does not include an instance_type enum in its override spec, but
+    the SMHP recipe for the same configuration does. This function retrieves that
+    enum so it can be applied to SMTJ recipe validation.
+
+    Returns:
+        List of valid instance types, or None if unavailable.
+    """
+    try:
+        _, smhp_override_spec = _get_recipe_entry_and_override_spec(
+            model_name=model_name,
+            customization_technique=customization_technique,
+            training_type=training_type,
+            sagemaker_session=sagemaker_session,
+            platform="hyperpod",
+            hub_name=hub_name,
+        )
+        instance_type_meta = smhp_override_spec.get("instance_type", {})
+        enum_val = instance_type_meta.get("enum")
+        if isinstance(enum_val, list) and enum_val:
+            return enum_val
+    except Exception as e:
+        # Caller emits the user-facing warning when None is returned; keep the
+        # exception detail at debug level to avoid a duplicate warning.
+        logger.debug(
+            f"Could not fetch valid instance types from SMHP recipe for "
+            f"{model_name}/{customization_technique}: {e}."
+        )
+    return None
+
+
+def _extract_recipe_from_helm_template(template_content: str, customization_technique: str = None) -> str:
     """Extract the training config YAML from a HyperPod Helm chart template.
 
     The HpEksPayloadTemplateS3Uri contains a full Helm chart (multi-document YAML
     with ``---`` separators). The HyperPod CLI expects a single-document recipe YAML.
     This function extracts just the ``config.yaml`` content section.
 
+    For RFT/RLVR recipes, also strips the ``task_type: storm_rbs`` field from the
+    Hub template. 
+
     Args:
         template_content: Raw Helm chart template string from S3.
+        customization_technique: The training technique (e.g. "RLVR", "RFT", "SFT").
+            When set to "RLVR" or "RFT", strips ``task_type: storm_rbs`` from the
+            extracted config.
 
     Returns:
         str: Single-document recipe YAML content.
@@ -1452,7 +1589,14 @@ def _extract_recipe_from_helm_template(template_content: str) -> str:
             "The template format may have changed."
         )
 
-    return textwrap.dedent(recipe_match.group(1)).strip()
+    result = textwrap.dedent(recipe_match.group(1)).strip()
+
+    # Strip task_type: storm_rbs from RFT/RLVR recipes - including it causes service validation failures.
+    if customization_technique and customization_technique.upper() in ("RLVR", "RFT"):
+        result = re.sub(r"^\s*task_type:\s*storm_rbs\s*$", "", result, flags=re.MULTILINE)
+        result = textwrap.dedent(result)
+
+    return result
 
 
 def _render_recipe_placeholders(recipe_content: str, override_spec: dict) -> str:
@@ -1563,7 +1707,9 @@ def get_hyperpod_recipe_path(model_name: str, customization_technique: str, trai
     recipe_content = response["Body"].read().decode("utf-8")
 
     # Extract the training config from the Helm chart template
-    recipe_content = _extract_recipe_from_helm_template(recipe_content)
+    # Only pass customization_technique for Nova models (task_type stripping is Nova RLVR/RFT specific)
+    technique_for_extraction = customization_technique if _is_nova_model(model_name) else None
+    recipe_content = _extract_recipe_from_helm_template(recipe_content, customization_technique=technique_for_extraction)
 
     # Inject additional overrides into spec before rendering
     if additional_overrides:
