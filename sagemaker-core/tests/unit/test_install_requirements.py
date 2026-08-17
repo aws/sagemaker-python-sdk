@@ -12,6 +12,8 @@
 # language governing permissions and limitations under the License.
 from __future__ import absolute_import
 
+import logging
+import os
 import subprocess
 import sys
 from unittest import mock
@@ -187,10 +189,34 @@ class TestInstallRequirements:
         mock_call.assert_called_once_with(_pip_cmd())
 
     def test_with_codeartifact_index(self):
+        captured = {}
+
+        def fake_check_call(cmd, env=None):
+            captured["cmd"] = cmd
+            captured["env"] = env
+            with open(env["PIP_CONFIG_FILE"], "r") as config:
+                captured["config"] = config.read()
+
+        with mock.patch(f"{_MODULE}.configure_pip", return_value=EXPECTED_INDEX):
+            with mock.patch("subprocess.check_call", side_effect=fake_check_call):
+                install_requirements("reqs.txt")
+
+        assert captured["cmd"] == _pip_cmd()
+        assert captured["env"]["PIP_CONFIG_FILE"]
+        assert EXPECTED_INDEX in captured["config"]
+        assert not os.path.exists(captured["env"]["PIP_CONFIG_FILE"])
+
+    def test_codeartifact_index_not_logged_or_passed_in_argv(self, caplog):
+        caplog.set_level(logging.INFO, logger=_MODULE)
         with mock.patch(f"{_MODULE}.configure_pip", return_value=EXPECTED_INDEX):
             with mock.patch("subprocess.check_call") as mock_call:
                 install_requirements("reqs.txt")
-        mock_call.assert_called_once_with(_pip_cmd("-i", EXPECTED_INDEX))
+
+        assert FAKE_TOKEN not in caplog.text
+        assert EXPECTED_INDEX not in caplog.text
+        argv = mock_call.call_args[0][0]
+        assert FAKE_TOKEN not in " ".join(argv)
+        assert EXPECTED_INDEX not in " ".join(argv)
 
     def test_with_cli_fallback_no_index_flag(self):
         with mock.patch(f"{_MODULE}.configure_pip", return_value=None):

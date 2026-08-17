@@ -40,6 +40,7 @@ import os
 import re
 import subprocess
 import sys
+import tempfile
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,20 @@ def _login_awscli(region, account, domain, repo):
             region,
         ]
     )
+
+
+def _write_pip_config(index):
+    """Write the authenticated package index to a temporary pip config file."""
+    config = tempfile.NamedTemporaryFile(
+        mode="w", prefix="sagemaker-pip-", suffix=".conf", delete=False
+    )
+    try:
+        config.write("[global]\n")
+        config.write(f"index-url = {index}\n")
+    finally:
+        config.close()
+    os.chmod(config.name, 0o600)
+    return config.name
 
 
 def configure_pip(auth_method=CodeArtifactAuthMethod.AUTO):
@@ -183,10 +198,26 @@ def install_requirements(
     python_executable = python_executable or sys.executable
     pip_cmd = [python_executable, "-m", "pip", "install", "-r", requirements_file]
     index = configure_pip(auth_method=auth_method)
+    env = None
+    pip_config = None
     if index:
-        pip_cmd.extend(["-i", index])
+        pip_config = _write_pip_config(index)
+        env = os.environ.copy()
+        env["PIP_CONFIG_FILE"] = pip_config
     logger.info("Running: %s", " ".join(pip_cmd))
-    subprocess.check_call(pip_cmd)
+    try:
+        if env is not None:
+            subprocess.check_call(pip_cmd, env=env)
+        else:
+            subprocess.check_call(pip_cmd)
+    finally:
+        if pip_config:
+            try:
+                os.remove(pip_config)
+            except FileNotFoundError:
+                pass
+            except OSError as e:
+                logger.warning("Failed to remove temporary pip config file %s: %s", pip_config, e)
 
 
 def main():
