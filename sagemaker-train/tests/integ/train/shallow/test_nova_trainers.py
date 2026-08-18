@@ -22,8 +22,8 @@ are all us-west-2. Marked ``us_east_1`` so they run in that region's integ job.
 
 Datasets, output paths and the reward function are all *derived from the calling
 account* rather than hardcoded. The deep Nova tests name resources in one specific
-test account (``sagemaker-us-east-1-784379639078``), which other accounts cannot
-read -- verified: ``AccessDenied`` on ``ListObjectsV2`` from 729646638167. Using
+test account's bucket, which other accounts cannot read -- verified:
+``AccessDenied`` on ``ListObjectsV2`` from a different account. Using
 ``default_bucket()`` and resolving the reward function from the caller's own hub
 follows what ``test_sft_trainer_serverful_smtj.py`` already does, and means these
 tests actually run wherever the suite runs instead of only in one account.
@@ -98,10 +98,10 @@ class TestNovaRLVRSubmission:
             # records and refuses the call if their scores do not parse. That gate
             # is real, but it asserts the contents of a hub artifact provisioned
             # per-account rather than anything about this payload -- verified: the
-            # function registered under this name in 729646638167 returns a shape
-            # the verifier rejects ("Each output must include 'id',
-            # 'aggregate_reward_score'"), so the test would fail on account state
-            # rather than on a regression.
+            # function registered under this name in the account this was run
+            # against returns a shape the verifier rejects ("Each output must
+            # include 'id', 'aggregate_reward_score'"), so the test would fail on
+            # account state rather than on a regression.
             #
             # The verifier itself is already covered, against a known-compatible
             # function, by the three us-west-2 reward-function cases in

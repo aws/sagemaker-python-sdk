@@ -192,9 +192,9 @@ The Nova tests (`us_east_1`) build every S3 path from `default_bucket()` and
 resolve the reward function from the calling account's own hub, rather than naming
 the resources the deep Nova tests use.
 
-This is not stylistic. The deep tests hardcode
-`s3://sagemaker-us-east-1-784379639078/...`, which other accounts cannot read —
-verified: `AccessDenied` on `ListObjectsV2` from 729646638167. A hardcoded path
+This is not stylistic. The deep tests hardcode a bucket belonging to one specific
+test account, which other accounts cannot read — verified: `AccessDenied` on
+`ListObjectsV2` from a different account. A hardcoded path
 means the test only runs in one account and fails everywhere else, which is how
 these five ended up never having been executed. `test_sft_trainer_serverful_smtj.py`
 already takes the derived approach (`training_resources`); these follow it, and

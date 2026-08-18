@@ -179,10 +179,10 @@ def nova_rlvr_data_uri(sagemaker_session_us_east_1, reward_scored_data_uri):
     * An S3 input must be in the same region as the job, and
       ``reward_scored_data_uri`` lives in us-west-2.
 
-    The deep test points at ``grpo-64-sample.jsonl`` in account 784379639078, which
-    is not readable from every account this runs in, so this copies the dataset the
-    us-west-2 RLVR tests already use. Idempotent, and skips rather than failing if
-    the source is unreadable.
+    The deep test points at ``grpo-64-sample.jsonl`` in a bucket belonging to one
+    specific test account, which is not readable from every account this runs in,
+    so this copies the dataset the us-west-2 RLVR tests already use. Idempotent,
+    and skips rather than failing if the source is unreadable.
     """
     bucket = sagemaker_session_us_east_1.default_bucket()
     key = "shallow-integ-test/nova-rlvr/train_285.jsonl"
@@ -207,10 +207,10 @@ def nova_output_path(sagemaker_session_us_east_1):
     """S3 prefix for Nova training output, in the caller's own us-east-1 bucket.
 
     Deliberately derived rather than hardcoded. The deep Nova tests name a bucket
-    in a specific test account (``sagemaker-us-east-1-784379639078``), which is not
-    readable from every account the suite runs in -- verified: ``AccessDenied`` on
-    ``ListObjectsV2`` from 729646638167. Using ``default_bucket()`` makes these
-    tests work in any account, the same way
+    belonging to one specific test account, which is not readable from every
+    account the suite runs in -- verified: ``AccessDenied`` on ``ListObjectsV2``
+    from a different account. Using ``default_bucket()`` makes these tests work in
+    any account, the same way
     ``test_sft_trainer_serverful_smtj.py::training_resources`` does.
     """
     return f"s3://{sagemaker_session_us_east_1.default_bucket()}/shallow-integ-test/output/"
@@ -221,9 +221,9 @@ def nova_reward_function_arn(sagemaker_session_us_east_1):
     """ARN of the Nova RLVR reward function in the caller's own account.
 
     Look-up-and-skip, like the other reward fixtures. The deep test hardcodes this
-    ARN in account 784379639078; resolving it per-account instead means the test
-    runs wherever the hub content has been provisioned and skips cleanly elsewhere,
-    rather than failing with a confusing cross-account hub error.
+    ARN against one specific account; resolving it per-account instead means the
+    test runs wherever the hub content has been provisioned and skips cleanly
+    elsewhere, rather than failing with a confusing cross-account hub error.
     """
     client = sagemaker_session_us_east_1.boto_session.client("sagemaker")
     hub, name = "sdktest", "rlvr-nova-test-rf"
