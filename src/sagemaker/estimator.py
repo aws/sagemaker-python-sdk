@@ -1249,6 +1249,10 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         elif _region_supports_profiler(self.sagemaker_session.boto_region_name):
             # Profiler is opt-in: do NOT auto-attach an active ProfilerConfig by default.
             # If profiler_config is left unset it is emitted as disabled below.
+            # Passing a ProfilerRule is itself an opt-in, so give it a config to attach to;
+            # otherwise the request would carry a profiler rule with profiling disabled.
+            if self.profiler_rules and self.profiler_config is None:
+                self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
                 self.profiler_rules = []
                 if self.profiler_config and self.profiler_config.profile_params:
