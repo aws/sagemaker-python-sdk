@@ -1290,8 +1290,11 @@ def test_framework_with_debugger_and_profiler_rules(sagemaker_session):
             }
         ],
     }
+    # A ProfilerRule is an opt-in, so a ProfilerConfig must be attached. CreateTrainingJob
+    # rejects "ProfilerRuleConfigurations" that are provided without "ProfilerConfig".
     assert args["profiler_config"] == {
-        "DisableProfiler": True,
+        "DisableProfiler": False,
+        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
         {
@@ -1325,8 +1328,11 @@ def test_framework_with_only_profiler_rule_specified(sagemaker_session):
     f.fit("s3://mydata")
     sagemaker_session.train.assert_called_once()
     _, args = sagemaker_session.train.call_args
+    # A ProfilerRule is an opt-in, so a ProfilerConfig must be attached. CreateTrainingJob
+    # rejects "ProfilerRuleConfigurations" that are provided without "ProfilerConfig".
     assert args["profiler_config"] == {
-        "DisableProfiler": True,
+        "DisableProfiler": False,
+        "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
     }
     assert args["profiler_rule_configs"] == [
         {
