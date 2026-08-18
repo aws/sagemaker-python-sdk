@@ -33,12 +33,12 @@ from sagemaker.train.distributed import MPI, DistributedConfig, Torchrun
 from sagemaker.train.model_trainer import ModelTrainer
 
 from .harness import (
-    CPU_IMAGE,
     DEFAULT_INSTANCE_COUNT,
     DEFAULT_INSTANCE_TYPE,
     MAX_RUNTIME_IN_SECONDS,
     assert_rejected,
     assert_submitted,
+    cpu_image,
     stop_quietly,
     submitted,
     unique_name,
@@ -99,7 +99,7 @@ def _trainer(sagemaker_session, name, **overrides):
     """
     kwargs = dict(
         sagemaker_session=sagemaker_session,
-        training_image=CPU_IMAGE,
+        training_image=cpu_image(sagemaker_session),
         source_code=_source_code(),
         compute=_compute(),
         stopping_condition=_stopping_condition(),
@@ -656,7 +656,7 @@ class TestRejectedRequests:
                 training_job_name=job_name,
                 role_arn=execution_role,
                 algorithm_specification=shapes.AlgorithmSpecification(
-                    training_image=CPU_IMAGE, training_input_mode="File"
+                    training_image=cpu_image(sagemaker_session), training_input_mode="File"
                 ),
                 output_data_config=shapes.OutputDataConfig(s3_output_path=output_path),
                 resource_config=shapes.ResourceConfig(

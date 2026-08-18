@@ -49,12 +49,12 @@ from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 from sagemaker.train.tuner import HyperparameterTuner
 
 from .harness import (
-    CPU_IMAGE,
     DEFAULT_INSTANCE_COUNT,
     DEFAULT_INSTANCE_TYPE,
     MAX_RUNTIME_IN_SECONDS,
     MAX_TUNING_JOB_NAME,
     assert_submitted,
+    cpu_image,
     submitted,
     unique_name,
 )
@@ -69,7 +69,7 @@ def _model_trainer(sagemaker_session, name, **overrides):
     """The inner trainer a tuning job wraps."""
     kwargs = dict(
         sagemaker_session=sagemaker_session,
-        training_image=CPU_IMAGE,
+        training_image=cpu_image(sagemaker_session),
         base_job_name=name,
         source_code=SourceCode(
             source_dir=PARAM_SCRIPT_SOURCE_DIR,

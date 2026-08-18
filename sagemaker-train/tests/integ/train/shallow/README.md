@@ -246,6 +246,25 @@ Two design rules follow, and should be preserved:
 2. **Never set `keep_alive_period_in_seconds`.** A warm pool would outlive the stop
    and keep instances provisioned after the test finished.
 
+### Container URIs are resolved, not hardcoded
+
+`harness.cpu_image(sagemaker_session)` resolves the public CPU training DLC in the
+*session's* region via `image_uris.retrieve` — the same resolver the SDK's own
+framework estimators use — rather than naming a URI. The deep suites hardcode a
+us-west-2 one.
+
+This is worth the indirection because the registry account is not constant: it is
+`763104351884` across the commercial regions but differs in GovCloud
+(`442386744353`) and China (`727897471807`, on `.com.cn`). A hardcoded URI is
+therefore not merely region-pinned, it is unusable outside one partition, and the
+failure mode is an ECR error from the backend's role-assuming validators that looks
+like a test bug rather than a hardcoded constant. Resolving per-session keeps the
+image following wherever the suite runs and shrinks the blast radius if one region
+is misconfigured.
+
+It is a function rather than a constant precisely because it needs the session's
+region, so a new call site must pass the session it is submitting with.
+
 ### Concurrency cap (training-job quotas)
 
 `submitted()` and `assert_rejected()` hold a slot from `job_slots()` until the job

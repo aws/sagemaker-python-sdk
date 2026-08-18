@@ -252,10 +252,44 @@ def job_slots(count=1):
 DEFAULT_INSTANCE_TYPE = "ml.m5.large"
 DEFAULT_INSTANCE_COUNT = 1
 
-# Public DLC, present in every commercial region we test in. Using a real image
-# matters: the backend's role-assuming validators resolve the training image
-# against ECR, so a bogus URI would fail for the wrong reason.
-CPU_IMAGE = "763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.0.0-cpu-py310"
+# The AWS Deep Learning Container these tests use as a stand-in for "some real
+# training image". Using a real image matters: the backend's role-assuming
+# validators resolve the training image against ECR as the customer, so a bogus
+# URI would fail the test for the wrong reason.
+#
+# Resolved per-region rather than hardcoded -- see `cpu_image`.
+_CPU_IMAGE_FRAMEWORK = "pytorch"
+_CPU_IMAGE_VERSION = "2.0.0"
+_CPU_IMAGE_PY_VERSION = "py310"
+
+
+def cpu_image(sagemaker_session):
+    """ECR URI of a public CPU training DLC, in the *session's* region.
+
+    Region-agnostic deliberately. A hardcoded URI pins the region (and the
+    registry account, which differs in the China and GovCloud partitions), so a
+    test running anywhere else would either pull cross-region or fail on a
+    registry that does not exist there. Resolving from the session means the
+    image follows wherever the suite runs -- one less thing to update when a
+    region is added, and a smaller blast radius if one is misconfigured.
+
+    ``image_uris.retrieve`` is the same resolver the SDK's own framework
+    estimators use, so this is the supported mapping rather than a
+    reconstruction of it. Verified against AWS that it reproduces the URI this
+    previously hardcoded (``pytorch-training:2.0.0-cpu-py310`` in the public DLC
+    account) and returns the corresponding in-region host elsewhere.
+    """
+    from sagemaker.core import image_uris
+
+    return image_uris.retrieve(
+        framework=_CPU_IMAGE_FRAMEWORK,
+        region=sagemaker_session.boto_session.region_name,
+        version=_CPU_IMAGE_VERSION,
+        py_version=_CPU_IMAGE_PY_VERSION,
+        instance_type=DEFAULT_INSTANCE_TYPE,
+        image_scope="training",
+    )
+
 
 # Keep the advertised runtime short. It should never be reached (we stop the job
 # long before), but if a stop were somehow lost this bounds the damage.
