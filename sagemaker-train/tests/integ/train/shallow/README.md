@@ -204,10 +204,12 @@ upload the Nova-shaped sample data the deep suite already ships
 Two region constraints are worth knowing before adding a Nova test, both verified
 against the service:
 
-* the model package group must be in the **job's** region — passing the us-west-2
-  ARN from `MODEL_PACKAGE_GROUP` is rejected with `Model package group ARN region
-  'us-west-2' does not match expected region 'us-east-1'`, so Nova files use
-  `NOVA_MODEL_PACKAGE_GROUP` (a bare name, which resolves per-session);
+* the model package group must be in the **job's** region, which is why
+  `MODEL_PACKAGE_GROUP` is a bare name rather than an ARN. The SDK resolves a name
+  against the session's own region, while an ARN pins both region and account —
+  and passing a us-west-2 ARN to a us-east-1 job is rejected with `Model package
+  group ARN region 'us-west-2' does not match expected region 'us-east-1'`. One
+  name therefore serves both regions;
 * an S3 input must be in the job's region, so `nova_rlvr_data_uri` copies the
   us-west-2 RLVR dataset into the us-east-1 bucket rather than referencing it.
 

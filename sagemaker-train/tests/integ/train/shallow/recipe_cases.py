@@ -50,22 +50,22 @@ from .harness import (
 # takes during submission.
 MODEL_ID = "meta-textgeneration-llama-3-2-1b-instruct"
 
-# Reused from the existing dry-run suite so both suites exercise the same
-# already-provisioned model package group rather than each needing their own.
-MODEL_PACKAGE_GROUP = (
-    "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/sdk-test-finetuned-models"
-)
-
-# The Nova files (us-east-1) cannot reuse the ARN above. Verified against AWS: the
-# model package group must be in the same region as the job, and passing the
-# us-west-2 ARN is rejected with
+# The already-provisioned group the dry-run suite also uses, so both suites share
+# one group rather than each needing their own.
+#
+# A bare name rather than an ARN, deliberately, and it is the same constant for
+# every region. The SDK resolves a name against the *session's* region
+# (`_resolve_model_package_group_arn` -> `ModelPackageGroup.get`), whereas an ARN
+# pins both the region and the account. Pinning the region breaks the us-east-1
+# Nova path outright -- verified against AWS, passing a us-west-2 ARN to a
+# us-east-1 job is rejected with
 #
 #     Model package group ARN region 'us-west-2' does not match expected region
 #     'us-east-1'
 #
-# A bare name resolves in whichever region the session is in. Shared here rather
-# than duplicated per Nova file so the two cannot drift apart.
-NOVA_MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
+# so a name is what lets one constant serve both regions, and it keeps the tests
+# runnable in any account that has provisioned the group.
+MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
 
 # An accelerator type is required for the serverful recipe path: these recipes do
 # not resolve onto a CPU instance, so unlike the ModelTrainer suite we cannot use

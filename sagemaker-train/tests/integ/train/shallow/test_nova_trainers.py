@@ -39,7 +39,7 @@ from sagemaker.train.rlvr_trainer import RLVRTrainer
 from sagemaker.train.sft_trainer import SFTTrainer
 
 from .harness import MAX_RUNTIME_IN_SECONDS, assert_submitted, submitted, unique_name
-from .recipe_cases import NOVA_MODEL_PACKAGE_GROUP
+from .recipe_cases import MODEL_PACKAGE_GROUP
 
 NOVA_MODEL = "nova-textgeneration-lite-v2"
 
@@ -58,7 +58,7 @@ class TestNovaSFTSubmission:
         trainer = SFTTrainer(
             model=NOVA_MODEL,
             training_type=TrainingType.LORA,
-            model_package_group=NOVA_MODEL_PACKAGE_GROUP,
+            model_package_group=MODEL_PACKAGE_GROUP,
             training_dataset=nova_sft_data_uri,
             s3_output_path=nova_output_path,
             accept_eula=True,
@@ -85,7 +85,7 @@ class TestNovaRLVRSubmission:
         trainer = RLVRTrainer(
             model=NOVA_MODEL,
             training_type=TrainingType.LORA,
-            model_package_group=NOVA_MODEL_PACKAGE_GROUP,
+            model_package_group=MODEL_PACKAGE_GROUP,
             training_dataset=nova_rlvr_data_uri,
             validation_dataset=nova_rlvr_data_uri,
             s3_output_path=nova_output_path,

@@ -31,7 +31,7 @@ from sagemaker.train.data_mixing_config import DataMixingConfig
 from sagemaker.train.sft_trainer import SFTTrainer
 
 from .harness import assert_submitted, submitted, unique_name
-from .recipe_cases import NOVA_MODEL_PACKAGE_GROUP, stopping_condition
+from .recipe_cases import MODEL_PACKAGE_GROUP, stopping_condition
 
 NOVA_MODEL = "nova-textgeneration-lite-v2"
 
@@ -39,7 +39,7 @@ NOVA_MODEL = "nova-textgeneration-lite-v2"
 def _nova_sft(session, dataset, name, config):
     return SFTTrainer(
         model=NOVA_MODEL,
-        model_package_group=NOVA_MODEL_PACKAGE_GROUP,
+        model_package_group=MODEL_PACKAGE_GROUP,
         training_dataset=dataset,
         accept_eula=True,
         sagemaker_session=session,
