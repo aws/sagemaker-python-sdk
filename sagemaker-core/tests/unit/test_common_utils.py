@@ -516,6 +516,41 @@ class TestCreateTarFile:
         assert os.path.exists(tar_path)
         os.remove(tar_path)
 
+    def test_create_tar_file_rejects_symlink_outside_source_directory(self, tmp_path):
+        """Test that tar creation does not dereference links outside the source."""
+        source_dir = tmp_path / "source"
+        source_dir.mkdir()
+        outside_file = tmp_path / "secret.txt"
+        outside_file.write_text("secret")
+        link_path = source_dir / "leak.txt"
+
+        try:
+            link_path.symlink_to(outside_file)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlink creation is not available")
+
+        with pytest.raises(ValueError, match="resolves outside the source directory"):
+            create_tar_file([str(source_dir)])
+
+    def test_create_tar_file_allows_symlink_inside_source_directory(self, tmp_path):
+        """Test that safe internal links are not rejected."""
+        source_dir = tmp_path / "source"
+        source_dir.mkdir()
+        target_file = source_dir / "data.txt"
+        target_file.write_text("data")
+        link_path = source_dir / "data-link.txt"
+
+        try:
+            link_path.symlink_to(target_file)
+        except (OSError, NotImplementedError):
+            pytest.skip("symlink creation is not available")
+
+        tar_path = create_tar_file([str(source_dir)])
+        try:
+            assert os.path.exists(tar_path)
+        finally:
+            os.remove(tar_path)
+
 
 class TestTmpdir:
     """Test _tmpdir context manager."""
