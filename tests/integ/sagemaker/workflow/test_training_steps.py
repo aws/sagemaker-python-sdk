@@ -24,6 +24,7 @@ from tests.integ.sagemaker.workflow.helpers import wait_pipeline_execution
 from sagemaker import TrainingInput, get_execution_role, utils, image_uris
 from sagemaker.debugger import (
     DebuggerHookConfig,
+    ProfilerConfig,
     Rule,
     rule_configs,
 )
@@ -100,6 +101,8 @@ def test_training_job_with_debugger_and_profiler(
         sagemaker_session=sagemaker_session,
         rules=rules,
         debugger_hook_config=debugger_hook_config,
+        # Profiling is opt-in, so request it explicitly.
+        profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
         # TODO: remove base_job_name once we merge
         # https://github.com/aws/sagemaker-python-sdk/pull/3158/files
         base_job_name="TestJob",

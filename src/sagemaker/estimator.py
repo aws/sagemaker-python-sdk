@@ -790,10 +790,9 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             sagemaker_session=sagemaker_session,
         )
         # If customer passes True from either direct_input or sagemaker_config, we will
-        # create a default hook config as an empty dict which will later be populated
-        # with default s3_output_path from _prepare_debugger_for_training function
+        # create a default hook config populated with the default s3_output_path.
         if self.debugger_hook_config is True:
-            self.debugger_hook_config = {}
+            self.debugger_hook_config = DebuggerHookConfig()
 
         self.tensorboard_output_config = tensorboard_output_config
 
@@ -1197,8 +1196,11 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         )
 
         if region_supports_debugger:
-            if self.debugger_hook_config in [None, {}]:
-                self.debugger_hook_config = DebuggerHookConfig(s3_output_path=self.output_path)
+            # Debugger is opt-in: do NOT auto-attach a DebuggerHookConfig when the customer
+            # did not request one (unset -> None). The hook is still created upstream in
+            # _prepare_debugger_for_training when debugger_rules are set, or when the customer
+            # explicitly passes debugger_hook_config=True / a DebuggerHookConfig instance.
+            pass
         else:
             if self.debugger_hook_config is not False and self.debugger_hook_config:
                 # when user set debugger config in a unsupported region
@@ -1245,11 +1247,15 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             if self.profiler_rules:
                 raise RuntimeError("ProfilerRule cannot be set when disable_profiler is True.")
         elif _region_supports_profiler(self.sagemaker_session.boto_region_name):
-            if self.profiler_config is None:
+            # Profiler is opt-in: do NOT auto-attach an active ProfilerConfig by default.
+            # If profiler_config is left unset it is emitted as disabled below.
+            # Passing a ProfilerRule is itself an opt-in, so give it a config to attach to;
+            # otherwise the request would carry a profiler rule with profiling disabled.
+            if self.profiler_rules and self.profiler_config is None:
                 self.profiler_config = ProfilerConfig(s3_output_path=self.output_path)
             if self.rules is None or (self.rules and not self.profiler_rules):
                 self.profiler_rules = []
-                if self.profiler_config.profile_params:
+                if self.profiler_config and self.profiler_config.profile_params:
                     self.profiler_rules.append(
                         get_default_profiler_processing_job(
                             instance_type=self.profiler_config.profile_params.instanceType,
