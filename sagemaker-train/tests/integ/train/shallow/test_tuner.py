@@ -55,8 +55,10 @@ from .harness import (
     MAX_TUNING_JOB_NAME,
     assert_submitted,
     cpu_image,
+    job_slots,
     submitted,
     unique_name,
+    wait_until_terminal,
 )
 
 logger = logging.getLogger(__name__)
@@ -124,18 +126,35 @@ def _tuning(tuner, job_name):
     Teardown goes through ``tuner.stop_tuning_job()`` rather than the harness's
     ``stop_quietly``, because the tuner wraps the resource and stopping it also
     stops the child training jobs it launched.
+
+    Concurrency accounting mirrors ``submitted()``: a tuning job's child training
+    jobs consume the same per-instance-type quota the ``ModelTrainer`` tests do,
+    so this cannot bypass the cap just because the resource type differs. It
+    holds ``max_parallel_jobs`` slots -- the tuner's own fan-out bound, since the
+    children are what occupy capacity, not the tuning job itself -- and holds
+    them until the tuning job is terminal rather than releasing when
+    ``stop_tuning_job()`` returns. Releasing at stop is precisely the
+    release-before-terminal bug documented on ``DEFAULT_MAX_CONCURRENT_JOBS``.
     """
-    try:
-        tuner.tune(job_name=job_name, wait=False)
-        yield
-    finally:
+    slots = max(1, getattr(tuner, "max_parallel_jobs", 1) or 1)
+    with job_slots(slots):
         try:
-            tuner.stop_tuning_job()
-            logger.info("Stopped tuning job %s", job_name)
-        except Exception as e:  # pragma: no cover - best-effort teardown
-            # A tuning job that never started, or already reached a terminal
-            # state, cannot be stopped; that must not fail the test.
-            logger.warning("Could not stop tuning job %s: %s", job_name, e)
+            tuner.tune(job_name=job_name, wait=False)
+            yield
+        finally:
+            try:
+                tuner.stop_tuning_job()
+                logger.info("Stopped tuning job %s", job_name)
+            except Exception as e:  # pragma: no cover - best-effort teardown
+                # A tuning job that never started, or already reached a terminal
+                # state, cannot be stopped; that must not fail the test.
+                logger.warning("Could not stop tuning job %s: %s", job_name, e)
+
+            # Stopping a tuning job is asynchronous: it goes Stopping -> Stopped
+            # while its children tear down, and the children hold instance quota
+            # for that whole interval. Bounded and best-effort, like everywhere
+            # else in the harness.
+            wait_until_terminal(tuner.latest_tuning_job)
 
 
 class TestTuningJobSubmission:

@@ -272,6 +272,11 @@ reaches a **terminal state**, bounding the number of jobs the *service* counts
 against the quota **across all xdist workers** to `SHALLOW_MAX_CONCURRENT_JOBS`
 (default 10). Set it to `0` to disable the gating for a single-worker debugging run.
 
+`_tuning()` in `test_tuner.py` is the one submission path that does not go through
+those two, since a tuning job is stopped via `tuner.stop_tuning_job()` rather than
+`stop_quietly`. It acquires slots itself, on the same terms — see *Tuning jobs*
+below. **Any new submission path must do likewise; the cap is not automatic.**
+
 Two quotas apply, in two different units, and the cap has to be safe for both:
 
 | Path | Bounded by | Unit |
@@ -286,6 +291,22 @@ job, its instance count for a serverful one (the four `instance_count=2` tests i
 cap holds the suite inside both quotas without the harness needing to know which
 kind of job a test produces. 10 sits under the serverless job quota with room for
 the deep CodeBuild suite to run against the same account concurrently.
+
+#### Tuning jobs
+
+A tuning job consumes instance quota through the **child training jobs it launches**,
+not through the tuning job itself, so its cost is the tuner's `max_parallel_jobs`
+rather than anything derivable from a compute block — which is why `_tuning()` sizes
+its own request instead of using `_requested_slots`. It holds those slots until the
+tuning job is terminal, the same rule as everywhere else: `stop_tuning_job()` returns
+while the job is still `Stopping` and its children are still tearing down, so
+releasing there would be the same release-before-terminal mistake described below.
+
+Both tuner tests are `max_parallel_jobs=1`, so today this is 1 slot each and the
+practical overshoot it prevents is small. It is wired up anyway because the cost is
+one context manager, and the failure mode if a future test raises `max_jobs` or
+`max_parallel_jobs` is the silent kind — capacity consumed outside the cap that the
+cap still claims to bound.
 
 Slots are `O_EXCL`-created files under a
 run-keyed temp directory (`PYTEST_XDIST_TESTRUNUID`, falling back to the parent
@@ -303,7 +324,7 @@ down without ever becoming billable). An earlier version released the slot when
 `stop()` returned; it bounded nothing. With the cap at 10 and 8 workers, each slot
 recycled ~20× inside one job's counted lifetime, the suite peaked at **~37**
 concurrent jobs, and it tripped `ResourceLimitExceeded` at a utilization of 21
-against the limit of 20. `_wait_until_terminal` closes that gap.
+against the limit of 20. `wait_until_terminal` closes that gap.
 
 Why a cap rather than literally splitting into batches of 10: holding the slot to
 terminal *is* "at most 10 jobs counted at once", the same guarantee batches give,
@@ -321,7 +342,7 @@ Two consequences worth knowing:
   job is terminal is exactly the bug above — the next test starts while this job
   still counts against the quota.
 * Both waits are bounded and then proceed with a warning rather than failing:
-  acquiring a slot waits up to 900s, and `_wait_until_terminal` waits up to 300s
+  acquiring a slot waits up to 900s, and `wait_until_terminal` waits up to 300s
   for the job to drain. The cap is a courtesy to the account's quota, not an
   assertion about the SDK, so a leaked slot or a stuck drain degrades into a
   slower run rather than a red build.

@@ -99,6 +99,12 @@ logger = logging.getLogger(__name__)
 # one cap keeps the suite inside both quotas without needing to know which kind
 # of job a given test produces.
 #
+# Tuning jobs are counted through the same mechanism but sized differently: their
+# capacity is occupied by the child training jobs the tuner launches, so
+# `_tuning()` in `test_tuner.py` holds `max_parallel_jobs` slots rather than
+# deriving a count from a compute block. Every path that submits must acquire
+# slots -- see the note on `job_slots`.
+#
 # What a slot has to track -- and the trap it is easy to fall into. The service
 # counts a job against the concurrency quota from `CreateTrainingJob` until the
 # job reaches a *terminal* state, NOT until `StopTrainingJob` returns. Those are
@@ -110,7 +116,7 @@ logger = logging.getLogger(__name__)
 # job's counted lifetime, so the suite peaked at ~37 concurrent jobs and tripped
 # `ResourceLimitExceeded` at a utilization of 21 against the limit of 20. The
 # slot must therefore be held until the job is terminal (see
-# `_wait_until_terminal`), which is the point of `SHALLOW_MAX_CONCURRENT_JOBS`.
+# `wait_until_terminal`), which is the point of `SHALLOW_MAX_CONCURRENT_JOBS`.
 #
 # Why a cap rather than batches: capping bounds the *peak* directly and keeps
 # bounding it if `-n` is raised or a test starts asking for more instances,
@@ -300,7 +306,7 @@ _UNSTOPPABLE_STATUSES = frozenset({"Completed", "Failed", "Stopped", "Stopping"}
 
 # States in which the service no longer counts the job against the concurrency
 # quota. A slot is held until the job reaches one of these -- see
-# `_wait_until_terminal` and the note on `DEFAULT_MAX_CONCURRENT_JOBS`.
+# `wait_until_terminal` and the note on `DEFAULT_MAX_CONCURRENT_JOBS`.
 _TERMINAL_STATUSES = frozenset({"Completed", "Failed", "Stopped"})
 
 # How long a slot waits for its job to actually drain before giving up and
@@ -381,7 +387,7 @@ _STATUS_ATTRS = (
 )
 
 
-def _wait_until_terminal(training_job):
+def wait_until_terminal(training_job):
     """Block until ``training_job`` leaves the concurrency-quota count.
 
     The service counts a job against the concurrency quota until it reaches a
@@ -559,7 +565,7 @@ def submitted(trainer, **train_kwargs):
             # is exactly how an earlier version peaked at ~37 jobs against a
             # limit of 20.
             stop_quietly(training_job)
-            _wait_until_terminal(training_job)
+            wait_until_terminal(training_job)
 
 
 # Attributes under which trainers stash the job they just submitted. The SDK is
@@ -602,9 +608,11 @@ def _requested_slots(trainer):
     Falls back to 1 if a compute object exists but exposes no usable count.
     Under-counting is the safe direction to be wrong here: the cap remains a
     useful bound, whereas guessing high would throttle the suite for no reason.
-    Tuning jobs are the notable inexact case -- their fan-out is set by the
-    tuner's own ``max_parallel_jobs`` rather than a compute block -- and there
-    are only two of them, both single-instance.
+
+    Only applies to trainers submitted through ``submitted()``/
+    ``assert_rejected()``. A tuning job's fan-out comes from the tuner's
+    ``max_parallel_jobs`` rather than a compute block, so ``_tuning()`` in
+    ``test_tuner.py`` sizes its own request and calls ``job_slots`` directly.
     """
     for attr in _COMPUTE_ATTRS:
         compute = getattr(trainer, attr, None)
@@ -656,7 +664,7 @@ def assert_rejected(trainer, expected_tokens, **train_kwargs):
             # regression let it through, drain it inside the slot for the same
             # reason submitted() does.
             stop_quietly(training_job)
-            _wait_until_terminal(training_job)
+            wait_until_terminal(training_job)
 
     message = str(excinfo.value)
     assert any(token in message for token in expected_tokens), (
