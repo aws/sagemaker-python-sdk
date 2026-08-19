@@ -35,7 +35,7 @@ dependencies = [
 
 [project.optional-dependencies]
 feature-processor = [
-    "pyspark==3.5.1",
+    "pyspark==3.5.2",
     "sagemaker-feature-store-pyspark==2.0.0",
     "setuptools<82",
 ]
@@ -45,7 +45,7 @@ test = [
     "pytest-cov",
     "mock",
     "setuptools<82",
-    "pyspark==3.5.1",
+    "pyspark==3.5.2",
     "sagemaker-feature-store-pyspark==2.0.0",
     "pandas<3.0",
     "numpy<3.0",
