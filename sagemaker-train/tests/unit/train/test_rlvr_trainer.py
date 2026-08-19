@@ -763,3 +763,15 @@ class TestRLVRTrainerDryRun:
         mock_create.assert_not_called()
         mock_role.assert_called_once()
         mock_validate_hp.assert_called_once()
+
+
+class TestRLVRTrainerListSupportedModels:
+
+    @patch("sagemaker.train.common_utils.recipe_utils._list_hub_models_by_recipe")
+    def test_list_supported_models(self, mock_list):
+        mock_list.return_value = ["meta-llama/Llama-3"]
+        result = RLVRTrainer.list_supported_models()
+        assert result == ["meta-llama/Llama-3"]
+        mock_list.assert_called_once_with(
+            recipe_type="FineTuning", technique="RLVR", session=None
+        )
