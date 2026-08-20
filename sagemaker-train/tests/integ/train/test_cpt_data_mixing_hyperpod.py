@@ -128,7 +128,7 @@ def training_resources(sagemaker_session_us_east_1):
 # TODO: Remove dry-run when capacity is available in future
 @pytest.mark.gpu_intensive
 @pytest.mark.us_east_1
-def test_cpt_trainer_nova_micro_with_data_mixing_hyperpod(
+def test_cpt_trainer_nova_micro_with_data_mixing_hyperpod_dryrun(
     sagemaker_session_us_east_1, training_resources
 ):
     """Test CPTTrainer with Nova Micro model and data mixing on HyperPod.
