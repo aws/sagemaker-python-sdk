@@ -71,12 +71,16 @@ SUPPORTED_MODEL_SERVERS: Set[ModelServer] = {
     ModelServer.LLAMACPP,
 }
 
-# HuggingFace pipeline tags that should route to the vLLM-omni (multimodal) server.
-# Note: visual-question-answering is folded into image-text-to-text as of transformers v5.
-OMNI_TASKS: Set[str] = {
+# HuggingFace pipeline tags for models that generate text and should prefer vLLM.
+VLLM_TASKS: Set[str] = {
+    "text-generation",
     "image-text-to-text",
-    "any-to-any",
     "audio-text-to-text",
+}
+
+# HuggingFace pipeline tags for models that can generate multiple output modalities.
+OMNI_TASKS: Set[str] = {
+    "any-to-any",
 }
 
 # ========================================
@@ -130,4 +134,3 @@ DEFAULT_SERIALIZERS_BY_FRAMEWORK: Dict[Framework, Tuple] = {
     Framework.NTM: (RecordSerializer(), JSONDeserializer()),
     Framework.SMD: (JSONSerializer(), JSONDeserializer()),
 }
-
