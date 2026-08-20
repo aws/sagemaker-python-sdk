@@ -1228,6 +1228,173 @@ class TestCustomExtractallTarfile:
         assert (extract_path / "file.txt").exists()
 
 
+class TestTarExtractionPathTraversal:
+    """Regression tests for path traversal in the pre-3.12 tar extraction fallback.
+
+    The fallback branch of custom_extractall_tarfile runs only when
+    tarfile.data_filter is unavailable (Python < 3.12, before the 3.9.17 / 3.10.12 /
+    3.11.4 backports). These tests force that branch so the member filtering is
+    exercised regardless of the interpreter the suite runs on.
+    """
+
+    @staticmethod
+    def _no_data_filter():
+        """Patch the module's tarfile reference with one that has no data_filter."""
+        from types import SimpleNamespace
+
+        return patch("sagemaker.core.common_utils.tarfile", SimpleNamespace())
+
+    @staticmethod
+    def _tar_with_member(tar_path, member_name, content=b"pwned"):
+        """Write a tar archive containing a single member under an arbitrary name."""
+        import io
+
+        with tarfile.open(tar_path, "w:gz") as tar:
+            info = tarfile.TarInfo(name=member_name)
+            info.size = len(content)
+            tar.addfile(info, io.BytesIO(content))
+
+    def test_is_within_base_containment(self, tmp_path):
+        """_is_within_base accepts the base and nested paths, rejects outside paths."""
+        from sagemaker.core.common_utils import _get_resolved_path, _is_within_base
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+
+        assert _is_within_base(base, base) is True
+        assert _is_within_base(_get_resolved_path(str(tmp_path / "extract" / "a")), base) is True
+        assert _is_within_base(_get_resolved_path(str(tmp_path / "other")), base) is False
+
+    def test_is_within_base_rejects_sibling_prefix(self, tmp_path):
+        """A sibling directory sharing a textual prefix with base is not contained.
+
+        A plain startswith() comparison would accept "<base>-evil" because it is a
+        string prefix match.
+        """
+        from sagemaker.core.common_utils import _get_resolved_path, _is_within_base
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+        sibling = _get_resolved_path(str(tmp_path / "extract-evil" / "f.txt"))
+
+        assert sibling.startswith(base)  # the bug a prefix check would let through
+        assert _is_within_base(sibling, base) is False
+
+    def test_is_bad_path_rejects_sibling_prefix(self, tmp_path):
+        """_is_bad_path blocks a member escaping into a prefix-sharing sibling dir."""
+        from sagemaker.core.common_utils import _get_resolved_path, _is_bad_path
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+
+        assert _is_bad_path("../extract-evil/f.txt", base) is True
+
+    def test_is_bad_path_rejects_absolute_member(self, tmp_path):
+        """_is_bad_path blocks absolute member paths outright."""
+        from sagemaker.core.common_utils import _get_resolved_path, _is_bad_path
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+
+        assert _is_bad_path("/etc/passwd", base) is True
+
+    def test_is_bad_path_allows_nested_member(self, tmp_path):
+        """_is_bad_path permits ordinary members nested under the base directory."""
+        from sagemaker.core.common_utils import _get_resolved_path, _is_bad_path
+
+        base = _get_resolved_path(str(tmp_path / "extract"))
+
+        assert _is_bad_path("code/inference.py", base) is False
+
+    def test_get_safe_members_filters_member_escaping_extract_path(self, tmp_path):
+        """_get_safe_members blocks a member that escapes the base it is given."""
+        from sagemaker.core.common_utils import _get_resolved_path, _get_safe_members
+
+        base = _get_resolved_path(str(tmp_path / "target" / "extract"))
+        escaping = tarfile.TarInfo(name="../extract-evil/escaped.txt")
+        benign = tarfile.TarInfo(name="model.tar")
+
+        safe = list(_get_safe_members([escaping, benign], base))
+
+        assert [m.name for m in safe] == ["model.tar"]
+
+    def test_members_are_validated_against_extract_path(self, tmp_path):
+        """Members must be validated against extract_path, not the working directory."""
+        from sagemaker.core.common_utils import _get_resolved_path, custom_extractall_tarfile
+
+        extract_path = tmp_path / "extract"
+        extract_path.mkdir()
+        mock_tar = Mock()
+        mock_tar.getmembers = Mock(return_value=[])
+
+        with self._no_data_filter():
+            with patch("sagemaker.core.common_utils._get_safe_members") as mock_safe:
+                mock_safe.return_value = []
+                custom_extractall_tarfile(mock_tar, str(extract_path))
+
+        assert mock_safe.call_args[0][1] == _get_resolved_path(str(extract_path))
+
+    def test_fallback_extraction_blocks_escape_outside_extract_path(self, tmp_path, monkeypatch):
+        """End-to-end: a crafted member must not be written outside extract_path.
+
+        Mirrors the reported proof of concept. The member escapes into a directory whose
+        name shares a textual prefix with the working directory's path
+        ("<tmp>/work" vs "<tmp>/workevil"), so a startswith() check anchored to the
+        working directory accepts it while extraction still writes it outside
+        extract_path. _validate_extracted_paths only walks extract_path, so it does not
+        catch the escape either.
+        """
+        from sagemaker.core.common_utils import custom_extractall_tarfile
+
+        cwd = tmp_path / "work"
+        cwd.mkdir()
+        monkeypatch.chdir(cwd)
+
+        extract_path = tmp_path / "target" / "extract"
+        extract_path.mkdir(parents=True)
+
+        tar_path = tmp_path / "malicious.tar.gz"
+        self._tar_with_member(tar_path, "../workevil/escaped.txt")
+
+        escaped = tmp_path / "target" / "workevil" / "escaped.txt"
+
+        with tarfile.open(tar_path, "r:gz") as tar:
+            with self._no_data_filter():
+                custom_extractall_tarfile(tar, str(extract_path))
+
+        assert not escaped.exists(), "member escaped the extraction directory"
+        assert list(extract_path.rglob("*")) == []
+
+    def test_fallback_extraction_blocks_absolute_member(self, tmp_path):
+        """An absolute member path must not be written to its absolute location."""
+        from sagemaker.core.common_utils import custom_extractall_tarfile
+
+        outside = tmp_path / "absolute_target.txt"
+        extract_path = tmp_path / "extract"
+        extract_path.mkdir()
+
+        tar_path = tmp_path / "absolute.tar.gz"
+        self._tar_with_member(tar_path, str(outside))
+
+        with tarfile.open(tar_path, "r:gz") as tar:
+            with self._no_data_filter():
+                custom_extractall_tarfile(tar, str(extract_path))
+
+        assert not outside.exists()
+
+    def test_fallback_extraction_allows_benign_archive(self, tmp_path):
+        """The fallback branch still extracts legitimate nested members."""
+        from sagemaker.core.common_utils import custom_extractall_tarfile
+
+        extract_path = tmp_path / "extract"
+        extract_path.mkdir()
+
+        tar_path = tmp_path / "benign.tar.gz"
+        self._tar_with_member(tar_path, "code/inference.py", content=b"print('hi')")
+
+        with tarfile.open(tar_path, "r:gz") as tar:
+            with self._no_data_filter():
+                custom_extractall_tarfile(tar, str(extract_path))
+
+        assert (extract_path / "code" / "inference.py").read_bytes() == b"print('hi')"
+
+
 class TestCanModelPackageSourceUriAutopopulate:
     """Test can_model_package_source_uri_autopopulate function."""
 
