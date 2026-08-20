@@ -92,12 +92,8 @@ class RLAIFTrainer(BaseTrainer):
             Bedrock model identifier for generating LLM feedback.
             Required for RLAIF training to provide reward signals.
         reward_prompt (Union[str, Evaluator]):
-            The reward prompt or evaluator for AI feedback generation. Accepts:
-            - A preset template name, resolved against the recipe's built-in judge
-              prompts (e.g. "summarize", "summarize.jinja", or "Builtin.Summarize").
-            - An evaluator ARN (arn:aws:sagemaker:...) for a registered RewardPrompt.
-            - A registered HubContent prompt name.
-            - An Evaluator object.
+            The reward prompt or evaluator for AI feedback generation.
+            Can be a prompt string or Evaluator object.
             For Builtin metric prompts refer: https://docs.aws.amazon.com/bedrock/latest/userguide/model-evaluation-metrics.html
         mlflow_resource_arn (Optional[Union[str, MlflowTrackingServer]]):
             The MLflow tracking server ARN for experiment tracking.
@@ -400,7 +396,7 @@ class RLAIFTrainer(BaseTrainer):
         # Process reward_prompt parameter
         if hasattr(self, 'reward_prompt') and self.reward_prompt:
             if isinstance(self.reward_prompt, str):
-                # Resolution order (Option 2):
+                # Resolution order:
                 #   1. Preset template name -> resolved locally against the recipe's
                 #      judge_prompt_template enum (no API call). Accepts "Builtin.Summarize",
                 #      "summarize", or "summarize.jinja".
