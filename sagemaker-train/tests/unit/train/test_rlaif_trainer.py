@@ -394,20 +394,23 @@ class TestRLAIFTrainer:
         # No exception should be raised
 
     def test_update_judge_prompt_template_direct_with_matching_template(self):
-        """Test _update_judge_prompt_template_direct with matching template."""
-        mock_hyperparams = Mock()
-        mock_hyperparams._specs = {
-            'judge_prompt_template': {
-                'enum': ['templates/summarize.jinja', 'templates/helpfulness.jinja']
+        """Test _update_judge_prompt_template_direct resolves Builtin, plain, and .jinja names."""
+        for reward_prompt in ("Builtin.summarize", "summarize", "summarize.jinja", "Builtin.Summarize"):
+            mock_hyperparams = Mock()
+            mock_hyperparams._specs = {
+                'judge_prompt_template': {
+                    'enum': ['templates/summarize.jinja', 'templates/helpfulness.jinja']
+                }
             }
-        }
-        
-        trainer = RLAIFTrainer.__new__(RLAIFTrainer)
-        trainer.hyperparameters = mock_hyperparams
-        
-        trainer._update_judge_prompt_template_direct("Builtin.summarize")
-        
-        assert mock_hyperparams.judge_prompt_template == 'templates/summarize.jinja'
+
+            trainer = RLAIFTrainer.__new__(RLAIFTrainer)
+            trainer.hyperparameters = mock_hyperparams
+
+            trainer._update_judge_prompt_template_direct(reward_prompt)
+
+            assert mock_hyperparams.judge_prompt_template == 'templates/summarize.jinja', (
+                f"failed for input {reward_prompt!r}"
+            )
 
     def test_update_judge_prompt_template_direct_with_no_enum(self):
         """Test _update_judge_prompt_template_direct when no enum is available."""
@@ -434,7 +437,7 @@ class TestRLAIFTrainer:
         trainer = RLAIFTrainer.__new__(RLAIFTrainer)
         trainer.hyperparameters = mock_hyperparams
         
-        with pytest.raises(ValueError, match="Selected reward function option 'Builtin.nonexistent' is not available"):
+        with pytest.raises(ValueError, match="Selected reward prompt 'Builtin.nonexistent' is not an available preset"):
             trainer._update_judge_prompt_template_direct("Builtin.nonexistent")
 
     def test_update_judge_prompt_template_direct_early_return(self):
@@ -448,6 +451,58 @@ class TestRLAIFTrainer:
         
         # Should return early without error
         trainer._update_judge_prompt_template_direct("Builtin.anything")
+
+    def test_normalize_template_name(self):
+        """Normalization strips Builtin. prefix, path, and optional .jinja; lowercases."""
+        cases = {
+            "summarize": "summarize",
+            "summarize.jinja": "summarize",
+            "Builtin.Summarize": "summarize",
+            "Builtin.summarize.jinja": "summarize",
+            "/opt/ml/code/verl/summarize.jinja": "summarize",
+            "bedrock/RLAIF/PandaLM/prompts/grader.jinja": "grader",
+            "  Summarize  ": "summarize",
+        }
+        for raw, expected in cases.items():
+            assert RLAIFTrainer._normalize_template_name(raw) == expected, f"failed for {raw!r}"
+
+    def test_is_preset_reward_prompt_matches_enum_without_prefix(self):
+        """Plain names that match the enum are presets (no API call)."""
+        mock_hyperparams = Mock()
+        mock_hyperparams._specs = {
+            'judge_prompt_template': {
+                'enum': ['/opt/ml/code/verl/summarize.jinja', 'bedrock/RLAIF/PandaLM/prompts/grader.jinja']
+            }
+        }
+        trainer = RLAIFTrainer.__new__(RLAIFTrainer)
+        trainer.hyperparameters = mock_hyperparams
+
+        assert trainer._is_preset_reward_prompt("summarize") is True
+        assert trainer._is_preset_reward_prompt("summarize.jinja") is True
+        assert trainer._is_preset_reward_prompt("Builtin.Summarize") is True
+        assert trainer._is_preset_reward_prompt("grader") is True
+        # Builtin.* always routes to preset resolution (for a clear error later)
+        assert trainer._is_preset_reward_prompt("Builtin.anything") is True
+        # A raw prompt / unknown name is not a preset -> falls through to ARN/Hub
+        assert trainer._is_preset_reward_prompt("Rate the helpfulness 1-10") is False
+        assert trainer._is_preset_reward_prompt("arn:aws:sagemaker:us-east-1:1:evaluator/x") is False
+
+    def test_process_hyperparameters_routes_plain_preset_to_template(self):
+        """A plain preset name sets judge_prompt_template and never calls Hub."""
+        mock_hyperparams = Mock()
+        mock_hyperparams._specs = {
+            'judge_prompt_template': {'enum': ['/opt/ml/code/verl/summarize.jinja']}
+        }
+        trainer = RLAIFTrainer.__new__(RLAIFTrainer)
+        trainer.hyperparameters = mock_hyperparams
+        trainer.reward_prompt = "summarize"
+        trainer.reward_model_id = None
+
+        with patch('sagemaker.train.rlaif_trainer._get_hub_content_metadata') as mock_hub:
+            trainer._process_hyperparameters()
+
+        mock_hub.assert_not_called()
+        assert mock_hyperparams.judge_prompt_template == '/opt/ml/code/verl/summarize.jinja'
 
     def test_process_non_builtin_reward_prompt_removes_judge_template(self):
         """Test _process_non_builtin_reward_prompt removes judge_prompt_template."""
