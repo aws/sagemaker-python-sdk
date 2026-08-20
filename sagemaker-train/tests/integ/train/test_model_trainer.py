@@ -55,6 +55,7 @@ TAR_FILE_SOURCE_CODE = SourceCode(
 )
 
 
+@pytest.mark.gpu_intensive
 def test_source_dir_local_tar_file(sagemaker_session):
     model_trainer = ModelTrainer(
         sagemaker_session=sagemaker_session,
@@ -66,6 +67,7 @@ def test_source_dir_local_tar_file(sagemaker_session):
     model_trainer.train()
 
 
+@pytest.mark.gpu_intensive
 def test_hp_contract_basic_py_script(sagemaker_session):
     model_trainer = ModelTrainer(
         sagemaker_session=sagemaker_session,
@@ -78,6 +80,7 @@ def test_hp_contract_basic_py_script(sagemaker_session):
     model_trainer.train()
 
 
+@pytest.mark.gpu_intensive
 def test_hp_contract_basic_sh_script(sagemaker_session):
     source_code = SourceCode(
         source_dir=f"{DATA_DIR}/params_script",
@@ -97,6 +100,7 @@ def test_hp_contract_basic_sh_script(sagemaker_session):
 
 # skip this test for now as requirments.txt is not resolved
 # @pytest.mark.skip(reason="MPI distributed training does not resolve requirements.txt on worker nodes")
+@pytest.mark.gpu_intensive
 def test_hp_contract_mpi_script(sagemaker_session):
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
     model_trainer = ModelTrainer(
@@ -112,6 +116,7 @@ def test_hp_contract_mpi_script(sagemaker_session):
     model_trainer.train()
 
 
+@pytest.mark.gpu_intensive
 def test_hp_contract_torchrun_script(sagemaker_session):
     compute = Compute(instance_type="ml.m5.xlarge", instance_count=2)
     model_trainer = ModelTrainer(
@@ -127,6 +132,7 @@ def test_hp_contract_torchrun_script(sagemaker_session):
     model_trainer.train()
 
 
+@pytest.mark.gpu_intensive
 def test_hp_contract_hyperparameter_json(sagemaker_session):
     model_trainer = ModelTrainer(
         sagemaker_session=sagemaker_session,
@@ -139,6 +145,7 @@ def test_hp_contract_hyperparameter_json(sagemaker_session):
     model_trainer.train()
 
 
+@pytest.mark.gpu_intensive
 def test_hp_contract_hyperparameter_yaml(sagemaker_session):
     model_trainer = ModelTrainer(
         sagemaker_session=sagemaker_session,
@@ -151,6 +158,7 @@ def test_hp_contract_hyperparameter_yaml(sagemaker_session):
     model_trainer.train()
 
 
+@pytest.mark.gpu_intensive
 def test_custom_distributed_driver(sagemaker_session):
     class CustomDriver(DistributedConfig):
         process_count_per_node: int = None

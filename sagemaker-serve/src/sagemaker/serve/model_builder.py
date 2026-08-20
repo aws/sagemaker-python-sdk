@@ -4788,6 +4788,20 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             sagemaker_session=self.sagemaker_session,
         )
 
+    @property
+    def benchmark_metrics(self):
+        """Benchmark metrics for the model's JumpStart deployment configs.
+
+        Returns a pandas ``DataFrame`` (one row per config/instance) built from
+        the model's published benchmark data. Available for JumpStart models
+        (or HuggingFace models with a JumpStart equivalent) before deploy.
+        """
+        import pandas as pd
+
+        df = pd.DataFrame(self._get_deployment_configs_benchmarks_data())
+        df.index = [""] * len(df)
+        return df
+
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION, func_name="model_builder.display_benchmark_metrics"
     )

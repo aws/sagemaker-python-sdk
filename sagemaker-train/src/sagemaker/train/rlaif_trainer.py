@@ -129,6 +129,8 @@ class RLAIFTrainer(BaseTrainer):
             and 'job_name_prefix'. If not specified, no notifications are sent.
     """
 
+    _customization_technique = CustomizationTechnique.RLAIF.value
+
     def __init__(
         self,
         model: Union[str, ModelPackage],

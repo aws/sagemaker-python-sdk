@@ -32,10 +32,10 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-  "sagemaker-core>=2.19.0,<3.0.0",
-  "sagemaker-train>=1.19.0,<2.0.0",
-  "sagemaker-serve>=1.19.0,<2.0.0",
-  "sagemaker-mlops>=1.19.0,<2.0.0",
+  "sagemaker-core>=2.20.0,<3.0.0",
+  "sagemaker-train>=1.20.0,<2.0.0",
+  "sagemaker-serve>=1.20.0,<2.0.0",
+  "sagemaker-mlops>=1.20.0,<2.0.0",
 ]
 
 [project.optional-dependencies]
