@@ -92,6 +92,8 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
         accept_eula=True,
         base_job_name=f"rlvr-lora-integ-{unique_id}",
     )
+
+    rlvr_trainer.hyperparameters.preset_reward_function = "prime_code"
     
     # Create training job
     training_job = rlvr_trainer.train(wait=False)

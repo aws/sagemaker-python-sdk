@@ -1556,3 +1556,25 @@ class TestSFTTrainerDryRun:
 
         with pytest.raises(ValueError, match="Missing permissions"):
             trainer.train(dry_run=True)
+
+
+class TestSFTTrainerListSupportedModels:
+
+    @patch("sagemaker.train.common_utils.recipe_utils._list_hub_models_by_recipe")
+    def test_list_supported_models(self, mock_list):
+        mock_list.return_value = ["meta-llama/Llama-3", "Qwen/Qwen3-32B"]
+        result = SFTTrainer.list_supported_models()
+        assert isinstance(result, list)
+        assert "Qwen/Qwen3-32B" in result
+        mock_list.assert_called_once_with(
+            recipe_type="FineTuning", technique="SFT", session=None
+        )
+
+    @patch("sagemaker.train.common_utils.recipe_utils._list_hub_models_by_recipe")
+    def test_list_supported_models_passes_session(self, mock_list):
+        mock_list.return_value = []
+        session = Mock()
+        SFTTrainer.list_supported_models(session=session)
+        mock_list.assert_called_once_with(
+            recipe_type="FineTuning", technique="SFT", session=session
+        )

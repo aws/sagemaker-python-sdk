@@ -240,9 +240,6 @@ class RLVRTrainer(BaseTrainer):
             if hasattr(self.hyperparameters, 'reward_lambda_arn'):
                 delattr(self.hyperparameters, 'reward_lambda_arn')
                 self.hyperparameters._specs.pop('reward_lambda_arn', None)
-            if hasattr(self.hyperparameters, 'preset_reward_function'):
-                delattr(self.hyperparameters, 'preset_reward_function')
-                self.hyperparameters._specs.pop('preset_reward_function', None)
             if hasattr(self.hyperparameters, 'data_path'):
                 delattr(self.hyperparameters, 'data_path')
                 self.hyperparameters._specs.pop('data_path', None)
@@ -410,7 +407,22 @@ class RLVRTrainer(BaseTrainer):
 
         Returns:
             TrainingJob: The SageMaker training job object, or None if dry_run=True.
+
+        Raises:
+            ValueError: If neither a custom reward function nor a preset reward
+                function hyperparameter is configured.
         """
+        # A reward signal is required: either a custom reward function (Lambda ARN,
+        # evaluator ARN, or Evaluator object) or the preset_reward_function hyperparameter.
+        preset_reward_function = getattr(self.hyperparameters, "preset_reward_function", None)
+        if not self.custom_reward_function and not preset_reward_function:
+            raise ValueError(
+                "RLVR training requires a reward signal. Provide either "
+                "'custom_reward_function' (a Lambda ARN, evaluator ARN, or Evaluator object) "
+                "when initializing RLVRTrainer, or set the 'preset_reward_function' "
+                "hyperparameter (e.g. trainer.hyperparameters.preset_reward_function = 'prime_code')."
+            )
+
         # Dispatch based on compute type
         if isinstance(self.compute, HyperPodCompute):
             return self._train_hyperpod(

@@ -666,6 +666,51 @@ class TestListHubModelsByRecipe:
         with pytest.raises(ValueError, match="recipe_type must be"):
             _list_hub_models_by_recipe(recipe_type="Invalid", technique="MTRL")
 
+    @patch("sagemaker.train.common_utils.recipe_utils.boto3.Session")
+    def test_finds_models_with_bare_keyword_no_strategy(self, mock_session_cls):
+        """Techniques whose recipes carry no strategy suffix are tagged with the
+        bare ``@recipe:finetuning_{technique}`` keyword (e.g. CPT). The matcher
+        must find these, not just ``{base}_{strategy}`` forms."""
+        mock_client = MagicMock()
+        mock_session_cls.return_value.client.return_value = mock_client
+
+        mock_client.list_hub_contents.return_value = {
+            "HubContentSummaries": [
+                {
+                    "HubContentName": "model-cpt-bare",
+                    "HubContentSearchKeywords": ["@recipe:finetuning_cpt"],
+                },
+                {
+                    "HubContentName": "model-cpt-suffixed",
+                    "HubContentSearchKeywords": ["@recipe:finetuning_cpt_full"],
+                },
+            ],
+        }
+
+        from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+        result = _list_hub_models_by_recipe(recipe_type="FineTuning", technique="CPT")
+        assert result == ["model-cpt-bare", "model-cpt-suffixed"]
+
+    @patch("sagemaker.train.common_utils.recipe_utils.boto3.Session")
+    def test_does_not_match_technique_sharing_a_prefix(self, mock_session_cls):
+        """A shorter technique must not match a longer one that merely shares its
+        prefix (e.g. ``rl`` must not match ``rlvr``)."""
+        mock_client = MagicMock()
+        mock_session_cls.return_value.client.return_value = mock_client
+
+        mock_client.list_hub_contents.return_value = {
+            "HubContentSummaries": [
+                {
+                    "HubContentName": "model-rlvr",
+                    "HubContentSearchKeywords": ["@recipe:finetuning_rlvr_lora"],
+                },
+            ],
+        }
+
+        from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+        result = _list_hub_models_by_recipe(recipe_type="FineTuning", technique="rl")
+        assert result == []
+
 
 class TestListAgentRuntimes:
     @patch("sagemaker.train.multi_turn_rl_trainer.boto3.Session")

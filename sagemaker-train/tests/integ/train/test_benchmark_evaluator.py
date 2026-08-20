@@ -97,6 +97,10 @@ class TestBenchmarkEvaluatorIntegration:
         
         logger.info(f"MMLU properties: {properties}")
 
+    # Waits for a full evaluation pipeline (execution.wait, 4-hour ceiling), so it
+    # belongs off the PR gate for the same reason as its already-marked siblings
+    # below.
+    @pytest.mark.gpu_intensive
     def test_benchmark_evaluation_full_flow(self):
         """
         Test complete benchmark evaluation flow with fine-tuned model package.

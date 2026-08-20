@@ -93,7 +93,12 @@ def test_resources(sagemaker_session_us_east_1):
     }
 
 
-@pytest.mark.slow
+# Was @pytest.mark.slow, which is not a registered marker -- the registered name
+# is slow_test -- so it silently did nothing (PytestUnknownMarkWarning). This class
+# waits on a full evaluation pipeline, so gpu_intensive is what it actually wants.
+# us_east_1 already kept it off the us-west-2 gate, so this is not a behaviour
+# change there; it now also stays off the us-east-1 job.
+@pytest.mark.gpu_intensive
 @pytest.mark.us_east_1
 class TestLLMAJCustomModelIntegration:
     """Integration tests for LLMAsJudgeEvaluator with InspectAI inference path."""

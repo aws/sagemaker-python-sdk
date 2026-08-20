@@ -1442,8 +1442,19 @@ def get_metrics_from_deployment_configs(
     if not deployment_configs:
         return {}
 
-    data = {"Instance Type": [], "Config Name": [], "Concurrent Users": []}
-    instance_rate_data = {}
+    # Build per-row records, then pivot to column-oriented at the end, padding
+    # columns a row didn't set with None. Keeps every column the same length and
+    # each value on its own row; appending columns independently would crash
+    # pd.DataFrame on ragged lengths and misalign the sparse (pricing) column.
+    rows: List[Dict[str, Any]] = []
+    column_order: List[str] = ["Instance Type", "Config Name", "Concurrent Users"]
+    seen_columns = set(column_order)
+
+    def _register_column(name: str) -> None:
+        if name not in seen_columns:
+            seen_columns.add(name)
+            column_order.append(name)
+
     for index, deployment_config in enumerate(deployment_configs):
         benchmark_metrics = deployment_config.benchmark_metrics
         if not deployment_config.deployment_args or not benchmark_metrics:
@@ -1465,25 +1476,31 @@ def get_metrics_from_deployment_configs(
                     else current_instance_type
                 )
 
-                data["Config Name"].append(deployment_config.deployment_config_name)
-                data["Instance Type"].append(instance_type_to_display)
-                data["Concurrent Users"].append(concurrent_user)
+                row: Dict[str, Any] = {
+                    "Instance Type": instance_type_to_display,
+                    "Config Name": deployment_config.deployment_config_name,
+                    "Concurrent Users": concurrent_user,
+                }
+
+                for metric in metrics:
+                    column_name = _normalize_benchmark_metric_column_name(metric.name, metric.unit)
+                    _register_column(column_name)
+                    row[column_name] = metric.value
 
                 if instance_type_rate:
                     instance_rate_column_name = (
                         f"{instance_type_rate.name} ({instance_type_rate.unit})"
                     )
-                    instance_rate_data[instance_rate_column_name] = instance_rate_data.get(
-                        instance_rate_column_name, []
-                    )
-                    instance_rate_data[instance_rate_column_name].append(instance_type_rate.value)
+                    _register_column(instance_rate_column_name)
+                    row[instance_rate_column_name] = instance_type_rate.value
 
-                for metric in metrics:
-                    column_name = _normalize_benchmark_metric_column_name(metric.name, metric.unit)
-                    data[column_name] = data.get(column_name, [])
-                    data[column_name].append(metric.value)
+                rows.append(row)
 
-    data = {**data, **instance_rate_data}
+    # Pivot to column-oriented, padding unset cells with None.
+    data: Dict[str, List[Any]] = {column: [] for column in column_order}
+    for row in rows:
+        for column in column_order:
+            data[column].append(row.get(column))
     return data
 
 
