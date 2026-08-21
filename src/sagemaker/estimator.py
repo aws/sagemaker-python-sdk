@@ -775,6 +775,8 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
         self.checkpoint_local_path = checkpoint_local_path
 
         self.rules = rules
+        self._debugger_hook_config_explicitly_provided = debugger_hook_config is not None
+        self._profiler_config_explicitly_provided = profiler_config is not None
 
         # Today, we ONLY support debugger_hook_config to be provided as a boolean value
         # from sagemaker_config. We resolve value for this parameter as per the order
@@ -1366,7 +1368,14 @@ class EstimatorBase(with_metaclass(ABCMeta, object)):  # pylint: disable=too-man
             )
         return None
 
-    @_telemetry_emitter(feature=Feature.ESTIMATOR_V2, func_name="estimator.fit")
+    @_telemetry_emitter(
+        feature=Feature.ESTIMATOR_V2,
+        func_name="estimator.fit",
+        telemetry_params={
+            "debuggerHookConfigExplicitlyProvided": ("_debugger_hook_config_explicitly_provided"),
+            "profilerConfigExplicitlyProvided": "_profiler_config_explicitly_provided",
+        },
+    )
     @runnable_by_pipeline
     def fit(
         self,
