@@ -49,7 +49,7 @@ class RLAIFTrainer(BaseTrainer):
             training_type=TrainingType.LORA,
             model_package_group="my-model-group",
             reward_model_id="reward-model-id",
-            reward_prompt="Rate the helpfulness of this response on a scale of 1-10",
+            reward_prompt="summarize",
             training_dataset="s3://bucket/rlaif_data.jsonl"
         )
 
@@ -60,7 +60,7 @@ class RLAIFTrainer(BaseTrainer):
             model="meta-llama/Llama-2-7b-hf",
             model_package_group="my-rlaif-models",
             reward_model_id="reward-model-id",
-            reward_prompt="Rate the helpfulness of this response on a scale of 1-10"
+            reward_prompt="summarize"
         )
         
         # Create training job (non-blocking)
@@ -396,8 +396,14 @@ class RLAIFTrainer(BaseTrainer):
         # Process reward_prompt parameter
         if hasattr(self, 'reward_prompt') and self.reward_prompt:
             if isinstance(self.reward_prompt, str):
-                if self.reward_prompt.startswith("Builtin"):
-                    # Handle builtin reward prompts
+                # Resolution order:
+                #   1. Preset template name -> resolved locally against the recipe's
+                #      judge_prompt_template enum (no API call). Accepts "Builtin.Summarize",
+                #      "summarize", or "summarize.jinja".
+                #   2. Evaluator ARN -> validated/assigned as-is.
+                #   3. Otherwise -> HubContent name lookup (custom registered prompt),
+                #      which raises a clear error if not found.
+                if self._is_preset_reward_prompt(self.reward_prompt):
                     self._update_judge_prompt_template_direct(self.reward_prompt)
                 else:
                     # Handle evaluator ARN or hub content name
@@ -411,9 +417,44 @@ class RLAIFTrainer(BaseTrainer):
                 evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
                 self._evaluator_arn = evaluator_arn
 
+    @staticmethod
+    def _normalize_template_name(value: str) -> str:
+        """Normalize a preset name or enum path to a comparable key.
+
+        Handles an optional "Builtin." prefix, any path prefix, and an optional
+        ".jinja" suffix, case-insensitively. For example "Builtin.Summarize",
+        "summarize", "summarize.jinja", and "/opt/ml/code/verl/summarize.jinja"
+        all normalize to "summarize".
+        """
+        name = (value or "").strip()
+        if name.lower().startswith("builtin."):
+            name = name.split(".", 1)[1]
+        name = name.split("/")[-1]  # basename
+        if name.lower().endswith(".jinja"):
+            name = name[: -len(".jinja")]
+        return name.lower()
+
+    def _get_judge_prompt_template_enum(self):
+        """Return the recipe's judge_prompt_template enum values (already in memory)."""
+        if not self.hyperparameters or not getattr(self.hyperparameters, "_specs", None):
+            return []
+        judge_prompt_spec = self.hyperparameters._specs.get("judge_prompt_template", {})
+        return judge_prompt_spec.get("enum", []) or []
+
+    def _is_preset_reward_prompt(self, reward_prompt: str) -> bool:
+        """True if reward_prompt matches a recipe preset template (local, no API call).
+
+        An explicit "Builtin." prefix always routes to preset resolution so the
+        user gets a clear "not available" error instead of a HubContent lookup.
+        """
+        if reward_prompt.startswith("Builtin"):
+            return True
+        enum_keys = {self._normalize_template_name(e) for e in self._get_judge_prompt_template_enum()}
+        return self._normalize_template_name(reward_prompt) in enum_keys
+
     def _process_non_builtin_reward_prompt(self):
-        """Process non-builtin reward prompt (ARN or hub content name)."""
-        # Remove judge_prompt_template for non-builtin prompts
+        """Process non-preset reward prompt (ARN or hub content name)."""
+        # Remove judge_prompt_template for non-preset prompts
         if hasattr(self.hyperparameters, 'judge_prompt_template'):
             delattr(self.hyperparameters, 'judge_prompt_template')
             self.hyperparameters._specs.pop('judge_prompt_template', None)
@@ -442,11 +483,15 @@ class RLAIFTrainer(BaseTrainer):
 
 
     def _update_judge_prompt_template_direct(self, reward_prompt):
-        """Update judge_prompt_template based on Builtin reward function."""
+        """Resolve a preset reward prompt name to the recipe's judge_prompt_template value.
+
+        Accepts "Builtin.Summarize", "summarize", or "summarize.jinja" and matches
+        it against the recipe's judge_prompt_template enum (normalized by basename,
+        with an optional ".jinja" suffix). No API call is made.
+        """
         # Get available templates from hyperparameters specs
-        judge_prompt_spec = self.hyperparameters._specs.get('judge_prompt_template', {})
-        available_templates = judge_prompt_spec.get('enum', [])
-        
+        available_templates = self._get_judge_prompt_template_enum()
+
         if not available_templates:
             # If no enum found, use the current value as the only available option
             current_value = getattr(self.hyperparameters, 'judge_prompt_template', None)
@@ -454,25 +499,26 @@ class RLAIFTrainer(BaseTrainer):
                 available_templates = [current_value]
             else:
                 return
-        
-        # Extract template name after "Builtin." and convert to lowercase
-        template_name = reward_prompt.split(".", 1)[1].lower()
-        
-        # Find matching template by extracting filename without extension
+
+        # Normalize the requested name (strips optional "Builtin." prefix and ".jinja")
+        template_name = self._normalize_template_name(reward_prompt)
+
+        # Find matching template by normalized basename
         matching_template = None
         for template in available_templates:
-            template_filename = template.split("/")[-1].replace(".jinja", "").lower()
-            if template_filename == template_name:
+            if self._normalize_template_name(template) == template_name:
                 matching_template = template
                 break
         
         if matching_template:
             self.hyperparameters.judge_prompt_template = matching_template
         else:
-            available_options = [f"Builtin.{t.split('/')[-1].replace('.jinja', '')}" for t in available_templates]
+            available_options = [self._normalize_template_name(t) for t in available_templates]
             raise ValueError(
-                f"Selected reward function option '{reward_prompt}' is not available. "
-                f"Choose one from the available options: {available_options}. "
-                f"Example: reward_prompt='Builtin.summarize'"
+                f"Selected reward prompt '{reward_prompt}' is not an available preset. "
+                f"Choose one from the available options: {available_options} "
+                f"(pass the name directly, e.g. reward_prompt='{available_options[0]}', "
+                f"or with the 'Builtin.' prefix). "
+                f"Alternatively pass an evaluator ARN or a registered HubContent prompt name."
             )
 
