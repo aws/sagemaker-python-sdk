@@ -479,6 +479,7 @@ def ingest_dataframe(
     wait: bool = True,
     timeout: Union[int, float] = None,
     use_batch_write_record: bool = False,
+    region: str = None,
 ):
     """Ingest a pandas DataFrame to a FeatureGroup.
 
@@ -493,20 +494,29 @@ def ingest_dataframe(
             call) instead of PutRecord (1 record per call) for significantly better
             throughput. Requires both ``sagemaker:BatchWriteRecord`` AND
             ``sagemaker:PutRecord`` IAM permissions. Default: False.
+        region: AWS region name of the FeatureGroup, e.g. "eu-west-1". Used both to
+            describe the FeatureGroup and to write the records. If not specified, the
+            region is resolved by boto3 from the environment (``AWS_DEFAULT_REGION``,
+            ``AWS_REGION``, or the active profile in ``~/.aws/config``). Default: None.
 
     Returns:
         IngestionManagerPandas instance.
 
     Raises:
         ValueError: If max_workers or max_processes <= 0.
+
+    Note:
+        sagemaker-core caches its boto clients per process, so the first region used in
+        a process wins. Use a single region per process, or the same ``region`` value on
+        every call.
     """
-    
+
     if max_processes <= 0:
         raise ValueError("max_processes must be greater than 0.")
     if max_workers <= 0:
         raise ValueError("max_workers must be greater than 0.")
 
-    fg = CoreFeatureGroup.get(feature_group_name=feature_group_name)
+    fg = CoreFeatureGroup.get(feature_group_name=feature_group_name, region=region)
     feature_definitions = {}
     for fd in fg.feature_definitions:
         collection_type = getattr(fd, "collection_type", None)
@@ -524,6 +534,7 @@ def ingest_dataframe(
         max_workers=max_workers,
         max_processes=max_processes,
         use_batch_write_record=use_batch_write_record,
+        region=region,
     )
     manager.run(data_frame=data_frame, wait=wait, timeout=timeout)
     return manager

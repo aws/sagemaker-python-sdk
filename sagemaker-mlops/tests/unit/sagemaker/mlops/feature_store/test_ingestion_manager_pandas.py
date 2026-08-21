@@ -321,3 +321,182 @@ class TestAsyncIngestionValidation:
         
         # Verify it called the multi-process method (positive assertion)
         mock_run.assert_called_once()
+
+
+class TestIngestionManagerRegion:
+    """``region`` must reach every FeatureStore runtime call."""
+
+    @pytest.fixture
+    def feature_definitions(self):
+        return {"id": {"FeatureType": "String", "CollectionType": None}}
+
+    @pytest.fixture
+    def sample_dataframe(self):
+        return pd.DataFrame({"id": ["1", "2", "3"]})
+
+    def test_region_defaults_to_none(self, feature_definitions):
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+        )
+        assert manager.region is None
+
+    def test_region_stored_on_manager(self, feature_definitions):
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            region="eu-west-1",
+        )
+        assert manager.region == "eu-west-1"
+
+    def test_ingest_row_passes_region_to_put_record(self, feature_definitions):
+        df = pd.DataFrame({"id": ["1"]})
+        mock_fg = MagicMock()
+        failed_rows = []
+
+        for row in df.itertuples():
+            IngestionManagerPandas._ingest_row(
+                data_frame=df,
+                row=row,
+                feature_group=mock_fg,
+                feature_definitions=feature_definitions,
+                failed_rows=failed_rows,
+                target_stores=None,
+                region="eu-west-1",
+            )
+
+        assert mock_fg.put_record.call_args[1]["region"] == "eu-west-1"
+
+    def test_ingest_row_region_defaults_to_none(self, feature_definitions):
+        df = pd.DataFrame({"id": ["1"]})
+        mock_fg = MagicMock()
+        failed_rows = []
+
+        for row in df.itertuples():
+            IngestionManagerPandas._ingest_row(
+                data_frame=df,
+                row=row,
+                feature_group=mock_fg,
+                feature_definitions=feature_definitions,
+                failed_rows=failed_rows,
+                target_stores=None,
+            )
+
+        assert mock_fg.put_record.call_args[1]["region"] is None
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
+    def test_single_thread_run_passes_region_to_put_record(
+        self, mock_fg_class, feature_definitions, sample_dataframe
+    ):
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            region="eu-west-1",
+        )
+        manager.run(data_frame=sample_dataframe, wait=True)
+
+        assert mock_fg.put_record.call_count == 3
+        for call in mock_fg.put_record.call_args_list:
+            assert call[1]["region"] == "eu-west-1"
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
+    def test_single_batch_passes_region_to_put_record(
+        self, mock_fg_class, feature_definitions, sample_dataframe
+    ):
+        mock_fg = MagicMock()
+        mock_fg_class.return_value = mock_fg
+
+        IngestionManagerPandas._ingest_single_batch(
+            data_frame=sample_dataframe,
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            start_index=0,
+            end_index=3,
+            region="eu-west-1",
+        )
+
+        assert mock_fg.put_record.call_count == 3
+        for call in mock_fg.put_record.call_args_list:
+            assert call[1]["region"] == "eu-west-1"
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
+    def test_batch_write_passes_region(
+        self, mock_fg_class, feature_definitions, sample_dataframe
+    ):
+        mock_fg = MagicMock()
+        mock_fg.batch_write_record.return_value = MagicMock(
+            unprocessed_entries=[], errors=[]
+        )
+        mock_fg_class.return_value = mock_fg
+
+        IngestionManagerPandas._ingest_batch_write(
+            data_frame=sample_dataframe,
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            start_index=0,
+            end_index=3,
+            region="eu-west-1",
+        )
+
+        mock_fg.batch_write_record.assert_called_once()
+        assert mock_fg.batch_write_record.call_args[1]["region"] == "eu-west-1"
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.CoreFeatureGroup")
+    def test_batch_write_run_passes_region(
+        self, mock_fg_class, feature_definitions, sample_dataframe
+    ):
+        mock_fg = MagicMock()
+        mock_fg.batch_write_record.return_value = MagicMock(
+            unprocessed_entries=[], errors=[]
+        )
+        mock_fg_class.return_value = mock_fg
+
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            use_batch_write_record=True,
+            region="eu-west-1",
+        )
+        manager.run(data_frame=sample_dataframe, wait=True)
+
+        assert mock_fg.batch_write_record.call_args[1]["region"] == "eu-west-1"
+
+    @patch.object(IngestionManagerPandas, "_ingest_single_batch", return_value=[])
+    def test_multi_threaded_forwards_region(
+        self, mock_ingest, feature_definitions, sample_dataframe
+    ):
+        IngestionManagerPandas._run_multi_threaded(
+            max_workers=2,
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            data_frame=sample_dataframe,
+            region="eu-west-1",
+        )
+
+        assert mock_ingest.call_count == 2
+        for call in mock_ingest.call_args_list:
+            assert call[1]["region"] == "eu-west-1"
+
+    @patch("sagemaker.mlops.feature_store.ingestion_manager_pandas.Pool")
+    def test_multi_process_args_include_region(
+        self, mock_pool_class, feature_definitions, sample_dataframe
+    ):
+        mock_pool = MagicMock()
+        mock_pool_class.return_value = mock_pool
+
+        manager = IngestionManagerPandas(
+            feature_group_name="test-fg",
+            feature_definitions=feature_definitions,
+            max_processes=2,
+            region="eu-west-1",
+        )
+        manager.run(data_frame=sample_dataframe, wait=False)
+
+        starmap_args = mock_pool.starmap_async.call_args[0][1]
+        assert len(starmap_args) == 2
+        for process_args in starmap_args:
+            # region is the last positional argument passed to _run_multi_threaded
+            assert process_args[-1] == "eu-west-1"

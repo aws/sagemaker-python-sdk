@@ -52,6 +52,12 @@ class IngestionManagerPandas:
         max_workers (int): number of threads to create.
         max_processes (int): number of processes to create. Each process spawns
             ``max_workers`` threads.
+        use_batch_write_record (bool): whether to use the BatchWriteRecord API
+            instead of PutRecord.
+        region (str): AWS region name to write the records to, e.g. "eu-west-1".
+            If None, the region is resolved by boto3 from the environment
+            (``AWS_DEFAULT_REGION``, ``AWS_REGION``, or the active profile in
+            ``~/.aws/config``).
     """
 
     feature_group_name: str
@@ -59,6 +65,7 @@ class IngestionManagerPandas:
     max_workers: int = 1
     max_processes: int = 1
     use_batch_write_record: bool = False
+    region: str = None
     _async_result: Any = field(default=None, init=False)
     _processing_pool: Pool = field(default=None, init=False)
     _failed_indices: List[int] = field(default_factory=list, init=False)
@@ -151,6 +158,7 @@ class IngestionManagerPandas:
                 start_index=0,
                 end_index=len(data_frame),
                 target_stores=target_stores,
+                region=self.region,
             )
         else:
             failed_rows = []
@@ -163,6 +171,7 @@ class IngestionManagerPandas:
                     feature_definitions=self.feature_definitions,
                     failed_rows=failed_rows,
                     target_stores=target_stores,
+                    region=self.region,
                 )
 
         self._failed_indices = failed_rows
@@ -195,6 +204,7 @@ class IngestionManagerPandas:
                 start_index,
                 timeout,
                 self.use_batch_write_record,
+                self.region,
             ))
 
         def init_worker():
@@ -220,6 +230,7 @@ class IngestionManagerPandas:
         row_offset: int = 0,
         timeout: Union[int, float] = None,
         use_batch_write_record: bool = False,
+        region: str = None,
     ) -> List[int]:
         """Start multi-threaded ingestion within a single process."""
         executor = ThreadPoolExecutor(max_workers=max_workers)
@@ -238,6 +249,7 @@ class IngestionManagerPandas:
                     start_index=start_index,
                     end_index=end_index,
                     target_stores=target_stores,
+                    region=region,
                 )
             else:
                 future = executor.submit(
@@ -248,6 +260,7 @@ class IngestionManagerPandas:
                     start_index=start_index,
                     end_index=end_index,
                     target_stores=target_stores,
+                    region=region,
                 )
             futures[future] = (start_index + row_offset, end_index + row_offset)
 
@@ -270,6 +283,7 @@ class IngestionManagerPandas:
         start_index: int,
         end_index: int,
         target_stores: List[str] = None,
+        region: str = None,
     ) -> List[int]:
         """Ingest a single batch of DataFrame rows into FeatureStore."""
         logger.info("Started ingesting index %d to %d", start_index, end_index)
@@ -285,6 +299,7 @@ class IngestionManagerPandas:
                 feature_definitions=feature_definitions,
                 failed_rows=failed_rows,
                 target_stores=target_stores,
+                region=region,
             )
 
         return failed_rows
@@ -297,6 +312,7 @@ class IngestionManagerPandas:
         feature_definitions: Dict[str, Dict[Any, Any]],
         failed_rows: List[int],
         target_stores: List[str] = None,
+        region: str = None,
     ):
         """Ingest a single DataFrame row into FeatureStore using SageMaker Core."""
         try:
@@ -323,6 +339,7 @@ class IngestionManagerPandas:
             feature_group.put_record(
                 record=record,
                 target_stores=target_stores,
+                region=region,
             )
 
         except Exception as e:
@@ -408,6 +425,7 @@ class IngestionManagerPandas:
         start_index: int,
         end_index: int,
         target_stores: List[str] = None,
+        region: str = None,
     ) -> List[int]:
         """Ingest records using BatchWriteRecord API (up to 25 per call).
 
@@ -418,6 +436,8 @@ class IngestionManagerPandas:
             start_index: Start index in the DataFrame slice.
             end_index: End index in the DataFrame slice.
             target_stores: Target stores for ingestion.
+            region: AWS region name to write the records to. If None, boto3 resolves
+                the region from the environment.
 
         Returns:
             List of row indices that failed to ingest.
@@ -459,7 +479,7 @@ class IngestionManagerPandas:
 
             try:
                 fg = CoreFeatureGroup(feature_group_name=feature_group_name)
-                response = fg.batch_write_record(entries=entries)
+                response = fg.batch_write_record(entries=entries, region=region)
 
                 # Handle partial failures from unprocessed entries
                 if response.unprocessed_entries:
