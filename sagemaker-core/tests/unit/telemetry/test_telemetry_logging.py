@@ -756,10 +756,6 @@ class TestTelemetryIsNonBlocking(unittest.TestCase):
         import sagemaker.core.telemetry.telemetry_logging as telemetry_module
 
         self.telemetry_module = telemetry_module
-        telemetry_module._in_flight_telemetry_requests = 0
-
-    def tearDown(self):
-        self.telemetry_module._in_flight_telemetry_requests = 0
 
     def test_send_returns_before_the_request_completes(self):
         release = threading.Event()
@@ -802,7 +798,7 @@ class TestTelemetryIsNonBlocking(unittest.TestCase):
             0, [1, 2], session, "failure_reason", "failure_type", "extra_info"
         )
 
-    def test_thread_swallows_exceptions_and_releases_its_slot(self):
+    def test_thread_swallows_exceptions(self):
         """An exception in the thread has no caller to catch it, so it must not escape."""
         with patch.object(
             self.telemetry_module,
@@ -813,33 +809,29 @@ class TestTelemetryIsNonBlocking(unittest.TestCase):
             thread.join(timeout=5)
 
         self.assertFalse(thread.is_alive())
-        self.assertEqual(self.telemetry_module._in_flight_telemetry_requests, 0)
 
-    def test_events_are_dropped_when_too_many_are_in_flight(self):
+    def test_no_event_is_dropped_when_many_are_in_flight(self):
+        """Making the send async must not cost us events, however many are pending."""
         release = threading.Event()
-        started = []
+        started = threading.Semaphore(0)
+        event_count = 25
 
         def blocking_send(*args, **kwargs):
-            started.append(1)
+            started.release()
             release.wait(timeout=10)
 
-        max_in_flight = self.telemetry_module.MAX_IN_FLIGHT_TELEMETRY_REQUESTS
         with patch.object(
             self.telemetry_module, "_send_telemetry_request_sync", side_effect=blocking_send
         ):
-            threads = [_send_telemetry_request(1, [1], MagicMock()) for _ in range(max_in_flight)]
+            threads = [_send_telemetry_request(1, [1], MagicMock()) for _ in range(event_count)]
             try:
                 self.assertTrue(all(t is not None for t in threads))
-                # One more than the cap allows is dropped rather than spawning
-                # an unbounded number of threads.
-                self.assertIsNone(_send_telemetry_request(1, [1], MagicMock()))
+                for _ in range(event_count):
+                    self.assertTrue(started.acquire(timeout=5), "an event was never sent")
             finally:
                 release.set()
                 for t in threads:
                     t.join(timeout=5)
-
-        # Counter is released once the sends finish, so later events go through.
-        self.assertEqual(self.telemetry_module._in_flight_telemetry_requests, 0)
 
     @patch("sagemaker.core.telemetry.telemetry_logging.resolve_value_from_config")
     def test_decorated_function_returns_without_waiting_for_telemetry(self, mock_resolve_config):

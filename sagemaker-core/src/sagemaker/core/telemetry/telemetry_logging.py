@@ -70,16 +70,19 @@ _telemetry_msg_shown = False
 # Seconds to wait for the telemetry endpoint before giving up on an event.
 TELEMETRY_REQUEST_TIMEOUT = 2
 
-# Telemetry is best-effort, so it must never sit in the caller's critical path.
-# Every event is sent from a daemon thread: a slow or unreachable telemetry
-# endpoint (for example from inside a VPC with no route to it) can no longer
-# stall the SDK call the customer actually made, and because the threads are
-# daemons a pending send cannot delay interpreter shutdown either. If more than
-# MAX_IN_FLIGHT_TELEMETRY_REQUESTS sends are already outstanding we drop the
-# event rather than grow threads without bound.
-MAX_IN_FLIGHT_TELEMETRY_REQUESTS = 8
-_in_flight_telemetry_requests = 0
-_in_flight_telemetry_lock = threading.Lock()
+# Telemetry must never sit in the caller's critical path, so every event is sent
+# from a daemon thread. A slow or unreachable telemetry endpoint (for example from
+# inside a VPC with no route to it) can no longer stall the SDK call the customer
+# actually made, and because the threads are daemons a pending send cannot delay
+# interpreter shutdown either. No event is ever dropped: one thread is started per
+# event.
+#
+# Special case worth calling out: Feature Store ingestion is decorated at more than
+# one level (``ingest_dataframe`` and ``IngestionManagerPandas.run``), so a single
+# user call can emit several events. Sending them serially on the caller's thread is
+# what turned an ingest that the service finished in under a second into a
+# multi-minute wait, which is why the send is moved off that thread here rather than
+# only having its timeout tightened.
 
 FEATURE_TO_CODE = {
     str(Feature.SDK_DEFAULTS): 11,
@@ -440,23 +443,15 @@ def _send_telemetry_request(
 ) -> threading.Thread:
     """Schedule a telemetry event to be sent on a background daemon thread.
 
-    This returns as soon as the thread is started so that telemetry never adds
-    latency to the SDK call that triggered it. The event is dropped (and None
-    returned) if too many sends are already outstanding.
+    Every event is still sent; this only moves the send off the caller's thread so
+    that telemetry never adds latency to the SDK call that triggered it.
 
     Returns:
-        threading.Thread: The thread doing the send, or None if the event was
-            dropped. Callers generally ignore this; tests can join on it.
+        threading.Thread: The thread doing the send. Callers generally ignore this;
+            tests can join on it.
     """
-    global _in_flight_telemetry_requests  # pylint: disable=W0603
-    with _in_flight_telemetry_lock:
-        if _in_flight_telemetry_requests >= MAX_IN_FLIGHT_TELEMETRY_REQUESTS:
-            logger.debug("Too many telemetry requests in flight. Dropping this one.")
-            return None
-        _in_flight_telemetry_requests += 1
 
     def _run():
-        global _in_flight_telemetry_requests  # pylint: disable=W0603
         try:
             _send_telemetry_request_sync(
                 status, feature_list, session, failure_reason, failure_type, extra_info
@@ -467,9 +462,6 @@ def _send_telemetry_request(
             # _send_telemetry_request_sync can fail once the interpreter starts
             # tearing down. Telemetry is best-effort, so drop the event silently.
             pass
-        finally:
-            with _in_flight_telemetry_lock:
-                _in_flight_telemetry_requests -= 1
 
     thread = threading.Thread(target=_run, name="sagemaker-telemetry", daemon=True)
     thread.start()
