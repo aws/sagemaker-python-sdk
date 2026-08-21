@@ -736,7 +736,11 @@ class ModelTrainer(BaseModel):
             "training_job_name": current_training_job_name,
             "algorithm_specification": algorithm_specification,
             "hyper_parameters": string_hyper_parameters,
-            "input_data_config": final_input_data_config,
+            "input_data_config": (
+                final_input_data_config
+                if final_input_data_config
+                else None
+            ),
             "resource_config": resource_config,
             "vpc_config": vpc_config,
             "role_arn": self.role,
