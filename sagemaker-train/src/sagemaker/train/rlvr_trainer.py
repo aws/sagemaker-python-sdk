@@ -37,6 +37,7 @@ from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY
 from sagemaker.train.common_utils.rlvr_reward_verifier import verify_reward_function
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
+from sagemaker.core.helper.iam_role_resolver import RoleValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +111,25 @@ class RLVRTrainer(BaseTrainer):
             (e.g., "arn:aws:lambda:us-east-1:123456789012:function:my-reward"), an Evaluator
             will be automatically created in the AI Registry.
             Required for RLVR training to provide reward signals.
+
+            When providing a Lambda function, it must accept a list of sample dicts and return
+            a list of dicts with the following required fields:
+
+            - ``id`` (str): The sample identifier from the input.
+            - ``aggregate_reward_score`` (float): The reward score for the sample.
+
+            Optionally, each dict may include:
+
+            - ``metrics_list`` (list): A list of metric dicts, each with ``name`` (str),
+              ``value`` (float), and ``type`` ("Metric" or "Reward").
+
+            Example Lambda return value::
+
+                [
+                    {"id": "sample-1", "aggregate_reward_score": 0.85},
+                    {"id": "sample-2", "aggregate_reward_score": 0.42,
+                     "metrics_list": [{"name": "accuracy", "value": 0.9, "type": "Metric"}]}
+                ]
         mlflow_resource_arn (Optional[Union[str, MlflowTrackingServer]]):
             The MLflow tracking server ARN for experiment tracking.
             If not specified, uses default MLflow experience.
@@ -474,12 +494,29 @@ class RLVRTrainer(BaseTrainer):
             lambda_arn = self.custom_reward_function
             evaluator_name = _get_unique_name(f"rlvr-reward-{self._model_name}")
             logger.info(f"Creating Evaluator from Lambda ARN: {lambda_arn}")
-            evaluator_obj = Evaluator.create(
-                name=evaluator_name,
-                type="RewardFunction",
-                source=lambda_arn,
-                sagemaker_session=sagemaker_session,
-            )
+            try:
+                evaluator_obj = Evaluator.create(
+                    name=evaluator_name,
+                    type="RewardFunction",
+                    source=lambda_arn,
+                    role=role,
+                    sagemaker_session=sagemaker_session,
+                )
+            except RoleValidationError as e:
+                raise RoleValidationError(
+                    f"Failed to create Evaluator from Lambda ARN during training. "
+                    f"The IAM role could not be resolved for the Evaluator. "
+                    f"To fix this, either pass 'role' to the trainer, or pre-create the "
+                    f"Evaluator with an explicit role:\n\n"
+                    f"    evaluator = Evaluator.create(\n"
+                    f"        name=\"my-evaluator\",\n"
+                    f"        type=\"RewardFunction\",\n"
+                    f"        source=\"{lambda_arn}\",\n"
+                    f"        role=\"<your-sagemaker-execution-role-arn>\",\n"
+                    f"    )\n"
+                    f"    trainer = RLVRTrainer(..., custom_reward_function=evaluator)\n\n"
+                    f"Original error: {e}"
+                ) from e
             evaluator_arn = _extract_evaluator_arn(evaluator_obj)
             logger.info(f"Created Evaluator with ARN: {evaluator_arn}")
         else:
