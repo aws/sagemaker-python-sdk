@@ -16,13 +16,12 @@ import json
 import uuid
 import pytest
 import logging
-import boto3
 
 from sagemaker.serve.model_builder import ModelBuilder
 from sagemaker.serve.utils.types import ModelServer
 from sagemaker.train.configs import Compute
-from sagemaker.core.resources import EndpointConfig
-from sagemaker.core.helper.session_helper import Session
+
+from cleanup_helpers import cleanup_by_name
 
 logger = logging.getLogger(__name__)
 
@@ -36,30 +35,33 @@ ENDPOINT_NAME_PREFIX = "tei-test-endpoint"
 def test_tei_build_deploy_invoke_cleanup():
     """Integration test for TEI model build, deploy, invoke, and cleanup workflow"""
     logger.info("Starting TEI integration test...")
-    
-    core_model = None
-    core_endpoint = None
-    
+
+    # Names are generated up front so cleanup can run by name even if build()
+    # or deploy() raises or is killed before returning a resource handle.
+    unique_id = str(uuid.uuid4())[:8]
+    model_name = f"{MODEL_NAME_PREFIX}-{unique_id}"
+    endpoint_name = f"{ENDPOINT_NAME_PREFIX}-{unique_id}"
+
     try:
         # Build and deploy
         logger.info("Building and deploying TEI model...")
-        core_model, core_endpoint = build_and_deploy()
-        
+        core_endpoint = build_and_deploy(model_name, endpoint_name)
+
         # Make prediction
         logger.info("Making prediction...")
         make_prediction(core_endpoint)
-        
+
         # Test passed successfully
         logger.info("TEI integration test completed successfully")
-        
+
     except Exception as e:
         logger.error(f"TEI integration test failed: {str(e)}")
         raise
     finally:
-        # Cleanup resources
-        if core_model and core_endpoint:
-            logger.info("Cleaning up resources...")
-            cleanup_resources(core_model, core_endpoint)
+        # Best-effort cleanup by name; runs even if deploy() failed/hung so a
+        # Failed or half-created endpoint is still torn down.
+        logger.info("Cleaning up resources...")
+        cleanup_by_name(endpoint_name=endpoint_name, model_name=model_name)
 
 
 def create_schema_builder():
@@ -72,37 +74,36 @@ def create_schema_builder():
     return SchemaBuilder(sample_input, sample_output)
 
 
-def build_and_deploy():
+def build_and_deploy(model_name, endpoint_name):
     """Build and deploy TEI model - exact logic from backup file."""
     # Use HuggingFace model string for TEI (text embeddings)
     hf_model_id = MODEL_ID
-    
+
     schema_builder = create_schema_builder()
-    unique_id = str(uuid.uuid4())[:8]
 
     compute = Compute(
         instance_type="ml.g5.xlarge",
         instance_count=1,
     )
-    
+
     model_builder = ModelBuilder(
         model=hf_model_id,  # Use HuggingFace model string
         model_server=ModelServer.TEI,
         schema_builder=schema_builder,
         compute=compute,
     )
-    
+
     # Build and deploy your model. Returns SageMaker Core Model and Endpoint objects
-    core_model = model_builder.build(model_name=f"{MODEL_NAME_PREFIX}-{unique_id}")
+    core_model = model_builder.build(model_name=model_name)
     logger.info(f"Model Successfully Created: {core_model.model_name}")
 
     core_endpoint = model_builder.deploy(
-        endpoint_name=f"{ENDPOINT_NAME_PREFIX}-{unique_id}",
+        endpoint_name=endpoint_name,
         initial_instance_count=1,
     )
     logger.info(f"Endpoint Successfully Created: {core_endpoint.endpoint_name}")
-    
-    return core_model, core_endpoint
+
+    return core_endpoint
 
 
 def make_prediction(core_endpoint):
@@ -117,14 +118,3 @@ def make_prediction(core_endpoint):
     # Decode the output of the invocation and print the result
     prediction = json.loads(result.body.read().decode('utf-8'))
     logger.info(f"Result of invoking endpoint: {prediction}")
-
-
-def cleanup_resources(core_model, core_endpoint):
-    """Fully clean up model and endpoint creation - preserving exact logic from manual test"""
-    core_endpoint_config = EndpointConfig.get(endpoint_config_name=core_endpoint.endpoint_name)
-   
-    core_model.delete()
-    core_endpoint.delete()
-    core_endpoint_config.delete()
-
-    logger.info("Model and Endpoint Successfully Deleted!")
