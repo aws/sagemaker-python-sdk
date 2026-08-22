@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import io
 import json
+import logging
 import os
 import zipfile
 from collections.abc import Sequence
@@ -40,6 +41,7 @@ from sagemaker.ai_registry.air_constants import (
     RESPONSE_KEY_LAST_MODIFIED_TIME, RESPONSE_KEY_FUNCTION_ARN,
     RESPONSE_KEY_HUB_CONTENT_NAME, RESPONSE_KEY_HUB_CONTENT_STATUS,
     RESPONSE_KEY_HUB_CONTENT_DOCUMENT, RESPONSE_KEY_HUB_CONTENT_SEARCH_KEYWORDS,
+    RESPONSE_KEY_HUB_CONTENT_DESCRIPTION,
     DOC_KEY_JSON_CONTENT,
     DOC_KEY_REFERENCE, DOC_KEY_SUB_TYPE, REWARD_FUNCTION, REWARD_PROMPT,
 )
@@ -51,6 +53,9 @@ from sagemaker.core.telemetry.constants import Feature
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.train.common_utils.finetune_utils import _get_current_domain_id
 from sagemaker.train.defaults import TrainDefaults
+
+logger = logging.getLogger(__name__)
+
 
 class EvaluatorMethod(Enum):
     """Enum for Evaluator method types."""
@@ -103,6 +108,7 @@ class Evaluator(AIRHubEntity):
         status: Optional[HubContentStatus] = None,
         created_time: Optional[datetime] = None,
         updated_time: Optional[datetime] = None,
+        description: Optional[str] = None,
         sagemaker_session: Optional[Session] = None
     ) -> None:
         """Initialize Evaluator entity.
@@ -117,9 +123,10 @@ class Evaluator(AIRHubEntity):
             status: Current status of the evaluator
             created_time: Creation timestamp
             updated_time: Last update timestamp
+            description: Description of the evaluator
             sagemaker_session: Optional SageMaker session.
         """
-        super().__init__(name, version, arn, status, created_time, updated_time,sagemaker_session)
+        super().__init__(name, version, arn, status, created_time, updated_time, description, sagemaker_session)
         self.method = method
         self.type = type
         self.reference = reference
@@ -160,6 +167,7 @@ class Evaluator(AIRHubEntity):
         self.reference = json_content.get(DOC_KEY_REFERENCE, "")
         self.type = json_content.get(DOC_KEY_SUB_TYPE, "")
         self.status = response[RESPONSE_KEY_HUB_CONTENT_STATUS]
+        self.description = response.get(RESPONSE_KEY_HUB_CONTENT_DESCRIPTION, "")
         method_str = keywords.get(TAG_KEY_METHOD)
         self.method = EvaluatorMethod(method_str) if method_str else None
         self.created = response.get(RESPONSE_KEY_CREATION_TIME)
@@ -198,6 +206,7 @@ class Evaluator(AIRHubEntity):
             method=EvaluatorMethod(method_str) if method_str else None,
             reference=reference,
             status=response[RESPONSE_KEY_HUB_CONTENT_STATUS],
+            description=response.get(RESPONSE_KEY_HUB_CONTENT_DESCRIPTION, ""),
             created_time=response.get(RESPONSE_KEY_CREATION_TIME),
             updated_time=response.get(RESPONSE_KEY_LAST_MODIFIED_TIME),
         )
@@ -212,6 +221,7 @@ class Evaluator(AIRHubEntity):
         wait: bool = True,
         role: Optional[str] = None,
         domain_id: Optional[str] = None,
+        description: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
     ) -> "Evaluator":
         """Create a new Evaluator entity in the AI Registry.
@@ -226,6 +236,7 @@ class Evaluator(AIRHubEntity):
                 is visible in Studio. If not provided, it is auto-detected from the Studio
                 environment; supply it explicitly when creating evaluators outside Studio
                 (e.g. from a laptop or CI) so they still appear in the target domain.
+            description: Optional description of the evaluator.
 
         Returns:
             Evaluator: Newly created Evaluator instance
@@ -294,6 +305,7 @@ class Evaluator(AIRHubEntity):
             document_schema_version=EVALUATOR_DOCUMENT_SCHEMA_VERSION,
             hub_content_document=hub_content_document,
             tags=tags,
+            description=description,
             session=sagemaker_session,
         )
         
@@ -310,6 +322,7 @@ class Evaluator(AIRHubEntity):
             created_time=describe_response[RESPONSE_KEY_CREATION_TIME],
             updated_time=describe_response[RESPONSE_KEY_LAST_MODIFIED_TIME],
             reference=reference,
+            description=description,
             sagemaker_session=sagemaker_session
         )
         
@@ -495,21 +508,29 @@ class Evaluator(AIRHubEntity):
         return evaluators
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="Evaluator.create_version")
-    def create_version(self, source: str) -> bool:
+    def create_version(self, source: str) -> "Evaluator":
         """Create a new version of this evaluator.
         
         Args:
             source: Lambda ARN or local file path for the function
 
         Returns:
-            bool: True if version created successfully, False otherwise
+            Evaluator: The newly created version.
+
+        Raises:
+            RuntimeError: If version creation fails.
         """
         try:
-            Evaluator.create(
+            new_evaluator = Evaluator.create(
                 name=self.name,
                 type=self.type,
                 source=source,
+                sagemaker_session=self.sagemaker_session,
             )
-            return True
+            logger.info(
+                "Created new version %s for evaluator %s, arn: %s",
+                new_evaluator.version, self.name, new_evaluator.arn
+            )
+            return new_evaluator
         except Exception as e:
             raise RuntimeError(f"[PySDK Error] Failed to create new version: {str(e)}")

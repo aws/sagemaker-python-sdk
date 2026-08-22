@@ -184,9 +184,10 @@ class TestDataSetIntegration:
     def test_create_dataset_version(self, unique_name, sample_jsonl_file, cleanup_list):
         """Test creating new dataset version."""
         dataset = DataSet.create(name=unique_name, source=sample_jsonl_file, wait=False)
-        result = dataset.create_version(sample_jsonl_file)
+        new_version = dataset.create_version(sample_jsonl_file)
         cleanup_list.append(dataset)
-        assert result is True
+        assert isinstance(new_version, DataSet)
+        assert new_version.name == dataset.name
 
     def test_dataset_validation_invalid_extension(self, unique_name):
         """Test dataset validation with invalid file extension."""
