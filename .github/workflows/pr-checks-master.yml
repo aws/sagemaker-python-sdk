@@ -272,12 +272,34 @@ jobs:
   fast-integ-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
-    if: contains(fromJson(needs.detect-changes.outputs.submodules), 'sagemaker-train')
+    # Same-repo PRs only, because this is the one job here that puts PR code on a
+    # runner. actions/checkout refuses to place a fork's head commit in a
+    # pull_request_target job -- correctly: this job holds the base repo's
+    # GITHUB_TOKEN and assumes CI_AWS_ROLE_ARN, so a fork could edit conftest.py
+    # and read those credentials out. That is the "pwn request" shape, and on a
+    # public repo it is a live credential-exfiltration path, so the guard skips
+    # the job rather than overriding the refusal with allow-unsafe-pr-checkout.
+    #
+    # Known consequence: nearly every PR to this repo comes from a fork, so this
+    # is not yet a gate on the PRs that matter. Closing that gap means running
+    # the suite where the other three test jobs already run PR code -- inside
+    # CodeBuild via source-version-override, which never exposes the runner's
+    # token or secrets to it (see integ-tests above). That needs a
+    # <repo>-ci-sagemaker-train-fast-integ-tests project in the CDK that owns the
+    # existing ones. Until it exists this suite is effectively a local signal --
+    # whether the daily CI-health run over refs/heads/master reaches
+    # tests/integ/train/shallow depends on that buildspec's selection, which also
+    # lives outside this repo.
+    if: >-
+      contains(fromJson(needs.detect-changes.outputs.submodules), 'sagemaker-train')
+      && github.event.pull_request.head.repo.full_name == github.repository
     steps:
       - uses: actions/checkout@v3
         with:
           # pull_request_target checks out the base ref by default; these tests
-          # must run against the PR's code.
+          # must run against the PR's code. Safe only because the job is guarded
+          # to same-repo PRs above -- a branch in this repo already requires push
+          # access, so checking it out grants nothing its author lacks.
           ref: 'refs/pull/${{ github.event.pull_request.number }}/head'
 
       - name: Set up Python

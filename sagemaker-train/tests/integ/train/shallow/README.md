@@ -8,6 +8,21 @@ What this suite changes about the gate is not which job runs, but what the exist
 one selects: the `gpu_intensive` marks added here deselect the deep tests that
 submit a job and wait for it, and this suite covers those code paths instead.
 
+> **Current limitation — the job only runs on same-repo PRs.** `fast-integ-tests`
+> is the one job in `pr-checks-master.yml` that puts PR code on a GitHub runner,
+> and that runner assumes `CI_AWS_ROLE_ARN`. `actions/checkout` refuses to place a
+> fork's head commit in a `pull_request_target` job for exactly that reason, so the
+> job is guarded to same-repo PRs. Almost every PR here comes from a fork, so in
+> practice this is presently a **local** signal rather than a gate. The fix is to
+> run it the way the other three test jobs run PR code — inside CodeBuild via
+> `source-version-override`, which never exposes the runner's token or secrets to
+> it — which needs a CodeBuild project provisioned alongside the existing ones.
+>
+> Until then, run this suite locally when changing a submission path, and note that
+> the deselection described above trades gate coverage for coverage that depends on
+> whether the daily CI-health buildspec reaches this directory — that selection
+> lives outside this repo and is worth confirming.
+
 ## What a passing test proves
 
 Each test submits a real `CreateTrainingJob`, asserts the service returned a
