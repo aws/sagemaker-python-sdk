@@ -13,14 +13,17 @@
 
 """Partner App Auth Utils Module"""
 
-from __future__ import absolute_import
+from __future__ import annotations
 
+import logging
 from hashlib import sha256
 import functools
 from typing import Tuple, Dict
 
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
+
+logger = logging.getLogger(__name__)
 
 HEADER_CONNECTION = "Connection"
 HEADER_X_AMZ_TARGET = "X-Amz-Target"
