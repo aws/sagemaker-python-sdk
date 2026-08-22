@@ -4230,8 +4230,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 endpoint_type=EndpointType.INFERENCE_COMPONENT_BASED,
                 resources=resource_requirements,
                 inference_component_name=ic_name,
-                instance_type=kwargs.get("instance_type", self.instance_type),
-                initial_instance_count=kwargs.get("initial_instance_count", 1),
+                instance_type=kwargs.pop("instance_type", self.instance_type),
+                initial_instance_count=kwargs.pop("initial_instance_count", 1),
                 **kwargs,
             )
 
