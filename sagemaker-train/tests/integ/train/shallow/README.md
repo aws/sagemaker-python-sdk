@@ -8,6 +8,23 @@ What this suite changes about the gate is not which job runs, but what the exist
 one selects: the `gpu_intensive` marks added here deselect the deep tests that
 submit a job and wait for it, and this suite covers those code paths instead.
 
+> **Where this runs.** The `fast-integ-tests` job in `pr-checks-master.yml` does not
+> execute this suite on the GitHub runner — it starts the CodeBuild project
+> `sagemaker-python-sdk-ci-sagemaker-train-fast-integ-tests` via
+> `source-version-override`, the same way the `codestyle-doc-tests`, `unit-tests`
+> and `integ-tests` jobs run PR code. That is deliberate: the runner holds the base
+> repo's `GITHUB_TOKEN` and assumes `CI_AWS_ROLE_ARN`, so `actions/checkout` refuses
+> to place a fork's head commit there, and on a public repo overriding that refusal
+> would be a live credential-exfiltration path. Running in CodeBuild gates fork PRs
+> — which is nearly all of them — without exposing those credentials to PR code.
+>
+> **Consequence for editing this suite:** the marker selection above (`-n 8`,
+> `--dist loadfile`, `-m "not gpu_intensive and not us_east_1"`) lives in
+> `createCIShallowIntegBuildSpec` in the `SageMakerMLFPySDKInfraCDK` package, not in
+> this repo. Adding a file under `shallow/` is picked up automatically, but changing
+> *how* the suite is invoked means a change there, which deploys through a pipeline
+> rather than merging with your PR.
+
 ## What a passing test proves
 
 Each test submits a real `CreateTrainingJob`, asserts the service returned a

@@ -246,18 +246,36 @@ jobs:
   # Additive: runs the shallow (submit-then-stop) suite for sagemaker-train
   # alongside the existing integ-tests job above, which is unchanged.
   #
-  # Why a separate job rather than folding this into the CodeBuild suite: this
-  # job's selection is reviewable in the PR that changes it, whereas the
-  # sagemaker-train CodeBuild buildspec is CDK-managed outside this repo. It also
-  # reports as its own check, so a shallow failure is distinguishable at a glance
-  # from a deep-suite failure, and it finishes in minutes -- fast feedback that
-  # does not wait on the 2XLARGE CodeBuild container.
+  # Runs in CodeBuild, not on the runner. It began as a runner job, but
+  # actions/checkout refuses to place a fork's head commit in a
+  # pull_request_target job -- correctly, because the runner also holds the base
+  # repo's GITHUB_TOKEN and assumes CI_AWS_ROLE_ARN, so a fork could edit
+  # conftest.py and read those credentials out. That is the "pwn request" shape,
+  # and on a public repo it is a live credential-exfiltration path, so the fix is
+  # to move the execution rather than override the refusal with
+  # allow-unsafe-pr-checkout. Nearly every PR here comes from a fork, so a
+  # same-repo guard would have left the suite with almost no gate coverage.
+  # source-version-override is how the three jobs above already run PR code: the
+  # build never sees the runner's token, secrets or default-branch cache.
   #
-  # What runs here: only tests/integ/train/shallow. The client-side tests
-  # (recipe resolution, data utils, dry-run, log streaming) are deliberately NOT
-  # repeated -- the CodeBuild suite already runs the whole tests/integ tree, so
-  # widening this job's scope would duplicate them and double the job creation
-  # the shallow suite performs.
+  # Why its own project rather than folding this into the sagemaker-train
+  # integ-tests project: it reports as its own check, so a shallow failure is
+  # distinguishable at a glance from a deep-suite failure, and it runs
+  # concurrently with the deep suite instead of queueing behind it.
+  #
+  # Tradeoff of moving off the runner: the pytest selection now lives in the
+  # CDK's buildspecs.ts (createCIShallowIntegBuildSpec) instead of this file, so
+  # changing which tests run is no longer reviewable in a PR to this repo. That
+  # is the price of executing fork code safely, and it is the same place the
+  # other three test jobs' selections already live.
+  #
+  # What runs there: only tests/integ/train/shallow, deselecting gpu_intensive
+  # (the CPT and MTRL classes, which need a pre-provisioned HyperPod cluster and
+  # an agent runtime plus an MLflow app) and us_east_1 (Nova cases, which run in
+  # the integ-tests-us-east-1 project against the Nova account). The client-side
+  # tests are deliberately not repeated -- the deep suite already runs the whole
+  # tests/integ tree, so widening scope would duplicate them and double the job
+  # creation the shallow suite performs.
   #
   # Why submit-then-stop is worth gating on: CreateTrainingJob returns a
   # TrainingJobArn only after the request has cleared public-model validation,
@@ -272,19 +290,10 @@ jobs:
   fast-integ-tests:
     runs-on: ubuntu-latest
     needs: [detect-changes]
+    # No same-repo guard: nothing here checks out PR code, so fork PRs are gated
+    # too. The suite only runs when sagemaker-train is in the change set.
     if: contains(fromJson(needs.detect-changes.outputs.submodules), 'sagemaker-train')
     steps:
-      - uses: actions/checkout@v3
-        with:
-          # pull_request_target checks out the base ref by default; these tests
-          # must run against the PR's code.
-          ref: 'refs/pull/${{ github.event.pull_request.number }}/head'
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -292,68 +301,11 @@ jobs:
           aws-region: us-west-2
           role-duration-seconds: 10800
 
-      - name: Install sagemaker-train and test dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ./sagemaker-core
-          pip install ./sagemaker-train
-          pip install -r requirements/extras/test_requirements.txt
-
       - name: Run shallow sagemaker-train integ tests
-        working-directory: sagemaker-train
-        env:
-          AWS_DEFAULT_REGION: us-west-2
-          # Role resolution goes through iam:SimulatePrincipalPolicy, which is
-          # low-TPS; adaptive retries keep parallel workers from throttling each
-          # other.
-          AWS_RETRY_MODE: adaptive
-          AWS_MAX_ATTEMPTS: '10'
-          # Cap the training jobs the *service* counts against the concurrency
-          # quota, across all xdist workers, so the suite stays inside the
-          # "concurrent model customization serverless jobs per Region" quota
-          # (20) with room for the deep integ-tests suite running the same
-          # account concurrently. The harness holds each slot until the job is
-          # terminal, not until stop() returns -- the service counts a job for
-          # ~1-3 min after the stop -- so 10 means "at most 10 jobs counted at
-          # once", the batches-of-10 behaviour, not "10 stops in flight".
-          #
-          # Not redundant with -n 8. -n caps worker processes; this caps what
-          # the service counts, and with the slot held to terminal those diverge
-          # sharply (each drain outlives the worker's stop() by minutes). It is
-          # also what keeps the ceiling stable if -n is raised. A serverful job
-          # counts one slot per instance.
-          SHALLOW_MAX_CONCURRENT_JOBS: '10'
-        run: |
-          # Scoped to shallow/ only -- see the comment above this job for why the
-          # rest of tests/integ/train is not repeated here.
-          #
-          # 84 of the suite's 100 tests run; the 16 deselected are:
-          #   us_east_1 (5)     -- Nova cases; this job holds us-west-2
-          #                        credentials only, so they run in the
-          #                        integ-tests-us-east-1 job instead.
-          #   gpu_intensive (11) -- the CPT and MTRL classes. These are written in
-          #                        the shallow style but cannot be made
-          #                        self-contained: CPT submits only via HyperPod
-          #                        (a pre-provisioned cluster, not
-          #                        CreateTrainingJob) and MTRL needs an agent
-          #                        runtime plus an MLflow app. Both become
-          #                        gate-eligible by dropping one marker once those
-          #                        prerequisites exist in the PR account.
-          python -m pytest tests/integ/train/shallow \
-            -m "not gpu_intensive and not us_east_1" \
-            -n 8 \
-            --dist loadfile \
-            -v \
-            --durations=15 \
-            --junitxml=shallow-integ-results.xml
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          name: shallow-integ-test-results
-          path: sagemaker-train/shallow-integ-results.xml
-          if-no-files-found: warn
+          project-name: ${{ github.event.repository.name }}-ci-sagemaker-train-fast-integ-tests
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
 
   integ-tests-us-east-1:
     runs-on: ubuntu-latest
