@@ -767,10 +767,6 @@ def test_register_model_with_model_repack_with_estimator(
                         "TrainingImage": MODEL_REPACKING_IMAGE_URI,
                         "TrainingInputMode": "File",
                     },
-                    "DebugHookConfig": {
-                        "CollectionConfigurations": [],
-                        "S3OutputPath": f"s3://{BUCKET}/",
-                    },
                     "ProfilerConfig": {"DisableProfiler": True},
                     "HyperParameters": {
                         "inference_script": '"inference.py"',
@@ -895,10 +891,6 @@ def test_register_model_with_model_repack_with_model(model, model_metrics, drift
                     "AlgorithmSpecification": {
                         "TrainingImage": MODEL_REPACKING_IMAGE_URI,
                         "TrainingInputMode": "File",
-                    },
-                    "DebugHookConfig": {
-                        "CollectionConfigurations": [],
-                        "S3OutputPath": f"s3://{BUCKET}/",
                     },
                     "ProfilerConfig": {"DisableProfiler": True},
                     "HyperParameters": {
@@ -1026,10 +1018,6 @@ def test_register_model_with_model_repack_with_pipeline_model(
                     "AlgorithmSpecification": {
                         "TrainingImage": MODEL_REPACKING_IMAGE_URI,
                         "TrainingInputMode": "File",
-                    },
-                    "DebugHookConfig": {
-                        "CollectionConfigurations": [],
-                        "S3OutputPath": f"s3://{BUCKET}/",
                     },
                     "ProfilerConfig": {"DisableProfiler": True},
                     "HyperParameters": {
@@ -1254,10 +1242,6 @@ def test_estimator_transformer_with_model_repack_with_estimator(estimator, sourc
                     "sagemaker_region": '"us-west-2"',
                 },
                 "VpcConfig": {"Subnets": ["abc", "def"], "SecurityGroupIds": ["123", "456"]},
-                "DebugHookConfig": {
-                    "S3OutputPath": "s3://my-bucket/",
-                    "CollectionConfigurations": [],
-                },
             }
         elif request_dict["Type"] == "Model":
             assert request_dict["Name"] == "EstimatorTransformerStepCreateModelStep"
