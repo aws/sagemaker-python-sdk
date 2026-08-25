@@ -510,7 +510,13 @@ class DatasetBuilder:
 
         query_string = self._construct_query_string(base_fg)
         result = self._run_query(query_string, base_fg.catalog, base_fg.database)
-        return self._extract_result(result)
+        csv_path, query = self._extract_result(result)
+
+        if self._register_as_dataset:
+            query_execution_id = result.get("QueryExecution", {}).get("QueryExecutionId")
+            self._register_as_hub_content_dataset(csv_path, query_execution_id)
+
+        return csv_path, query
 
     def _extract_result(self, query_result: dict) -> tuple[str, str]:
         execution = query_result.get("QueryExecution", {})
