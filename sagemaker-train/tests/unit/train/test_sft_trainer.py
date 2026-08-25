@@ -1578,3 +1578,75 @@ class TestSFTTrainerListSupportedModels:
         mock_list.assert_called_once_with(
             recipe_type="FineTuning", technique="SFT", session=session
         )
+
+class TestSFTTrainerPipelineSession:
+    """Test SFTTrainer behavior when PipelineSession is used.
+
+    Ref: https://github.com/aws/sagemaker-python-sdk/issues/6163
+    """
+
+    @patch('sagemaker.train.sft_trainer._validate_hyperparameter_values')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_serverless_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._get_jumpstart_tags')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_with_pipeline_session_does_not_launch_job(
+        self, mock_training_job_create, mock_beta_session, mock_resolve_model,
+        mock_finetuning_options, mock_validate_group, mock_get_session, mock_get_role,
+        mock_unique_name, mock_get_tags, mock_input_config, mock_convert_channels,
+        mock_serverless_config, mock_output_config, mock_mlflow_config, mock_model_package_config,
+        mock_validate_hp,
+    ):
+        """When PipelineSession is passed, _intercept_create_request traps the args."""
+        from sagemaker.core.workflow.pipeline_context import PipelineSession, _JobStepArguments
+
+        pipeline_session = Mock(spec=PipelineSession)
+        pipeline_session.boto_session = Mock()
+        pipeline_session.boto_session.region_name = "us-west-2"
+
+        step_args = _JobStepArguments("train", {"training_job_name": "test-sft-job-001"})
+        pipeline_session._intercept_create_request.return_value = None
+        pipeline_session.context = step_args
+        mock_get_session.return_value = pipeline_session
+
+        mock_resolve_model.return_value = ("test-model", "resolved-model-name")
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {"param1": "value1"}
+        mock_hyperparams._specs = {"param1": {"type": "string"}}
+        mock_hyperparams._user_set = set()
+        mock_finetuning_options.return_value = (mock_hyperparams, "arn:aws:sagemaker:us-west-2:123456789012:model/test", False)
+        mock_validate_group.return_value = "test-group"
+        mock_get_role.return_value = "arn:aws:iam::123456789012:role/Role"
+        mock_unique_name.return_value = "test-sft-job-001"
+        mock_get_tags.return_value = []
+        mock_input_config.return_value = {"train": "s3://bucket/data"}
+        mock_convert_channels.return_value = [{"ChannelName": "train"}]
+        mock_serverless_config.return_value = {"BaseModelArn": "arn:model"}
+        mock_output_config.return_value = {"S3OutputPath": "s3://bucket/output"}
+        mock_mlflow_config.return_value = None
+        mock_model_package_config.return_value = None
+        mock_beta_session.return_value = pipeline_session
+
+        trainer = SFTTrainer(model="test-model", training_dataset="s3://bucket/data", model_package_group="test-group", sagemaker_session=pipeline_session)
+        trainer._model_arn = "arn:aws:sagemaker:us-west-2:123456789012:model/test"
+        trainer._model_name = "test-model"
+        trainer.accept_eula = True
+        trainer.hyperparameters = mock_hyperparams
+
+        result = trainer.train()
+
+        mock_training_job_create.assert_not_called()
+        pipeline_session._intercept_create_request.assert_called_once()
+        assert pipeline_session._intercept_create_request.call_args[0][2] == "train"
+        assert result == step_args
