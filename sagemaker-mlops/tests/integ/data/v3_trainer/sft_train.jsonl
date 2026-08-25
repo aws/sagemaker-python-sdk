@@ -1,0 +1,20 @@
+{"messages": [{"role": "user", "content": "What is ML?"}, {"role": "assistant", "content": "ML is a subset of AI that enables systems to learn from data."}]}
+{"messages": [{"role": "user", "content": "What is SageMaker?"}, {"role": "assistant", "content": "SageMaker is a managed machine learning service by AWS."}]}
+{"messages": [{"role": "user", "content": "What is fine-tuning?"}, {"role": "assistant", "content": "Fine-tuning adapts a pre-trained model to a specific task."}]}
+{"messages": [{"role": "user", "content": "What is LoRA?"}, {"role": "assistant", "content": "LoRA is Low-Rank Adaptation for efficient model fine-tuning."}]}
+{"messages": [{"role": "user", "content": "What is RLHF?"}, {"role": "assistant", "content": "RLHF is Reinforcement Learning from Human Feedback."}]}
+{"messages": [{"role": "user", "content": "What is DPO?"}, {"role": "assistant", "content": "DPO is Direct Preference Optimization for alignment."}]}
+{"messages": [{"role": "user", "content": "What is a transformer?"}, {"role": "assistant", "content": "A neural network architecture using self-attention mechanisms."}]}
+{"messages": [{"role": "user", "content": "What is tokenization?"}, {"role": "assistant", "content": "Splitting text into smaller units called tokens for processing."}]}
+{"messages": [{"role": "user", "content": "What is inference?"}, {"role": "assistant", "content": "Using a trained model to generate predictions on new data."}]}
+{"messages": [{"role": "user", "content": "What is a GPU?"}, {"role": "assistant", "content": "A processor designed for parallel computation used in ML training."}]}
+{"messages": [{"role": "user", "content": "What is backpropagation?"}, {"role": "assistant", "content": "An algorithm for computing gradients to update neural network weights."}]}
+{"messages": [{"role": "user", "content": "What is an epoch?"}, {"role": "assistant", "content": "One complete pass through the entire training dataset."}]}
+{"messages": [{"role": "user", "content": "What is overfitting?"}, {"role": "assistant", "content": "When a model memorizes training data instead of learning patterns."}]}
+{"messages": [{"role": "user", "content": "What is a loss function?"}, {"role": "assistant", "content": "A function that measures how far predictions are from actual values."}]}
+{"messages": [{"role": "user", "content": "What is batch size?"}, {"role": "assistant", "content": "The number of training samples processed before updating model weights."}]}
+{"messages": [{"role": "user", "content": "What is learning rate?"}, {"role": "assistant", "content": "A hyperparameter controlling how much weights change during training."}]}
+{"messages": [{"role": "user", "content": "What is regularization?"}, {"role": "assistant", "content": "Techniques to prevent overfitting by adding constraints to the model."}]}
+{"messages": [{"role": "user", "content": "What is an embedding?"}, {"role": "assistant", "content": "A dense vector representation of discrete data like words or items."}]}
+{"messages": [{"role": "user", "content": "What is attention?"}, {"role": "assistant", "content": "A mechanism that weighs the importance of different input elements."}]}
+{"messages": [{"role": "user", "content": "What is a pipeline?"}, {"role": "assistant", "content": "An automated workflow for building and deploying ML models."}]}
