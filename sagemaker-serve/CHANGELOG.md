@@ -1,5 +1,17 @@
 # Changelog
 
+## v1.21.0 (2026-08-25)
+
+### Bug Fixes
+
+- fix(serve): pre-deploy JumpStart benchmark data + public HuggingFace download helper (#6175)
+- fix(tgi): honor S3 model_path as weight source for TGI builds (#5964)
+
+### Tests
+
+- test(serve): add skip_in_pr_check marker for hang-prone integ tests (#6190)
+
+
 ## v1.20.0 (2026-08-14)
 
 ### New Features
