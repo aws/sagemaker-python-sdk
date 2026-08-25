@@ -1,7 +1,10 @@
 """MLflow metrics visualization utilities for SageMaker training jobs."""
 
+import io
+import base64
 import logging
 from typing import Optional, List, Dict, Any
+
 from sagemaker.core.resources import TrainingJob
 
 logger = logging.getLogger(__name__)
@@ -209,7 +212,6 @@ def plot_training_metrics(
     import mlflow
     from mlflow.tracking import MlflowClient
     from IPython.display import display
-    import logging
     
     logging.getLogger('botocore.credentials').setLevel(logging.WARNING)
     
@@ -231,13 +233,21 @@ def plot_training_metrics(
         history = client.get_metric_history(run_id, metric_name)
         if history:
             metric_data[metric_name] = history
-    
-    # Plot
+
     num_metrics = len(metric_data)
+    if num_metrics == 0:
+        logger.warning("No metric history found for run %s. Nothing to plot.", run_id)
+        return
+
+    # Build the figure at full size (2 columns, all metrics). The inline
+    # backend can't rasterize this when it gets too tall, so instead of
+    # calling display(fig) directly we render to an in-memory PNG and embed
+    # it inside a scrollable HTML <div>. This lets the notebook display all
+    # metrics without choking on pixel-count limits.
     rows = (num_metrics + 1) // 2
-    fig, axes = plt.subplots(rows, 2, figsize=(figsize[0], figsize[1] * rows))
-    axes = axes.flatten() if num_metrics > 1 else [axes]
-    
+    fig, axes = plt.subplots(rows, 2, figsize=(figsize[0], figsize[1] * rows), squeeze=False)
+    axes = axes.flatten()
+
     for idx, (metric_name, history) in enumerate(metric_data.items()):
         steps = [h.step for h in history]
         values = [h.value for h in history]
@@ -246,14 +256,31 @@ def plot_training_metrics(
         axes[idx].set_ylabel('Value')
         axes[idx].set_title(metric_name, fontweight='bold')
         axes[idx].grid(True, alpha=0.3)
-    
-    for idx in range(len(metric_data), len(axes)):
+
+    for idx in range(num_metrics, len(axes)):
         axes[idx].set_visible(False)
-    
-    plt.suptitle(f'Training Metrics: {training_job.training_job_name}', fontweight='bold', fontsize=14)
-    plt.tight_layout(rect=[0, 0, 1, 0.98])  # Leave small space for suptitle
-    display(fig)
-    plt.close()
+
+    fig.suptitle(
+        f'Training Metrics: {training_job.training_job_name}',
+        fontweight='bold', fontsize=14,
+    )
+    fig.tight_layout(rect=[0, 0, 1, 0.98])
+
+    # Render to PNG buffer for inline display
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=80, bbox_inches="tight")
+    plt.close(fig)
+    buf.seek(0)
+
+    # Embed as a scrollable HTML image in the notebook
+    b64 = base64.b64encode(buf.getvalue()).decode()
+    from IPython.display import HTML
+    display(HTML(
+        f'<div style="max-height:800px; overflow-y:scroll; border:1px solid #ccc; '
+        f'border-radius:4px; padding:4px;">'
+        f'<img src="data:image/png;base64,{b64}" style="width:100%;" />'
+        f'</div>'
+    ))
 
 
 def get_available_metrics(training_job: TrainingJob) -> List[str]:

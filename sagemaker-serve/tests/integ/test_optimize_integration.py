@@ -39,6 +39,7 @@ DJL_LMI_FRAMEWORK = "djl-lmi"
 DJL_LMI_VERSION = "0.31.0"
 
 
+@pytest.mark.skip_in_pr_check
 def test_optimize_build_deploy_invoke_cleanup():
     """Integration test for Optimize workflow"""
     logger.info("Starting Optimize integration test...")

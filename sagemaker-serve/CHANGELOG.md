@@ -1,4 +1,64 @@
 # Changelog
+
+## v1.20.0 (2026-08-14)
+
+### New Features
+
+- feat(serve): list/filter jobs, deploy from recommendation row, compare benchmarks, DataFrame views (#6148)
+
+### Bug Fixes
+
+- fix(serve): validate ECR registry host before docker login (#6160)
+
+### Tests
+
+- test(serve): SD/KT-IC integ must use g6.2xlarge, not g4dn (#6141)
+
+
+## v1.19.0 (2026-08-10)
+
+### New Features
+
+- feat(serve): Model Reuse — reuse previously built models across deployments (#6051)
+
+### Bug Fixes
+
+- fix(serve): propagate additional_model_data_sources for JumpStart models (#6151)
+- fix(serve): forward tolerance flags from get_jumpstart_configs (#6137)
+- fix(serve): create local model_path dir before using it as download dir (#6147)
+- fix(serve): remove IC data-source collapse hack from recommendation deploy (#6101)
+
+
+## v1.18.0 (2026-07-30)
+
+### New Features
+
+- feat(serve): make BenchmarkResult sweep-aware for concurrency search runs (#6098)
+
+### Bug Fixes
+
+- fix(serve): repack source_code for image_uri/ModelTrainer builds (#6112)
+
+
+## v1.17.0 (2026-07-24)
+
+### New Features
+
+- feat(serve): support fine-tuned models in deployment-config API (#6041)
+
+### Bug Fixes
+
+- fix: Fix private hub (#6036)
+- fix(serve): support aliased hub content names in private hub deploys (#6039)
+- fix(serve): dedicated INFERENCE_RECOMMENDER telemetry feature + type workload param (#6028)
+- fix: Fixing EULA check, relying on HostingEulaUri field (#6077)
+
+### Tests
+
+- test: move two tests in serve to gpu-integ-tests (#6096)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
 ## v1.16.0 (2026-07-15)
 
 ### New Features

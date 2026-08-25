@@ -208,8 +208,18 @@ jobs:
       - name: Run Unit Tests for ${{ matrix.submodule }}
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
-          project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-unit-tests
+          # Use the single CDK-managed V3 unit-test project (driven by the SUBMODULE
+          # env var), the same project the CI-health workflow uses. The previous
+          # per-submodule projects (sagemaker-python-sdk-ci-<submodule>-unit-tests)
+          # were created manually, are not CDK/pipeline-managed, and had drifted
+          # stale (e.g. still running `--cov=.` instead of the deployed
+          # `--cov=sagemaker`), so PR coverage never reflected buildspec fixes.
+          project-name: ${{ github.event.repository.name }}-ci-health-unit-test-v3
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+          env-vars-for-codebuild: |
+            SUBMODULE
+        env:
+          SUBMODULE: ${{ matrix.submodule }}
 
   integ-tests:
     runs-on: ubuntu-latest
@@ -231,6 +241,70 @@ jobs:
         uses: aws-actions/aws-codebuild-run-build@v1
         with:
           project-name: ${{ github.event.repository.name }}-ci-${{ matrix.submodule }}-integ-tests
+          source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
+
+  # Additive: runs the shallow (submit-then-stop) suite for sagemaker-train
+  # alongside the existing integ-tests job above, which is unchanged.
+  #
+  # Runs in CodeBuild, not on the runner. It began as a runner job, but
+  # actions/checkout refuses to place a fork's head commit in a
+  # pull_request_target job -- correctly, because the runner also holds the base
+  # repo's GITHUB_TOKEN and assumes CI_AWS_ROLE_ARN, so a fork could edit
+  # conftest.py and read those credentials out. That is the "pwn request" shape,
+  # and on a public repo it is a live credential-exfiltration path, so the fix is
+  # to move the execution rather than override the refusal with
+  # allow-unsafe-pr-checkout. Nearly every PR here comes from a fork, so a
+  # same-repo guard would have left the suite with almost no gate coverage.
+  # source-version-override is how the three jobs above already run PR code: the
+  # build never sees the runner's token, secrets or default-branch cache.
+  #
+  # Why its own project rather than folding this into the sagemaker-train
+  # integ-tests project: it reports as its own check, so a shallow failure is
+  # distinguishable at a glance from a deep-suite failure, and it runs
+  # concurrently with the deep suite instead of queueing behind it.
+  #
+  # Tradeoff of moving off the runner: the pytest selection now lives in the
+  # CDK's buildspecs.ts (createCIShallowIntegBuildSpec) instead of this file, so
+  # changing which tests run is no longer reviewable in a PR to this repo. That
+  # is the price of executing fork code safely, and it is the same place the
+  # other three test jobs' selections already live.
+  #
+  # What runs there: only tests/integ/train/shallow, deselecting gpu_intensive
+  # (the CPT and MTRL classes, which need a pre-provisioned HyperPod cluster and
+  # an agent runtime plus an MLflow app) and us_east_1 (Nova cases, which run in
+  # the integ-tests-us-east-1 project against the Nova account). The client-side
+  # tests are deliberately not repeated -- the deep suite already runs the whole
+  # tests/integ tree, so widening scope would duplicate them and double the job
+  # creation the shallow suite performs.
+  #
+  # Why submit-then-stop is worth gating on: CreateTrainingJob returns a
+  # TrainingJobArn only after the request has cleared public-model validation,
+  # SigV4, sagemaker:CreateTrainingJob authorization, iam:PassRole, the training
+  # backend's request validators (including the role-assuming ones that resolve
+  # S3 and ECR as the customer) and the final duplicate-name write. So a returned
+  # ARN proves the payload and the caller's permissions are both good -- without
+  # paying for a training run. The job is stopped immediately.
+  #
+  # It asserts nothing about training *behaviour* (artifacts, metrics,
+  # convergence); that remains the deep suites' job.
+  fast-integ-tests:
+    runs-on: ubuntu-latest
+    needs: [detect-changes]
+    # No same-repo guard: nothing here checks out PR code, so fork PRs are gated
+    # too. The suite only runs when sagemaker-train is in the change set.
+    if: contains(fromJson(needs.detect-changes.outputs.submodules), 'sagemaker-train')
+    steps:
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.CI_AWS_ROLE_ARN }}
+          aws-region: us-west-2
+          role-duration-seconds: 10800
+
+      - name: Run shallow sagemaker-train integ tests
+        uses: aws-actions/aws-codebuild-run-build@v1
+        with:
+          project-name: ${{ github.event.repository.name }}-ci-sagemaker-train-fast-integ-tests
           source-version-override: 'refs/pull/${{ github.event.pull_request.number }}/head^{${{ github.event.pull_request.head.sha }}}'
 
   integ-tests-us-east-1:

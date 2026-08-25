@@ -251,6 +251,78 @@ class TestIngestDataframe:
             ingest_dataframe("my-fg", df, max_processes=-1)
 
 
+class TestIngestDataframeRegion:
+    """``region`` must reach both the describe call and the ingestion manager."""
+
+    @pytest.fixture
+    def mock_feature_group(self):
+        mock_fg = MagicMock()
+        mock_fg.feature_definitions = [
+            MagicMock(feature_name="id", feature_type="Integral"),
+        ]
+        return mock_fg
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.IngestionManagerPandas")
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_region_passed_to_describe_and_manager(
+        self, mock_fg_class, mock_manager_class, mock_feature_group
+    ):
+        mock_fg_class.get.return_value = mock_feature_group
+
+        df = pd.DataFrame({"id": [1, 2, 3]})
+        ingest_dataframe("my-fg", df, region="eu-west-1")
+
+        mock_fg_class.get.assert_called_once_with(
+            feature_group_name="my-fg", region="eu-west-1"
+        )
+        assert mock_manager_class.call_args[1]["region"] == "eu-west-1"
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.IngestionManagerPandas")
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_region_defaults_to_none(
+        self, mock_fg_class, mock_manager_class, mock_feature_group
+    ):
+        mock_fg_class.get.return_value = mock_feature_group
+
+        df = pd.DataFrame({"id": [1, 2, 3]})
+        ingest_dataframe("my-fg", df)
+
+        mock_fg_class.get.assert_called_once_with(feature_group_name="my-fg", region=None)
+        assert mock_manager_class.call_args[1]["region"] is None
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.IngestionManagerPandas")
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_region_works_with_batch_write_record(
+        self, mock_fg_class, mock_manager_class, mock_feature_group
+    ):
+        mock_fg_class.get.return_value = mock_feature_group
+
+        df = pd.DataFrame({"id": [1, 2, 3]})
+        ingest_dataframe("my-fg", df, use_batch_write_record=True, region="ap-south-1")
+
+        kwargs = mock_manager_class.call_args[1]
+        assert kwargs["region"] == "ap-south-1"
+        assert kwargs["use_batch_write_record"] is True
+
+    def test_region_is_keyword_only_in_practice_and_does_not_shift_positionals(self):
+        """``region`` is appended last, so existing positional calls keep working."""
+        import inspect
+
+        from sagemaker.mlops.feature_store.feature_utils import ingest_dataframe as fn
+
+        params = list(inspect.signature(fn).parameters)
+        assert params[-1] == "region"
+        assert params[:7] == [
+            "feature_group_name",
+            "data_frame",
+            "max_workers",
+            "max_processes",
+            "wait",
+            "timeout",
+            "use_batch_write_record",
+        ]
+
+
 class TestGetSessionFromRole:
     @patch("sagemaker.mlops.feature_store.feature_utils.boto3")
     @patch("sagemaker.mlops.feature_store.feature_utils.Session")

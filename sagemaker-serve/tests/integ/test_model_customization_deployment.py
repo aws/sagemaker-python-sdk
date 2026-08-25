@@ -27,7 +27,13 @@ from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
 
-from sagemaker.core.helper.session_helper import Session
+from sagemaker.core.helper.session_helper import Session, get_execution_role
+from sagemaker.core.resources import TrainingJob, ModelPackage, InferenceComponent, Endpoint
+from sagemaker.core.utils.exceptions import FailedStatusError
+from sagemaker.serve import ModelBuilder
+from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
+from sagemaker.serve.model_reuse import MODEL_SOURCE_TAG_KEY
+from sagemaker.train import SFTTrainer, DPOTrainer
 
 # This test relies on resources in a specific region
 AWS_REGION = "us-west-2"
@@ -68,7 +74,6 @@ def model_package_arn():
 @pytest.fixture
 def endpoint_name():
     """Generate unique endpoint name."""
-    import time
     return f"e2e-{int(time.time())}-{random.randint(100, 10000)}"
 
 
@@ -80,7 +85,6 @@ def cleanup_endpoints():
 
     for ep_name in endpoints_to_cleanup:
         try:
-            from sagemaker.core.resources import Endpoint
             endpoint = Endpoint.get(endpoint_name=ep_name, region=AWS_REGION)
             endpoint.delete()
         except Exception:
@@ -92,9 +96,6 @@ class TestModelCustomizationFromTrainingJob:
 
     def test_build_from_training_job(self, training_job_name, sagemaker_session):
         """Test building model from training job."""
-        from sagemaker.core.resources import TrainingJob
-        from sagemaker.serve import ModelBuilder
-        import time
 
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
@@ -106,17 +107,14 @@ class TestModelCustomizationFromTrainingJob:
         assert model_builder.image_uri is not None
         assert model_builder.instance_type is not None
 
+    @pytest.mark.skip_in_pr_check
     def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
         """Test deploying model from training job.
 
         For LORA models, this verifies the two-step deployment:
         base IC + adapter IC are both created on the same endpoint.
         """
-        from sagemaker.core.resources import TrainingJob, InferenceComponent
-        from sagemaker.serve import ModelBuilder
-        import time
 
-        from sagemaker.core.utils.exceptions import FailedStatusError
 
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
@@ -146,6 +144,13 @@ class TestModelCustomizationFromTrainingJob:
         assert endpoint is not None
         assert endpoint.endpoint_arn is not None
         assert endpoint.endpoint_status == "InService"
+
+        # Verify model-source tag is present on the endpoint for reuse discovery.
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        endpoint_tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
+        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in endpoint_tags}, (
+            f"Endpoint {endpoint.endpoint_arn} missing model-source tag for reuse"
+        )
 
         if peft_type == "LORA":
             # Verify base IC was created
@@ -192,8 +197,6 @@ class TestModelCustomizationFromTrainingJob:
 
     def test_fetch_endpoint_names_for_base_model(self, training_job_name, sagemaker_session):
         """Test fetching endpoint names for base model."""
-        from sagemaker.core.resources import TrainingJob
-        from sagemaker.serve import ModelBuilder
 
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
@@ -201,13 +204,92 @@ class TestModelCustomizationFromTrainingJob:
 
         assert isinstance(endpoint_names, set)
 
+    def test_deploy_reuse_returns_existing_endpoint(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
+        """deploy(reuse_resources=True) finds and returns an existing tagged endpoint.
+
+        Verifies that the reuse mechanism finds an endpoint with the
+        correct model-source tag. Because prior test runs may have left
+        behind an endpoint with the same tag, we accept any InService
+        endpoint carrying the tag as a valid reuse hit.
+        """
+
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+
+        # Try reuse first — if a tagged endpoint already exists from a prior
+        # run, reuse should find it without needing to create a new one.
+        builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
+        builder.accept_eula = True
+        builder.build(region=AWS_REGION, reuse_resources=True)
+        endpoint = builder.deploy(reuse_resources=True)
+
+        if endpoint is not None and hasattr(endpoint, "endpoint_arn") and endpoint.endpoint_arn:
+            # Reuse found an existing endpoint — verify it has the tag
+            sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+            tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
+            assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in tags}, (
+                f"Reused endpoint {endpoint.endpoint_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
+            )
+            return
+
+        # No reusable endpoint found — create one and verify the tag is applied
+        model_builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
+        model_builder.accept_eula = True
+        model_builder.build(model_name=f"test-model-{int(time.time())}-{random.randint(100, 10000)}", region=AWS_REGION)
+
+        try:
+            endpoint = model_builder.deploy(endpoint_name=endpoint_name)
+        except (FailedStatusError, ClientError) as e:
+            msg = str(e)
+            if "InsufficientInstanceCapacity" in msg or "ResourceLimitExceeded" in msg:
+                cleanup_endpoints.append(endpoint_name)
+                pytest.xfail(f"Capacity/quota limit: {e}")
+            raise
+
+        cleanup_endpoints.append(endpoint_name)
+        assert endpoint is not None
+        assert endpoint.endpoint_status == "InService"
+
+        # Verify model-source tag was applied
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        tags = sm_client.list_tags(ResourceArn=endpoint.endpoint_arn).get("Tags", [])
+        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in tags}, (
+            f"Endpoint {endpoint.endpoint_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
+        )
+
+    def test_build_reuse_skips_model_creation(self, training_job_name, sagemaker_session):
+        """build(reuse_resources=True) reuses an existing tagged Model.
+
+        Verifies that the reuse lookup finds a model with the correct
+        model-source tag. Because prior test runs may have left behind a
+        model with the same tag, we accept any model carrying the tag as
+        a valid reuse hit (not only the one created in *this* test run).
+        """
+
+        training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
+
+        # Build with reuse — this should find any existing model tagged
+        # with this training job's source ID. It doesn't matter whether
+        # the model was created in this test run or a prior one; what
+        # matters is that the reuse mechanism works.
+        builder = ModelBuilder(model=training_job, instance_type="ml.g5.4xlarge", sagemaker_session=sagemaker_session)
+        builder.accept_eula = True
+        model = builder.build(region=AWS_REGION, reuse_resources=True)
+
+        assert model is not None
+        assert model.model_arn is not None
+
+        # Verify the model-source tag is actually present on the reused model
+        sm_client = boto3.client("sagemaker", region_name=AWS_REGION)
+        tags = sm_client.list_tags(ResourceArn=model.model_arn).get("Tags", [])
+        assert MODEL_SOURCE_TAG_KEY in {t["Key"] for t in tags}, (
+            f"Reused model {model.model_arn} missing expected tag {MODEL_SOURCE_TAG_KEY}"
+        )
+
 
 class TestModelCustomizationFromModelPackage:
 
     def test_build_from_model_package(self, model_package_arn, sagemaker_session):
         """Test building model from model package."""
-        from sagemaker.core.resources import ModelPackage
-        from sagemaker.serve import ModelBuilder
 
         model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
         model_builder = ModelBuilder(model=model_package, sagemaker_session=sagemaker_session)
@@ -219,9 +301,6 @@ class TestModelCustomizationFromModelPackage:
 
     def test_deploy_from_model_package(self, model_package_arn, cleanup_endpoints, sagemaker_session):
         """Test deploying model from model package."""
-        from sagemaker.core.resources import ModelPackage
-        from sagemaker.serve import ModelBuilder
-        import time
 
         model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
         endpoint_name = f"e2e-{int(time.time())}-{random.randint(100, 10000)}"
@@ -241,8 +320,6 @@ class TestInstanceTypeAutoDetection:
 
     def test_instance_type_from_recipe(self, training_job_name, sagemaker_session):
         """Test instance type auto-detection from recipe."""
-        from sagemaker.core.resources import TrainingJob
-        from sagemaker.serve import ModelBuilder
 
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
@@ -258,8 +335,6 @@ class TestModelCustomizationDetection:
 
     def test_is_model_customization_training_job(self, training_job_name, sagemaker_session):
         """Test detection from training job."""
-        from sagemaker.core.resources import TrainingJob
-        from sagemaker.serve import ModelBuilder
 
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
@@ -268,8 +343,6 @@ class TestModelCustomizationDetection:
 
     def test_is_model_customization_model_package(self, model_package_arn, sagemaker_session):
         """Test detection from model package."""
-        from sagemaker.core.resources import ModelPackage
-        from sagemaker.serve import ModelBuilder
 
         model_package = ModelPackage.get(model_package_name=model_package_arn, region=AWS_REGION)
         model_builder = ModelBuilder(model=model_package, sagemaker_session=sagemaker_session)
@@ -278,8 +351,6 @@ class TestModelCustomizationDetection:
 
     def test_fetch_model_package_arn(self, training_job_name, sagemaker_session):
         """Test fetching model package ARN."""
-        from sagemaker.core.resources import TrainingJob
-        from sagemaker.serve import ModelBuilder
 
         training_job = TrainingJob.get(training_job_name=training_job_name, region=AWS_REGION)
         model_builder = ModelBuilder(model=training_job, sagemaker_session=sagemaker_session)
@@ -295,9 +366,6 @@ class TestTrainerIntegration:
 
     def test_sft_trainer_build(self, training_job_name, sagemaker_session):
         """Test building model from SFTTrainer."""
-        from sagemaker.core.resources import TrainingJob
-        from sagemaker.train.sft_trainer import SFTTrainer
-        from sagemaker.serve import ModelBuilder
 
         training_job = TrainingJob.get(
             training_job_name=training_job_name, region=AWS_REGION
@@ -319,9 +387,6 @@ class TestTrainerIntegration:
 
     def test_dpo_trainer_build(self, training_job_name, sagemaker_session):
         """Test building model from DPOTrainer."""
-        from sagemaker.core.resources import TrainingJob
-        from sagemaker.train.dpo_trainer import DPOTrainer
-        from sagemaker.serve import ModelBuilder
         from unittest.mock import patch
 
         training_job = TrainingJob.get(
@@ -355,9 +420,6 @@ Updated for sagemaker-core integration:
 - Improved test assertions to work with new object structures
 """
 
-from sagemaker.core.resources import TrainingJob, ModelPackage
-from sagemaker.serve.bedrock_model_builder import BedrockModelBuilder
-
 
 @pytest.mark.serial
 class TestModelCustomizationDeployment:
@@ -366,7 +428,6 @@ class TestModelCustomizationDeployment:
     @pytest.fixture(scope="class")
     def setup_config(self, training_job_name):
         """Setup test configuration."""
-        from sagemaker.core.helper.session_helper import get_execution_role
         return {
             "training_job_name": training_job_name,
             "region": AWS_REGION,
@@ -695,5 +756,6 @@ def test_model_customization_workflow(training_job_name):
         print("2. Model artifacts access patterns")
         print("3. BedrockModelBuilder initialization with new sagemaker-core objects")
         raise
+
 
 

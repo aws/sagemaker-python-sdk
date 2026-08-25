@@ -1,4 +1,36 @@
 # Changelog
+
+## v1.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(mlops): Add pre-validation for Bedrock and MLflow role permissions (#6162)
+
+
+## v1.19.0 (2026-08-10)
+
+- Update module dependencies
+
+
+## v1.18.0 (2026-07-30)
+
+### New Features
+
+- feat(feature-store): Add lineage registration to DatasetBuilder (#6014)
+
+
+## v1.17.0 (2026-07-24)
+
+### New Features
+
+- feat: Wire BatchWriteRecord and ListRecords into ingest_dataframe (#6026)
+
+### Tests
+
+- test(feature-processor): Isolate pipeline names to fix flaky integ tests (#6095)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
 ## v1.16.0 (2026-07-15)
 
 ### Tests

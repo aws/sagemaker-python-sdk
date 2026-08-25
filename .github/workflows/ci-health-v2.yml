@@ -1,8 +1,8 @@
 name: CI Health V2
 on:
   schedule:
-    # Once a day at 05:00 UTC (9pm PDT / 10pm PST).
-    - cron: "0 5 * * *"
+    # Once a day at 4:00 UTC (8pm PDT / 9pm PST).
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 permissions:

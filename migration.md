@@ -441,6 +441,8 @@ pipeline = Pipeline(
 | Predictor | Endpoint | Replaced with sagemaker-core |
 | MultiDataModel | ModelBuilder | Multi-model endpoints |
 | AsyncPredictor | ModelBuilder | Async inference |
+| JumpStartModel.benchmark_metrics / display_benchmark_metrics() / list_deployment_configs() | ModelBuilder.benchmark_metrics / display_benchmark_metrics() / list_deployment_configs() | Same names; usable on a pre-deploy JumpStart `ModelBuilder` |
+| snapshot_download + S3Uploader (hand-rolled) | `from sagemaker.serve import download_huggingface_model` | Downloads a Hub snapshot and optionally uploads it to S3 |
 
 ### Processing Features
 

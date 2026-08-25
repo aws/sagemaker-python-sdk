@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import logging
 from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
@@ -25,10 +25,9 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_eula_for_gated_model,
     _validate_hyperparameter_values
 )
+from sagemaker.train.common_utils.data_utils import is_multimodal_data, validate_data_path_exists
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
-from sagemaker.train.common_utils.data_utils import is_multimodal_data
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name, _ALLOWED_REWARD_MODEL_IDS
 
@@ -50,7 +49,7 @@ class RLAIFTrainer(BaseTrainer):
             training_type=TrainingType.LORA,
             model_package_group="my-model-group",
             reward_model_id="reward-model-id",
-            reward_prompt="Rate the helpfulness of this response on a scale of 1-10",
+            reward_prompt="summarize",
             training_dataset="s3://bucket/rlaif_data.jsonl"
         )
 
@@ -61,7 +60,7 @@ class RLAIFTrainer(BaseTrainer):
             model="meta-llama/Llama-2-7b-hf",
             model_package_group="my-rlaif-models",
             reward_model_id="reward-model-id",
-            reward_prompt="Rate the helpfulness of this response on a scale of 1-10"
+            reward_prompt="summarize"
         )
         
         # Create training job (non-blocking)
@@ -117,10 +116,20 @@ class RLAIFTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
             If not specified, uses SageMaker service default (24 hours for serverless training).
+        sequence_length (Optional[str]):
+            The sequence length for the training job. Valid values are
+            "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K".
+            If not specified, the service will use default recipe selection behavior.
         is_multimodal (Optional[bool]):
             Whether the training dataset contains multimodal data. If None (default),
             auto-detected from the training dataset at train time.
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
     """
+
+    _customization_technique = CustomizationTechnique.RLAIF.value
 
     def __init__(
         self,
@@ -141,10 +150,12 @@ class RLAIFTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         accept_eula: bool = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        sequence_length: Optional[str] = None,
         is_multimodal: Optional[bool] = None,
+        notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(notifications=notifications, **kwargs)
 
         # Resolve model and model name
         self.model, self._model_name = _resolve_model_and_name(model, self.sagemaker_session)
@@ -163,15 +174,17 @@ class RLAIFTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self.sequence_length = sequence_length
         self.is_multimodal = is_multimodal
 
         # Initialize fine-tuning options with beta session fallback
-        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(self._model_name,
-                                                                     CustomizationTechnique.RLAIF.value,
-                                                                     self.training_type,
-                                                                     self.sagemaker_session or TrainDefaults.get_sagemaker_session(
-                                                                     sagemaker_session=self.sagemaker_session
-                                                                    ))
+        self.hyperparameters, self._model_arn, is_gated_model = _get_fine_tuning_options_and_model_arn(
+            self._model_name,
+            CustomizationTechnique.RLAIF.value,
+            self.training_type,
+            self.sagemaker_session or TrainDefaults.get_sagemaker_session(sagemaker_session=self.sagemaker_session),
+            sequence_length=self.sequence_length
+        )
         
         # Validate and set EULA acceptance
         self.accept_eula = _validate_eula_for_gated_model(model, accept_eula, is_gated_model)
@@ -203,7 +216,6 @@ class RLAIFTrainer(BaseTrainer):
         
         return reward_model_id
         
-
     @_telemetry_emitter(
         feature=Feature.MODEL_CUSTOMIZATION,
         func_name="RLAIFTrainer.train",
@@ -211,7 +223,7 @@ class RLAIFTrainer(BaseTrainer):
             ("custom_reward_function", TelemetryParamType.ATTR_EXISTS),
         ],
     )
-    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
+    def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
         """Execute the RLAIF training job.
 
         Parameters:
@@ -228,9 +240,13 @@ class RLAIFTrainer(BaseTrainer):
                 If None, uses the default timeout from the wait utility.
             poll (int):
                 Polling interval in seconds for checking training job status. Defaults to 5.
+            dry_run (bool):
+                If True, runs all validation (IAM, hyperparameters, infrastructure, data paths)
+                without submitting a job. Returns None on success, raises on validation failure.
+                Defaults to False.
 
         Returns:
-            TrainingJob: The SageMaker training job object.
+            TrainingJob: The SageMaker training job object, or None if dry_run=True.
         """
         sagemaker_session = TrainDefaults.get_sagemaker_session(
             sagemaker_session=self.sagemaker_session
@@ -256,20 +272,26 @@ class RLAIFTrainer(BaseTrainer):
         )
 
         evaluator_arn = getattr(self, '_evaluator_arn', None)
-        serverless_config = _create_serverless_config(model_arn=self._model_arn,
-                                                     customization_technique=CustomizationTechnique.RLAIF.value,
-                                                     training_type=self.training_type,
-                                                     accept_eula=self.accept_eula,
-                                                     evaluator_arn=evaluator_arn,
-                                                     job_type=JOB_TYPE
-                                                     )
+        serverless_config = _create_serverless_config(
+            model_arn=self._model_arn,
+            customization_technique=CustomizationTechnique.RLAIF.value,
+            training_type=self.training_type,
+            accept_eula=self.accept_eula,
+            evaluator_arn=evaluator_arn,
+            sequence_length=self.sequence_length,
+            job_type=JOB_TYPE
+        )
 
         mlflow_config = _create_mlflow_config(
             sagemaker_session,
             mlflow_resource_arn=self.mlflow_resource_arn,
             mlflow_experiment_name=self.mlflow_experiment_name,
             mlflow_run_name=self.mlflow_run_name,
+            dry_run=dry_run,
         )
+
+        # Enforce prompt + response fit the recipe's supported sequence length.
+        self.hyperparameters.validate_length_constraints()
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
@@ -290,6 +312,9 @@ class RLAIFTrainer(BaseTrainer):
         vpc_config = self.networking if self.networking else None
         tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
+        # Merge user-provided tags with the JumpStart tags
+        tags.extend(self.tags or [])
+
         # Build TrainingJob.create() arguments
         create_args = {
             "training_job_name": current_training_job_name,
@@ -309,6 +334,22 @@ class RLAIFTrainer(BaseTrainer):
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
+
+        # Validate data paths exist before submission
+        effective_training = training_dataset or self.training_dataset
+        effective_validation = validation_dataset or self.validation_dataset
+        if effective_training:
+            validate_data_path_exists(
+                effective_training, sagemaker_session, label="training dataset"
+            )
+        if effective_validation:
+            validate_data_path_exists(
+                effective_validation, sagemaker_session, label="validation dataset"
+            )
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
 
         try:
             training_job = TrainingJob.create(**create_args)
@@ -355,8 +396,14 @@ class RLAIFTrainer(BaseTrainer):
         # Process reward_prompt parameter
         if hasattr(self, 'reward_prompt') and self.reward_prompt:
             if isinstance(self.reward_prompt, str):
-                if self.reward_prompt.startswith("Builtin"):
-                    # Handle builtin reward prompts
+                # Resolution order:
+                #   1. Preset template name -> resolved locally against the recipe's
+                #      judge_prompt_template enum (no API call). Accepts "Builtin.Summarize",
+                #      "summarize", or "summarize.jinja".
+                #   2. Evaluator ARN -> validated/assigned as-is.
+                #   3. Otherwise -> HubContent name lookup (custom registered prompt),
+                #      which raises a clear error if not found.
+                if self._is_preset_reward_prompt(self.reward_prompt):
                     self._update_judge_prompt_template_direct(self.reward_prompt)
                 else:
                     # Handle evaluator ARN or hub content name
@@ -370,9 +417,44 @@ class RLAIFTrainer(BaseTrainer):
                 evaluator_arn = _extract_evaluator_arn(self.reward_prompt, "reward_prompt")
                 self._evaluator_arn = evaluator_arn
 
+    @staticmethod
+    def _normalize_template_name(value: str) -> str:
+        """Normalize a preset name or enum path to a comparable key.
+
+        Handles an optional "Builtin." prefix, any path prefix, and an optional
+        ".jinja" suffix, case-insensitively. For example "Builtin.Summarize",
+        "summarize", "summarize.jinja", and "/opt/ml/code/verl/summarize.jinja"
+        all normalize to "summarize".
+        """
+        name = (value or "").strip()
+        if name.lower().startswith("builtin."):
+            name = name.split(".", 1)[1]
+        name = name.split("/")[-1]  # basename
+        if name.lower().endswith(".jinja"):
+            name = name[: -len(".jinja")]
+        return name.lower()
+
+    def _get_judge_prompt_template_enum(self):
+        """Return the recipe's judge_prompt_template enum values (already in memory)."""
+        if not self.hyperparameters or not getattr(self.hyperparameters, "_specs", None):
+            return []
+        judge_prompt_spec = self.hyperparameters._specs.get("judge_prompt_template", {})
+        return judge_prompt_spec.get("enum", []) or []
+
+    def _is_preset_reward_prompt(self, reward_prompt: str) -> bool:
+        """True if reward_prompt matches a recipe preset template (local, no API call).
+
+        An explicit "Builtin." prefix always routes to preset resolution so the
+        user gets a clear "not available" error instead of a HubContent lookup.
+        """
+        if reward_prompt.startswith("Builtin"):
+            return True
+        enum_keys = {self._normalize_template_name(e) for e in self._get_judge_prompt_template_enum()}
+        return self._normalize_template_name(reward_prompt) in enum_keys
+
     def _process_non_builtin_reward_prompt(self):
-        """Process non-builtin reward prompt (ARN or hub content name)."""
-        # Remove judge_prompt_template for non-builtin prompts
+        """Process non-preset reward prompt (ARN or hub content name)."""
+        # Remove judge_prompt_template for non-preset prompts
         if hasattr(self.hyperparameters, 'judge_prompt_template'):
             delattr(self.hyperparameters, 'judge_prompt_template')
             self.hyperparameters._specs.pop('judge_prompt_template', None)
@@ -401,11 +483,15 @@ class RLAIFTrainer(BaseTrainer):
 
 
     def _update_judge_prompt_template_direct(self, reward_prompt):
-        """Update judge_prompt_template based on Builtin reward function."""
+        """Resolve a preset reward prompt name to the recipe's judge_prompt_template value.
+
+        Accepts "Builtin.Summarize", "summarize", or "summarize.jinja" and matches
+        it against the recipe's judge_prompt_template enum (normalized by basename,
+        with an optional ".jinja" suffix). No API call is made.
+        """
         # Get available templates from hyperparameters specs
-        judge_prompt_spec = self.hyperparameters._specs.get('judge_prompt_template', {})
-        available_templates = judge_prompt_spec.get('enum', [])
-        
+        available_templates = self._get_judge_prompt_template_enum()
+
         if not available_templates:
             # If no enum found, use the current value as the only available option
             current_value = getattr(self.hyperparameters, 'judge_prompt_template', None)
@@ -413,25 +499,26 @@ class RLAIFTrainer(BaseTrainer):
                 available_templates = [current_value]
             else:
                 return
-        
-        # Extract template name after "Builtin." and convert to lowercase
-        template_name = reward_prompt.split(".", 1)[1].lower()
-        
-        # Find matching template by extracting filename without extension
+
+        # Normalize the requested name (strips optional "Builtin." prefix and ".jinja")
+        template_name = self._normalize_template_name(reward_prompt)
+
+        # Find matching template by normalized basename
         matching_template = None
         for template in available_templates:
-            template_filename = template.split("/")[-1].replace(".jinja", "").lower()
-            if template_filename == template_name:
+            if self._normalize_template_name(template) == template_name:
                 matching_template = template
                 break
         
         if matching_template:
             self.hyperparameters.judge_prompt_template = matching_template
         else:
-            available_options = [f"Builtin.{t.split('/')[-1].replace('.jinja', '')}" for t in available_templates]
+            available_options = [self._normalize_template_name(t) for t in available_templates]
             raise ValueError(
-                f"Selected reward function option '{reward_prompt}' is not available. "
-                f"Choose one from the available options: {available_options}. "
-                f"Example: reward_prompt='Builtin.summarize'"
+                f"Selected reward prompt '{reward_prompt}' is not an available preset. "
+                f"Choose one from the available options: {available_options} "
+                f"(pass the name directly, e.g. reward_prompt='{available_options[0]}', "
+                f"or with the 'Builtin.' prefix). "
+                f"Alternatively pass an evaluator ARN or a registered HubContent prompt name."
             )
 

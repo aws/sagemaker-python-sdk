@@ -1,4 +1,39 @@
 # Changelog
+
+## v2.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(core): propagate user-supplied tags to created resources (#6167)
+
+
+## v2.19.0 (2026-08-10)
+
+### New Features
+
+- feat(core): Nova follow-ups — IAM role resolution and training utils (#6051)
+
+
+## v2.18.0 (2026-07-30)
+
+### Bug Fixes
+
+- fix(sagemaker-core): remove dev-only endpoint override and fix client singleton pinning (#6120)
+- fix(sagemaker-core): use caller session for sagemaker control-plane client (#6107)
+- fix(sagemaker-core): drop tags before rebuilding TransformJob in transform() (#6110)
+- fix: Telemetry INFO logging to print only once per process (#6083)
+
+
+## v2.17.0 (2026-07-24)
+
+### New Features
+
+- feat: update SDK to use latest LMI v27 image for sdk v3.x (#5976)
+
+### Bug Fixes
+
+- fix: Fix source_dir in FrameworkProcessor (#6047)
+
 ## v2.16.0 (2026-07-15)
 
 ### New Features

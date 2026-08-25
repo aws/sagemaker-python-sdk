@@ -46,7 +46,6 @@ from typing import ClassVar
 from sagemaker.core.serializers.base import BaseSerializer
 from sagemaker.core.deserializers.base import BaseDeserializer
 
-
 logger = get_textual_rich_logger(__name__)
 
 

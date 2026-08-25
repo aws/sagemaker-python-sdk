@@ -44,6 +44,7 @@ def _get_account_id():
     boto_session = boto3.Session(region_name=_REGION)
     return boto_session.client("sts").get_caller_identity()["Account"]
 
+
 # ============================================================
 # Per-account resource configuration
 # ============================================================
@@ -53,14 +54,13 @@ ACCOUNT_CONFIGS = {
     "729646638167": {
         "env_name": "PROD",
         #"existing_job_name": "mock-oss-test-mtrl-20260611170946",
-        "existing_job_name": "mock-oss-test-mtrl-20260616153024",
+        "existing_job_name": "mock-oss-test-mtrl-20260806120845",
         "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": "s3://sagemaker-us-west-2-729646638167/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:729646638167:mlflow-app/app-TTAUWUNMUHH6",
-        "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
-        "role": "arn:aws:iam::729646638167:role/Admin",
+        "model_package_group": "arn:aws:sagemaker:us-west-2:729646638167:model-package-group/mock-oss-test-mtrl-mpg",
     },
     # PREPROD — Staging account (391266019386)
     "391266019386": {
@@ -72,7 +72,6 @@ ACCOUNT_CONFIGS = {
         "s3_output_path": "s3://sagemaker-us-west-2-391266019386/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:391266019386:mlflow-app/app-P3FRQFRQTNGI",
         "model_package_group": "arn:aws:sagemaker:us-west-2:391266019386:model-package-group/mtrl-integ-gpt-oss-agentcore",
-        "role": "arn:aws:iam::391266019386:role/Admin",
     },
     # BETA — Dev/test account (742774200982)
     "742774200982": {
@@ -84,7 +83,6 @@ ACCOUNT_CONFIGS = {
         "s3_output_path": "s3://sagemaker-us-west-2-742774200982/mtrl-integ/eval-output/",
         "mlflow_resource_arn": "arn:aws:sagemaker:us-west-2:742774200982:mlflow-app/app-6ZU5TXXH2GUX",
         "model_package_group": "arn:aws:sagemaker:us-west-2:742774200982:model-package-group/openai-reasoning-gpt-oss-20b-mtrl-mpg",
-        "role": "arn:aws:iam::742774200982:role/Admin",
     },
 }
 
@@ -133,7 +131,6 @@ def attached_trainer(config):
         output_model_package_group=config["model_package_group"],
         mlflow_app_arn=config["mlflow_resource_arn"],
         s3_output_path=config["s3_output_path"],
-        role=config["role"],
         accept_eula=True,
     )
     trainer._latest_job = job
@@ -165,7 +162,6 @@ class TestMTRLEvalIntegration:
             dataset=config["dataset"],
             s3_output_path=f'{config["s3_output_path"]}finetuned/',
             mlflow_resource_arn=config["mlflow_resource_arn"],
-            role=config["role"],
             region=_REGION,
         )
 
@@ -195,7 +191,6 @@ class TestMTRLEvalIntegration:
             agent_config=config["agent_core_arn"],
             s3_output_path=f'{config["s3_output_path"]}basemodel/',
             mlflow_resource_arn=config["mlflow_resource_arn"],
-            role=config["role"],
             region=_REGION,
         )
 
@@ -225,7 +220,6 @@ class TestMTRLEvalIntegration:
             dataset=config["dataset"],
             s3_output_path=f'{config["s3_output_path"]}comparison/',
             mlflow_resource_arn=config["mlflow_resource_arn"],
-            role=config["role"],
             region=_REGION,
             evaluate_base_model=True,
         )
@@ -247,3 +241,33 @@ class TestMTRLEvalIntegration:
             f"[{config['env_name']}] Comparison eval failed with status: {status}, "
             f"reason: {execution.status.failure_reason}"
         )
+
+
+@pytest.mark.gpu_intensive
+class TestMTRLShowMetrics:
+    """Integration tests for show_metrics() on completed MTRL jobs."""
+
+    def test_show_metrics_on_completed_job(self, config):
+        """show_metrics() and stream_logs() on a completed MTRL job run without error."""
+        job = MultiTurnRLTrainer.attach(job_name=config["existing_job_name"])
+        assert job.job_status == "Completed"
+
+        trainer = MultiTurnRLTrainer(
+            model=config["base_model"],
+            agent_env=config["agent_core_arn"],
+            training_dataset=config["dataset"],
+            output_model_package_group=config["model_package_group"],
+            mlflow_app_arn=config["mlflow_resource_arn"],
+            s3_output_path=config["s3_output_path"],
+            accept_eula=True,
+        )
+        trainer._latest_job = job
+
+        result = trainer.show_metrics()
+        logger.info(
+            f"[{config['env_name']}] show_metrics() returned: {type(result).__name__}"
+        )
+
+        # stream_logs() should exit quickly for a completed job
+        trainer.stream_logs(poll=2)
+        logger.info(f"[{config['env_name']}] stream_logs() completed without error")

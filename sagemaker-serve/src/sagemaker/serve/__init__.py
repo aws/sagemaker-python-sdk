@@ -41,6 +41,7 @@ from sagemaker.serve.ai_inference_recommender import (
     WorkloadValidationError,
     start_benchmark,
 )
+from sagemaker.serve.utils.hf_utils import download_huggingface_model
 
 __all__ = [
     "InferenceSpec",
@@ -56,4 +57,5 @@ __all__ = [
     "FeatureGatedError",
     "WorkloadValidationError",
     "start_benchmark",
+    "download_huggingface_model",
 ]

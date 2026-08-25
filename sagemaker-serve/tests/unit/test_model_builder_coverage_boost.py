@@ -4,7 +4,7 @@ Targets specific uncovered lines from coverage report.
 """
 
 import unittest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock, patch, MagicMock, PropertyMock
 from dataclasses import dataclass
 import tempfile
 
@@ -331,6 +331,85 @@ class TestListDeploymentConfigs(unittest.TestCase):
             mb.list_deployment_configs()
         
         self.assertIn("only supported for JumpStart", str(context.exception))
+
+
+class TestPreDeployBenchmarkData(unittest.TestCase):
+    """Pre-deploy JumpStart benchmark data: list_deployment_configs() and the
+    benchmark_metrics property must work before build()/deploy() is called.
+    """
+
+    def _jumpstart_mb(self):
+        """A JumpStart-config ModelBuilder, constructed the same way as
+        TestFromJumpStartConfig (explicit role_arn, no live role/instance
+        resolution)."""
+        js_config = JumpStartConfig(model_id="test-model", model_version="1.0.0")
+        return ModelBuilder.from_jumpstart_config(
+            jumpstart_config=js_config,
+            role_arn="arn:aws:iam::123456789012:role/SageMakerRole",
+        )
+
+    def test_get_deployment_configs_ensures_metadata(self):
+        """_get_deployment_configs lazily loads metadata configs itself, so every
+        caller benefits. Pre-fix it read _metadata_configs (None pre-deploy) and
+        returned [] without ever loading them."""
+        mb = self._jumpstart_mb()
+        mb._metadata_configs = None
+
+        with patch.object(mb, "_ensure_metadata_configs") as ensure:
+            result = mb._get_deployment_configs(None, None)
+
+        ensure.assert_called_once()
+        self.assertEqual(result, [])
+
+    def test_list_deployment_configs_loads_metadata_when_pre_deploy(self):
+        """list_deployment_configs() with no instance_type returns configs for a
+        pre-deploy JumpStart model instead of []."""
+        mb = self._jumpstart_mb()
+        mb.config_name = None
+        mb.instance_type = None
+
+        with patch.object(mb, "_is_jumpstart_model_id", return_value=True), patch.object(
+            mb, "_is_model_customization", return_value=False
+        ), patch.object(mb, "_use_jumpstart_equivalent", return_value=False), patch.object(
+            mb, "_get_deployment_configs", return_value=[Mock()]
+        ), patch.object(
+            mb, "deployment_config_response_data", return_value=[{"DeploymentConfigName": "c1"}]
+        ):
+            result = mb.list_deployment_configs()
+
+        self.assertEqual(result, [{"DeploymentConfigName": "c1"}])
+
+    def test_benchmark_metrics_property_returns_dataframe(self):
+        """The benchmark_metrics property builds a DataFrame from the config
+        benchmark data (it did not exist before, causing AttributeError)."""
+        mb = self._jumpstart_mb()
+        sample = {
+            "Instance Type": ["ml.g5.2xlarge", "ml.g5.12xlarge"],
+            "Latency (ms)": [100.0, 80.0],
+        }
+
+        with patch.object(mb, "_get_deployment_configs_benchmarks_data", return_value=sample):
+            df = mb.benchmark_metrics
+
+        self.assertEqual(list(df["Instance Type"]), ["ml.g5.2xlarge", "ml.g5.12xlarge"])
+
+    def test_display_benchmark_metrics_no_attribute_error(self):
+        """display_benchmark_metrics() reads the benchmark_metrics property and
+        no longer raises AttributeError for a JumpStart model. The property is
+        patched to a stand-in frame so the assertion is on the wiring, not on
+        pandas' optional markdown renderer."""
+        mb = self._jumpstart_mb()
+        df = MagicMock()
+        df.to_markdown.return_value = "table"
+
+        with patch.object(mb, "_is_jumpstart_model_id", return_value=True), patch.object(
+            mb, "_use_jumpstart_equivalent", return_value=False
+        ), patch.object(
+            type(mb), "benchmark_metrics", new_callable=PropertyMock, return_value=df
+        ):
+            mb.display_benchmark_metrics()
+
+        df.to_markdown.assert_called_once()
 
 
 class TestTransformer(unittest.TestCase):
