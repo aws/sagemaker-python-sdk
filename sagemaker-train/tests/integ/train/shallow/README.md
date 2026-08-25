@@ -25,7 +25,7 @@ calls pytest directly, so the ignore does not apply to it.
 > — which is nearly all of them — without exposing those credentials to PR code.
 >
 > **Consequence for editing this suite:** the marker selection above (`-n 8`,
-> `--dist loadfile`, `-m "not gpu_intensive and not us_east_1"`) lives in
+> `-m "not gpu_intensive and not us_east_1"`) lives in
 > `createCIShallowIntegBuildSpec` in the `SageMakerMLFPySDKInfraCDK` package, not in
 > this repo. Adding a file under `shallow/` is picked up automatically, but changing
 > *how* the suite is invoked means a change there, which deploys through a pipeline
