@@ -1,5 +1,13 @@
 # Changelog
 
+## v2.21.0 (2026-08-25)
+
+### Bug Fixes
+
+- fix(core,mlops): honor caller region in feature_store ingest_dataframe and stop telemetry from blocking SDK calls (#6197)
+- fix(core): anchor tar member validation to extract_path (#6195)
+
+
 ## v2.20.0 (2026-08-14)
 
 ### Bug Fixes
