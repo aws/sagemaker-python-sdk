@@ -33,11 +33,33 @@ REWARD_FUNCTION_ARN = (
     "arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1"
 )
 
+# The preset the deep suite pairs with an ordinary training dataset on this same
+# model (test_rlvr_trainer_lora_complete_workflow).
+PRESET_REWARD_FUNCTION = "prime_code"
+
 
 class TestRLVRTrainerSubmission(RecipeTrainerCases):
     """RLVR accepts every shared case, plus recipe customization."""
 
     TRAINER = RLVRTrainer
+
+    def build(self, sagemaker_session, dataset, name, **overrides):
+        """Add a reward signal, which RLVR requires before it will submit.
+
+        ``RLVRTrainer.train()`` raises ``ValueError`` unless
+        ``custom_reward_function`` was passed or
+        ``hyperparameters.preset_reward_function`` is set. The cases inherited from
+        ``RecipeTrainerCases`` pass neither -- they are about recipe rendering and
+        dataset handling, not reward configuration -- so the preset is applied once
+        here rather than repeated in each test.
+
+        Skipped when the test supplies its own ``custom_reward_function``, so the
+        reward-function variants below still exercise exactly what they name.
+        """
+        trainer = super().build(sagemaker_session, dataset, name, **overrides)
+        if not overrides.get("custom_reward_function"):
+            trainer.hyperparameters.preset_reward_function = PRESET_REWARD_FUNCTION
+        return trainer
 
     def test_direct_hyperparameter_mutation(self, sagemaker_session, train_data_uri):
         """trainer.hyperparameters.<field> = ... is a documented pattern (used
