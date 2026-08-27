@@ -1,5 +1,9 @@
 # Shallow (submit-then-stop) integration tests
 
+> **Adding or changing a test? Follow [SOP.md](./SOP.md).** This README explains why
+> the suite is shaped the way it is; the SOP is the step-by-step procedure, including
+> how to run the suite locally.
+
 These tests add fast acceptance coverage on the PR gate. They run in their own
 `fast-integ-tests` job, **alongside** the existing `integ-tests` CodeBuild suite,
 which is unchanged. The deep suites still run on the scheduled CI-health workflows.
@@ -374,6 +378,9 @@ The cap is enforced in the harness rather than per test, so a newly added test i
 capped by default instead of by remembering to opt in.
 
 ## Writing a new test
+
+The harness API, for reference. For the full procedure — where the test goes, markers,
+running it locally, the pre-submit checklist — see [SOP.md](./SOP.md).
 
 Use the harness; do not call `trainer.train()` directly.
 
