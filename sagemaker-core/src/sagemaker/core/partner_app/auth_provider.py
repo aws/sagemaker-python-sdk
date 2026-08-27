@@ -12,8 +12,9 @@
 # language governing permissions and limitations under the License.
 
 """The SageMaker partner application SDK auth module"""
-from __future__ import absolute_import
+from __future__ import annotations
 
+import logging
 import os
 import re
 from typing import Dict, Tuple
@@ -24,6 +25,8 @@ from botocore.credentials import Credentials
 from requests.auth import AuthBase
 from requests.models import PreparedRequest
 from sagemaker.core.partner_app.auth_utils import PartnerAppAuthUtils
+
+logger = logging.getLogger(__name__)
 
 SERVICE_NAME = "sagemaker"
 AWS_PARTNER_APP_ARN_REGEX = r"arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:partner-app\/.*"
@@ -94,6 +97,7 @@ class PartnerAppAuthProvider:
             credentials if credentials is not None else boto3.Session().get_credentials()
         )
         self.sigv4 = SigV4Auth(self.credentials, SERVICE_NAME, self.region)
+        logger.info("PartnerAppAuthProvider initialized for region: %s", self.region)
 
     def get_signed_request(
         self, url: str, method: str, headers: dict, body: object
@@ -109,6 +113,7 @@ class PartnerAppAuthProvider:
         Returns:
             tuple: (url, headers)
         """
+        logger.debug("Signing request: %s %s", method, url)
         return PartnerAppAuthUtils.get_signed_request(
             sigv4=self.sigv4,
             app_arn=self.app_arn,
