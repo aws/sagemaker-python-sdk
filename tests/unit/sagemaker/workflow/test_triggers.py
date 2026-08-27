@@ -15,7 +15,7 @@ from __future__ import absolute_import
 from datetime import datetime
 
 import pytest
-import pytz
+from zoneinfo import ZoneInfo
 from mock.mock import ANY
 from sagemaker.workflow.parameters import ParameterInteger, ParameterFloat, ParameterBoolean
 
@@ -47,7 +47,7 @@ START_DATE = datetime.now()
 PIPELINE_ARN = "arn:pipeline/TestSchedulerPipeline"
 PIPELINE_NAME = "TestSchedulerPipeline"
 
-PACIFIC = pytz.timezone("US/Pacific")
+PACIFIC = ZoneInfo("US/Pacific")
 
 
 @pytest.fixture
@@ -105,8 +105,8 @@ def test_resolve_schedule_expressions_common_cases(inputs):
 @pytest.mark.parametrize(
     "input_dt, expected_dt",
     [
-        (PACIFIC.localize(INPUT_AT_DATETIME_PST), EXPECTED_AT_EXPRESSION),  # PST -7UTC)
-        (PACIFIC.localize(INPUT_AT_DATETIME_PDT), EXPECTED_AT_EXPRESSION_DST),  # PDT -8UTC
+        (INPUT_AT_DATETIME_PST.replace(tzinfo=PACIFIC), EXPECTED_AT_EXPRESSION),  # PST -7UTC)
+        (INPUT_AT_DATETIME_PDT.replace(tzinfo=PACIFIC), EXPECTED_AT_EXPRESSION_DST),  # PDT -8UTC
         (INPUT_AT_DATETIME_UTC, EXPECTED_AT_EXPRESSION),  # UTC
     ],
 )
