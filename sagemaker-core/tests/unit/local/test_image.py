@@ -550,6 +550,20 @@ class TestSageMakerContainerAdvanced:
                 with pytest.raises(ImportError, match="Docker Compose is not installed"):
                     _SageMakerContainer._get_compose_cmd_prefix()
 
+    def test_get_compose_cmd_prefix_docker_binary_not_found_falls_back_to_standalone(self):
+        """Test _get_compose_cmd_prefix falls back to standalone when docker binary not found"""
+        with patch("subprocess.check_output", side_effect=FileNotFoundError("No such file or directory: 'docker'")):
+            with patch("shutil.which", return_value="/usr/local/bin/docker-compose"):
+                result = _SageMakerContainer._get_compose_cmd_prefix()
+                assert result == ["docker-compose"]
+
+    def test_get_compose_cmd_prefix_docker_binary_not_found_no_standalone_raises(self):
+        """Test _get_compose_cmd_prefix raises when docker binary not found and no standalone"""
+        with patch("subprocess.check_output", side_effect=FileNotFoundError("No such file or directory: 'docker'")):
+            with patch("shutil.which", return_value=None):
+                with pytest.raises(ImportError, match="Docker Compose is not installed"):
+                    _SageMakerContainer._get_compose_cmd_prefix()
+
     def test_process_with_multiple_inputs(self, mock_session):
         """Test process method with multiple processing inputs"""
         container = _SageMakerContainer(
