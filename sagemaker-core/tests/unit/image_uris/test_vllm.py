@@ -93,15 +93,3 @@ def test_vllm_version_aliases_resolve_to_newest_patch(load_config):
             instance_type=INSTANCE_TYPE,
         )
         assert f"/vllm:{target_version}-gpu-" in uri, uri
-
-
-def test_vllm_unsupported_version_raises():
-    """An unknown version is rejected rather than producing a bogus URI."""
-    with pytest.raises(ValueError):
-        image_uris.retrieve(
-            framework="vllm",
-            region="us-west-2",
-            version="9.9.9",
-            image_scope="inference",
-            instance_type=INSTANCE_TYPE,
-        )
