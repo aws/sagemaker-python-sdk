@@ -11,6 +11,7 @@ from sagemaker.core.helper.iam_role_resolver import (
     RoleValidationError,
     resolve_and_validate_role,
     verify_hyperpod_connect_permissions,
+    caller_can_perform,
     HYPERPOD_CLI_CONNECT_ACTIONS,
     _load_policy_config,
     _get_required_actions,
@@ -1081,3 +1082,61 @@ class TestBackwardCompatibleExceptions:
 
     def test_role_auto_creation_error_importable(self):
         assert issubclass(RoleAutoCreationError, Exception)
+
+
+class TestCallerCanPerform:
+    """caller_can_perform() — non-raising caller-permission probe."""
+
+    _ASSUMED_ROLE = "arn:aws:sts::123456789012:assumed-role/MyRole/session"
+
+    def _paginator_denying(self, allowed, denied):
+        paginator = MagicMock()
+        results = [{"EvalActionName": a, "EvalDecision": "allowed"} for a in allowed]
+        results += [{"EvalActionName": a, "EvalDecision": "implicitDeny"} for a in denied]
+        paginator.paginate.return_value = [{"EvaluationResults": results}]
+        return paginator
+
+    def test_all_actions_allowed_returns_true(self):
+        mock_session, mock_iam, _ = _make_session(self._ASSUMED_ROLE)
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/MyRole"}
+        }
+        mock_iam.get_paginator.return_value = _paginator_allowing(
+            ["bedrock:GetFoundationModel"]
+        )
+
+        assert (
+            caller_can_perform(["bedrock:GetFoundationModel"], mock_session) is True
+        )
+
+    def test_denied_action_returns_false(self):
+        mock_session, mock_iam, _ = _make_session(self._ASSUMED_ROLE)
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/MyRole"}
+        }
+        mock_iam.get_paginator.return_value = self._paginator_denying(
+            allowed=[], denied=["bedrock:GetFoundationModel"]
+        )
+
+        assert (
+            caller_can_perform(["bedrock:GetFoundationModel"], mock_session) is False
+        )
+
+    def test_caller_not_a_role_returns_none(self):
+        # An IAM user (not an assumed role) has no backing role to simulate.
+        mock_session, _, _ = _make_session("arn:aws:iam::123456789012:user/alice")
+        assert caller_can_perform(["bedrock:GetFoundationModel"], mock_session) is None
+
+    def test_cannot_simulate_returns_none(self):
+        mock_session, mock_iam, _ = _make_session(self._ASSUMED_ROLE)
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/MyRole"}
+        }
+        paginator = MagicMock()
+        paginator.paginate.side_effect = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "no simulate"}},
+            "SimulatePrincipalPolicy",
+        )
+        mock_iam.get_paginator.return_value = paginator
+
+        assert caller_can_perform(["bedrock:GetFoundationModel"], mock_session) is None
