@@ -758,59 +758,6 @@ def verify_evaluation_caller_permissions(
     return True
 
 
-def caller_can_perform(
-    actions: List[str], sagemaker_session=None
-) -> Optional[bool]:
-    """Return whether the caller identity is allowed to perform ALL of ``actions``.
-
-    Read-only, non-raising sibling of :func:`verify_evaluation_caller_permissions`:
-    it resolves the caller's backing IAM role and simulates ``actions`` against it
-    with ``iam:SimulatePrincipalPolicy``. Use it to gate an optional client-side
-    AWS call on whether the caller is actually permitted to make it, degrading
-    gracefully (rather than raising) when that cannot be determined.
-
-    ``actions`` should be account-level / wildcard-resource actions — they are
-    simulated without ``ResourceArns``, so resource-scoped actions can come back
-    ``implicitDeny`` even for a caller who holds them.
-
-    Args:
-        actions: IAM action names to check (e.g. ``["bedrock:GetFoundationModel"]``).
-        sagemaker_session: SageMaker session (used to get the boto session).
-
-    Returns:
-        True  — every action is allowed.
-        False — at least one action is denied.
-        None  — could not be determined (caller is not a role, cannot call
-                ``sts:GetCallerIdentity``, or lacks ``iam:SimulatePrincipalPolicy``).
-    """
-    boto_session = _get_boto_session(sagemaker_session)
-    sts_client = boto_session.client("sts")
-    iam_client = boto_session.client("iam")
-
-    try:
-        caller_identity = sts_client.get_caller_identity()
-    except ClientError:
-        return None
-
-    caller_arn = caller_identity["Arn"]
-    account_id = caller_identity["Account"]
-    partition = _partition_from_arn(caller_arn)
-
-    caller_role_arn = _resolve_caller_role_arn(iam_client, caller_arn, account_id, partition)
-    if not caller_role_arn:
-        return None
-
-    try:
-        denied = _simulate_denied_actions(iam_client, caller_role_arn, list(actions))
-    except ClientError as e:
-        error_code = e.response.get("Error", {}).get("Code", "")
-        if error_code in ("AccessDenied", "AccessDeniedException"):
-            return None
-        raise
-
-    return not denied
-
-
 # ---------------------------------------------------------------------------
 # Opt-in IAM execution-role creation.
 #

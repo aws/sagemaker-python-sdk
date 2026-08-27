@@ -26,10 +26,6 @@ from sagemaker.train.evaluate.constants import EvalType
 
 # Where the evaluator reads the supported-judge-models list from.
 _S3_READ_FILE_PATH = "sagemaker.core.s3.client.S3Downloader.read_file"
-# The caller-permission helper the lifecycle check gates on.
-_CALLER_CAN_PERFORM_PATH = (
-    "sagemaker.core.helper.iam_role_resolver.caller_can_perform"
-)
 
 
 def _configure_bedrock_get_model(mock_session, lifecycle=None, side_effect=None):
@@ -1283,8 +1279,7 @@ def test_lifecycle_active_model_passes(mock_artifact, mock_resolve):
     bedrock_client = _configure_bedrock_get_model(
         mock_session, lifecycle={"status": "ACTIVE"}
     )
-    with patch(_CALLER_CAN_PERFORM_PATH, return_value=True):
-        evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
+    evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
 
     bedrock_client.get_foundation_model.assert_called_once_with(
         modelIdentifier=DEFAULT_EVALUATOR_MODEL
@@ -1305,8 +1300,7 @@ def test_lifecycle_future_eol_passes(mock_artifact, mock_resolve):
     _configure_bedrock_get_model(
         mock_session, lifecycle={"status": "LEGACY", "endOfLifeTime": future}
     )
-    with patch(_CALLER_CAN_PERFORM_PATH, return_value=True):
-        evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
+    evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
@@ -1323,9 +1317,8 @@ def test_lifecycle_past_eol_raises(mock_artifact, mock_resolve):
     _configure_bedrock_get_model(
         mock_session, lifecycle={"status": "LEGACY", "endOfLifeTime": past}
     )
-    with patch(_CALLER_CAN_PERFORM_PATH, return_value=True):
-        with pytest.raises(ValueError, match="reached end of life"):
-            evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)
+    with pytest.raises(ValueError, match="reached end of life"):
+        evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
@@ -1343,44 +1336,31 @@ def test_lifecycle_model_not_found_raises(mock_artifact, mock_resolve):
         "GetFoundationModel",
     )
     _configure_bedrock_get_model(mock_session, side_effect=not_found)
-    with patch(_CALLER_CAN_PERFORM_PATH, return_value=True):
-        with pytest.raises(ValueError, match="not available in region"):
-            evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)
+    with pytest.raises(ValueError, match="not available in region"):
+        evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
 @patch('sagemaker.core.resources.Artifact')
-def test_lifecycle_no_permission_warns_and_continues(mock_artifact, mock_resolve):
-    """Without bedrock:GetFoundationModel permission, we warn and do NOT block."""
+def test_lifecycle_access_denied_warns_and_continues(mock_artifact, mock_resolve):
+    """AccessDenied from GetFoundationModel → warn about the permission, don't block.
+
+    We call Bedrock directly (no SimulatePrincipalPolicy pre-gate), so a missing —
+    including a scoped — permission surfaces here as AccessDenied and degrades.
+    """
     mock_session = Mock()
     mock_session.boto_region_name = DEFAULT_REGION
     mock_session.boto_session = Mock()
     mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
     evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
 
-    bedrock_client = _configure_bedrock_get_model(mock_session)
-    with patch(_CALLER_CAN_PERFORM_PATH, return_value=False):
-        evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
-
-    # Permission denied → the model is never looked up.
-    bedrock_client.get_foundation_model.assert_not_called()
-
-
-@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
-@patch('sagemaker.core.resources.Artifact')
-def test_lifecycle_permission_undetermined_warns_and_continues(mock_artifact, mock_resolve):
-    """When permission can't be determined (None), we warn and do NOT block."""
-    mock_session = Mock()
-    mock_session.boto_region_name = DEFAULT_REGION
-    mock_session.boto_session = Mock()
-    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
-    evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
-
-    bedrock_client = _configure_bedrock_get_model(mock_session)
-    with patch(_CALLER_CAN_PERFORM_PATH, return_value=None):
-        evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
-
-    bedrock_client.get_foundation_model.assert_not_called()
+    denied = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": "not authorized"}},
+        "GetFoundationModel",
+    )
+    _configure_bedrock_get_model(mock_session, side_effect=denied)
+    # Should NOT raise — degrades with a permission-specific warning.
+    evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
@@ -1398,5 +1378,32 @@ def test_lifecycle_transient_bedrock_error_does_not_block(mock_artifact, mock_re
         "GetFoundationModel",
     )
     _configure_bedrock_get_model(mock_session, side_effect=throttling)
-    with patch(_CALLER_CAN_PERFORM_PATH, return_value=True):
-        evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
+    evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_evaluate_invokes_lifecycle_check(mock_artifact, mock_resolve):
+    """evaluate() must call _check_evaluator_model_lifecycle with the resolved region."""
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    mock_session.sagemaker_config = None  # let the telemetry decorator resolve cleanly
+    evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
+
+    sentinel = RuntimeError("lifecycle-check-invoked")
+    aws_context = {
+        "role_arn": DEFAULT_ROLE,
+        "region": DEFAULT_REGION,
+        "account_id": "123456789012",
+    }
+    with patch.object(evaluator, "_get_resolved_model_info", return_value=None), \
+         patch.object(evaluator, "_get_aws_execution_context", return_value=aws_context), \
+         patch.object(
+             evaluator, "_check_evaluator_model_lifecycle", side_effect=sentinel
+         ) as mock_lifecycle:
+        with pytest.raises(RuntimeError, match="lifecycle-check-invoked"):
+            evaluator.evaluate()
+
+    mock_lifecycle.assert_called_once_with(DEFAULT_REGION)
