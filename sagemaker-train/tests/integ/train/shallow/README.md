@@ -8,6 +8,12 @@ What this suite changes about the gate is not which job runs, but what the exist
 one selects: the `gpu_intensive` marks added here deselect the deep tests that
 submit a job and wait for it, and this suite covers those code paths instead.
 
+`integ-tests` does not rerun this suite. It invokes pytest through tox over the
+whole `tests/integ` tree, which would otherwise sweep this directory in and submit
+every job here a second time on the same commit. `tox.ini` passes
+`--ignore=tests/integ/train/shallow` to keep that from happening; `fast-integ-tests`
+calls pytest directly, so the ignore does not apply to it.
+
 > **Where this runs.** The `fast-integ-tests` job in `pr-checks-master.yml` does not
 > execute this suite on the GitHub runner — it starts the CodeBuild project
 > `sagemaker-python-sdk-ci-sagemaker-train-fast-integ-tests` via
@@ -19,7 +25,7 @@ submit a job and wait for it, and this suite covers those code paths instead.
 > — which is nearly all of them — without exposing those credentials to PR code.
 >
 > **Consequence for editing this suite:** the marker selection above (`-n 8`,
-> `--dist loadfile`, `-m "not gpu_intensive and not us_east_1"`) lives in
+> `-m "not gpu_intensive and not us_east_1"`) lives in
 > `createCIShallowIntegBuildSpec` in the `SageMakerMLFPySDKInfraCDK` package, not in
 > this repo. Adding a file under `shallow/` is picked up automatically, but changing
 > *how* the suite is invoked means a change there, which deploys through a pipeline
