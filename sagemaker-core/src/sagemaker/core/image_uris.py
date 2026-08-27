@@ -244,7 +244,7 @@ def retrieve(
         pt_or_tf_version = (
             re.compile("^(pytorch|tensorflow)(.*)$").match(base_framework_version).group(2)
         )
-        _version = original_version
+        _version = _version_for_config(version, config)
 
         if repo in [
             "huggingface-pytorch-trcomp-training",
