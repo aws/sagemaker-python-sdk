@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Integration test for the Zimmer LineageStep (v2)."""
+"""Integration test for the LineageStep (v2)."""
 
 from __future__ import absolute_import
 
@@ -48,7 +48,7 @@ def test_lineage_step_execute_end_to_end(sagemaker_session, role, pipeline_name)
     satisfies this requirement.
     """
     stamp = uuid.uuid4().hex[:8]
-    action_name = f"zimmer-integ-{stamp}"
+    action_name = f"lineage-integ-{stamp}"
 
     step = LineageStep(
         name="RecordLineage",
@@ -59,10 +59,10 @@ def test_lineage_step_execute_end_to_end(sagemaker_session, role, pipeline_name)
                     "ActionType": "ModelTraining",
                     "Status": "Completed",
                     "Source": {
-                        "SourceUri": f"s3://zimmer-integ-test/{stamp}/model.tar.gz",
+                        "SourceUri": f"s3://lineage-integ-test/{stamp}/model.tar.gz",
                         "SourceType": "MODEL",
                     },
-                    "Description": "Zimmer v2 integ test action",
+                    "Description": "Lineage v2 integ test action",
                 }
             ]
         },
