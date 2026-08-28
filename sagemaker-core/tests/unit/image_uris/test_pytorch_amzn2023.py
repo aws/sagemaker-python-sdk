@@ -21,19 +21,19 @@ GPU_INSTANCE = "ml.g5.2xlarge"
 CPU_INSTANCE = "ml.m5.xlarge"
 DEFAULT_DOMAIN = "amazonaws.com"
 
-# amzn2023 unified `pytorch` repo training versions. Their GPU tag encodes the
-# CUDA version directly (e.g. 2.13-cu133-amzn2023-sagemaker) with no "gpu" token,
+# The amzn2023 unified `pytorch` repo (framework "pytorch-amzn2023"). Its GPU tag
+# encodes CUDA directly (e.g. 2.13-cu133-amzn2023-sagemaker) with no "gpu" token,
 # so these versions set "processor_in_tag": false and bake the accelerator into
 # container_version.
-AL2023_VERSIONS = ["2.11", "2.12", "2.13"]
+AMZN2023_VERSIONS = ["2.11", "2.12", "2.13"]
 
 
-@pytest.mark.parametrize("load_config", ["pytorch.json"], indirect=True)
-def test_pytorch_al2023_training_uris(load_config):
-    """The amzn2023 `pytorch` repo versions resolve for both cpu and gpu, and the
-    gpu tag carries the cuNNN token rather than a literal "gpu"."""
+@pytest.mark.parametrize("load_config", ["pytorch-amzn2023.json"], indirect=True)
+def test_pytorch_amzn2023_training_uris(load_config):
+    """pytorch-amzn2023 resolves both cpu and gpu; the gpu tag carries cuNNN, not "gpu"."""
     training = load_config["training"]
-    for version in AL2023_VERSIONS:
+    assert sorted(training["versions"]) == sorted(AMZN2023_VERSIONS)
+    for version in AMZN2023_VERSIONS:
         version_config = training["versions"][version]
         assert version_config["repository"] == "pytorch"
         assert version_config["processor_in_tag"] is False
@@ -42,7 +42,7 @@ def test_pytorch_al2023_training_uris(load_config):
             domain = ALTERNATE_DOMAINS.get(region, DEFAULT_DOMAIN)
 
             gpu_uri = image_uris.retrieve(
-                framework="pytorch",
+                framework="pytorch-amzn2023",
                 region=region,
                 version=version,
                 image_scope="training",
@@ -55,7 +55,7 @@ def test_pytorch_al2023_training_uris(load_config):
             assert "-gpu-" not in gpu_uri
 
             cpu_uri = image_uris.retrieve(
-                framework="pytorch",
+                framework="pytorch-amzn2023",
                 region=region,
                 version=version,
                 image_scope="training",
@@ -67,14 +67,27 @@ def test_pytorch_al2023_training_uris(load_config):
             )
 
 
-def test_existing_pytorch_training_unaffected_by_processor_in_tag():
-    """Regression: Ubuntu pytorch-training still appends the processor + py tokens
-    (processor_in_tag defaults to True when the key is absent)."""
+def test_pytorch_training_default_stays_ubuntu():
+    """The `pytorch` (Ubuntu) training default must NOT move onto the amzn2023 repo:
+    with no version, retrieve() resolves to a pytorch-training image, not `pytorch`."""
     uri = image_uris.retrieve(
         framework="pytorch",
         region="us-west-2",
-        version="2.8.0",
         image_scope="training",
         instance_type=GPU_INSTANCE,
     )
-    assert uri.endswith("/pytorch-training:2.8.0-gpu-py312")
+    assert "/pytorch-training:" in uri
+    assert "-amzn2023-" not in uri
+
+
+def test_pytorch_training_new_ubuntu_versions():
+    """The newly added Ubuntu training versions resolve on pytorch-training."""
+    for version, py in [("2.8.0", "py312"), ("2.9.0", "py312"), ("2.10.0", "py313")]:
+        uri = image_uris.retrieve(
+            framework="pytorch",
+            region="us-west-2",
+            version=version,
+            image_scope="training",
+            instance_type=GPU_INSTANCE,
+        )
+        assert uri.endswith(f"/pytorch-training:{version}-gpu-{py}")
