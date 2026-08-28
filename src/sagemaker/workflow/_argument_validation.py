@@ -23,7 +23,7 @@ Values are intentionally not validated: they may be pipeline variables
 expressions) that only resolve at pipeline compile or execution time.
 
 If the installed botocore release does not know the target operation
-(for example, a very old botocore without newer Bedrock APIs), shape
+(for example, a very old botocore release), shape
 validation is skipped and the service remains the authority.
 """
 
@@ -38,36 +38,29 @@ from botocore.model import OperationNotFoundError
 
 logger = logging.getLogger(__name__)
 
-# Cache of (service, operation, pascal_case) -> allowed top-level keys.
+# Cache of (service, operation) -> allowed top-level keys.
 # ``None`` means botocore does not know the operation; skip shape checks.
-_SHAPE_CACHE: Dict[Tuple[str, str, bool], Optional[FrozenSet[str]]] = {}
+_SHAPE_CACHE: Dict[Tuple[str, str], Optional[FrozenSet[str]]] = {}
 
 
-def _allowed_top_level_keys(
-    service_name: str, operation_name: str, pascal_case: bool
-) -> Optional[FrozenSet[str]]:
+def _allowed_top_level_keys(service_name: str, operation_name: str) -> Optional[FrozenSet[str]]:
     """Return the allowed top-level keys for an operation input shape.
 
     Args:
         service_name (str): botocore service name (e.g. ``sagemaker``).
         operation_name (str): operation name (e.g. ``CreateEndpointConfig``).
-        pascal_case (bool): If True, convert member names to PascalCase
-            (used for Bedrock, whose JSON API members are camelCase but
-            whose pipeline ``Arguments`` fields are PascalCase).
 
     Returns:
         The allowed key set, or ``None`` if the installed botocore does
         not know the operation (validation should then be skipped).
     """
-    cache_key = (service_name, operation_name, pascal_case)
+    cache_key = (service_name, operation_name)
     if cache_key not in _SHAPE_CACHE:
         try:
             session = botocore.session.get_session()
             service_model = session.get_service_model(service_name)
             operation_model = service_model.operation_model(operation_name)
             members = operation_model.input_shape.members.keys()
-            if pascal_case:
-                members = [m[0].upper() + m[1:] for m in members]
             _SHAPE_CACHE[cache_key] = frozenset(members)
         except (UnknownServiceError, OperationNotFoundError):
             logger.warning(
@@ -86,7 +79,6 @@ def validate_step_arguments(
     service_name: str,
     operation_name: str,
     unsupported_fields: Sequence[str] = (),
-    pascal_case: bool = False,
 ) -> None:
     """Validate the top-level keys of a step ``arguments`` dict.
 
@@ -98,8 +90,6 @@ def validate_step_arguments(
             allowed top-level fields.
         unsupported_fields (Sequence[str]): Fields that exist in the
             public API shape but are rejected by SageMaker Pipelines.
-        pascal_case (bool): Convert botocore member names to PascalCase
-            before comparison (Bedrock APIs).
 
     Raises:
         ValueError: If ``arguments`` is not a non-empty dict with string
@@ -122,7 +112,7 @@ def validate_step_arguments(
             "SageMaker Pipelines and would be rejected at pipeline creation "
             "time. Remove them from arguments."
         )
-    allowed = _allowed_top_level_keys(service_name, operation_name, pascal_case)
+    allowed = _allowed_top_level_keys(service_name, operation_name)
     if allowed is None:
         return
     unknown = sorted(set(arguments) - allowed)
