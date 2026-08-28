@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Unit tests for Zimmer pipeline step types (v2).
+"""Unit tests for the inference and lineage pipeline step types (v2).
 
 Passthrough ``arguments: Dict[str, Any]`` API. Top-level argument keys
 are validated client-side against the public AWS API input shape
@@ -23,12 +23,6 @@ from __future__ import absolute_import
 
 import pytest
 
-from sagemaker.workflow.bedrock_steps import (
-    BedrockCustomModelDeploymentStep,
-    BedrockCustomModelStep,
-    BedrockModelImportStep,
-    BedrockProvisionedModelThroughputStep,
-)
 from sagemaker.workflow.endpoint_step import EndpointConfigStep, EndpointStep
 from sagemaker.workflow.inference_component_step import InferenceComponentStep
 from sagemaker.workflow.lineage_step import LineageStep
@@ -156,108 +150,6 @@ def test_inference_component_step_rejects_retry_policies_kwarg():
         InferenceComponentStep(name="IC", arguments={}, retry_policies=[])
 
 
-# ---------- Bedrock steps ----------
-
-
-def test_bedrock_custom_model_step_basic():
-    step = BedrockCustomModelStep(
-        name="RegisterModel",
-        arguments={
-            "ModelName": {"Get": "Parameters.ModelName"},
-            "RoleArn": "arn:aws:iam:...",
-            "ModelSourceConfig": {"S3DataSource": {"S3Uri": "s3://x/y"}},
-        },
-    )
-    assert step.step_type == StepTypeEnum.BEDROCK_CUSTOM_MODEL
-    assert step.arguments["ModelName"] == {"Get": "Parameters.ModelName"}
-
-
-def test_bedrock_custom_model_deployment_step_basic():
-    step = BedrockCustomModelDeploymentStep(
-        name="Deploy",
-        arguments={
-            "ModelDeploymentName": {"Get": "Parameters.DepName"},
-            "ModelArn": "arn:aws:bedrock:...",
-        },
-    )
-    assert step.step_type == StepTypeEnum.BEDROCK_CUSTOM_MODEL_DEPLOYMENT
-
-
-def test_bedrock_model_import_step_basic():
-    step = BedrockModelImportStep(
-        name="Import",
-        arguments={
-            "ImportedModelName": "imp",
-            "JobName": "job",
-            "RoleArn": "arn:...",
-            "ModelDataSource": {"S3DataSource": {"S3Uri": "s3://x/y"}},
-        },
-    )
-    assert step.step_type == StepTypeEnum.BEDROCK_MODEL_IMPORT
-
-
-def test_bedrock_provisioned_model_throughput_step_basic():
-    step = BedrockProvisionedModelThroughputStep(
-        name="Prov",
-        arguments={
-            "ProvisionedModelName": "prov",
-            "ModelId": "m",
-            "ModelUnits": 1,
-            "CommitmentDuration": "OneMonth",
-        },
-    )
-    assert step.step_type == StepTypeEnum.BEDROCK_PROVISIONED_MODEL_THROUGHPUT
-    assert step.arguments["CommitmentDuration"] == "OneMonth"
-
-
-def test_bedrock_steps_reject_none_arguments():
-    for cls in (
-        BedrockCustomModelStep,
-        BedrockCustomModelDeploymentStep,
-        BedrockModelImportStep,
-        BedrockProvisionedModelThroughputStep,
-    ):
-        with pytest.raises(ValueError):
-            cls(name="x", arguments=None)
-
-
-# ---------- Bedrock Properties ----------
-
-
-def test_bedrock_custom_model_step_properties_typed():
-    step = BedrockCustomModelStep(
-        name="R",
-        arguments={
-            "ModelName": {"Get": "Parameters.ModelName"},
-            "RoleArn": "r",
-            "ModelSourceConfig": {},
-        },
-    )
-    assert step.properties.ModelArn.expr == {"Get": "Steps.R.ModelArn"}
-    assert step.properties.JobArn.expr == {"Get": "Steps.R.JobArn"}
-
-
-def test_bedrock_model_import_step_properties_typed():
-    step = BedrockModelImportStep(
-        name="I",
-        arguments={
-            "ImportedModelName": "n",
-            "JobName": "j",
-            "RoleArn": "r",
-            "ModelDataSource": {},
-        },
-    )
-    assert step.properties.ImportedModelArn.expr == {"Get": "Steps.I.ImportedModelArn"}
-
-
-def test_bedrock_provisioned_model_throughput_step_properties_typed():
-    step = BedrockProvisionedModelThroughputStep(
-        name="P",
-        arguments={"ProvisionedModelName": "p", "ModelId": "m", "ModelUnits": 1},
-    )
-    assert step.properties.ProvisionedModelArn.expr == {"Get": "Steps.P.ProvisionedModelArn"}
-
-
 # ---------- LineageStep ----------
 
 
@@ -315,13 +207,6 @@ def test_step_type_enum_values():
     assert StepTypeEnum.ENDPOINT_CONFIG.value == "EndpointConfig"
     assert StepTypeEnum.ENDPOINT.value == "Endpoint"
     assert StepTypeEnum.INFERENCE_COMPONENT.value == "InferenceComponent"
-    assert StepTypeEnum.BEDROCK_CUSTOM_MODEL.value == "BedrockCustomModel"
-    assert StepTypeEnum.BEDROCK_CUSTOM_MODEL_DEPLOYMENT.value == "BedrockCustomModelDeployment"
-    assert StepTypeEnum.BEDROCK_MODEL_IMPORT.value == "BedrockModelImport"
-    assert (
-        StepTypeEnum.BEDROCK_PROVISIONED_MODEL_THROUGHPUT.value
-        == "BedrockProvisionedModelThroughput"
-    )
     assert StepTypeEnum.LINEAGE.value == "Lineage"
 
 
@@ -379,36 +264,11 @@ def test_unknown_argument_key_rejected():
         )
 
 
-def test_bedrock_steps_validate_pascal_case_keys():
-    """Valid PascalCase keys (converted from Bedrock's camelCase API
-    members) are accepted; unknown keys are rejected."""
-    step = BedrockCustomModelStep(
-        name="CM",
-        arguments={
-            "ModelName": {"Get": "Parameters.ModelName"},
-            "RoleArn": "arn:aws:iam:...",
-            "ModelSourceConfig": {},
-        },
-    )
-    assert "ModelName" in step.arguments
-    with pytest.raises(ValueError, match="Bogus"):
-        BedrockCustomModelStep(
-            name="CM",
-            arguments={"ModelName": {"Get": "Parameters.ModelName"}, "Bogus": 1},
-        )
-    with pytest.raises(ValueError, match="Bogus"):
-        BedrockProvisionedModelThroughputStep(
-            name="PT",
-            arguments={"ProvisionedModelName": "pm", "Bogus": 1},
-        )
-
-
 def test_empty_arguments_rejected():
     for cls, valid_key in (
         (EndpointConfigStep, "EndpointConfigName"),
         (EndpointStep, "EndpointName"),
         (InferenceComponentStep, "InferenceComponentName"),
-        (BedrockModelImportStep, "JobName"),
     ):
         with pytest.raises(ValueError):
             cls(name="x", arguments={})
