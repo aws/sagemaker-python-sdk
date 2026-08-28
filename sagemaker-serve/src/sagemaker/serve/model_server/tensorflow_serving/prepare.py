@@ -61,3 +61,5 @@ def prepare_for_tf_serving(
     hash_value = compute_hash(buffer=buffer)
     with open(str(code_dir.joinpath("metadata.json")), "wb") as metadata:
         metadata.write(_MetaData(hash_value).to_json())
+
+    return hash_value

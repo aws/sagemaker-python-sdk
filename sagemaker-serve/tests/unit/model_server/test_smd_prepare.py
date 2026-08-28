@@ -44,6 +44,7 @@ class TestSmdPrepare(unittest.TestCase):
             )
 
         mock_inference_spec.prepare.assert_called_once_with(str(model_path))
+        self.assertEqual(secret_key, "test-hash")
 
     @patch("os.rename")
     @patch("sagemaker.serve.model_server.smd.prepare.compute_hash")
@@ -76,6 +77,7 @@ class TestSmdPrepare(unittest.TestCase):
 
         # Verify custom_execution_inference.py was copied and renamed
         mock_rename.assert_called_once()
+        self.assertEqual(secret_key, "test-hash")
 
     @patch("sagemaker.serve.model_server.smd.prepare.compute_hash")
     @patch("sagemaker.serve.model_server.smd.prepare.capture_dependencies")
@@ -114,6 +116,31 @@ class TestSmdPrepare(unittest.TestCase):
         with self.assertRaises(Exception) as context:
             prepare_for_smd(model_path=str(file_path), shared_libs=[], dependencies={})
         self.assertIn("not a valid directory", str(context.exception))
+
+    @patch("sagemaker.serve.model_server.smd.prepare.capture_dependencies")
+    @patch("shutil.copy2")
+    def test_prepare_for_smd_returns_hash_value(self, mock_copy, mock_capture):
+        """Test prepare_for_smd returns a valid SHA-256 hash string."""
+        from sagemaker.serve.model_server.smd.prepare import prepare_for_smd
+
+        model_path = Path(self.temp_dir) / "model"
+        code_dir = model_path / "code"
+        code_dir.mkdir(parents=True)
+
+        # Create a real serve.pkl file
+        serve_pkl = code_dir / "serve.pkl"
+        serve_pkl.write_bytes(b"test pickle data")
+
+        result = prepare_for_smd(
+            model_path=str(model_path), shared_libs=[], dependencies={}
+        )
+
+        # Verify the return value is a valid 64-character hex string (SHA-256)
+        self.assertIsNotNone(result)
+        self.assertIsInstance(result, str)
+        self.assertEqual(len(result), 64)
+        # Verify it's a valid hex string
+        int(result, 16)
 
 
 if __name__ == "__main__":
