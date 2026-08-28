@@ -407,6 +407,101 @@ class TestResolveAndValidateRole:
             result = _get_boto_session(None)
         assert result is mock_session_cls.return_value.boto_session
 
+    def test_conditional_scp_unverifiable_denial_warns_and_proceeds(self, caplog):
+        """Regression test for #6019: condition-based SCPs causing AllowedByOrganizations=False."""
+        mock_session, mock_iam, _ = _make_session(
+            "arn:aws:sts::123456789012:assumed-role/NotebookRole/sess"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {
+                "Arn": "arn:aws:iam::123456789012:role/NotebookRole",
+                "AssumeRolePolicyDocument": _trusted_doc(),
+            }
+        }
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {
+                "EvaluationResults": [
+                    {
+                        "EvalActionName": "cloudwatch:PutMetricData",
+                        "EvalDecision": "implicitDeny",
+                        "OrganizationsDecisionDetail": {"AllowedByOrganizations": False},
+                    }
+                ]
+            }
+        ]
+        mock_iam.get_paginator.return_value = paginator
+
+        with caplog.at_level(
+            logging.WARNING, logger="sagemaker.core.helper.iam_role_resolver"
+        ):
+            result = resolve_and_validate_role(
+                provided_role=None,
+                role_type="training",
+                sagemaker_session=mock_session,
+            )
+
+        assert result == "arn:aws:iam::123456789012:role/NotebookRole"
+        assert any(
+            r.levelno == logging.WARNING and "Could not verify permissions" in r.getMessage()
+            for r in caplog.records
+        )
+
+    def test_validate_role_false_skips_validation(self):
+        """Setting validate_role=False skips permission and trust checks."""
+        mock_session, mock_iam, _ = _make_session(
+            "arn:aws:sts::123456789012:assumed-role/NotebookRole/sess"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {
+                "Arn": "arn:aws:iam::123456789012:role/NotebookRole",
+                "AssumeRolePolicyDocument": _trusted_doc(),
+            }
+        }
+        result = resolve_and_validate_role(
+            provided_role=None,
+            role_type="training",
+            sagemaker_session=mock_session,
+            validate_role=False,
+        )
+        assert result == "arn:aws:iam::123456789012:role/NotebookRole"
+        mock_iam.get_paginator.assert_not_called()
+
+    def test_sagemaker_validate_role_env_var_skips_validation(self, monkeypatch):
+        """Setting SAGEMAKER_VALIDATE_ROLE=false in environment skips checks."""
+        monkeypatch.setenv("SAGEMAKER_VALIDATE_ROLE", "false")
+        mock_session, mock_iam, _ = _make_session(
+            "arn:aws:sts::123456789012:assumed-role/NotebookRole/sess"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {
+                "Arn": "arn:aws:iam::123456789012:role/NotebookRole",
+                "AssumeRolePolicyDocument": _trusted_doc(),
+            }
+        }
+        result = resolve_and_validate_role(
+            provided_role=None,
+            role_type="training",
+            sagemaker_session=mock_session,
+        )
+        assert result == "arn:aws:iam::123456789012:role/NotebookRole"
+        mock_iam.get_paginator.assert_not_called()
+
+    def test_iam_role_resolver_class_resolve_and_validate_role_method(self):
+        """IamRoleResolver instance exposes resolve_and_validate_role with role_arn alias."""
+        from sagemaker.core.helper.iam_role_resolver import IamRoleResolver
+
+        mock_session, mock_iam, _ = _make_session(
+            "arn:aws:sts::123456789012:assumed-role/Other/sess"
+        )
+        arn = "arn:aws:iam::123456789012:role/ClassRole"
+        mock_iam.get_role.return_value = {"Role": {"AssumeRolePolicyDocument": _trusted_doc()}}
+        mock_iam.get_paginator.return_value = _paginator_allowing(["s3:GetObject"])
+
+        resolver = IamRoleResolver(sagemaker_session=mock_session)
+        result = resolver.resolve_and_validate_role(role_arn=arn, role_type="training")
+        assert result == arn
+
 
 class TestResolverDoesNotExposeWriteApi:
     """The resolver module must not re-introduce auto-creation."""
@@ -897,20 +992,22 @@ class TestSimulateDeniedActions:
         mock_iam = self._paginated_iam(
             [("s3:GetObject", "allowed"), ("s3:PutObject", "allowed")]
         )
-        denied = _simulate_denied_actions(
+        denied, unverifiable = _simulate_denied_actions(
             mock_iam, "arn:aws:iam::123456789012:role/R", ["s3:GetObject", "s3:PutObject"]
         )
         assert denied == []
+        assert unverifiable == []
 
     def test_returns_denied_subset(self):
         mock_iam = self._paginated_iam(
             [("s3:GetObject", "allowed"), ("eks:DescribeCluster", "implicitDeny")]
         )
-        denied = _simulate_denied_actions(
+        denied, unverifiable = _simulate_denied_actions(
             mock_iam, "arn:aws:iam::123456789012:role/R",
             ["s3:GetObject", "eks:DescribeCluster"],
         )
         assert denied == ["eks:DescribeCluster"]
+        assert unverifiable == []
 
     def test_aggregates_across_pages(self):
         mock_iam = MagicMock()
@@ -920,8 +1017,42 @@ class TestSimulateDeniedActions:
             {"EvaluationResults": [{"EvalActionName": "b", "EvalDecision": "implicitDeny"}]},
         ]
         mock_iam.get_paginator.return_value = paginator
-        denied = _simulate_denied_actions(mock_iam, "arn:aws:iam::1:role/R", ["a", "b"])
+        denied, unverifiable = _simulate_denied_actions(mock_iam, "arn:aws:iam::1:role/R", ["a", "b"])
         assert denied == ["b"]
+        assert unverifiable == []
+
+    def test_partitions_unverifiable_denials(self):
+        """Implicit denies due to conditional SCPs or permissions boundaries are unverifiable."""
+        mock_iam = MagicMock()
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {
+                "EvaluationResults": [
+                    {
+                        "EvalActionName": "s3:GetObject",
+                        "EvalDecision": "implicitDeny",
+                        "OrganizationsDecisionDetail": {"AllowedByOrganizations": False},
+                    },
+                    {
+                        "EvalActionName": "s3:PutObject",
+                        "EvalDecision": "implicitDeny",
+                        "PermissionsBoundaryDecisionDetail": {"AllowedByPermissionsBoundary": "false"},
+                    },
+                    {
+                        "EvalActionName": "cloudwatch:PutMetricData",
+                        "EvalDecision": "explicitDeny",
+                        "OrganizationsDecisionDetail": {"AllowedByOrganizations": False},
+                    },
+                ]
+            }
+        ]
+        mock_iam.get_paginator.return_value = paginator
+        denied, unverifiable = _simulate_denied_actions(
+            mock_iam, "arn:aws:iam::1:role/R", ["s3:GetObject", "s3:PutObject", "cloudwatch:PutMetricData"]
+        )
+        # explicitDeny is always definitively denied, even if AllowedByOrganizations=False
+        assert denied == ["cloudwatch:PutMetricData"]
+        assert unverifiable == ["s3:GetObject", "s3:PutObject"]
 
 
 class TestVerifyHyperPodConnectPermissions:
@@ -989,6 +1120,33 @@ class TestVerifyHyperPodConnectPermissions:
         )
         mock_iam.get_paginator.return_value = paginator
         assert verify_hyperpod_connect_permissions(sagemaker_session=session) is None
+
+    def test_unverifiable_connect_permissions_returns_none(self, caplog):
+        session, mock_iam, _ = _make_session(
+            "arn:aws:sts::123456789012:assumed-role/CallerRole/session"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": "arn:aws:iam::123456789012:role/CallerRole"}
+        }
+        paginator = MagicMock()
+        paginator.paginate.return_value = [
+            {
+                "EvaluationResults": [
+                    {
+                        "EvalActionName": "sagemaker:DescribeCluster",
+                        "EvalDecision": "implicitDeny",
+                        "OrganizationsDecisionDetail": {"AllowedByOrganizations": False},
+                    }
+                ]
+            }
+        ]
+        mock_iam.get_paginator.return_value = paginator
+
+        with caplog.at_level(logging.INFO, logger="sagemaker.core.helper.iam_role_resolver"):
+            result = verify_hyperpod_connect_permissions(sagemaker_session=session)
+
+        assert result is None
+        assert any("Cannot definitively verify HyperPod connect permissions" in r.getMessage() for r in caplog.records)
 
 
 class TestRoleTrustsService:
