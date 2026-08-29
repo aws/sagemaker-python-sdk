@@ -1880,3 +1880,57 @@ def extract_image_from_hyperpod_template(template_content: str) -> Optional[str]
         if image_match:
             return image_match.group(1).strip()
     return None
+
+
+def list_hyperparameters(
+    model: str,
+    technique: Union[str, CustomizationTechnique] = "SFT",
+    training_type: Union[str, TrainingType] = "LORA",
+    hub_name: Optional[str] = None,
+    sagemaker_session: Optional[Session] = None,
+) -> FineTuningOptions:
+    """List available hyperparameters for a model and fine-tuning technique.
+
+    Returns a FineTuningOptions object containing all tunable parameters with
+    their defaults, types, and valid ranges, without requiring a fully
+    constructed trainer.
+
+    Args:
+        model: SageMakerHub model name (e.g. "huggingface-llm-qwen2-5-7b-instruct").
+        technique: Customization technique. One of "SFT", "DPO", "RLVR",
+            "RLAIF", "CPT", or a CustomizationTechnique enum value.
+        training_type: Training type. One of "LORA", "FULL", or a
+            TrainingType enum value.
+        hub_name: Hub to query. Defaults to "SageMakerPublicHub".
+        sagemaker_session: Optional SageMaker session. If not provided,
+            a default session is created.
+
+    Returns:
+        FineTuningOptions: Object with .get_info() for display and attribute
+        access for programmatic use.
+
+    Example:
+        >>> from sagemaker.train import list_hyperparameters
+        >>> hp = list_hyperparameters("huggingface-llm-qwen2-5-7b-instruct", "SFT", "LORA")
+        >>> hp.get_info()  # Display all parameters with defaults and ranges
+        >>> hp.get_info("learning_rate")  # Display info for a single parameter
+    """
+    technique_val = (
+        technique.value if isinstance(technique, CustomizationTechnique) else technique
+    )
+    training_type_val = (
+        training_type if isinstance(training_type, str) else training_type.value
+    )
+
+    session = sagemaker_session or TrainDefaults.get_sagemaker_session(
+        sagemaker_session=None
+    )
+
+    options, _, _ = _get_fine_tuning_options_and_model_arn(
+        model_name=model,
+        customization_technique=technique_val,
+        training_type=TrainingType(training_type_val),
+        sagemaker_session=session,
+        hub_name=hub_name,
+    )
+    return options
