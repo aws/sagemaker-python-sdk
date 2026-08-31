@@ -435,6 +435,7 @@ def test_debug_hook_disabled_with_checkpointing(
             distribution={"smdistributed": {"dataparallel": {"enabled": True}}},
             checkpoint_local_path="/opt/ml/checkpoints",
             checkpoint_s3_uri=os.path.join(s3_output_path, "checkpoints"),
+            debugger_hook_config=True,
         )
         pt._prepare_for_training()
         # Debug Hook should be disabled
@@ -455,6 +456,7 @@ def test_debug_hook_disabled_with_checkpointing(
             distribution={"smdistributed": {"modelparallel": {"enabled": True}}},
             checkpoint_local_path="/opt/ml/checkpoints",
             checkpoint_s3_uri=os.path.join(s3_output_path, "checkpoints"),
+            debugger_hook_config=True,
         )
         tf._prepare_for_training()
         # Debug Hook should be disabled
@@ -472,6 +474,7 @@ def test_debug_hook_disabled_with_checkpointing(
             instance_type="ml.p3.16xlarge",
             sagemaker_session=sagemaker_session,
             # Training using SMDataParallel Distributed Training Framework
+            debugger_hook_config=True,
         )
         xg._prepare_for_training()
         # Debug Hook should be enabled

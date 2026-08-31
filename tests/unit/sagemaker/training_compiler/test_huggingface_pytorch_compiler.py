@@ -150,13 +150,8 @@ def _create_train_job(
         "environment": None,
         "retry_strategy": None,
         "experiment_config": EXPERIMENT_CONFIG,
-        "debugger_hook_config": {
-            "CollectionConfigurations": [],
-            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
-        },
         "profiler_config": {
-            "DisableProfiler": False,
-            "S3OutputPath": "s3://{}/".format(BUCKET_NAME),
+            "DisableProfiler": True,
         },
     }
 

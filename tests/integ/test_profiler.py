@@ -74,6 +74,8 @@ def test_mxnet_with_default_profiler_config_and_profiler_rule(
             instance_count=1,
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
+            # Profiling is opt-in, so request it explicitly.
+            profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
         )
 
         train_input = mx.sagemaker_session.upload_data(
@@ -422,6 +424,9 @@ def test_mxnet_profiling_with_disable_debugger_hook(
             instance_type=cpu_instance_type,
             sagemaker_session=sagemaker_session,
             debugger_hook_config=False,
+            # Profiling is opt-in, so request it explicitly. The point of this test is that
+            # disabling the debugger hook must not disable profiling.
+            profiler_config=ProfilerConfig(system_monitor_interval_millis=500),
         )
 
         train_input = mx.sagemaker_session.upload_data(
