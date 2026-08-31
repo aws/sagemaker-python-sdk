@@ -351,6 +351,73 @@ class TestResolveAndValidateRole:
         assert "No IAM role could be resolved" in str(exc.value)
         mock_iam.create_role.assert_not_called()
 
+    def test_config_default_role_used_when_caller_is_iam_user(self):
+        """An IAM user with a configured default training role uses it, not failing."""
+        role_arn = "arn:aws:iam::123456789012:role/ConfiguredRole"
+        mock_session, mock_iam, _ = _make_session(
+            "arn:aws:iam::123456789012:user/dev-user"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": role_arn, "AssumeRolePolicyDocument": _trusted_doc()}
+        }
+        mock_iam.get_paginator.return_value = _paginator_allowing(["s3:GetObject"])
+
+        with patch(
+            "sagemaker.core.common_utils.resolve_value_from_config",
+            return_value=role_arn,
+        ) as mock_cfg:
+            result = resolve_and_validate_role(
+                provided_role=None,
+                role_type="training",
+                sagemaker_session=mock_session,
+            )
+
+        assert result == role_arn
+        mock_cfg.assert_called_once()
+        # The config default is used instead of caller-identity inference.
+        mock_iam.create_role.assert_not_called()
+
+    def test_config_default_role_takes_precedence_over_caller_role(self):
+        """A configured default role wins over the caller's own backing role."""
+        config_role = "arn:aws:iam::123456789012:role/ConfiguredRole"
+        mock_session, mock_iam, _ = _make_session(
+            "arn:aws:sts::123456789012:assumed-role/CallerRole/sess"
+        )
+        mock_iam.get_role.return_value = {
+            "Role": {"Arn": config_role, "AssumeRolePolicyDocument": _trusted_doc()}
+        }
+        mock_iam.get_paginator.return_value = _paginator_allowing(["s3:GetObject"])
+
+        with patch(
+            "sagemaker.core.common_utils.resolve_value_from_config",
+            return_value=config_role,
+        ):
+            result = resolve_and_validate_role(
+                provided_role=None,
+                role_type="training",
+                sagemaker_session=mock_session,
+            )
+
+        assert result == config_role
+
+    def test_iam_user_without_config_default_still_raises(self):
+        """No configured default + IAM-user caller still raises (behavior preserved)."""
+        mock_session, mock_iam, _ = _make_session(
+            "arn:aws:iam::123456789012:user/dev-user"
+        )
+        with patch(
+            "sagemaker.core.common_utils.resolve_value_from_config",
+            return_value=None,
+        ):
+            with pytest.raises(RoleValidationError) as exc:
+                resolve_and_validate_role(
+                    provided_role=None,
+                    role_type="training",
+                    sagemaker_session=mock_session,
+                )
+        assert "No IAM role could be resolved" in str(exc.value)
+        mock_iam.create_role.assert_not_called()
+
     def test_invalid_role_type_raises(self):
         """Invalid role_type raises ValueError."""
         with pytest.raises(ValueError, match="Invalid role_type"):
