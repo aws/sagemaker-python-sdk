@@ -33,7 +33,9 @@ def snake_to_upper_camel(snake_case_string: str) -> str:
 
 
 def walk_and_apply_json(
-    json_obj: Dict[Any, Any], apply, stop_keys: Optional[List[str]] = ["metrics"]
+    json_obj: Dict[Any, Any],
+    apply,
+    stop_keys: Optional[List[str]] = ["metrics", "environment_variables"],
 ) -> Dict[Any, Any]:
     """Recursively walks a json object and applies a given function to the keys.
 
