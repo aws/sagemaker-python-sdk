@@ -31,6 +31,8 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_mlflow_config,
     _validate_eula_for_gated_model,
     _validate_model_region_availability,
+    _validate_model_in_hub,
+    _is_hub_content_not_found,
     _validate_s3_path_exists,
     _parse_sequence_length
 )
@@ -681,6 +683,92 @@ class TestFinetuneUtils:
         """Test open weights model validation fails for invalid region"""
         with pytest.raises(ValueError, match="Region 'us-west-1' does not support model customization"):
             _validate_model_region_availability("meta-textgeneration-llama-3-2-1b", "us-west-1")
+
+    def test__is_hub_content_not_found_botocore_code(self):
+        """ResourceNotFound service error code is treated as not-found."""
+        exc = Exception("boom")
+        exc.response = {"Error": {"Code": "ResourceNotFound", "Message": "nope"}}
+        assert _is_hub_content_not_found(exc) is True
+
+    def test__is_hub_content_not_found_by_message(self):
+        """A message that says the content does not exist is treated as not-found."""
+        assert _is_hub_content_not_found(Exception("Hub content does not exist")) is True
+        assert _is_hub_content_not_found(Exception("Content not found in hub")) is True
+
+    def test__is_hub_content_not_found_transient_error(self):
+        """Throttling / permission errors are NOT treated as not-found."""
+        exc = Exception("Rate exceeded")
+        exc.response = {"Error": {"Code": "ThrottlingException", "Message": "slow down"}}
+        assert _is_hub_content_not_found(exc) is False
+        assert _is_hub_content_not_found(Exception("AccessDeniedException")) is False
+
+    def test__validate_model_in_hub_no_session_skips(self):
+        """With no session there is no client to query; validation is skipped."""
+        with patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata') as mock_meta:
+            _validate_model_in_hub("meta-textgeneration-llama-3-2-1b", None)
+            mock_meta.assert_not_called()
+
+    def test__validate_model_in_hub_found_passes(self):
+        """A model that resolves in the Hub passes without error."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        with patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata') as mock_meta:
+            mock_meta.return_value = {"hub_content_document": {}}
+            _validate_model_in_hub("meta-textgeneration-llama-3-2-1b", mock_session)
+            mock_meta.assert_called_once()
+
+    def test__validate_model_in_hub_not_found_raises(self):
+        """A model missing from the Hub raises a clear ValueError."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        not_found = Exception("ResourceNotFound")
+        not_found.response = {"Error": {"Code": "ResourceNotFound", "Message": "no"}}
+        with patch(
+            'sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata',
+            side_effect=not_found,
+        ):
+            with pytest.raises(ValueError, match="is not available in SageMaker Hub"):
+                _validate_model_in_hub("bogus-model-name", mock_session)
+
+    def test__validate_model_in_hub_transient_error_does_not_block(self):
+        """Transient/permission errors are logged and do not block."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        throttle = Exception("Rate exceeded")
+        throttle.response = {"Error": {"Code": "ThrottlingException", "Message": "slow"}}
+        with patch(
+            'sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata',
+            side_effect=throttle,
+        ):
+            # Should not raise
+            _validate_model_in_hub("meta-textgeneration-llama-3-2-1b", mock_session)
+
+    def test__resolve_model_and_name_string_validates_hub(self):
+        """Raw model name with a session triggers a Hub existence check that can fail."""
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.boto_session.region_name = "us-west-2"
+        not_found = Exception("ResourceNotFound")
+        not_found.response = {"Error": {"Code": "ResourceNotFound", "Message": "no"}}
+        with patch(
+            'sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata',
+            side_effect=not_found,
+        ):
+            with pytest.raises(ValueError, match="is not available in SageMaker Hub"):
+                _resolve_model_and_name("meta-textgeneration-llama-3-2-1b", mock_session)
+
+    def test__resolve_model_and_name_string_hub_ok(self):
+        """Raw model name that exists in the Hub resolves normally."""
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.boto_session.region_name = "us-west-2"
+        with patch(
+            'sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata',
+            return_value={"hub_content_document": {}},
+        ):
+            model, name = _resolve_model_and_name("meta-textgeneration-llama-3-2-1b", mock_session)
+            assert model == "meta-textgeneration-llama-3-2-1b"
+            assert name == "meta-textgeneration-llama-3-2-1b"
 
     def test__validate_s3_path_exists_invalid_format(self):
         """Test S3 path validation fails for invalid format"""
