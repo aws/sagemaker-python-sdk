@@ -27,9 +27,23 @@ from sagemaker.core.telemetry.constants import Feature
 class AIRHub:
     """AI Registry Hub class for managing hub content operations."""
     
-    # Use production SageMaker endpoint (default)
-    _sagemaker_client = boto3.client("sagemaker")
-    _s3_client = boto3.client("s3")
+    # Lazily initialized clients to avoid requiring AWS region at import time.
+    _sagemaker_client = None
+    _s3_client = None
+
+    @classmethod
+    def _get_sagemaker_client(cls):
+        """Get or create the default SageMaker client (lazy initialization)."""
+        if cls._sagemaker_client is None:
+            cls._sagemaker_client = boto3.client("sagemaker")
+        return cls._sagemaker_client
+
+    @classmethod
+    def _get_s3_client(cls):
+        """Get or create the default S3 client (lazy initialization)."""
+        if cls._s3_client is None:
+            cls._s3_client = boto3.client("s3")
+        return cls._s3_client
 
     @classmethod
     def _generate_hub_names(cls, region: str, account_id: str) -> None:
@@ -71,7 +85,7 @@ class AIRHub:
         cls._ensure_hub_name_initialized()
         
         if client is None:
-            client = cls._sagemaker_client
+            client = cls._get_sagemaker_client()
 
         try:
             client.describe_hub(HubName=cls.hubName)
@@ -113,7 +127,7 @@ class AIRHub:
         Returns:
             Response from import_hub_content API call
         """
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
 
         cls._create_airegistry_hub_if_not_exists(client)
 
@@ -151,7 +165,7 @@ class AIRHub:
         """
         cls._ensure_hub_name_initialized()
 
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
         
         request = {
             "HubName": cls.hubName,
@@ -198,7 +212,7 @@ class AIRHub:
         """
         cls._ensure_hub_name_initialized()
 
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
         
         request = {
             "HubName": cls.hubName,
@@ -224,7 +238,7 @@ class AIRHub:
         """
         cls._ensure_hub_name_initialized()
         
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
         
         request = {
             "HubName": cls.hubName,
@@ -249,7 +263,7 @@ class AIRHub:
         """
         cls._ensure_hub_name_initialized()
         
-        client = session.sagemaker_client if session is not None else cls._sagemaker_client
+        client = session.sagemaker_client if session is not None else cls._get_sagemaker_client()
         
         request = {
             "HubName": cls.hubName,
@@ -272,7 +286,7 @@ class AIRHub:
         Returns:
             S3 URI of uploaded file
         """
-        AIRHub._s3_client.upload_file(local_file_path, bucket, prefix)
+        AIRHub._get_s3_client().upload_file(local_file_path, bucket, prefix)
         return f"s3://{bucket}/{prefix}"
 
     @staticmethod
@@ -287,4 +301,4 @@ class AIRHub:
         parsed = urlparse(s3_uri)
         bucket = parsed.netloc
         key = parsed.path.lstrip("/")
-        AIRHub._s3_client.download_file(bucket, key, local_path)
+        AIRHub._get_s3_client().download_file(bucket, key, local_path)
