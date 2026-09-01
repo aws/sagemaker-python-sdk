@@ -26,9 +26,9 @@ DEFAULT_DOMAIN = "amazonaws.com"
 # so the suite does not depend on botocore endpoint data for newer ISO partitions.
 FULL_URI_REGIONS = ["us-east-1", "us-west-2", "eu-west-1", "cn-north-1", "us-gov-west-1"]
 
-# The newest TensorFlow version per scope, with the Python version baked into its
-# tag. These are asserted as the maximum registered version so that adding a newer
-# one to tensorflow.json fails here until this test is updated deliberately.
+# The newest TensorFlow version per scope, with the Python version baked into its tag.
+# Asserted below to be the *maximum* registered version, so adding a newer one to
+# tensorflow.json fails here until this mapping is updated deliberately.
 #   tensorflow-inference:2.20.0-{cpu,gpu}-py312
 #   tensorflow-training:2.21.0-{cpu,gpu}-py312
 LATEST = {
@@ -36,9 +36,18 @@ LATEST = {
     "training": ("2.21.0", "py312"),
 }
 
+# The registry map a new version is expected to ship with. Anchoring on an earlier,
+# already-released version means a typo in a new version's account or a dropped region
+# fails here, which asserting against the new entry's own registries cannot catch.
+REGISTRY_REFERENCE_VERSION = "2.19.0"
+
 
 def _expected_repo(scope):
     return "tensorflow-inference" if scope == "inference" else "tensorflow-training"
+
+
+def _version_key(version):
+    return tuple(int(part) for part in version.split("."))
 
 
 @pytest.mark.parametrize("scope", ["inference", "training"])
@@ -48,9 +57,23 @@ def test_tensorflow_latest_version_is_registered(load_config, scope):
     version, py_version = LATEST[scope]
     versions = load_config[scope]["versions"]
     assert version in versions, f"{version} missing from tensorflow.json {scope}"
+    newest = max(versions, key=_version_key)
+    assert newest == version, (
+        f"tensorflow.json {scope} now registers {newest}, which this file does not cover. "
+        f"Update LATEST in tests/unit/image_uris/test_tensorflow.py."
+    )
     assert versions[version]["repository"] == _expected_repo(scope)
     assert versions[version]["py_versions"] == [py_version]
     assert load_config[scope]["processors"] == ["cpu", "gpu"]
+
+
+@pytest.mark.parametrize("scope", ["inference", "training"])
+@pytest.mark.parametrize("load_config", ["tensorflow.json"], indirect=True)
+def test_tensorflow_latest_version_registries_match_previous_release(load_config, scope):
+    """The newest version ships in the same regions and accounts as the previous release."""
+    version, _ = LATEST[scope]
+    versions = load_config[scope]["versions"]
+    assert versions[version]["registries"] == versions[REGISTRY_REFERENCE_VERSION]["registries"]
 
 
 @pytest.mark.parametrize("scope", ["inference", "training"])
@@ -114,3 +137,31 @@ def test_tensorflow_minor_alias_resolves_to_newest_patch(load_config, scope):
         # The alias is used verbatim as the tag prefix, matching the published
         # `<minor>-<processor>-py312` tags.
         assert uri.endswith(f"/{_expected_repo(scope)}:{alias}-{processor}-{py_version}"), uri
+
+
+@pytest.mark.parametrize("scope", ["inference", "training"])
+def test_tensorflow_latest_version_rejects_other_python_versions(scope):
+    """Only py312 is offered for the newest version, so any other py_version is an error."""
+    version, _ = LATEST[scope]
+    with pytest.raises(ValueError) as error:
+        image_uris.retrieve(
+            framework="tensorflow",
+            region="us-west-2",
+            version=version,
+            py_version="py310",
+            image_scope=scope,
+            instance_type=CPU_INSTANCE,
+        )
+    assert "Unsupported Python version: py310." in str(error.value)
+
+
+def test_tensorflow_inference_2_19_keeps_tag_without_python_version():
+    """2.19 and earlier inference images have no py suffix; adding 2.20 must not change that."""
+    uri = image_uris.retrieve(
+        framework="tensorflow",
+        region="us-west-2",
+        version="2.19.0",
+        image_scope="inference",
+        instance_type=CPU_INSTANCE,
+    )
+    assert uri.endswith("/tensorflow-inference:2.19.0-cpu"), uri
