@@ -21,9 +21,10 @@ GPU_INSTANCE = "ml.g5.2xlarge"
 CPU_INSTANCE = "ml.m5.xlarge"
 DEFAULT_DOMAIN = "amazonaws.com"
 
-# Regions whose ECR host suffix is stable across botocore versions, used for the
-# exact-URI assertions; the remaining regions are checked on account/region/repo/tag
-# so the suite does not depend on botocore endpoint data for newer ISO partitions.
+# Representative regions for the exact-URI assertions: three commercial, one China
+# (the only partition here with a non-default ECR domain) and one GovCloud. Every other
+# region is checked on account/region/repo/tag instead, which keeps the bulk of the
+# sweep independent of the host-suffix data in whichever botocore version is installed.
 FULL_URI_REGIONS = ["us-east-1", "us-west-2", "eu-west-1", "cn-north-1", "us-gov-west-1"]
 
 # The newest TensorFlow version per scope, with the Python version baked into its tag.
@@ -36,9 +37,15 @@ LATEST = {
     "training": ("2.21.0", "py312"),
 }
 
-# The registry map a new version is expected to ship with. Anchoring on an earlier,
-# already-released version means a typo in a new version's account or a dropped region
-# fails here, which asserting against the new entry's own registries cannot catch.
+# The already-released version whose registry map a new version is expected to match.
+# This is the only account assertion in this file that is not derived from the entry it
+# checks, so it catches a one-sided mistake -- a typo in the new version's account, or a
+# dropped region -- which asserting against the new entry's own registries cannot. It
+# does not catch a change applied to both versions, and it says nothing about whether
+# the images are actually published in those regions.
+#
+# Keep this pointing at an older version. Bumping it to the newly added version makes
+# every account assertion in this file tautological again, silently.
 REGISTRY_REFERENCE_VERSION = "2.19.0"
 
 
