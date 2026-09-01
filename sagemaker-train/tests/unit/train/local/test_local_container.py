@@ -129,6 +129,19 @@ class TestGetComposeCmdPrefix:
         assert result == ["docker", "compose"]
 
     @patch("sagemaker.train.local.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_with_docker_compose_v2_no_v_prefix(
+        self, mock_check_output, _basic_channel
+    ):
+        """Brew-installed Docker Compose reports the version without a 'v' prefix.
+
+        Regression test for https://github.com/aws/sagemaker-python-sdk/issues/4137.
+        """
+        container = _make_container(_basic_channel)
+        mock_check_output.return_value = "Docker Compose version 2.22.0"
+        result = container._get_compose_cmd_prefix()
+        assert result == ["docker", "compose"]
+
+    @patch("sagemaker.train.local.local_container.subprocess.check_output")
     def test_get_compose_cmd_prefix_with_docker_compose_v5(self, mock_check_output, _basic_channel):
         """Docker Compose v5 should be accepted."""
         container = _make_container(_basic_channel)

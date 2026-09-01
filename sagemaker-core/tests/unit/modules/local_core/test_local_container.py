@@ -586,6 +586,34 @@ class TestLocalContainer:
         assert result == ["docker", "compose"]
 
     @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
+    def test_get_compose_cmd_prefix_docker_compose_v2_no_v_prefix(
+        self, mock_check_output, mock_session, basic_channel
+    ):
+        """Brew-installed Docker Compose reports the version without a 'v' prefix.
+
+        Regression test for https://github.com/aws/sagemaker-python-sdk/issues/4137.
+        """
+        container = _LocalContainer(
+            training_job_name="test-job",
+            instance_type="local",
+            instance_count=1,
+            image="test-image:latest",
+            container_root="/tmp/test",
+            input_data_config=[basic_channel],
+            environment={},
+            hyper_parameters={},
+            container_entrypoint=[],
+            container_arguments=[],
+            sagemaker_session=mock_session,
+        )
+
+        mock_check_output.return_value = "Docker Compose version 2.22.0"
+
+        result = container._get_compose_cmd_prefix()
+
+        assert result == ["docker", "compose"]
+
+    @patch("sagemaker.core.modules.local_core.local_container.subprocess.check_output")
     @patch("sagemaker.core.modules.local_core.local_container.shutil.which")
     def test_get_compose_cmd_prefix_docker_compose_standalone(
         self, mock_which, mock_check_output, mock_session, basic_channel
