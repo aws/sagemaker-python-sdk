@@ -48,7 +48,16 @@
                 "us-west-2": "763104351884"
             },
             "repository": "llama-cpp",
-            "tag_prefix": "server-sagemaker-cuda-v1"
+            "processors": [
+                "cpu",
+                "gpu"
+            ],
+            "processor_in_tag": false,
+            "tag_prefix": "server-sagemaker",
+            "container_version": {
+                "cpu": "cpu-v1",
+                "gpu": "cuda-v1"
+            }
         },
         "1.0": {
             "registries": {
@@ -92,7 +101,16 @@
                 "us-west-2": "763104351884"
             },
             "repository": "llama-cpp",
-            "tag_prefix": "server-sagemaker-cuda-v1.0"
+            "processors": [
+                "cpu",
+                "gpu"
+            ],
+            "processor_in_tag": false,
+            "tag_prefix": "server-sagemaker",
+            "container_version": {
+                "cpu": "cpu-v1.0",
+                "gpu": "cuda-v1.0"
+            }
         }
     }
 }

@@ -48,7 +48,14 @@
                 "us-west-2": "763104351884"
             },
             "repository": "whisperx",
-            "tag_prefix": "3.8-cu128-amzn2023-sagemaker"
+            "processors": [
+                "gpu"
+            ],
+            "processor_in_tag": false,
+            "tag_prefix": "3.8",
+            "container_version": {
+                "gpu": "cu128-amzn2023-sagemaker"
+            }
         }
     }
 }

@@ -48,7 +48,14 @@
                 "us-west-2": "763104351884"
             },
             "repository": "vllm",
-            "tag_prefix": "omni-sagemaker-cuda-v1"
+            "processors": [
+                "gpu"
+            ],
+            "processor_in_tag": false,
+            "tag_prefix": "omni-sagemaker",
+            "container_version": {
+                "gpu": "cuda-v1"
+            }
         },
         "1.6": {
             "registries": {
@@ -92,7 +99,14 @@
                 "us-west-2": "763104351884"
             },
             "repository": "vllm",
-            "tag_prefix": "omni-sagemaker-cuda-v1.6"
+            "processors": [
+                "gpu"
+            ],
+            "processor_in_tag": false,
+            "tag_prefix": "omni-sagemaker",
+            "container_version": {
+                "gpu": "cuda-v1.6"
+            }
         }
     }
 }
