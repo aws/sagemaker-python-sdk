@@ -4289,7 +4289,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         telemetry_params=[
             ("mode", TelemetryParamType.ATTR_VALUE),
             ("_is_nova_model_for_telemetry", TelemetryParamType.ATTR_CALL),
-            ("_is_jumpstart_model_id", TelemetryParamType.ATTR_CALL),
             ("_jumpstart_model_id", TelemetryParamType.ATTR_CALL),
             ("network", TelemetryParamType.ATTR_EXISTS),
             ("source_code", TelemetryParamType.ATTR_EXISTS),
@@ -5807,7 +5806,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             ("instance_type", TelemetryParamType.ATTR_VALUE),
             ("_is_model_customization", TelemetryParamType.ATTR_CALL),
             ("_is_nova_model_for_telemetry", TelemetryParamType.ATTR_CALL),
-            ("_is_jumpstart_model_id", TelemetryParamType.ATTR_CALL),
             ("_jumpstart_model_id", TelemetryParamType.ATTR_CALL),
             ("network", TelemetryParamType.ATTR_EXISTS),
             ("compute", TelemetryParamType.ATTR_EXISTS),
