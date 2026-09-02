@@ -4,6 +4,8 @@ The model ID lets usage analytics identify the JumpStart model behind each
 ``model_builder.build`` and ``model_builder.deploy`` event.
 """
 
+from __future__ import absolute_import
+
 import unittest
 from unittest.mock import Mock, patch
 
@@ -130,6 +132,7 @@ class TestJumpStartTelemetry(unittest.TestCase):
         builder.deploy(endpoint_name="test-endpoint", wait=False)
 
         assert "&x-jumpstartModelId=" not in _telemetry_extra(mock_send_telemetry)
+
 
 if __name__ == "__main__":
     unittest.main()
