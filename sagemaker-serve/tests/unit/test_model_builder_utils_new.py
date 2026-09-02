@@ -470,11 +470,14 @@ class TestSerializationUtilities(unittest.TestCase):
         """Test fetching serializer for known framework."""
         mock_serializer = Mock()
         mock_deserializer = Mock()
-        mock_default_serializers.__getitem__.return_value = (mock_serializer, mock_deserializer)
+        mock_default_serializers.__getitem__.return_value = (
+            Mock(return_value=mock_serializer),
+            Mock(return_value=mock_deserializer),
+        )
         mock_default_serializers.__contains__.return_value = True
-        
+
         serializer, deserializer = self.utils._fetch_serializer_and_deserializer_for_framework("pytorch")
-        
+
         self.assertEqual(serializer, mock_serializer)
         self.assertEqual(deserializer, mock_deserializer)
 

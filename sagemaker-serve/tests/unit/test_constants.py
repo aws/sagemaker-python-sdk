@@ -56,24 +56,24 @@ class TestDefaultSerializersByFramework(unittest.TestCase):
     def test_all_frameworks_have_serializers(self):
         for framework in Framework:
             self.assertIn(framework, DEFAULT_SERIALIZERS_BY_FRAMEWORK)
-            serializer, deserializer = DEFAULT_SERIALIZERS_BY_FRAMEWORK[framework]
-            self.assertIsNotNone(serializer)
-            self.assertIsNotNone(deserializer)
+            serializer_cls, deserializer_cls = DEFAULT_SERIALIZERS_BY_FRAMEWORK[framework]
+            self.assertIsNotNone(serializer_cls)
+            self.assertIsNotNone(deserializer_cls)
 
     def test_pytorch_serializers(self):
-        serializer, deserializer = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
-        self.assertEqual(serializer.__class__.__name__, "TorchTensorSerializer")
-        self.assertEqual(deserializer.__class__.__name__, "JSONDeserializer")
+        serializer_cls, deserializer_cls = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.PYTORCH]
+        self.assertEqual(serializer_cls.__name__, "TorchTensorSerializer")
+        self.assertEqual(deserializer_cls.__name__, "JSONDeserializer")
 
     def test_tensorflow_serializers(self):
-        serializer, deserializer = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.TENSORFLOW]
-        self.assertEqual(serializer.__class__.__name__, "NumpySerializer")
-        self.assertEqual(deserializer.__class__.__name__, "JSONDeserializer")
+        serializer_cls, deserializer_cls = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.TENSORFLOW]
+        self.assertEqual(serializer_cls.__name__, "NumpySerializer")
+        self.assertEqual(deserializer_cls.__name__, "JSONDeserializer")
 
     def test_sklearn_serializers(self):
-        serializer, deserializer = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.SKLEARN]
-        self.assertEqual(serializer.__class__.__name__, "NumpySerializer")
-        self.assertEqual(deserializer.__class__.__name__, "NumpyDeserializer")
+        serializer_cls, deserializer_cls = DEFAULT_SERIALIZERS_BY_FRAMEWORK[Framework.SKLEARN]
+        self.assertEqual(serializer_cls.__name__, "NumpySerializer")
+        self.assertEqual(deserializer_cls.__name__, "NumpyDeserializer")
 
 
 if __name__ == "__main__":
