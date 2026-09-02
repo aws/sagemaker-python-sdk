@@ -14,6 +14,7 @@ Note: This module imports from sagemaker.core.workflow for primitives (entities,
 functions, conditions, properties) and can import from sagemaker.train and sagemaker.serve
 for orchestration purposes.
 """
+
 from __future__ import absolute_import
 
 __version__ = "0.1.0"
@@ -46,8 +47,11 @@ from sagemaker.mlops.workflow.callback_step import CallbackStep, CallbackOutput
 from sagemaker.mlops.workflow.clarify_check_step import ClarifyCheckStep
 from sagemaker.mlops.workflow.condition_step import ConditionStep
 from sagemaker.mlops.workflow.emr_step import EMRStep, EMRStepConfig
+from sagemaker.mlops.workflow.endpoint_step import EndpointConfigStep, EndpointStep
 from sagemaker.mlops.workflow.fail_step import FailStep
+from sagemaker.mlops.workflow.inference_component_step import InferenceComponentStep
 from sagemaker.mlops.workflow.lambda_step import LambdaStep, LambdaOutput
+from sagemaker.mlops.workflow.lineage_step import LineageStep
 from sagemaker.mlops.workflow.model_step import ModelStep
 from sagemaker.mlops.workflow.monitor_batch_transform_step import MonitorBatchTransformStep
 from sagemaker.mlops.workflow.notebook_job_step import NotebookJobStep
@@ -98,9 +102,13 @@ __all__ = [
     "ConditionStep",
     "EMRStep",
     "EMRStepConfig",
+    "EndpointConfigStep",
+    "EndpointStep",
     "FailStep",
+    "InferenceComponentStep",
     "LambdaStep",
     "LambdaOutput",
+    "LineageStep",
     "ModelStep",
     "MonitorBatchTransformStep",
     "NotebookJobStep",

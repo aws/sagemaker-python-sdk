@@ -1090,16 +1090,23 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if role is not None:
             config_options["ExecutionRoleArn"] = role
 
-        logger.info("Creating endpoint-config with name %s", name)
-        self.sagemaker_client.create_endpoint_config(**config_options)
+        def submit(request):
+            logger.info("Creating endpoint-config with name %s", name)
+            self.sagemaker_client.create_endpoint_config(**request)
+            return self.create_endpoint(
+                endpoint_name=name,
+                config_name=name,
+                tags=endpoint_tags,
+                wait=wait,
+                live_logging=live_logging,
+            )
 
-        return self.create_endpoint(
-            endpoint_name=name,
-            config_name=name,
-            tags=endpoint_tags,
-            wait=wait,
-            live_logging=live_logging,
+        result = self._intercept_create_request(
+            config_options, submit, self.endpoint_from_production_variants.__name__
         )
+        if self._is_pipeline_context():
+            return self.context
+        return result
 
     def create_endpoint(self, endpoint_name, config_name, tags=None, wait=True, live_logging=False):
         """Create an Amazon SageMaker ``Endpoint`` according to the configuration in the request.
@@ -1122,23 +1129,34 @@ class Session(object):  # pylint: disable=too-many-public-methods
             botocore.exceptions.ClientError: If Sagemaker throws an exception while creating
             endpoint.
         """
-        logger.info("Creating endpoint with name %s", endpoint_name)
-
         tags = format_tags(tags) or []
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT, TAGS)
         )
-        try:
-            res = self.sagemaker_client.create_endpoint(
-                EndpointName=endpoint_name, EndpointConfigName=config_name, Tags=tags
-            )
+        create_endpoint_request = {
+            "EndpointName": endpoint_name,
+            "EndpointConfigName": config_name,
+            "Tags": tags,
+        }
+
+        def submit(request):
+            logger.info("Creating endpoint with name %s", endpoint_name)
+            res = self.sagemaker_client.create_endpoint(**request)
             if res:
                 self.endpoint_arn = res["EndpointArn"]
 
             if wait:
                 self.wait_for_endpoint(endpoint_name, live_logging=live_logging)
             return endpoint_name
+
+        try:
+            result = self._intercept_create_request(
+                create_endpoint_request, submit, self.create_endpoint.__name__
+            )
+            if self._is_pipeline_context():
+                return self.context
+            return result
         except Exception as e:
             troubleshooting = (
                 "https://docs.aws.amazon.com/sagemaker/latest/dg/"
@@ -1232,12 +1250,6 @@ class Session(object):  # pylint: disable=too-many-public-methods
         Returns:
             str: Name of the Amazon SageMaker ``InferenceComponent`` if created.
         """
-        LOGGER.info(
-            "Creating inference component with name %s for endpoint %s",
-            inference_component_name,
-            endpoint_name,
-        )
-
         if runtime_config is None:
             runtime_config = {"CopyCount": 1}
 
@@ -1257,10 +1269,23 @@ class Session(object):  # pylint: disable=too-many-public-methods
         if tags and len(tags) != 0:
             request["Tags"] = tags
 
-        self.sagemaker_client.create_inference_component(**request)
-        if wait:
-            self.wait_for_inference_component(inference_component_name)
-        return inference_component_name
+        def submit(req):
+            LOGGER.info(
+                "Creating inference component with name %s for endpoint %s",
+                inference_component_name,
+                endpoint_name,
+            )
+            self.sagemaker_client.create_inference_component(**req)
+            if wait:
+                self.wait_for_inference_component(inference_component_name)
+            return inference_component_name
+
+        result = self._intercept_create_request(
+            request, submit, self.create_inference_component.__name__
+        )
+        if self._is_pipeline_context():
+            return self.context
+        return result
 
     def wait_for_inference_component(self, inference_component_name, poll=20):
         """Wait for an Amazon SageMaker ``Inference Component`` deployment to complete.
@@ -1438,6 +1463,19 @@ class Session(object):  # pylint: disable=too-many-public-methods
             func_name (str): the name of the function needed intercepting
         """
         return create(request)
+
+    def _is_pipeline_context(self) -> bool:
+        """Whether this session is a pipeline session capturing requests.
+
+        Producer methods that support composing pipeline steps use this to
+        return the captured step arguments (``self.context``) instead of the
+        result of a service call. Always ``False`` for a plain ``Session``.
+        """
+        # Lazy import to avoid a circular dependency: pipeline_context imports
+        # from this module at import time.
+        from sagemaker.core.workflow.pipeline_context import PipelineSession
+
+        return isinstance(self, PipelineSession)
 
     def _create_inference_recommendations_job_request(
         self,
