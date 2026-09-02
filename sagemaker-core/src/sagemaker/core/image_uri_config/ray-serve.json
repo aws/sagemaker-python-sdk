@@ -48,7 +48,16 @@
                 "us-west-2": "763104351884"
             },
             "repository": "ray",
-            "tag_prefix": "serve-ml-sagemaker-cuda-v1"
+            "processors": [
+                "cpu",
+                "gpu"
+            ],
+            "processor_in_tag": false,
+            "tag_prefix": "serve-ml-sagemaker",
+            "container_version": {
+                "cpu": "cpu-v1",
+                "gpu": "cuda-v1"
+            }
         },
         "1.4": {
             "registries": {
@@ -92,7 +101,16 @@
                 "us-west-2": "763104351884"
             },
             "repository": "ray",
-            "tag_prefix": "serve-ml-sagemaker-cuda-v1.4"
+            "processors": [
+                "cpu",
+                "gpu"
+            ],
+            "processor_in_tag": false,
+            "tag_prefix": "serve-ml-sagemaker",
+            "container_version": {
+                "cpu": "cpu-v1.4",
+                "gpu": "cuda-v1.4"
+            }
         }
     }
 }

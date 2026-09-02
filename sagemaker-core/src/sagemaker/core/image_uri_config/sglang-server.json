@@ -48,7 +48,14 @@
                 "us-west-2": "763104351884"
             },
             "repository": "sglang",
-            "tag_prefix": "server-sagemaker-cuda-v1"
+            "processors": [
+                "gpu"
+            ],
+            "processor_in_tag": false,
+            "tag_prefix": "server-sagemaker",
+            "container_version": {
+                "gpu": "cuda-v1"
+            }
         },
         "1.3": {
             "registries": {
@@ -92,7 +99,14 @@
                 "us-west-2": "763104351884"
             },
             "repository": "sglang",
-            "tag_prefix": "server-sagemaker-cuda-v1.3"
+            "processors": [
+                "gpu"
+            ],
+            "processor_in_tag": false,
+            "tag_prefix": "server-sagemaker",
+            "container_version": {
+                "gpu": "cuda-v1.3"
+            }
         }
     }
 }
