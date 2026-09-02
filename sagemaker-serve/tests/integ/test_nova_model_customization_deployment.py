@@ -42,7 +42,7 @@ os.environ.setdefault("AWS_DEFAULT_REGION", AWS_REGION)
 MODEL_PACKAGE_GROUP = "sdk-test-finetuned-models"
 
 NOVA_MODEL_ID = "nova-textgeneration-lite-v2"
-NOVA_INSTANCE_TYPE = "ml.g6.48xlarge"
+NOVA_INSTANCE_TYPE = "ml.p5.48xlarge"
 
 
 def _deploy_or_skip_on_capacity(model_builder, **deploy_kwargs):

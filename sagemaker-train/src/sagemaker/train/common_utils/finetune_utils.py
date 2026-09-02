@@ -132,6 +132,89 @@ Please choose one of the supported regions or check our documentation for update
             """
             )
 
+
+def _is_hub_content_not_found(exc: Exception) -> bool:
+    """Return True if an exception from a Hub describe call means the content does not exist.
+
+    Distinguishes a definitive "not found" (bad model name) from transient or
+    permission errors, so only a genuine missing-model case blocks the caller.
+
+    Args:
+        exc: Exception raised by a Hub describe/get call.
+
+    Returns:
+        True if the exception indicates the hub content was not found.
+    """
+    # botocore ClientError exposes the service error code under response["Error"]["Code"].
+    response = getattr(exc, "response", None)
+    if isinstance(response, dict):
+        error_code = response.get("Error", {}).get("Code", "")
+        if error_code in ("ResourceNotFound", "ResourceNotFoundException"):
+            return True
+    # sagemaker_core raises a ResourceNotFound exception type; match by class name
+    # to avoid importing it here. Fall back to message text for other wrappers.
+    if type(exc).__name__ in ("ResourceNotFound", "ResourceNotFoundException"):
+        return True
+    message = str(exc).lower()
+    return any(
+        phrase in message
+        for phrase in ("not found", "does not exist", "could not be found", "no hub content")
+    )
+
+
+def _validate_model_in_hub(model_name: str, sagemaker_session=None):
+    """Validate that a raw base model name exists as content in the SageMaker Hub.
+
+    Issues a single DescribeHubContent call for the normalized model name against
+    the active hub (``get_sagemaker_hub_name()``). A definitive "not found" raises
+    a ValueError with a clear message. Transient or permission errors (Hub outage,
+    missing DescribeHubContent permission, throttling) are logged and skipped so a
+    validation lookup never blocks an otherwise-valid training job.
+
+    Only meaningful when a session is available; callers pass the trainer's session.
+
+    Args:
+        model_name: Normalized Hub content name to check.
+        sagemaker_session: SageMaker session used to reach the Hub.
+
+    Raises:
+        ValueError: If the model is definitively not present in the Hub.
+    """
+    if sagemaker_session is None:
+        # No configured session to query the Hub with; skip (region check still applies).
+        return
+
+    hub_name = get_sagemaker_hub_name()
+    boto_session = getattr(sagemaker_session, "boto_session", None)
+    region = getattr(boto_session, "region_name", None) if boto_session else None
+    try:
+        _get_hub_content_metadata(
+            hub_name=hub_name,
+            hub_content_type="Model",
+            hub_content_name=model_name,
+            session=boto_session,
+            region=region,
+        )
+    except Exception as exc:  # classify below; re-raise only for a definitive not-found
+        if _is_hub_content_not_found(exc):
+            raise ValueError(
+                f"Model '{model_name}' is not available in SageMaker Hub '{hub_name}'"
+                + (f" (region '{region}')" if region else "")
+                + ". Verify the base model name is correct. Use "
+                "<Trainer>.list_supported_models() to see the models available for this "
+                "trainer, or pass a model package ARN or S3 checkpoint URI instead."
+            ) from exc
+        # Transient/permission error: do not block; recipe resolution will surface
+        # any real problem later with full context.
+        logger.warning(
+            "Could not verify model '%s' against SageMaker Hub '%s': %s. "
+            "Skipping Hub availability check.",
+            model_name,
+            hub_name,
+            exc,
+        )
+
+
 def _get_beta_session():
     """Create a SageMaker session with beta endpoint for demo purposes."""
     sm_client = boto3.client('sagemaker', region_name=DEFAULT_REGION)
@@ -954,6 +1037,8 @@ def _resolve_model_and_name(model, sagemaker_session=None):
             # Validate region availability
             if region_name:
                 _validate_model_region_availability(model_name, region_name)
+            # Validate the raw base model name actually exists in the Hub.
+            _validate_model_in_hub(model_name, sagemaker_session)
             return model_name, model_name
     else:
         # It's a ModelPackage object
