@@ -71,7 +71,7 @@ class InvokeEndpointAsyncOutput(Base):
 
     Attributes
     ----------------------
-    inference_id: Identifier for an inference request. This will be the same as the InferenceId specified in the input. Amazon SageMaker will generate an identifier for you if you do not specify one.
+    inference_id: Identifier for an inference request. This will be the same as the InferenceId specified in the input. Amazon SageMaker AI will generate an identifier for you if you do not specify one.
     output_location: The Amazon S3 URI where the inference response payload is stored.
     failure_location: The Amazon S3 URI where the inference failure response payload is stored.
     """
@@ -90,7 +90,7 @@ class InvokeEndpointOutput(Base):
     body: Includes the inference provided by the model.  For information about the format of the response body, see Common Data Formats-Inference. If the explainer is activated, the body includes the explanations provided by the model. For more information, see the Response section under Invoke the Endpoint in the Developer Guide.
     content_type: The MIME type of the inference returned from the model container.
     invoked_production_variant: Identifies the production variant that was invoked.
-    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker Python SDK.
+    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker AI endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker AI Python SDK.
     new_session_id: If you created a stateful session with your request, the ID and expiration time that the model assigns to that session.
     closed_session_id: If you closed a stateful session with your request, the ID of that session.
     """
@@ -119,12 +119,12 @@ class PayloadPart(Base):
 class ModelStreamError(Base):
     """
     ModelStreamError
-       An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+       An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
 
     Attributes
     ----------------------
     message
-    error_code: This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+    error_code: This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
     """
 
     message: Optional[StrPipeVar] = Unassigned()
@@ -139,7 +139,7 @@ class ResponseStream(Base):
     Attributes
     ----------------------
     payload_part: A wrapper for pieces of the payload that's returned in response to a streaming inference request. A streaming inference response consists of one or more payload parts.
-    model_stream_error:  An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
+    model_stream_error:  An error occurred while streaming the response body. This error can have the following error codes:  ModelInvocationTimeExceeded  The model failed to finish sending the response within the timeout period allowed by Amazon SageMaker AI.  StreamBroken  The Transmission Control Protocol (TCP) connection between the client and the model was reset or closed.
     internal_stream_failure: The stream processing failed because of an unknown error, exception or failure. Try your request again.
     """
 
@@ -157,7 +157,7 @@ class InvokeEndpointWithResponseStreamOutput(Base):
     body
     content_type: The MIME type of the inference returned from the model container.
     invoked_production_variant: Identifies the production variant that was invoked.
-    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker Python SDK.
+    custom_attributes: Provides additional information in the response about the inference returned by a model hosted at an Amazon SageMaker AI endpoint. The information is an opaque value that is forwarded verbatim. You could use this value, for example, to return an ID received in the CustomAttributes header of a request or other metadata that a service endpoint was programmed to produce. The value must consist of no more than 1024 visible US-ASCII characters as specified in Section 3.3.6. Field Value Components of the Hypertext Transfer Protocol (HTTP/1.1). If the customer wants the custom attribute returned, the model must set the custom attribute to be included on the way back.  The code in your model is responsible for setting or updating any custom attributes in the response. If your code does not set this value in the response, an empty value is returned. For example, if a custom attribute represents the trace ID, your model can prepend the custom attribute with Trace ID: in your post-processing function. This feature is currently supported in the Amazon Web Services SDKs but not in the Amazon SageMaker AI Python SDK.
     """
 
     body: ResponseStream
@@ -390,6 +390,19 @@ class BatchWriteRecordResponse(Base):
     unprocessed_entries: List[BatchWriteRecordEntry]
 
 
+class ConflictException(Base):
+    """
+    ConflictException
+      There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
+
+    Attributes
+    ----------------------
+    message
+    """
+
+    message: Optional[StrPipeVar] = Unassigned()
+
+
 class GetRecordResponse(Base):
     """
     GetRecordResponse
@@ -521,6 +534,51 @@ class RawMetricData(Base):
     step: Optional[int] = Unassigned()
 
 
+class AIAdapterModelPackageEntry(Base):
+    """
+    AIAdapterModelPackageEntry
+      A LoRA adapter entry identified by a model package ARN.
+
+    Attributes
+    ----------------------
+    adapter_id: A unique identifier for the adapter. This ID is used as the inference component name when the adapter is deployed. The ID must start and end with an alphanumeric character, can contain hyphens between alphanumeric characters, and can be up to 63 characters long.
+    model_package_arn: The Amazon Resource Name (ARN) of the model package that contains the LoRA adapter artifacts.
+    """
+
+    adapter_id: StrPipeVar
+    model_package_arn: StrPipeVar
+
+
+class AIAdapterS3Entry(Base):
+    """
+    AIAdapterS3Entry
+      A LoRA adapter entry identified by an Amazon S3 URI.
+
+    Attributes
+    ----------------------
+    adapter_id: A unique identifier for the adapter. This ID is used as the inference component name when the adapter is deployed. The ID must start and end with an alphanumeric character, can contain hyphens between alphanumeric characters, and can be up to 63 characters long.
+    s3_uri: The Amazon S3 URI of the directory that contains the LoRA adapter artifacts in PEFT format.
+    """
+
+    adapter_id: StrPipeVar
+    s3_uri: StrPipeVar
+
+
+class AIAdapterSource(Base):
+    """
+    AIAdapterSource
+      The source of LoRA adapters for an AI recommendation job. This is a union type — specify exactly one of the members.
+
+    Attributes
+    ----------------------
+    model_package_arns: A list of LoRA adapters identified by their model package ARNs. Use this when your adapters were produced by a SageMaker AI fine-tuning workflow that registers model packages.
+    s3_uris: A list of LoRA adapters identified by their Amazon S3 URIs. Use this when your adapters are stored as raw artifacts in Amazon S3.
+    """
+
+    model_package_arns: Optional[List[AIAdapterModelPackageEntry]] = Unassigned()
+    s3_uris: Optional[List[AIAdapterS3Entry]] = Unassigned()
+
+
 class AIBenchmarkInferenceComponent(Base):
     """
     AIBenchmarkInferenceComponent
@@ -602,6 +660,23 @@ class AIBenchmarkNetworkConfig(Base):
     vpc_config: Optional[VpcConfig] = Unassigned()
 
 
+class AIMlflowConfig(Base):
+    """
+    AIMlflowConfig
+      The MLflow tracking configuration for logging metrics and parameters to a SageMaker managed MLflow tracking server.
+
+    Attributes
+    ----------------------
+    mlflow_resource_arn: The Amazon Resource Name (ARN) of the SageMaker managed MLflow resource.
+    mlflow_experiment_name: The MLflow experiment name used for tracking.
+    mlflow_run_name: The MLflow run name used for tracking.
+    """
+
+    mlflow_resource_arn: StrPipeVar
+    mlflow_experiment_name: Optional[StrPipeVar] = Unassigned()
+    mlflow_run_name: Optional[StrPipeVar] = Unassigned()
+
+
 class AIBenchmarkOutputConfig(Base):
     """
     AIBenchmarkOutputConfig
@@ -610,9 +685,11 @@ class AIBenchmarkOutputConfig(Base):
     Attributes
     ----------------------
     s3_output_location: The Amazon S3 URI where benchmark results are stored.
+    mlflow_config: The MLflow tracking configuration for the job. If you don't specify this parameter, MLflow tracking is disabled.
     """
 
     s3_output_location: StrPipeVar
+    mlflow_config: Optional[AIMlflowConfig] = Unassigned()
 
 
 class AICloudWatchLogs(Base):
@@ -639,10 +716,12 @@ class AIBenchmarkOutputResult(Base):
     ----------------------
     s3_output_location: The Amazon S3 URI where benchmark results are stored.
     cloud_watch_logs: The CloudWatch log information for the benchmark job.
+    mlflow_config: The MLflow tracking configuration for the job.
     """
 
     s3_output_location: StrPipeVar
     cloud_watch_logs: Optional[List[AICloudWatchLogs]] = Unassigned()
+    mlflow_config: Optional[AIMlflowConfig] = Unassigned()
 
 
 class AIBenchmarkTarget(Base):
@@ -830,6 +909,7 @@ class AIRecommendationDeploymentConfiguration(Base):
     instance_count: The recommended number of instances for the deployment.
     copy_count_per_instance: The number of model copies per instance.
     environment_variables: The environment variables for the deployment.
+    min_cpu_memory_required_in_mb: The minimum host (CPU) memory, in MiB, to reserve for each model copy when deploying the recommendation as an Inference Component. This value maps to the Inference Component's ComputeResourceRequirements$MinMemoryRequiredInMb field.
     """
 
     s3: Optional[List[AIRecommendationDeploymentS3Channel]] = Unassigned()
@@ -838,6 +918,7 @@ class AIRecommendationDeploymentConfiguration(Base):
     instance_count: Optional[int] = Unassigned()
     copy_count_per_instance: Optional[int] = Unassigned()
     environment_variables: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
+    min_cpu_memory_required_in_mb: Optional[int] = Unassigned()
 
 
 class AIRecommendationPerformanceMetric(Base):
@@ -859,6 +940,21 @@ class AIRecommendationPerformanceMetric(Base):
     unit: Optional[StrPipeVar] = Unassigned()
 
 
+class AIRecommendationAdapterDetails(Base):
+    """
+    AIRecommendationAdapterDetails
+      The per-recommendation LoRA adapter details. Contains both the model package ARNs and Amazon S3 URIs for each adapter, regardless of which form was originally supplied in the request. When you supply only Amazon S3 URIs, Amazon SageMaker AI creates model packages on your behalf.
+
+    Attributes
+    ----------------------
+    model_package_arns: The list of LoRA adapters with their model package ARNs.
+    s3_uris: The list of LoRA adapters with their Amazon S3 URIs.
+    """
+
+    model_package_arns: List[AIAdapterModelPackageEntry]
+    s3_uris: List[AIAdapterS3Entry]
+
+
 class AIRecommendation(Base):
     """
     AIRecommendation
@@ -872,6 +968,7 @@ class AIRecommendation(Base):
     deployment_configuration: The deployment configuration for this recommendation, including the container image, instance type, instance count, and environment variables.
     ai_benchmark_job_arn: The Amazon Resource Name (ARN) of the benchmark job associated with this recommendation.
     expected_performance: The expected performance metrics for this recommendation.
+    adapter_details: The LoRA adapter details for this recommendation. This field contains both the model package ARNs and Amazon S3 URIs for each adapter, regardless of which form was originally supplied. This field is absent when the job was created without LoRA adapters.
     """
 
     recommendation_description: Optional[StrPipeVar] = Unassigned()
@@ -880,6 +977,7 @@ class AIRecommendation(Base):
     deployment_configuration: Optional[AIRecommendationDeploymentConfiguration] = Unassigned()
     ai_benchmark_job_arn: Optional[StrPipeVar] = Unassigned()
     expected_performance: Optional[List[AIRecommendationPerformanceMetric]] = Unassigned()
+    adapter_details: Optional[AIRecommendationAdapterDetails] = Unassigned()
 
 
 class AIRecommendationComputeSpec(Base):
@@ -953,10 +1051,12 @@ class AIRecommendationOutputConfig(Base):
     ----------------------
     s3_output_location: The Amazon S3 URI where recommendation results are stored.
     model_package_group_identifier: The name or Amazon Resource Name (ARN) of the model package group where the optimized model is registered as a new model package version.
+    mlflow_config: The MLflow tracking configuration for the job. If you don't specify this parameter, MLflow tracking is disabled.
     """
 
     s3_output_location: Optional[StrPipeVar] = Unassigned()
     model_package_group_identifier: Optional[StrPipeVar] = Unassigned()
+    mlflow_config: Optional[AIMlflowConfig] = Unassigned()
 
 
 class AIRecommendationOutputResult(Base):
@@ -968,10 +1068,12 @@ class AIRecommendationOutputResult(Base):
     ----------------------
     s3_output_location: The Amazon S3 URI where the recommendation job writes its output results.
     model_package_group_identifier: The name or Amazon Resource Name (ARN) of the model package group where deployment-ready model packages are registered.
+    mlflow_config: The MLflow tracking configuration for the job.
     """
 
     s3_output_location: StrPipeVar
     model_package_group_identifier: Optional[StrPipeVar] = Unassigned()
+    mlflow_config: Optional[AIMlflowConfig] = Unassigned()
 
 
 class AIRecommendationPerformanceTarget(Base):
@@ -4190,6 +4292,100 @@ class ClarifyExplainerConfig(Base):
     inference_config: Optional[ClarifyInferenceConfig] = Unassigned()
 
 
+class ClusterPatchSchedule(Base):
+    """
+    ClusterPatchSchedule
+      The schedule configuration for automatic patching.
+
+    Attributes
+    ----------------------
+    next_patch_date: The date and time of the next scheduled automatic patch. The system sets this automatically when a patch is detected. Use this field to reschedule the patch to a different date.
+    """
+
+    next_patch_date: Optional[datetime.datetime] = Unassigned()
+
+
+class RollingDeploymentPolicy(Base):
+    """
+    RollingDeploymentPolicy
+      The configurations that SageMaker uses when updating the AMI versions.
+
+    Attributes
+    ----------------------
+    maximum_batch_size: The maximum amount of instances in the cluster that SageMaker can update at a time.
+    rollback_maximum_batch_size: The maximum amount of instances in the cluster that SageMaker can roll back at a time.
+    """
+
+    maximum_batch_size: CapacitySizeConfig
+    rollback_maximum_batch_size: Optional[CapacitySizeConfig] = Unassigned()
+
+
+class DeploymentConfiguration(Base):
+    """
+    DeploymentConfiguration
+      The configuration to use when updating the AMI versions.
+
+    Attributes
+    ----------------------
+    rolling_update_policy: The policy that SageMaker uses when updating the AMI versions of the cluster.
+    wait_interval_in_seconds: The duration in seconds that SageMaker waits before updating more instances in the cluster.
+    auto_rollback_configuration: An array that contains the alarms that SageMaker monitors to know whether to roll back the AMI update.
+    """
+
+    rolling_update_policy: Optional[RollingDeploymentPolicy] = Unassigned()
+    wait_interval_in_seconds: Optional[int] = Unassigned()
+    auto_rollback_configuration: Optional[List[AlarmDetails]] = Unassigned()
+
+
+class ClusterAutoPatchConfig(Base):
+    """
+    ClusterAutoPatchConfig
+      The configuration for automatic patching of the instance group. When configured, the system automatically applies security patch AMI updates to the instance group.
+
+    Attributes
+    ----------------------
+    patching_strategy: The strategy for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.
+    patch_schedule: The schedule for automatic patching, including the next patch date.
+    deployment_config: The deployment configuration for rolling patch updates, including rollback settings and batch sizes. Only applicable when using a rolling patching strategy.
+    """
+
+    patching_strategy: StrPipeVar
+    patch_schedule: Optional[ClusterPatchSchedule] = Unassigned()
+    deployment_config: Optional[DeploymentConfiguration] = Unassigned()
+
+
+class ClusterPatchScheduleDetails(Base):
+    """
+    ClusterPatchScheduleDetails
+      The schedule details for automatic patching, including the next scheduled patch date.
+
+    Attributes
+    ----------------------
+    next_patch_date: The date and time of the next scheduled automatic patch.
+    """
+
+    next_patch_date: Optional[datetime.datetime] = Unassigned()
+
+
+class ClusterAutoPatchConfigDetails(Base):
+    """
+    ClusterAutoPatchConfigDetails
+      The auto-patching configuration details for the instance group, including the patching strategy and schedule.
+
+    Attributes
+    ----------------------
+    patching_strategy: The strategy used for applying patches to instances in the group.    WhenIdle: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.    WhenAllIdle: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.
+    current_patch_schedule: The currently active patch schedule that the system will execute.
+    desired_patch_schedule: The requested patch schedule. Differs from CurrentPatchSchedule when a reschedule request is pending.
+    deployment_config: The deployment configuration for rolling patch updates.
+    """
+
+    patching_strategy: Optional[StrPipeVar] = Unassigned()
+    current_patch_schedule: Optional[ClusterPatchScheduleDetails] = Unassigned()
+    desired_patch_schedule: Optional[ClusterPatchScheduleDetails] = Unassigned()
+    deployment_config: Optional[DeploymentConfiguration] = Unassigned()
+
+
 class ClusterAutoScalingConfig(Base):
     """
     ClusterAutoScalingConfig
@@ -4567,38 +4763,6 @@ class ClusterInstanceStorageConfig(Base):
     fsx_open_zfs_config: Optional[ClusterFsxOpenZfsConfig] = Unassigned()
 
 
-class RollingDeploymentPolicy(Base):
-    """
-    RollingDeploymentPolicy
-      The configurations that SageMaker uses when updating the AMI versions.
-
-    Attributes
-    ----------------------
-    maximum_batch_size: The maximum amount of instances in the cluster that SageMaker can update at a time.
-    rollback_maximum_batch_size: The maximum amount of instances in the cluster that SageMaker can roll back at a time.
-    """
-
-    maximum_batch_size: CapacitySizeConfig
-    rollback_maximum_batch_size: Optional[CapacitySizeConfig] = Unassigned()
-
-
-class DeploymentConfiguration(Base):
-    """
-    DeploymentConfiguration
-      The configuration to use when updating the AMI versions.
-
-    Attributes
-    ----------------------
-    rolling_update_policy: The policy that SageMaker uses when updating the AMI versions of the cluster.
-    wait_interval_in_seconds: The duration in seconds that SageMaker waits before updating more instances in the cluster.
-    auto_rollback_configuration: An array that contains the alarms that SageMaker monitors to know whether to roll back the AMI update.
-    """
-
-    rolling_update_policy: Optional[RollingDeploymentPolicy] = Unassigned()
-    wait_interval_in_seconds: Optional[int] = Unassigned()
-    auto_rollback_configuration: Optional[List[AlarmDetails]] = Unassigned()
-
-
 class ScheduledUpdateConfig(Base):
     """
     ScheduledUpdateConfig
@@ -4702,8 +4866,11 @@ class ClusterInstanceGroupDetails(Base):
     training_plan_status: The current status of the training plan associated with this cluster instance group.
     override_vpc_config: The customized Amazon VPC configuration at the instance group level that overrides the default Amazon VPC configuration of the SageMaker HyperPod cluster.
     scheduled_update_config: The configuration object of the schedule that SageMaker follows when updating the AMI.
+    auto_patch_config: The auto-patching configuration for the instance group, including the current patching strategy and next scheduled patch date.
     current_image_id: The ID of the Amazon Machine Image (AMI) currently in use by the instance group.
     desired_image_id: The ID of the Amazon Machine Image (AMI) desired for the instance group.
+    current_image_release_version: The version of the HyperPod-managed AMI currently running on the instance group.
+    desired_image_release_version: The desired version of the HyperPod-managed AMI for the instance group. This may differ from the current version when an update is pending.
     image_version_status: The status of the image version for the instance group. Indicates whether the instance group is running the latest image version or if an update is available.
     active_operations: A map indicating active operations currently in progress for the instance group of a SageMaker HyperPod cluster. When there is a scaling operation in progress, this map contains a key Scaling with value 1.
     kubernetes_config: The Kubernetes configuration for the instance group that contains labels and taints to be applied for the nodes in this instance group.
@@ -4732,8 +4899,11 @@ class ClusterInstanceGroupDetails(Base):
     training_plan_status: Optional[StrPipeVar] = Unassigned()
     override_vpc_config: Optional[VpcConfig] = Unassigned()
     scheduled_update_config: Optional[ScheduledUpdateConfig] = Unassigned()
+    auto_patch_config: Optional[ClusterAutoPatchConfigDetails] = Unassigned()
     current_image_id: Optional[StrPipeVar] = Unassigned()
     desired_image_id: Optional[StrPipeVar] = Unassigned()
+    current_image_release_version: Optional[StrPipeVar] = Unassigned()
+    desired_image_release_version: Optional[StrPipeVar] = Unassigned()
     image_version_status: Optional[StrPipeVar] = Unassigned()
     active_operations: Optional[Dict[StrPipeVar, int]] = Unassigned()
     kubernetes_config: Optional[ClusterKubernetesConfigDetails] = Unassigned()
@@ -4821,7 +4991,9 @@ class ClusterInstanceGroupSpecification(Base):
     training_plan_arn: The Amazon Resource Name (ARN); of the training plan to use for this cluster instance group. For more information about how to reserve GPU capacity for your SageMaker HyperPod clusters using Amazon SageMaker Training Plan, see  CreateTrainingPlan .
     override_vpc_config: To configure multi-AZ deployments, customize the Amazon VPC configuration at the instance group level. You can specify different subnets and security groups across different AZs in the instance group specification to override a SageMaker HyperPod cluster's default Amazon VPC configuration. For more information about deploying a cluster in multiple AZs, see Setting up SageMaker HyperPod clusters across multiple AZs.  When your Amazon VPC and subnets support IPv6, network communications differ based on the cluster orchestration platform:   Slurm-orchestrated clusters automatically configure nodes with dual IPv6 and IPv4 addresses, allowing immediate IPv6 network communications.   In Amazon EKS-orchestrated clusters, nodes receive dual-stack addressing, but pods can only use IPv6 when the Amazon EKS cluster is explicitly IPv6-enabled. For information about deploying an IPv6 Amazon EKS cluster, see Amazon EKS IPv6 Cluster Deployment.   Additional resources for IPv6 configuration:   For information about adding IPv6 support to your VPC, see to IPv6 Support for VPC.   For information about creating a new IPv6-compatible VPC, see Amazon VPC Creation Guide.   To configure SageMaker HyperPod with a custom Amazon VPC, see Custom Amazon VPC Setup for SageMaker HyperPod.
     scheduled_update_config: The configuration object of the schedule that SageMaker uses to update the AMI.
-    image_id: When configuring your HyperPod cluster, you can specify an image ID using one of the following options:    HyperPodPublicAmiId: Use a HyperPod public AMI    CustomAmiId: Use your custom AMI    default: Use the default latest system image   If you choose to use a custom AMI (CustomAmiId), ensure it meets the following requirements:   Encryption: The custom AMI must be unencrypted.   Ownership: The custom AMI must be owned by the same Amazon Web Services account that is creating the HyperPod cluster.   Volume support: Only the primary AMI snapshot volume is supported; additional AMI volumes are not supported.   When updating the instance group's AMI through the UpdateClusterSoftware operation, if an instance group uses a custom AMI, you must provide an ImageId or use the default as input. Note that if you don't specify an instance group in your UpdateClusterSoftware request, then all of the instance groups are patched with the specified image.
+    image_id: When configuring your HyperPod cluster, you can specify an image ID using one of the following options:    HyperPodPublicAmiId: Use a HyperPod public AMI    CustomAmiId: Use your custom AMI    default: Use the default latest system image. For clusters with continuous scaling node provisioning mode, new instance groups inherit the AMI from the earliest existing instance group   If you choose to use a custom AMI (CustomAmiId), ensure it meets the following requirements:   Encryption: The custom AMI must be unencrypted.   Ownership: The custom AMI must be owned by the same Amazon Web Services account that is creating the HyperPod cluster.   Volume support: Only the primary AMI snapshot volume is supported; additional AMI volumes are not supported.   When updating the instance group's AMI through the UpdateClusterSoftware operation, if an instance group uses a custom AMI, you must provide an ImageId or use the default as input. Note that if you don't specify an instance group in your UpdateClusterSoftware request, then all of the instance groups are patched with the specified image.
+    auto_patch_config: The configuration for automatic OS security patching. If present, the system automatically applies PATCH AMI updates to this instance group.
+    image_release_version: The version of the HyperPod-managed AMI to use for the instance group. Uses semantic versioning in the format MAJOR.MINOR.PATCH (for example, 1.2.3). If omitted, the latest available version is used.
     kubernetes_config: Specifies the Kubernetes configuration for the instance group. You describe what you want the labels and taints to look like, and the cluster works to reconcile the actual state with the declared state for nodes in this instance group.
     slurm_config: Specifies the Slurm configuration for the instance group.
     capacity_requirements: Specifies the capacity requirements for the instance group.
@@ -4842,6 +5014,8 @@ class ClusterInstanceGroupSpecification(Base):
     override_vpc_config: Optional[VpcConfig] = Unassigned()
     scheduled_update_config: Optional[ScheduledUpdateConfig] = Unassigned()
     image_id: Optional[StrPipeVar] = Unassigned()
+    auto_patch_config: Optional[ClusterAutoPatchConfig] = Unassigned()
+    image_release_version: Optional[StrPipeVar] = Unassigned()
     kubernetes_config: Optional[ClusterKubernetesConfig] = Unassigned()
     slurm_config: Optional[ClusterSlurmConfig] = Unassigned()
     capacity_requirements: Optional[ClusterCapacityRequirements] = Unassigned()
@@ -4936,6 +5110,8 @@ class ClusterNodeDetails(Base):
     placement: The placement details of the SageMaker HyperPod cluster node.
     current_image_id: The ID of the Amazon Machine Image (AMI) currently in use by the node.
     desired_image_id: The ID of the Amazon Machine Image (AMI) desired for the node.
+    current_image_release_version: The version of the HyperPod-managed AMI currently running on the node.
+    desired_image_release_version: The desired version of the HyperPod-managed AMI for the node. This may differ from the current version when an update is pending.
     image_version_status: The status of the image version for the cluster node.
     ultra_server_info: Contains information about the UltraServer.
     kubernetes_config: The Kubernetes configuration applied to this node, showing both the current and desired state of labels and taints. The cluster works to reconcile the actual state with the declared state.
@@ -4960,6 +5136,8 @@ class ClusterNodeDetails(Base):
     placement: Optional[ClusterInstancePlacement] = Unassigned()
     current_image_id: Optional[StrPipeVar] = Unassigned()
     desired_image_id: Optional[StrPipeVar] = Unassigned()
+    current_image_release_version: Optional[StrPipeVar] = Unassigned()
+    desired_image_release_version: Optional[StrPipeVar] = Unassigned()
     image_version_status: Optional[StrPipeVar] = Unassigned()
     ultra_server_info: Optional[UltraServerInfo] = Unassigned()
     kubernetes_config: Optional[ClusterKubernetesConfigNodeDetails] = Unassigned()
@@ -4983,6 +5161,7 @@ class ClusterNodeSummary(Base):
     instance_status: The status of the instance.
     ultra_server_info: Contains information about the UltraServer.
     private_dns_hostname: The private DNS hostname of the SageMaker HyperPod cluster node.
+    current_image_release_version: The version of the HyperPod-managed AMI currently running on the node.
     image_version_status: The status of the image version for the cluster node.
     """
 
@@ -4995,6 +5174,7 @@ class ClusterNodeSummary(Base):
     last_software_update_time: Optional[datetime.datetime] = Unassigned()
     ultra_server_info: Optional[UltraServerInfo] = Unassigned()
     private_dns_hostname: Optional[StrPipeVar] = Unassigned()
+    current_image_release_version: Optional[StrPipeVar] = Unassigned()
     image_version_status: Optional[StrPipeVar] = Unassigned()
 
 
@@ -5253,6 +5433,7 @@ class ClusterSummary(Base):
     creation_time: The time when the SageMaker HyperPod cluster is created.
     cluster_status: The status of the SageMaker HyperPod cluster.
     training_plan_arns: A list of Amazon Resource Names (ARNs) of the training plans associated with this cluster. For more information about how to reserve GPU capacity for your SageMaker HyperPod clusters using Amazon SageMaker Training Plan, see  CreateTrainingPlan .
+    image_version_status: The aggregate status of the image version across the cluster's instance groups.
     """
 
     cluster_arn: StrPipeVar
@@ -5260,6 +5441,7 @@ class ClusterSummary(Base):
     creation_time: datetime.datetime
     cluster_status: StrPipeVar
     training_plan_arns: Optional[List[StrPipeVar]] = Unassigned()
+    image_version_status: Optional[StrPipeVar] = Unassigned()
 
 
 class ClusterTieredStorageConfig(Base):
@@ -5590,19 +5772,6 @@ class ConditionStepMetadata(Base):
     outcome: Optional[StrPipeVar] = Unassigned()
 
 
-class ConflictException(Base):
-    """
-    ConflictException
-      There was a conflict when you attempted to modify a SageMaker entity such as an Experiment or Artifact.
-
-    Attributes
-    ----------------------
-    message
-    """
-
-    message: Optional[StrPipeVar] = Unassigned()
-
-
 class RepositoryAuthConfig(Base):
     """
     RepositoryAuthConfig
@@ -5644,6 +5813,34 @@ class MultiModelConfig(Base):
     model_cache_setting: Optional[StrPipeVar] = Unassigned()
 
 
+class MetricsEndpoint(Base):
+    """
+    MetricsEndpoint
+      Specifies a metrics endpoint for a container, including the path where the container exposes Prometheus-formatted metrics and the frequency at which to publish them to Amazon CloudWatch.
+
+    Attributes
+    ----------------------
+    metrics_endpoint_path: The path to the metrics endpoint exposed by the container. For example, /metrics or /server/metrics. The path must start with / and can contain alphanumeric characters, forward slashes, underscores, hyphens, and periods. Maximum length is 256 characters. If not specified, defaults to /metrics.
+    metric_publish_frequency_in_seconds: The interval, in seconds, at which container metrics scraped from the endpoint are published to Amazon CloudWatch. Valid values: 10, 30, 60, 120, 180, 240, 300. Defaults to 60.
+    """
+
+    metrics_endpoint_path: StrPipeVar
+    metric_publish_frequency_in_seconds: Optional[int] = Unassigned()
+
+
+class ContainerMetricsConfig(Base):
+    """
+    ContainerMetricsConfig
+      The configuration for container-level metrics scraping. Use this configuration to specify a custom metrics endpoint path and publishing frequency for container metrics. When EnableDetailedObservability is set to True in MetricsConfig, metrics are scraped from the container's Prometheus endpoint. If this configuration is not provided, the default path /metrics on port 8080 is used with a default publishing frequency of 60 seconds. For first-party and Deep Learning Containers (DLC), the endpoint path is determined automatically and this configuration is optional.
+
+    Attributes
+    ----------------------
+    metrics_endpoints: A list of metrics endpoints to scrape from the container. Each endpoint specifies the path where the container exposes Prometheus-formatted metrics and the frequency at which to publish them. You can specify a maximum of 1 endpoint.
+    """
+
+    metrics_endpoints: Optional[List[MetricsEndpoint]] = Unassigned()
+
+
 class ContainerDefinition(Base):
     """
     ContainerDefinition
@@ -5662,6 +5859,7 @@ class ContainerDefinition(Base):
     model_package_name: The name or Amazon Resource Name (ARN) of the model package to use to create the model.
     inference_specification_name: The inference specification name in the model package version.
     multi_model_config: Specifies additional configuration for multi-model endpoints.
+    container_metrics_config: The configuration for container metrics scraping. Specifies the metrics endpoint path and publishing frequency. If not specified when EnableDetailedObservability is True, the default path /metrics on port 8080 is used. For first-party and Deep Learning Containers (DLC), the endpoint path is determined automatically and this configuration is optional.
     """
 
     container_hostname: Optional[StrPipeVar] = Unassigned()
@@ -5675,6 +5873,7 @@ class ContainerDefinition(Base):
     model_package_name: Optional[Union[StrPipeVar, object]] = Unassigned()
     inference_specification_name: Optional[StrPipeVar] = Unassigned()
     multi_model_config: Optional[MultiModelConfig] = Unassigned()
+    container_metrics_config: Optional[ContainerMetricsConfig] = Unassigned()
 
 
 class ContextSource(Base):
@@ -6854,6 +7053,21 @@ class ProductionVariantManagedInstanceScaling(Base):
     scale_in_policy: Optional[ProductionVariantManagedInstanceScalingScaleInPolicy] = Unassigned()
 
 
+class PrefixAwareRoutingConfig(Base):
+    """
+    PrefixAwareRoutingConfig
+      The configuration for prefix-aware routing on a SageMaker real-time inference endpoint. Specify PrefixLength and ConcurrencyThreshold to control routing behavior.
+
+    Attributes
+    ----------------------
+    prefix_length: The maximum length of the prefix used for routing decisions. Required when RoutingStrategy is PREFIX_AWARE.   For the SageMaker Runtime InvokeEndpoint and InvokeEndpointWithResponseStream APIs, this value specifies the number of bytes from the beginning of the request body.   For OpenAI-compatible API, this value specifies the number of characters from the text content of the messages array.   The endpoint routes requests that share the same prefix to the same instance. Set this value to cover shared content (such as system prompts) plus enough unique content to distribute workloads across instances.
+    concurrency_threshold: The maximum number of in-flight requests on the target instance before the endpoint routes to another instance. Required when RoutingStrategy is PREFIX_AWARE. When in-flight requests on the prefix-selected instance reach this threshold, the endpoint routes the request to an instance with more available capacity.
+    """
+
+    prefix_length: Optional[int] = Unassigned()
+    concurrency_threshold: Optional[int] = Unassigned()
+
+
 class ProductionVariantRoutingConfig(Base):
     """
     ProductionVariantRoutingConfig
@@ -6861,10 +7075,12 @@ class ProductionVariantRoutingConfig(Base):
 
     Attributes
     ----------------------
-    routing_strategy: Sets how the endpoint routes incoming traffic:    LEAST_OUTSTANDING_REQUESTS: The endpoint routes requests to the specific instances that have more capacity to process them.    RANDOM: The endpoint routes each request to a randomly chosen instance.
+    routing_strategy: Sets how the endpoint routes incoming traffic:    LEAST_OUTSTANDING_REQUESTS: The endpoint routes requests to the specific instances that have more capacity to process them.    RANDOM: The endpoint routes each request to a randomly chosen instance.    PREFIX_AWARE: The endpoint routes requests that share the same prompt prefix to the same instance. When the number of in-flight requests on the selected instance reaches the configured threshold, the endpoint routes the request to an instance with more available capacity.
+    prefix_aware_routing_config: The configuration for prefix-aware routing. Specify this parameter only when you set RoutingStrategy to PREFIX_AWARE.
     """
 
     routing_strategy: StrPipeVar
+    prefix_aware_routing_config: Optional[PrefixAwareRoutingConfig] = Unassigned()
 
 
 class ProductionVariantCapacityReservationConfig(Base):
@@ -6973,10 +7189,12 @@ class MetricsConfig(Base):
     Attributes
     ----------------------
     enable_enhanced_metrics: Specifies whether to enable enhanced metrics for the endpoint. Enhanced metrics provide utilization and invocation data at instance and container granularity. Container granularity is supported for Inference Components. The default is False.
-    metric_publish_frequency_in_seconds: The interval, in seconds, at which metrics are published to Amazon CloudWatch. Defaults to 60. Valid values: 10, 30, 60, 120, 180, 240, 300. When EnableEnhancedMetrics is set to False, this interval applies to utilization metrics only; invocation metrics continue to be published at the default 60-second interval. When EnableEnhancedMetrics is set to True, this interval applies to both utilization and invocation metrics.
+    enable_detailed_observability: Indicates whether detailed observability is enabled for the endpoint. When set to True, the following metrics are published at the configured frequency:   Container-level inference metrics scraped from the container's Prometheus endpoint (such as request latency, error counts, and throughput). Available metrics vary by framework.   Per-GPU metrics (utilization, memory, and temperature) attributed to individual inference components.   Per-instance host metrics (CPU, memory, and disk utilization).   Inference component placement metrics (copy count per Availability Zone).   For first-party and Deep Learning Containers (DLC), the Prometheus endpoint path is determined automatically. For Bring-Your-Own-Container (BYOC) cases, you can optionally set ContainerMetricsConfig to specify a custom endpoint path. If not specified, the default path /metrics on port 8080 is used. When set to False, these additional metrics are not published. Standard invocation and utilization metrics controlled by EnableEnhancedMetrics are unaffected. The default value for new endpoint configurations is True. For existing endpoint configurations created before this feature, the value is False unless explicitly set.
+    metric_publish_frequency_in_seconds: The interval, in seconds, at which metrics are published to Amazon CloudWatch. Defaults to 60. Valid values: 10, 30, 60, 120, 180, 240, 300. When EnableEnhancedMetrics is set to False, this interval applies to utilization metrics only. Invocation metrics continue to be published at the default 60-second interval. When EnableEnhancedMetrics is set to True, this interval applies to both utilization and invocation metrics. When EnableDetailedObservability is set to True, this interval applies to per-GPU metrics, per-instance host metrics, container metrics, and fleet-level inference component lifecycle and placement metrics.
     """
 
     enable_enhanced_metrics: Optional[bool] = Unassigned()
+    enable_detailed_observability: Optional[bool] = Unassigned()
     metric_publish_frequency_in_seconds: Optional[int] = Unassigned()
 
 
@@ -7058,7 +7276,7 @@ class OnlineStoreConfig(Base):
     security_config: Use to specify KMS Key ID (KMSKeyId) for at-rest encryption of your OnlineStore.
     enable_online_store: Turn OnlineStore off by specifying False for the EnableOnlineStore flag. Turn OnlineStore on by specifying True for the EnableOnlineStore flag.  The default value is False.
     ttl_duration: Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
-    storage_type: Option for different tiers of low latency storage for real-time data retrieval.    Standard: A managed low latency data store for feature groups.    InMemory: A managed data store for feature groups that supports very low latency retrieval.
+    storage_type: Option for different tiers of low latency storage for real-time data retrieval.    Standard: A managed low latency data store for feature groups.    Standard_V2: A managed low latency data store for feature groups that supports partial updates to individual features using the UpdateRecord operation. Choose this storage type at feature group creation time if your use case requires updating specific feature values without rewriting the entire record.    InMemory: A managed data store for feature groups that supports very low latency retrieval.
     """
 
     security_config: Optional[OnlineStoreSecurityConfig] = Unassigned()
@@ -7577,11 +7795,13 @@ class InferenceComponentContainerSpecification(Base):
     image: The Amazon Elastic Container Registry (Amazon ECR) path where the Docker image for the model is stored.
     artifact_url: The Amazon S3 path where the model artifacts, which result from model training, are stored. This path must point to a single gzip compressed tar archive (.tar.gz suffix).
     environment: The environment variables to set in the Docker container. Each key and value in the Environment string-to-string map can have length of up to 1024. We support up to 16 entries in the map.
+    container_metrics_config: The configuration for container metrics scraping. Specifies the metrics endpoint path and publishing frequency for the inference component's container. If not specified when EnableDetailedObservability is True, the default path /metrics on port 8080 is used. For first-party and Deep Learning Containers (DLC), the endpoint path is determined automatically and this configuration is optional.
     """
 
     image: Optional[StrPipeVar] = Unassigned()
     artifact_url: Optional[StrPipeVar] = Unassigned()
     environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
+    container_metrics_config: Optional[ContainerMetricsConfig] = Unassigned()
 
 
 class InferenceComponentStartupParameters(Base):
@@ -9133,6 +9353,19 @@ class PartnerAppConfig(Base):
     role_group_assignments: Optional[List[RoleGroupAssignment]] = Unassigned()
 
 
+class IdcConfigInput(Base):
+    """
+    IdcConfigInput
+      Specifies the Amazon Web Services IAM Identity Center configuration to use for a SageMaker Partner AI App that uses IDC authorization.
+
+    Attributes
+    ----------------------
+    instance_arn: The ARN of the Amazon Web Services IAM Identity Center instance that the SageMaker Partner AI App uses to authenticate users.
+    """
+
+    instance_arn: StrPipeVar
+
+
 class PipelineDefinitionS3Location(Base):
     """
     PipelineDefinitionS3Location
@@ -9332,9 +9565,9 @@ class ProcessingClusterConfig(Base):
     volume_kms_key_id: The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt data on the storage volume attached to the ML compute instance(s) that run the processing job.   Certain Nitro-based instances include local storage, dependent on the instance type. Local storage volumes are encrypted using a hardware module on the instance. You can't request a VolumeKmsKeyId when using an instance type with local storage. For a list of instance types that support local instance storage, see Instance Store Volumes. For more information about local instance storage encryption, see SSD Instance Store Volumes.
     """
 
-    instance_count: int
-    instance_type: StrPipeVar
     volume_size_in_gb: int
+    instance_count: Optional[int] = Unassigned()
+    instance_type: Optional[StrPipeVar] = Unassigned()
     volume_kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
@@ -9781,7 +10014,7 @@ class ServerlessJobConfig(Base):
     peft:  The parameter-efficient fine-tuning configuration.
     evaluation_type:  The evaluation job type. Required when serverless job type is Evaluation.
     evaluator_arn:  The evaluator Amazon Resource Name (ARN) used as reward function or reward prompt.
-    sequence_length:  The sequence length for the training job.
+    sequence_length:  The maximum sequence length, in tokens, that the customization job supports. SageMaker uses this value to select a training configuration for the base model that you specify. The parameter supports the following values:     1K     2K     4K     8K     16K     32K     64K     128K     If you don't specify a value, SageMaker selects a training configuration based on the other values that you specify. The selection is not restricted to a particular sequence length.
     """
 
     base_model_arn: StrPipeVar
@@ -10726,11 +10959,13 @@ class InferenceComponentContainerSpecificationSummary(Base):
     deployed_image
     artifact_url: The Amazon S3 path where the model artifacts are stored.
     environment: The environment variables to set in the Docker container.
+    container_metrics_config: The container metrics scraping configuration for this inference component, including the metrics endpoint path and publishing frequency.
     """
 
     deployed_image: Optional[DeployedImage] = Unassigned()
     artifact_url: Optional[StrPipeVar] = Unassigned()
     environment: Optional[Dict[StrPipeVar, StrPipeVar]] = Unassigned()
+    container_metrics_config: Optional[ContainerMetricsConfig] = Unassigned()
 
 
 class InferenceComponentDataCacheConfigSummary(Base):
@@ -11184,6 +11419,21 @@ class ErrorInfo(Base):
 
     code: Optional[StrPipeVar] = Unassigned()
     reason: Optional[StrPipeVar] = Unassigned()
+
+
+class IdcConfigOutput(Base):
+    """
+    IdcConfigOutput
+      Contains the Amazon Web Services IAM Identity Center configuration of a SageMaker Partner AI App that uses IDC authorization.
+
+    Attributes
+    ----------------------
+    instance_arn: The ARN of the Amazon Web Services IAM Identity Center instance that the SageMaker Partner AI App uses to authenticate users.
+    application_arn: The ARN of the Amazon Web Services IAM Identity Center application that SageMaker creates for the SageMaker Partner AI App.
+    """
+
+    instance_arn: StrPipeVar
+    application_arn: Optional[StrPipeVar] = Unassigned()
 
 
 class DescribePipelineDefinitionForExecutionResponse(Base):
@@ -12938,6 +13188,45 @@ class InstanceGroupHealthCheckConfiguration(Base):
     instance_ids: Optional[List[StrPipeVar]] = Unassigned()
 
 
+class Job(Base):
+    """
+    Job
+      The properties of a job returned by the Search API.
+
+    Attributes
+    ----------------------
+    job_name: The name of the job.
+    job_arn: The Amazon Resource Name (ARN) of the job.
+    role_arn: The ARN of the IAM role associated with the job.
+    job_category: The category of the job.
+    job_config_schema_version: The schema version used for the job configuration document.
+    job_config_document: The JSON configuration document for the job.
+    creation_time: The date and time that the job was created.
+    last_modified_time: The date and time that the job was last modified.
+    end_time: The date and time that the job ended.
+    job_status: The current status of the job.
+    secondary_status: The detailed secondary status of the job, providing more granular information about the job's progress.
+    secondary_status_transitions: A list of secondary status transitions for the job, with timestamps and optional status messages.
+    failure_reason: If the job failed, the reason it failed.
+    tags: The tags associated with the job.
+    """
+
+    job_name: Optional[Union[StrPipeVar, object]] = Unassigned()
+    job_arn: Optional[StrPipeVar] = Unassigned()
+    role_arn: Optional[StrPipeVar] = Unassigned()
+    job_category: Optional[StrPipeVar] = Unassigned()
+    job_config_schema_version: Optional[StrPipeVar] = Unassigned()
+    job_config_document: Optional[StrPipeVar] = Unassigned()
+    creation_time: Optional[datetime.datetime] = Unassigned()
+    last_modified_time: Optional[datetime.datetime] = Unassigned()
+    end_time: Optional[datetime.datetime] = Unassigned()
+    job_status: Optional[StrPipeVar] = Unassigned()
+    secondary_status: Optional[StrPipeVar] = Unassigned()
+    secondary_status_transitions: Optional[List[JobSecondaryStatusTransition]] = Unassigned()
+    failure_reason: Optional[StrPipeVar] = Unassigned()
+    tags: Optional[List[Tag]] = Unassigned()
+
+
 class JobConfigSchemaVersionSummary(Base):
     """
     JobConfigSchemaVersionSummary
@@ -14626,9 +14915,11 @@ class OnlineStoreConfigUpdate(Base):
     Attributes
     ----------------------
     ttl_duration: Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
+    storage_type: The online store storage type to migrate the feature group to. Use this parameter to migrate an existing feature group from Standard to Standard_V2 storage format, enabling support for the UpdateRecord operation. Migration is a one-way operation and cannot be reversed.
     """
 
     ttl_duration: Optional[TtlDuration] = Unassigned()
+    storage_type: Optional[StrPipeVar] = Unassigned()
 
 
 class Parent(Base):
@@ -15292,6 +15583,7 @@ class SearchRecord(Base):
     hyper_parameter_tuning_job: The properties of a hyperparameter tuning job.
     model_card: An Amazon SageMaker Model Card that documents details about a machine learning model.
     model
+    job: The properties of a job.
     """
 
     training_job: Optional[TrainingJob] = Unassigned()
@@ -15310,6 +15602,7 @@ class SearchRecord(Base):
     hyper_parameter_tuning_job: Optional[HyperParameterTuningJobSearchEntity] = Unassigned()
     model_card: Optional[ModelCard] = Unassigned()
     model: Optional[ModelDashboardModel] = Unassigned()
+    job: Optional[Job] = Unassigned()
 
 
 class VisibilityConditions(Base):
@@ -15436,9 +15729,11 @@ class UpdateClusterSoftwareInstanceGroupSpecification(Base):
     Attributes
     ----------------------
     instance_group_name: The name of the instance group to update.
+    image_release_version: The version of the HyperPod-managed AMI to update to for the instance group. Uses semantic versioning in the format MAJOR.MINOR.PATCH.
     """
 
     instance_group_name: StrPipeVar
+    image_release_version: Optional[StrPipeVar] = Unassigned()
 
 
 class VariantProperty(Base):
