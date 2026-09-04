@@ -11,6 +11,10 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 
+import copy
+import datetime
+import json
+import os
 import pytest
 from unittest.mock import Mock, patch
 from sagemaker.core.jumpstart.hub.parsers import (
@@ -367,3 +371,87 @@ class TestParsers:
         result = make_model_specs_from_describe_hub_content_response(response)
 
         assert result is not None
+
+    def test_make_model_specs_preserves_instance_variant_environment_variable_names(
+        self, hub_content_document
+    ):
+        """Environment variable names under HostingInstanceTypeVariants must survive verbatim."""
+        variants = hub_content_document["InferenceConfigComponents"]["tgi"][
+            "HostingInstanceTypeVariants"
+        ]["Variants"]
+        variants["ml.g5.12xlarge"]["Properties"]["EnvironmentVariables"][
+            "SM_VLLM_MAX_MODEL_LEN"
+        ] = "4096"
+        variants["g5"]["Properties"]["EnvironmentVariables"] = {"HF_HUB_OFFLINE": "1"}
+
+        specs = make_model_specs_from_describe_hub_content_response(
+            _describe_hub_content_response(hub_content_document)
+        )
+
+        instance_type_variants = specs.hosting_instance_type_variants
+        assert instance_type_variants.variants["ml.g5.12xlarge"]["properties"][
+            "environment_variables"
+        ] == {"SM_NUM_GPUS": "4", "SM_VLLM_MAX_MODEL_LEN": "4096"}
+        assert instance_type_variants.get_instance_specific_environment_variables(
+            "ml.g5.12xlarge"
+        ) == {
+            "HF_HUB_OFFLINE": "1",
+            "SM_NUM_GPUS": "4",
+            "SM_VLLM_MAX_MODEL_LEN": "4096",
+        }
+
+    def test_make_model_specs_preserves_top_level_variant_environment_variable_names(
+        self, hub_content_document
+    ):
+        """Top level HostingInstanceTypeVariants go through one more conversion pass than
+        inference config components and must also keep environment variable names verbatim."""
+        document = copy.deepcopy(hub_content_document)
+        for key in ("InferenceConfigs", "InferenceConfigComponents", "InferenceConfigRankings"):
+            document.pop(key, None)
+        document["HostingInstanceTypeVariants"] = {
+            "Variants": {
+                "g5": {
+                    "Properties": {
+                        "ImageUri": "image",
+                        "EnvironmentVariables": {"SM_VLLM_MAX_MODEL_LEN": "131072"},
+                    }
+                }
+            }
+        }
+
+        specs = make_model_specs_from_describe_hub_content_response(
+            _describe_hub_content_response(document)
+        )
+
+        instance_type_variants = specs.hosting_instance_type_variants
+        assert instance_type_variants.variants["g5"]["properties"]["image_uri"] == "image"
+        assert instance_type_variants.get_instance_specific_environment_variables(
+            "ml.g5.12xlarge"
+        ) == {"SM_VLLM_MAX_MODEL_LEN": "131072"}
+
+
+def _describe_hub_content_response(hub_content_document):
+    return DescribeHubContentResponse(
+        {
+            "CreationTime": datetime.datetime(2024, 1, 1),
+            "DocumentSchemaVersion": "2.0.0",
+            "HubArn": "arn:aws:sagemaker:us-east-1:123456789012:hub/my-private-hub",
+            "HubContentArn": (
+                "arn:aws:sagemaker:us-east-1:123456789012:hub-content/"
+                "my-private-hub/Model/meta-textgeneration-llama-2-13b-f/1.0.0"
+            ),
+            "HubContentName": "meta-textgeneration-llama-2-13b-f",
+            "HubContentType": "Model",
+            "HubContentVersion": "1.0.0",
+            "HubContentStatus": "Available",
+            "HubName": "my-private-hub",
+            "HubContentDocument": json.dumps(hub_content_document),
+        }
+    )
+
+
+@pytest.fixture
+def hub_content_document():
+    path = os.path.join(os.path.dirname(__file__), "..", "hub_content_document.json")
+    with open(path, "r") as f:
+        return json.load(f)
