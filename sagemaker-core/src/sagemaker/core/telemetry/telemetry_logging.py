@@ -192,6 +192,7 @@ class TelemetryParamType:
 
     # Calls self.<name>() and emits the return value.
     # Use for: computed/derived values like _is_model_customization(), _is_nova_model().
+    # Emits nothing if the method returns None.
     ATTR_CALL = "attr_call"
 
     # Reads kwargs[<name>] from the decorated method's keyword arguments and emits the value.
@@ -246,9 +247,11 @@ def _extract_telemetry_params(instance, kwargs, telemetry_params=None) -> str:
             method = getattr(instance, name, None)
             if callable(method):
                 try:
-                    parts.append(f"&x-{key}={method()}")
+                    value = method()
                 except Exception:
-                    pass
+                    value = None
+                if value is not None:
+                    parts.append(f"&x-{key}={value}")
         elif kind == T.KWARG_VALUE:
             value = kwargs.get(name) if kwargs else None
             if value is not None:
