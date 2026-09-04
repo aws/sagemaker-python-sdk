@@ -937,7 +937,136 @@ class TestRLAIFTrainerPipelineSession:
 
         result = trainer.train()
 
+        from sagemaker.core.workflow.pipeline_context import _StepArguments
+        # @runnable_by_pipeline intercepts and returns _StepArguments
+        assert isinstance(result, _StepArguments)
+        assert result.caller_name == "train"
+        assert result.func is not None
+        assert result.func_args[0] is trainer
         mock_training_job_create.assert_not_called()
-        pipeline_session._intercept_create_request.assert_called_once()
-        assert pipeline_session._intercept_create_request.call_args[0][2] == "train"
-        assert result == step_args
+
+    @patch('sagemaker.train.rlaif_trainer._create_model_package_config')
+    @patch('sagemaker.train.rlaif_trainer._create_mlflow_config')
+    @patch('sagemaker.train.rlaif_trainer._create_output_config')
+    @patch('sagemaker.train.rlaif_trainer._create_serverless_config')
+    @patch('sagemaker.train.rlaif_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.rlaif_trainer._create_input_data_config')
+    @patch('sagemaker.train.rlaif_trainer._get_unique_name')
+    @patch('sagemaker.train.rlaif_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.rlaif_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.rlaif_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.rlaif_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.rlaif_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_pipeline_session_produces_valid_step_arguments(
+        self, mock_training_job_create, mock_beta_session, mock_resolve_model,
+        mock_finetuning_options, mock_validate_group, mock_get_session, mock_get_role,
+        mock_unique_name, mock_input_config, mock_convert_channels,
+        mock_serverless_config, mock_output_config, mock_mlflow_config, mock_model_package_config,
+    ):
+        """TrainingStep.arguments produces valid PascalCase dict."""
+        from sagemaker.train.rlaif_trainer import RLAIFTrainer
+        from sagemaker.core.workflow.pipeline_context import PipelineSession, _StepArguments
+
+        # Avoid depending on sagemaker-mlops (the dependency direction is
+        # sagemaker-mlops -> sagemaker-train). TrainingStep.arguments internally
+        # calls execute_job_functions and reads pipeline_session.context.args.
+        from sagemaker.core.workflow.utilities import execute_job_functions
+
+        pipeline_session = PipelineSession.__new__(PipelineSession)
+        pipeline_session._context = None
+        pipeline_session.boto_session = Mock()
+        pipeline_session.boto_session.region_name = "us-west-2"
+        mock_get_session.return_value = pipeline_session
+
+        mock_resolve_model.return_value = ("test-model", "test")
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {"lr": "0.001"}
+        mock_hyperparams._specs = {"lr": {"type": "string"}}
+        mock_hyperparams._user_set = set()
+        mock_finetuning_options.return_value = (mock_hyperparams, "arn:model", False)
+        mock_validate_group.return_value = "grp"
+        mock_get_role.return_value = "arn:aws:iam::123:role/Role"
+        mock_unique_name.return_value = "test-job"
+        mock_input_config.return_value = [{"DataSource": {"S3DataSource": {"S3Uri": "s3://data"}}}]
+        mock_convert_channels.return_value = [{"ChannelName": "train"}]
+        mock_serverless_config.return_value = {"BaseModelArn": "arn:model", "JobType": "FineTuning"}
+        mock_output_config.return_value = {"S3OutputPath": "s3://output"}
+        mock_mlflow_config.return_value = None
+        mock_model_package_config.return_value = None
+        mock_beta_session.return_value = pipeline_session
+
+        trainer = RLAIFTrainer(model="test-model", training_dataset="s3://bucket/data", model_package_group="grp", sagemaker_session=pipeline_session)
+        trainer._model_arn = "arn:model"
+        trainer._model_name = "test-model"
+        trainer.accept_eula = True
+        trainer.hyperparameters = mock_hyperparams
+
+        result = trainer.train()
+        execute_job_functions(result)
+        arguments = pipeline_session.context.args
+
+        assert isinstance(arguments, dict)
+        assert "session" not in arguments
+        assert "region" not in arguments
+
+    @patch('sagemaker.train.rlaif_trainer._create_model_package_config')
+    @patch('sagemaker.train.rlaif_trainer._create_mlflow_config')
+    @patch('sagemaker.train.rlaif_trainer._create_output_config')
+    @patch('sagemaker.train.rlaif_trainer._create_serverless_config')
+    @patch('sagemaker.train.rlaif_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.rlaif_trainer._create_input_data_config')
+    @patch('sagemaker.train.rlaif_trainer._get_unique_name')
+    @patch('sagemaker.train.rlaif_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.rlaif_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.rlaif_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.rlaif_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.rlaif_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.train.common_utils.data_utils.validate_data_path_exists')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_without_pipeline_session_launches_job(
+        self, mock_training_job_create, mock_validate_path, mock_beta_session,
+        mock_resolve_model, mock_finetuning_options, mock_validate_group,
+        mock_get_session, mock_get_role, mock_unique_name, mock_input_config,
+        mock_convert_channels, mock_serverless_config, mock_output_config,
+        mock_mlflow_config, mock_model_package_config,
+    ):
+        """Regular Session launches job normally."""
+        from sagemaker.train.rlaif_trainer import RLAIFTrainer
+
+        regular_session = Mock()
+        regular_session.boto_session = Mock()
+        regular_session.boto_session.region_name = "us-west-2"
+        regular_session.sagemaker_config = {}
+        mock_get_session.return_value = regular_session
+
+        mock_resolve_model.return_value = ("test-model", "test")
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {"lr": "0.001"}
+        mock_hyperparams._specs = {"lr": {"type": "string"}}
+        mock_hyperparams._user_set = set()
+        mock_finetuning_options.return_value = (mock_hyperparams, "arn:model", False)
+        mock_validate_group.return_value = "grp"
+        mock_get_role.return_value = "arn:aws:iam::123:role/Role"
+        mock_unique_name.return_value = "test-job"
+        mock_input_config.return_value = {}
+        mock_convert_channels.return_value = []
+        mock_serverless_config.return_value = {"BaseModelArn": "arn:model"}
+        mock_output_config.return_value = {"S3OutputPath": "s3://output"}
+        mock_mlflow_config.return_value = None
+        mock_model_package_config.return_value = None
+        mock_beta_session.return_value = regular_session
+        mock_training_job = Mock()
+        mock_training_job_create.return_value = mock_training_job
+
+        trainer = RLAIFTrainer(model="test-model", training_dataset="s3://bucket/data", model_package_group="grp", sagemaker_session=regular_session)
+        trainer._model_arn = "arn:model"
+        trainer._model_name = "test-model"
+        trainer.accept_eula = True
+        trainer.hyperparameters = mock_hyperparams
+
+        result = trainer.train(wait=False)
+        mock_training_job_create.assert_called_once()
+        assert result == mock_training_job

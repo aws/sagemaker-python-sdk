@@ -1582,6 +1582,9 @@ class TestSFTTrainerListSupportedModels:
 class TestSFTTrainerPipelineSession:
     """Test SFTTrainer behavior when PipelineSession is used.
 
+    Verifies @runnable_by_pipeline decorator captures the train function and args,
+    and that the captured step_args can be consumed by TrainingStep.
+
     Ref: https://github.com/aws/sagemaker-python-sdk/issues/6163
     """
 
@@ -1601,23 +1604,23 @@ class TestSFTTrainerPipelineSession:
     @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
     @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
     @patch('sagemaker.core.resources.TrainingJob.create')
-    def test_train_with_pipeline_session_does_not_launch_job(
+    def test_train_with_pipeline_session_returns_step_arguments(
         self, mock_training_job_create, mock_beta_session, mock_resolve_model,
         mock_finetuning_options, mock_validate_group, mock_get_session, mock_get_role,
         mock_unique_name, mock_get_tags, mock_input_config, mock_convert_channels,
         mock_serverless_config, mock_output_config, mock_mlflow_config, mock_model_package_config,
         mock_validate_hp,
     ):
-        """When PipelineSession is passed, _intercept_create_request traps the args."""
-        from sagemaker.core.workflow.pipeline_context import PipelineSession, _JobStepArguments
+        """@runnable_by_pipeline returns _StepArguments capturing the train function.
+
+        This allows TrainingStep to later re-execute train() during pipeline compilation,
+        at which point _intercept_create_request will fire and store the serialized request.
+        """
+        from sagemaker.core.workflow.pipeline_context import PipelineSession, _StepArguments
 
         pipeline_session = Mock(spec=PipelineSession)
         pipeline_session.boto_session = Mock()
         pipeline_session.boto_session.region_name = "us-west-2"
-
-        step_args = _JobStepArguments("train", {"training_job_name": "test-sft-job-001"})
-        pipeline_session._intercept_create_request.return_value = None
-        pipeline_session.context = step_args
         mock_get_session.return_value = pipeline_session
 
         mock_resolve_model.return_value = ("test-model", "resolved-model-name")
@@ -1646,7 +1649,264 @@ class TestSFTTrainerPipelineSession:
 
         result = trainer.train()
 
+        # @runnable_by_pipeline intercepts and returns _StepArguments
+        assert isinstance(result, _StepArguments)
+        # caller_name is "train" (from retrieve_caller_name duck typing)
+        assert result.caller_name == "train"
+        # func is the actual train method (so TrainingStep can re-execute it)
+        assert result.func is not None
+        # func_args[0] is the trainer instance (so TrainingStep can access sagemaker_session)
+        assert result.func_args[0] is trainer
+        # TrainingJob.create was never called (decorator prevented execution)
         mock_training_job_create.assert_not_called()
-        pipeline_session._intercept_create_request.assert_called_once()
-        assert pipeline_session._intercept_create_request.call_args[0][2] == "train"
-        assert result == step_args
+
+
+    @patch('sagemaker.train.sft_trainer._validate_hyperparameter_values')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_serverless_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._get_jumpstart_tags')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_pipeline_session_produces_valid_step_arguments(
+        self, mock_training_job_create, mock_beta_session, mock_resolve_model,
+        mock_finetuning_options, mock_validate_group, mock_get_session, mock_get_role,
+        mock_unique_name, mock_get_tags, mock_input_config, mock_convert_channels,
+        mock_serverless_config, mock_output_config, mock_mlflow_config, mock_model_package_config,
+        mock_validate_hp,
+    ):
+        """TrainingStep.arguments produces valid PascalCase dict consumable by pipeline.
+
+        This is the consumer-side test: verifies the full path from train() through
+        TrainingStep compilation, catching serialization and shape issues.
+        """
+        from sagemaker.core.workflow.pipeline_context import PipelineSession, _StepArguments
+
+        # Avoid depending on sagemaker-mlops (the dependency direction is
+        # sagemaker-mlops -> sagemaker-train). TrainingStep.arguments internally
+        # calls execute_job_functions and reads pipeline_session.context.args.
+        from sagemaker.core.workflow.utilities import execute_job_functions
+
+        pipeline_session = PipelineSession.__new__(PipelineSession)
+        pipeline_session._context = None
+        pipeline_session.boto_session = Mock()
+        pipeline_session.boto_session.region_name = "us-west-2"
+        mock_get_session.return_value = pipeline_session
+
+        mock_resolve_model.return_value = ("test-model", "resolved-model-name")
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {"lr": "0.001"}
+        mock_hyperparams._specs = {"lr": {"type": "string"}}
+        mock_hyperparams._user_set = set()
+        mock_finetuning_options.return_value = (mock_hyperparams, "arn:aws:sagemaker:us-west-2:123:model/test", False)
+        mock_validate_group.return_value = "test-group"
+        mock_get_role.return_value = "arn:aws:iam::123:role/Role"
+        mock_unique_name.return_value = "test-job-001"
+        mock_get_tags.return_value = [{"key": "tag1", "value": "val1"}]
+        mock_input_config.return_value = [{"DataSource": {"S3DataSource": {"S3Uri": "s3://data"}}}]
+        mock_convert_channels.return_value = [{"ChannelName": "train"}]
+        mock_serverless_config.return_value = {"BaseModelArn": "arn:model", "JobType": "FineTuning"}
+        mock_output_config.return_value = {"S3OutputPath": "s3://output"}
+        mock_mlflow_config.return_value = None
+        mock_model_package_config.return_value = None
+        mock_beta_session.return_value = pipeline_session
+
+        trainer = SFTTrainer(model="test-model", training_dataset="s3://data", model_package_group="grp", sagemaker_session=pipeline_session)
+        trainer._model_arn = "arn:aws:sagemaker:us-west-2:123:model/test"
+        trainer._model_name = "test-model"
+        trainer.accept_eula = True
+        trainer.hyperparameters = mock_hyperparams
+
+        # Producer: train() returns _StepArguments
+        result = trainer.train()
+        assert isinstance(result, _StepArguments)
+
+        # Consumer: replay the deferred train() body (what TrainingStep.arguments
+        # does internally). The resulting pipeline-compatible request dict is
+        # stored in pipeline_session.context.args.
+        execute_job_functions(result)
+        arguments = pipeline_session.context.args
+
+        # Validate pipeline-compatible shape
+        assert isinstance(arguments, dict)
+        assert "session" not in arguments, "Leaked boto session object"
+        assert "region" not in arguments, "Leaked region string"
+        # PascalCase keys
+        non_none_keys = [k for k in arguments.keys() if arguments[k] is not None]
+        assert any(k[0].isupper() for k in non_none_keys), f"Expected PascalCase keys, got: {non_none_keys}"
+        # Tags PascalCase
+        tags = arguments.get("Tags", [])
+        for t in tags:
+            assert "Key" in t and "Value" in t, f"Tag not PascalCase: {t}"
+            assert "key" not in t and "value" not in t, f"Tag has lowercase keys: {t}"
+
+    @patch('sagemaker.train.sft_trainer._validate_hyperparameter_values')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_serverless_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._get_jumpstart_tags')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_pipeline_session_normalizes_tag_objects(
+        self, mock_training_job_create, mock_beta_session, mock_resolve_model,
+        mock_finetuning_options, mock_validate_group, mock_get_session, mock_get_role,
+        mock_unique_name, mock_get_tags, mock_input_config, mock_convert_channels,
+        mock_serverless_config, mock_output_config, mock_mlflow_config, mock_model_package_config,
+        mock_validate_hp,
+    ):
+        """User-provided tags typed as List[Tag] (pydantic objects) are normalized.
+
+        The public field is `tags: Optional[List[Tag]]`, so users may pass Tag
+        objects. Tag has no .get() method, so the pipeline-session serialization
+        must handle both dict (JumpStart) and Tag object forms.
+        """
+        from sagemaker.core.workflow.pipeline_context import PipelineSession
+
+        # Avoid depending on sagemaker-mlops (the dependency direction is
+        # sagemaker-mlops -> sagemaker-train). TrainingStep.arguments internally
+        # calls execute_job_functions and reads pipeline_session.context.args.
+        from sagemaker.core.workflow.utilities import execute_job_functions
+
+        pipeline_session = PipelineSession.__new__(PipelineSession)
+        pipeline_session._context = None
+        pipeline_session.boto_session = Mock()
+        pipeline_session.boto_session.region_name = "us-west-2"
+        mock_get_session.return_value = pipeline_session
+
+        mock_resolve_model.return_value = ("test-model", "resolved-model-name")
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {"lr": "0.001"}
+        mock_hyperparams._specs = {"lr": {"type": "string"}}
+        mock_hyperparams._user_set = set()
+        mock_finetuning_options.return_value = (mock_hyperparams, "arn:aws:sagemaker:us-west-2:123:model/test", False)
+        mock_validate_group.return_value = "test-group"
+        mock_get_role.return_value = "arn:aws:iam::123:role/Role"
+        mock_unique_name.return_value = "test-job-001"
+        # JumpStart returns lowercase dicts
+        mock_get_tags.return_value = [{"key": "jumpstart-tag", "value": "js-val"}]
+        mock_input_config.return_value = [{"DataSource": {"S3DataSource": {"S3Uri": "s3://data"}}}]
+        mock_convert_channels.return_value = [{"ChannelName": "train"}]
+        mock_serverless_config.return_value = {"BaseModelArn": "arn:model", "JobType": "FineTuning"}
+        mock_output_config.return_value = {"S3OutputPath": "s3://output"}
+        mock_mlflow_config.return_value = None
+        mock_model_package_config.return_value = None
+        mock_beta_session.return_value = pipeline_session
+
+        # User passes Tag pydantic objects (per public type signature)
+        user_tags = [Tag(key="env", value="prod"), Tag(key="team", value="ml")]
+
+        trainer = SFTTrainer(
+            model="test-model",
+            training_dataset="s3://data",
+            model_package_group="grp",
+            sagemaker_session=pipeline_session,
+            tags=user_tags,
+        )
+        trainer._model_arn = "arn:aws:sagemaker:us-west-2:123:model/test"
+        trainer._model_name = "test-model"
+        trainer.accept_eula = True
+        trainer.hyperparameters = mock_hyperparams
+
+        # This would crash under the old code with AttributeError: 'Tag' object has no attribute 'get'
+        result = trainer.train()
+        execute_job_functions(result)
+        arguments = pipeline_session.context.args
+
+        tags = arguments.get("Tags", [])
+        # Both JumpStart dict tag and user Tag objects must be normalized to PascalCase dicts
+        assert len(tags) == 3, f"Expected 3 tags (1 jumpstart + 2 user), got: {tags}"
+        for t in tags:
+            assert isinstance(t, dict), f"Tag not normalized to dict: {t}"
+            assert "Key" in t and "Value" in t, f"Tag not PascalCase: {t}"
+            assert "key" not in t and "value" not in t, f"Tag has lowercase keys: {t}"
+
+        # User-provided values are preserved
+        keys = {t["Key"]: t["Value"] for t in tags}
+        assert keys.get("env") == "prod"
+        assert keys.get("team") == "ml"
+        assert keys.get("jumpstart-tag") == "js-val"
+        mock_training_job_create.assert_not_called()
+
+    @patch('sagemaker.train.sft_trainer._validate_hyperparameter_values')
+    @patch('sagemaker.train.sft_trainer._create_model_package_config')
+    @patch('sagemaker.train.sft_trainer._create_mlflow_config')
+    @patch('sagemaker.train.sft_trainer._create_output_config')
+    @patch('sagemaker.train.sft_trainer._create_serverless_config')
+    @patch('sagemaker.train.sft_trainer._convert_input_data_to_channels')
+    @patch('sagemaker.train.sft_trainer._create_input_data_config')
+    @patch('sagemaker.train.sft_trainer._get_jumpstart_tags')
+    @patch('sagemaker.train.sft_trainer._get_unique_name')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_role')
+    @patch('sagemaker.train.sft_trainer.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.train.sft_trainer._validate_and_resolve_model_package_group')
+    @patch('sagemaker.train.sft_trainer._get_fine_tuning_options_and_model_arn')
+    @patch('sagemaker.train.sft_trainer._resolve_model_and_name')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_beta_session')
+    @patch('sagemaker.train.common_utils.data_utils.validate_data_path_exists')
+    @patch('sagemaker.core.resources.TrainingJob.create')
+    def test_train_without_pipeline_session_launches_job(
+        self, mock_training_job_create, mock_validate_path, mock_beta_session,
+        mock_resolve_model, mock_finetuning_options, mock_validate_group,
+        mock_get_session, mock_get_role, mock_unique_name, mock_get_tags,
+        mock_input_config, mock_convert_channels, mock_serverless_config,
+        mock_output_config, mock_mlflow_config, mock_model_package_config,
+        mock_validate_hp,
+    ):
+        """Regular Session (not PipelineSession) launches job normally."""
+        regular_session = Mock()
+        regular_session.boto_session = Mock()
+        regular_session.boto_session.region_name = "us-west-2"
+        regular_session.sagemaker_config = {}
+        mock_get_session.return_value = regular_session
+
+        mock_resolve_model.return_value = ("test-model", "resolved-model-name")
+        mock_hyperparams = Mock()
+        mock_hyperparams.to_dict.return_value = {"lr": "0.001"}
+        mock_hyperparams._specs = {"lr": {"type": "string"}}
+        mock_hyperparams._user_set = set()
+        mock_finetuning_options.return_value = (mock_hyperparams, "arn:model", False)
+        mock_validate_group.return_value = "grp"
+        mock_get_role.return_value = "arn:aws:iam::123:role/Role"
+        mock_unique_name.return_value = "test-job-002"
+        mock_get_tags.return_value = []
+        mock_input_config.return_value = {}
+        mock_convert_channels.return_value = []
+        mock_serverless_config.return_value = {"BaseModelArn": "arn:model"}
+        mock_output_config.return_value = {"S3OutputPath": "s3://output"}
+        mock_mlflow_config.return_value = None
+        mock_model_package_config.return_value = None
+        mock_beta_session.return_value = regular_session
+
+        mock_training_job = Mock()
+        mock_training_job_create.return_value = mock_training_job
+
+        trainer = SFTTrainer(model="test-model", training_dataset="s3://bucket/data", model_package_group="grp", sagemaker_session=regular_session)
+        trainer._model_arn = "arn:model"
+        trainer._model_name = "test-model"
+        trainer.accept_eula = True
+        trainer.hyperparameters = mock_hyperparams
+
+        result = trainer.train(wait=False)
+
+        # Regular session: TrainingJob.create() SHOULD be called
+        mock_training_job_create.assert_called_once()
+        # Result is the actual TrainingJob
+        assert result == mock_training_job

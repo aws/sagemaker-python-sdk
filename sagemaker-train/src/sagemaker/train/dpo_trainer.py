@@ -5,7 +5,9 @@ from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
 from sagemaker.core.resources import TrainingJob, ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
-from sagemaker.core.workflow.pipeline_context import PipelineSession
+from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
+from sagemaker.core.utils.utils import serialize
+from sagemaker.core.apiutils._boto_functions import to_pascal_case
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 from sagemaker.train.configs import StoppingCondition
@@ -230,6 +232,7 @@ class DPOTrainer(BaseTrainer):
             ("compute", TelemetryParamType.ATTR_TYPE),
         ],
     )
+    @runnable_by_pipeline
     def train(self,
               training_dataset: Optional[Union[str, DataSet]] = None,
               validation_dataset: Optional[Union[str, DataSet]] = None,
@@ -375,8 +378,23 @@ class DPOTrainer(BaseTrainer):
         # This must come before data path validation since in pipeline mode
         # the data path may be a pipeline parameter that doesn't exist yet.
         if isinstance(sagemaker_session, PipelineSession):
-            sagemaker_session._intercept_create_request(create_args, None, "train")
-            return sagemaker_session.context
+            pipeline_args = {k: v for k, v in create_args.items()
+                            if k not in ("session", "region")}
+            pipeline_args.pop("training_job_name", None)
+            pipeline_request = {to_pascal_case(k): v for k, v in pipeline_args.items()}
+            # Normalize Tags to PascalCase dicts. JumpStart tags come as lowercase
+            # dicts; user-provided tags come as Tag pydantic objects (typed
+            # Optional[List[Tag]]). Handle both.
+            if "Tags" in pipeline_request and pipeline_request["Tags"]:
+                pipeline_request["Tags"] = [
+                    {"Key": t.get("key", t.get("Key")), "Value": t.get("value", t.get("Value"))}
+                    if isinstance(t, dict)
+                    else {"Key": t.key, "Value": t.value}
+                    for t in pipeline_request["Tags"]
+                ]
+            serialized_request = serialize(pipeline_request)
+            sagemaker_session._intercept_create_request(serialized_request, None, "train")
+            return
 
         # Validate data paths exist before submission
         effective_training = training_dataset or self.training_dataset
