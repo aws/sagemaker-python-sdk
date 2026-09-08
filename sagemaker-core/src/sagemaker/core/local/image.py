@@ -156,7 +156,7 @@ class _SageMakerContainer(object):
                 stderr=subprocess.DEVNULL,
                 encoding="UTF-8",
             )
-        except subprocess.CalledProcessError:
+        except (subprocess.CalledProcessError, FileNotFoundError):
             logger.info(
                 "'Docker Compose' is not installed. "
                 "Proceeding to check for 'docker-compose' CLI."
