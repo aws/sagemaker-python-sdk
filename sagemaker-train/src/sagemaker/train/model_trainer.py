@@ -846,6 +846,13 @@ class ModelTrainer(BaseModel):
                 )
 
         else:
+            if self.compute is not None and getattr(
+                self.compute, "instance_preferences", None
+            ):
+                raise ValueError(
+                    "Local mode training does not support 'instance_preferences'. "
+                    "Set a single 'instance_type' on Compute for local mode."
+                )
             local_container = _LocalContainer(
                 training_job_name=training_request["training_job_name"],
                 instance_type=training_request["resource_config"].instance_type,
@@ -1327,6 +1334,11 @@ class ModelTrainer(BaseModel):
                 SourceModelPackageArn and ModelPackageGroupArn. If also specified in recipe,
                 direct param wins on conflict.
         """
+        if getattr(compute, "instance_preferences", None):
+            raise ValueError(
+                "Training recipes do not support ``instance_preferences``. "
+                "Set a single ``instance_type`` in Compute when using training recipes."
+            )
         if compute.instance_type is None:
             raise ValueError("Must set ``instance_type`` in Compute when using training recipes.")
         device_type = _determine_device_type(compute.instance_type)
@@ -1568,6 +1580,11 @@ class ModelTrainer(BaseModel):
             raise ValueError(
                 f"Training is not supported for the model ID: {jumpstart_config.model_id}.\n"
                 "Please check that the model ID is available for training."
+            )
+        if compute and getattr(compute, "instance_preferences", None):
+            raise ValueError(
+                "JumpStart training does not support ``instance_preferences``. "
+                "Set a single ``instance_type`` in Compute for JumpStart models."
             )
         if compute and document.SupportedTrainingInstanceTypes:
             if compute.instance_type not in document.SupportedTrainingInstanceTypes:
