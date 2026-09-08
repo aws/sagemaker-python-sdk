@@ -751,6 +751,12 @@ class _ModelBuilderServers(object):
                 inference_spec=self.inference_spec,
             )
 
+        # Propagate secret key to container environment
+        if self.secret_key:
+            self.env_vars["SAGEMAKER_SERVE_SECRET_KEY"] = self.secret_key
+        else:
+            self.env_vars.pop("SAGEMAKER_SERVE_SECRET_KEY", None)
+
         # Prepare deployment artifacts
         if self.mode in LOCAL_MODES:
             self._prepare_for_mode()
