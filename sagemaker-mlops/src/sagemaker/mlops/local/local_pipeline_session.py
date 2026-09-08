@@ -46,9 +46,9 @@ class LocalPipelineSession(LocalSession):
         Accepts the same arguments as LocalSession.
         """
         super().__init__(*args, **kwargs)
-        # Add pipeline storage to the sagemaker_client
-        if not hasattr(self.sagemaker_client, '_pipelines'):
-            self.sagemaker_client._pipelines = {}
+        # Store pipeline registry on the session instance itself
+        # (not on sagemaker_client, to avoid mutating a shared client instance)
+        self._pipelines = {}
     
     @_telemetry_emitter(Feature.LOCAL_MODE, "local_pipeline_session.create_pipeline")
     def create_pipeline(
@@ -68,7 +68,7 @@ class LocalPipelineSession(LocalSession):
             pipeline_description=pipeline_description,
             local_session=self,
         )
-        self.sagemaker_client._pipelines[pipeline.name] = local_pipeline
+        self._pipelines[pipeline.name] = local_pipeline
         return {"PipelineArn": pipeline.name}
 
     def update_pipeline(
@@ -83,7 +83,7 @@ class LocalPipelineSession(LocalSession):
         Returns:
             Pipeline metadata (PipelineArn)
         """
-        if pipeline.name not in self.sagemaker_client._pipelines:
+        if pipeline.name not in self._pipelines:
             error_response = {
                 "Error": {
                     "Code": "ResourceNotFound",
@@ -91,9 +91,9 @@ class LocalPipelineSession(LocalSession):
                 }
             }
             raise ClientError(error_response, "update_pipeline")
-        self.sagemaker_client._pipelines[pipeline.name].pipeline_description = pipeline_description
-        self.sagemaker_client._pipelines[pipeline.name].pipeline = pipeline
-        self.sagemaker_client._pipelines[pipeline.name].last_modified_time = (
+        self._pipelines[pipeline.name].pipeline_description = pipeline_description
+        self._pipelines[pipeline.name].pipeline = pipeline
+        self._pipelines[pipeline.name].last_modified_time = (
             datetime.now().timestamp()
         )
         return {"PipelineArn": pipeline.name}
@@ -107,7 +107,7 @@ class LocalPipelineSession(LocalSession):
         Returns:
             Pipeline metadata (PipelineArn, PipelineDefinition, LastModifiedTime, etc)
         """
-        if PipelineName not in self.sagemaker_client._pipelines:
+        if PipelineName not in self._pipelines:
             error_response = {
                 "Error": {
                     "Code": "ResourceNotFound",
@@ -115,7 +115,7 @@ class LocalPipelineSession(LocalSession):
                 }
             }
             raise ClientError(error_response, "describe_pipeline")
-        return self.sagemaker_client._pipelines[PipelineName].describe()
+        return self._pipelines[PipelineName].describe()
 
     def delete_pipeline(self, PipelineName):
         """Delete the local pipeline.
@@ -126,8 +126,8 @@ class LocalPipelineSession(LocalSession):
         Returns:
             Pipeline metadata (PipelineArn)
         """
-        if PipelineName in self.sagemaker_client._pipelines:
-            del self.sagemaker_client._pipelines[PipelineName]
+        if PipelineName in self._pipelines:
+            del self._pipelines[PipelineName]
         return {"PipelineArn": PipelineName}
 
     def start_pipeline_execution(self, PipelineName, **kwargs):
@@ -143,7 +143,7 @@ class LocalPipelineSession(LocalSession):
             logger.warning("Parallelism configuration is not supported in local mode.")
         if "SelectiveExecutionConfig" in kwargs:
             raise ValueError("SelectiveExecutionConfig is not supported in local mode.")
-        if PipelineName not in self.sagemaker_client._pipelines:
+        if PipelineName not in self._pipelines:
             error_response = {
                 "Error": {
                     "Code": "ResourceNotFound",
@@ -151,4 +151,4 @@ class LocalPipelineSession(LocalSession):
                 }
             }
             raise ClientError(error_response, "start_pipeline_execution")
-        return self.sagemaker_client._pipelines[PipelineName].start(**kwargs)
+        return self._pipelines[PipelineName].start(**kwargs)
