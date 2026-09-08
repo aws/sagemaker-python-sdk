@@ -49,7 +49,7 @@ from sagemaker.core.shapes import (
     DatasetSource,
 )
 
-from sagemaker.core.training.utils import convert_unassigned_to_none
+from sagemaker.core.training.utils import convert_unassigned_to_none, validate_instance_preferences
 
 __all__ = [
     "BaseConfig",
@@ -175,6 +175,11 @@ class Compute(shapes.ResourceConfig):
             A list of instance groups for heterogeneous clusters to be used in the training job.
         training_plan_arn (Optional[StrPipeVar]):
             The Amazon Resource Name (ARN) of the training plan to use for this resource configuration.
+        instance_preferences (Optional[List[InstancePreference]]):
+            An ordered list of candidate instance types (maximum 5). When set, the platform tries
+            each candidate in list order and launches the job on the first type with available
+            capacity. Mutually exclusive with ``instance_type``, ``instance_groups``, and
+            ``instance_placement_config``.
         enable_managed_spot_training (Optional[BoolPipeVar]):
             To train models using managed spot training, choose True. Managed spot training
             provides a fully managed and scalable infrastructure for training machine learning
@@ -187,8 +192,10 @@ class Compute(shapes.ResourceConfig):
 
     @model_validator(mode="after")
     def _model_validator(self) -> "Compute":
-        """Convert Unassigned values to None."""
-        return convert_unassigned_to_none(self)
+        """Convert Unassigned values to None and validate instance_preferences."""
+        converted = convert_unassigned_to_none(self)
+        validate_instance_preferences(converted)
+        return converted
 
     def _to_resource_config(self) -> shapes.ResourceConfig:
         """Convert to a sagemaker.core.shapes.ResourceConfig object."""
@@ -201,6 +208,11 @@ class Compute(shapes.ResourceConfig):
         }
         if not filtered_dict:
             return None
+        # Preserve the nested InstancePreference model objects instead of the
+        # dumped dicts, so pydantic does not re-validate their optional scalar
+        # fields (e.g. an unset per-preference instance_count) as Unassigned().
+        if self.instance_preferences:
+            filtered_dict["instance_preferences"] = self.instance_preferences
         return shapes.ResourceConfig(**filtered_dict)
 
 

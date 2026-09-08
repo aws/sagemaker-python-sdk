@@ -10163,6 +10163,19 @@ SHAPE_DAG = {
         "member_type": "structure",
         "type": "list",
     },
+    "InstancePreference": {
+        "members": [
+            {"name": "InstanceType", "shape": "TrainingInstanceType", "type": "string"},
+            {"name": "InstanceCount", "shape": "TrainingInstanceCount", "type": "integer"},
+            {"name": "TrainingPlanArns", "shape": "TrainingPlanArnList", "type": "list"},
+        ],
+        "type": "structure",
+    },
+    "InstancePreferenceList": {
+        "member_shape": "InstancePreference",
+        "member_type": "structure",
+        "type": "list",
+    },
     "InstanceRequirementsEniConfiguration": {
         "members": [
             {"name": "CustomerEni", "shape": "String", "type": "string"},
@@ -14787,6 +14800,17 @@ SHAPE_DAG = {
             {"name": "InstanceType", "shape": "ProcessingInstanceType", "type": "string"},
             {"name": "VolumeSizeInGB", "shape": "ProcessingVolumeSizeInGB", "type": "integer"},
             {"name": "VolumeKmsKeyId", "shape": "KmsKeyId", "type": "string"},
+            {
+                "name": "InstancePreferences",
+                "shape": "ProcessingInstancePreferenceList",
+                "type": "list",
+            },
+            {"name": "SelectedInstanceType", "shape": "ProcessingInstanceType", "type": "string"},
+            {
+                "name": "SelectedInstanceCount",
+                "shape": "ProcessingInstanceCount",
+                "type": "integer",
+            },
         ],
         "type": "structure",
     },
@@ -14812,6 +14836,18 @@ SHAPE_DAG = {
     },
     "ProcessingInputs": {
         "member_shape": "ProcessingInput",
+        "member_type": "structure",
+        "type": "list",
+    },
+    "ProcessingInstancePreference": {
+        "members": [
+            {"name": "InstanceType", "shape": "ProcessingInstanceType", "type": "string"},
+            {"name": "InstanceCount", "shape": "ProcessingInstanceCount", "type": "integer"},
+        ],
+        "type": "structure",
+    },
+    "ProcessingInstancePreferenceList": {
+        "member_shape": "ProcessingInstancePreference",
         "member_type": "structure",
         "type": "list",
     },
@@ -15820,6 +15856,9 @@ SHAPE_DAG = {
                 "shape": "InstancePlacementConfig",
                 "type": "structure",
             },
+            {"name": "InstancePreferences", "shape": "InstancePreferenceList", "type": "list"},
+            {"name": "SelectedInstanceType", "shape": "TrainingInstanceType", "type": "string"},
+            {"name": "SelectedInstanceCount", "shape": "TrainingInstanceCount", "type": "integer"},
         ],
         "type": "structure",
     },
@@ -17203,6 +17242,11 @@ SHAPE_DAG = {
             {"name": "TrainingPlanArn", "shape": "TrainingPlanArn", "type": "string"},
         ],
         "type": "structure",
+    },
+    "TrainingPlanArnList": {
+        "member_shape": "TrainingPlanArn",
+        "member_type": "string",
+        "type": "list",
     },
     "TrainingPlanArns": {
         "member_shape": "TrainingPlanArn",
