@@ -317,6 +317,26 @@ Run data preprocessing with ``ScriptProcessor`` (sklearn) or ``FrameworkProcesso
 
 :doc:`SKLearn example <../v3-examples/ml-ops-examples/v3-processing-job-sklearn>` · :doc:`PyTorch example <../v3-examples/ml-ops-examples/v3-processing-job-pytorch/v3-pytorch-processing-example>`
 
+**Instance Preferences:** pass an ordered list of candidate instance types and the platform runs the job on the first type with available capacity.
+
+.. code-block:: python
+
+   from sagemaker.core.processing import Processor
+
+   processor = Processor(
+       role=role, image_uri=processing_image, volume_size_in_gb=100,
+       instance_preferences=[
+           {"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2},
+           {"InstanceType": "ml.m5.2xlarge", "InstanceCount": 4},
+       ],
+   )
+
+   processor.run(job_name="instance-prefs-processing")
+
+Up to 5 candidates are allowed, each instance type at most once, and exactly one is selected; the list is mutually exclusive with ``instance_type``. Counts use exactly one of two modes — a top-level ``instance_count`` shared by whichever candidate wins, or an ``InstanceCount`` on every candidate — and mixed, partial, or omitted counts are rejected. Selection is based on capacity, not on workload fit, so list only types the job can genuinely run on. The winner is reported as ``SelectedInstanceType`` / ``SelectedInstanceCount`` on the job's ``ClusterConfig``, and billing is for that type and count. Supported on ``Processor``, ``ScriptProcessor``, ``PySparkProcessor``, and ``SparkJarProcessor``; training plans are training-only and do not apply to processing.
+
+:doc:`Instance Preferences example <../v3-examples/ml-ops-examples/v3-processing-instance-preferences>`
+
 
 
 Batch Transform Jobs
@@ -728,5 +748,6 @@ Explore comprehensive MLOps examples:
    ../v3-examples/ml-ops-examples/v3-model-registry-example/v3-model-registry-example
    ../v3-examples/ml-ops-examples/v3-processing-job-pytorch/v3-pytorch-processing-example
    ../v3-examples/ml-ops-examples/v3-processing-job-sklearn
+   ../v3-examples/ml-ops-examples/v3-processing-instance-preferences
    ../v3-examples/ml-ops-examples/v3-emr-serverless-step-example
    ../v3-examples/ml-ops-examples/v3-mlflow-train-inference-e2e-example

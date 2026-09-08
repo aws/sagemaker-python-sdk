@@ -87,6 +87,57 @@ from sagemaker.core.utils.utils import serialize
 logger = logging.getLogger(__name__)
 
 
+def _validate_processing_instance_preferences(
+    instance_type=None,
+    instance_count=None,
+    instance_preferences=None,
+):
+    """Client-side validation for Processor.instance_preferences (the service
+    remains the source of truth).
+
+    - instance_preferences is mutually exclusive with instance_type (a single
+      fixed cluster). The top-level instance_count is NOT exclusive: it is the
+      shared count for whichever preference wins.
+    - Instance types must not repeat across preferences.
+    - Count mode: exactly one of the top-level instance_count with no
+      per-preference InstanceCount, or an InstanceCount on EVERY element with
+      the top-level unset. Both-set, partial, and neither are rejected.
+
+    No-op when instance_preferences is not set.
+    """
+    if not instance_preferences:
+        return
+
+    if instance_type is not None:
+        raise ValueError(
+            "instance_preferences is mutually exclusive with instance_type; "
+            "specify either a single instance_type (+instance_count) or "
+            "instance_preferences, not both."
+        )
+    types = [preference.get("InstanceType") for preference in instance_preferences]
+    duplicates = sorted({t for t in types if t is not None and types.count(t) > 1})
+    if duplicates:
+        raise ValueError(
+            f"instance_preferences must not contain duplicate instance types: {duplicates}."
+        )
+    per_pref_counts = [
+        preference.get("InstanceCount") is not None for preference in instance_preferences
+    ]
+    if instance_count is not None:
+        if any(per_pref_counts):
+            raise ValueError(
+                "The top-level instance_count and per-preference InstanceCount "
+                "are mutually exclusive; set the top-level instance_count "
+                "(applies to whichever preference wins) or an InstanceCount on "
+                "every element of instance_preferences, not both."
+            )
+    elif not all(per_pref_counts):
+        raise ValueError(
+            "When the top-level instance_count is not set, every element of "
+            "instance_preferences must set its own InstanceCount."
+        )
+
+
 class Processor(object):
     """Handles Amazon SageMaker Processing tasks."""
 
@@ -108,6 +159,7 @@ class Processor(object):
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
+        instance_preferences: Optional[List[Dict[str, Union[str, int]]]] = None,
     ):
         """Initializes a ``Processor`` instance.
 
@@ -151,10 +203,25 @@ class Processor(object):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            instance_preferences (list[dict]): An ordered list of candidate instance types
+                (maximum 5). Each element is a dict of the form
+                ``{"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2}``. When set, the
+                platform tries each candidate in list order and launches the job on the first
+                type with available capacity. Mutually exclusive with ``instance_type``.
+                The top-level ``instance_count`` is the shared count for whichever preference
+                wins; alternatively set ``InstanceCount`` on EVERY element (per-preference
+                mode) and leave ``instance_count`` unset — never both, never partial
+                (default: None).
         """
         self.image_uri = image_uri
         self.instance_count = instance_count
         self.instance_type = instance_type
+        self.instance_preferences = instance_preferences
+        _validate_processing_instance_preferences(
+            instance_type=instance_type,
+            instance_count=instance_count,
+            instance_preferences=instance_preferences,
+        )
         self.entrypoint = entrypoint
         self.volume_size_in_gb = volume_size_in_gb
         self.max_runtime_in_seconds = max_runtime_in_seconds
@@ -648,13 +715,23 @@ class Processor(object):
             process_request_args["output_config"]["KmsKeyId"] = self.output_kms_key
         process_request_args["experiment_config"] = experiment_config
         process_request_args["job_name"] = self._current_job_name
-        process_request_args["resources"] = {
-            "ClusterConfig": {
+        if self.instance_preferences:
+            cluster_config = {
+                "InstancePreferences": self.instance_preferences,
+                "VolumeSizeInGB": self.volume_size_in_gb,
+            }
+            # Uniform-count mode: the shared top-level count applies to
+            # whichever preference wins. In per-preference mode the counts
+            # live on each element and the top-level key is omitted.
+            if self.instance_count is not None:
+                cluster_config["InstanceCount"] = self.instance_count
+        else:
+            cluster_config = {
                 "InstanceType": self.instance_type,
                 "InstanceCount": self.instance_count,
                 "VolumeSizeInGB": self.volume_size_in_gb,
             }
-        }
+        process_request_args["resources"] = {"ClusterConfig": cluster_config}
         if self.volume_kms_key is not None:
             process_request_args["resources"]["ClusterConfig"][
                 "VolumeKmsKeyId"
@@ -703,6 +780,7 @@ class ScriptProcessor(Processor):
         env: Optional[Dict[str, Union[str, PipelineVariable]]] = None,
         tags: Optional[Tags] = None,
         network_config: Optional[NetworkConfig] = None,
+        instance_preferences: Optional[List[Dict[str, Union[str, int]]]] = None,
     ):
         """Initializes a ``ScriptProcessor`` instance.
 
@@ -747,6 +825,9 @@ class ScriptProcessor(Processor):
                 A :class:`~sagemaker.network.NetworkConfig`
                 object that configures network isolation, encryption of
                 inter-container traffic, security group IDs, and subnets.
+            instance_preferences (list[dict]): Ordered instance-type candidates for the
+                processing job (mutually exclusive with ``instance_type``); each element
+                is ``{"InstanceType": str, "InstanceCount": Optional[int]}``.
         """
         self._CODE_CONTAINER_BASE_PATH = "/opt/ml/processing/input/"
         self._CODE_CONTAINER_INPUT_NAME = "code"
@@ -774,6 +855,7 @@ class ScriptProcessor(Processor):
             env=env,
             tags=format_tags(tags),
             network_config=network_config,
+            instance_preferences=instance_preferences,
         )
 
     @_telemetry_emitter(feature=Feature.PROCESSING, func_name="ScriptProcessor.run")

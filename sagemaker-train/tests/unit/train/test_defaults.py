@@ -246,6 +246,50 @@ class TestTrainDefaultsGetCompute:
         assert result.instance_count == 1
         assert result.volume_size_in_gb == 30
 
+    def test_no_default_instance_type_with_instance_preferences(self):
+        """instance_preferences must not get a default top-level instance_type/count.
+
+        The top-level instance_type is mutually exclusive with
+        instance_preferences (server-side V1 validation); injecting the
+        default would make every instance-preferences job fail with
+        'InstanceType cannot be specified with InstancePreferences'.
+        """
+        from sagemaker.core.shapes.shapes import InstancePreference
+
+        compute = Compute(
+            instance_preferences=[
+                InstancePreference(instance_type="ml.m5.xlarge"),
+                InstancePreference(instance_type="ml.m4.xlarge"),
+            ],
+            instance_count=1,
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+
+        assert result.instance_type is None
+        assert [p.instance_type for p in result.instance_preferences] == [
+            "ml.m5.xlarge",
+            "ml.m4.xlarge",
+        ]
+        # the customer-set uniform count is preserved untouched
+        assert result.instance_count == 1
+        # volume size default still applies (whole-job knob, not exclusive)
+        assert result.volume_size_in_gb == DEFAULT_VOLUME_SIZE
+
+    def test_no_default_instance_count_with_per_preference_counts(self):
+        """Per-preference count mode must not get the default uniform count."""
+        from sagemaker.core.shapes.shapes import InstancePreference
+
+        compute = Compute(
+            instance_preferences=[
+                InstancePreference(instance_type="ml.m5.xlarge", instance_count=2),
+                InstancePreference(instance_type="ml.m4.xlarge", instance_count=4),
+            ],
+        )
+        result = TrainDefaults.get_compute(compute=compute)
+
+        assert result.instance_type is None
+        assert result.instance_count is None
+
 
 class TestTrainDefaultsGetStoppingCondition:
     """Test TrainDefaults.get_stopping_condition method."""
