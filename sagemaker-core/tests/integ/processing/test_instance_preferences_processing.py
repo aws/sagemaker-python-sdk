@@ -28,16 +28,12 @@ Configuration (environment variables; SKIPPED when unset):
 
 - ``PROCESSING_INSTANCE_PREFERENCES_TEST_ROLE_ARN``  - execution role ARN
 - ``PROCESSING_INSTANCE_PREFERENCES_TEST_IMAGE_URI`` - processing image
+- ``PROCESSING_INSTANCE_PREFERENCES_TEST_INSTANCE_TYPES`` - optional comma-separated
+  candidate types (default: ml.m5.xlarge, ml.m5.large)
 - ``SAGEMAKER_ENDPOINT``                             - optional endpoint
-  override (e.g. a pre-GA stage endpoint).
-
-Rollout note: like the training analog
-(``sagemaker-train/tests/integ/train/test_instance_preferences.py``), while
-the server-side scheduling/write-back stages are not yet deployed on the
-target endpoint an accepted job fails with ``InternalServerError`` before an
-instance type is resolved; the test reports that as XFAIL (rollout
-incomplete) and enforces the full contract automatically once deployed.
+  override.
 """
+
 from __future__ import absolute_import
 
 import os
@@ -50,7 +46,13 @@ ROLE_ARN = os.environ.get("PROCESSING_INSTANCE_PREFERENCES_TEST_ROLE_ARN")
 IMAGE_URI = os.environ.get("PROCESSING_INSTANCE_PREFERENCES_TEST_IMAGE_URI")
 ENDPOINT = os.environ.get("SAGEMAKER_ENDPOINT")
 
-PREFERENCE_TYPES = ["ml.m5.xlarge", "ml.m5.large"]
+PREFERENCE_TYPES = [
+    t.strip()
+    for t in os.environ.get(
+        "PROCESSING_INSTANCE_PREFERENCES_TEST_INSTANCE_TYPES", "ml.m5.xlarge,ml.m5.large"
+    ).split(",")
+    if t.strip()
+]
 WAIT_TIMEOUT_SECONDS = 30 * 60
 POLL_SECONDS = 30
 
@@ -65,27 +67,11 @@ pytestmark = pytest.mark.skipif(
 
 
 def _sagemaker_client():
-    """Build a botocore client on the bundled service model (which carries the
-    pre-GA InstancePreferences shapes), honoring SAGEMAKER_ENDPOINT."""
-    import pathlib
+    """Build a boto3 SageMaker client, honoring SAGEMAKER_ENDPOINT."""
+    import boto3
 
-    import botocore.loaders
-    import botocore.session as bc_session_mod
-    from boto3.session import Session as Boto3Session
-
-    # .../sagemaker-core/tests/integ/processing/<this file> -> .../sagemaker-core/sample
-    sample_dir = pathlib.Path(__file__).resolve().parents[3] / "sample"
-    assert (sample_dir / "sagemaker").exists(), f"bundled model dir not found: {sample_dir}"
-    sample_dir = str(sample_dir)
-    bc_session = bc_session_mod.get_session()
-    loader = botocore.loaders.Loader(
-        extra_search_paths=[sample_dir], include_default_search_paths=True
-    )
-    bc_session.register_component("data_loader", loader)
     region = os.environ.get("AWS_REGION", "us-west-2")
-    return Boto3Session(botocore_session=bc_session, region_name=region).client(
-        "sagemaker", endpoint_url=ENDPOINT
-    )
+    return boto3.client("sagemaker", region_name=region, endpoint_url=ENDPOINT)
 
 
 def test_processor_instance_preferences_e2e():
@@ -107,26 +93,7 @@ def test_processor_instance_preferences_e2e():
     )
 
     job_name = f"instance-prefs-proc-integ-{uuid.uuid4().hex[:8]}"
-    try:
-        processor.run(wait=False, logs=False, job_name=job_name)
-    except Exception as e:  # botocore ClientError
-        message = str(e)
-        if "ValidationException" in message and (
-            "instanceType' failed to satisfy constraint: Member must not be null" in message
-            or "InstanceType and InstanceCount greater than 0 must be specified" in message
-        ):
-            # The public processing model still carries @required on
-            # InstanceType/InstanceCount (the relaxation is bundled with the
-            # GA/Trebuchet ungating), so a preferences-only create is rejected
-            # by the frontend model validation on this endpoint. The SDK-side
-            # request construction and serialization succeeded.
-            pytest.xfail(
-                "Server rollout incomplete on this endpoint: CreateProcessingJob "
-                "rejected a preferences-only ClusterConfig (public model @required "
-                "relaxation on InstanceType/InstanceCount not yet deployed): "
-                f"{message[:200]}"
-            )
-        raise
+    processor.run(wait=False, logs=False, job_name=job_name)
 
     # --- Create accepted; Describe echoes the request contract -------------
     described = client.describe_processing_job(ProcessingJobName=job_name)
@@ -152,12 +119,6 @@ def test_processor_instance_preferences_e2e():
         time.sleep(POLL_SECONDS)
 
     failure_reason = described.get("FailureReason", "")
-    if status == "Failed" and "InternalServerError" in failure_reason:
-        pytest.xfail(
-            "Server rollout incomplete on this endpoint: processing job accepted "
-            "with InstancePreferences but failed with InternalServerError before "
-            f"type resolution (job={job_name})"
-        )
 
     # --- Full contract: resolved winner is surfaced and is a submitted pref -
     cluster_config = described["ProcessingResources"]["ClusterConfig"]
