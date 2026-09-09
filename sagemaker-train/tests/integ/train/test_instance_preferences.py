@@ -30,16 +30,10 @@ suite stays green on hosts without the test-account setup):
 - ``INSTANCE_PREFERENCES_TEST_IMAGE_URI``  - training image the account can pull
 - ``INSTANCE_PREFERENCES_TEST_S3_OUTPUT``  - s3:// output path
 - ``INSTANCE_PREFERENCES_TEST_S3_INPUT``   - optional s3:// input channel
-- ``SAGEMAKER_ENDPOINT``                   - optional endpoint override (e.g.
-  a pre-GA stage endpoint); honored by the sagemaker-core client loader.
-
-Rollout note: the server-side feature ships in stages (validation ->
-scheduling sweep -> resolved-type write-back). While the scheduling stage is
-not yet deployed to the target endpoint, an accepted job fails with
-``InternalServerError`` before an instance type is resolved; the test detects
-that specific signature and reports it as XFAIL (server rollout incomplete)
-instead of a test failure, so it starts enforcing the full contract
-automatically once the stage deploys.
+- ``INSTANCE_PREFERENCES_TEST_INSTANCE_TYPES`` - optional comma-separated
+  candidate types (default: ml.m5.xlarge, ml.m4.xlarge)
+- ``SAGEMAKER_ENDPOINT``                   - optional endpoint override;
+  honored by the sagemaker-core client loader.
 """
 
 from __future__ import absolute_import
@@ -57,7 +51,13 @@ IMAGE_URI = os.environ.get("INSTANCE_PREFERENCES_TEST_IMAGE_URI")
 S3_OUTPUT = os.environ.get("INSTANCE_PREFERENCES_TEST_S3_OUTPUT")
 S3_INPUT = os.environ.get("INSTANCE_PREFERENCES_TEST_S3_INPUT")
 
-PREFERENCE_TYPES = ["ml.m5.xlarge", "ml.m4.xlarge"]
+PREFERENCE_TYPES = [
+    t.strip()
+    for t in os.environ.get(
+        "INSTANCE_PREFERENCES_TEST_INSTANCE_TYPES", "ml.m5.xlarge,ml.m4.xlarge"
+    ).split(",")
+    if t.strip()
+]
 WAIT_TIMEOUT_SECONDS = 30 * 60
 POLL_SECONDS = 30
 
@@ -118,14 +118,9 @@ def test_model_trainer_instance_preferences_e2e():
     echoed = described.resource_config
     # Top-level instance type was never set; must not come back populated.
     assert _get_value(echoed.instance_type) is None
-    if _get_value(echoed.instance_preferences) is None:
-        # Gated (pre-GA) endpoints strip instance_preferences/selected_* from
-        # public Describe responses; the full contract is assertable post-ungate.
-        pytest.xfail(
-            "Dark-launch gating active on this endpoint: instance_preferences/"
-            "selected_* are stripped from the public Describe response "
-            f"(job={job_name}). Re-run after the GA ungate."
-        )
+    assert [p.instance_type for p in _get_value(echoed.instance_preferences) or []] == (
+        PREFERENCE_TYPES
+    ), f"Describe did not echo instance_preferences (job={job_name})"
 
     # Wait until terminal or winner visible (Selected* propagation lags the
     # secondary-status transitions; gate on the winner, not on secondary).
@@ -141,16 +136,6 @@ def test_model_trainer_instance_preferences_e2e():
         time.sleep(POLL_SECONDS)
 
     failure_reason = _get_value(described.failure_reason) or ""
-    if status == "Failed" and "InternalServerError" in failure_reason:
-        # Accepted by validation but failed before type resolution: the
-        # scheduling stage of the server rollout is not deployed on this
-        # endpoint yet. Everything client-side (model, serialization,
-        # acceptance, describe echo) has been asserted above.
-        pytest.xfail(
-            "Server rollout incomplete on this endpoint: job accepted with "
-            "instance_preferences but failed with InternalServerError before "
-            f"type resolution (job={job_name})"
-        )
 
     # --- Full contract: resolved winner is surfaced and is a submitted pref -
     final_rc = described.resource_config
@@ -158,7 +143,8 @@ def test_model_trainer_instance_preferences_e2e():
     selected_count = _get_value(final_rc.selected_instance_count)
     assert selected_type in PREFERENCE_TYPES, (
         f"selected_instance_type={selected_type!r} not among submitted "
-        f"preferences {PREFERENCE_TYPES} (job={job_name}, status={status})"
+        f"preferences {PREFERENCE_TYPES} (job={job_name}, status={status}, "
+        f"failure={failure_reason!r})"
     )
     assert selected_count == 1
     assert _get_value(final_rc.instance_type) is None
