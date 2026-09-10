@@ -160,6 +160,7 @@ class BaseTrainer(ABC):
         self.base_model_name = base_model_name
         self.disable_output_compression = disable_output_compression
         self.notification_rule_arn = None
+        self.source_code = None
 
         # Set up notifications if configured
         if notifications:
