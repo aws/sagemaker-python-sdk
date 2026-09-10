@@ -5,6 +5,7 @@ from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
 from sagemaker.core.resources import TrainingJob, ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
+from sagemaker.core.workflow.pipeline_context import PipelineSession
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 from sagemaker.train.configs import StoppingCondition
@@ -368,6 +369,14 @@ class DPOTrainer(BaseTrainer):
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
+
+        # If running within a PipelineSession, intercept the request and store
+        # step arguments instead of launching a training job.
+        # This must come before data path validation since in pipeline mode
+        # the data path may be a pipeline parameter that doesn't exist yet.
+        if isinstance(sagemaker_session, PipelineSession):
+            sagemaker_session._intercept_create_request(create_args, None, "train")
+            return sagemaker_session.context
 
         # Validate data paths exist before submission
         effective_training = training_dataset or self.training_dataset

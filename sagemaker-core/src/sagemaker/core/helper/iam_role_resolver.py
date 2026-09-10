@@ -306,6 +306,59 @@ def _resolve_caller_role_arn(
         raise
 
 
+def _config_path_for_role_type(role_type: str) -> Optional[str]:
+    """Return the SageMaker config key path holding a default role ARN for a role type.
+
+    Returns None for role types the config schema has no dedicated role-ARN path
+    for, in which case there is no config default to consult.
+    """
+    try:
+        from sagemaker.core.config.config_schema import (
+            TRAINING_JOB_ROLE_ARN_PATH,
+            FEATURE_GROUP_ROLE_ARN_PATH,
+        )
+    except Exception:  # pragma: no cover - defensive against import/layout changes
+        return None
+    return {
+        "training": TRAINING_JOB_ROLE_ARN_PATH,
+        "feature_store": FEATURE_GROUP_ROLE_ARN_PATH,
+    }.get(role_type)
+
+
+def _resolve_config_default_role(role_type: str, sagemaker_session=None) -> Optional[str]:
+    """Return a default role ARN from the SageMaker intelligent-defaults config, if set.
+
+    This lets a caller whose own identity has no backing role (an IAM user or the
+    account root) configure a default execution role in the SageMaker config
+    (e.g. ``SageMaker.TrainingJob.RoleArn``) instead of being forced to pass
+    ``role=`` on every call. Returns None when no config default is set, the role
+    type has no config path, or the config cannot be read — in every such case the
+    caller falls back to caller-identity resolution exactly as before.
+    """
+    config_path = _config_path_for_role_type(role_type)
+    if not config_path:
+        return None
+    try:
+        from sagemaker.core.common_utils import resolve_value_from_config
+
+        config_role = resolve_value_from_config(
+            direct_input=None,
+            config_path=config_path,
+            sagemaker_session=sagemaker_session,
+        )
+    except Exception as e:  # pragma: no cover - defensive; treat as "no config default"
+        logger.debug(
+            "Could not read a default role from the SageMaker config for '%s': %s",
+            role_type,
+            e,
+        )
+        return None
+    # Only trust a concrete string ARN/name; anything else means "not configured".
+    if isinstance(config_role, str) and config_role:
+        return config_role
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Read-only permission / trust validation
 # ---------------------------------------------------------------------------
@@ -530,9 +583,11 @@ def resolve_and_validate_role(
 ) -> str:
     """Resolve the role to use and validate it (read-only; does not mutate IAM).
 
-    Resolution:
+    Resolution (first match wins):
         1. ``provided_role`` given → resolve it to an ARN (must exist).
-        2. Otherwise → resolve the caller's own identity role.
+        2. A default role set in the SageMaker config for this role type
+           (e.g. ``SageMaker.TrainingJob.RoleArn``) → resolve it to an ARN.
+        3. Otherwise → resolve the caller's own identity role.
 
     The resolved role is then VALIDATED (read-only, via iam:SimulatePrincipalPolicy
     + trust inspection):
@@ -564,14 +619,25 @@ def resolve_and_validate_role(
     if provided_role:
         role_arn = _resolve_explicit_role(provided_role, sagemaker_session)
     else:
-        sts_client = boto_session.client("sts")
-        caller_identity = sts_client.get_caller_identity()
-        caller_arn = caller_identity["Arn"]
-        account_id = caller_identity["Account"]
-        partition = _partition_from_arn(caller_arn)
-        role_arn = _resolve_caller_role_arn(iam_client, caller_arn, account_id, partition)
-        if not role_arn:
-            raise RoleValidationError(_build_validation_error_message(None, role_type))
+        # Prefer a default role configured in the SageMaker config for this role
+        # type (e.g. SageMaker.TrainingJob.RoleArn) before falling back to
+        # caller-identity inference. This is what lets an IAM-user or root caller
+        # (whose identity has no backing role) run without passing role= on every
+        # call, as long as they have configured a default execution role.
+        config_role = _resolve_config_default_role(role_type, sagemaker_session)
+        if config_role:
+            role_arn = _resolve_explicit_role(config_role, sagemaker_session)
+        else:
+            sts_client = boto_session.client("sts")
+            caller_identity = sts_client.get_caller_identity()
+            caller_arn = caller_identity["Arn"]
+            account_id = caller_identity["Account"]
+            partition = _partition_from_arn(caller_arn)
+            role_arn = _resolve_caller_role_arn(
+                iam_client, caller_arn, account_id, partition
+            )
+            if not role_arn:
+                raise RoleValidationError(_build_validation_error_message(None, role_type))
 
     # Permission check (definitive denial blocks; unverifiable warns).
     verdict, denied = _evaluate_permissions(iam_client, role_arn, role_type)

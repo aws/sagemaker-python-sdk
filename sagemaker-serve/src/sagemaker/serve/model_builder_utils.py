@@ -2924,6 +2924,12 @@ class _ModelBuilderUtils:
 
         return self._cached_is_jumpstart
 
+    def _jumpstart_model_id(self) -> Optional[str]:
+        """Return the JumpStart model ID, or None for another model source."""
+        if isinstance(self.model, str) and self._is_jumpstart_model_id():
+            return self.model
+        return None
+
     def _has_nvidia_gpu(self) -> bool:
         try:
             _get_available_gpus()

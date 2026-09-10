@@ -300,3 +300,33 @@ class TestHyperPodComputeMapping:
         start_cmd = mock_subprocess.run.call_args_list[-1].args[0]
         overrides = json.loads(start_cmd[start_cmd.index("--override-parameters") + 1])
         assert overrides["recipes.run.model_name_or_path"] == "s3://bucket/checkpoint/step_10"
+
+
+class TestBaseTrainerListSupportedModels:
+    """The inherited ``list_supported_models`` classmethod on ``BaseTrainer``."""
+
+    def test_delegates_with_class_technique(self):
+        class _TechTrainer(BaseTrainer):
+            _customization_technique = "SFT"
+
+            def train(self, *args, **kwargs):  # pragma: no cover - abstract impl
+                return None
+
+        with patch(
+            "sagemaker.train.common_utils.recipe_utils._list_hub_models_by_recipe"
+        ) as mock_list:
+            mock_list.return_value = ["meta-llama/Llama-3"]
+            result = _TechTrainer.list_supported_models()
+
+        assert result == ["meta-llama/Llama-3"]
+        mock_list.assert_called_once_with(
+            recipe_type="FineTuning", technique="SFT", session=None
+        )
+
+    def test_raises_when_technique_missing(self):
+        class _NoTechTrainer(BaseTrainer):
+            def train(self, *args, **kwargs):  # pragma: no cover - abstract impl
+                return None
+
+        with pytest.raises(NotImplementedError, match="customization technique"):
+            _NoTechTrainer.list_supported_models()

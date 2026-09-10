@@ -22,8 +22,8 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.20.0",
-    "sagemaker-train>=1.20.0",
+    "sagemaker-core>=2.21.0",
+    "sagemaker-train>=1.21.0",
     "boto3>=1.42.2,<2.0",
     "botocore>=1.35.75,<2.0",
     "deepdiff",
@@ -73,6 +73,9 @@ python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
 addopts = "-v --tb=short"
+markers = [
+    "skip_in_pr_check: mark a test that is excluded from PR check runs. Long-running or hang-prone tests that would otherwise push the run past the CodeBuild timeout; they run in a dedicated scheduled CI run instead.",
+]
 
 [tool.black]
 line-length = 100

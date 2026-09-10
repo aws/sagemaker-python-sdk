@@ -7,7 +7,7 @@ to evaluate LLM responses based on quality and responsible AI metrics.
 import json
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 from pydantic import root_validator, validator
 
@@ -25,10 +25,87 @@ from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.common_utils.data_utils import validate_data_path_exists
 from sagemaker.train.common_utils.model_aliases import NOVA_BEDROCK_MODEL_IDS
 from sagemaker.train.common_utils.recipe_utils import _is_nova_model
-from sagemaker.train.constants import _ALLOWED_EVALUATOR_MODELS
 from sagemaker.train.defaults import TrainDefaults
 
 _logger = logging.getLogger(__name__)
+
+# Documentation listing the Bedrock foundation models supported as LLM-as-Judge
+# evaluators. Surfaced to users when evaluator_model validation cannot run or fails.
+_EVALUATOR_JUDGE_DOCS_URL = (
+    "https://docs.aws.amazon.com/bedrock/latest/userguide/"
+    "evaluation-judge.html#evaluation-judge-supported"
+)
+
+# S3 key of the service-maintained supported-judge-models list, mirrored per region
+# under the JumpStart cache bucket. This file is the source of truth for which
+# Bedrock models are supported as LLM-as-Judge evaluators (kept current by the
+# Bedrock evaluation control plane), so the SDK reads it instead of hardcoding a list.
+_SUPPORTED_JUDGE_MODELS_S3_KEY = "fmhMetadata/supported-llmaj-judge-models.json"
+
+
+def _supported_judge_models_s3_uri(region: str) -> str:
+    """Return the S3 URI of the supported-judge-models list for ``region``."""
+    return f"s3://jumpstart-cache-prod-{region}/{_SUPPORTED_JUDGE_MODELS_S3_KEY}"
+
+
+def _fetch_supported_judge_model_ids(session: Any, region: str) -> Optional[Set[str]]:
+    """Fetch the set of supported LLM-as-Judge model IDs for ``region``.
+
+    Reads ``s3://jumpstart-cache-prod-<region>/fmhMetadata/supported-llmaj-judge-models.json``,
+    the per-region mirror of the Bedrock evaluation control plane's supported-judge
+    allowlist. Membership answers only "is this a judge-capable model" — the list
+    is a superset that can still include models past end of life, so whether the
+    model is currently in service is checked separately by
+    :meth:`LLMAsJudgeEvaluator._check_evaluator_model_lifecycle`.
+
+    This never raises: if the list cannot be fetched or parsed (missing object,
+    denied access, network error, or unexpected shape) it returns ``None`` so the
+    caller can fall back to the non-blocking degradation path. The two failure
+    modes are logged at ``debug`` to aid diagnosis without adding user-facing noise.
+
+    Args:
+        session: SageMaker session used to read the object.
+        region: AWS region whose JumpStart cache bucket holds the list.
+
+    Returns:
+        A non-empty set of model ID strings, or ``None`` if unavailable.
+    """
+    from sagemaker.core.s3.client import S3Downloader
+
+    s3_uri = _supported_judge_models_s3_uri(region)
+    try:
+        raw = S3Downloader.read_file(s3_uri=s3_uri, sagemaker_session=session)
+        doc = json.loads(raw)
+    except Exception as e:  # noqa: BLE001 - degrade gracefully on any fetch/parse error
+        _logger.debug("Could not read supported-judge-models list from %s: %s", s3_uri, e)
+        return None
+
+    entries = doc.get("supported_judge_models") if isinstance(doc, dict) else None
+    if not isinstance(entries, list):
+        _logger.debug(
+            "Supported-judge-models list at %s has an unexpected shape (missing a "
+            "'supported_judge_models' array); skipping validation.",
+            s3_uri,
+        )
+        return None
+
+    model_ids: Set[str] = set()
+    for entry in entries:
+        if isinstance(entry, dict):
+            model_id = entry.get("model_id")
+            if isinstance(model_id, str):
+                model_ids.add(model_id)
+
+    if not model_ids:
+        # Parsed, but no usable model IDs — treat as "cannot verify" and degrade
+        # rather than reject every model.
+        _logger.debug(
+            "Supported-judge-models list at %s parsed but contained no model IDs; "
+            "skipping validation.",
+            s3_uri,
+        )
+        return None
+    return model_ids
 
 
 def _resolve_bedrock_model_id(base_model_name: str, region: str) -> Optional[str]:
@@ -202,27 +279,133 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
 
     @validator('evaluator_model')
     def _validate_evaluator_model(cls, v, values):
-        """Validate evaluator_model is allowed and check region compatibility."""
-        
-        if v not in _ALLOWED_EVALUATOR_MODELS:
-            raise ValueError(
-                f"Invalid evaluator_model '{v}'. "
-                f"Allowed models are: {list(_ALLOWED_EVALUATOR_MODELS.keys())}"
-            )
-        
-        # Get current region from session
+        """Validate that evaluator_model is a supported judge model (construction step 1).
+
+        Fetches the service-maintained supported-judge-models list for the
+        session's region (see :func:`_fetch_supported_judge_model_ids`) and fails
+        fast at construction if ``v`` is not in it. This list is the catalog of
+        judge-*capable* models; it can still contain models that have reached end
+        of life, so it only answers "is this a valid judge model" — whether the
+        model is still in service is checked separately, at evaluate() time, by
+        :meth:`_check_evaluator_model_lifecycle`.
+
+        Degradation route: if the list cannot be retrieved (no session/region, or
+        the file cannot be read/parsed), emit a warning and continue without
+        blocking — the evaluation job may still succeed.
+        """
         session = values.get('sagemaker_session')
-        if session and hasattr(session, 'boto_region_name'):
-            current_region = session.boto_region_name
-            allowed_regions = _ALLOWED_EVALUATOR_MODELS[v]
-            
-            if current_region not in allowed_regions:
-                raise ValueError(
-                    f"Evaluator model '{v}' is not available in region '{current_region}'. "
-                    f"Available regions for this model: {allowed_regions}"
-                )
-            
+        region = None
+        if session is not None and hasattr(session, 'boto_region_name'):
+            region = session.boto_region_name
+        if not region:
+            region = values.get('region')
+
+        supported_model_ids = None
+        if session is not None and region:
+            supported_model_ids = _fetch_supported_judge_model_ids(session, region)
+
+        if supported_model_ids is None:
+            _logger.warning(
+                "The SDK couldn't retrieve the list of supported judge models, so it "
+                "can't confirm '%s' is a valid judge model. The evaluation will still "
+                "run, but it may fail if the model isn't supported. See the list of "
+                "supported judge models: %s",
+                v,
+                _EVALUATOR_JUDGE_DOCS_URL,
+            )
+            return v
+
+        if v not in supported_model_ids:
+            raise ValueError(
+                f"evaluator_model '{v}' is not a supported LLM-as-Judge model in "
+                f"region '{region}'. Choose one of the supported judge models. "
+                f"See {_EVALUATOR_JUDGE_DOCS_URL}"
+            )
+
         return v
+
+    def _check_evaluator_model_lifecycle(self, region: str) -> None:
+        """Fail fast if evaluator_model is retired (past end of life) in ``region``.
+
+        Evaluate() step 2, complementing the construction-time supported-model
+        check. The supported-judge-models list is a superset that can still list
+        models past end of life, so this queries Bedrock ``GetFoundationModel``
+        for the model's live lifecycle and raises before the job is submitted when
+        the model is no longer usable.
+
+        The permission needed for the lookup (``bedrock:GetFoundationModel``) is a
+        resource-scoped action, so we do NOT pre-check it with
+        ``iam:SimulatePrincipalPolicy`` — simulating a resource-scoped action
+        without ``ResourceArns`` yields false ``implicitDeny`` verdicts for callers
+        who scope their grants, which would silently skip this very check. Instead
+        we call ``GetFoundationModel`` directly and interpret the result:
+
+        * ``ResourceNotFoundException`` / ``ValidationException`` → the model is
+          not available in the region (unsupported or fully retired) → raise.
+        * ``endOfLifeTime`` in the past → the model has reached end of life → raise.
+        * ``AccessDenied`` → the caller lacks the permission → warn and continue.
+        * any other error (throttling, service issue) → warn and continue.
+
+        Args:
+            region: AWS region resolved for the evaluation.
+        """
+        from datetime import datetime, timezone
+
+        from botocore.exceptions import ClientError
+
+        from sagemaker.core.helper.iam_role_resolver import _get_boto_session
+
+        boto_session = _get_boto_session(self.sagemaker_session)
+        try:
+            client = boto_session.client("bedrock", region_name=region)
+            response = client.get_foundation_model(modelIdentifier=self.evaluator_model)
+        except Exception as e:  # noqa: BLE001 - map Bedrock errors, degrade on the rest
+            error_code = (
+                e.response.get("Error", {}).get("Code", "")
+                if isinstance(e, ClientError)
+                else ""
+            )
+            if error_code in ("ResourceNotFoundException", "ValidationException"):
+                raise ValueError(
+                    f"evaluator_model '{self.evaluator_model}' is not available in "
+                    f"region '{region}'. It may be unsupported in this region or have "
+                    f"reached end of life. Choose a judge model that is in service in "
+                    f"this region. See {_EVALUATOR_JUDGE_DOCS_URL}"
+                ) from e
+            if error_code in ("AccessDeniedException", "AccessDenied", "UnauthorizedOperation"):
+                _logger.warning(
+                    "Your IAM role does not include the bedrock:GetFoundationModel "
+                    "permission, so the SDK can't check whether the evaluator model "
+                    "'%s' is still in service or has reached end of life. The "
+                    "evaluation will still run, but it may fail if this model has been "
+                    "retired. Add bedrock:GetFoundationModel to your role to enable "
+                    "this check. See the list of supported judge models: %s",
+                    self.evaluator_model,
+                    _EVALUATOR_JUDGE_DOCS_URL,
+                )
+                return
+            # Any other error (throttling, service issue): don't block the user.
+            _logger.warning(
+                "The SDK couldn't verify whether the evaluator model '%s' is still in "
+                "service right now (a temporary error occurred). The evaluation will "
+                "still run, but it may fail if this model has been retired. See the "
+                "list of supported judge models: %s",
+                self.evaluator_model,
+                _EVALUATOR_JUDGE_DOCS_URL,
+            )
+            return
+
+        details = response.get("modelDetails", {}) if isinstance(response, dict) else {}
+        lifecycle = details.get("modelLifecycle", {}) if isinstance(details, dict) else {}
+        end_of_life = lifecycle.get("endOfLifeTime") if isinstance(lifecycle, dict) else None
+
+        if isinstance(end_of_life, datetime) and end_of_life <= datetime.now(timezone.utc):
+            raise ValueError(
+                f"evaluator_model '{self.evaluator_model}' has reached end of life in "
+                f"region '{region}' (end-of-life {end_of_life.isoformat()}) and can no "
+                f"longer be used as a judge. Choose a judge model that is in service. "
+                f"See {_EVALUATOR_JUDGE_DOCS_URL}"
+            )
     
     def _should_use_inspectai_path(self) -> bool:
         """Determine if the InspectAI path should be used for Phase 1 inference.
@@ -826,7 +1009,14 @@ class LLMAsJudgeEvaluator(BaseEvaluator):
         aws_context = self._get_aws_execution_context(role_type="model_eval")
         region = aws_context['region']
         role_arn = aws_context['role_arn']
-        
+
+        # Step 2 of evaluator_model validation: fail fast (before submitting the job)
+        # if the judge model has reached end of life. The construction-time check
+        # only confirmed the model is judge-capable; this confirms it is still in
+        # service. Gated on caller permissions — warns and continues if it can't be
+        # verified.
+        self._check_evaluator_model_lifecycle(region)
+
         # Resolve model artifacts
         artifacts = self._resolve_model_artifacts(region)
         

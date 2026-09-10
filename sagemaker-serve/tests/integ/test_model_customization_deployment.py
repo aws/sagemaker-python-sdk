@@ -107,6 +107,7 @@ class TestModelCustomizationFromTrainingJob:
         assert model_builder.image_uri is not None
         assert model_builder.instance_type is not None
 
+    @pytest.mark.skip_in_pr_check
     def test_deploy_from_training_job(self, training_job_name, endpoint_name, cleanup_endpoints, sagemaker_session):
         """Test deploying model from training job.
 

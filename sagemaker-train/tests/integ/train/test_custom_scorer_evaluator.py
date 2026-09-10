@@ -86,6 +86,10 @@ class TestCustomScorerEvaluatorIntegration:
         
         logger.info(f"Built-in metrics: {list(BuiltInMetric.__members__.keys())}")
 
+    # Waits for a full evaluation pipeline (execution.wait, 4-hour ceiling), so it
+    # belongs off the PR gate for the same reason as its already-marked siblings
+    # below.
+    @pytest.mark.gpu_intensive
     def test_custom_scorer_evaluation_full_flow(self):
         """
         Test complete custom scorer evaluation flow with custom evaluator ARN.
