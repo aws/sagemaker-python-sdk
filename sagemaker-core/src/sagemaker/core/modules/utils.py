@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Utils module."""
+
 from __future__ import absolute_import
 
 import os
@@ -200,7 +201,7 @@ def validate_instance_preferences(compute) -> None:
 
     - instance_preferences is mutually exclusive with the classic
       single-cluster fields instance_type / instance_groups /
-      instance_placement_config.
+      instance_placement_config, and with managed spot training.
     - Instance types must not repeat across preferences.
     - Count mode: exactly one of the top-level instance_count (applies to
       whichever preference wins) with no per-preference instance_count, or an
@@ -231,6 +232,12 @@ def validate_instance_preferences(compute) -> None:
                 f"instance_preferences is mutually exclusive with {field}; "
                 "specify either a single fixed cluster or instance_preferences, not both."
             )
+    # Spot is a bool: only an explicit True conflicts (False/None is the default).
+    if _value(compute, "enable_managed_spot_training") is True:
+        raise ValueError(
+            "instance_preferences is mutually exclusive with managed spot training "
+            "(enable_managed_spot_training=True)."
+        )
 
     instance_types = [_value(p, "instance_type") for p in preferences]
     duplicates = sorted(
