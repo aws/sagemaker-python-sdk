@@ -2472,7 +2472,7 @@
       "errors":[
         {"shape":"ResourceNotFound"}
       ],
-      "documentation":"<p>Describes the content, creation time, and security configuration of an Amazon SageMaker Model Card.</p>"
+      "documentation":"<p>Describes the content, creation time, and security configuration of an Amazon SageMaker Model Card.</p> <important> <p>To retrieve only metadata about a model card without requiring <code>kms:Decrypt</code> permission on the associated customer-managed Amazon Web Services KMS key, set <code>IncludedData</code> to <code>MetadataOnly</code>. The default is <code>AllData</code>, which returns the full model card <code>Content</code> and requires <code>kms:Decrypt</code> permission when a customer-managed key is configured.</p> </important>"
     },
     "DescribeModelCardExportJob":{
       "name":"DescribeModelCardExportJob",
@@ -2508,7 +2508,7 @@
       },
       "input":{"shape":"DescribeModelPackageInput"},
       "output":{"shape":"DescribeModelPackageOutput"},
-      "documentation":"<p>Returns a description of the specified model package, which is used to create SageMaker models or list them on Amazon Web Services Marketplace.</p> <important> <p>If you provided a KMS Key ID when you created your model package, you will see the <a href=\"https://docs.aws.amazon.com/kms/latest/APIReference/API_Decrypt.html\">KMS Decrypt</a> API call in your CloudTrail logs when you use this API.</p> </important> <p>To create models in SageMaker, buyers can subscribe to model packages listed on Amazon Web Services Marketplace.</p>"
+      "documentation":"<p>Returns a description of the specified model package, which is used to create SageMaker models or list them on Amazon Web Services Marketplace.</p> <important> <p>If you provided a KMS Key ID when you created your model package, you will see the <a href=\"https://docs.aws.amazon.com/kms/latest/APIReference/API_Decrypt.html\">KMS Decrypt</a> API call in your CloudTrail logs when you use this API. To call this operation without requiring <code>kms:Decrypt</code> permission on the customer-managed key, set <code>IncludedData</code> to <code>MetadataOnly</code>; the response is returned with the embedded <code>ModelCard.ModelCardContent</code> field sanitized.</p> </important> <p>To create models in SageMaker, buyers can subscribe to model packages listed on Amazon Web Services Marketplace.</p>"
     },
     "DescribeModelPackageGroup":{
       "name":"DescribeModelPackageGroup",
@@ -5003,6 +5003,76 @@
     }
   },
   "shapes":{
+    "AIAdapterId":{
+      "type":"string",
+      "documentation":"<p>A unique identifier for a LoRA adapter within a recommendation job request. The ID must start and end with an alphanumeric character, can contain hyphens between alphanumeric characters, and can be up to 63 characters long. This ID is used as the inference component name when the adapter is deployed.</p>",
+      "max":63,
+      "min":1,
+      "pattern":"[a-zA-Z0-9](-*[a-zA-Z0-9])*"
+    },
+    "AIAdapterModelPackageEntry":{
+      "type":"structure",
+      "required":[
+        "AdapterId",
+        "ModelPackageArn"
+      ],
+      "members":{
+        "AdapterId":{
+          "shape":"AIAdapterId",
+          "documentation":"<p>A unique identifier for the adapter. This ID is used as the inference component name when the adapter is deployed. The ID must start and end with an alphanumeric character, can contain hyphens between alphanumeric characters, and can be up to 63 characters long.</p>"
+        },
+        "ModelPackageArn":{
+          "shape":"ModelPackageArn",
+          "documentation":"<p>The Amazon Resource Name (ARN) of the model package that contains the LoRA adapter artifacts.</p>"
+        }
+      },
+      "documentation":"<p>A LoRA adapter entry identified by a model package ARN.</p>"
+    },
+    "AIAdapterModelPackageEntryList":{
+      "type":"list",
+      "member":{"shape":"AIAdapterModelPackageEntry"},
+      "max":10,
+      "min":1
+    },
+    "AIAdapterS3Entry":{
+      "type":"structure",
+      "required":[
+        "AdapterId",
+        "S3Uri"
+      ],
+      "members":{
+        "AdapterId":{
+          "shape":"AIAdapterId",
+          "documentation":"<p>A unique identifier for the adapter. This ID is used as the inference component name when the adapter is deployed. The ID must start and end with an alphanumeric character, can contain hyphens between alphanumeric characters, and can be up to 63 characters long.</p>"
+        },
+        "S3Uri":{
+          "shape":"S3Uri",
+          "documentation":"<p>The Amazon S3 URI of the directory that contains the LoRA adapter artifacts in PEFT format.</p>"
+        }
+      },
+      "documentation":"<p>A LoRA adapter entry identified by an Amazon S3 URI.</p>"
+    },
+    "AIAdapterS3EntryList":{
+      "type":"list",
+      "member":{"shape":"AIAdapterS3Entry"},
+      "max":10,
+      "min":1
+    },
+    "AIAdapterSource":{
+      "type":"structure",
+      "members":{
+        "ModelPackageArns":{
+          "shape":"AIAdapterModelPackageEntryList",
+          "documentation":"<p>A list of LoRA adapters identified by their model package ARNs. Use this when your adapters were produced by a SageMaker AI fine-tuning workflow that registers model packages.</p>"
+        },
+        "S3Uris":{
+          "shape":"AIAdapterS3EntryList",
+          "documentation":"<p>A list of LoRA adapters identified by their Amazon S3 URIs. Use this when your adapters are stored as raw artifacts in Amazon S3.</p>"
+        }
+      },
+      "documentation":"<p>The source of LoRA adapters for an AI recommendation job. This is a union type — specify exactly one of the members.</p>",
+      "union":true
+    },
     "AIBenchmarkEndpoint":{
       "type":"structure",
       "required":["Identifier"],
@@ -5110,6 +5180,10 @@
         "S3OutputLocation":{
           "shape":"S3Uri",
           "documentation":"<p>The Amazon S3 URI where benchmark results are stored.</p>"
+        },
+        "MlflowConfig":{
+          "shape":"AIMlflowConfig",
+          "documentation":"<p>The MLflow tracking configuration for the job. If you don't specify this parameter, MLflow tracking is disabled.</p>"
         }
       },
       "documentation":"<p>The output configuration for an AI benchmark job.</p>"
@@ -5125,6 +5199,10 @@
         "CloudWatchLogs":{
           "shape":"AICloudWatchLogsList",
           "documentation":"<p>The CloudWatch log information for the benchmark job.</p>"
+        },
+        "MlflowConfig":{
+          "shape":"AIMlflowConfig",
+          "documentation":"<p>The MLflow tracking configuration for the job.</p>"
         }
       },
       "documentation":"<p>The output result of an AI benchmark job, including the Amazon S3 location and CloudWatch log information.</p>"
@@ -5215,6 +5293,43 @@
       "type":"list",
       "member":{"shape":"AIMlReservationArn"}
     },
+    "AIMlflowConfig":{
+      "type":"structure",
+      "required":["MlflowResourceArn"],
+      "members":{
+        "MlflowResourceArn":{
+          "shape":"AIMlflowResourceArn",
+          "documentation":"<p>The Amazon Resource Name (ARN) of the SageMaker managed MLflow resource.</p>"
+        },
+        "MlflowExperimentName":{
+          "shape":"AIMlflowExperimentName",
+          "documentation":"<p>The MLflow experiment name used for tracking.</p>"
+        },
+        "MlflowRunName":{
+          "shape":"AIMlflowRunName",
+          "documentation":"<p>The MLflow run name used for tracking.</p>"
+        }
+      },
+      "documentation":"<p>The MLflow tracking configuration for logging metrics and parameters to a SageMaker managed MLflow tracking server.</p>"
+    },
+    "AIMlflowExperimentName":{
+      "type":"string",
+      "max":256,
+      "min":1,
+      "pattern":"[a-zA-Z0-9\\-_./]+"
+    },
+    "AIMlflowResourceArn":{
+      "type":"string",
+      "max":2048,
+      "min":20,
+      "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:mlflow-(app|tracking-server)/.*"
+    },
+    "AIMlflowRunName":{
+      "type":"string",
+      "max":256,
+      "min":1,
+      "pattern":"[a-zA-Z0-9\\-_./]+"
+    },
     "AIModelSource":{
       "type":"structure",
       "members":{
@@ -5262,9 +5377,31 @@
         "ExpectedPerformance":{
           "shape":"ExpectedPerformanceList",
           "documentation":"<p>The expected performance metrics for this recommendation.</p>"
+        },
+        "AdapterDetails":{
+          "shape":"AIRecommendationAdapterDetails",
+          "documentation":"<p>The LoRA adapter details for this recommendation. This field contains both the model package ARNs and Amazon S3 URIs for each adapter, regardless of which form was originally supplied. This field is absent when the job was created without LoRA adapters.</p>"
         }
       },
       "documentation":"<p>An optimization recommendation generated by an AI recommendation job.</p>"
+    },
+    "AIRecommendationAdapterDetails":{
+      "type":"structure",
+      "required":[
+        "ModelPackageArns",
+        "S3Uris"
+      ],
+      "members":{
+        "ModelPackageArns":{
+          "shape":"AIAdapterModelPackageEntryList",
+          "documentation":"<p>The list of LoRA adapters with their model package ARNs.</p>"
+        },
+        "S3Uris":{
+          "shape":"AIAdapterS3EntryList",
+          "documentation":"<p>The list of LoRA adapters with their Amazon S3 URIs.</p>"
+        }
+      },
+      "documentation":"<p>The per-recommendation LoRA adapter details. Contains both the model package ARNs and Amazon S3 URIs for each adapter, regardless of which form was originally supplied in the request. When you supply only Amazon S3 URIs, Amazon SageMaker AI creates model packages on your behalf.</p>"
     },
     "AIRecommendationAllowOptimization":{
       "type":"boolean",
@@ -5329,6 +5466,10 @@
         "EnvironmentVariables":{
           "shape":"EnvironmentMap",
           "documentation":"<p>The environment variables for the deployment.</p>"
+        },
+        "MinCpuMemoryRequiredInMb":{
+          "shape":"AIRecommendationMinCpuMemoryRequiredInMb",
+          "documentation":"<p>The minimum host (CPU) memory, in MiB, to reserve for each model copy when deploying the recommendation as an Inference Component. This value maps to the Inference Component's <code>ComputeResourceRequirements$MinMemoryRequiredInMb</code> field.</p>"
         }
       },
       "documentation":"<p>The deployment configuration for a recommendation.</p>"
@@ -5421,6 +5562,12 @@
         "ml.g6e.16xlarge",
         "ml.g6e.24xlarge",
         "ml.g6e.48xlarge",
+        "ml.g7.2xlarge",
+        "ml.g7.4xlarge",
+        "ml.g7.8xlarge",
+        "ml.g7.12xlarge",
+        "ml.g7.24xlarge",
+        "ml.g7.48xlarge",
         "ml.g7e.2xlarge",
         "ml.g7e.4xlarge",
         "ml.g7e.8xlarge",
@@ -5509,6 +5656,11 @@
         "cost"
       ]
     },
+    "AIRecommendationMinCpuMemoryRequiredInMb":{
+      "type":"integer",
+      "box":true,
+      "min":1
+    },
     "AIRecommendationModelDetails":{
       "type":"structure",
       "members":{
@@ -5568,6 +5720,10 @@
         "ModelPackageGroupIdentifier":{
           "shape":"AIResourceIdentifier",
           "documentation":"<p>The name or Amazon Resource Name (ARN) of the model package group where the optimized model is registered as a new model package version.</p>"
+        },
+        "MlflowConfig":{
+          "shape":"AIMlflowConfig",
+          "documentation":"<p>The MLflow tracking configuration for the job. If you don't specify this parameter, MLflow tracking is disabled.</p>"
         }
       },
       "documentation":"<p>The output configuration for an AI recommendation job.</p>"
@@ -5583,6 +5739,10 @@
         "ModelPackageGroupIdentifier":{
           "shape":"AIResourceIdentifier",
           "documentation":"<p>The name or Amazon Resource Name (ARN) of the model package group where deployment-ready model packages are registered.</p>"
+        },
+        "MlflowConfig":{
+          "shape":"AIMlflowConfig",
+          "documentation":"<p>The MLflow tracking configuration for the job.</p>"
         }
       },
       "documentation":"<p>The output configuration for an AI recommendation job, including the S3 location for results and the model package group for deployment.</p>"
@@ -6637,7 +6797,19 @@
         "ml.r6id.16xlarge",
         "ml.r6id.24xlarge",
         "ml.r6id.32xlarge",
-        "ml.p5.4xlarge"
+        "ml.p5.4xlarge",
+        "ml.g7.2xlarge",
+        "ml.g7.4xlarge",
+        "ml.g7.8xlarge",
+        "ml.g7.12xlarge",
+        "ml.g7.24xlarge",
+        "ml.g7.48xlarge",
+        "ml.g7e.2xlarge",
+        "ml.g7e.4xlarge",
+        "ml.g7e.8xlarge",
+        "ml.g7e.12xlarge",
+        "ml.g7e.24xlarge",
+        "ml.g7e.48xlarge"
       ]
     },
     "AppLifecycleManagement":{
@@ -6721,6 +6893,12 @@
         "RSessionGateway",
         "Canvas"
       ]
+    },
+    "ApplicationArn":{
+      "type":"string",
+      "max":128,
+      "min":1,
+      "pattern":"arn:aws[a-z\\-]*:sso::[0-9]{12}:application/(sso)?ins-[a-zA-Z0-9.-]{16}/apl-[a-zA-Z0-9.-]{16}"
     },
     "ApprovalDescription":{
       "type":"string",
@@ -9901,6 +10079,47 @@
       "min":0,
       "pattern":"arn:aws[a-z\\-]*:sagemaker:[a-z0-9\\-]*:[0-9]{12}:cluster/[a-z0-9]{12}"
     },
+    "ClusterAutoPatchConfig":{
+      "type":"structure",
+      "required":["PatchingStrategy"],
+      "members":{
+        "PatchingStrategy":{
+          "shape":"ClusterPatchingStrategy",
+          "documentation":"<p>The strategy for applying patches to instances in the group.</p> <ul> <li> <p> <code>WhenIdle</code>: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.</p> </li> <li> <p> <code>WhenAllIdle</code>: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.</p> </li> </ul>"
+        },
+        "PatchSchedule":{
+          "shape":"ClusterPatchSchedule",
+          "documentation":"<p>The schedule for automatic patching, including the next patch date.</p>"
+        },
+        "DeploymentConfig":{
+          "shape":"DeploymentConfiguration",
+          "documentation":"<p>The deployment configuration for rolling patch updates, including rollback settings and batch sizes. Only applicable when using a rolling patching strategy.</p>"
+        }
+      },
+      "documentation":"<p>The configuration for automatic patching of the instance group. When configured, the system automatically applies security patch AMI updates to the instance group.</p>"
+    },
+    "ClusterAutoPatchConfigDetails":{
+      "type":"structure",
+      "members":{
+        "PatchingStrategy":{
+          "shape":"ClusterPatchingStrategy",
+          "documentation":"<p>The strategy used for applying patches to instances in the group.</p> <ul> <li> <p> <code>WhenIdle</code>: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.</p> </li> <li> <p> <code>WhenAllIdle</code>: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.</p> </li> </ul>"
+        },
+        "CurrentPatchSchedule":{
+          "shape":"ClusterPatchScheduleDetails",
+          "documentation":"<p>The currently active patch schedule that the system will execute.</p>"
+        },
+        "DesiredPatchSchedule":{
+          "shape":"ClusterPatchScheduleDetails",
+          "documentation":"<p>The requested patch schedule. Differs from CurrentPatchSchedule when a reschedule request is pending.</p>"
+        },
+        "DeploymentConfig":{
+          "shape":"DeploymentConfiguration",
+          "documentation":"<p>The deployment configuration for rolling patch updates.</p>"
+        }
+      },
+      "documentation":"<p>The auto-patching configuration details for the instance group, including the patching strategy and schedule.</p>"
+    },
     "ClusterAutoScalerType":{
       "type":"string",
       "enum":["Karpenter"]
@@ -10219,10 +10438,12 @@
     },
     "ClusterImageVersionStatus":{
       "type":"string",
-      "documentation":"<p>The status of the Amazon Machine Image (AMI) version for the HyperPod cluster instance group, node, or cluster. The AMI version is determined at the instance group level, and all nodes within an instance group run the same AMI. The cluster-level status is aggregated across all instance groups.</p> <ul> <li> <p> <code>UpToDate</code>: The resource is running the latest available AMI version.</p> </li> <li> <p> <code>UpdateAvailable</code>: A newer AMI version is available for the resource.</p> </li> </ul>",
+      "documentation":"<p>The status of the Amazon Machine Image (AMI) version for the HyperPod cluster instance group, node, or cluster. The AMI version is determined at the instance group level, and all nodes within an instance group run the same AMI. The cluster-level status is aggregated across all instance groups.</p> <ul> <li> <p> <code>UpToDate</code>: The resource is running the latest available AMI version.</p> </li> <li> <p> <code>UpdateAvailable</code>: A newer AMI version is available for the resource.</p> </li> <li> <p> <code>SecurityUpdateRequired</code>: The current AMI has known security vulnerabilities, and a patched version is available.</p> </li> <li> <p> <code>EndOfLife</code>: The AMI variant has reached end of support and an upgrade is required.</p> </li> </ul>",
       "enum":[
         "UpToDate",
-        "UpdateAvailable"
+        "UpdateAvailable",
+        "SecurityUpdateRequired",
+        "EndOfLife"
       ]
     },
     "ClusterInstanceCount":{
@@ -10302,6 +10523,10 @@
           "shape":"ScheduledUpdateConfig",
           "documentation":"<p>The configuration object of the schedule that SageMaker follows when updating the AMI.</p>"
         },
+        "AutoPatchConfig":{
+          "shape":"ClusterAutoPatchConfigDetails",
+          "documentation":"<p>The auto-patching configuration for the instance group, including the current patching strategy and next scheduled patch date.</p>"
+        },
         "CurrentImageId":{
           "shape":"ImageId",
           "documentation":"<p>The ID of the Amazon Machine Image (AMI) currently in use by the instance group.</p>"
@@ -10309,6 +10534,14 @@
         "DesiredImageId":{
           "shape":"ImageId",
           "documentation":"<p>The ID of the Amazon Machine Image (AMI) desired for the instance group.</p>"
+        },
+        "CurrentImageReleaseVersion":{
+          "shape":"ImageReleaseVersion",
+          "documentation":"<p>The version of the HyperPod-managed AMI currently running on the instance group.</p>"
+        },
+        "DesiredImageReleaseVersion":{
+          "shape":"ImageReleaseVersion",
+          "documentation":"<p>The desired version of the HyperPod-managed AMI for the instance group. This may differ from the current version when an update is pending.</p>"
         },
         "ImageVersionStatus":{
           "shape":"ClusterImageVersionStatus",
@@ -10418,7 +10651,15 @@
         },
         "ImageId":{
           "shape":"ImageId",
-          "documentation":"<p>When configuring your HyperPod cluster, you can specify an image ID using one of the following options:</p> <ul> <li> <p> <code>HyperPodPublicAmiId</code>: Use a HyperPod public AMI</p> </li> <li> <p> <code>CustomAmiId</code>: Use your custom AMI</p> </li> <li> <p> <code>default</code>: Use the default latest system image</p> </li> </ul> <p>If you choose to use a custom AMI (<code>CustomAmiId</code>), ensure it meets the following requirements:</p> <ul> <li> <p>Encryption: The custom AMI must be unencrypted.</p> </li> <li> <p>Ownership: The custom AMI must be owned by the same Amazon Web Services account that is creating the HyperPod cluster.</p> </li> <li> <p>Volume support: Only the primary AMI snapshot volume is supported; additional AMI volumes are not supported.</p> </li> </ul> <p>When updating the instance group's AMI through the <code>UpdateClusterSoftware</code> operation, if an instance group uses a custom AMI, you must provide an <code>ImageId</code> or use the default as input. Note that if you don't specify an instance group in your <code>UpdateClusterSoftware</code> request, then all of the instance groups are patched with the specified image.</p>"
+          "documentation":"<p>When configuring your HyperPod cluster, you can specify an image ID using one of the following options:</p> <ul> <li> <p> <code>HyperPodPublicAmiId</code>: Use a HyperPod public AMI</p> </li> <li> <p> <code>CustomAmiId</code>: Use your custom AMI</p> </li> <li> <p> <code>default</code>: Use the default latest system image. For clusters with continuous scaling node provisioning mode, new instance groups inherit the AMI from the earliest existing instance group</p> </li> </ul> <p>If you choose to use a custom AMI (<code>CustomAmiId</code>), ensure it meets the following requirements:</p> <ul> <li> <p>Encryption: The custom AMI must be unencrypted.</p> </li> <li> <p>Ownership: The custom AMI must be owned by the same Amazon Web Services account that is creating the HyperPod cluster.</p> </li> <li> <p>Volume support: Only the primary AMI snapshot volume is supported; additional AMI volumes are not supported.</p> </li> </ul> <p>When updating the instance group's AMI through the <code>UpdateClusterSoftware</code> operation, if an instance group uses a custom AMI, you must provide an <code>ImageId</code> or use the default as input. Note that if you don't specify an instance group in your <code>UpdateClusterSoftware</code> request, then all of the instance groups are patched with the specified image.</p>"
+        },
+        "AutoPatchConfig":{
+          "shape":"ClusterAutoPatchConfig",
+          "documentation":"<p>The configuration for automatic OS security patching. If present, the system automatically applies PATCH AMI updates to this instance group.</p>"
+        },
+        "ImageReleaseVersion":{
+          "shape":"ImageReleaseVersion",
+          "documentation":"<p>The version of the HyperPod-managed AMI to use for the instance group. Uses semantic versioning in the format <code>MAJOR.MINOR.PATCH</code> (for example, <code>1.2.3</code>). If omitted, the latest available version is used.</p>"
         },
         "KubernetesConfig":{
           "shape":"ClusterKubernetesConfig",
@@ -10673,7 +10914,91 @@
         "ml.g7e.12xlarge",
         "ml.g7e.24xlarge",
         "ml.g7e.48xlarge",
-        "ml.p6-b300.48xlarge"
+        "ml.p6-b300.48xlarge",
+        "ml.g4dn.xlarge",
+        "ml.g4dn.2xlarge",
+        "ml.g4dn.4xlarge",
+        "ml.g4dn.8xlarge",
+        "ml.g4dn.12xlarge",
+        "ml.g4dn.16xlarge",
+        "ml.c6g.medium",
+        "ml.c6g.large",
+        "ml.c6g.xlarge",
+        "ml.c6g.2xlarge",
+        "ml.c6g.4xlarge",
+        "ml.c6g.8xlarge",
+        "ml.c6g.12xlarge",
+        "ml.c6g.16xlarge",
+        "ml.c7g.medium",
+        "ml.c7g.large",
+        "ml.c7g.xlarge",
+        "ml.c7g.2xlarge",
+        "ml.c7g.4xlarge",
+        "ml.c7g.8xlarge",
+        "ml.c7g.12xlarge",
+        "ml.c7g.16xlarge",
+        "ml.c8g.medium",
+        "ml.c8g.large",
+        "ml.c8g.xlarge",
+        "ml.c8g.2xlarge",
+        "ml.c8g.4xlarge",
+        "ml.c8g.8xlarge",
+        "ml.c8g.12xlarge",
+        "ml.c8g.16xlarge",
+        "ml.c8g.24xlarge",
+        "ml.c8g.48xlarge",
+        "ml.c6a.large",
+        "ml.c6a.xlarge",
+        "ml.c6a.2xlarge",
+        "ml.c6a.4xlarge",
+        "ml.c6a.8xlarge",
+        "ml.c6a.12xlarge",
+        "ml.c6a.16xlarge",
+        "ml.c6a.24xlarge",
+        "ml.c6a.32xlarge",
+        "ml.c6a.48xlarge",
+        "ml.m6a.large",
+        "ml.m6a.xlarge",
+        "ml.m6a.2xlarge",
+        "ml.m6a.4xlarge",
+        "ml.m6a.8xlarge",
+        "ml.m6a.12xlarge",
+        "ml.m6a.16xlarge",
+        "ml.m6a.24xlarge",
+        "ml.m6a.32xlarge",
+        "ml.m6a.48xlarge",
+        "ml.m6g.medium",
+        "ml.m6g.large",
+        "ml.m6g.xlarge",
+        "ml.m6g.2xlarge",
+        "ml.m6g.4xlarge",
+        "ml.m6g.8xlarge",
+        "ml.m6g.12xlarge",
+        "ml.m6g.16xlarge",
+        "ml.m7g.medium",
+        "ml.m7g.large",
+        "ml.m7g.xlarge",
+        "ml.m7g.2xlarge",
+        "ml.m7g.4xlarge",
+        "ml.m7g.8xlarge",
+        "ml.m7g.12xlarge",
+        "ml.m7g.16xlarge",
+        "ml.m8g.medium",
+        "ml.m8g.large",
+        "ml.m8g.xlarge",
+        "ml.m8g.2xlarge",
+        "ml.m8g.4xlarge",
+        "ml.m8g.8xlarge",
+        "ml.m8g.12xlarge",
+        "ml.m8g.16xlarge",
+        "ml.m8g.24xlarge",
+        "ml.m8g.48xlarge",
+        "ml.g7.2xlarge",
+        "ml.g7.4xlarge",
+        "ml.g7.8xlarge",
+        "ml.g7.12xlarge",
+        "ml.g7.24xlarge",
+        "ml.g7.48xlarge"
       ]
     },
     "ClusterInstanceTypeDetail":{
@@ -10989,6 +11314,14 @@
           "shape":"ImageId",
           "documentation":"<p>The ID of the Amazon Machine Image (AMI) desired for the node.</p>"
         },
+        "CurrentImageReleaseVersion":{
+          "shape":"ImageReleaseVersion",
+          "documentation":"<p>The version of the HyperPod-managed AMI currently running on the node.</p>"
+        },
+        "DesiredImageReleaseVersion":{
+          "shape":"ImageReleaseVersion",
+          "documentation":"<p>The desired version of the HyperPod-managed AMI for the node. This may differ from the current version when an update is pending.</p>"
+        },
         "ImageVersionStatus":{
           "shape":"ClusterImageVersionStatus",
           "documentation":"<p>The status of the image version for the cluster node.</p>"
@@ -11097,6 +11430,10 @@
           "shape":"ClusterPrivateDnsHostname",
           "documentation":"<p>The private DNS hostname of the SageMaker HyperPod cluster node.</p>"
         },
+        "CurrentImageReleaseVersion":{
+          "shape":"ImageReleaseVersion",
+          "documentation":"<p>The version of the HyperPod-managed AMI currently running on the node.</p>"
+        },
         "ImageVersionStatus":{
           "shape":"ClusterImageVersionStatus",
           "documentation":"<p>The status of the image version for the cluster node.</p>"
@@ -11160,6 +11497,34 @@
       "member":{"shape":"ClusterPartitionName"},
       "max":1,
       "min":0
+    },
+    "ClusterPatchSchedule":{
+      "type":"structure",
+      "members":{
+        "NextPatchDate":{
+          "shape":"Timestamp",
+          "documentation":"<p>The date and time of the next scheduled automatic patch. The system sets this automatically when a patch is detected. Use this field to reschedule the patch to a different date.</p>"
+        }
+      },
+      "documentation":"<p>The schedule configuration for automatic patching.</p>"
+    },
+    "ClusterPatchScheduleDetails":{
+      "type":"structure",
+      "members":{
+        "NextPatchDate":{
+          "shape":"Timestamp",
+          "documentation":"<p>The date and time of the next scheduled automatic patch.</p>"
+        }
+      },
+      "documentation":"<p>The schedule details for automatic patching, including the next scheduled patch date.</p>"
+    },
+    "ClusterPatchingStrategy":{
+      "type":"string",
+      "documentation":"<p>The strategy for applying automatic patches to instances.</p> <ul> <li> <p> <code>WhenIdle</code>: Cordons all instances and patches each instance as it becomes idle (no running jobs). Each instance is uncordoned immediately after patching and becomes available for new jobs. If instances do not become idle, they remain on the previous AMI version. You can then use UpdateClusterSoftware with the desired ImageReleaseVersion to manually update the remaining instances.</p> </li> <li> <p> <code>WhenAllIdle</code>: Cordons all instances and waits for all to become idle before patching. All instances are uncordoned after patching completes. If not all instances become idle, no patching occurs and all instances remain on the previous AMI version.</p> </li> </ul>",
+      "enum":[
+        "WhenIdle",
+        "WhenAllIdle"
+      ]
     },
     "ClusterPrivateDnsHostname":{
       "type":"string",
@@ -11518,6 +11883,10 @@
         "TrainingPlanArns":{
           "shape":"TrainingPlanArns",
           "documentation":"<p>A list of Amazon Resource Names (ARNs) of the training plans associated with this cluster.</p> <p>For more information about how to reserve GPU capacity for your SageMaker HyperPod clusters using Amazon SageMaker Training Plan, see <code> <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingPlan.html\">CreateTrainingPlan</a> </code>.</p>"
+        },
+        "ImageVersionStatus":{
+          "shape":"ClusterImageVersionStatus",
+          "documentation":"<p>The aggregate status of the image version across the cluster's instance groups.</p>"
         }
       },
       "documentation":"<p>Lists a summary of the properties of a SageMaker HyperPod cluster.</p>"
@@ -12139,6 +12508,10 @@
         "MultiModelConfig":{
           "shape":"MultiModelConfig",
           "documentation":"<p>Specifies additional configuration for multi-model endpoints.</p>"
+        },
+        "ContainerMetricsConfig":{
+          "shape":"ContainerMetricsConfig",
+          "documentation":"<p>The configuration for container metrics scraping. Specifies the metrics endpoint path and publishing frequency. If not specified when <code>EnableDetailedObservability</code> is <code>True</code>, the default path <code>/metrics</code> on port <code>8080</code> is used. For first-party and Deep Learning Containers (DLC), the endpoint path is determined automatically and this configuration is optional.</p>"
         }
       },
       "documentation":"<p>Describes the container, as part of model definition.</p>"
@@ -12172,6 +12545,16 @@
       "max":255,
       "min":0,
       "pattern":"[\\S]+"
+    },
+    "ContainerMetricsConfig":{
+      "type":"structure",
+      "members":{
+        "MetricsEndpoints":{
+          "shape":"MetricsEndpointList",
+          "documentation":"<p>A list of metrics endpoints to scrape from the container. Each endpoint specifies the path where the container exposes Prometheus-formatted metrics and the frequency at which to publish them. You can specify a maximum of 1 endpoint.</p>"
+        }
+      },
+      "documentation":"<p>The configuration for container-level metrics scraping. Use this configuration to specify a custom metrics endpoint path and publishing frequency for container metrics. When <code>EnableDetailedObservability</code> is set to <code>True</code> in <code>MetricsConfig</code>, metrics are scraped from the container's Prometheus endpoint. If this configuration is not provided, the default path <code>/metrics</code> on port <code>8080</code> is used with a default publishing frequency of <code>60</code> seconds. For first-party and Deep Learning Containers (DLC), the endpoint path is determined automatically and this configuration is optional.</p>"
     },
     "ContainerMode":{
       "type":"string",
@@ -12448,6 +12831,10 @@
         "ComputeSpec":{
           "shape":"AIRecommendationComputeSpec",
           "documentation":"<p>The compute resource specification for the recommendation job. You can specify up to 3 instance types to consider, and optionally provide capacity reservation configuration.</p>"
+        },
+        "AdapterSource":{
+          "shape":"AIAdapterSource",
+          "documentation":"<p>The LoRA adapter source for the recommendation job. Specify either a list of model package ARNs or Amazon S3 URIs for your LoRA adapters. When this parameter is absent, the recommendation job runs without LoRA adapter support.</p>"
         },
         "Tags":{
           "shape":"TagList",
@@ -13437,7 +13824,7 @@
         },
         "KmsKeyId":{
           "shape":"KmsKeyId",
-          "documentation":"<p>The Amazon Resource Name (ARN) of a Amazon Web Services Key Management Service key that SageMaker uses to encrypt data on the storage volume attached to the ML compute instance that hosts the endpoint.</p> <p>The KmsKeyId can be any of the following formats: </p> <ul> <li> <p>Key ID: <code>1234abcd-12ab-34cd-56ef-1234567890ab</code> </p> </li> <li> <p>Key ARN: <code>arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab</code> </p> </li> <li> <p>Alias name: <code>alias/ExampleAlias</code> </p> </li> <li> <p>Alias name ARN: <code>arn:aws:kms:us-west-2:111122223333:alias/ExampleAlias</code> </p> </li> </ul> <p>The KMS key policy must grant permission to the IAM role that you specify in your <code>CreateEndpoint</code>, <code>UpdateEndpoint</code> requests. For more information, refer to the Amazon Web Services Key Management Service section<a href=\"https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html\"> Using Key Policies in Amazon Web Services KMS </a> </p> <note> <p>Certain Nitro-based instances include local storage, dependent on the instance type. Local storage volumes are encrypted using a hardware module on the instance. You can't request a <code>KmsKeyId</code> when using an instance type with local storage. If any of the models that you specify in the <code>ProductionVariants</code> parameter use nitro-based instances with local storage, do not specify a value for the <code>KmsKeyId</code> parameter. If you specify a value for <code>KmsKeyId</code> when using any nitro-based instances with local storage, the call to <code>CreateEndpointConfig</code> fails.</p> <p>For a list of instance types that support local instance storage, see <a href=\"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-volumes\">Instance Store Volumes</a>.</p> <p>For more information about local instance storage encryption, see <a href=\"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html\">SSD Instance Store Volumes</a>.</p> </note>"
+          "documentation":"<p>The Amazon Resource Name (ARN) of a Amazon Web Services Key Management Service key that SageMaker uses to encrypt data on the storage volume attached to the ML compute instance that hosts the endpoint.</p> <p>The KmsKeyId can be any of the following formats: </p> <ul> <li> <p>Key ID: <code>1234abcd-12ab-34cd-56ef-1234567890ab</code> </p> </li> <li> <p>Key ARN: <code>arn:aws:kms:us-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab</code> </p> </li> <li> <p>Alias name: <code>alias/ExampleAlias</code> </p> </li> <li> <p>Alias name ARN: <code>arn:aws:kms:us-west-2:111122223333:alias/ExampleAlias</code> </p> </li> </ul> <p>The KMS key policy must grant permission to the IAM role that you specify in your <code>CreateEndpoint</code>, <code>UpdateEndpoint</code> requests. For more information, refer to the Amazon Web Services Key Management Service section<a href=\"https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html\"> Using Key Policies in Amazon Web Services KMS </a> </p> <note> <p>Certain Nitro-based instances include local storage, dependent on the instance type. Local storage volumes are encrypted using a hardware module on the instance. If any of the models that you specify in the <code>ProductionVariants</code> parameter use nitro-based instances with local storage, the <code>KmsKeyId</code> parameter does not encrypt instance local storage.</p> <p>For a list of instance types that support local instance storage, see <a href=\"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-volumes\">Instance Store Volumes</a>.</p> <p>For more information about local instance storage encryption, see <a href=\"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html\">SSD Instance Store Volumes</a>.</p> </note>"
         },
         "AsyncInferenceConfig":{
           "shape":"AsyncInferenceConfig",
@@ -14261,6 +14648,10 @@
           "shape":"RoleArn",
           "documentation":"<p>The Amazon Resource Name (ARN) for an IAM role in your account that the MLflow App uses to access the artifact store in Amazon S3. The role should have the <code>AmazonS3FullAccess</code> permission.</p>"
         },
+        "KmsKeyId":{
+          "shape":"KmsKeyId",
+          "documentation":"<p>The ID of the Amazon Web Services KMS key used to encrypt the data at rest associated with the MLflow App. If you don't specify a value, the MLflow App is not encrypted with a customer-managed key.</p>"
+        },
         "ModelRegistrationMode":{
           "shape":"ModelRegistrationMode",
           "documentation":"<p>Whether to enable or disable automatic registration of new MLflow models to the SageMaker Model Registry. To enable automatic model registration, set this value to <code>AutoModelRegistrationEnabled</code>. To disable automatic model registration, set this value to <code>AutoModelRegistrationDisabled</code>. If not specified, <code>AutomaticModelRegistration</code> defaults to <code>AutoModelRegistrationDisabled</code>.</p>"
@@ -14988,6 +15379,10 @@
         "VpcConfig":{
           "shape":"OptimizationVpcConfig",
           "documentation":"<p>A VPC in Amazon VPC that your optimized model has access to.</p>"
+        },
+        "TrainingPlanArns":{
+          "shape":"OptimizationJobTrainingPlanArns",
+          "documentation":"<p>The Amazon Resource Name (ARN) of the training plan to use for this optimization job.</p> <p>When you use reserved capacity from a training plan, the optimization job runs on that reserved capacity instead of on-demand capacity. If you omit this field, the job uses on-demand capacity. You can specify at most one training plan.</p> <p>For more information about how to reserve GPU capacity for your optimization jobs using Amazon SageMaker Training Plans, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/reserve-capacity-with-training-plans.html\">Reserve capacity with training plans</a>.</p>"
         }
       }
     },
@@ -15066,9 +15461,13 @@
           "shape":"PartnerAppConfig",
           "documentation":"<p>Configuration settings for the SageMaker Partner AI App.</p>"
         },
+        "IdcConfig":{
+          "shape":"IdcConfigInput",
+          "documentation":"<p>Specifies the Amazon Web Services IAM Identity Center configuration for the SageMaker Partner AI App. Specify this parameter when <code>AuthType</code> is <code>IDC</code>. Apps that use <code>IAM</code> authorization don't use this parameter.</p>"
+        },
         "AuthType":{
           "shape":"PartnerAppAuthType",
-          "documentation":"<p>The authorization type that users use to access the SageMaker Partner AI App.</p>"
+          "documentation":"<p>The authorization type that users use to access the SageMaker Partner AI App. Valid values:</p> <ul> <li> <p> <code>IAM</code>: Users access the SageMaker Partner AI App with their Amazon Web Services IAM identity.</p> </li> <li> <p> <code>IDC</code>: Users access the SageMaker Partner AI App with their Amazon Web Services IAM Identity Center identity. Specify the Identity Center instance to use in <code>IdcConfig</code>.</p> </li> </ul>"
         },
         "EnableIamSessionBasedIdentity":{
           "shape":"Boolean",
@@ -16478,7 +16877,7 @@
     "DeepHealthChecks":{
       "type":"list",
       "member":{"shape":"DeepHealthCheckType"},
-      "max":2,
+      "max":3,
       "min":1
     },
     "DefaultDomainIdList":{
@@ -17799,6 +18198,10 @@
         "ComputeSpec":{
           "shape":"AIRecommendationComputeSpec",
           "documentation":"<p>The compute resource specification for the recommendation job.</p>"
+        },
+        "AdapterSource":{
+          "shape":"AIAdapterSource",
+          "documentation":"<p>The LoRA adapter source that you specified when you created the recommendation job. This field is absent when you created the job without LoRA adapters.</p>"
         },
         "CreationTime":{
           "shape":"Timestamp",
@@ -20770,6 +21173,10 @@
           "shape":"RoleArn",
           "documentation":"<p>The Amazon Resource Name (ARN) for an IAM role in your account that the MLflow App uses to access the artifact store in Amazon S3.</p>"
         },
+        "KmsKeyId":{
+          "shape":"KmsKeyId",
+          "documentation":"<p>The ID of the Amazon Web Services KMS key used to encrypt the data at rest associated with the MLflow App. This field is absent if the MLflow App is not encrypted with a customer-managed key.</p>"
+        },
         "Status":{
           "shape":"MlflowAppStatus",
           "documentation":"<p>The current creation status of the described MLflow App.</p>"
@@ -21027,6 +21434,10 @@
           "shape":"Integer",
           "documentation":"<p>The version of the model card to describe. If a version is not provided, then the latest version of the model card is described.</p>",
           "box":true
+        },
+        "IncludedData":{
+          "shape":"IncludedData",
+          "documentation":"<p>Specifies the level of model card data to include in the response. Use this parameter to call <code>DescribeModelCard</code> without requiring <code>kms:Decrypt</code> permission on the customer-managed Amazon Web Services KMS key.</p> <ul> <li> <p> <code>AllData</code>: Returns the full model card <code>Content</code>. This option requires <code>kms:Decrypt</code> permission on the customer-managed key, if one is associated with the model card. This is the default.</p> </li> <li> <p> <code>MetadataOnly</code>: Returns the model card with sanitized <code>Content</code> that includes only a small set of unencrypted metadata fields. This option does not require <code>kms:Decrypt</code> permission. For the list of fields preserved in the response, see <code>Content</code>.</p> </li> </ul> <p>If you don't specify a value, SageMaker returns <code>AllData</code>.</p>"
         }
       }
     },
@@ -21057,7 +21468,7 @@
         },
         "Content":{
           "shape":"ModelCardContent",
-          "documentation":"<p>The content of the model card.</p>"
+          "documentation":"<p>The content of the model card. Content is provided as a string in the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/model-cards.html#model-cards-json-schema\">model card JSON schema</a>.</p> <p>When you set <code>IncludedData</code> to <code>MetadataOnly</code> in the request, SageMaker returns a sanitized version of <code>Content</code> that includes only the following JSON paths, when present in the model card:</p> <ul> <li> <p> <code>model_overview.model_id</code> </p> </li> <li> <p> <code>model_overview.model_name</code> </p> </li> <li> <p> <code>intended_uses.risk_rating</code> </p> </li> <li> <p> <code>model_package_details.model_package_group_name</code> </p> </li> <li> <p> <code>model_package_details.model_package_arn</code> </p> </li> </ul> <p>All other fields are removed from <code>Content</code> when <code>IncludedData</code> is <code>MetadataOnly</code>, including model description, training details, evaluation details, business details, and additional information. To retrieve the complete <code>Content</code>, set <code>IncludedData</code> to <code>AllData</code> or omit the parameter.</p>"
         },
         "ModelCardStatus":{
           "shape":"ModelCardStatus",
@@ -21258,6 +21669,10 @@
         "ModelPackageName":{
           "shape":"VersionedArnOrName",
           "documentation":"<p>The name or Amazon Resource Name (ARN) of the model package to describe.</p> <p>When you specify a name, the name must have 1 to 63 characters. Valid characters are a-z, A-Z, 0-9, and - (hyphen).</p>"
+        },
+        "IncludedData":{
+          "shape":"IncludedData",
+          "documentation":"<p>Specifies the level of model package data to include in the response. Use this parameter to call <code>DescribeModelPackage</code> on a model package that has an associated model card without requiring <code>kms:Decrypt</code> permission on the customer-managed KMS key associated with the embedded model card.</p> <ul> <li> <p> <code>AllData</code>: Returns the full model package response, including the unredacted <code>ModelCard.ModelCardContent</code>. This option requires <code>kms:Decrypt</code> permission on the customer-managed key, if one is associated with the embedded model card. This is the default.</p> </li> <li> <p> <code>MetadataOnly</code>: Returns the full model package response, but with the embedded <code>ModelCard.ModelCardContent</code> sanitized to include only a small set of unencrypted metadata fields. This option does not require <code>kms:Decrypt</code> permission. All other top-level response fields, including <code>InferenceSpecification</code>, <code>ModelMetrics</code>, <code>DriftCheckBaselines</code>, and <code>SecurityConfig</code>, are returned unchanged. For the list of fields preserved within <code>ModelCardContent</code>, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_DescribeModelPackage.html#sagemaker-DescribeModelPackage-response-ModelCard\">ModelCard</a>.</p> </li> </ul> <p>If you don't specify a value, SageMaker returns <code>AllData</code>.</p>"
         }
       }
     },
@@ -21381,7 +21796,7 @@
         },
         "ModelCard":{
           "shape":"ModelPackageModelCard",
-          "documentation":"<p>The model card associated with the model package. Since <code>ModelPackageModelCard</code> is tied to a model package, it is a specific usage of a model card and its schema is simplified compared to the schema of <code>ModelCard</code>. The <code>ModelPackageModelCard</code> schema does not include <code>model_package_details</code>, and <code>model_overview</code> is composed of the <code>model_creator</code> and <code>model_artifact</code> properties. For more information about the model package model card schema, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/model-registry-details.html#model-card-schema\">Model package model card schema</a>. For more information about the model card associated with the model package, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/model-registry-details.html\">View the Details of a Model Version</a>.</p>"
+          "documentation":"<p>The model card associated with the model package. Since <code>ModelPackageModelCard</code> is tied to a model package, it is a specific usage of a model card and its schema is simplified compared to the schema of <code>ModelCard</code>. The <code>ModelPackageModelCard</code> schema does not include <code>model_package_details</code>, and <code>model_overview</code> is composed of the <code>model_creator</code> and <code>model_artifact</code> properties. For more information about the model package model card schema, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/model-registry-details.html#model-card-schema\">Model package model card schema</a>. For more information about the model card associated with the model package, see <a href=\"https://docs.aws.amazon.com/sagemaker/latest/dg/model-registry-details.html\">View the Details of a Model Version</a>.</p> <p>When you set <code>IncludedData</code> to <code>MetadataOnly</code> in the request, <code>ModelCardStatus</code> is preserved and <code>ModelCardContent</code> is sanitized to include only the following JSON paths, when present in the model card:</p> <ul> <li> <p> <code>model_overview.model_id</code> </p> </li> <li> <p> <code>model_overview.model_name</code> </p> </li> <li> <p> <code>intended_uses.risk_rating</code> </p> </li> <li> <p> <code>model_package_details.model_package_group_name</code> </p> </li> <li> <p> <code>model_package_details.model_package_arn</code> </p> </li> </ul> <p>Because the <code>ModelPackageModelCard</code> schema does not include <code>model_package_details</code> and limits <code>model_overview</code> to <code>model_creator</code> and <code>model_artifact</code>, the sanitized <code>ModelCardContent</code> for a model package typically contains only <code>intended_uses.risk_rating</code> if it was provided when the model card was created. To retrieve the complete <code>ModelCardContent</code>, set <code>IncludedData</code> to <code>AllData</code> or omit the parameter.</p>"
         },
         "ModelLifeCycle":{
           "shape":"ModelLifeCycle",
@@ -21756,6 +22171,10 @@
         "VpcConfig":{
           "shape":"OptimizationVpcConfig",
           "documentation":"<p>A VPC in Amazon VPC that your optimized model has access to.</p>"
+        },
+        "TrainingPlanArns":{
+          "shape":"OptimizationJobTrainingPlanArns",
+          "documentation":"<p>The Amazon Resource Name (ARN) of the training plan associated with this optimization job. This field appears only when you specified a training plan when you created the job. Optimization jobs that use on-demand capacity don't return this field.</p>"
         }
       }
     },
@@ -21831,7 +22250,7 @@
         },
         "AuthType":{
           "shape":"PartnerAppAuthType",
-          "documentation":"<p>The authorization type that users use to access the SageMaker Partner AI App.</p>"
+          "documentation":"<p>The authorization type that users use to access the SageMaker Partner AI App. Valid values:</p> <ul> <li> <p> <code>IAM</code>: Users access the SageMaker Partner AI App with their Amazon Web Services IAM identity.</p> </li> <li> <p> <code>IDC</code>: Users access the SageMaker Partner AI App with their Amazon Web Services IAM Identity Center identity.</p> </li> </ul>"
         },
         "EnableIamSessionBasedIdentity":{
           "shape":"Boolean",
@@ -21854,6 +22273,10 @@
         "AvailableUpgrade":{
           "shape":"AvailableUpgrade",
           "documentation":"<p>A map of available minor version upgrades for the SageMaker Partner AI App. The key is the semantic version number, and the value is a list of release notes for that version. A null value indicates no upgrades are available.</p>"
+        },
+        "IdcConfig":{
+          "shape":"IdcConfigOutput",
+          "documentation":"<p>Contains the Amazon Web Services IAM Identity Center configuration for the SageMaker Partner AI App, including the Identity Center instance and the Identity Center application that SageMaker creates for the app. The service returns this field for apps that use <code>IDC</code> authorization.</p>"
         }
       }
     },
@@ -23601,7 +24024,6 @@
     },
     "DomainId":{
       "type":"string",
-      "documentation":"<p>Types duplicated from IronmanApiServiceModel for federation. These types are defined in other service directories and are not available via IronmanApiServiceCommonModel.</p>",
       "max":63,
       "min":0,
       "pattern":"d-(-*[a-z0-9]){1,61}"
@@ -24357,6 +24779,10 @@
     },
     "EnableCaching":{"type":"boolean"},
     "EnableCapture":{"type":"boolean"},
+    "EnableDetailedObservability":{
+      "type":"boolean",
+      "box":true
+    },
     "EnableEnhancedMetrics":{
       "type":"boolean",
       "box":true
@@ -27473,6 +27899,32 @@
       },
       "documentation":"<p>Use this parameter to specify a supported global condition key that is added to the IAM policy.</p>"
     },
+    "IdcConfigInput":{
+      "type":"structure",
+      "required":["InstanceArn"],
+      "members":{
+        "InstanceArn":{
+          "shape":"InstanceArn",
+          "documentation":"<p>The ARN of the Amazon Web Services IAM Identity Center instance that the SageMaker Partner AI App uses to authenticate users.</p>"
+        }
+      },
+      "documentation":"<p>Specifies the Amazon Web Services IAM Identity Center configuration to use for a SageMaker Partner AI App that uses <code>IDC</code> authorization.</p>"
+    },
+    "IdcConfigOutput":{
+      "type":"structure",
+      "required":["InstanceArn"],
+      "members":{
+        "InstanceArn":{
+          "shape":"InstanceArn",
+          "documentation":"<p>The ARN of the Amazon Web Services IAM Identity Center instance that the SageMaker Partner AI App uses to authenticate users.</p>"
+        },
+        "ApplicationArn":{
+          "shape":"ApplicationArn",
+          "documentation":"<p>The ARN of the Amazon Web Services IAM Identity Center application that SageMaker creates for the SageMaker Partner AI App.</p>"
+        }
+      },
+      "documentation":"<p>Contains the Amazon Web Services IAM Identity Center configuration of a SageMaker Partner AI App that uses <code>IDC</code> authorization.</p>"
+    },
     "IdempotencyToken":{
       "type":"string",
       "max":128,
@@ -27671,6 +28123,12 @@
       "max":63,
       "min":0,
       "pattern":"[a-zA-Z0-9\\-.]+"
+    },
+    "ImageReleaseVersion":{
+      "type":"string",
+      "max":64,
+      "min":0,
+      "pattern":"[0-9]+\\.[0-9]+\\.[0-9]+"
     },
     "ImageSortBy":{
       "type":"string",
@@ -27889,6 +28347,13 @@
       "type":"boolean",
       "box":true
     },
+    "IncludedData":{
+      "type":"string",
+      "enum":[
+        "AllData",
+        "MetadataOnly"
+      ]
+    },
     "InferenceComponentArn":{
       "type":"string",
       "max":2048,
@@ -27971,6 +28436,10 @@
         "Environment":{
           "shape":"EnvironmentMap",
           "documentation":"<p>The environment variables to set in the Docker container. Each key and value in the Environment string-to-string map can have length of up to 1024. We support up to 16 entries in the map.</p>"
+        },
+        "ContainerMetricsConfig":{
+          "shape":"ContainerMetricsConfig",
+          "documentation":"<p>The configuration for container metrics scraping. Specifies the metrics endpoint path and publishing frequency for the inference component's container. If not specified when <code>EnableDetailedObservability</code> is <code>True</code>, the default path <code>/metrics</code> on port <code>8080</code> is used. For first-party and Deep Learning Containers (DLC), the endpoint path is determined automatically and this configuration is optional.</p>"
         }
       },
       "documentation":"<p>Defines a container that provides the runtime environment for a model that you deploy with an inference component.</p>"
@@ -27986,6 +28455,10 @@
         "Environment":{
           "shape":"EnvironmentMap",
           "documentation":"<p>The environment variables to set in the Docker container.</p>"
+        },
+        "ContainerMetricsConfig":{
+          "shape":"ContainerMetricsConfig",
+          "documentation":"<p>The container metrics scraping configuration for this inference component, including the metrics endpoint path and publishing frequency.</p>"
         }
       },
       "documentation":"<p>Details about the resources that are deployed with this inference component.</p>"
@@ -28757,6 +29230,12 @@
       "member":{"shape":"TrainingInputMode"},
       "min":1
     },
+    "InstanceArn":{
+      "type":"string",
+      "max":128,
+      "min":1,
+      "pattern":"arn:aws[a-z\\-]*:sso:::instance/(sso)?ins-[a-zA-Z0-9.-]{16}"
+    },
     "InstanceCount":{
       "type":"integer",
       "box":true,
@@ -29213,8 +29692,22 @@
         "ml.g6.16xlarge",
         "ml.g6.24xlarge",
         "ml.g6.48xlarge",
+        "ml.g7e.2xlarge",
+        "ml.g7e.4xlarge",
+        "ml.g7e.8xlarge",
+        "ml.g7e.12xlarge",
+        "ml.g7e.24xlarge",
+        "ml.g7e.48xlarge",
         "ml.p5.4xlarge",
-        "ml.p5en.48xlarge"
+        "ml.p5en.48xlarge",
+        "ml.g6e.xlarge",
+        "ml.g6e.2xlarge",
+        "ml.g6e.4xlarge",
+        "ml.g6e.8xlarge",
+        "ml.g6e.12xlarge",
+        "ml.g6e.16xlarge",
+        "ml.g6e.24xlarge",
+        "ml.g6e.48xlarge"
       ]
     },
     "Integer":{"type":"integer"},
@@ -29298,6 +29791,68 @@
       "type":"string",
       "max":256,
       "min":1
+    },
+    "Job":{
+      "type":"structure",
+      "members":{
+        "JobName":{
+          "shape":"JobName",
+          "documentation":"<p>The name of the job.</p>"
+        },
+        "JobArn":{
+          "shape":"JobArn",
+          "documentation":"<p>The Amazon Resource Name (ARN) of the job.</p>"
+        },
+        "RoleArn":{
+          "shape":"RoleArn",
+          "documentation":"<p>The ARN of the IAM role associated with the job.</p>"
+        },
+        "JobCategory":{
+          "shape":"JobCategory",
+          "documentation":"<p>The category of the job.</p>"
+        },
+        "JobConfigSchemaVersion":{
+          "shape":"JobSchemaVersion",
+          "documentation":"<p>The schema version used for the job configuration document.</p>"
+        },
+        "JobConfigDocument":{
+          "shape":"JobConfigDocument",
+          "documentation":"<p>The JSON configuration document for the job.</p>"
+        },
+        "CreationTime":{
+          "shape":"Timestamp",
+          "documentation":"<p>The date and time that the job was created.</p>"
+        },
+        "LastModifiedTime":{
+          "shape":"Timestamp",
+          "documentation":"<p>The date and time that the job was last modified.</p>"
+        },
+        "EndTime":{
+          "shape":"Timestamp",
+          "documentation":"<p>The date and time that the job ended.</p>"
+        },
+        "JobStatus":{
+          "shape":"JobStatus",
+          "documentation":"<p>The current status of the job.</p>"
+        },
+        "SecondaryStatus":{
+          "shape":"JobSecondaryStatus",
+          "documentation":"<p>The detailed secondary status of the job, providing more granular information about the job's progress.</p>"
+        },
+        "SecondaryStatusTransitions":{
+          "shape":"JobSecondaryStatusTransitions",
+          "documentation":"<p>A list of secondary status transitions for the job, with timestamps and optional status messages.</p>"
+        },
+        "FailureReason":{
+          "shape":"FailureReason",
+          "documentation":"<p>If the job failed, the reason it failed.</p>"
+        },
+        "Tags":{
+          "shape":"TagList",
+          "documentation":"<p>The tags associated with the job.</p>"
+        }
+      },
+      "documentation":"<p>The properties of a job returned by the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Search.html\">Search</a> API.</p>"
     },
     "JobArn":{
       "type":"string",
@@ -35246,12 +35801,45 @@
           "shape":"EnableEnhancedMetrics",
           "documentation":"<p>Specifies whether to enable enhanced metrics for the endpoint. Enhanced metrics provide utilization and invocation data at instance and container granularity. Container granularity is supported for Inference Components. The default is <code>False</code>.</p>"
         },
+        "EnableDetailedObservability":{
+          "shape":"EnableDetailedObservability",
+          "documentation":"<p>Indicates whether detailed observability is enabled for the endpoint. When set to <code>True</code>, the following metrics are published at the configured frequency:</p> <ul> <li> <p>Container-level inference metrics scraped from the container's Prometheus endpoint (such as request latency, error counts, and throughput). Available metrics vary by framework.</p> </li> <li> <p>Per-GPU metrics (utilization, memory, and temperature) attributed to individual inference components.</p> </li> <li> <p>Per-instance host metrics (CPU, memory, and disk utilization).</p> </li> <li> <p>Inference component placement metrics (copy count per Availability Zone).</p> </li> </ul> <p>For first-party and Deep Learning Containers (DLC), the Prometheus endpoint path is determined automatically. For Bring-Your-Own-Container (BYOC) cases, you can optionally set <code>ContainerMetricsConfig</code> to specify a custom endpoint path. If not specified, the default path <code>/metrics</code> on port <code>8080</code> is used.</p> <p>When set to <code>False</code>, these additional metrics are not published. Standard invocation and utilization metrics controlled by <code>EnableEnhancedMetrics</code> are unaffected.</p> <p>The default value for new endpoint configurations is <code>True</code>. For existing endpoint configurations created before this feature, the value is <code>False</code> unless explicitly set.</p>"
+        },
         "MetricPublishFrequencyInSeconds":{
           "shape":"MetricPublishFrequencyInSeconds",
-          "documentation":"<p>The interval, in seconds, at which metrics are published to Amazon CloudWatch. Defaults to <code>60</code>. Valid values: <code>10</code>, <code>30</code>, <code>60</code>, <code>120</code>, <code>180</code>, <code>240</code>, <code>300</code>. When <code>EnableEnhancedMetrics</code> is set to <code>False</code>, this interval applies to utilization metrics only; invocation metrics continue to be published at the default 60-second interval. When <code>EnableEnhancedMetrics</code> is set to <code>True</code>, this interval applies to both utilization and invocation metrics.</p>"
+          "documentation":"<p>The interval, in seconds, at which metrics are published to Amazon CloudWatch. Defaults to <code>60</code>. Valid values: <code>10</code>, <code>30</code>, <code>60</code>, <code>120</code>, <code>180</code>, <code>240</code>, <code>300</code>.</p> <p>When <code>EnableEnhancedMetrics</code> is set to <code>False</code>, this interval applies to utilization metrics only. Invocation metrics continue to be published at the default 60-second interval. When <code>EnableEnhancedMetrics</code> is set to <code>True</code>, this interval applies to both utilization and invocation metrics.</p> <p>When <code>EnableDetailedObservability</code> is set to <code>True</code>, this interval applies to per-GPU metrics, per-instance host metrics, container metrics, and fleet-level inference component lifecycle and placement metrics.</p>"
         }
       },
       "documentation":"<p>The configuration for Utilization metrics.</p>"
+    },
+    "MetricsEndpoint":{
+      "type":"structure",
+      "required":["MetricsEndpointPath"],
+      "members":{
+        "MetricsEndpointPath":{
+          "shape":"MetricsEndpointPath",
+          "documentation":"<p>The path to the metrics endpoint exposed by the container. For example, <code>/metrics</code> or <code>/server/metrics</code>. The path must start with <code>/</code> and can contain alphanumeric characters, forward slashes, underscores, hyphens, and periods. Maximum length is 256 characters. If not specified, defaults to <code>/metrics</code>.</p>"
+        },
+        "MetricPublishFrequencyInSeconds":{
+          "shape":"MetricPublishFrequencyInSeconds",
+          "documentation":"<p>The interval, in seconds, at which container metrics scraped from the endpoint are published to Amazon CloudWatch. Valid values: <code>10</code>, <code>30</code>, <code>60</code>, <code>120</code>, <code>180</code>, <code>240</code>, <code>300</code>. Defaults to <code>60</code>.</p>"
+        }
+      },
+      "documentation":"<p>Specifies a metrics endpoint for a container, including the path where the container exposes Prometheus-formatted metrics and the frequency at which to publish them to Amazon CloudWatch.</p>"
+    },
+    "MetricsEndpointList":{
+      "type":"list",
+      "member":{"shape":"MetricsEndpoint"},
+      "documentation":"<p>A list of metrics endpoints for a container.</p>",
+      "max":1,
+      "min":0
+    },
+    "MetricsEndpointPath":{
+      "type":"string",
+      "documentation":"<p>Per-container Prometheus metrics scraping configuration</p>",
+      "max":256,
+      "min":0,
+      "pattern":"/(?!.*\\.\\.)[a-zA-Z0-9/_.\\-]+"
     },
     "MetricsSource":{
       "type":"structure",
@@ -38313,7 +38901,9 @@
         "Stopped",
         "Failed",
         "Deleting",
-        "Updating"
+        "Updating",
+        "PendingMaintenance",
+        "InMaintenance"
       ]
     },
     "NotebookInstanceSummary":{
@@ -38616,7 +39206,7 @@
     "OnStartDeepHealthChecks":{
       "type":"list",
       "member":{"shape":"DeepHealthCheckType"},
-      "max":2,
+      "max":3,
       "min":1
     },
     "OnlineStoreConfig":{
@@ -38637,7 +39227,7 @@
         },
         "StorageType":{
           "shape":"StorageType",
-          "documentation":"<p>Option for different tiers of low latency storage for real-time data retrieval.</p> <ul> <li> <p> <code>Standard</code>: A managed low latency data store for feature groups.</p> </li> <li> <p> <code>InMemory</code>: A managed data store for feature groups that supports very low latency retrieval. </p> </li> </ul>"
+          "documentation":"<p>Option for different tiers of low latency storage for real-time data retrieval.</p> <ul> <li> <p> <code>Standard</code>: A managed low latency data store for feature groups.</p> </li> <li> <p> <code>Standard_V2</code>: A managed low latency data store for feature groups that supports partial updates to individual features using the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_feature_store_UpdateRecord.html\">UpdateRecord</a> operation. Choose this storage type at feature group creation time if your use case requires updating specific feature values without rewriting the entire record.</p> </li> <li> <p> <code>InMemory</code>: A managed data store for feature groups that supports very low latency retrieval.</p> </li> </ul>"
         }
       },
       "documentation":"<p>Use this to specify the Amazon Web Services Key Management Service (KMS) Key ID, or <code>KMSKeyId</code>, for at rest data encryption. You can turn <code>OnlineStore</code> on or off by specifying the <code>EnableOnlineStore</code> flag at General Assembly.</p> <p>The default value is <code>False</code>.</p>"
@@ -38648,6 +39238,10 @@
         "TtlDuration":{
           "shape":"TtlDuration",
           "documentation":"<p>Time to live duration, where the record is hard deleted after the expiration time is reached; <code>ExpiresAt</code> = <code>EventTime</code> + <code>TtlDuration</code>. For information on HardDelete, see the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_feature_store_DeleteRecord.html\">DeleteRecord</a> API in the Amazon SageMaker API Reference guide.</p>"
+        },
+        "StorageType":{
+          "shape":"StorageType",
+          "documentation":"<p>The online store storage type to migrate the feature group to. Use this parameter to migrate an existing feature group from <code>Standard</code> to <code>Standard_V2</code> storage format, enabling support for the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_feature_store_UpdateRecord.html\">UpdateRecord</a> operation. Migration is a one-way operation and cannot be reversed.</p>"
         }
       },
       "documentation":"<p>Updates the feature group online store configuration.</p>"
@@ -38766,7 +39360,20 @@
         "ml.inf2.48xlarge",
         "ml.trn1.2xlarge",
         "ml.trn1.32xlarge",
-        "ml.trn1n.32xlarge"
+        "ml.trn1n.32xlarge",
+        "ml.p6-b200.48xlarge",
+        "ml.g7e.2xlarge",
+        "ml.g7e.4xlarge",
+        "ml.g7e.8xlarge",
+        "ml.g7e.12xlarge",
+        "ml.g7e.24xlarge",
+        "ml.g7e.48xlarge",
+        "ml.g7.2xlarge",
+        "ml.g7.4xlarge",
+        "ml.g7.8xlarge",
+        "ml.g7.12xlarge",
+        "ml.g7.24xlarge",
+        "ml.g7.48xlarge"
       ]
     },
     "OptimizationJobEnvironmentVariables":{
@@ -38896,6 +39503,13 @@
         }
       },
       "documentation":"<p>Summarizes an optimization job by providing some of its key properties.</p>"
+    },
+    "OptimizationJobTrainingPlanArns":{
+      "type":"list",
+      "member":{"shape":"TrainingPlanArn"},
+      "documentation":"<p>Amazon Resource Names (ARNs) of the training plans whose reserved capacity backs the optimization job. Bounded to a single plan for now; the list shape allows widening to multiple plans in the future without a breaking scalar-to-list change.</p>",
+      "max":1,
+      "min":0
     },
     "OptimizationModelAcceptEula":{"type":"boolean"},
     "OptimizationModelAccessConfig":{
@@ -39264,7 +39878,10 @@
     },
     "PartnerAppAuthType":{
       "type":"string",
-      "enum":["IAM"]
+      "enum":[
+        "IAM",
+        "IDC"
+      ]
     },
     "PartnerAppConfig":{
       "type":"structure",
@@ -40086,6 +40703,32 @@
         "LowerPriority"
       ]
     },
+    "PrefixAwareRoutingConcurrencyThreshold":{
+      "type":"integer",
+      "box":true,
+      "max":1024,
+      "min":1
+    },
+    "PrefixAwareRoutingConfig":{
+      "type":"structure",
+      "members":{
+        "PrefixLength":{
+          "shape":"PrefixAwareRoutingPrefixLength",
+          "documentation":"<p>The maximum length of the prefix used for routing decisions. Required when <code>RoutingStrategy</code> is <code>PREFIX_AWARE</code>.</p> <ul> <li> <p>For the SageMaker Runtime <code>InvokeEndpoint</code> and <code>InvokeEndpointWithResponseStream</code> APIs, this value specifies the number of bytes from the beginning of the request body.</p> </li> <li> <p>For OpenAI-compatible API, this value specifies the number of characters from the text content of the messages array.</p> </li> </ul> <p>The endpoint routes requests that share the same prefix to the same instance. Set this value to cover shared content (such as system prompts) plus enough unique content to distribute workloads across instances.</p>"
+        },
+        "ConcurrencyThreshold":{
+          "shape":"PrefixAwareRoutingConcurrencyThreshold",
+          "documentation":"<p>The maximum number of in-flight requests on the target instance before the endpoint routes to another instance. Required when <code>RoutingStrategy</code> is <code>PREFIX_AWARE</code>. When in-flight requests on the prefix-selected instance reach this threshold, the endpoint routes the request to an instance with more available capacity.</p>"
+        }
+      },
+      "documentation":"<p>The configuration for prefix-aware routing on a SageMaker real-time inference endpoint. Specify <code>PrefixLength</code> and <code>ConcurrencyThreshold</code> to control routing behavior.</p>"
+    },
+    "PrefixAwareRoutingPrefixLength":{
+      "type":"integer",
+      "box":true,
+      "max":65536,
+      "min":1024
+    },
     "PresignedDomainUrl":{"type":"string"},
     "PresignedUrlAccessConfig":{
       "type":"structure",
@@ -40146,11 +40789,7 @@
     },
     "ProcessingClusterConfig":{
       "type":"structure",
-      "required":[
-        "InstanceCount",
-        "InstanceType",
-        "VolumeSizeInGB"
-      ],
+      "required":["VolumeSizeInGB"],
       "members":{
         "InstanceCount":{
           "shape":"ProcessingInstanceCount",
@@ -40366,7 +41005,13 @@
         "ml.g7e.8xlarge",
         "ml.g7e.12xlarge",
         "ml.g7e.24xlarge",
-        "ml.g7e.48xlarge"
+        "ml.g7e.48xlarge",
+        "ml.g7.2xlarge",
+        "ml.g7.4xlarge",
+        "ml.g7.8xlarge",
+        "ml.g7.12xlarge",
+        "ml.g7.24xlarge",
+        "ml.g7.48xlarge"
       ]
     },
     "ProcessingJob":{
@@ -41020,6 +41665,12 @@
         "ml.g7e.12xlarge",
         "ml.g7e.24xlarge",
         "ml.g7e.48xlarge",
+        "ml.g7.2xlarge",
+        "ml.g7.4xlarge",
+        "ml.g7.8xlarge",
+        "ml.g7.12xlarge",
+        "ml.g7.24xlarge",
+        "ml.g7.48xlarge",
         "ml.p4d.24xlarge",
         "ml.c7g.large",
         "ml.c7g.xlarge",
@@ -41218,7 +41869,11 @@
       "members":{
         "RoutingStrategy":{
           "shape":"RoutingStrategy",
-          "documentation":"<p>Sets how the endpoint routes incoming traffic:</p> <ul> <li> <p> <code>LEAST_OUTSTANDING_REQUESTS</code>: The endpoint routes requests to the specific instances that have more capacity to process them.</p> </li> <li> <p> <code>RANDOM</code>: The endpoint routes each request to a randomly chosen instance.</p> </li> </ul>"
+          "documentation":"<p>Sets how the endpoint routes incoming traffic:</p> <ul> <li> <p> <code>LEAST_OUTSTANDING_REQUESTS</code>: The endpoint routes requests to the specific instances that have more capacity to process them.</p> </li> <li> <p> <code>RANDOM</code>: The endpoint routes each request to a randomly chosen instance.</p> </li> <li> <p> <code>PREFIX_AWARE</code>: The endpoint routes requests that share the same prompt prefix to the same instance. When the number of in-flight requests on the selected instance reaches the configured threshold, the endpoint routes the request to an instance with more available capacity.</p> </li> </ul>"
+        },
+        "PrefixAwareRoutingConfig":{
+          "shape":"PrefixAwareRoutingConfig",
+          "documentation":"<p>The configuration for prefix-aware routing. Specify this parameter only when you set <code>RoutingStrategy</code> to <code>PREFIX_AWARE</code>.</p>"
         }
       },
       "documentation":"<p>Settings that control how the endpoint routes incoming traffic to the instances that the endpoint hosts.</p>"
@@ -43163,7 +43818,8 @@
         "Project",
         "HyperParameterTuningJob",
         "ModelCard",
-        "PipelineVersion"
+        "PipelineVersion",
+        "Job"
       ]
     },
     "ResponseMIMEType":{
@@ -43318,7 +43974,8 @@
       "type":"string",
       "enum":[
         "LEAST_OUTSTANDING_REQUESTS",
-        "RANDOM"
+        "RANDOM",
+        "PREFIX_AWARE"
       ]
     },
     "RuleConfigurationName":{
@@ -43795,7 +44452,11 @@
           "shape":"ModelCard",
           "documentation":"<p>An Amazon SageMaker Model Card that documents details about a machine learning model.</p>"
         },
-        "Model":{"shape":"ModelDashboardModel"}
+        "Model":{"shape":"ModelDashboardModel"},
+        "Job":{
+          "shape":"Job",
+          "documentation":"<p>The properties of a job.</p>"
+        }
       },
       "documentation":"<p>A single resource returned as part of the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_Search.html\">Search</a> API response.</p>"
     },
@@ -44090,6 +44751,12 @@
         }
       }
     },
+    "SequenceLength":{
+      "type":"string",
+      "max":50,
+      "min":1,
+      "pattern":"\\d+K"
+    },
     "ServerlessJobBaseModelArn":{
       "type":"string",
       "documentation":"<p>ServerlessJobConfig relevant fields</p>",
@@ -44135,7 +44802,7 @@
         },
         "SequenceLength":{
           "shape":"SequenceLength",
-          "documentation":"<p> The sequence length for the training job. </p>"
+          "documentation":"<p> The maximum sequence length, in tokens, that the customization job supports. SageMaker uses this value to select a training configuration for the base model that you specify. The parameter supports the following values: </p> <ul> <li> <p> <code>1K</code> </p> </li> <li> <p> <code>2K</code> </p> </li> <li> <p> <code>4K</code> </p> </li> <li> <p> <code>8K</code> </p> </li> <li> <p> <code>16K</code> </p> </li> <li> <p> <code>32K</code> </p> </li> <li> <p> <code>64K</code> </p> </li> <li> <p> <code>128K</code> </p> </li> </ul> <p> If you don't specify a value, SageMaker selects a training configuration based on the other values that you specify. The selection is not restricted to a particular sequence length. </p>"
         }
       },
       "documentation":"<p> The configuration for the serverless training job. </p>"
@@ -44145,19 +44812,6 @@
       "enum":[
         "FineTuning",
         "Evaluation"
-      ]
-    },
-    "SequenceLength":{
-      "type":"string",
-      "enum":[
-        "1K",
-        "2K",
-        "4K",
-        "8K",
-        "16K",
-        "32K",
-        "64K",
-        "128K"
       ]
     },
     "ServerlessMaxConcurrency":{
@@ -45368,6 +46022,7 @@
       "type":"string",
       "enum":[
         "Standard",
+        "Standard_V2",
         "InMemory"
       ]
     },
@@ -46589,7 +47244,13 @@
         "ml.g7e.8xlarge",
         "ml.g7e.12xlarge",
         "ml.g7e.24xlarge",
-        "ml.g7e.48xlarge"
+        "ml.g7e.48xlarge",
+        "ml.g7.2xlarge",
+        "ml.g7.4xlarge",
+        "ml.g7.8xlarge",
+        "ml.g7.12xlarge",
+        "ml.g7.24xlarge",
+        "ml.g7.48xlarge"
       ]
     },
     "TrainingInstanceTypes":{
@@ -47533,7 +48194,15 @@
         "ml.g6.12xlarge",
         "ml.g6.16xlarge",
         "ml.g6.24xlarge",
-        "ml.g6.48xlarge"
+        "ml.g6.48xlarge",
+        "ml.g6e.xlarge",
+        "ml.g6e.2xlarge",
+        "ml.g6e.4xlarge",
+        "ml.g6e.8xlarge",
+        "ml.g6e.12xlarge",
+        "ml.g6e.16xlarge",
+        "ml.g6e.24xlarge",
+        "ml.g6e.48xlarge"
       ]
     },
     "TransformInstanceTypes":{
@@ -48776,6 +49445,10 @@
         "InstanceGroupName":{
           "shape":"ClusterInstanceGroupName",
           "documentation":"<p>The name of the instance group to update.</p>"
+        },
+        "ImageReleaseVersion":{
+          "shape":"ImageReleaseVersion",
+          "documentation":"<p>The version of the HyperPod-managed AMI to update to for the instance group. Uses semantic versioning in the format <code>MAJOR.MINOR.PATCH</code>.</p>"
         }
       },
       "documentation":"<p>The configuration that describes specifications of the instance groups to update.</p>"
@@ -49891,6 +50564,14 @@
         "ApplicationConfig":{
           "shape":"PartnerAppConfig",
           "documentation":"<p>Configuration settings for the SageMaker Partner AI App.</p>"
+        },
+        "IdcConfig":{
+          "shape":"IdcConfigInput",
+          "documentation":"<p>Specifies the Amazon Web Services IAM Identity Center configuration for the SageMaker Partner AI App. Specify this parameter when <code>AuthType</code> is <code>IDC</code>. Apps that use <code>IAM</code> authorization don't use this parameter.</p>"
+        },
+        "AuthType":{
+          "shape":"PartnerAppAuthType",
+          "documentation":"<p>The authorization type that users use to access the SageMaker Partner AI App. Use this parameter to migrate an existing SageMaker Partner AI App from <code>IAM</code> authorization to <code>IDC</code> authorization. Valid values:</p> <ul> <li> <p> <code>IAM</code>: Users access the SageMaker Partner AI App with their Amazon Web Services IAM identity.</p> </li> <li> <p> <code>IDC</code>: Users access the SageMaker Partner AI App with their Amazon Web Services IAM Identity Center identity. Specify the Identity Center instance to use in <code>IdcConfig</code>.</p> </li> </ul>"
         },
         "EnableIamSessionBasedIdentity":{
           "shape":"Boolean",
