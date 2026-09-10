@@ -398,9 +398,21 @@ Provide an ordered list of candidate instance types and the platform launches th
 
 .. code-block:: python
 
+   from sagemaker.core import image_uris
    from sagemaker.train.model_trainer import ModelTrainer
    from sagemaker.core.training.configs import Compute, SourceCode
    from sagemaker.core.shapes import InstancePreference
+
+   # The image is fixed at submission time while the instance type is not:
+   # resolve it from one of the candidates and list only types that can run it.
+   gpu_training_image = image_uris.retrieve(
+       framework="pytorch",
+       region=region,
+       version="2.0.0",
+       py_version="py310",
+       instance_type="ml.p5.48xlarge",
+       image_scope="training",
+   )
 
    compute = Compute(
        instance_preferences=[
@@ -412,7 +424,7 @@ Provide an ordered list of candidate instance types and the platform launches th
    )
 
    model_trainer = ModelTrainer(
-       training_image=training_image,
+       training_image=gpu_training_image,
        source_code=SourceCode(source_dir="./source", entry_script="train.py"),
        compute=compute,
        base_job_name="instance-preferences-training",
