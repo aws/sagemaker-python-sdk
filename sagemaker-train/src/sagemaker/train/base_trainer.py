@@ -1158,6 +1158,7 @@ class BaseTrainer(ABC):
             instance_count=compute.instance_count,
             volume_size_in_gb=compute.volume_size_in_gb,
             keep_alive_period_in_seconds=compute.keep_alive_period_in_seconds,
+            training_plan_arn=compute.training_plan_arn,
         )
 
         # Build input data config (datasets resolved earlier for recipe injection)
