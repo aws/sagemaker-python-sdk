@@ -58,25 +58,14 @@ _ALLOWED_REWARD_MODEL_IDS = {
     "qwen.qwen3-235b-a22b-2507-v1:0": ["us-west-2", "ap-northeast-1"]
 }
 
-# Allowed evaluator models for LLM as Judge evaluator with region restrictions.
-#
-# Source of truth: the Bedrock Console judge-model regional
-# allowlist.cross-checked against
-# https://docs.aws.amazon.com/bedrock/latest/userguide/evaluation-judge.html#evaluation-judge-supported
-_ALLOWED_EVALUATOR_MODELS = {
-    "mistral.mistral-large-2402-v1:0": ["us-west-2", "us-east-1", "eu-west-1"],
-    "meta.llama3-1-70b-instruct-v1:0": ["us-west-2", "us-east-1"],
-    "anthropic.claude-3-haiku-20240307-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "anthropic.claude-haiku-4-5-20251001-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "anthropic.claude-sonnet-4-5-20250929-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "anthropic.claude-opus-4-5-20251101-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "amazon.nova-pro-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "amazon.nova-2-lite-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "amazon.nova-micro-v1:0": ["us-west-2", "us-east-1", "ap-northeast-1", "eu-west-1"],
-    "amazon.nova-premier-v1:0": ["us-west-2", "us-east-1"],
-    "anthropic.claude-3-5-sonnet-20240620-v1:0": ["ap-northeast-1"],
-    "anthropic.claude-3-5-sonnet-20241022-v2:0": ["ap-northeast-1"],
-}
+# NOTE: The former hardcoded ``_ALLOWED_EVALUATOR_MODELS`` allowlist for the
+# LLM-as-Judge evaluator has been removed. evaluator_model is now validated in two
+# steps (see ``sagemaker.train.evaluate.llm_as_judge_evaluator``): at construction
+# against the service-maintained supported-judge-models list at
+# ``s3://jumpstart-cache-prod-<region>/fmhMetadata/supported-llmaj-judge-models.json``
+# (is it a judge-capable model), and at evaluate() time against Bedrock
+# ``GetFoundationModel`` (is it still in service / not past end of life). So the SDK
+# no longer needs a hand-maintained model→region map.
 
 SM_RECIPE = "recipe"
 SM_RECIPE_YAML = "recipe.yaml"

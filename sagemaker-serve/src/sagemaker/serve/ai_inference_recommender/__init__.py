@@ -25,11 +25,17 @@ from sagemaker.serve.ai_inference_recommender.jobs import (
     BenchmarkJob,
     RecommendationJob,
 )
+from sagemaker.serve.ai_inference_recommender.listing import (
+    list_benchmarks,
+    list_recommendations,
+)
 from sagemaker.serve.ai_inference_recommender.result import (
+    BenchmarkComparison,
     BenchmarkMetric,
     BenchmarkMetrics,
     BenchmarkResult,
     BenchmarkSearchResult,
+    compare_benchmarks,
 )
 from sagemaker.serve.ai_inference_recommender.secrets import Secret
 from sagemaker.serve.ai_inference_recommender.workload import Workload
@@ -39,6 +45,7 @@ from sagemaker.serve.ai_inference_recommender._model_builder_methods import (
 
 
 __all__ = [
+    "BenchmarkComparison",
     "BenchmarkJob",
     "BenchmarkMetric",
     "BenchmarkMetrics",
@@ -51,5 +58,8 @@ __all__ = [
     "Secret",
     "Workload",
     "WorkloadValidationError",
+    "compare_benchmarks",
+    "list_benchmarks",
+    "list_recommendations",
     "start_benchmark",
 ]

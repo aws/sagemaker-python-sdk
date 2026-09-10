@@ -26,6 +26,7 @@ from typing import Union
 # SageMaker core imports
 from sagemaker.core.resources import Model, Endpoint
 from sagemaker.core.utils.utils import logger
+from sagemaker.core.common_utils import _is_s3_uri
 
 
 # SageMaker serve imports
@@ -220,11 +221,25 @@ class _ModelBuilderServers(object):
 
         from sagemaker.serve.model_server.tgi.prepare import _create_dir_structure
 
-        _create_dir_structure(self.model_path)
+        # Detect an S3 weight source from model_path before any local directory is
+        # created. TGI's HF_MODEL_ID does not accept an S3 URI, so an S3 source is
+        # attached as an uncompressed ModelDataSource (mounted at /opt/ml/model)
+        # instead of being downloaded from the HuggingFace Hub.
+        s3_model_source = self.model_path if _is_s3_uri(self.model_path) else None
+
+        # Skip the local mkdir for an S3 source so we do not create a literal
+        # local "s3:/..." directory tree; only create it for genuine local paths.
+        if not s3_model_source:
+            _create_dir_structure(self.model_path)
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
             # Configure HuggingFace model for TGI
-            self.env_vars.setdefault("HF_MODEL_ID", self.model)
+            if s3_model_source:
+                # Weights are mounted at /opt/ml/model; do not download from the Hub.
+                self.env_vars.setdefault("HF_MODEL_ID", "/opt/ml/model")
+                self.env_vars.setdefault("HF_HUB_OFFLINE", "1")
+            else:
+                self.env_vars.setdefault("HF_MODEL_ID", self.model)
 
             self.hf_model_config = _get_model_config_properties_from_hf(
                 self.model, self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
@@ -267,6 +282,11 @@ class _ModelBuilderServers(object):
         if not self._optimizing:
             if self.mode in LOCAL_MODES:
                 self._prepare_for_mode(should_upload_artifacts=True)
+            elif s3_model_source:
+                # Route the S3 weight source through _prepare_for_mode so the
+                # _upload_tgi_artifacts S3 branch builds the uncompressed
+                # ModelDataSource (CompressionType="None", S3DataType="S3Prefix").
+                self.s3_model_data_url, _ = self._prepare_for_mode(model_path=s3_model_source)
             else:
                 self.s3_model_data_url, _ = self._prepare_for_mode()
 
@@ -299,7 +319,10 @@ class _ModelBuilderServers(object):
 
         model = self._create_model()
 
-        if "HF_HUB_OFFLINE" in self.env_vars:
+        # Reset the in-memory HF_HUB_OFFLINE flag after the container is built,
+        # EXCEPT when weights are mounted from S3: those must stay offline so TGI
+        # loads from /opt/ml/model instead of phoning home to the HuggingFace Hub.
+        if "HF_HUB_OFFLINE" in self.env_vars and not s3_model_source:
             self.env_vars.update({"HF_HUB_OFFLINE": "0"})
 
         return model
@@ -996,6 +1019,12 @@ class _ModelBuilderServers(object):
         init_kwargs = get_init_kwargs(**init_kwargs_params)
 
         # Configure image URI and environment variables
+        if not self.image_uri:
+            # Defense-in-depth: reject a hub-sourced image URI that spoofs an ECR host before it can
+            # propagate to LocalContainerMode's docker login (see check_image_uri).
+            from sagemaker.serve.validations.check_image_uri import validate_hub_ecr_address
+
+            validate_hub_ecr_address(init_kwargs.image_uri)
         self.image_uri = self.image_uri or init_kwargs.image_uri
 
         if hasattr(init_kwargs, "env") and init_kwargs.env:
@@ -1013,6 +1042,39 @@ class _ModelBuilderServers(object):
         # CreateModel request (required for private hub brokered access).
         if getattr(init_kwargs, "model_reference_arn", None):
             self.model_reference_arn = init_kwargs.model_reference_arn
+
+        # Propagate additional model data sources resolved from the JumpStart
+        # spec (e.g. speculative decoding draft models like EAGLE). The JumpStart
+        # factory (_add_additional_model_data_sources_to_kwargs) already returns
+        # these in CreateModel API shape via camel_case_to_pascal_case(...),
+        # except for two adjustments applied here, mirroring how ``container_def``
+        # treats the primary model's ``ModelDataSource``:
+        # - the JumpStart-internal ``HostingEulaKey`` is removed (it is not part
+        #   of the CreateModel API shape, request validation rejects it), and
+        # - when ``accept_eula`` is set, it is folded into each source's
+        #   ``S3DataSource.ModelAccessConfig``.
+        # Gated-source EULA enforcement is server-side, same as for the primary
+        # model: the control plane determines gatedness from the artifact's
+        # bucket and rejects CreateModel with an EULA validation error when a
+        # gated source lacks ``ModelAccessConfig`` with ``AcceptEula`` true.
+        # Without this propagation, sources declared in the spec are dropped
+        # from the CreateModel call and the container fails to find the
+        # referenced artifacts at runtime.
+        additional_model_data_sources = getattr(
+            init_kwargs, "additional_model_data_sources", None
+        )
+        if isinstance(additional_model_data_sources, list) and additional_model_data_sources:
+            accept_eula = getattr(self, "accept_eula", None)
+            prepared_sources = []
+            for source in additional_model_data_sources:
+                prepared_source = dict(source)
+                prepared_source.pop("HostingEulaKey", None)
+                if accept_eula is not None:
+                    s3_data_source = dict(prepared_source.get("S3DataSource", {}))
+                    s3_data_source["ModelAccessConfig"] = {"AcceptEula": accept_eula}
+                    prepared_source["S3DataSource"] = s3_data_source
+                prepared_sources.append(prepared_source)
+            self.additional_model_data_sources = prepared_sources
 
         # Handle model artifacts for fine-tuned models
         if hasattr(init_kwargs, "model_data") and init_kwargs.model_data:

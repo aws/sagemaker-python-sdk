@@ -666,6 +666,51 @@ class TestListHubModelsByRecipe:
         with pytest.raises(ValueError, match="recipe_type must be"):
             _list_hub_models_by_recipe(recipe_type="Invalid", technique="MTRL")
 
+    @patch("sagemaker.train.common_utils.recipe_utils.boto3.Session")
+    def test_finds_models_with_bare_keyword_no_strategy(self, mock_session_cls):
+        """Techniques whose recipes carry no strategy suffix are tagged with the
+        bare ``@recipe:finetuning_{technique}`` keyword (e.g. CPT). The matcher
+        must find these, not just ``{base}_{strategy}`` forms."""
+        mock_client = MagicMock()
+        mock_session_cls.return_value.client.return_value = mock_client
+
+        mock_client.list_hub_contents.return_value = {
+            "HubContentSummaries": [
+                {
+                    "HubContentName": "model-cpt-bare",
+                    "HubContentSearchKeywords": ["@recipe:finetuning_cpt"],
+                },
+                {
+                    "HubContentName": "model-cpt-suffixed",
+                    "HubContentSearchKeywords": ["@recipe:finetuning_cpt_full"],
+                },
+            ],
+        }
+
+        from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+        result = _list_hub_models_by_recipe(recipe_type="FineTuning", technique="CPT")
+        assert result == ["model-cpt-bare", "model-cpt-suffixed"]
+
+    @patch("sagemaker.train.common_utils.recipe_utils.boto3.Session")
+    def test_does_not_match_technique_sharing_a_prefix(self, mock_session_cls):
+        """A shorter technique must not match a longer one that merely shares its
+        prefix (e.g. ``rl`` must not match ``rlvr``)."""
+        mock_client = MagicMock()
+        mock_session_cls.return_value.client.return_value = mock_client
+
+        mock_client.list_hub_contents.return_value = {
+            "HubContentSummaries": [
+                {
+                    "HubContentName": "model-rlvr",
+                    "HubContentSearchKeywords": ["@recipe:finetuning_rlvr_lora"],
+                },
+            ],
+        }
+
+        from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+        result = _list_hub_models_by_recipe(recipe_type="FineTuning", technique="rl")
+        assert result == []
+
 
 class TestListAgentRuntimes:
     @patch("sagemaker.train.multi_turn_rl_trainer.boto3.Session")
@@ -719,3 +764,71 @@ class TestListAgentRuntimes:
         result = MultiTurnRLTrainer.list_bedrock_agentcore_runtimes()
         assert len(result) == 2
         assert mock_client.list_agent_runtimes.call_count == 2
+
+
+class TestDryRun:
+    """Test dry_run=True skips job submission and MLflow creation."""
+
+    def _make_trainer(self):
+        """Create a trainer with mocked internals for dry_run testing."""
+        trainer = object.__new__(MultiTurnRLTrainer)
+        trainer.agent_env = BEDROCK_AGENT_ARN
+        trainer.bedrock_agentcore_qualifier = "DEFAULT"
+        trainer.s3_output_path = S3_OUTPUT
+        trainer.output_model_package_group = MPG_ARN
+        trainer.intermediate_checkpoint_model_package_group = "arn:aws:sagemaker:us-west-2:123456789012:model-package-group/ckpt-mpg"
+        trainer.mlflow_app_arn = None  # Force MLflow resolution
+        trainer.mlflow_experiment_name = None
+        trainer.mlflow_run_name = None
+        trainer.accept_eula = True
+        trainer.kms_key_arn = None
+        trainer.networking = None
+        trainer.model = "test-model-id"
+        trainer.validation_dataset = None
+        trainer._model_arn = MODEL_ARN
+        trainer._model_name = "test-model"
+        trainer.training_dataset = S3_DATA
+        trainer.hyperparameters = MagicMock()
+        trainer.hyperparameters.to_dict.return_value = {}
+        trainer.hyperparameters._specs = {}
+        trainer._hp_defaults = {}
+        trainer._final_hyperparameters = {}
+        mock_session = MagicMock()
+        mock_session.sagemaker_config = {"SchemaVersion": "1.0"}
+        mock_session.boto_session.region_name = "us-west-2"
+        trainer.sagemaker_session = mock_session
+        trainer.role = "arn:aws:iam::123456789012:role/TestRole"
+        trainer.base_job_name = "test-mtrl"
+        trainer._recipe_path = None
+        trainer._overrides = None
+        trainer._resolved_recipe_cache = None
+        return trainer
+
+    @patch("sagemaker.train.multi_turn_rl_trainer._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.multi_turn_rl_trainer.Job")
+    @patch("sagemaker.train.multi_turn_rl_trainer.TrainDefaults.get_role")
+    def test_dry_run_skips_job_creation(self, mock_get_role, mock_job_cls, mock_resolve_mlflow):
+        """dry_run=True returns None without calling Job.create."""
+        mock_resolve_mlflow.return_value = None
+        mock_get_role.return_value = "arn:aws:iam::123456789012:role/TestRole"
+        trainer = self._make_trainer()
+
+        result = trainer.train(dry_run=True)
+
+        assert result is None
+        mock_job_cls.create.assert_not_called()
+
+    @patch("sagemaker.train.multi_turn_rl_trainer._resolve_mlflow_resource_arn")
+    @patch("sagemaker.train.multi_turn_rl_trainer.Job")
+    @patch("sagemaker.train.multi_turn_rl_trainer.TrainDefaults.get_role")
+    def test_dry_run_passes_flag_to_mlflow_resolver(self, mock_get_role, mock_job_cls, mock_resolve_mlflow):
+        """dry_run=True is forwarded to _resolve_mlflow_resource_arn."""
+        mock_resolve_mlflow.return_value = None
+        mock_get_role.return_value = "arn:aws:iam::123456789012:role/TestRole"
+        trainer = self._make_trainer()
+
+        trainer.train(dry_run=True)
+
+        # Verify dry_run=True was passed
+        call_kwargs = mock_resolve_mlflow.call_args[1]
+        assert call_kwargs["dry_run"] is True

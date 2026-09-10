@@ -44,6 +44,35 @@ _LAMBDA_ARN_RE = re.compile(
 _MAX_STOPPING_CONDITION_SECONDS = 72 * 60 * 60
 
 
+def _tags_with_capitalized_keys(tags: Optional[List[Dict[str, str]]]) -> List[Dict[str, str]]:
+    """Convert tags to the capitalized ``Key``/``Value`` form this evaluator's paths require.
+
+    Both the raw boto3 ``CreatePipeline`` call and the ``Tags`` block rendered into the
+    pipeline definition use the API's capitalized form, whereas the other evaluators hand
+    tags to the pydantic-validated ``Pipeline.create``, which takes the lowercase form.
+    Either form is accepted here so that the inherited ``tags`` field behaves the same way
+    across evaluator subclasses.
+
+    Args:
+        tags: Tags using either ``key``/``value`` or ``Key``/``Value``, or None.
+
+    Returns:
+        The tags in capitalized form; empty when none were supplied. Entries missing a key
+        or value are skipped, since SageMaker rejects them.
+    """
+    normalized = []
+    for tag in tags or []:
+        if isinstance(tag, dict):
+            key = tag.get("Key", tag.get("key"))
+            value = tag.get("Value", tag.get("value"))
+        else:
+            key = getattr(tag, "key", None)
+            value = getattr(tag, "value", None)
+        if key is not None and value is not None:
+            normalized.append({"Key": key, "Value": value})
+    return normalized
+
+
 class MultiTurnRLEvaluator(BaseEvaluator):
     """Evaluate a multi-turn RL agent model against a held-out prompt dataset.
 
@@ -532,7 +561,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             "vpc_config": bool(networking),
             "vpc_security_group_ids": vpc_security_group_ids,
             "vpc_subnets": vpc_subnets,
-            "tags": self.tags,
+            "tags": _tags_with_capitalized_keys(self.tags) or None,
             # Pre-stringified JobConfigDocument for the templates.
             "job_config_document_str": job_config_doc_str,
             "job_config_document_ft_str": job_config_doc_ft_str,
@@ -549,11 +578,19 @@ class MultiTurnRLEvaluator(BaseEvaluator):
             ("stopping_condition", TelemetryParamType.ATTR_EXISTS),
         ] + BASE_EVALUATOR_TELEMETRY_PARAMS,
     )
-    def evaluate(self) -> 'MTRLEvaluationExecution':
+    def evaluate(self, dry_run: bool = False) -> Optional['MTRLEvaluationExecution']:
         """Render the MTRL pipeline and start a non-blocking execution.
 
+        Args:
+            dry_run (bool):
+                If True, runs all validation (IAM, agent resolution, model
+                resolution, template rendering) without submitting the
+                evaluation. Returns None on success, raises on validation
+                failure. Defaults to False.
+
         Returns:
-            MTRLEvaluationExecution: The started pipeline execution.
+            MTRLEvaluationExecution: The started pipeline execution, or None
+            if dry_run=True.
             Call ``.wait()`` to block until completion and ``.show_results()``
             to render the aggregate report.
 
@@ -564,6 +601,9 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 execution = evaluator.evaluate()
                 execution.wait()
                 execution.show_results()
+
+                # Validate without submitting:
+                evaluator.evaluate(dry_run=True)
         """
         # 1. Trainer-sourced resolution (no-op if model is not a trainer).
         self._resolve_trainer_defaults()
@@ -601,6 +641,10 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         # 5. Template selection + render.
         template_str = self._select_mtrl_template()
         pipeline_definition = self._render_pipeline_definition(template_str, template_context)
+
+        if dry_run:
+            _logger.info("Dry-run validation passed. No evaluation submitted.")
+            return None
 
         # Dump the pipeline definition to a local JSON file for debugging.
         import json as _json_mod
@@ -684,6 +728,11 @@ class MultiTurnRLEvaluator(BaseEvaluator):
         pipeline_prefix = _get_pipeline_name_prefix(EvalType.MTRL)
         pipeline_name = pipeline_prefix
 
+        # Customer tags are merged into the pipeline tags. This path uses raw boto3, which
+        # requires the API's capitalized Key/Value form.
+        pipeline_tags = [{"Key": _TAG_SAGEMAKER_MODEL_EVALUATION, "Value": "true"}]
+        pipeline_tags.extend(_tags_with_capitalized_keys(self.tags))
+
         # Search for existing MTRL pipeline
         existing_pipeline_name = None
         try:
@@ -710,7 +759,7 @@ class MultiTurnRLEvaluator(BaseEvaluator):
                 PipelineDisplayName=pipeline_name,
                 PipelineDescription="MTRL evaluation pipeline",
                 ClientRequestToken=str(uuid.uuid4()),
-                Tags=[{"Key": _TAG_SAGEMAKER_MODEL_EVALUATION, "Value": "true"}],
+                Tags=pipeline_tags,
             )
             _logger.info(f"Created pipeline: {pipeline_name}")
 

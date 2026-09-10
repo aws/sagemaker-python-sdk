@@ -54,7 +54,7 @@ ACCOUNT_CONFIGS = {
     "729646638167": {
         "env_name": "PROD",
         #"existing_job_name": "mock-oss-test-mtrl-20260611170946",
-        "existing_job_name": "mock-oss-test-mtrl-20260616153024",
+        "existing_job_name": "mock-oss-test-mtrl-20260806120845",
         "base_model": "mock-oss-test",
         "agent_core_arn": "arn:aws:bedrock-agentcore:us-west-2:729646638167:runtime/sagemaker_rft_prod_gsm8k_streaming-Yk6O377mUS",
         "dataset": "s3://sagemaker-rft-729646638167/prompts/gsm8k_small/prompts.parquet",
@@ -241,3 +241,33 @@ class TestMTRLEvalIntegration:
             f"[{config['env_name']}] Comparison eval failed with status: {status}, "
             f"reason: {execution.status.failure_reason}"
         )
+
+
+@pytest.mark.gpu_intensive
+class TestMTRLShowMetrics:
+    """Integration tests for show_metrics() on completed MTRL jobs."""
+
+    def test_show_metrics_on_completed_job(self, config):
+        """show_metrics() and stream_logs() on a completed MTRL job run without error."""
+        job = MultiTurnRLTrainer.attach(job_name=config["existing_job_name"])
+        assert job.job_status == "Completed"
+
+        trainer = MultiTurnRLTrainer(
+            model=config["base_model"],
+            agent_env=config["agent_core_arn"],
+            training_dataset=config["dataset"],
+            output_model_package_group=config["model_package_group"],
+            mlflow_app_arn=config["mlflow_resource_arn"],
+            s3_output_path=config["s3_output_path"],
+            accept_eula=True,
+        )
+        trainer._latest_job = job
+
+        result = trainer.show_metrics()
+        logger.info(
+            f"[{config['env_name']}] show_metrics() returned: {type(result).__name__}"
+        )
+
+        # stream_logs() should exit quickly for a completed job
+        trainer.stream_logs(poll=2)
+        logger.info(f"[{config['env_name']}] stream_logs() completed without error")

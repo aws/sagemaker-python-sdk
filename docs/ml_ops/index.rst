@@ -545,6 +545,102 @@ Create and manage feature groups for storing, retrieving, and sharing ML feature
    for fg in feature_groups:
        print(f"{fg.feature_group_name}: {fg.feature_group_status}")
 
+**Ingesting data with BatchWriteRecord:**
+
+Use ``ingest_dataframe`` with ``use_batch_write_record=True`` to write records in batches of up to
+25 per API call, significantly improving throughput compared to single-record ``PutRecord`` calls.
+This requires both ``sagemaker:BatchWriteRecord`` and ``sagemaker:PutRecord`` IAM permissions.
+
+.. code-block:: python
+
+   import pandas as pd
+   from sagemaker.mlops.feature_store import ingest_dataframe
+
+   # Prepare your data
+   data = pd.DataFrame({
+       "customer_id": ["cust-1", "cust-2", "cust-3"],
+       "purchase_count": [10, 25, 3],
+       "avg_order_value": [45.99, 120.50, 15.00],
+       "event_time": ["2026-01-01T00:00:00Z"] * 3,
+   })
+
+   # Ingest using BatchWriteRecord (batches of 25 records per API call)
+   ingest_dataframe(
+       feature_group_name="customer-features",
+       data_frame=data,
+       max_workers=4,
+       max_processes=2,
+       use_batch_write_record=True,
+   )
+
+You can also ingest to specific target stores (``OnlineStore``, ``OfflineStore``, or both)
+using ``IngestionManagerPandas`` directly:
+
+.. code-block:: python
+
+   import pandas as pd
+   from sagemaker.mlops.feature_store import IngestionManagerPandas
+
+   data = pd.DataFrame({
+       "customer_id": ["cust-1", "cust-2", "cust-3"],
+       "purchase_count": [10, 25, 3],
+       "avg_order_value": [45.99, 120.50, 15.00],
+       "event_time": ["2026-01-01T00:00:00Z"] * 3,
+   })
+
+   manager = IngestionManagerPandas(
+       feature_group_name="customer-features",
+       feature_definitions={
+           "customer_id": {"FeatureType": "String", "CollectionType": None},
+           "purchase_count": {"FeatureType": "Integral", "CollectionType": None},
+           "avg_order_value": {"FeatureType": "Fractional", "CollectionType": None},
+           "event_time": {"FeatureType": "String", "CollectionType": None},
+       },
+       max_workers=4,
+       use_batch_write_record=True,
+   )
+   manager.run(data_frame=data, target_stores=["OnlineStore"])
+
+**Listing records from the OnlineStore:**
+
+Use ``list_records`` to retrieve record identifiers from a FeatureGroup's OnlineStore. Results are
+paginated — use the ``next_token`` from the response to fetch subsequent pages.
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import list_records
+
+   # List first page of records
+   response = list_records(
+       feature_group_name="customer-features",
+       max_results=10,
+       region="us-west-2",
+   )
+   print(response.record_identifiers)  # ['cust-1', 'cust-2', ...]
+
+   # Paginate through all records
+   next_token = response.next_token
+   while next_token:
+       response = list_records(
+           feature_group_name="customer-features",
+           max_results=100,
+           next_token=next_token,
+           region="us-west-2",
+       )
+       print(response.record_identifiers)
+       next_token = response.next_token
+
+To include soft-deleted records in the listing:
+
+.. code-block:: python
+
+   response = list_records(
+       feature_group_name="customer-features",
+       max_results=50,
+       include_soft_deleted_records=True,
+       region="us-west-2",
+   )
+
 
 
 Migration from V2

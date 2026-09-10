@@ -22,16 +22,60 @@ class CustomizationTechnique(Enum):
 
 class FineTuningOptions:
     """Dynamic class for fine-tuning options with validation."""
-    
-    def __init__(self, options_dict: Dict[str, Any]):
+
+    def __init__(self, options_dict: Dict[str, Any], sequence_length: int = None):
         self._specs = options_dict.copy()
         self._user_set = set()
         self._initialized = False
+        # Recipe's supported sequence-length ceiling (prompt + response for RL,
+        # or max_length for SFT/DPO). Used by validate_length_constraints().
+        self._sequence_length = sequence_length
         # Extract default values and set as attributes (no validation during init)
         for key, spec in options_dict.items():
             default_value = spec.get('default') if isinstance(spec, dict) else spec
             super().__setattr__(key, default_value)
         self._initialized = True
+
+    # SFT/DPO recipes express the single-example length ceiling as
+    # "dataset_max_len" (verl and llmft templates). It maps to the recipe's
+    # sequence-length ceiling, so validation checks it.
+    _MAX_LENGTH_PARAMS = ("dataset_max_len",)
+
+    def validate_length_constraints(self):
+        """Enforce that selected lengths fit the recipe's sequence_length.
+
+        For RL recipes: max_prompt_length + max_response_length must not exceed
+        sequence_length. For SFT/DPO: the single-example length (dataset_max_len)
+        must not exceed it. Per-field min/max are already enforced on assignment;
+        this adds the cross-field sum check that a per-field max cannot express.
+
+        Framework-agnostic: gated only on the recipe's sequence_length metadata,
+        not on the model family. No-op if sequence_length is unknown or the
+        relevant params are absent.
+        """
+        if self._sequence_length is None:
+            return
+
+        prompt = getattr(self, "max_prompt_length", None)
+        response = getattr(self, "max_response_length", None)
+        if prompt is not None and response is not None:
+            total = prompt + response
+            if total > self._sequence_length:
+                raise ValueError(
+                    f"max_prompt_length ({prompt}) + max_response_length ({response}) "
+                    f"= {total} exceeds the recipe's supported sequence length "
+                    f"({self._sequence_length}). Lower max_prompt_length and/or "
+                    f"max_response_length so their sum is within {self._sequence_length}."
+                )
+
+        for param in self._MAX_LENGTH_PARAMS:
+            max_length = getattr(self, param, None)
+            if max_length is not None and max_length > self._sequence_length:
+                raise ValueError(
+                    f"{param} ({max_length}) exceeds the recipe's supported sequence "
+                    f"length ({self._sequence_length}). Set {param} to "
+                    f"{self._sequence_length} or lower."
+                )
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert back to dictionary for hyperparameters with string values."""

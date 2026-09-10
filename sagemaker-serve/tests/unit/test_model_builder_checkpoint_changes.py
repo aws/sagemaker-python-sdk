@@ -245,8 +245,9 @@ class TestBuildNonLoraCheckpoint(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_peft")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization")
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_model_package_arn")
     def test_build_sets_hf_merged_path_when_is_checkpoint_false(
-        self, mock_get_serve, mock_is_mc, mock_fetch_peft, mock_fetch_mp,
+        self, mock_fetch_arn, mock_get_serve, mock_is_mc, mock_fetch_peft, mock_fetch_mp,
         mock_is_nova, mock_model_create
     ):
         """build() should set s3_upload_path to hf_merged when is_checkpoint is False."""
@@ -255,6 +256,7 @@ class TestBuildNonLoraCheckpoint(unittest.TestCase):
         mock_is_mc.return_value = True
         mock_fetch_peft.return_value = None
         mock_is_nova.return_value = False
+        mock_fetch_arn.return_value = "arn:aws:sagemaker:us-west-2:123456789012:model-package/test"
         s3_uri = "s3://bucket/training-output"
         mock_fetch_mp.return_value = self._make_model_package(s3_uri, is_checkpoint=False)
 
@@ -284,8 +286,9 @@ class TestBuildNonLoraCheckpoint(unittest.TestCase):
     @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_peft")
     @patch("sagemaker.serve.model_builder.ModelBuilder._is_model_customization")
     @patch("sagemaker.serve.model_builder.ModelBuilder._get_serve_setting")
+    @patch("sagemaker.serve.model_builder.ModelBuilder._fetch_model_package_arn")
     def test_build_sets_raw_s3_path_when_is_checkpoint_true(
-        self, mock_get_serve, mock_is_mc, mock_fetch_peft, mock_fetch_mp,
+        self, mock_fetch_arn, mock_get_serve, mock_is_mc, mock_fetch_peft, mock_fetch_mp,
         mock_is_nova, mock_model_create
     ):
         """build() should set s3_upload_path to raw s3_uri when is_checkpoint is True."""
@@ -294,6 +297,7 @@ class TestBuildNonLoraCheckpoint(unittest.TestCase):
         mock_is_mc.return_value = True
         mock_fetch_peft.return_value = None
         mock_is_nova.return_value = False
+        mock_fetch_arn.return_value = "arn:aws:sagemaker:us-west-2:123456789012:model-package/test"
         s3_uri = "s3://bucket/training-output"
         mock_fetch_mp.return_value = self._make_model_package(s3_uri, is_checkpoint=True)
 

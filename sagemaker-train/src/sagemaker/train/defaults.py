@@ -164,10 +164,10 @@ class TrainDefaults:
                 max_pending_time_in_seconds=None,
                 max_wait_time_in_seconds=None,
             )
-            logger.info(f"StoppingCondition not provided. Using default:\n{stopping_condition}")
+            logger.debug(f"StoppingCondition not provided. Using default:\n{stopping_condition}")
         if stopping_condition.max_runtime_in_seconds is None:
             stopping_condition.max_runtime_in_seconds = DEFAULT_MAX_RUNTIME_IN_SECONDS
-            logger.info(
+            logger.debug(
                 "Max runtime not provided. Using default:\n"
                 f"{stopping_condition.max_runtime_in_seconds}"
             )
@@ -201,7 +201,7 @@ class TrainDefaults:
             )
         if output_data_config.compression_type is None:
             output_data_config.compression_type = "GZIP"
-            logger.info(
+            logger.debug(
                 f"OutputDataConfig compression type not provided. Using default:\n"
                 f"{output_data_config.compression_type}"
             )

@@ -129,6 +129,51 @@ class TestCreateEvaluationPipeline:
         )
         assert result == mock_pipeline
 
+    @patch("sagemaker.train.evaluate.execution._get_pipeline_name")
+    @patch("sagemaker.train.evaluate.execution.Pipeline")
+    def test_create_pipeline_propagates_user_tags(
+        self, mock_pipeline_class, mock_get_name, mock_session
+    ):
+        """User tags must reach Pipeline.create alongside the evaluation discovery tag."""
+        mock_get_name.return_value = DEFAULT_PIPELINE_NAME
+        mock_pipeline_class.create.return_value = MagicMock()
+
+        _create_evaluation_pipeline(
+            eval_type=EvalType.BENCHMARK,
+            role_arn=DEFAULT_ROLE,
+            pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
+            session=mock_session,
+            region=DEFAULT_REGION,
+            tags=[{"key": "sagemaker:project-id", "value": "p-12345"}],
+        )
+
+        created_tags = mock_pipeline_class.create.call_args.kwargs["tags"]
+        pairs = [(t.key, t.value) for t in created_tags]
+        assert ("sagemaker:project-id", "p-12345") in pairs
+        # The evaluation discovery tag must still be present.
+        assert any(key == "SagemakerModelEvaluation" for key, _ in pairs)
+
+    @patch("sagemaker.train.evaluate.execution._get_pipeline_name")
+    @patch("sagemaker.train.evaluate.execution.Pipeline")
+    def test_create_pipeline_accepts_capitalized_user_tags(
+        self, mock_pipeline_class, mock_get_name, mock_session
+    ):
+        """Capitalized user tags must also be converted into Tag objects."""
+        mock_get_name.return_value = DEFAULT_PIPELINE_NAME
+        mock_pipeline_class.create.return_value = MagicMock()
+
+        _create_evaluation_pipeline(
+            eval_type=EvalType.BENCHMARK,
+            role_arn=DEFAULT_ROLE,
+            pipeline_definition=DEFAULT_PIPELINE_DEFINITION,
+            session=mock_session,
+            region=DEFAULT_REGION,
+            tags=[{"Key": "sagemaker:project-id", "Value": "p-12345"}],
+        )
+
+        pairs = [(t.key, t.value) for t in mock_pipeline_class.create.call_args.kwargs["tags"]]
+        assert ("sagemaker:project-id", "p-12345") in pairs
+
     @patch("sagemaker.train.evaluate.execution.Pipeline")
     def test_create_pipeline_waits_for_status(self, mock_pipeline_class, mock_session):
         """Test that pipeline waits for active status."""

@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """Tests for defaults module."""
+
 from __future__ import absolute_import
 
 import pytest
@@ -26,6 +27,7 @@ from sagemaker.train.defaults import (
 )
 from sagemaker.train.configs import Compute, StoppingCondition
 from sagemaker.core.shapes import InstanceGroup
+from sagemaker.core.jumpstart.configs import JumpStartConfig
 
 
 class TestDefaultConstants:
@@ -156,9 +158,7 @@ class TestTrainDefaultsVerifyHyperPodCallerPermissions:
         mock_get_session.return_value = mock_session
         mock_verify.return_value = True
 
-        result = TrainDefaults.verify_hyperpod_caller_permissions(
-            cluster_name="my-cluster"
-        )
+        result = TrainDefaults.verify_hyperpod_caller_permissions(cluster_name="my-cluster")
 
         assert result is True
         mock_verify.assert_called_once_with(
@@ -169,9 +169,7 @@ class TestTrainDefaultsVerifyHyperPodCallerPermissions:
 
     @patch("sagemaker.train.defaults.verify_hyperpod_connect_permissions")
     @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
-    def test_propagates_negative_and_unknown_verdicts(
-        self, mock_get_session, mock_verify
-    ):
+    def test_propagates_negative_and_unknown_verdicts(self, mock_get_session, mock_verify):
         mock_get_session.return_value = MagicMock()
         for verdict in (False, None):
             mock_verify.return_value = verdict
@@ -190,9 +188,7 @@ class TestTrainDefaultsGetBaseJobName:
     def test_generates_name_from_algorithm_name(self):
         """Test generates name from algorithm name."""
         algorithm_name = "xgboost"
-        result = TrainDefaults.get_base_job_name(
-            base_job_name=None, algorithm_name=algorithm_name
-        )
+        result = TrainDefaults.get_base_job_name(base_job_name=None, algorithm_name=algorithm_name)
         assert result == "xgboost-job"
 
     @patch("sagemaker.train.defaults._get_repo_name_from_image")
@@ -201,9 +197,7 @@ class TestTrainDefaultsGetBaseJobName:
         training_image = "123456789012.dkr.ecr.us-west-2.amazonaws.com/my-image:latest"
         mock_get_repo.return_value = "my-image"
 
-        result = TrainDefaults.get_base_job_name(
-            base_job_name=None, training_image=training_image
-        )
+        result = TrainDefaults.get_base_job_name(base_job_name=None, training_image=training_image)
 
         mock_get_repo.assert_called_once_with(training_image)
         assert result == "my-image-job"
@@ -430,9 +424,7 @@ class TestJumpStartTrainDefaultsGetCompute:
 
     @patch("sagemaker.train.defaults.get_hub_content_and_document")
     @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
-    def test_creates_default_compute_from_document(
-        self, mock_get_session, mock_get_hub_content
-    ):
+    def test_creates_default_compute_from_document(self, mock_get_session, mock_get_hub_content):
         """Test creates default compute from JumpStart document."""
         mock_session = MagicMock()
         mock_get_session.return_value = mock_session
@@ -510,11 +502,14 @@ class TestJumpStartTrainDefaultsGetCompute:
 
         assert result.volume_size_in_gb == DEFAULT_VOLUME_SIZE
 
-
     def test_does_not_set_instance_type_when_instance_groups_configured(self):
         """Test instance_type is not overwritten when instance_groups are set."""
         compute = Compute(
-            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_groups=[
+                InstanceGroup(
+                    instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1"
+                )
+            ],
             instance_type=None,
             instance_count=None,
             volume_size_in_gb=30,
@@ -525,7 +520,11 @@ class TestJumpStartTrainDefaultsGetCompute:
     def test_does_not_set_instance_count_when_instance_groups_configured(self):
         """Test instance_count is not overwritten when instance_groups are set."""
         compute = Compute(
-            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_groups=[
+                InstanceGroup(
+                    instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1"
+                )
+            ],
             instance_type=None,
             instance_count=None,
             volume_size_in_gb=30,
@@ -536,7 +535,11 @@ class TestJumpStartTrainDefaultsGetCompute:
     def test_sets_volume_size_when_instance_groups_configured(self):
         """Test volume_size_in_gb is still set when instance_groups are configured."""
         compute = Compute(
-            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_groups=[
+                InstanceGroup(
+                    instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1"
+                )
+            ],
             instance_type=None,
             instance_count=None,
             volume_size_in_gb=None,
@@ -547,7 +550,11 @@ class TestJumpStartTrainDefaultsGetCompute:
     def test_preserves_existing_volume_size_with_instance_groups(self):
         """Test existing volume_size_in_gb is preserved when instance_groups are configured."""
         compute = Compute(
-            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_groups=[
+                InstanceGroup(
+                    instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1"
+                )
+            ],
             instance_type=None,
             instance_count=None,
             volume_size_in_gb=100,
@@ -577,7 +584,11 @@ class TestJumpStartTrainDefaultsGetComputeHeterogeneousCluster:
         mock_config.training_config_name = None
 
         compute = Compute(
-            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_groups=[
+                InstanceGroup(
+                    instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1"
+                )
+            ],
             instance_type=None,
             instance_count=None,
             volume_size_in_gb=30,
@@ -607,7 +618,11 @@ class TestJumpStartTrainDefaultsGetComputeHeterogeneousCluster:
         mock_config.training_config_name = None
 
         compute = Compute(
-            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_groups=[
+                InstanceGroup(
+                    instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1"
+                )
+            ],
             instance_type=None,
             instance_count=None,
             volume_size_in_gb=30,
@@ -637,7 +652,11 @@ class TestJumpStartTrainDefaultsGetComputeHeterogeneousCluster:
         mock_config.training_config_name = None
 
         compute = Compute(
-            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_groups=[
+                InstanceGroup(
+                    instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1"
+                )
+            ],
             instance_type=None,
             instance_count=None,
             volume_size_in_gb=None,
@@ -667,7 +686,11 @@ class TestJumpStartTrainDefaultsGetComputeHeterogeneousCluster:
         mock_config.training_config_name = None
 
         compute = Compute(
-            instance_groups=[InstanceGroup(instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1")],
+            instance_groups=[
+                InstanceGroup(
+                    instance_type="ml.p3.2xlarge", instance_count=1, instance_group_name="group1"
+                )
+            ],
             instance_type=None,
             instance_count=None,
             volume_size_in_gb=None,
@@ -678,3 +701,146 @@ class TestJumpStartTrainDefaultsGetComputeHeterogeneousCluster:
             sagemaker_session=mock_session,
         )
         assert result.volume_size_in_gb == DEFAULT_VOLUME_SIZE
+
+
+# Gated model reused from the v2 private-hub parity tests (llama-3.2-1b).
+# A gated ModelReference is the case the reviewer asked to cover: it must
+# both propagate accept_eula into ModelAccessConfig and attach a
+# HubAccessConfig (because it resolves as a ModelReference).
+GATED_MODEL_ID = "meta-textgeneration-llama-3-2-1b"
+
+
+class TestJumpStartTrainDefaultsGatedModelReferenceEula:
+    """EULA / ModelAccessConfig handling for a gated ModelReference in a private hub.
+
+    These are the training-side analogue of the v2 gated private-hub test. They
+    are fully mocked at the resolver seam (get_hub_content_and_document) so they
+    are fast and credential-free, and they assert the two things that must work
+    for a gated reference:
+      1. accept_eula flows into ModelAccessConfig.accept_eula on the S3 source.
+      2. A HubAccessConfig (brokered artifact access) is attached because the
+         content resolves as a ModelReference.
+    """
+
+    def _gated_reference_hub_content(self):
+        """A hub_content mock standing in for a gated ModelReference."""
+        hub_content = MagicMock()
+        hub_content.hub_content_type = "ModelReference"
+        hub_content.hub_content_name = GATED_MODEL_ID
+        hub_content.hub_content_arn = (
+            "arn:aws:sagemaker:us-west-2:123456789012:hub-content/"
+            f"my-private-hub/ModelReference/{GATED_MODEL_ID}"
+        )
+        return hub_content
+
+    def _training_components_model(self):
+        """A minimal training-components model with a resolvable artifact URI."""
+        tcm = MagicMock()
+        tcm.TrainingArtifactUri = "s3://jumpstart-cache-prod-us-west-2/artifacts/model.tar.gz"
+        tcm.TrainingArtifactCompressionType = "None"
+        tcm.DefaultTrainingDatasetUri = "s3://jumpstart-cache-prod-us-west-2/datasets/train/"
+        return tcm
+
+    @patch("sagemaker.train.defaults.JumpStartTrainDefaults._get_training_variant")
+    @patch("sagemaker.train.defaults.JumpStartTrainDefaults._get_training_components_model")
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_model_artifact_input_gated_reference_sets_accept_eula_and_hub_access(
+        self, mock_get_session, mock_get_hub_content, mock_get_tcm, mock_get_variant
+    ):
+        """Gated ModelReference -> model channel carries accept_eula=True + HubAccessConfig."""
+        mock_get_session.return_value = MagicMock()
+        hub_content = self._gated_reference_hub_content()
+        mock_get_hub_content.return_value = (hub_content, MagicMock())
+        mock_get_tcm.return_value = self._training_components_model()
+        # No instance-type variant; fall back to the base TrainingArtifactUri.
+        mock_get_variant.return_value = None
+
+        jumpstart_config = JumpStartConfig(
+            model_id=GATED_MODEL_ID,
+            hub_name="my-private-hub",
+            accept_eula=True,
+        )
+
+        result = JumpStartTrainDefaults.get_model_artifact_input(
+            jumpstart_config=jumpstart_config,
+            compute=Compute(instance_type="ml.g5.2xlarge", instance_count=1),
+            input_data_config=None,
+            environment={},
+            sagemaker_session=mock_get_session.return_value,
+        )
+
+        model_channels = [c for c in result if c.channel_name == "model"]
+        assert len(model_channels) == 1
+        s3_source = model_channels[0].data_source.s3_data_source
+        # 1. accept_eula propagated into ModelAccessConfig.
+        assert s3_source.model_access_config is not None
+        assert s3_source.model_access_config.accept_eula is True
+        # 2. HubAccessConfig attached because the content is a ModelReference.
+        assert s3_source.hub_access_config is not None
+        assert s3_source.hub_access_config.hub_content_arn == hub_content.hub_content_arn
+
+    @patch("sagemaker.train.defaults.JumpStartTrainDefaults._get_training_components_model")
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_training_dataset_input_gated_reference_sets_accept_eula_and_hub_access(
+        self, mock_get_session, mock_get_hub_content, mock_get_tcm
+    ):
+        """Gated ModelReference -> default training channel also carries the EULA + slip."""
+        mock_get_session.return_value = MagicMock()
+        hub_content = self._gated_reference_hub_content()
+        mock_get_hub_content.return_value = (hub_content, MagicMock())
+        mock_get_tcm.return_value = self._training_components_model()
+
+        jumpstart_config = JumpStartConfig(
+            model_id=GATED_MODEL_ID,
+            hub_name="my-private-hub",
+            accept_eula=True,
+        )
+
+        result = JumpStartTrainDefaults.get_training_dataset_input(
+            jumpstart_config=jumpstart_config,
+            input_data_config=None,
+            sagemaker_session=mock_get_session.return_value,
+        )
+
+        train_channels = [c for c in result if c.channel_name in ("training", "train")]
+        assert len(train_channels) == 1
+        s3_source = train_channels[0].data_source
+        assert s3_source.model_access_config is not None
+        assert s3_source.model_access_config.accept_eula is True
+        assert s3_source.hub_access_config is not None
+        assert s3_source.hub_access_config.hub_content_arn == hub_content.hub_content_arn
+
+    @patch("sagemaker.train.defaults.JumpStartTrainDefaults._get_training_variant")
+    @patch("sagemaker.train.defaults.JumpStartTrainDefaults._get_training_components_model")
+    @patch("sagemaker.train.defaults.get_hub_content_and_document")
+    @patch("sagemaker.train.defaults.TrainDefaults.get_sagemaker_session")
+    def test_model_artifact_input_gated_reference_defaults_accept_eula_false(
+        self, mock_get_session, mock_get_hub_content, mock_get_tcm, mock_get_variant
+    ):
+        """When accept_eula is left at its default, ModelAccessConfig.accept_eula is False."""
+        mock_get_session.return_value = MagicMock()
+        hub_content = self._gated_reference_hub_content()
+        mock_get_hub_content.return_value = (hub_content, MagicMock())
+        mock_get_tcm.return_value = self._training_components_model()
+        mock_get_variant.return_value = None
+
+        # accept_eula not set -> defaults to False on JumpStartConfig.
+        jumpstart_config = JumpStartConfig(
+            model_id=GATED_MODEL_ID,
+            hub_name="my-private-hub",
+        )
+
+        result = JumpStartTrainDefaults.get_model_artifact_input(
+            jumpstart_config=jumpstart_config,
+            compute=Compute(instance_type="ml.g5.2xlarge", instance_count=1),
+            input_data_config=None,
+            environment={},
+            sagemaker_session=mock_get_session.return_value,
+        )
+
+        model_channels = [c for c in result if c.channel_name == "model"]
+        assert len(model_channels) == 1
+        s3_source = model_channels[0].data_source.s3_data_source
+        assert s3_source.model_access_config.accept_eula is False

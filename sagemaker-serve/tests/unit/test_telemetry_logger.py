@@ -135,7 +135,7 @@ class TestRequestsHelper(unittest.TestCase):
         result = _requests_helper("https://example.com", 2)
         
         self.assertEqual(result, mock_response)
-        mock_get.assert_called_once_with("https://example.com", 2)
+        mock_get.assert_called_once_with("https://example.com", timeout=2)
 
     @patch('sagemaker.serve.utils.telemetry_logger.requests.get')
     def test_requests_helper_exception(self, mock_get):

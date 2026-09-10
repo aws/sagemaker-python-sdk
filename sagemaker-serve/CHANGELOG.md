@@ -1,5 +1,46 @@
 # Changelog
 
+## v1.21.0 (2026-08-25)
+
+### Bug Fixes
+
+- fix(serve): pre-deploy JumpStart benchmark data + public HuggingFace download helper (#6175)
+- fix(tgi): honor S3 model_path as weight source for TGI builds (#5964)
+
+### Tests
+
+- test(serve): add skip_in_pr_check marker for hang-prone integ tests (#6190)
+
+
+## v1.20.0 (2026-08-14)
+
+### New Features
+
+- feat(serve): list/filter jobs, deploy from recommendation row, compare benchmarks, DataFrame views (#6148)
+
+### Bug Fixes
+
+- fix(serve): validate ECR registry host before docker login (#6160)
+
+### Tests
+
+- test(serve): SD/KT-IC integ must use g6.2xlarge, not g4dn (#6141)
+
+
+## v1.19.0 (2026-08-10)
+
+### New Features
+
+- feat(serve): Model Reuse — reuse previously built models across deployments (#6051)
+
+### Bug Fixes
+
+- fix(serve): propagate additional_model_data_sources for JumpStart models (#6151)
+- fix(serve): forward tolerance flags from get_jumpstart_configs (#6137)
+- fix(serve): create local model_path dir before using it as download dir (#6147)
+- fix(serve): remove IC data-source collapse hack from recommendation deploy (#6101)
+
+
 ## v1.18.0 (2026-07-30)
 
 ### New Features

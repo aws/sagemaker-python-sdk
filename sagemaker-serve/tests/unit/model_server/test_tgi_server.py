@@ -128,6 +128,33 @@ class TestSageMakerTgiServing(unittest.TestCase):
         self.assertEqual(model_data["S3DataSource"]["S3Uri"], "s3://bucket/model/")
 
     @patch("sagemaker.serve.model_server.tgi.server._is_s3_uri")
+    def test_upload_tgi_artifacts_s3_path_trailing_slash_normalized(self, mock_is_s3):
+        """An S3 model_path that already ends in "/" must not yield a doubled "//".
+
+        With S3DataType="S3Prefix", SageMaker does literal prefix matching, so a
+        doubled "s3://bucket/model//" would fail to match the actual object keys
+        under "s3://bucket/model/" and nothing would mount into /opt/ml/model.
+        Regression test for the trailing-slash deploy-breaker.
+        """
+        from sagemaker.serve.model_server.tgi.server import SageMakerTgiServing
+
+        server = SageMakerTgiServing()
+        mock_is_s3.return_value = True
+        mock_session = Mock()
+
+        model_data, _ = server._upload_tgi_artifacts(
+            model_path="s3://bucket/model/",
+            sagemaker_session=mock_session,
+            jumpstart=False,
+            should_upload_artifacts=False,
+        )
+
+        self.assertIsNotNone(model_data)
+        # Exactly one trailing slash, regardless of the input's trailing slash.
+        self.assertEqual(model_data["S3DataSource"]["S3Uri"], "s3://bucket/model/")
+        self.assertNotIn("//", model_data["S3DataSource"]["S3Uri"].split("://", 1)[1])
+
+    @patch("sagemaker.serve.model_server.tgi.server._is_s3_uri")
     def test_upload_tgi_artifacts_jumpstart(self, mock_is_s3):
         """Test _upload_tgi_artifacts with jumpstart=True."""
         from sagemaker.serve.model_server.tgi.server import SageMakerTgiServing

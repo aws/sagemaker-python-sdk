@@ -1,5 +1,65 @@
 # Changelog
 
+## v3.21.0 (2026-08-25)
+
+### New Features
+
+- feat(train): Add inherited list_supported_models to BaseTrainer (#6187)
+
+### Bug Fixes
+
+- fix(core,mlops): honor caller region in feature_store ingest_dataframe and stop telemetry from blocking SDK calls (#6197)
+- fix(core): anchor tar member validation to extract_path (#6195)
+- fix(rlaif): accept preset reward_prompt template names (#6192)
+- fix(serve): pre-deploy JumpStart benchmark data + public HuggingFace download helper (#6175)
+- fix(tgi): honor S3 model_path as weight source for TGI builds (#5964)
+
+### Tests
+
+- change(train): gate deep integ tests behind gpu_intensive, add shallow submit-then-stop suite (#6176)
+- fix(ci,train): run fast-integ-tests in CodeBuild and give shallow RLVR cases a reward signal (#6207)
+- fix(train): make CPT integ tests dry run for optimize for capacity constraints (#6194)
+- test(serve): add skip_in_pr_check marker for hang-prone integ tests (#6190)
+- test(train): add unit test to prevent future regression of preset reward function (#6182)
+
+
+## v3.20.0 (2026-08-14)
+
+### New Features
+
+- feat(serve): list/filter jobs, deploy from recommendation row, compare benchmarks, DataFrame views (#6148)
+
+### Bug Fixes
+
+- fix(train): revert preset reward function deletion from hyperparams dict (#6181)
+- fix(serve): validate ECR registry host before docker login (#6160)
+- fix(mlops): Add pre-validation for Bedrock and MLflow role permissions (#6162)
+- fix(core): propagate user-supplied tags to created resources (#6167)
+
+### Tests
+
+- test(train): Fix RLVR integ test (#6183)
+- test(train): update timeout of RLVR sequence_length test (#6180)
+- test(serve): SD/KT-IC integ must use g6.2xlarge, not g4dn (#6141)
+
+
+## v3.19.0 (2026-08-10)
+
+### New Features
+
+- feat(train): Add SequenceLength support for SFT, DPO, RLVR, RLAIF trainers (#5965)
+- feat(train): Job notifications, log streaming, and metrics visualization for training jobs (#6051)
+- feat(serve): Model Reuse — reuse previously built models across deployments (#6051)
+- feat(core): Nova follow-ups — IAM role resolution and training utils (#6051)
+
+### Bug Fixes
+
+- fix(serve): propagate additional_model_data_sources for JumpStart models (#6151)
+- fix(serve): forward tolerance flags from get_jumpstart_configs (#6137)
+- fix(serve): create local model_path dir before using it as download dir (#6147)
+- fix(serve): remove IC data-source collapse hack from recommendation deploy (#6101)
+
+
 ## v3.18.0 (2026-07-30)
 
 ### New Features

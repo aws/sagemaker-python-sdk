@@ -1,10 +1,17 @@
 """Unit tests for sagemaker.serve.utils.hf_utils module."""
 import unittest
+import os
+import shutil
+import sys
+import tempfile
 from unittest.mock import Mock, patch, mock_open
 import json
 from urllib.error import HTTPError, URLError
 from json import JSONDecodeError
-from sagemaker.serve.utils.hf_utils import _get_model_config_properties_from_hf
+from sagemaker.serve.utils.hf_utils import (
+    _get_model_config_properties_from_hf,
+    download_huggingface_model,
+)
 
 
 class TestGetModelConfigPropertiesFromHf(unittest.TestCase):
@@ -214,6 +221,96 @@ class TestGetModelConfigPropertiesFromHf(unittest.TestCase):
             result = _get_model_config_properties_from_hf("org/model-name")
 
         self.assertEqual(result, adapter_config)
+
+
+class TestDownloadHuggingfaceModel(unittest.TestCase):
+    """Test cases for the public download_huggingface_model helper."""
+
+    def setUp(self):
+        # download_huggingface_model imports huggingface_hub lazily; provide a
+        # stub module so the tests do not require the real package installed.
+        self._hf_stub = Mock()
+        self._patcher = patch.dict(sys.modules, {"huggingface_hub": self._hf_stub})
+        self._patcher.start()
+        self.addCleanup(self._patcher.stop)
+        # Keep the suite side-effect free: never create real directories.
+        makedirs_patcher = patch("sagemaker.serve.utils.hf_utils.os.makedirs")
+        makedirs_patcher.start()
+        self.addCleanup(makedirs_patcher.stop)
+        self.local_dir = tempfile.mkdtemp(prefix="hf-test-")
+        self.addCleanup(shutil.rmtree, self.local_dir, ignore_errors=True)
+
+    def test_requires_local_dir_or_s3_uri(self):
+        """Neither destination given is a caller error, before any download."""
+        with self.assertRaises(ValueError) as context:
+            download_huggingface_model("gpt2")
+        self.assertIn("local_dir, s3_uri", str(context.exception))
+        self._hf_stub.snapshot_download.assert_not_called()
+
+    def test_downloads_to_local_dir_and_returns_it(self):
+        """With only local_dir, it downloads there and returns the path."""
+        result = download_huggingface_model("gpt2", local_dir=self.local_dir)
+        self.assertEqual(result, self.local_dir)
+        self.assertEqual(
+            self._hf_stub.snapshot_download.call_args.kwargs["local_dir"], self.local_dir
+        )
+
+    def test_uploads_to_s3_and_returns_uri(self):
+        """With s3_uri, it uploads the snapshot and returns the S3 URI."""
+        with patch("sagemaker.core.s3.S3Uploader") as mock_uploader:
+            mock_uploader.upload.return_value = "s3://bucket/prefix/gpt2"
+            result = download_huggingface_model(
+                "gpt2", local_dir=self.local_dir, s3_uri="s3://bucket/prefix"
+            )
+        self.assertEqual(result, "s3://bucket/prefix/gpt2")
+        mock_uploader.upload.assert_called_once()
+        self.assertEqual(
+            mock_uploader.upload.call_args.kwargs["desired_s3_uri"], "s3://bucket/prefix"
+        )
+
+    def test_s3_only_uses_temp_dir_and_cleans_up(self):
+        """With s3_uri and no local_dir, the snapshot stages in a temp dir that
+        is removed after the upload (no snapshot left on the local volume)."""
+        with patch("sagemaker.core.s3.S3Uploader") as mock_uploader:
+            mock_uploader.upload.return_value = "s3://bucket/prefix/gpt2"
+            result = download_huggingface_model("gpt2", s3_uri="s3://bucket/prefix")
+        self.assertEqual(result, "s3://bucket/prefix/gpt2")
+        staging_dir = self._hf_stub.snapshot_download.call_args.kwargs["local_dir"]
+        self.assertFalse(os.path.exists(staging_dir))
+
+    def test_forwards_hf_token_and_snapshot_passthroughs(self):
+        """token / revision / patterns are passed through to snapshot_download."""
+        download_huggingface_model(
+            "gpt2",
+            local_dir=self.local_dir,
+            hf_hub_token="hf_tok",
+            revision="v1.0",
+            allow_patterns="*.safetensors",
+            ignore_patterns="*.bin",
+        )
+        kwargs = self._hf_stub.snapshot_download.call_args.kwargs
+        self.assertEqual(kwargs["token"], "hf_tok")
+        self.assertEqual(kwargs["revision"], "v1.0")
+        self.assertEqual(kwargs["allow_patterns"], "*.safetensors")
+        self.assertEqual(kwargs["ignore_patterns"], "*.bin")
+
+    def test_missing_huggingface_hub_raises_import_error(self):
+        """The helper's own ImportError (with install guidance) is raised when
+        huggingface_hub cannot be imported."""
+        import builtins
+
+        real_import = builtins.__import__
+
+        def _raise_for_hf(name, *args, **kwargs):
+            if name == "huggingface_hub":
+                raise ImportError("No module named 'huggingface_hub'")
+            return real_import(name, *args, **kwargs)
+
+        with patch("builtins.__import__", side_effect=_raise_for_hf), self.assertRaises(
+            ImportError
+        ) as context:
+            download_huggingface_model("gpt2", local_dir=self.local_dir)
+        self.assertIn("pip install huggingface_hub", str(context.exception))
 
 
 if __name__ == "__main__":

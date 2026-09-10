@@ -1,5 +1,43 @@
 # Changelog
 
+## v1.21.0 (2026-08-25)
+
+### New Features
+
+- feat(train): Add inherited list_supported_models to BaseTrainer (#6187)
+
+### Bug Fixes
+
+- fix(rlaif): accept preset reward_prompt template names (#6192)
+
+### Tests
+
+- change(train): gate deep integ tests behind gpu_intensive, add shallow submit-then-stop suite (#6176)
+- fix(ci,train): run fast-integ-tests in CodeBuild and give shallow RLVR cases a reward signal (#6207)
+- fix(train): make CPT integ tests dry run for optimize for capacity constraints (#6194)
+- test(train): add unit test to prevent future regression of preset reward function (#6182)
+
+
+## v1.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(train): revert preset reward function deletion from hyperparams dict (#6181)
+
+### Tests
+
+- test(train): Fix RLVR integ test (#6183)
+- test(train): update timeout of RLVR sequence_length test (#6180)
+
+
+## v1.19.0 (2026-08-10)
+
+### New Features
+
+- feat(train): Add SequenceLength support for SFT, DPO, RLVR, RLAIF trainers (#5965)
+- feat(train): Job notifications, log streaming, and metrics visualization for training jobs (#6051)
+
+
 ## v1.18.0 (2026-07-30)
 
 ### Bug Fixes

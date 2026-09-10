@@ -73,9 +73,7 @@ class TestBenchmarkMetricsFromProfileJson:
         assert metrics.get("does_not_exist") is None
 
     def test_metric_raw_preserves_full_dict(self):
-        metric = BenchmarkMetric.from_dict(
-            "x", {"avg": 1, "unit": "s", "extra": "kept"}
-        )
+        metric = BenchmarkMetric.from_dict("x", {"avg": 1, "unit": "s", "extra": "kept"})
         assert metric.raw == {"avg": 1, "unit": "s", "extra": "kept"}
 
 
@@ -169,6 +167,107 @@ class TestBenchmarkResultRepr:
         assert text.startswith("BenchmarkResult(")
 
 
+pd = pytest.importorskip("pandas")
+
+
+class TestToDataFrame:
+    """to_dataframe() on BenchmarkMetrics and BenchmarkResult."""
+
+    def _result(self) -> BenchmarkResult:
+        # SAMPLE_PROFILE plus an http_* metric, so ordering can be asserted.
+        profile = dict(SAMPLE_PROFILE)
+        profile["http_req_waiting"] = {"avg": 90.0, "p50": 80.0, "unit": "ms"}
+        return BenchmarkResult(
+            metrics=BenchmarkMetrics.from_profile_json(profile),
+            s3_output_location="s3://bucket/results/",
+        )
+
+    def test_metrics_dataframe_shape_and_columns(self):
+        df = BenchmarkMetrics.from_profile_json(SAMPLE_PROFILE).to_dataframe()
+        assert df.index.name == "metric"
+        assert list(df.columns) == [
+            "unit",
+            "avg",
+            "min",
+            "max",
+            "p50",
+            "p90",
+            "p95",
+            "p99",
+            "stddev",
+        ]
+        # one row per parsed metric
+        assert set(df.index) == set(BenchmarkMetrics.from_profile_json(SAMPLE_PROFILE).all_metrics)
+
+    def test_metrics_dataframe_carries_stats_the_text_table_drops(self):
+        # min/max are absent from the printed table but present in the frame.
+        df = BenchmarkMetrics.from_profile_json(SAMPLE_PROFILE).to_dataframe()
+        assert df.loc["request_throughput", "avg"] == 12.5
+        assert df.loc["request_throughput", "min"] == 10.0
+        assert df.loc["request_throughput", "max"] == 15.0
+        # request_latency carries min/max/p99 that the printed table omits.
+        assert df.loc["request_latency", "min"] == 200.0
+        assert df.loc["request_latency", "p99"] == 1450.0
+
+    def test_result_dataframe_orders_headline_first_http_last(self):
+        df = self._result().to_dataframe()
+        names = list(df.index)
+        # headline metric leads; http_* transport metric trails.
+        assert names[0] == "request_throughput"
+        assert names[-1] == "http_req_waiting"
+
+    def test_result_and_metrics_frames_share_columns(self):
+        result = self._result()
+        assert list(result.to_dataframe().columns) == list(result.metrics.to_dataframe().columns)
+
+    def test_search_result_dataframe_raises(self):
+        search = BenchmarkResult(
+            metrics=BenchmarkMetrics.from_profile_json({}),
+            s3_output_location="s3://b/s/",
+            search=BenchmarkSearchResult(swept_dim="concurrency", winner=8),
+        )
+        with pytest.raises(ValueError, match="search/sweep"):
+            search.to_dataframe()
+
+    def test_empty_metrics_yield_empty_frame_with_schema(self):
+        df = BenchmarkMetrics.from_profile_json({}).to_dataframe()
+        assert len(df) == 0
+        assert "avg" in df.columns
+
+    def _table_metric_order(self, text):
+        """Metric names in the order the printed table lists them — the first
+        column of each body row, after the header + separator lines."""
+        names = []
+        known = self._all_names()
+        for line in text.splitlines():
+            # Keep the first token of each line only when it is a known metric
+            # name, skipping the header, separator, and prose lines.
+            first = line.strip().split(" ")[0] if line.strip() else ""
+            if first in known:
+                names.append(first)
+        return names
+
+    def _all_names(self):
+        profile = dict(SAMPLE_PROFILE)
+        profile["http_req_waiting"] = {"avg": 90.0, "unit": "ms"}
+        return set(BenchmarkMetrics.from_profile_json(profile).all_metrics)
+
+    def test_metrics_str_and_dataframe_index_agree_on_order(self):
+        """BenchmarkMetrics.__str__ and .to_dataframe() list metrics in the
+        same order, via the shared _ordered_metric_pairs()."""
+        metrics = self._result().metrics
+        table_order = self._table_metric_order(str(metrics))
+        frame_order = list(metrics.to_dataframe().index)
+        assert table_order == frame_order
+
+    def test_result_str_and_dataframe_index_agree_on_order(self):
+        """Same order invariant for BenchmarkResult (headline-first)."""
+        result = self._result()
+        table_order = self._table_metric_order(str(result))
+        frame_order = list(result.to_dataframe().index)
+        assert table_order == frame_order
+
+
 class TestBenchmarkResultMetadataFields:
     """Lock down endpoint / workload_config / tool_version on BenchmarkResult."""
 
@@ -191,9 +290,7 @@ class TestBenchmarkResultMetadataFields:
         assert "0.6.0" in text
 
     def test_str_renders_dashes_when_metadata_missing(self):
-        text = str(
-            self._result(endpoint=None, workload_config=None, tool_version=None)
-        )
+        text = str(self._result(endpoint=None, workload_config=None, tool_version=None))
         assert "endpoint:           -" in text
         assert "workload_config:    -" in text
         assert "tool_version:       -" in text
@@ -237,10 +334,12 @@ class TestBenchmarkResultMetadataFields:
         assert result.tool_version == "0.6.1"
 
     def test_tool_version_pulled_from_profile_metadata(self):
-        archive_bytes = self._archive_with({
-            **SAMPLE_PROFILE,
-            "metadata": {"version": "0.6.2"},
-        })
+        archive_bytes = self._archive_with(
+            {
+                **SAMPLE_PROFILE,
+                "metadata": {"version": "0.6.2"},
+            }
+        )
         result = self._parse_archive(archive_bytes)
         assert result.tool_version == "0.6.2"
 
@@ -282,9 +381,7 @@ class TestBenchmarkResultMetadataFields:
                 def client(self, name):
                     return s3_client
 
-            return BenchmarkResult.from_s3(
-                "s3://b/p/", session=_SessionStub()
-            )
+            return BenchmarkResult.from_s3("s3://b/p/", session=_SessionStub())
 
 
 # A concurrency search writes search_history.json at the artifact root. Schema

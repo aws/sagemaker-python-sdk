@@ -611,6 +611,40 @@ class TestEnsureMetadataConfigs(unittest.TestCase):
         # Should remain None for non-string models
         self.assertIsNone(utils._metadata_configs)
 
+    @patch("sagemaker.core.jumpstart.utils.get_jumpstart_configs")
+    def test_ensure_metadata_configs_forwards_tolerance(self, mock_get_configs):
+        """Test tolerance flags reach the config lookup that runs the model gate."""
+        utils = _ModelBuilderUtils()
+        utils._metadata_configs = None
+        utils.model = "huggingface-llm-falcon-7b"
+        utils.region = "us-west-2"
+        utils.sagemaker_session = Mock()
+        utils.tolerate_vulnerable_model = True
+        utils.tolerate_deprecated_model = True
+
+        mock_get_configs.return_value = {}
+
+        utils._ensure_metadata_configs()
+
+        self.assertTrue(mock_get_configs.call_args.kwargs["tolerate_vulnerable_model"])
+        self.assertTrue(mock_get_configs.call_args.kwargs["tolerate_deprecated_model"])
+
+    @patch("sagemaker.core.jumpstart.utils.get_jumpstart_configs")
+    def test_ensure_metadata_configs_defaults_tolerance_to_false(self, mock_get_configs):
+        """Test the model gate stays enabled when tolerance is not set."""
+        utils = _ModelBuilderUtils()
+        utils._metadata_configs = None
+        utils.model = "huggingface-llm-falcon-7b"
+        utils.region = "us-west-2"
+        utils.sagemaker_session = Mock()
+
+        mock_get_configs.return_value = {}
+
+        utils._ensure_metadata_configs()
+
+        self.assertFalse(mock_get_configs.call_args.kwargs["tolerate_vulnerable_model"])
+        self.assertFalse(mock_get_configs.call_args.kwargs["tolerate_deprecated_model"])
+
 
 class TestGetServeSettings(unittest.TestCase):
     """Test _get_serve_setting method - skipped (requires proper session setup)."""

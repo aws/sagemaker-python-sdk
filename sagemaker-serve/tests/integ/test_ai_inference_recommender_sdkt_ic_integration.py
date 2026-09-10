@@ -30,10 +30,10 @@ from sagemaker.core.training.configs import Compute
 logger = logging.getLogger(__name__)
 
 # Small, ungated, chat-templated model. A GPU instance is required by the
-# JumpStart vLLM/LMI container (not by the model size); a single-GPU g4dn.xlarge
-# (T4) is ample for a 0.6B model.
+# JumpStart vLLM/LMI container (not by the model size); a single-GPU
+# g6.2xlarge (L4) is ample for a 0.6B model.
 MODEL_ID = "huggingface-reasoning-qwen3-06b"
-INSTANCE_TYPE = "ml.g4dn.xlarge"
+INSTANCE_TYPE = "ml.g6.2xlarge"
 # Right-sized for a 0.6B on a single GPU; an oversized request overflows the
 # host and the IC never leaves Creating.
 IC_MIN_MEMORY_MB = 4096
