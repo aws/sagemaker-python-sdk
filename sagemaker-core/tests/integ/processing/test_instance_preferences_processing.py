@@ -24,14 +24,11 @@ path, then asserts the Describe contract:
   ``SelectedInstanceCount`` report the resolved winner, which must be one of
   the submitted preferences.
 
-Configuration (environment variables; SKIPPED when unset):
-
-- ``PROCESSING_INSTANCE_PREFERENCES_TEST_ROLE_ARN``  - execution role ARN
-- ``PROCESSING_INSTANCE_PREFERENCES_TEST_IMAGE_URI`` - processing image
-- ``PROCESSING_INSTANCE_PREFERENCES_TEST_INSTANCE_TYPES`` - optional comma-separated
-  candidate types (default: ml.m5.xlarge, ml.m5.large)
-- ``SAGEMAKER_ENDPOINT``                             - optional endpoint
-  override.
+Runs in the standard integration-test account: the execution role is the
+suite's ``SageMakerRole`` and the image is resolved through ``image_uris``, the
+same way the other ``sagemaker-core`` integration tests obtain theirs.
+``PROCESSING_INSTANCE_PREFERENCES_TEST_INSTANCE_TYPES`` (comma-separated)
+overrides the candidate types for accounts where the defaults lack quota.
 """
 
 from __future__ import absolute_import
@@ -40,11 +37,12 @@ import os
 import time
 import uuid
 
-import pytest
+import boto3
 
-ROLE_ARN = os.environ.get("PROCESSING_INSTANCE_PREFERENCES_TEST_ROLE_ARN")
-IMAGE_URI = os.environ.get("PROCESSING_INSTANCE_PREFERENCES_TEST_IMAGE_URI")
-ENDPOINT = os.environ.get("SAGEMAKER_ENDPOINT")
+from sagemaker.core import image_uris
+
+ROLE = "SageMakerRole"
+REGION = os.environ.get("AWS_REGION", os.environ.get("AWS_DEFAULT_REGION", "us-west-2"))
 
 PREFERENCE_TYPES = [
     t.strip()
@@ -55,23 +53,27 @@ PREFERENCE_TYPES = [
 ]
 WAIT_TIMEOUT_SECONDS = 30 * 60
 POLL_SECONDS = 30
-
-pytestmark = pytest.mark.skipif(
-    not (ROLE_ARN and IMAGE_URI),
-    reason=(
-        "Processing Instance Preferences integ test requires "
-        "PROCESSING_INSTANCE_PREFERENCES_TEST_ROLE_ARN and "
-        "PROCESSING_INSTANCE_PREFERENCES_TEST_IMAGE_URI"
-    ),
-)
+TERMINAL = ("Completed", "Failed", "Stopped")
 
 
-def _sagemaker_client():
-    """Build a boto3 SageMaker client, honoring SAGEMAKER_ENDPOINT."""
-    import boto3
+def _stop_quietly(client, job_name):
+    """The job has done its part once a winner is selected; do not leave it
+    running to max_runtime on shared quota."""
+    try:
+        if (
+            client.describe_processing_job(ProcessingJobName=job_name)["ProcessingJobStatus"]
+            in TERMINAL
+        ):
+            return
+        client.stop_processing_job(ProcessingJobName=job_name)
+    except Exception:  # pylint: disable=broad-except
+        pass
 
-    region = os.environ.get("AWS_REGION", "us-west-2")
-    return boto3.client("sagemaker", region_name=region, endpoint_url=ENDPOINT)
+
+def _processing_image():
+    return image_uris.retrieve(
+        "sklearn", REGION, version="1.2-1", py_version="py3", instance_type=PREFERENCE_TYPES[0]
+    )
 
 
 def test_processor_instance_preferences_e2e():
@@ -79,12 +81,12 @@ def test_processor_instance_preferences_e2e():
     from sagemaker.core.helper.session_helper import Session
     from sagemaker.core.processing import Processor
 
-    client = _sagemaker_client()
+    client = boto3.client("sagemaker", region_name=REGION)
     session = Session(sagemaker_client=client)
 
     processor = Processor(
-        role=ROLE_ARN,
-        image_uri=IMAGE_URI,
+        role=ROLE,
+        image_uri=_processing_image(),
         instance_count=1,
         instance_preferences=[{"InstanceType": t} for t in PREFERENCE_TYPES],
         volume_size_in_gb=30,
@@ -95,39 +97,43 @@ def test_processor_instance_preferences_e2e():
     job_name = f"instance-prefs-proc-integ-{uuid.uuid4().hex[:8]}"
     processor.run(wait=False, logs=False, job_name=job_name)
 
-    # --- Create accepted; Describe echoes the request contract -------------
-    described = client.describe_processing_job(ProcessingJobName=job_name)
-    cluster_config = described["ProcessingResources"]["ClusterConfig"]
-    assert [p["InstanceType"] for p in cluster_config.get("InstancePreferences", [])] == (
-        PREFERENCE_TYPES
-    ), f"Describe did not echo InstancePreferences: {cluster_config}"
-    # The customer never set the top-level InstanceType; it must not come
-    # back populated on Describe.
-    assert "InstanceType" not in cluster_config, cluster_config
+    try:
 
-    # --- Wait for a terminal-or-resolved state ------------------------------
-    deadline = time.time() + WAIT_TIMEOUT_SECONDS
-    status = described["ProcessingJobStatus"]
-    while time.time() < deadline:
+        # --- Create accepted; Describe echoes the request contract -------------
         described = client.describe_processing_job(ProcessingJobName=job_name)
-        status = described["ProcessingJobStatus"]
         cluster_config = described["ProcessingResources"]["ClusterConfig"]
-        if status in ("Completed", "Failed", "Stopped"):
-            break
-        if status == "InProgress" and cluster_config.get("SelectedInstanceType"):
-            break
-        time.sleep(POLL_SECONDS)
+        assert [p["InstanceType"] for p in cluster_config.get("InstancePreferences", [])] == (
+            PREFERENCE_TYPES
+        ), f"Describe did not echo InstancePreferences: {cluster_config}"
+        # The customer never set the top-level InstanceType; it must not come
+        # back populated on Describe.
+        assert "InstanceType" not in cluster_config, cluster_config
 
-    failure_reason = described.get("FailureReason", "")
+        # --- Wait for a terminal-or-resolved state ------------------------------
+        deadline = time.time() + WAIT_TIMEOUT_SECONDS
+        status = described["ProcessingJobStatus"]
+        while time.time() < deadline:
+            described = client.describe_processing_job(ProcessingJobName=job_name)
+            status = described["ProcessingJobStatus"]
+            cluster_config = described["ProcessingResources"]["ClusterConfig"]
+            if status in TERMINAL:
+                break
+            if status == "InProgress" and cluster_config.get("SelectedInstanceType"):
+                break
+            time.sleep(POLL_SECONDS)
 
-    # --- Full contract: resolved winner is surfaced and is a submitted pref -
-    cluster_config = described["ProcessingResources"]["ClusterConfig"]
-    selected_type = cluster_config.get("SelectedInstanceType")
-    selected_count = cluster_config.get("SelectedInstanceCount")
-    assert selected_type in PREFERENCE_TYPES, (
-        f"SelectedInstanceType={selected_type!r} not among submitted preferences "
-        f"{PREFERENCE_TYPES} (job={job_name}, status={status}, "
-        f"failure={failure_reason!r})"
-    )
-    assert selected_count == 1
-    assert "InstanceType" not in cluster_config, cluster_config
+        failure_reason = described.get("FailureReason", "")
+
+        # --- Full contract: resolved winner is surfaced and is a submitted pref -
+        cluster_config = described["ProcessingResources"]["ClusterConfig"]
+        selected_type = cluster_config.get("SelectedInstanceType")
+        selected_count = cluster_config.get("SelectedInstanceCount")
+        assert selected_type in PREFERENCE_TYPES, (
+            f"SelectedInstanceType={selected_type!r} not among submitted preferences "
+            f"{PREFERENCE_TYPES} (job={job_name}, status={status}, "
+            f"failure={failure_reason!r})"
+        )
+        assert selected_count == 1
+        assert "InstanceType" not in cluster_config, cluster_config
+    finally:
+        _stop_quietly(client, job_name)
