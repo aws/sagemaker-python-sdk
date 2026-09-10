@@ -321,7 +321,13 @@ Run data preprocessing with ``ScriptProcessor`` (sklearn) or ``FrameworkProcesso
 
 .. code-block:: python
 
+   from sagemaker.core import image_uris
    from sagemaker.core.processing import Processor
+
+   # Resolve the image from one of the candidates; every candidate must be able to run it.
+   processing_image = image_uris.retrieve(
+       framework="sklearn", region=region, version="1.2-1", instance_type="ml.m5.4xlarge"
+   )
 
    processor = Processor(
        role=role, image_uri=processing_image, volume_size_in_gb=100,
