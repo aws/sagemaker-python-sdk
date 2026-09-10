@@ -321,7 +321,13 @@ Run data preprocessing with ``ScriptProcessor`` (sklearn) or ``FrameworkProcesso
 
 .. code-block:: python
 
+   from sagemaker.core import image_uris
    from sagemaker.core.processing import Processor
+
+   # Resolve the image from one of the candidates; every candidate must be able to run it.
+   processing_image = image_uris.retrieve(
+       framework="sklearn", region=region, version="1.2-1", instance_type="ml.m5.4xlarge"
+   )
 
    processor = Processor(
        role=role, image_uri=processing_image, volume_size_in_gb=100,
@@ -333,7 +339,7 @@ Run data preprocessing with ``ScriptProcessor`` (sklearn) or ``FrameworkProcesso
 
    processor.run(job_name="instance-prefs-processing")
 
-Up to 5 candidates are allowed, each instance type at most once, and exactly one is selected; the list is mutually exclusive with ``instance_type``. Counts use exactly one of two modes — a top-level ``instance_count`` shared by whichever candidate wins, or an ``InstanceCount`` on every candidate — and mixed, partial, or omitted counts are rejected. Selection is based on capacity, not on workload fit, so list only types the job can genuinely run on. The winner is reported as ``SelectedInstanceType`` / ``SelectedInstanceCount`` on the job's ``ClusterConfig``, and billing is for that type and count. Supported on ``Processor``, ``ScriptProcessor``, ``PySparkProcessor``, and ``SparkJarProcessor``; training plans are training-only and do not apply to processing.
+Up to 5 candidates are allowed, each instance type at most once, and exactly one is selected; the list is mutually exclusive with ``instance_type``. Counts use exactly one of two modes — a top-level ``instance_count`` shared by whichever candidate wins, or an ``InstanceCount`` on every candidate — and mixed, partial, or omitted counts are rejected. Selection is based on capacity, not on workload fit, so list only types that can run the job's ``image_uri`` (the image is fixed at submission time; the instance type is not). The winner is reported as ``SelectedInstanceType`` / ``SelectedInstanceCount`` on the job's ``ClusterConfig``, and billing is for that type and count. Supported on ``Processor``, ``ScriptProcessor``, ``PySparkProcessor``, and ``SparkJarProcessor``; training plans are training-only and do not apply to processing.
 
 :doc:`Instance Preferences example <../v3-examples/ml-ops-examples/v3-processing-instance-preferences>`
 

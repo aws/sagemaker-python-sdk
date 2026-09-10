@@ -350,7 +350,54 @@ class TestInstancePreferencesPipeVarOverrides:
     """The IntPipeVar annotations on instance-preferences count members come from
     PIPE_VAR_OVERRIDES, not the service model. If an override is dropped, codegen
     silently narrows the member back to int and pipeline variables stop being
-    accepted -- so assert the generated type directly."""
+    accepted -- so assert the generated type directly.
+
+    Uses a minimal in-memory model mirroring the real member -> shape wiring;
+    the packaged service JSON is not available in every test environment."""
+
+    _COUNT = {"type": "integer", "min": 1}
+    _STRING = {"type": "string"}
+    _MODEL = {
+        "TrainingInstanceCount": _COUNT,
+        "ProcessingInstanceCount": _COUNT,
+        "TrainingInstanceType": _STRING,
+        "ProcessingInstanceType": _STRING,
+        "ResourceConfig": {
+            "type": "structure",
+            "members": {
+                "InstanceType": {"shape": "TrainingInstanceType"},
+                "InstanceCount": {"shape": "TrainingInstanceCount"},
+                "SelectedInstanceCount": {"shape": "TrainingInstanceCount"},
+            },
+        },
+        "InstancePreference": {
+            "type": "structure",
+            "members": {
+                "InstanceType": {"shape": "TrainingInstanceType"},
+                "InstanceCount": {"shape": "TrainingInstanceCount"},
+            },
+        },
+        "ProcessingClusterConfig": {
+            "type": "structure",
+            "members": {
+                "InstanceType": {"shape": "ProcessingInstanceType"},
+                "InstanceCount": {"shape": "ProcessingInstanceCount"},
+                "SelectedInstanceCount": {"shape": "ProcessingInstanceCount"},
+            },
+        },
+        "ProcessingInstancePreference": {
+            "type": "structure",
+            "members": {
+                "InstanceType": {"shape": "ProcessingInstanceType"},
+                "InstanceCount": {"shape": "ProcessingInstanceCount"},
+            },
+        },
+        # Control: same integer shape, no override registered -> must stay int.
+        "UnrelatedConfig": {
+            "type": "structure",
+            "members": {"InstanceCount": {"shape": "TrainingInstanceCount"}},
+        },
+    }
 
     @pytest.fixture
     def extractor(self, tmp_path):
@@ -363,7 +410,7 @@ class TestInstancePreferencesPipeVarOverrides:
                 str(tmp_path / "shape_dag.py"),
             ),
         ):
-            return ShapesExtractor()
+            return ShapesExtractor(combined_shapes=self._MODEL)
 
     @pytest.mark.parametrize(
         "shape, member",
@@ -383,3 +430,8 @@ class TestInstancePreferencesPipeVarOverrides:
             f"{shape}.{member} generated as {members[member]!r}; "
             "expected IntPipeVar via PIPE_VAR_OVERRIDES"
         )
+
+    def test_override_is_targeted_not_blanket(self, extractor):
+        members = extractor.generate_shape_members("UnrelatedConfig")
+        assert "IntPipeVar" not in members["instance_count"]
+        assert "int" in members["instance_count"]
