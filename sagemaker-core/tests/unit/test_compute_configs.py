@@ -1,4 +1,5 @@
 """Unit tests for Compute and HyperPodCompute config classes."""
+
 import pytest
 from sagemaker.core.training.configs import Compute, HyperPodCompute
 
@@ -169,6 +170,26 @@ class TestComputeInstancePreferencesClientValidation:
                 instance_preferences=[InstancePreference(instance_type="ml.m5.xlarge")],
             )
 
+    def test_managed_spot_rejected_with_preferences(self, compute_cls):
+        from sagemaker.core.shapes.shapes import InstancePreference
+
+        with pytest.raises(ValueError, match="mutually exclusive with managed spot training"):
+            compute_cls(
+                instance_count=1,
+                enable_managed_spot_training=True,
+                instance_preferences=[InstancePreference(instance_type="ml.m5.xlarge")],
+            )
+
+    def test_managed_spot_false_allowed_with_preferences(self, compute_cls):
+        from sagemaker.core.shapes.shapes import InstancePreference
+
+        compute = compute_cls(
+            instance_count=1,
+            enable_managed_spot_training=False,
+            instance_preferences=[InstancePreference(instance_type="ml.m5.xlarge")],
+        )
+        assert compute.enable_managed_spot_training is False
+
     def test_uniform_count_rejected_with_per_preference_counts(self, compute_cls):
         from sagemaker.core.shapes.shapes import InstancePreference
 
@@ -239,9 +260,7 @@ class TestComputeInstancePreferencesClientValidation:
 
         compute_cls(
             instance_count=1,
-            training_plan_arn=(
-                "arn:aws:sagemaker:us-west-2:111122223333:training-plan/whole-job"
-            ),
+            training_plan_arn=("arn:aws:sagemaker:us-west-2:111122223333:training-plan/whole-job"),
             instance_preferences=[
                 InstancePreference(instance_type="ml.p5.48xlarge"),
                 InstancePreference(instance_type="ml.p4d.24xlarge"),
@@ -260,9 +279,7 @@ class TestModulesComputeInstancePreferences:
             InstancePreference(instance_type="ml.p5.48xlarge"),
             InstancePreference(instance_type="ml.p4d.24xlarge"),
         ]
-        rc = ModulesCompute(
-            instance_preferences=prefs, instance_count=2
-        )._to_resource_config()
+        rc = ModulesCompute(instance_preferences=prefs, instance_count=2)._to_resource_config()
         assert [p.instance_type for p in rc.instance_preferences] == [
             "ml.p5.48xlarge",
             "ml.p4d.24xlarge",
@@ -271,9 +288,7 @@ class TestModulesComputeInstancePreferences:
     def test_modules_compute_single_type_still_works(self):
         from sagemaker.core.modules.configs import Compute as ModulesCompute
 
-        rc = ModulesCompute(
-            instance_type="ml.m5.xlarge", instance_count=1
-        )._to_resource_config()
+        rc = ModulesCompute(instance_type="ml.m5.xlarge", instance_count=1)._to_resource_config()
         assert rc.instance_type == "ml.m5.xlarge"
 
 
