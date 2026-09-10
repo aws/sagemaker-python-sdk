@@ -121,16 +121,30 @@ def test_deserializer_module_imports_without_torch():
     )
 
 
-def test_torch_tensor_serializer_raises_import_error_without_torch():
-    """Verify TorchTensorSerializer raises ImportError when torch is not installed."""
+def test_torch_tensor_serializer_works_without_torch():
+    """Serializing a tensor needs only its own detach()/numpy(), not the torch import,
+    so TorchTensorSerializer must construct and serialize without torch installed."""
+    import numpy as np
+
     import sagemaker.core.serializers.base as ser_module
 
     saved = {}
     try:
         saved = _block_torch()
 
-        with pytest.raises(ImportError, match="Unable to import torch"):
-            ser_module.TorchTensorSerializer()
+        class FakeTensor:
+            __module__ = "torch"
+
+            def detach(self):
+                return self
+
+            def numpy(self):
+                return np.array([1, 2, 3])
+
+        serializer = ser_module.TorchTensorSerializer()
+        assert serializer.serialize(FakeTensor())
+        with pytest.raises(ValueError, match="not a torch.Tensor"):
+            serializer.serialize([1, 2, 3])
     finally:
         _restore_torch(saved)
 
