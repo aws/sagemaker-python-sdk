@@ -2019,3 +2019,25 @@ def test_networking_intelligent_defaults_fills_subnets_on_existing(model_trainer
     assert model_trainer.networking.subnets == NETWORKING_DEFAULT_SUBNETS
     # pre-existing security_group_ids are preserved.
     assert model_trainer.networking.security_group_ids == ["sg-preexisting"]
+
+
+def test_prepare_train_script_writes_lf_line_endings(model_trainer):
+    """sm_train.sh must use LF endings even when written on a CRLF-default host (Windows).
+
+    The generated script is always executed inside a Linux training container, so a
+    host that maps text-mode "\n" to "\r\n" (Windows) must not leak CRLF into it -
+    bash rejects a script whose first line is "\r" (see aws/sagemaker-python-sdk#5904).
+    """
+    with tempfile.TemporaryDirectory() as tmp_dir_name:
+
+        class _FakeTmpDir:
+            name = tmp_dir_name
+
+        model_trainer._prepare_train_script(_FakeTmpDir(), DEFAULT_SOURCE_CODE)
+
+        script_path = os.path.join(tmp_dir_name, TRAIN_SCRIPT)
+        with open(script_path, "rb") as f:
+            raw = f.read()
+
+        assert b"\r\n" not in raw
+        assert raw.startswith(b"\n#!/bin/bash\n") or raw.startswith(b"#!/bin/bash\n")

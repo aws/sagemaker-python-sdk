@@ -1208,7 +1208,9 @@ class ModelTrainer(BaseModel):
             execute_driver=execute_driver,
         )
 
-        with open(os.path.join(tmp_dir.name, TRAIN_SCRIPT), "w") as f:
+        # The container runs Linux, so the script must be LF-only regardless of the
+        # host that generated it.
+        with open(os.path.join(tmp_dir.name, TRAIN_SCRIPT), "w", newline="\n") as f:
             f.write(train_script)
 
     @classmethod
