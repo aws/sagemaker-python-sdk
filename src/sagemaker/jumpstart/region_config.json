@@ -119,6 +119,10 @@
         "gated_content_bucket": "jumpstart-private-cache-prod-eu-west-3",
         "neo_content_bucket": "sagemaker-sd-models-prod-eu-west-3"
     },
+    "eusc-de-east-1": {
+        "content_bucket": "jumpstart-cache-prod-eusc-de-east-1",
+        "gated_content_bucket": "jumpstart-private-cache-prod-eusc-de-east-1"
+    },
     "il-central-1": {
         "content_bucket": "jumpstart-cache-prod-il-central-1",
         "gated_content_bucket": "jumpstart-private-cache-prod-il-central-1"
