@@ -126,6 +126,8 @@ class Hub:
 
         while first_iteration or next_token:
             first_iteration = False
+            if next_token:
+                kwargs["next_token"] = next_token
             list_hub_content_response = self._sagemaker_session.list_hub_contents(**kwargs)
             hub_model_summaries.extend(list_hub_content_response.get("HubContentSummaries", []))
             next_token = list_hub_content_response.get("NextToken")
