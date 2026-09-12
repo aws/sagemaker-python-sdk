@@ -3407,34 +3407,6 @@ class _ModelBuilderUtils:
                     f"Could not detect inference image for training image: {training_image}"
                 )
 
-    def _extract_speculative_draft_model_provider(
-        self,
-        speculative_decoding_config: Optional[Dict] = None,
-    ) -> Optional[str]:
-        """Extracts speculative draft model provider from speculative decoding config.
-
-        Args:
-            speculative_decoding_config (Optional[Dict]): A speculative decoding config.
-
-        Returns:
-            Optional[str]: The speculative draft model provider.
-        """
-        if speculative_decoding_config is None:
-            return None
-
-        model_provider = speculative_decoding_config.get("ModelProvider", "").lower()
-
-        if model_provider == "jumpstart":
-            return "jumpstart"
-
-        if model_provider == "custom" or speculative_decoding_config.get("ModelSource"):
-            return "custom"
-
-        if model_provider == "sagemaker":
-            return "sagemaker"
-
-        return "auto"
-
     def get_huggingface_model_metadata(
         self, model_id: str, hf_hub_token: Optional[str] = None
     ) -> dict:
