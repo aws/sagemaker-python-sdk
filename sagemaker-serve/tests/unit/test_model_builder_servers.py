@@ -508,7 +508,7 @@ class TestModelBuilderServersParameterValidation(unittest.TestCase):
         self.assertIn("Missing required parameter", str(context.exception))
 
 
-class TestModelBuilderServersConstants(unittest.TestCase):
+class TestModelBuilderServersConstantsTypes(unittest.TestCase):
     """Test that constants are properly defined."""
 
     def test_all_constants_are_strings(self):
