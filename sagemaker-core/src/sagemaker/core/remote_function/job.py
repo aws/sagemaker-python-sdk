@@ -2155,13 +2155,6 @@ def _rule_statuses_changed(current_statuses, last_statuses):
     return False
 
 
-def _get_initial_job_state(description, status_key, wait):
-    """Placeholder docstring"""
-    status = description[status_key]
-    job_already_completed = status in ("Completed", "Failed", "Stopped")
-    return LogState.TAILING if wait and not job_already_completed else LogState.COMPLETE
-
-
 def _logs_init(boto_session, description, job):
     """Placeholder docstring"""
     if job == "Training":
