@@ -12283,6 +12283,64 @@ class FeatureGroup(Base):
         logger.debug(f"Response: {response}")
 
     @Base.add_validate_call
+    def update_record(
+        self,
+        record_identifier_value_as_string: StrPipeVar,
+        features: List[FeatureValue],
+        target_stores: Optional[List[StrPipeVar]] = Unassigned(),
+        ttl_duration: Optional[TtlDuration] = Unassigned(),
+        session: Optional[Session] = None,
+        region: Optional[str] = None,
+    ) -> None:
+        """
+        The UpdateRecord API performs a feature-level write to a Record in a feature group whose OnlineStoreConfig StorageType is Standard_V2 or InMemory. Only the supplied Features are written; features not included are preserved. The record must already exist in the online store.
+
+        Parameters:
+            record_identifier_value_as_string: The value for the RecordIdentifier that uniquely identifies the record to update, in string format.
+            features: The list of FeatureValues to update. Only the features included here are written; features that are not listed are preserved. Pass EventTime as a feature in this list. A maximum of 100 features can be updated in a single request.
+            target_stores: A list of stores to which the update is applied. By default, Feature Store applies the update to all of the stores that you're using for the FeatureGroup. A value that resolves to the OfflineStore only is rejected.
+            ttl_duration: Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. Specifying TtlDuration requires EventTime to be present in Features.
+            session: Boto3 session.
+            region: Region name.
+
+        Raises:
+            botocore.exceptions.ClientError: This exception is raised for AWS service related errors.
+                The error message and error code can be parsed from the exception as follows:
+                ```
+                try:
+                    # AWS service call here
+                except botocore.exceptions.ClientError as e:
+                    error_message = e.response['Error']['Message']
+                    error_code = e.response['Error']['Code']
+                ```
+            AccessForbidden: You do not have permission to perform an action.
+            ConflictException: There was a conflict when you attempted to modify a record; the supplied EventTime was not greater than the record's current EventTime.
+            InternalFailure: An internal failure occurred. Try your request again. If the problem persists, contact Amazon Web Services customer support.
+            ResourceNotFound: A resource that is required to perform an action was not found.
+            ServiceUnavailable: The service is currently unavailable.
+            ValidationError: There was an error validating your request.
+        """
+
+        operation_input_args = {
+            "FeatureGroupName": self.feature_group_name,
+            "RecordIdentifierValueAsString": record_identifier_value_as_string,
+            "Features": features,
+            "TargetStores": target_stores,
+            "TtlDuration": ttl_duration,
+        }
+        # serialize the input request
+        operation_input_args = serialize(operation_input_args)
+        logger.debug(f"Serialized input request: {operation_input_args}")
+
+        client = Base.get_sagemaker_client(
+            session=session, region_name=region, service_name="sagemaker-featurestore-runtime"
+        )
+
+        logger.debug(f"Calling update_record API")
+        response = client.update_record(**operation_input_args)
+        logger.debug(f"Response: {response}")
+
+    @Base.add_validate_call
     def delete_record(
         self,
         record_identifier_value_as_string: StrPipeVar,

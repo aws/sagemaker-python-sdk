@@ -870,3 +870,129 @@ class TestPrepareFgFromDataframeOrFile:
         )
         
         mock_fg.load_feature_definitions.assert_called_once()
+
+
+class TestUpdateRecord:
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_updates_subset_of_features(self, mock_fg_class):
+        mock_fg = MagicMock()
+        mock_fg_class.get.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import update_record
+
+        update_record(
+            feature_group_name="test-fg",
+            record_identifier_value_as_string="r1",
+            features=[
+                {"feature_name": "city", "value_as_string": "seattle"},
+                {"feature_name": "EventTime", "value_as_string": "1700000000"},
+            ],
+        )
+
+        mock_fg_class.get.assert_called_once_with(feature_group_name="test-fg", region=None)
+        mock_fg.update_record.assert_called_once()
+        call = mock_fg.update_record.call_args.kwargs
+        assert call["record_identifier_value_as_string"] == "r1"
+        assert [fv.feature_name for fv in call["features"]] == ["city", "EventTime"]
+        assert "target_stores" not in call
+        assert "ttl_duration" not in call
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_accepts_feature_value_objects(self, mock_fg_class):
+        mock_fg = MagicMock()
+        mock_fg_class.get.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import update_record
+        from sagemaker.core.shapes import FeatureValue
+
+        update_record(
+            feature_group_name="test-fg",
+            record_identifier_value_as_string="r1",
+            features=[FeatureValue(feature_name="city", value_as_string="seattle")],
+        )
+        call = mock_fg.update_record.call_args.kwargs
+        assert call["features"][0].feature_name == "city"
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_passes_target_stores_and_ttl(self, mock_fg_class):
+        mock_fg = MagicMock()
+        mock_fg_class.get.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import update_record
+        from sagemaker.core.shapes import TtlDuration
+
+        ttl = TtlDuration(unit="Days", value=7)
+        update_record(
+            feature_group_name="test-fg",
+            record_identifier_value_as_string="r1",
+            features=[
+                {"feature_name": "city", "value_as_string": "seattle"},
+                {"feature_name": "EventTime", "value_as_string": "1700000000"},
+            ],
+            target_stores=["OnlineStore", "OfflineStore"],
+            ttl_duration=ttl,
+        )
+        call = mock_fg.update_record.call_args.kwargs
+        assert call["target_stores"] == ["OnlineStore", "OfflineStore"]
+        assert call["ttl_duration"] is ttl
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_empty_features_raises(self, mock_fg_class):
+        from sagemaker.mlops.feature_store.feature_utils import update_record
+
+        with pytest.raises(ValueError, match="at least one feature"):
+            update_record("test-fg", "r1", features=[])
+        mock_fg_class.get.assert_not_called()
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_too_many_features_raises(self, mock_fg_class):
+        from sagemaker.mlops.feature_store.feature_utils import update_record
+
+        features = [{"feature_name": f"f{i}", "value_as_string": "v"} for i in range(101)]
+        with pytest.raises(ValueError, match="at most 100"):
+            update_record("test-fg", "r1", features=features)
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_duplicate_features_raises(self, mock_fg_class):
+        from sagemaker.mlops.feature_store.feature_utils import update_record
+
+        with pytest.raises(ValueError, match="Duplicate feature names"):
+            update_record(
+                "test-fg",
+                "r1",
+                features=[
+                    {"feature_name": "city", "value_as_string": "a"},
+                    {"feature_name": "city", "value_as_string": "b"},
+                ],
+            )
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_offline_only_target_store_raises(self, mock_fg_class):
+        from sagemaker.mlops.feature_store.feature_utils import update_record
+
+        with pytest.raises(ValueError, match="OfflineStore only"):
+            update_record(
+                "test-fg",
+                "r1",
+                features=[{"feature_name": "city", "value_as_string": "a"}],
+                target_stores=["OfflineStore"],
+            )
+
+    @patch("sagemaker.mlops.feature_store.feature_utils.CoreFeatureGroup")
+    def test_ttl_without_event_time_is_forwarded_to_service(self, mock_fg_class):
+        """The SDK does not client-side enforce the ttl/event-time rule (feature name is
+        FG-defined); it forwards to the service, which validates."""
+        mock_fg = MagicMock()
+        mock_fg_class.get.return_value = mock_fg
+
+        from sagemaker.mlops.feature_store.feature_utils import update_record
+        from sagemaker.core.shapes import TtlDuration
+
+        ttl = TtlDuration(unit="Days", value=7)
+        update_record(
+            "test-fg",
+            "r1",
+            features=[{"feature_name": "city", "value_as_string": "a"}],
+            ttl_duration=ttl,
+        )
+        assert mock_fg.update_record.call_args.kwargs["ttl_duration"] is ttl
