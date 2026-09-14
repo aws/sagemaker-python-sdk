@@ -388,6 +388,92 @@ Key points:
 
 
 
+Instance Preferences
+--------------------
+
+
+Provide an ordered list of candidate instance types and the platform launches the job on the first type with available capacity, instead of failing when one scarce type is unavailable.
+
+**Ordered Candidates:**
+
+.. code-block:: python
+
+   from sagemaker.core import image_uris
+   from sagemaker.train.model_trainer import ModelTrainer
+   from sagemaker.core.training.configs import Compute, SourceCode
+   from sagemaker.core.shapes import InstancePreference
+
+   # The image is fixed at submission time while the instance type is not:
+   # resolve it from one of the candidates and list only types that can run it.
+   gpu_training_image = image_uris.retrieve(
+       framework="pytorch",
+       region=region,
+       version="2.0.0",
+       py_version="py310",
+       instance_type="ml.p5.48xlarge",
+       image_scope="training",
+   )
+
+   compute = Compute(
+       instance_preferences=[
+           InstancePreference(instance_type="ml.p5.48xlarge"),
+           InstancePreference(instance_type="ml.p4d.24xlarge"),
+           InstancePreference(instance_type="ml.g5.12xlarge"),
+       ],
+       instance_count=2,
+   )
+
+   model_trainer = ModelTrainer(
+       training_image=gpu_training_image,
+       source_code=SourceCode(source_dir="./source", entry_script="train.py"),
+       compute=compute,
+       base_job_name="instance-preferences-training",
+   )
+
+   model_trainer.train()
+
+**Per-Candidate Instance Counts and Training Plans:**
+
+.. code-block:: python
+
+   compute = Compute(
+       instance_preferences=[
+           InstancePreference(
+               instance_type="ml.p5.48xlarge",
+               instance_count=2,
+               training_plan_arns=[p5_plan_arn],
+           ),
+           InstancePreference(instance_type="ml.p4d.24xlarge", instance_count=4),
+       ],
+   )
+
+**Identifying the Instance Type That Ran:**
+
+.. code-block:: python
+
+   training_job = model_trainer._latest_training_job
+   training_job.refresh()
+
+   resource_config = training_job.resource_config
+   print(resource_config.selected_instance_type)   # None until a candidate is selected
+   print(resource_config.selected_instance_count)
+
+Key points:
+
+- Up to 5 candidates per job, each instance type at most once, and exactly one type is selected
+- ``instance_preferences`` is mutually exclusive with ``instance_type``, ``instance_groups``, ``instance_placement_config``, and managed spot training
+- Not supported in local mode, with training recipes or JumpStart models, or for jobs submitted through AWS Batch training queues; jobs that leave ``instance_preferences`` unset are unaffected
+- Counts use exactly one of two modes: a top-level ``instance_count`` shared by whichever candidate wins, or an ``instance_count`` on every candidate to size each type differently. Mixed, partial, and omitted counts are rejected
+- A candidate with ``training_plan_arns`` draws from that plan's reserved capacity (one plan, whose instance type must match the candidate's); one without a plan uses on-demand. Per-candidate plans are mutually exclusive with the job-level ``training_plan_arn``, which instead applies to whichever candidate matches its type
+- Selection is based on capacity, not on workload fit: cross-type differences such as architecture or GPU memory are not validated, so list only types your job can genuinely run on
+- While no candidate has capacity the job stays pending and keeps retrying the list. ``max_pending_time_in_seconds`` bounds the total time spent working through the list rather than each candidate, and takes effect only when the list includes an accelerated instance type (``ml.p``, ``ml.g``, ``ml.trn``)
+- The winner is reported as ``selected_instance_type`` / ``selected_instance_count`` on describe; the top-level instance type is not returned
+- Job-level settings such as volume size, volume KMS key, and keep-alive period apply to the selected type, as does billing
+
+:doc:`Full example notebook <../v3-examples/training-examples/instance-preferences-example>`
+
+
+
 AWS Batch Training Queues
 -------------------------
 
@@ -438,6 +524,7 @@ Key points:
 - Batch manages capacity allocation and job scheduling automatically
 - Resources (Service Environments, Job Queues) can be created via console or programmatically
 - Supports FIFO and priority-based scheduling
+- Queued jobs request a single ``instance_type``; ``instance_preferences`` is not supported
 
 :doc:`Full example notebook <../v3-examples/training-examples/aws_batch/sm-training-queues_getting_started_with_model_trainer>`
 
@@ -555,4 +642,5 @@ Training Examples
    Hyperparameter Training <../v3-examples/training-examples/hyperparameter-training-example>
    Training with JumpStart Models <../v3-examples/training-examples/jumpstart-training-example>
    Custom Distributed Training <../v3-examples/training-examples/custom-distributed-training-example>
+   Instance Preferences <../v3-examples/training-examples/instance-preferences-example>
    AWS Batch for Training <../v3-examples/training-examples/aws_batch/sm-training-queues_getting_started_with_model_trainer>

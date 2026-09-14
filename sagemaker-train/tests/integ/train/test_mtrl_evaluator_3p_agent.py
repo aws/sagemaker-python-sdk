@@ -317,7 +317,7 @@ class TestMTRLEvaluator3PAgentIntegration:
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
         attached_job = MultiTurnRLTrainer.attach(
-            "mock-oss-test-mtrl-20260616153024", session=boto3.Session(region_name=_REGION)
+            "mock-oss-test-mtrl-20260910094327", session=boto3.Session(region_name=_REGION)
         )
 
         evaluator = MultiTurnRLEvaluator(

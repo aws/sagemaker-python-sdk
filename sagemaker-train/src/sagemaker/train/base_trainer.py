@@ -160,6 +160,7 @@ class BaseTrainer(ABC):
         self.base_model_name = base_model_name
         self.disable_output_compression = disable_output_compression
         self.notification_rule_arn = None
+        self.source_code = None
 
         # Set up notifications if configured
         if notifications:
@@ -1157,6 +1158,7 @@ class BaseTrainer(ABC):
             instance_count=compute.instance_count,
             volume_size_in_gb=compute.volume_size_in_gb,
             keep_alive_period_in_seconds=compute.keep_alive_period_in_seconds,
+            training_plan_arn=compute.training_plan_arn,
         )
 
         # Build input data config (datasets resolved earlier for recipe injection)

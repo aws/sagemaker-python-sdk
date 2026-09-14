@@ -28787,6 +28787,33 @@
       },
       "documentation":"<p>Defines an instance group for heterogeneous cluster training. When requesting a training job using the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateTrainingJob.html\">CreateTrainingJob</a> API, you can configure multiple instance groups .</p>"
     },
+    "InstancePreference":{
+      "type":"structure",
+      "required":["InstanceType"],
+      "members":{
+        "InstanceType":{
+          "shape":"TrainingInstanceType",
+          "documentation":"<p>The ML compute instance type for this candidate.</p>"
+        },
+        "InstanceCount":{
+          "shape":"TrainingInstanceCount",
+          "documentation":"<p>The number of ML compute instances to use for this candidate. Optional; mutually exclusive with the uniform <code>ResourceConfig.InstanceCount</code> (either every preference sets its own count, or the uniform count is used for whichever type wins).</p>",
+          "box":true
+        },
+        "TrainingPlanArns":{
+          "shape":"TrainingPlanArnList",
+          "documentation":"<p>The training plan(s) to target for this candidate type. Optional; list is capped at 1. Training-only; mutually exclusive with the whole-job <code>ResourceConfig.TrainingPlanArn</code>.</p>"
+        }
+      },
+      "documentation":"<p>Defines a single candidate instance type in an ordered <code>InstancePreferences</code> list. When a training job specifies <code>InstancePreferences</code>, the platform tries each candidate type in list order and launches the job on the first type with available capacity.</p>"
+    },
+    "InstancePreferenceList":{
+      "type":"list",
+      "member":{"shape":"InstancePreference"},
+      "documentation":"<p>An ordered list of candidate instance types for a training job (array position is the priority). Currently limited to a minimum of 1 and a maximum of 5 entries; the limit is enforced by the service.</p>",
+      "max":5,
+      "min":1
+    },
     "InstanceGroupHealthCheckConfiguration":{
       "type":"structure",
       "required":[
@@ -35023,7 +35050,7 @@
       "documentation":"<p>Maximum job scheduler pending time in seconds.</p>",
       "box":true,
       "max":2419200,
-      "min":7200
+      "min":1800
     },
     "MaxPercentageOfInputDatasetLabeled":{
       "type":"integer",
@@ -38648,6 +38675,10 @@
         "TtlDuration":{
           "shape":"TtlDuration",
           "documentation":"<p>Time to live duration, where the record is hard deleted after the expiration time is reached; <code>ExpiresAt</code> = <code>EventTime</code> + <code>TtlDuration</code>. For information on HardDelete, see the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_feature_store_DeleteRecord.html\">DeleteRecord</a> API in the Amazon SageMaker API Reference guide.</p>"
+        },
+        "StorageType":{
+          "shape":"StorageType",
+          "documentation":"<p>The online store storage type to migrate the feature group to. Use this parameter to migrate an existing feature group from <code>Standard</code> to <code>Standard_V2</code> storage format, enabling support for the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_feature_store_UpdateRecord.html\">UpdateRecord</a> operation. Migration is a one-way operation and cannot be reversed.</p>"
         }
       },
       "documentation":"<p>Updates the feature group online store configuration.</p>"
@@ -40147,8 +40178,6 @@
     "ProcessingClusterConfig":{
       "type":"structure",
       "required":[
-        "InstanceCount",
-        "InstanceType",
         "VolumeSizeInGB"
       ],
       "members":{
@@ -40167,6 +40196,18 @@
         "VolumeKmsKeyId":{
           "shape":"KmsKeyId",
           "documentation":"<p>The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt data on the storage volume attached to the ML compute instance(s) that run the processing job. </p> <note> <p>Certain Nitro-based instances include local storage, dependent on the instance type. Local storage volumes are encrypted using a hardware module on the instance. You can't request a <code>VolumeKmsKeyId</code> when using an instance type with local storage.</p> <p>For a list of instance types that support local instance storage, see <a href=\"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/InstanceStorage.html#instance-store-volumes\">Instance Store Volumes</a>.</p> <p>For more information about local instance storage encryption, see <a href=\"https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/ssd-instance-store.html\">SSD Instance Store Volumes</a>.</p> </note>"
+        },
+        "InstancePreferences":{
+          "shape":"ProcessingInstancePreferenceList",
+          "documentation":"<p>An ordered list of candidate instance types (maximum 5). When set, the platform tries each candidate in list order and launches the job on the first type with available capacity. Mutually exclusive with <code>InstanceType</code> and <code>InstanceCount</code>.</p>"
+        },
+        "SelectedInstanceType":{
+          "shape":"ProcessingInstanceType",
+          "documentation":"<p>The instance type the job was launched on when <code>InstancePreferences</code> is used. Output-only (returned in <code>DescribeProcessingJob</code>); ignored on <code>CreateProcessingJob</code>.</p>"
+        },
+        "SelectedInstanceCount":{
+          "shape":"ProcessingInstanceCount",
+          "documentation":"<p>The resolved number of instances the job was launched with when <code>InstancePreferences</code> is used. Output-only (returned in <code>DescribeProcessingJob</code>); ignored on <code>CreateProcessingJob</code>.</p>"
         }
       },
       "documentation":"<p>Configuration for the cluster used to run a processing job.</p>"
@@ -40235,6 +40276,28 @@
       "type":"integer",
       "box":true,
       "max":100,
+      "min":1
+    },
+    "ProcessingInstancePreference":{
+      "type":"structure",
+      "required":["InstanceType"],
+      "members":{
+        "InstanceType":{
+          "shape":"ProcessingInstanceType",
+          "documentation":"<p>The ML compute instance type for this candidate.</p>"
+        },
+        "InstanceCount":{
+          "shape":"ProcessingInstanceCount",
+          "documentation":"<p>The number of ML compute instances to use for this candidate. Optional; mutually exclusive with the uniform <code>ProcessingClusterConfig.InstanceCount</code> (either every preference sets its own count, or the uniform count is used for whichever type wins).</p>"
+        }
+      },
+      "documentation":"<p>Defines a single candidate instance type in an ordered <code>InstancePreferences</code> list for a processing job. InstanceType is required; InstanceCount is optional per element. Per-type training plans are training-only and do not apply to processing.</p>"
+    },
+    "ProcessingInstancePreferenceList":{
+      "type":"list",
+      "member":{"shape":"ProcessingInstancePreference"},
+      "documentation":"<p>An ordered list of candidate instance types for a processing job (array position is the priority). Currently limited to a minimum of 1 and a maximum of 5 entries; the limit is enforced by the service.</p>",
+      "max":5,
       "min":1
     },
     "ProcessingInstanceType":{
@@ -42998,6 +43061,19 @@
         "InstancePlacementConfig":{
           "shape":"InstancePlacementConfig",
           "documentation":"<p>Configuration for how training job instances are placed and allocated within UltraServers. Only applicable for UltraServer capacity.</p>"
+        },
+        "InstancePreferences":{
+          "shape":"InstancePreferenceList",
+          "documentation":"<p>An ordered list of candidate instance types (maximum 5). When set, the platform tries each candidate in list order and launches the job on the first type with available capacity. Mutually exclusive with <code>InstanceType</code>, <code>InstanceGroups</code>, and <code>InstancePlacementConfig</code>.</p>"
+        },
+        "SelectedInstanceType":{
+          "shape":"TrainingInstanceType",
+          "documentation":"<p>The instance type the job was launched on when <code>InstancePreferences</code> is used. Output-only (returned in <code>DescribeTrainingJob</code>); ignored on <code>CreateTrainingJob</code>.</p>"
+        },
+        "SelectedInstanceCount":{
+          "shape":"TrainingInstanceCount",
+          "documentation":"<p>The resolved number of instances the job was launched with when <code>InstancePreferences</code> is used. Output-only (returned in <code>DescribeTrainingJob</code>); ignored on <code>CreateTrainingJob</code>.</p>",
+          "box":true
         }
       },
       "documentation":"<p>Describes the resources, including machine learning (ML) compute instances and ML storage volumes, to use for model training. </p>"
@@ -45368,6 +45444,7 @@
       "type":"string",
       "enum":[
         "Standard",
+        "Standard_V2",
         "InMemory"
       ]
     },
@@ -46933,6 +47010,13 @@
     "TrainingPlanArns":{
       "type":"list",
       "member":{"shape":"TrainingPlanArn"}
+    },
+    "TrainingPlanArnList":{
+      "type":"list",
+      "member":{"shape":"TrainingPlanArn"},
+      "documentation":"<p>The training plan(s) targeted by a single instance preference. Currently limited to exactly 1 training plan per preference; the limit is enforced by the service.</p>",
+      "max":1,
+      "min":1
     },
     "TrainingPlanDurationHours":{
       "type":"long",

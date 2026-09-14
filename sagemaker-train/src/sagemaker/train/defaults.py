@@ -139,7 +139,10 @@ class TrainDefaults:
                 volume_size_in_gb=DEFAULT_VOLUME_SIZE,
             )
             logger.info(f"Compute not provided. Using default:\n{compute}")
-        if not compute.instance_groups:
+        if not compute.instance_groups and not compute.instance_preferences:
+            # When instance_preferences is set, the top-level instance_type /
+            # instance_count must stay unset (mutually exclusive with the
+            # preference list; the uniform count, when used, is customer-set).
             if compute.instance_type is None:
                 compute.instance_type = DEFAULT_INSTANCE_TYPE
                 logger.info(f"Instance type not provided. Using default:\n{DEFAULT_INSTANCE_TYPE}")
