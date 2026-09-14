@@ -14670,9 +14670,11 @@ class OnlineStoreConfigUpdate(Base):
     Attributes
     ----------------------
     ttl_duration: Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
+    storage_type: The online store storage type to migrate the feature group to. Use this parameter to migrate an existing feature group from Standard to Standard_V2 storage format, enabling support for the UpdateRecord operation. Migration is a one-way operation and cannot be reversed.
     """
 
     ttl_duration: Optional[TtlDuration] = Unassigned()
+    storage_type: Optional[StrPipeVar] = Unassigned()
 
 
 class Parent(Base):

@@ -667,6 +667,73 @@ To include soft-deleted records in the listing:
        region="us-west-2",
    )
 
+**Feature-level writes with UpdateRecord (Standard_V2):**
+
+``UpdateRecord`` performs a partial write to a record in a feature group whose online store uses
+the ``Standard_V2`` or ``InMemory`` storage type. Only the features you supply are written; features
+you do not list are preserved. This avoids the ``GetRecord`` -> merge -> ``PutRecord`` round trip and
+prevents lost writes when independent pipelines own different features on the same record. The record
+must already exist in the online store (use ``PutRecord`` to create it).
+
+Create the feature group with ``Standard_V2`` storage (feature-level writes require ``Standard_V2``
+or ``InMemory``; they are not supported on the default ``Standard`` tier):
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import FeatureGroupManager, OnlineStoreStorageTypeEnum
+   from sagemaker.core.shapes import OnlineStoreConfig
+
+   feature_group = FeatureGroupManager.create(
+       feature_group_name="customer-features",
+       record_identifier_feature_name="customer_id",
+       event_time_feature_name="event_time",
+       feature_definitions=feature_definitions,
+       online_store_config=OnlineStoreConfig(
+           enable_online_store=True,
+           storage_type=OnlineStoreStorageTypeEnum.STANDARD_V2.value,
+       ),
+       role_arn=role,
+   )
+
+You can migrate an existing ``Standard`` feature group to ``Standard_V2`` with ``UpdateFeatureGroup``.
+This migration is one-way and cannot be reversed:
+
+.. code-block:: python
+
+   from sagemaker.core.resources import FeatureGroup
+   from sagemaker.core.shapes import OnlineStoreConfigUpdate
+
+   feature_group = FeatureGroup.get(feature_group_name="customer-features")
+   feature_group.update(
+       online_store_config=OnlineStoreConfigUpdate(storage_type="Standard_V2"),
+   )
+
+Use ``update_record`` to write only the features that changed. Pass ``EventTime`` as a feature
+(not a top-level parameter); features you do not include are preserved:
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import update_record
+
+   update_record(
+       feature_group_name="customer-features",
+       record_identifier_value_as_string="cust-1",
+       features=[
+           {"feature_name": "purchase_count", "value_as_string": "11"},
+           {"feature_name": "event_time", "value_as_string": "2026-01-02T00:00:00Z"},
+       ],
+       region="us-west-2",
+   )
+
+Notes:
+
+* Supply at most 100 features per call. If the supplied ``EventTime`` is not greater than the
+  record's current ``EventTime``, the update is rejected with a ``ConflictException``.
+* ``ttl_duration`` requires the record's event-time feature to be present in ``features``.
+  ``target_stores`` defaults to all stores on the feature group; a value resolving to the
+  ``OfflineStore`` only is rejected.
+* ``UpdateRecord`` is not supported on ``Standard`` (V1) feature groups.
+
 
 
 Migration from V2

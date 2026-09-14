@@ -10,7 +10,7 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Unit tests for FeatureGroup batch_write_record and list_records methods."""
+"""Unit tests for FeatureGroup batch_write_record, list_records, and update_record methods."""
 from __future__ import absolute_import
 
 import pytest
@@ -22,8 +22,10 @@ from sagemaker.core.shapes.shapes import (
     BatchWriteRecordResponse,
     FeatureValue,
     ListRecordsResponse,
+    OnlineStoreConfigUpdate,
     TtlDuration,
 )
+from sagemaker.core.utils.utils import serialize
 
 
 @pytest.fixture
@@ -322,3 +324,77 @@ class TestListRecords:
         call_kwargs = mock_client.list_records.call_args[1]
         # The explicitly passed next_token should be used, not self.next_token
         assert call_kwargs["NextToken"] == "list-records-page-2-token"
+
+
+class TestUpdateRecord:
+    """Tests for FeatureGroup.update_record method (feature-level writes on Standard_V2)."""
+
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    def test_update_record_success(self, mock_get_client, mock_feature_group):
+        """Test that update_record calls the client with FeatureGroupName and Features."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        mock_feature_group.update_record(
+            record_identifier_value_as_string="r1",
+            features=[
+                FeatureValue(feature_name="city", value_as_string="seattle"),
+                FeatureValue(feature_name="EventTime", value_as_string="1700000000"),
+            ],
+        )
+
+        mock_get_client.assert_called_once_with(
+            session=None, region_name=None, service_name="sagemaker-featurestore-runtime"
+        )
+        mock_client.update_record.assert_called_once()
+        call_kwargs = mock_client.update_record.call_args[1]
+        assert call_kwargs["FeatureGroupName"] == "test-feature-group"
+        assert call_kwargs["RecordIdentifierValueAsString"] == "r1"
+        assert [f["FeatureName"] for f in call_kwargs["Features"]] == ["city", "EventTime"]
+
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    def test_update_record_serializes_target_stores_and_ttl(
+        self, mock_get_client, mock_feature_group
+    ):
+        """Test update_record serializes optional target_stores and ttl_duration."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        mock_feature_group.update_record(
+            record_identifier_value_as_string="r1",
+            features=[FeatureValue(feature_name="EventTime", value_as_string="1700000000")],
+            target_stores=["OnlineStore"],
+            ttl_duration=TtlDuration(unit="Days", value=7),
+        )
+
+        call_kwargs = mock_client.update_record.call_args[1]
+        assert call_kwargs["TargetStores"] == ["OnlineStore"]
+        assert call_kwargs["TtlDuration"] == {"Unit": "Days", "Value": 7}
+
+    @patch("sagemaker.core.resources.Base.get_sagemaker_client")
+    def test_update_record_does_not_pass_next_token(self, mock_get_client, mock_feature_group):
+        """update_record has no pagination; self.next_token must not leak into the call."""
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+
+        mock_feature_group.update_record(
+            record_identifier_value_as_string="r1",
+            features=[FeatureValue(feature_name="city", value_as_string="seattle")],
+        )
+
+        call_kwargs = mock_client.update_record.call_args[1]
+        assert "NextToken" not in call_kwargs
+
+
+class TestOnlineStoreConfigUpdateStorageType:
+    """UpdateFeatureGroup -> Standard_V2 migration via OnlineStoreConfigUpdate.storage_type."""
+
+    def test_storage_type_field_present(self):
+        cfg = OnlineStoreConfigUpdate(storage_type="Standard_V2")
+        assert cfg.storage_type == "Standard_V2"
+
+    def test_storage_type_serializes_to_pascal_case(self):
+        # Confirms the value reaches UpdateFeatureGroup on the wire as StorageType.
+        assert serialize(OnlineStoreConfigUpdate(storage_type="Standard_V2")) == {
+            "StorageType": "Standard_V2"
+        }

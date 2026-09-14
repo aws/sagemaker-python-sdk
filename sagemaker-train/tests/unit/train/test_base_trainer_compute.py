@@ -115,6 +115,7 @@ class TestServerfulComputeMapping:
             instance_count=4,
             volume_size_in_gb=300,
             keep_alive_period_in_seconds=1200,
+            training_plan_arn=None,
         )
         trainer.training_dataset = "s3://my-bucket/data/train/"
 
@@ -125,6 +126,38 @@ class TestServerfulComputeMapping:
         assert forwarded.instance_count == 4
         assert forwarded.volume_size_in_gb == 300
         assert forwarded.keep_alive_period_in_seconds == 1200
+
+    def test_training_plan_arn_forwarded(self):
+        trainer = _ConcreteTrainer()
+        trainer.compute = MagicMock(
+            instance_type="ml.p5.48xlarge",
+            instance_count=2,
+            volume_size_in_gb=500,
+            keep_alive_period_in_seconds=0,
+            training_plan_arn="arn:aws:sagemaker:us-west-2:123456789012:training-plan/my-plan",
+        )
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+
+        kwargs = self._run(trainer)
+
+        forwarded = kwargs["compute"]
+        assert forwarded.training_plan_arn == "arn:aws:sagemaker:us-west-2:123456789012:training-plan/my-plan"
+
+    def test_training_plan_arn_none_when_not_set(self):
+        trainer = _ConcreteTrainer()
+        trainer.compute = MagicMock(
+            instance_type="ml.p4d.24xlarge",
+            instance_count=1,
+            volume_size_in_gb=30,
+            keep_alive_period_in_seconds=0,
+            training_plan_arn=None,
+        )
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+
+        kwargs = self._run(trainer)
+
+        forwarded = kwargs["compute"]
+        assert forwarded.training_plan_arn is None
 
 
 def _make_hyperpod_trainer(cluster_name="my-cluster", node_count=2):

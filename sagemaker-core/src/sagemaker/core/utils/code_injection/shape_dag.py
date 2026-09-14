@@ -14113,7 +14113,10 @@ SHAPE_DAG = {
         "type": "structure",
     },
     "OnlineStoreConfigUpdate": {
-        "members": [{"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"}],
+        "members": [
+            {"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"},
+            {"name": "StorageType", "shape": "StorageType", "type": "string"},
+        ],
         "type": "structure",
     },
     "OnlineStoreSecurityConfig": {
@@ -18728,6 +18731,16 @@ SHAPE_DAG = {
                 "shape": "ListTrialComponentKey256",
                 "type": "list",
             },
+        ],
+        "type": "structure",
+    },
+    "UpdateRecordRequest": {
+        "members": [
+            {"name": "FeatureGroupName", "shape": "FeatureGroupNameOrArn", "type": "string"},
+            {"name": "RecordIdentifierValueAsString", "shape": "ValueAsString", "type": "string"},
+            {"name": "Features", "shape": "Record", "type": "list"},
+            {"name": "TargetStores", "shape": "TargetStores", "type": "list"},
+            {"name": "TtlDuration", "shape": "TtlDuration", "type": "structure"},
         ],
         "type": "structure",
     },

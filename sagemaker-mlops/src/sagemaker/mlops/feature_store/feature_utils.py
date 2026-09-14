@@ -4,14 +4,16 @@
 import logging
 import os
 import time
+from collections import Counter
 from pathlib import Path
 import re
-from typing import Any, Dict, Sequence, Union
+from typing import Any, Dict, Optional, Sequence, Union
 
 import boto3
 import pandas
 import pandas as pd
 from pandas import DataFrame, Series, read_csv
+from sagemaker.core.shapes import FeatureValue, TtlDuration
 from sagemaker.core.utils.utils import Unassigned
 from sagemaker.mlops.feature_store import FeatureGroup as CoreFeatureGroup, FeatureGroup
 from sagemaker.core.helper.session_helper import Session
@@ -25,6 +27,7 @@ from sagemaker.mlops.feature_store.feature_definition import (
     StringFeatureDefinition,
 )
 from sagemaker.mlops.feature_store.ingestion_manager_pandas import IngestionManagerPandas
+from sagemaker.mlops.feature_store.inputs import TargetStoreEnum
 
 from sagemaker.core.utils import unique_name_from_base
 
@@ -94,8 +97,12 @@ _ICEBERG_PERMISSIONS_ERROR_MESSAGE = (
       "SELECT, DESCRIBE, and ALTER permissions on the table in Lake Formation, "                                                                                                                                                                                                                 
       "in addition to IAM permissions.\n"                                                                                                                                                                                                                                                        
       "If this feature group uses IAM governance, ensure your role has "                                                                                                                                                                                                                         
-      "glue:GetTable and glue:UpdateTable permissions on the feature group's Glue table."                                                                                                                                                                                                        
-  ) 
+      "glue:GetTable and glue:UpdateTable permissions on the feature group's Glue table."
+  )
+
+# UpdateRecord supports at most 100 features per call.
+MAX_UPDATE_RECORD_FEATURES = 100
+
 
 def _get_athena_client(session: Session):
     """Get Athena client from session."""
@@ -576,6 +583,107 @@ def list_records(
         kwargs["region"] = region
 
     return fg.list_records(**kwargs)
+
+
+def _to_feature_value(feature: Union[FeatureValue, Dict[str, Any]]) -> FeatureValue:
+    """Coerce a dict or FeatureValue into a core FeatureValue.
+
+    Args:
+        feature: A ``FeatureValue`` or a dict with ``feature_name`` (or ``FeatureName``)
+            and exactly one of ``value_as_string``/``ValueAsString`` or
+            ``value_as_string_list``/``ValueAsStringList``.
+
+    Returns:
+        A ``FeatureValue`` instance.
+    """
+    if isinstance(feature, FeatureValue):
+        return feature
+    if isinstance(feature, dict):
+        name = feature.get("feature_name", feature.get("FeatureName"))
+        value = feature.get("value_as_string", feature.get("ValueAsString"))
+        value_list = feature.get("value_as_string_list", feature.get("ValueAsStringList"))
+        kwargs: Dict[str, Any] = {"feature_name": name}
+        if value is not None:
+            kwargs["value_as_string"] = value
+        if value_list is not None:
+            kwargs["value_as_string_list"] = value_list
+        return FeatureValue(**kwargs)
+    raise TypeError(f"Unsupported feature type: {type(feature)}. Expected FeatureValue or dict.")
+
+
+@_telemetry_emitter(Feature.FEATURE_STORE, "update_record")
+def update_record(
+    feature_group_name: str,
+    record_identifier_value_as_string: str,
+    features: Sequence[Union[FeatureValue, Dict[str, Any]]],
+    target_stores: Optional[Sequence[str]] = None,
+    ttl_duration: Optional[TtlDuration] = None,
+    region: str = None,
+) -> None:
+    """Perform a feature-level (partial) write to a record via the UpdateRecord API.
+
+    ``UpdateRecord`` is supported only for feature groups whose ``OnlineStoreConfig``
+    ``StorageType`` is ``Standard_V2`` or ``InMemory``. Unlike ``PutRecord``, which overwrites
+    the whole record, only the features supplied in ``features`` are written; any feature not
+    included is preserved. This avoids the ``GetRecord`` -> merge -> ``PutRecord`` round
+    trip and prevents lost writes when independent pipelines own different features on the
+    same record. The record must already exist in the online store (use ``PutRecord`` to
+    create it); otherwise the service returns ``ResourceNotFound``.
+
+    Args:
+        feature_group_name: Name or ARN of the FeatureGroup to update (``Standard_V2`` or
+            ``InMemory`` online store).
+        record_identifier_value_as_string: The record identifier value, in string format.
+        features: The features to update (up to 100). Each entry is a ``FeatureValue`` or a
+            dict. Features not listed here are preserved. Pass ``EventTime`` as a feature
+            in this list, not as a top-level parameter.
+        target_stores: Stores to apply the update to. Defaults to all stores configured on
+            the FeatureGroup. A value that resolves to the ``OfflineStore`` only is rejected.
+        ttl_duration: Time to live for the record; ``ExpiresAt = EventTime + TtlDuration``.
+            The service requires the record's event-time feature to be present in ``features``.
+        region: Region name.
+
+    Raises:
+        ValueError: If ``features`` is empty, exceeds 100 entries, contains duplicate
+            feature names, or ``target_stores`` resolves to the ``OfflineStore`` only.
+    """
+    if not features:
+        raise ValueError("features must contain at least one feature to update.")
+    if len(features) > MAX_UPDATE_RECORD_FEATURES:
+        raise ValueError(
+            f"features may contain at most {MAX_UPDATE_RECORD_FEATURES} entries, "
+            f"got {len(features)}."
+        )
+
+    feature_values = [_to_feature_value(f) for f in features]
+
+    feature_names = [fv.feature_name for fv in feature_values]
+    duplicates = sorted(name for name, count in Counter(feature_names).items() if count > 1)
+    if duplicates:
+        raise ValueError(f"Duplicate feature names are not allowed: {duplicates}.")
+
+    resolved_target_stores = list(target_stores) if target_stores is not None else None
+    if resolved_target_stores is not None and set(resolved_target_stores) == {
+        TargetStoreEnum.OFFLINE_STORE.value
+    }:
+        raise ValueError(
+            "UpdateRecord cannot target the OfflineStore only; include the OnlineStore."
+        )
+
+    fg = CoreFeatureGroup.get(feature_group_name=feature_group_name, region=region)
+
+    kwargs: Dict[str, Any] = {
+        "record_identifier_value_as_string": record_identifier_value_as_string,
+        "features": feature_values,
+    }
+    if resolved_target_stores is not None:
+        kwargs["target_stores"] = resolved_target_stores
+    if ttl_duration is not None:
+        kwargs["ttl_duration"] = ttl_duration
+    if region is not None:
+        kwargs["region"] = region
+
+    fg.update_record(**kwargs)
 
 
 @_telemetry_emitter(Feature.FEATURE_STORE, "get_feature_group_as_dataframe")
