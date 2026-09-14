@@ -56,6 +56,40 @@ class TestFineTuningOptionsToDict:
         assert result == {}
 
 
+class TestFineTuningOptionsRequiredKeys:
+    """Tests for FineTuningOptions.required_keys()."""
+
+    def test_returns_only_required_specs(self):
+        options = FineTuningOptions({
+            "learning_rate": {"default": 0.001, "type": "float"},
+            "required_no_default": {"type": "string", "required": True},
+            "required_with_default": {"default": 5, "type": "integer", "required": True},
+        })
+        assert options.required_keys() == {"required_no_default", "required_with_default"}
+
+    def test_returns_empty_when_none_required(self):
+        options = FineTuningOptions({
+            "learning_rate": {"default": 0.001, "type": "float"},
+            "epochs": {"default": 3, "type": "integer"},
+        })
+        assert options.required_keys() == set()
+
+    def test_required_false_is_excluded(self):
+        options = FineTuningOptions({
+            "opt_in": {"default": None, "type": "string", "required": False},
+        })
+        assert options.required_keys() == set()
+
+    def test_required_key_dropped_by_to_dict_is_still_reported(self):
+        """A required spec with no default (None) is dropped by to_dict() but
+        must still be reported by required_keys() so callers can surface it."""
+        options = FineTuningOptions({
+            "required_no_default": {"type": "string", "required": True},
+        })
+        assert "required_no_default" not in options.to_dict()
+        assert options.required_keys() == {"required_no_default"}
+
+
 import pytest
 
 

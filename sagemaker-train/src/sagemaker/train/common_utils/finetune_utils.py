@@ -1338,8 +1338,44 @@ def _validate_s3_path_exists(s3_path: str, sagemaker_session):
         raise ValueError(f"Failed to validate/create S3 path '{s3_path}': {str(e)}")
 
 
-def _validate_hyperparameter_values(hyperparameters: dict):
-    """Validate hyperparameter values for allowed characters."""
+def _validate_hyperparameter_values(hyperparameters: dict, options: Optional["FineTuningOptions"] = None):
+    """Validate hyperparameter values for allowed characters.
+
+    When ``options`` (the trainer's ``FineTuningOptions``) is provided, this
+    also surfaces required hyperparameters that are missing from the final
+    request. ``FineTuningOptions.to_dict()`` silently skips any spec whose
+    value is ``None``, so a required parameter with no default that the user
+    never set (and that no recipe/override supplied) would otherwise be dropped
+    without any error or warning, and the training job would launch
+    mis-configured. Raising here fails fast, client-side, with an actionable
+    message instead.
+
+    Args:
+        hyperparameters: The final, fully merged hyperparameters dict that will
+            be sent to the training job.
+        options: Optional ``FineTuningOptions`` describing the spec. Only passed
+            from call sites that run *after* recipe/override merge, so a
+            required value supplied by the recipe is correctly counted as
+            present.
+    """
+    # Surface (don't silently drop) required hyperparameters missing from the
+    # final request. Guarded on the concrete type so mocks / other objects are
+    # ignored.
+    if isinstance(options, FineTuningOptions):
+        missing = sorted(
+            key
+            for key in options.required_keys()
+            if hyperparameters.get(key) in (None, "")
+        )
+        if missing:
+            raise ValueError(
+                "Missing required hyperparameter(s): "
+                f"{', '.join(missing)}. Set them via "
+                "`trainer.hyperparameters.<name> = <value>` (or supply them in a "
+                "recipe / overrides) before training. These parameters are "
+                "required and cannot be omitted from the training request."
+            )
+
     import re
     allowed_chars = r"^[a-zA-Z0-9/_.:,\-\s'\"\[\]]*$"
     for key, value in hyperparameters.items():

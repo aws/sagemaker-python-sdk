@@ -309,7 +309,7 @@ class MultiTurnRLTrainer(BaseTrainer):
         # Apply recipe/overrides if provided (overrides > recipe > Hub defaults)
         self._final_hyperparameters = self._apply_recipe_to_hyperparameters(self._final_hyperparameters)
 
-        _validate_hyperparameter_values(self._final_hyperparameters)
+        _validate_hyperparameter_values(self._final_hyperparameters, self.hyperparameters)
 
         if training_dataset is not None:
             self.training_dataset = training_dataset
