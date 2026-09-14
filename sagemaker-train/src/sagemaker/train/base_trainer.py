@@ -102,6 +102,37 @@ class BaseTrainer(ABC):
     training_image: Optional[str] = None
     latest_training_job: Optional[TrainingJob] = None
 
+    @classmethod
+    @_telemetry_emitter(
+        feature=Feature.MODEL_CUSTOMIZATION,
+        func_name="BaseTrainer.list_supported_models",
+    )
+    def list_supported_models(cls, session=None) -> List[str]:
+        """Return the models that support this trainer's fine-tuning technique.
+
+        Queries SageMakerPublicHub for all models whose ``RecipeCollection``
+        contains a FineTuning recipe for this trainer's customization technique
+        (``cls._customization_technique``, e.g. ``"SFT"``, ``"DPO"``,
+        ``"RLVR"``, ``"RLAIF"``, ``"CPT"``).
+
+        Args:
+            session: Optional boto3 session.
+
+        Returns:
+            Sorted list of hub content model names supporting the technique.
+        """
+        from sagemaker.train.common_utils.recipe_utils import _list_hub_models_by_recipe
+
+        technique = getattr(cls, "_customization_technique", None)
+        if not technique:
+            raise NotImplementedError(
+                f"{cls.__name__} does not define a customization technique and "
+                "cannot list supported models."
+            )
+        return _list_hub_models_by_recipe(
+            recipe_type="FineTuning", technique=technique, session=session
+        )
+
     def __init__(
         self,
         sagemaker_session: Optional[Session] = None,
@@ -129,6 +160,7 @@ class BaseTrainer(ABC):
         self.base_model_name = base_model_name
         self.disable_output_compression = disable_output_compression
         self.notification_rule_arn = None
+        self.source_code = None
 
         # Set up notifications if configured
         if notifications:
@@ -1126,6 +1158,7 @@ class BaseTrainer(ABC):
             instance_count=compute.instance_count,
             volume_size_in_gb=compute.volume_size_in_gb,
             keep_alive_period_in_seconds=compute.keep_alive_period_in_seconds,
+            training_plan_arn=compute.training_plan_arn,
         )
 
         # Build input data config (datasets resolved earlier for recipe injection)

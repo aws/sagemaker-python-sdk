@@ -1,5 +1,28 @@
 # Changelog
 
+## v3.21.0 (2026-08-25)
+
+### New Features
+
+- feat(train): Add inherited list_supported_models to BaseTrainer (#6187)
+
+### Bug Fixes
+
+- fix(core,mlops): honor caller region in feature_store ingest_dataframe and stop telemetry from blocking SDK calls (#6197)
+- fix(core): anchor tar member validation to extract_path (#6195)
+- fix(rlaif): accept preset reward_prompt template names (#6192)
+- fix(serve): pre-deploy JumpStart benchmark data + public HuggingFace download helper (#6175)
+- fix(tgi): honor S3 model_path as weight source for TGI builds (#5964)
+
+### Tests
+
+- change(train): gate deep integ tests behind gpu_intensive, add shallow submit-then-stop suite (#6176)
+- fix(ci,train): run fast-integ-tests in CodeBuild and give shallow RLVR cases a reward signal (#6207)
+- fix(train): make CPT integ tests dry run for optimize for capacity constraints (#6194)
+- test(serve): add skip_in_pr_check marker for hang-prone integ tests (#6190)
+- test(train): add unit test to prevent future regression of preset reward function (#6182)
+
+
 ## v3.20.0 (2026-08-14)
 
 ### New Features

@@ -1655,6 +1655,23 @@ class InstanceGroup(Base):
     instance_group_name: StrPipeVar
 
 
+class InstancePreference(Base):
+    """
+    InstancePreference
+      Defines a single candidate instance type in an ordered InstancePreferences list. When a training job specifies InstancePreferences, the platform tries each candidate type in list order and launches the job on the first type with available capacity.
+
+    Attributes
+    ----------------------
+    instance_type: The ML compute instance type for this candidate.
+    instance_count: The number of ML compute instances to use for this candidate. Optional; mutually exclusive with the uniform ResourceConfig.InstanceCount (either every preference sets its own count, or the uniform count is used for whichever type wins).
+    training_plan_arns: The training plan(s) to target for this candidate type. Optional; list is capped at 1. Training-only; mutually exclusive with the whole-job ResourceConfig.TrainingPlanArn.
+    """
+
+    instance_type: StrPipeVar
+    instance_count: Optional[IntPipeVar] = Unassigned()
+    training_plan_arns: Optional[List[StrPipeVar]] = Unassigned()
+
+
 class PlacementSpecification(Base):
     """
     PlacementSpecification
@@ -1700,6 +1717,9 @@ class ResourceConfig(Base):
     instance_groups: The configuration of a heterogeneous cluster in JSON format.
     training_plan_arn: The Amazon Resource Name (ARN); of the training plan to use for this resource configuration.
     instance_placement_config: Configuration for how training job instances are placed and allocated within UltraServers. Only applicable for UltraServer capacity.
+    instance_preferences: An ordered list of candidate instance types (max 5). When set, the platform tries each candidate in list order and launches the job on the first type with available capacity. Mutually exclusive with instance_type, instance_groups, and instance_placement_config.
+    selected_instance_type: The instance type the job was launched on when instance_preferences is used. Output-only (returned in DescribeTrainingJob); ignored on CreateTrainingJob.
+    selected_instance_count: The resolved number of instances the job was launched with when instance_preferences is used. Output-only (returned in DescribeTrainingJob); ignored on CreateTrainingJob.
     """
 
     instance_type: Optional[StrPipeVar] = Unassigned()
@@ -1710,6 +1730,9 @@ class ResourceConfig(Base):
     instance_groups: Optional[List[InstanceGroup]] = Unassigned()
     training_plan_arn: Optional[StrPipeVar] = Unassigned()
     instance_placement_config: Optional[InstancePlacementConfig] = Unassigned()
+    instance_preferences: Optional[List[InstancePreference]] = Unassigned()
+    selected_instance_type: Optional[StrPipeVar] = Unassigned()
+    selected_instance_count: Optional[IntPipeVar] = Unassigned()
 
 
 class StoppingCondition(Base):
@@ -9319,6 +9342,21 @@ class ProcessingOutputConfig(Base):
     kms_key_id: Optional[StrPipeVar] = Unassigned()
 
 
+class ProcessingInstancePreference(Base):
+    """
+    ProcessingInstancePreference
+      Defines a single candidate instance type in an ordered InstancePreferences list for a processing job. When a processing job specifies InstancePreferences, the platform tries each candidate type in list order and launches the job on the first type with available capacity. Per-type training plans are training-only and do not apply to processing.
+
+    Attributes
+    ----------------------
+    instance_type: The ML compute instance type for this candidate.
+    instance_count: The number of ML compute instances to use for this candidate. Optional; mutually exclusive with the uniform ProcessingClusterConfig.InstanceCount (either every preference sets its own count, or the uniform count is used for whichever type wins).
+    """
+
+    instance_type: StrPipeVar
+    instance_count: Optional[IntPipeVar] = Unassigned()
+
+
 class ProcessingClusterConfig(Base):
     """
     ProcessingClusterConfig
@@ -9330,12 +9368,18 @@ class ProcessingClusterConfig(Base):
     instance_type: The ML compute instance type for the processing job.
     volume_size_in_gb: The size of the ML storage volume in gigabytes that you want to provision. You must specify sufficient ML storage for your scenario.  Certain Nitro-based instances include local storage with a fixed total size, dependent on the instance type. When using these instances for processing, Amazon SageMaker mounts the local instance storage instead of Amazon EBS gp2 storage. You can't request a VolumeSizeInGB greater than the total size of the local instance storage. For a list of instance types that support local instance storage, including the total size per instance type, see Instance Store Volumes.
     volume_kms_key_id: The Amazon Web Services Key Management Service (Amazon Web Services KMS) key that Amazon SageMaker uses to encrypt data on the storage volume attached to the ML compute instance(s) that run the processing job.   Certain Nitro-based instances include local storage, dependent on the instance type. Local storage volumes are encrypted using a hardware module on the instance. You can't request a VolumeKmsKeyId when using an instance type with local storage. For a list of instance types that support local instance storage, see Instance Store Volumes. For more information about local instance storage encryption, see SSD Instance Store Volumes.
+    instance_preferences: An ordered list of candidate instance types (max 5). When set, the platform tries each candidate in list order and launches the job on the first type with available capacity. Mutually exclusive with instance_type/instance_count.
+    selected_instance_type: The instance type the job was launched on when instance_preferences is used. Output-only (returned in DescribeProcessingJob); ignored on CreateProcessingJob.
+    selected_instance_count: The resolved number of instances the job was launched with when instance_preferences is used. Output-only (returned in DescribeProcessingJob); ignored on CreateProcessingJob.
     """
 
-    instance_count: int
-    instance_type: StrPipeVar
+    instance_count: Optional[IntPipeVar] = Unassigned()
+    instance_type: Optional[StrPipeVar] = Unassigned()
     volume_size_in_gb: int
     volume_kms_key_id: Optional[StrPipeVar] = Unassigned()
+    instance_preferences: Optional[List[ProcessingInstancePreference]] = Unassigned()
+    selected_instance_type: Optional[StrPipeVar] = Unassigned()
+    selected_instance_count: Optional[IntPipeVar] = Unassigned()
 
 
 class ProcessingResources(Base):
@@ -14626,9 +14670,11 @@ class OnlineStoreConfigUpdate(Base):
     Attributes
     ----------------------
     ttl_duration: Time to live duration, where the record is hard deleted after the expiration time is reached; ExpiresAt = EventTime + TtlDuration. For information on HardDelete, see the DeleteRecord API in the Amazon SageMaker API Reference guide.
+    storage_type: The online store storage type to migrate the feature group to. Use this parameter to migrate an existing feature group from Standard to Standard_V2 storage format, enabling support for the UpdateRecord operation. Migration is a one-way operation and cannot be reversed.
     """
 
     ttl_duration: Optional[TtlDuration] = Unassigned()
+    storage_type: Optional[StrPipeVar] = Unassigned()
 
 
 class Parent(Base):

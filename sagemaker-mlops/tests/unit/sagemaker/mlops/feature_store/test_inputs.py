@@ -32,6 +32,9 @@ class TestOnlineStoreStorageTypeEnum:
     def test_in_memory(self):
         assert OnlineStoreStorageTypeEnum.IN_MEMORY.value == "InMemory"
 
+    def test_standard_v2(self):
+        assert OnlineStoreStorageTypeEnum.STANDARD_V2.value == "Standard_V2"
+
 
 class TestTableFormatEnum:
     def test_glue(self):

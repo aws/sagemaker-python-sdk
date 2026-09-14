@@ -506,20 +506,25 @@ def resolve_recipe(
 
 
 def _build_recipe_keyword(recipe_type: str, technique: str) -> str:
-    """Build the ``@recipe:`` search keyword for a recipe type and technique.
+    """Build the base ``@recipe:`` search keyword for a recipe type and technique.
 
-    The hub tags recipes as ``@recipe:{type}_{technique}_{strategy}`` (all
-    lowercase).  We match on the ``@recipe:{type}_{technique}_`` prefix so
-    the strategy component (e.g. ``lora``) is ignored.
+    The hub tags recipes as either ``@recipe:{type}_{technique}_{strategy}``
+    (e.g. ``@recipe:finetuning_sft_lora``) or, for techniques with no strategy
+    component, the bare ``@recipe:{type}_{technique}`` (e.g.
+    ``@recipe:finetuning_cpt``) — all lowercase. This returns the base
+    ``@recipe:{type}_{technique}`` form (no trailing underscore); callers match
+    it exactly OR as a ``{base}_`` prefix so the optional strategy component is
+    ignored without matching an unrelated technique that merely shares a prefix
+    (e.g. base ``..._rl`` must not match ``..._rlvr_...``).
 
     Args:
         recipe_type: ``"FineTuning"`` or ``"Evaluation"``.
         technique: Technique value, e.g. ``"MTRL"`` or ``"MTRLEvaluation"``.
 
     Returns:
-        Lowercase keyword prefix string, e.g. ``"@recipe:finetuning_mtrl_"``.
+        Lowercase base keyword string, e.g. ``"@recipe:finetuning_mtrl"``.
     """
-    return f"@recipe:{recipe_type}_{technique}_".lower()
+    return f"@recipe:{recipe_type}_{technique}".lower()
 
 
 def _list_hub_models_by_recipe(
@@ -552,7 +557,7 @@ def _list_hub_models_by_recipe(
             f"recipe_type must be 'FineTuning' or 'Evaluation', got: {recipe_type!r}"
         )
 
-    keyword_prefix = _build_recipe_keyword(recipe_type, technique)
+    keyword_base = _build_recipe_keyword(recipe_type, technique)
 
     region = (getattr(session, "region_name", None) or 
               getattr(getattr(session, "boto_session", None), "region_name", None) or
@@ -577,7 +582,14 @@ def _list_hub_models_by_recipe(
             if not content_name:
                 continue
             keywords = summary.get("HubContentSearchKeywords", [])
-            if any(kw.lower().startswith(keyword_prefix) for kw in keywords):
+            # Match the bare base keyword (techniques with no strategy component,
+            # e.g. "@recipe:finetuning_cpt") OR the "{base}_{strategy}" form
+            # (e.g. "@recipe:finetuning_sft_lora"). The "{base}_" guard prevents
+            # matching an unrelated technique that merely shares a prefix.
+            if any(
+                (kwl := kw.lower()) == keyword_base or kwl.startswith(keyword_base + "_")
+                for kw in keywords
+            ):
                 matched_models.append(content_name)
 
         next_token = response.get("NextToken")

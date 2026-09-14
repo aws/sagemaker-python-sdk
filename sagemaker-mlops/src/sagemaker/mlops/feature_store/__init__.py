@@ -56,6 +56,7 @@ from sagemaker.mlops.feature_store.feature_utils import (
     ingest_dataframe,
     list_records,
     load_feature_definitions_from_dataframe,
+    update_record,
 )
 
 # Classes (local)
@@ -119,6 +120,7 @@ __all__ = [
     "ingest_dataframe",
     "list_records",
     "load_feature_definitions_from_dataframe",
+    "update_record",
     # Classes
     "AthenaQuery",
     "DatasetBuilder",

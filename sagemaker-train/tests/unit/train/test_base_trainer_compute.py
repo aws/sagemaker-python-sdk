@@ -115,6 +115,7 @@ class TestServerfulComputeMapping:
             instance_count=4,
             volume_size_in_gb=300,
             keep_alive_period_in_seconds=1200,
+            training_plan_arn=None,
         )
         trainer.training_dataset = "s3://my-bucket/data/train/"
 
@@ -125,6 +126,38 @@ class TestServerfulComputeMapping:
         assert forwarded.instance_count == 4
         assert forwarded.volume_size_in_gb == 300
         assert forwarded.keep_alive_period_in_seconds == 1200
+
+    def test_training_plan_arn_forwarded(self):
+        trainer = _ConcreteTrainer()
+        trainer.compute = MagicMock(
+            instance_type="ml.p5.48xlarge",
+            instance_count=2,
+            volume_size_in_gb=500,
+            keep_alive_period_in_seconds=0,
+            training_plan_arn="arn:aws:sagemaker:us-west-2:123456789012:training-plan/my-plan",
+        )
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+
+        kwargs = self._run(trainer)
+
+        forwarded = kwargs["compute"]
+        assert forwarded.training_plan_arn == "arn:aws:sagemaker:us-west-2:123456789012:training-plan/my-plan"
+
+    def test_training_plan_arn_none_when_not_set(self):
+        trainer = _ConcreteTrainer()
+        trainer.compute = MagicMock(
+            instance_type="ml.p4d.24xlarge",
+            instance_count=1,
+            volume_size_in_gb=30,
+            keep_alive_period_in_seconds=0,
+            training_plan_arn=None,
+        )
+        trainer.training_dataset = "s3://my-bucket/data/train/"
+
+        kwargs = self._run(trainer)
+
+        forwarded = kwargs["compute"]
+        assert forwarded.training_plan_arn is None
 
 
 def _make_hyperpod_trainer(cluster_name="my-cluster", node_count=2):
@@ -300,3 +333,33 @@ class TestHyperPodComputeMapping:
         start_cmd = mock_subprocess.run.call_args_list[-1].args[0]
         overrides = json.loads(start_cmd[start_cmd.index("--override-parameters") + 1])
         assert overrides["recipes.run.model_name_or_path"] == "s3://bucket/checkpoint/step_10"
+
+
+class TestBaseTrainerListSupportedModels:
+    """The inherited ``list_supported_models`` classmethod on ``BaseTrainer``."""
+
+    def test_delegates_with_class_technique(self):
+        class _TechTrainer(BaseTrainer):
+            _customization_technique = "SFT"
+
+            def train(self, *args, **kwargs):  # pragma: no cover - abstract impl
+                return None
+
+        with patch(
+            "sagemaker.train.common_utils.recipe_utils._list_hub_models_by_recipe"
+        ) as mock_list:
+            mock_list.return_value = ["meta-llama/Llama-3"]
+            result = _TechTrainer.list_supported_models()
+
+        assert result == ["meta-llama/Llama-3"]
+        mock_list.assert_called_once_with(
+            recipe_type="FineTuning", technique="SFT", session=None
+        )
+
+    def test_raises_when_technique_missing(self):
+        class _NoTechTrainer(BaseTrainer):
+            def train(self, *args, **kwargs):  # pragma: no cover - abstract impl
+                return None
+
+        with pytest.raises(NotImplementedError, match="customization technique"):
+            _NoTechTrainer.list_supported_models()

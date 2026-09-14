@@ -236,6 +236,19 @@ manager = ingest_dataframe(
 # Access failed rows: manager.failed_rows
 ```
 
+In V2 the region came from the `Session` you passed to the `FeatureGroup`. In V3
+`ingest_dataframe` takes an explicit `region`; when you omit it, boto3 resolves the
+region from the environment (`AWS_DEFAULT_REGION`, `AWS_REGION`, or the active
+profile in `~/.aws/config`):
+
+```python
+manager = ingest_dataframe(
+    feature_group_name="my-fg",
+    data_frame=df,
+    region="eu-west-1",
+)
+```
+
 ---
 
 ## Athena Query

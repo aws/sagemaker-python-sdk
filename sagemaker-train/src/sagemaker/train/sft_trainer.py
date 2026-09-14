@@ -4,6 +4,9 @@ from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
 from sagemaker.core.resources import TrainingJob, ModelPackageGroup, ModelPackage
 from sagemaker.core.shapes import VpcConfig
+from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
+from sagemaker.core.utils.utils import serialize
+from sagemaker.core.apiutils._boto_functions import to_pascal_case
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 from sagemaker.ai_registry.dataset import DataSet
@@ -261,6 +264,7 @@ class SFTTrainer(BaseTrainer):
             ("compute", TelemetryParamType.ATTR_TYPE),
         ],
     )
+    @runnable_by_pipeline
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None, validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
         """Execute the SFT training job.
 
@@ -436,6 +440,30 @@ class SFTTrainer(BaseTrainer):
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
+
+        # If running within a PipelineSession, intercept the request and store
+        # step arguments instead of launching a training job.
+        # This must come before data path validation since in pipeline mode
+        # the data path may be a pipeline parameter that doesn't exist yet.
+        if isinstance(sagemaker_session, PipelineSession):
+            # Build pipeline-compatible request: PascalCase, serialized, no session/region
+            pipeline_args = {k: v for k, v in create_args.items()
+                            if k not in ("session", "region")}
+            pipeline_args.pop("training_job_name", None)
+            pipeline_request = {to_pascal_case(k): v for k, v in pipeline_args.items()}
+            # Normalize Tags to PascalCase dicts. JumpStart tags come as lowercase
+            # dicts; user-provided tags come as Tag pydantic objects (typed
+            # Optional[List[Tag]]). Handle both.
+            if "Tags" in pipeline_request and pipeline_request["Tags"]:
+                pipeline_request["Tags"] = [
+                    {"Key": t.get("key", t.get("Key")), "Value": t.get("value", t.get("Value"))}
+                    if isinstance(t, dict)
+                    else {"Key": t.key, "Value": t.value}
+                    for t in pipeline_request["Tags"]
+                ]
+            serialized_request = serialize(pipeline_request)
+            sagemaker_session._intercept_create_request(serialized_request, None, "train")
+            return
 
         # Validate data paths exist before submission
         effective_training = training_dataset or self.training_dataset

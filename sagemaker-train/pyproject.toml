@@ -32,7 +32,7 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "sagemaker-core>=2.20.0",
+    "sagemaker-core>=2.21.0",
     "graphene>=3,<4",
     "typing_extensions>=4.9.0",
     "tblib>=1.7.0",
@@ -84,6 +84,15 @@ addopts = ["-vv"]
 testpaths = ["tests"]
 markers = [
     "serial: marks tests that must run serially (not in parallel)",
+    # gpu_intensive and us_east_1 are declared in tox.ini too, but pytest reads
+    # its config from this file (it is the first of the candidates present), so
+    # markers listed only there are unregistered at runtime and raise
+    # PytestUnknownMarkWarning. Registering them here matters because the PR gate
+    # selects with -m "not gpu_intensive and not us_east_1": a typo'd marker name
+    # would otherwise silently put an expensive deep test back on the gate instead
+    # of warning.
+    "gpu_intensive: marks a test that consumes real training capacity (scheduled CI, not PR checks); see tests/integ/train/shallow",
+    "us_east_1: marks a test that must run in us-east-1 (Nova); runs in the us-east-1 integ job",
 ]
 
 [tool.black]
