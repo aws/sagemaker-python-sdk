@@ -14,13 +14,12 @@
 
 ### Other
 
-- change: add image URI configs for DLC serving frameworks and Amazon Linux 2023 PyTorch (#6220)
-- change: add image URI configs for vLLM and SGLang (#6218)
-- change: add TensorFlow inference 2.20 and training 2.21 image URI configs (#6230)
-- change: add Ray/llama-cpp CPU images and device-selectable DLC serving configs (#6229)
-- change: refresh generated image URI configs (2026-09-03)
+- change(core): add image URI configs for DLC serving frameworks and Amazon Linux 2023 PyTorch (#6220)
+- change(core): add image URI configs for vLLM and SGLang (#6218)
 - ci(core): add botocore-sync workflows (#6226)
-
+- change(core): add TensorFlow inference 2.20 and training 2.21 image URI configs (#6230)
+- change(core): add Ray/llama-cpp CPU images and device-selectable DLC serving configs (#6229)
+- change(core): refresh generated image URI configs (55c2a9bd)
 
 ## v2.21.0 (2026-08-25)
 

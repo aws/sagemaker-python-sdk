@@ -6,7 +6,6 @@
 
 - change(serve): emit the JumpStart model ID in ModelBuilder telemetry (#6234)
 
-
 ## v1.21.0 (2026-08-25)
 
 ### Bug Fixes

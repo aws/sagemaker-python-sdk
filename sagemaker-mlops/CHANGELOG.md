@@ -14,7 +14,6 @@
 
 - test(mlops): add PipelineSession integration coverage for V3 trainers (#6235)
 
-
 ## v1.21.0 (2026-08-25)
 
 ### Bug Fixes
