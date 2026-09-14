@@ -14,31 +14,7 @@ Key Benefits of V3 ML Operations
 Quick Start Example
 -------------------
 
-Here's how ML Operations workflows are simplified in V3:
-
-**Traditional Pipeline Approach:**
-
-.. code-block:: python
-
-   from sagemaker.workflow.pipeline import Pipeline
-   from sagemaker.workflow.steps import TrainingStep, ProcessingStep
-   from sagemaker.sklearn.processing import SKLearnProcessor
-   
-   # Complex setup with multiple framework-specific classes
-   processor = SKLearnProcessor(
-       framework_version="0.23-1",
-       role=role,
-       instance_type="ml.m5.xlarge",
-       instance_count=1
-   )
-   
-   processing_step = ProcessingStep(
-       name="PreprocessData",
-       processor=processor,
-       # ... many configuration parameters
-   )
-
-**SageMaker V3 MLOps Approach:**
+Define a pipeline and add a processing step:
 
 .. code-block:: python
 
