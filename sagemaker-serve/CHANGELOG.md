@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.22.0 (2026-09-14)
+
+### Other
+
+- change(serve): emit the JumpStart model ID in ModelBuilder telemetry (#6234)
+
+
 ## v1.21.0 (2026-08-25)
 
 ### Bug Fixes

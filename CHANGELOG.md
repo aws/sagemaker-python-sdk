@@ -1,5 +1,39 @@
 # Changelog
 
+## v3.22.0 (2026-09-14)
+
+### New Features
+
+- feat(train): add list_hyperparameters() for pre-trainer hyperparameter discovery (#6149)
+- feat(train): validate raw base model names in SageMaker Hub (#6227)
+- feat(core,train): add InstancePreferences for multi-instance-type training and processing (#6249)
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(train): add and complete PipelineSession support for SFT, DPO, RLAIF, and RLVR trainers (#6213, #6235)
+- fix(train): resolve private Hub models and aliased references for ModelTrainer (#6201)
+- fix(train): validate evaluator models against the live supported-model list (#6217)
+- fix(core): resolve default training role from sagemaker config (#6228)
+- fix(train): preserve training_plan_arn during serverful compute reconstruction (#6258)
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+- fix(feature-store): register HubContent Dataset from DatasetBuilder CSV paths (#6212)
+
+### Other
+
+- change(serve): emit the JumpStart model ID in ModelBuilder telemetry (#6234)
+- change(core): add and refresh image URI configurations for supported frameworks (#6218, #6220, #6229, #6230)
+- ci(core): add botocore-sync workflows (#6226)
+
+### Tests
+
+- fix(ci,train): stop integ tests from rerunning the shallow suite (#6216)
+- fix(train): refresh MTRL attached-job integration fixtures (#6259)
+- fix(train): add training_plan_arn to serverful test fixtures (#6270)
+- test(mlops): add PipelineSession integration coverage for V3 trainers (#6235)
+- docs(train): add guidance for maintaining shallow integration tests (#6219)
+
+
 ## v3.21.0 (2026-08-25)
 
 ### New Features
