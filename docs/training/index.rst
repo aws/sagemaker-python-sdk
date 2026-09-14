@@ -13,23 +13,6 @@ Key Benefits of V3 Training
 Quick Start Example
 -------------------
 
-**SageMaker Python SDK V2:**
-
-.. code-block:: python
-
-   from sagemaker.estimator import Estimator
-
-   estimator = Estimator(
-       image_uri="my-training-image",
-       role="arn:aws:iam::123456789012:role/SageMakerRole",
-       instance_count=1,
-       instance_type="ml.m5.xlarge",
-       output_path="s3://my-bucket/output"
-   )
-   estimator.fit({"training": "s3://my-bucket/train"})
-
-**SageMaker Python SDK V3:**
-
 .. code-block:: python
 
    from sagemaker.train import ModelTrainer
