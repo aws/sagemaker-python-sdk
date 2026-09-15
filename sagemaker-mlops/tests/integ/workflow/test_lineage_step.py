@@ -106,7 +106,9 @@ def test_lineage_step_execute_end_to_end(sagemaker_session, pipeline_session, ro
     # so a single step covers create-then-associate end to end.
     step = LineageStep(
         name="RecordLineage",
-        step_args=[action_args, artifact_args, context_args],
+        actions=[action_args],
+        artifacts=[artifact_args],
+        contexts=[context_args],
         associations=[
             LineageAssociation(
                 source=LineageEntityReference(name=action_name, type="Action"),

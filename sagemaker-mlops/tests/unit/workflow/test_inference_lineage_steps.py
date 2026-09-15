@@ -255,7 +255,7 @@ def action_step_args(pipeline_session):
 
 
 def test_lineage_step_action(pipeline_session, action_step_args):
-    step = LineageStep(name="RecA", step_args=action_step_args)
+    step = LineageStep(name="RecA", actions=action_step_args)
     assert step.step_type == StepTypeEnum.LINEAGE
     args = step.arguments
     assert list(args.keys()) == ["Actions"]
@@ -271,7 +271,7 @@ def test_lineage_step_artifact(pipeline_session):
         artifact_type="Model",
         sagemaker_session=pipeline_session,
     )
-    step = LineageStep(name="RecB", step_args=step_args)
+    step = LineageStep(name="RecB", artifacts=step_args)
     assert list(step.arguments.keys()) == ["Artifacts"]
     assert step.arguments["Artifacts"][0]["ArtifactName"] == "art1"
 
@@ -283,7 +283,7 @@ def test_lineage_step_context(pipeline_session):
         context_type="Endpoint",
         sagemaker_session=pipeline_session,
     )
-    step = LineageStep(name="RecC", step_args=step_args)
+    step = LineageStep(name="RecC", contexts=step_args)
     assert list(step.arguments.keys()) == ["Contexts"]
     assert step.arguments["Contexts"][0]["ContextName"] == "ctx1"
 
@@ -313,7 +313,7 @@ def test_lineage_step_batches_multiple_entities(pipeline_session):
         sagemaker_session=pipeline_session,
     )
 
-    step = LineageStep(name="Rec", step_args=actions + [artifact, context])
+    step = LineageStep(name="Rec", actions=actions, artifacts=artifact, contexts=context)
     args = step.arguments
 
     assert [a["ActionName"] for a in args["Actions"]] == ["act0", "act1"]
@@ -342,7 +342,8 @@ def test_lineage_step_association_references_sibling_by_name_and_type(pipeline_s
     )
     step = LineageStep(
         name="Rec",
-        step_args=[action, artifact],
+        actions=action,
+        artifacts=artifact,
         associations=[
             LineageAssociation(
                 source=LineageEntityReference(name="act1", type="Action"),
@@ -364,7 +365,7 @@ def test_lineage_step_association_accepts_literal_arn(pipeline_session, action_s
     existing = "arn:aws:sagemaker:us-west-2:123456789012:artifact/abc"
     step = LineageStep(
         name="Rec",
-        step_args=action_step_args,
+        actions=action_step_args,
         associations=[
             LineageAssociation(
                 source=LineageEntityReference(name="act1", type="Action"),
@@ -385,7 +386,7 @@ def test_lineage_step_rejects_unresolvable_sibling_reference(action_step_args):
     with pytest.raises(ValueError, match="does not create"):
         LineageStep(
             name="Rec",
-            step_args=action_step_args,
+            actions=action_step_args,
             associations=[
                 LineageAssociation(
                     source=LineageEntityReference(name="act1", type="Action"),
@@ -396,7 +397,7 @@ def test_lineage_step_rejects_unresolvable_sibling_reference(action_step_args):
 
 
 def test_lineage_step_rejects_captured_association(pipeline_session, action_step_args):
-    """Association.create() cannot express a sibling, so it is not valid step_args."""
+    """Association.create() cannot express a sibling, so it is not a valid entity."""
     captured = Association.create(
         source_arn="arn:aws:sagemaker:us-west-2:123456789012:action/a",
         destination_arn="arn:aws:sagemaker:us-west-2:123456789012:artifact/b",
@@ -404,7 +405,7 @@ def test_lineage_step_rejects_captured_association(pipeline_session, action_step
         sagemaker_session=pipeline_session,
     )
     with pytest.raises(ValueError, match="associations argument"):
-        LineageStep(name="Rec", step_args=[action_step_args, captured])
+        LineageStep(name="Rec", actions=[action_step_args, captured])
 
 
 def test_lineage_step_requires_an_entity_or_association():
@@ -431,16 +432,35 @@ def test_lineage_association_rejects_non_reference_endpoint():
 
 def test_lineage_step_rejects_wrong_producer(endpoint_step_args):
     with pytest.raises(ValueError, match="Action.create"):
-        LineageStep(name="Rec", step_args=endpoint_step_args)
+        LineageStep(name="Rec", actions=endpoint_step_args)
+
+
+def test_lineage_step_rejects_entity_in_the_wrong_argument(pipeline_session):
+    """An artifact passed as an action is rejected, naming the right producer.
+
+    The per-kind arguments make the expected producer unambiguous, so a
+    misplaced entity fails at construction instead of building a request the
+    service would reject.
+    """
+    artifact = Artifact.create(
+        artifact_name="art1",
+        source_uri="s3://bucket/model.tar.gz",
+        artifact_type="Model",
+        sagemaker_session=pipeline_session,
+    )
+    with pytest.raises(ValueError, match="actions of LineageStep must be obtained from"):
+        LineageStep(name="Rec", actions=artifact)
+    with pytest.raises(ValueError, match="contexts of LineageStep must be obtained from"):
+        LineageStep(name="Rec", contexts=artifact)
 
 
 def test_lineage_step_rejects_raw_dict():
     with pytest.raises(TypeError):
-        LineageStep(name="Rec", step_args={"Actions": []})
+        LineageStep(name="Rec", actions={"ActionName": "a"})
 
 
 def test_lineage_step_properties(action_step_args):
-    step = LineageStep(name="Rec", step_args=action_step_args)
+    step = LineageStep(name="Rec", actions=action_step_args)
     for field in ("ActionArns", "ArtifactArns", "ContextArns", "Associations"):
         assert hasattr(step.properties, field)
     assert step.properties.ArtifactArns["x"].expr == {"Get": "Steps.Rec.ArtifactArns['x']"}

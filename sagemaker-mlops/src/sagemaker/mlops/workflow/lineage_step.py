@@ -17,7 +17,8 @@ associations between them. Entities follow the ``step_args`` convention:
 create each one with the corresponding class from
 :mod:`sagemaker.core.lineage` under a
 :class:`~sagemaker.core.workflow.pipeline_context.PipelineSession` and pass
-the captured arguments to the step.
+the captured arguments to the matching argument of the step -- ``actions``,
+``artifacts`` or ``contexts``.
 
 Associations are declared rather than captured. ``Association.create()``
 takes source and destination ARNs, but an entity created by the same step
@@ -31,7 +32,7 @@ Example::
 
     step = LineageStep(
         name="RecordLineage",
-        step_args=[
+        actions=[
             Action.create(
                 action_name="training-run",
                 source_uri="s3://bucket/run",
@@ -39,6 +40,8 @@ Example::
                 action_type="ModelTraining",
                 sagemaker_session=pipeline_session,
             ),
+        ],
+        artifacts=[
             Artifact.create(
                 artifact_name="trained-model",
                 source_uri="s3://bucket/model.tar.gz",
@@ -72,14 +75,32 @@ ENTITY_TYPE_ACTION = "Action"
 ENTITY_TYPE_ARTIFACT = "Artifact"
 ENTITY_TYPE_CONTEXT = "Context"
 
-# Maps the captured lineage create call to the ``Arguments`` key the pipeline
+# One entry per kind of entity a LineageStep can create, in the order the
+# entities appear in the request. Each maps the step argument to the lineage
+# create call that must have produced it, the ``Arguments`` key the pipeline
 # service expects, the entity type used when referencing the entity from an
 # association, and the request field holding the entity name.
-_ENTITY_SPECS = {
-    "create_action": ("Actions", ENTITY_TYPE_ACTION, "ActionName"),
-    "create_artifact": ("Artifacts", ENTITY_TYPE_ARTIFACT, "ArtifactName"),
-    "create_context": ("Contexts", ENTITY_TYPE_CONTEXT, "ContextName"),
+_ENTITY_KINDS = (
+    ("actions", "create_action", "Actions", ENTITY_TYPE_ACTION, "ActionName"),
+    ("artifacts", "create_artifact", "Artifacts", ENTITY_TYPE_ARTIFACT, "ArtifactName"),
+    ("contexts", "create_context", "Contexts", ENTITY_TYPE_CONTEXT, "ContextName"),
+)
+
+# The producer each kind must come from, for the "wrong argument" error message.
+_EXPECTED_PRODUCER = {
+    "actions": "Action.create()",
+    "artifacts": "Artifact.create()",
+    "contexts": "Context.create()",
 }
+
+
+def _as_list(value) -> list:
+    """Normalise a single captured argument or a sequence of them to a list."""
+    if value is None:
+        return []
+    if isinstance(value, (list, tuple)):
+        return list(value)
+    return [value]
 
 
 class LineageEntityReference:
@@ -207,7 +228,9 @@ class LineageStep(Step):
     def __init__(
         self,
         name: str,
-        step_args: Optional[Union[_JobStepArguments, List[_JobStepArguments]]] = None,
+        actions: Optional[Union[_JobStepArguments, List[_JobStepArguments]]] = None,
+        artifacts: Optional[Union[_JobStepArguments, List[_JobStepArguments]]] = None,
+        contexts: Optional[Union[_JobStepArguments, List[_JobStepArguments]]] = None,
         associations: Optional[List[LineageAssociation]] = None,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
@@ -217,11 +240,13 @@ class LineageStep(Step):
 
         Args:
             name (str): The name of the step.
-            step_args (_JobStepArguments or list): The captured arguments for
-                each entity this step creates, obtained from
-                ``Action.create()``, ``Artifact.create()`` or
-                ``Context.create()`` called with a ``PipelineSession``. A
-                single value is accepted for a step that creates one entity.
+            actions (_JobStepArguments or list): Captured arguments from
+                ``Action.create()`` called with a ``PipelineSession``, for each
+                action this step creates.
+            artifacts (_JobStepArguments or list): Captured arguments from
+                ``Artifact.create()``, for each artifact this step creates.
+            contexts (_JobStepArguments or list): Captured arguments from
+                ``Context.create()``, for each context this step creates.
             associations (List[LineageAssociation]): Associations to add after
                 the entities are created.
             display_name (str): Optional display name.
@@ -237,30 +262,30 @@ class LineageStep(Step):
             depends_on=depends_on,
         )
 
-        if step_args is None:
-            entities = []
-        elif isinstance(step_args, (list, tuple)):
-            entities = list(step_args)
-        else:
-            entities = [step_args]
-
         self.associations = list(associations) if associations else []
 
-        if not entities and not self.associations:
-            raise ValueError(
-                "A LineageStep requires at least one entity in step_args, or one association."
-            )
+        supplied = {"actions": actions, "artifacts": artifacts, "contexts": contexts}
+        self._entities: Dict[str, List[_JobStepArguments]] = {}
+        for param, caller, _, _, _ in _ENTITY_KINDS:
+            entities = _as_list(supplied[param])
+            for entity in entities:
+                validate_step_args_input(
+                    step_args=entity,
+                    expected_caller={caller},
+                    error_message=(
+                        f"The {param} of LineageStep must be obtained from "
+                        f"{_EXPECTED_PRODUCER[param]} called with a PipelineSession. "
+                        "Associations are passed to the associations argument instead, "
+                        "because Association.create() cannot reference an entity created "
+                        "by the same step."
+                    ),
+                )
+            self._entities[param] = entities
 
-        for entity in entities:
-            validate_step_args_input(
-                step_args=entity,
-                expected_caller=set(_ENTITY_SPECS),
-                error_message=(
-                    "The step_args of LineageStep must be obtained from Action.create(), "
-                    "Artifact.create() or Context.create() called with a PipelineSession. "
-                    "Associations are passed to the associations argument instead, because "
-                    "Association.create() cannot reference an entity created by the same step."
-                ),
+        if not any(self._entities.values()) and not self.associations:
+            raise ValueError(
+                "A LineageStep requires at least one entity in actions, artifacts or "
+                "contexts, or one association."
             )
 
         for association in self.associations:
@@ -270,7 +295,6 @@ class LineageStep(Step):
                     f"{type(association).__name__}."
                 )
 
-        self.step_args = entities
         self._validate_sibling_references()
 
         root = Properties(step_name=name, step=self)
@@ -279,14 +303,29 @@ class LineageStep(Step):
         root.__dict__["Associations"] = Properties(step_name=name, path="Associations")
         self._properties = root
 
+    @property
+    def actions(self) -> List[_JobStepArguments]:
+        """The captured arguments for the actions this step creates."""
+        return self._entities["actions"]
+
+    @property
+    def artifacts(self) -> List[_JobStepArguments]:
+        """The captured arguments for the artifacts this step creates."""
+        return self._entities["artifacts"]
+
+    @property
+    def contexts(self) -> List[_JobStepArguments]:
+        """The captured arguments for the contexts this step creates."""
+        return self._entities["contexts"]
+
     def _created_entities(self) -> Dict[str, str]:
         """Map the name of each entity created by this step to its type."""
         created = {}
-        for entity in self.step_args:
-            _, entity_type, name_field = _ENTITY_SPECS[entity.caller_name]
-            name = entity.args.get(name_field)
-            if isinstance(name, str):
-                created[name] = entity_type
+        for param, _, _, entity_type, name_field in _ENTITY_KINDS:
+            for entity in self._entities[param]:
+                name = entity.args.get(name_field)
+                if isinstance(name, str):
+                    created[name] = entity_type
         return created
 
     def _validate_sibling_references(self) -> None:
@@ -319,9 +358,10 @@ class LineageStep(Step):
     def arguments(self) -> RequestType:
         """The ``Arguments`` block: the entities and associations for this step."""
         request: RequestType = {}
-        for entity in self.step_args:
-            key, _, _ = _ENTITY_SPECS[entity.caller_name]
-            request.setdefault(key, []).append(entity.args)
+        for param, _, key, _, _ in _ENTITY_KINDS:
+            entities = self._entities[param]
+            if entities:
+                request[key] = [entity.args for entity in entities]
         if self.associations:
             request["Associations"] = [a.to_request() for a in self.associations]
         return request
