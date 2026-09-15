@@ -29,6 +29,7 @@ class _ConcreteTrainer(BaseTrainer):
         self.compute = MagicMock(
             instance_type="ml.p4d.24xlarge",
             instance_count=1,
+            instance_preferences=None,
             volume_size_in_gb=100,
             keep_alive_period_in_seconds=None,
             training_plan_arn=None,
@@ -388,3 +389,36 @@ class TestValidateInstanceType:
 
         # Any instance type is accepted; the method returns None to signal skip.
         assert trainer._validate_instance_type("ml.g5.xlarge", MagicMock()) is None
+
+
+class TestInstancePreferencesRejected:
+    """Recipes are rendered for one instance type, so a preference list must be
+    refused up front -- before the recipe fetch, and before the instance-type
+    enum check can report a misleading "Instance type 'None' is not supported"."""
+
+    @pytest.fixture
+    def trainer(self):
+        trainer = _ConcreteTrainer()
+        trainer.compute = MagicMock(
+            instance_type=None,
+            instance_count=2,
+            instance_preferences=[MagicMock(instance_type="ml.p5.48xlarge")],
+        )
+        return trainer
+
+    def test_rejected_before_any_recipe_or_network_access(self, trainer):
+        with patch("sagemaker.train.base_trainer.get_recipe_s3_uri") as fetch, pytest.raises(
+            ValueError, match="Training recipes do not support ``instance_preferences``"
+        ):
+            trainer._train_serverful_smtj(training_dataset="s3://bucket/train.jsonl")
+        fetch.assert_not_called()
+
+    def test_message_names_the_fix(self, trainer):
+        with pytest.raises(ValueError, match="Set a single ``instance_type`` in Compute"):
+            trainer._train_serverful_smtj(training_dataset="s3://bucket/train.jsonl")
+
+    def test_single_instance_type_is_unaffected(self):
+        trainer = _ConcreteTrainer()
+        _, kwargs = _run_serverful(trainer)
+        assert kwargs["compute"].instance_type == "ml.p4d.24xlarge"
+        assert not kwargs["compute"].instance_preferences
