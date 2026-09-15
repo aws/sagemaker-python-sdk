@@ -10,14 +10,39 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Step definitions for SageMaker Endpoint deployment in Pipelines."""
+"""Step definitions for SageMaker Endpoint deployment in Pipelines.
+
+These steps follow the ``step_args`` convention used by ``TrainingStep``
+and ``ModelStep``: call the corresponding session method under a
+:class:`~sagemaker.workflow.pipeline_context.PipelineSession` and pass the
+returned step arguments to the step. The request is captured at call time
+and the service call is deferred to pipeline execution.
+
+Example::
+
+    pipeline_session = PipelineSession()
+
+    config_step_args = pipeline_session.create_endpoint_config(
+        name="my-endpoint-config",
+        model_name="my-model",
+        initial_instance_count=1,
+        instance_type="ml.m5.large",
+    )
+    config_step = EndpointConfigStep(name="CreateConfig", step_args=config_step_args)
+
+    endpoint_step_args = pipeline_session.create_endpoint(
+        endpoint_name="my-endpoint",
+        config_name=config_step.properties.EndpointConfigName,
+    )
+    endpoint_step = EndpointStep(name="CreateEndpoint", step_args=endpoint_step_args)
+"""
 
 from __future__ import absolute_import
 
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
-from sagemaker.workflow._argument_validation import validate_step_arguments
 from sagemaker.workflow.entities import RequestType
+from sagemaker.workflow.pipeline_context import _JobStepArguments
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.retry import RetryPolicy
 from sagemaker.workflow.step_collections import StepCollection
@@ -27,23 +52,28 @@ from sagemaker.workflow.steps import (
     Step,
     StepTypeEnum,
 )
+from sagemaker.workflow.utilities import validate_step_args_input
 
 
 class EndpointConfigStep(ConfigurableRetryStep):
     """Creates a SageMaker EndpointConfig within a pipeline.
 
-    Wraps the SageMaker ``CreateEndpointConfig`` API. The ``arguments``
-    dict is forwarded to the service — refer to the
-    `CreateEndpointConfig API reference
-    <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateEndpointConfig.html>`_
-    for accepted fields. Values may be pipeline variables (parameter
-    references, step property references).
+    Wraps the SageMaker ``CreateEndpointConfig`` API. The ``step_args``
+    must be obtained by calling
+    :meth:`~sagemaker.session.Session.create_endpoint_config` on a
+    ``PipelineSession``. That method creates only the endpoint
+    configuration, matching this step's one-resource-per-step shape;
+    ``endpoint_from_production_variants`` also creates the endpoint and so
+    is not a valid producer here.
+
+    ``EndpointConfig`` is structurally cacheable (``cache_config``) and
+    retryable (``retry_policies``).
     """
 
     def __init__(
         self,
         name: str,
-        arguments: Dict[str, Any],
+        step_args: _JobStepArguments,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
@@ -54,9 +84,8 @@ class EndpointConfigStep(ConfigurableRetryStep):
 
         Args:
             name (str): The name of the step.
-            arguments (Dict[str, Any]): The ``Arguments`` block for the
-                ``CreateEndpointConfig`` call. Values may be pipeline
-                variables.
+            step_args (_JobStepArguments): The arguments for this step,
+                obtained from ``pipeline_session.create_endpoint_config()``.
             display_name (str): Optional display name.
             description (str): Optional description.
             depends_on (List[Union[str, Step, StepCollection]]): Optional
@@ -72,16 +101,15 @@ class EndpointConfigStep(ConfigurableRetryStep):
             depends_on=depends_on,
             retry_policies=retry_policies,
         )
-        if arguments is None:
-            raise ValueError("arguments is required for EndpointConfigStep.")
-        validate_step_arguments(
-            "EndpointConfigStep",
-            arguments,
-            service_name="sagemaker",
-            operation_name="CreateEndpointConfig",
-            unsupported_fields=("DataCaptureConfig", "ExplainerConfig"),
+        validate_step_args_input(
+            step_args=step_args,
+            expected_caller={"create_endpoint_config"},
+            error_message=(
+                "The step_args of EndpointConfigStep must be obtained from "
+                "pipeline_session.create_endpoint_config()."
+            ),
         )
-        self._arguments = arguments
+        self.step_args = step_args
         self.cache_config = cache_config
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeEndpointConfigOutput"
@@ -89,15 +117,8 @@ class EndpointConfigStep(ConfigurableRetryStep):
 
     @property
     def arguments(self) -> RequestType:
-        """The ``Arguments`` block for the ``CreateEndpointConfig`` call."""
-        validate_step_arguments(
-            "EndpointConfigStep",
-            self._arguments,
-            service_name="sagemaker",
-            operation_name="CreateEndpointConfig",
-            unsupported_fields=("DataCaptureConfig", "ExplainerConfig"),
-        )
-        return self._arguments
+        """The arguments dictionary that is used to call ``create_endpoint_config``."""
+        return self.step_args.args
 
     @property
     def properties(self):
@@ -115,17 +136,20 @@ class EndpointConfigStep(ConfigurableRetryStep):
 class EndpointStep(Step):
     """Creates or updates a SageMaker Endpoint within a pipeline.
 
-    Wraps the SageMaker ``CreateEndpoint``/``UpdateEndpoint`` API — the
-    pipeline chooses create-vs-update based on endpoint existence. Refer
-    to the `CreateEndpoint API reference
-    <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateEndpoint.html>`_
-    for accepted fields.
+    Wraps the SageMaker ``CreateEndpoint``/``UpdateEndpoint`` API -- the
+    pipeline chooses create-vs-update based on endpoint existence. The
+    ``step_args`` must be obtained by calling
+    :meth:`~sagemaker.session.Session.create_endpoint` on a
+    ``PipelineSession``.
+
+    ``Endpoint`` is structurally cacheable but not retryable at the
+    pipeline level.
     """
 
     def __init__(
         self,
         name: str,
-        arguments: Dict[str, Any],
+        step_args: _JobStepArguments,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
@@ -135,9 +159,8 @@ class EndpointStep(Step):
 
         Args:
             name (str): The name of the step.
-            arguments (Dict[str, Any]): The ``Arguments`` block for the
-                ``CreateEndpoint``/``UpdateEndpoint`` call. Values may
-                be pipeline variables.
+            step_args (_JobStepArguments): The arguments for this step,
+                obtained from ``pipeline_session.create_endpoint()``.
             display_name (str): Optional display name.
             description (str): Optional description.
             depends_on (List[Union[str, Step, StepCollection]]): Optional
@@ -151,16 +174,15 @@ class EndpointStep(Step):
             step_type=StepTypeEnum.ENDPOINT,
             depends_on=depends_on,
         )
-        if arguments is None:
-            raise ValueError("arguments is required for EndpointStep.")
-        validate_step_arguments(
-            "EndpointStep",
-            arguments,
-            service_name="sagemaker",
-            operation_name="CreateEndpoint",
-            unsupported_fields=("DeploymentConfig",),
+        validate_step_args_input(
+            step_args=step_args,
+            expected_caller={"create_endpoint"},
+            error_message=(
+                "The step_args of EndpointStep must be obtained from "
+                "pipeline_session.create_endpoint()."
+            ),
         )
-        self._arguments = arguments
+        self.step_args = step_args
         self.cache_config = cache_config
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeEndpointOutput"
@@ -168,15 +190,8 @@ class EndpointStep(Step):
 
     @property
     def arguments(self) -> RequestType:
-        """The ``Arguments`` block for the ``CreateEndpoint``/``UpdateEndpoint`` call."""
-        validate_step_arguments(
-            "EndpointStep",
-            self._arguments,
-            service_name="sagemaker",
-            operation_name="CreateEndpoint",
-            unsupported_fields=("DeploymentConfig",),
-        )
-        return self._arguments
+        """The arguments dictionary that is used to call ``create_endpoint``."""
+        return self.step_args.args
 
     @property
     def properties(self):

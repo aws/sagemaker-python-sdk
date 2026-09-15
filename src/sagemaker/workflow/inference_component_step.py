@@ -10,36 +10,58 @@
 # distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
-"""Step definition for SageMaker InferenceComponent in Pipelines."""
+"""Step definition for SageMaker InferenceComponent in Pipelines.
+
+Follows the ``step_args`` convention: call
+:meth:`~sagemaker.session.Session.create_inference_component` under a
+:class:`~sagemaker.workflow.pipeline_context.PipelineSession` and pass the
+returned step arguments to the step.
+
+Example::
+
+    pipeline_session = PipelineSession()
+
+    step_args = pipeline_session.create_inference_component(
+        inference_component_name="my-component",
+        endpoint_name="my-endpoint",
+        variant_name="AllTraffic",
+        specification={...},
+    )
+    step = InferenceComponentStep(name="CreateComponent", step_args=step_args)
+"""
 
 from __future__ import absolute_import
 
-from typing import Any, Dict, List, Optional, Union
+from typing import List, Optional, Union
 
-from sagemaker.workflow._argument_validation import validate_step_arguments
 from sagemaker.workflow.entities import RequestType
+from sagemaker.workflow.pipeline_context import _JobStepArguments
 from sagemaker.workflow.properties import Properties
 from sagemaker.workflow.step_collections import StepCollection
 from sagemaker.workflow.steps import Step, StepTypeEnum
+from sagemaker.workflow.utilities import validate_step_args_input
 
 
 class InferenceComponentStep(Step):
     """Creates or updates a SageMaker Inference Component within a pipeline.
 
-    Wraps the SageMaker
-    ``CreateInferenceComponent``/``UpdateInferenceComponent`` API — the
-    pipeline chooses create-vs-update based on component existence.
-    Inference components enable multi-model endpoint deployments with
-    independent scaling per model. Refer to the
-    `CreateInferenceComponent API reference
-    <https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_CreateInferenceComponent.html>`_
-    for accepted fields.
+    Wraps the SageMaker ``CreateInferenceComponent``/``UpdateInferenceComponent``
+    API -- the pipeline chooses create-vs-update based on component
+    existence. Inference components enable multi-model endpoint
+    deployments with independent scaling per model.
+
+    The ``step_args`` must be obtained by calling
+    :meth:`~sagemaker.session.Session.create_inference_component` on a
+    ``PipelineSession``.
+
+    ``InferenceComponent`` is neither cacheable nor retryable at the
+    pipeline level.
     """
 
     def __init__(
         self,
         name: str,
-        arguments: Dict[str, Any],
+        step_args: _JobStepArguments,
         display_name: Optional[str] = None,
         description: Optional[str] = None,
         depends_on: Optional[List[Union[str, Step, StepCollection]]] = None,
@@ -48,12 +70,9 @@ class InferenceComponentStep(Step):
 
         Args:
             name (str): The name of the step.
-            arguments (Dict[str, Any]): The ``Arguments`` block for the
-                ``CreateInferenceComponent``/``UpdateInferenceComponent``
-                call. Values may be pipeline variables. Note that
-                ``ComputeResourceRequirements.NumberOfCpuCoresRequired``
-                is a JSON float; pass ``2.0`` rather than ``2`` from
-                Python.
+            step_args (_JobStepArguments): The arguments for this step,
+                obtained from
+                ``pipeline_session.create_inference_component()``.
             display_name (str): Optional display name.
             description (str): Optional description.
             depends_on (List[Union[str, Step, StepCollection]]): Optional
@@ -66,29 +85,23 @@ class InferenceComponentStep(Step):
             step_type=StepTypeEnum.INFERENCE_COMPONENT,
             depends_on=depends_on,
         )
-        if arguments is None:
-            raise ValueError("arguments is required for InferenceComponentStep.")
-        validate_step_arguments(
-            "InferenceComponentStep",
-            arguments,
-            service_name="sagemaker",
-            operation_name="CreateInferenceComponent",
+        validate_step_args_input(
+            step_args=step_args,
+            expected_caller={"create_inference_component"},
+            error_message=(
+                "The step_args of InferenceComponentStep must be obtained from "
+                "pipeline_session.create_inference_component()."
+            ),
         )
-        self._arguments = arguments
+        self.step_args = step_args
         self._properties = Properties(
             step_name=name, step=self, shape_name="DescribeInferenceComponentOutput"
         )
 
     @property
     def arguments(self) -> RequestType:
-        """The ``Arguments`` block for the Create/Update InferenceComponent call."""
-        validate_step_arguments(
-            "InferenceComponentStep",
-            self._arguments,
-            service_name="sagemaker",
-            operation_name="CreateInferenceComponent",
-        )
-        return self._arguments
+        """The arguments dictionary that is used to call ``create_inference_component``."""
+        return self.step_args.args
 
     @property
     def properties(self):

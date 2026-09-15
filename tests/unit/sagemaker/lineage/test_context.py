@@ -15,16 +15,10 @@ from __future__ import absolute_import
 import datetime
 import unittest.mock
 
-import pytest
 from sagemaker.lineage import context, _api_types
 from sagemaker.lineage.action import Action
 from sagemaker.lineage.lineage_trial_component import LineageTrialComponent
 from sagemaker.lineage.query import LineageQueryDirectionEnum
-
-
-@pytest.fixture
-def sagemaker_session():
-    return unittest.mock.Mock()
 
 
 def test_create(sagemaker_session):
