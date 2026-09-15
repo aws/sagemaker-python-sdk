@@ -19,7 +19,16 @@ import unittest.mock
 
 @pytest.fixture
 def sagemaker_session():
-    return unittest.mock.Mock()
+    session = unittest.mock.Mock()
+    # Lineage entity creates go through Session._intercept_create_request so that a
+    # PipelineSession can capture them as step arguments. The real base Session
+    # implementation just invokes the callable, so make the double do the same --
+    # otherwise an auto-mocked attribute swallows the call and the client is never
+    # reached.
+    session._intercept_create_request.side_effect = lambda request, create, func_name=None: create(
+        request
+    )
+    return session
 
 
 @pytest.fixture
