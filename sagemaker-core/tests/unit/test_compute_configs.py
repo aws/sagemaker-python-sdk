@@ -1,6 +1,10 @@
 """Unit tests for Compute and HyperPodCompute config classes."""
 
+import warnings
+
 import pytest
+from sagemaker.core.modules.configs import Compute as ModulesCompute
+from sagemaker.core.shapes import InstancePreference
 from sagemaker.core.training.configs import Compute, HyperPodCompute
 
 
@@ -337,3 +341,25 @@ class TestProcessingClusterConfigInstancePreferences:
         )
         assert pcc.instance_type == "ml.m5.xlarge"
         assert pcc.instance_count == 1
+
+
+class TestInstancePreferencesSerialization:
+    """Unset fields on nested preferences must not surface as pydantic
+    serializer warnings on every submit, and the request payload must omit them."""
+
+    @pytest.mark.parametrize("compute_cls", [Compute, ModulesCompute])
+    def test_to_resource_config_emits_no_serializer_warning(self, compute_cls):
+        compute = compute_cls(
+            instance_preferences=[
+                InstancePreference(instance_type="ml.m5.large"),
+                InstancePreference(instance_type="ml.m5.xlarge"),
+            ],
+            instance_count=1,
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            resource_config = compute._to_resource_config()
+        prefs = resource_config.instance_preferences
+        assert [p.instance_type for p in prefs] == ["ml.m5.large", "ml.m5.xlarge"]
+        assert all(p.training_plan_arns is None and p.instance_count is None for p in prefs)
+        assert resource_config.instance_count == 1
