@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.22.0 (2026-09-14)
+
+### New Features
+
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(feature-store): register HubContent Dataset from DatasetBuilder CSV paths (#6212)
+
+### Tests
+
+- test(mlops): add PipelineSession integration coverage for V3 trainers (#6235)
+
 ## v1.21.0 (2026-08-25)
 
 ### Bug Fixes
