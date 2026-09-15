@@ -74,70 +74,75 @@ def test_deployment_steps_execute_end_to_end(sagemaker_session, pipeline_session
     # InferenceComponentStep, not model creation.
     region = sagemaker_session.boto_region_name
     image_uri = image_uris.retrieve("xgboost", region, "0.90-1")
-    model_data_url = sagemaker_session.upload_data(
-        path=os.path.join(DATA_DIR, "experiment", "transform_job_materials", "xgb_model.tar.gz"),
-        key_prefix=f"integ-deploy/{stamp}",
-    )
-    sagemaker_session.create_model(
-        name=model_name,
-        role=role,
-        container_defs={"Image": image_uri, "ModelDataUrl": model_data_url},
-    )
-
-    config_step_args = pipeline_session.create_endpoint_config(
-        name=config_name,
-        production_variants=[
-            {
-                "VariantName": "AllTraffic",
-                "InstanceType": INSTANCE_TYPE,
-                "InitialInstanceCount": 1,
-                "ManagedInstanceScaling": {
-                    "Status": "ENABLED",
-                    "MinInstanceCount": 1,
-                    "MaxInstanceCount": 1,
-                },
-                "RoutingConfig": {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
-            }
-        ],
-        role=role,
-    )
-    config_step = EndpointConfigStep(name="CreateConfig", step_args=config_step_args)
-
-    # The service appends an execution-unique suffix to names created by these
-    # steps, so downstream steps must reference the *created* resource via step
-    # properties rather than the requested name.
-    endpoint_step_args = pipeline_session.create_endpoint(
-        endpoint_name=endpoint_name, config_name=config_step.properties.EndpointConfigName
-    )
-    endpoint_step = EndpointStep(
-        name="CreateEndpoint", step_args=endpoint_step_args, depends_on=[config_step]
-    )
-
-    component_step_args = pipeline_session.create_inference_component(
-        inference_component_name=component_name,
-        endpoint_name=endpoint_step.properties.EndpointName,
-        variant_name="AllTraffic",
-        specification={
-            "ModelName": model_name,
-            "ComputeResourceRequirements": {
-                "NumberOfCpuCoresRequired": 1.0,
-                "MinMemoryRequiredInMb": 1024,
-            },
-        },
-        runtime_config={"CopyCount": 1},
-    )
-    component_step = InferenceComponentStep(
-        name="CreateComponent", step_args=component_step_args, depends_on=[endpoint_step]
-    )
-
-    pipeline = Pipeline(
-        name=pipeline_name,
-        steps=[config_step, endpoint_step, component_step],
-        sagemaker_session=pipeline_session,
-    )
-
     sm_client = sagemaker_session.sagemaker_client
+    # Everything that creates a resource sits inside the try, so a failure part way
+    # through still reaches cleanup. The model and the uploaded artifact are created
+    # before the pipeline exists, so pipeline stays None until it does.
+    pipeline = None
     try:
+        model_data_url = sagemaker_session.upload_data(
+            path=os.path.join(
+                DATA_DIR, "experiment", "transform_job_materials", "xgb_model.tar.gz"
+            ),
+            key_prefix=f"integ-deploy/{stamp}",
+        )
+        sagemaker_session.create_model(
+            name=model_name,
+            role=role,
+            container_defs={"Image": image_uri, "ModelDataUrl": model_data_url},
+        )
+
+        config_step_args = pipeline_session.create_endpoint_config(
+            name=config_name,
+            production_variants=[
+                {
+                    "VariantName": "AllTraffic",
+                    "InstanceType": INSTANCE_TYPE,
+                    "InitialInstanceCount": 1,
+                    "ManagedInstanceScaling": {
+                        "Status": "ENABLED",
+                        "MinInstanceCount": 1,
+                        "MaxInstanceCount": 1,
+                    },
+                    "RoutingConfig": {"RoutingStrategy": "LEAST_OUTSTANDING_REQUESTS"},
+                }
+            ],
+            role=role,
+        )
+        config_step = EndpointConfigStep(name="CreateConfig", step_args=config_step_args)
+
+        # The service appends an execution-unique suffix to names created by these
+        # steps, so downstream steps must reference the *created* resource via step
+        # properties rather than the requested name.
+        endpoint_step_args = pipeline_session.create_endpoint(
+            endpoint_name=endpoint_name, config_name=config_step.properties.EndpointConfigName
+        )
+        endpoint_step = EndpointStep(
+            name="CreateEndpoint", step_args=endpoint_step_args, depends_on=[config_step]
+        )
+
+        component_step_args = pipeline_session.create_inference_component(
+            inference_component_name=component_name,
+            endpoint_name=endpoint_step.properties.EndpointName,
+            variant_name="AllTraffic",
+            specification={
+                "ModelName": model_name,
+                "ComputeResourceRequirements": {
+                    "NumberOfCpuCoresRequired": 1.0,
+                    "MinMemoryRequiredInMb": 1024,
+                },
+            },
+            runtime_config={"CopyCount": 1},
+        )
+        component_step = InferenceComponentStep(
+            name="CreateComponent", step_args=component_step_args, depends_on=[endpoint_step]
+        )
+
+        pipeline = Pipeline(
+            name=pipeline_name,
+            steps=[config_step, endpoint_step, component_step],
+            sagemaker_session=pipeline_session,
+        )
         pipeline.upsert(role_arn=role)
         execution = pipeline.start()
 

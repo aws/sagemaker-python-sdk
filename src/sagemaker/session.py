@@ -4873,6 +4873,7 @@ class Session(object):  # pylint: disable=too-many-public-methods
         routing_config: Optional[Dict[str, Any]] = None,
         inference_ami_version: Optional[str] = None,
         production_variants: Optional[List[Dict[str, Any]]] = None,
+        role: Optional[str] = None,
     ):
         """Create an Amazon SageMaker endpoint configuration.
 
@@ -4940,6 +4941,10 @@ class Session(object):  # pylint: disable=too-many-public-methods
                 no variant is built. Use this for a variant a single-model
                 configuration cannot express, such as an inference-component
                 endpoint whose variant carries no model name.
+            role (Optional[str]): An AWS IAM role, name or full ARN. Required
+                when no production variant names a model, as with an
+                inference-component endpoint: the endpoint config then carries
+                ``ExecutionRoleArn`` in place of a model.
 
         Example:
             >>> tags = [{'Key': 'tagname', 'Value': 'tagvalue'}]
@@ -4983,17 +4988,43 @@ class Session(object):  # pylint: disable=too-many-public-methods
             "ProductionVariants": production_variants,
         }
 
+        role = resolve_value_from_config(
+            role,
+            ENDPOINT_CONFIG_EXECUTION_ROLE_ARN_PATH,
+            sagemaker_session=self,
+        )
+        # For an Amazon SageMaker inference-component based endpoint, no Model name is
+        # passed during endpoint creation. ExecutionRoleArn is needed in the endpoint
+        # config instead, so that the Endpoint can be created.
+        model_names = [pv["ModelName"] for pv in production_variants if "ModelName" in pv]
+        if len(model_names) == 0:
+            # The SDK allows deploying with a role name rather than a full ARN, so
+            # expand it here.
+            role = self.expand_role(role)
+            request["ExecutionRoleArn"] = role
+
         tags = _append_project_tags(tags)
         tags = self._append_sagemaker_config_tags(
             tags, "{}.{}.{}".format(SAGEMAKER, ENDPOINT_CONFIG, TAGS)
         )
         if tags is not None:
             request["Tags"] = tags
+        # When explicit variants are supplied there is no single instance_type to
+        # consult, so derive KMS support from the variants themselves, as
+        # endpoint_from_production_variants does.
+        if instance_type is not None:
+            supports_kms = instance_supports_kms(instance_type)
+        else:
+            supports_kms = any(
+                instance_supports_kms(pv["InstanceType"])
+                for pv in production_variants
+                if "InstanceType" in pv
+            )
         kms_key = (
             resolve_value_from_config(
                 kms_key, ENDPOINT_CONFIG_KMS_KEY_ID_PATH, sagemaker_session=self
             )
-            if instance_supports_kms(instance_type)
+            if supports_kms
             else kms_key
         )
         if kms_key is not None:
