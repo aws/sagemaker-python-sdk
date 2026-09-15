@@ -84,6 +84,22 @@ class FineTuningOptions:
     def to_user_dict(self) -> Dict[str, Any]:
         """Return only user-explicitly-set hyperparameters as string key-value pairs."""
         return {k: str(getattr(self, k)) for k in self._user_set if getattr(self, k, None) is not None}
+
+    def required_keys(self) -> set:
+        """Return the set of spec keys marked ``required``.
+
+        These are hyperparameters the recipe/model requires a value for. They
+        must survive into the final training request; ``to_dict()`` skips any
+        spec whose value is ``None``, so a required parameter with no default
+        that the user never set would otherwise be dropped silently. Callers
+        use this set to surface such omissions instead (see
+        ``_validate_hyperparameter_values``).
+        """
+        return {
+            name
+            for name, spec in self._specs.items()
+            if isinstance(spec, dict) and spec.get("required")
+        }
     
     def __setattr__(self, name: str, value: Any):
         if name.startswith('_'):

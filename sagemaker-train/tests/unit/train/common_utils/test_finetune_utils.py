@@ -1784,3 +1784,93 @@ class TestListHyperparameters:
             )
 
         assert result.learning_rate == 0.0001
+
+
+class TestValidateHyperparameterValues:
+    """Tests for _validate_hyperparameter_values, including the required-key
+    surfacing that prevents required hyperparameters from being silently
+    dropped from the training request.
+    """
+
+    def test_missing_required_hyperparameter_raises(self):
+        """A required spec with no value must be surfaced, not silently dropped."""
+        from sagemaker.train.common import FineTuningOptions
+
+        options = FineTuningOptions({
+            "learning_rate": {"type": "float", "default": 0.0001},
+            "required_no_default": {"type": "string", "required": True},
+        })
+        # to_dict() drops required_no_default (its value is None).
+        final = options.to_dict()
+        assert "required_no_default" not in final
+
+        with pytest.raises(ValueError, match="Missing required hyperparameter"):
+            fu._validate_hyperparameter_values(final, options)
+
+    def test_missing_required_error_names_the_keys(self):
+        from sagemaker.train.common import FineTuningOptions
+
+        options = FineTuningOptions({
+            "req_a": {"type": "string", "required": True},
+            "req_b": {"type": "string", "required": True},
+        })
+        with pytest.raises(ValueError) as exc:
+            fu._validate_hyperparameter_values(options.to_dict(), options)
+        msg = str(exc.value)
+        assert "req_a" in msg and "req_b" in msg
+
+    def test_required_present_passes(self):
+        """When the required value is set, validation passes."""
+        from sagemaker.train.common import FineTuningOptions
+
+        options = FineTuningOptions({
+            "required_no_default": {"type": "string", "required": True},
+        })
+        options.required_no_default = "some-value"
+        # No raise.
+        fu._validate_hyperparameter_values(options.to_dict(), options)
+
+    def test_required_supplied_by_recipe_merge_passes(self):
+        """A required key absent from the FineTuningOptions object but present in
+        the final merged dict (e.g. supplied by a recipe/override) passes."""
+        from sagemaker.train.common import FineTuningOptions
+
+        options = FineTuningOptions({
+            "required_no_default": {"type": "string", "required": True},
+        })
+        # Simulate recipe/override merge populating the final request dict.
+        final = {"required_no_default": "from-recipe"}
+        fu._validate_hyperparameter_values(final, options)  # no raise
+
+    def test_required_empty_string_is_treated_as_missing(self):
+        from sagemaker.train.common import FineTuningOptions
+
+        options = FineTuningOptions({
+            "required_no_default": {"type": "string", "required": True},
+        })
+        with pytest.raises(ValueError, match="Missing required hyperparameter"):
+            fu._validate_hyperparameter_values({"required_no_default": ""}, options)
+
+    def test_no_options_is_backward_compatible(self):
+        """Called without options (e.g. the pre-merge base_trainer call site),
+        only character validation runs — no required check."""
+        # Would raise if the required check ran, but no options are passed.
+        fu._validate_hyperparameter_values({"learning_rate": "0.1"})  # no raise
+
+    def test_non_finetuning_options_is_ignored(self):
+        """A Mock (or any non-FineTuningOptions) passed as options is ignored,
+        so existing mock-based trainer tests keep working."""
+        fu._validate_hyperparameter_values({"learning_rate": "0.1"}, Mock())  # no raise
+
+    def test_invalid_characters_still_raise(self):
+        """The original character validation is preserved."""
+        with pytest.raises(ValueError, match="invalid characters"):
+            fu._validate_hyperparameter_values({"bad": "value;with;semicolons"})
+
+    def test_no_required_keys_passes(self):
+        from sagemaker.train.common import FineTuningOptions
+
+        options = FineTuningOptions({
+            "learning_rate": {"type": "float", "default": 0.0001},
+        })
+        fu._validate_hyperparameter_values(options.to_dict(), options)  # no raise

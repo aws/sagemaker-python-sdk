@@ -305,7 +305,7 @@ class RLAIFTrainer(BaseTrainer):
             if effective_training_dataset is not None:
                 self.is_multimodal = is_multimodal_data(effective_training_dataset)
 
-        _validate_hyperparameter_values(final_hyperparameters)
+        _validate_hyperparameter_values(final_hyperparameters, self.hyperparameters)
 
         model_package_config = _create_model_package_config(
             model_package_group_name=self.model_package_group,

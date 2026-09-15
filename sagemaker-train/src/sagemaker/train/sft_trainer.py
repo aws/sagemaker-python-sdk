@@ -407,7 +407,7 @@ class SFTTrainer(BaseTrainer):
                 final_hyperparameters[param_name] = param_value
 
         # Validate hyperparameter values
-        _validate_hyperparameter_values(final_hyperparameters)
+        _validate_hyperparameter_values(final_hyperparameters, self.hyperparameters)
 
         model_package_config = _create_model_package_config(
             model_package_group_name=self.model_package_group,
