@@ -1787,7 +1787,7 @@ class TestListHyperparameters:
 
 
 class TestDefaultBucketOwnershipGuard:
-    """Bucket-squatting guard for the SDK-derived default bucket (ticket D524303300)."""
+    """Bucket-ownership guard for the SDK-derived default bucket."""
 
     def test_verify_ownership_foreign_bucket_raises(self):
         from botocore.exceptions import ClientError
