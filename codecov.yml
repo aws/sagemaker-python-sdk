@@ -1,0 +1,58 @@
+# Codecov configuration for the sagemaker-python-sdk (v3) monorepo.
+# https://docs.codecov.com/docs/codecovyml-reference
+#
+# Why this file exists:
+#   CI runs `pytest --cov=sagemaker` per sub-package and uploads to Codecov. Because
+#   coverage is not scoped to the `src/` product code, executed test-support scripts
+#   (notably `*/tests/data/*.py` training entry-scripts and model definitions) are
+#   recorded and uploaded. With no ignore list these dominated the report — recent
+#   commits show ~98% of the measured files/lines were test files, not product code,
+#   which inflates the reported coverage and makes the number meaningless.
+#
+# The `ignore:` list below scopes the Codecov report to product code only.
+
+codecov:
+  # Finalize the report only after CI completes. Do NOT pin a fixed upload count:
+  # this repo's CI runs unit tests per CHANGED submodule (detect-changes), so a PR
+  # touching only 1-3 submodules produces fewer than 4 uploads. A fixed
+  # `after_n_builds: 4` would make Codecov wait forever on those PRs and never post a
+  # report (observed on PR #6055, which changed only sagemaker-mlops: state=error,
+  # sessions=0, no status). `wait_for_ci: true` alone waits for CI and finalizes
+  # whatever uploaded, regardless of submodule count.
+  notify:
+    wait_for_ci: true
+
+coverage:
+  status:
+    project:
+      default:
+        # Explicit floor (not `auto`) so the one-time baseline reset from the old
+        # test-file-inflated ~90% down to the true product-only number does not read
+        # as a regression. Verified product-only coverage is ~70.7% (real CI union run,
+        # 2026-07-16); 65% leaves headroom while still guarding against real drops.
+        target: 65%
+        threshold: 1%
+    patch:
+      default:
+        # Coverage required on new/changed product lines. Kept at the current baseline
+        # (~70%) rather than an aspirational 80% so contributors are not blocked while
+        # overall coverage sits at ~71%; raise as coverage improves.
+        target: 70%
+        threshold: 1%
+
+comment:
+  layout: "header, diff, flags, components"
+  require_changes: true
+
+# Paths excluded from coverage measurement/reporting. These are test code, test
+# fixtures/data scripts, and build/codegen helpers — not shippable product code.
+ignore:
+  - "**/tests/**"
+  - "**/test_*.py"
+  - "**/conftest.py"
+  - "sagemaker-*/test_script.py"
+  - "**/workflow_helper/**"
+  - "**/tools/*_codegen.py"
+  - "**/setup.py"
+  - "docs/**"
+  - "v3-examples/**"

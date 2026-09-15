@@ -72,6 +72,7 @@ def train_source_dir(tmp_path_factory):
     return str(d)
 
 
+@pytest.mark.gpu_intensive
 def test_tuner_includes_sm_drivers_channel(sagemaker_session, train_source_dir):
     """Verify tuning jobs include sm_drivers channel for distributed training.
 

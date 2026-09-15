@@ -1,4 +1,68 @@
 # Changelog
+
+## v2.22.0 (2026-09-14)
+
+### New Features
+
+- feat(core): add InstancePreferences for multi-instance-type training and processing (#6249)
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+- fix(core): resolve default training role from sagemaker config (#6228)
+
+### Other
+
+- change(core): add image URI configs for DLC serving frameworks and Amazon Linux 2023 PyTorch (#6220)
+- change(core): add image URI configs for vLLM and SGLang (#6218)
+- ci(core): add botocore-sync workflows (#6226)
+- change(core): add TensorFlow inference 2.20 and training 2.21 image URI configs (#6230)
+- change(core): add Ray/llama-cpp CPU images and device-selectable DLC serving configs (#6229)
+- change(core): refresh generated image URI configs (55c2a9bd)
+
+## v2.21.0 (2026-08-25)
+
+### Bug Fixes
+
+- fix(core,mlops): honor caller region in feature_store ingest_dataframe and stop telemetry from blocking SDK calls (#6197)
+- fix(core): anchor tar member validation to extract_path (#6195)
+
+
+## v2.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(core): propagate user-supplied tags to created resources (#6167)
+
+
+## v2.19.0 (2026-08-10)
+
+### New Features
+
+- feat(core): Nova follow-ups — IAM role resolution and training utils (#6051)
+
+
+## v2.18.0 (2026-07-30)
+
+### Bug Fixes
+
+- fix(sagemaker-core): remove dev-only endpoint override and fix client singleton pinning (#6120)
+- fix(sagemaker-core): use caller session for sagemaker control-plane client (#6107)
+- fix(sagemaker-core): drop tags before rebuilding TransformJob in transform() (#6110)
+- fix: Telemetry INFO logging to print only once per process (#6083)
+
+
+## v2.17.0 (2026-07-24)
+
+### New Features
+
+- feat: update SDK to use latest LMI v27 image for sdk v3.x (#5976)
+
+### Bug Fixes
+
+- fix: Fix source_dir in FrameworkProcessor (#6047)
+
 ## v2.16.0 (2026-07-15)
 
 ### New Features

@@ -340,7 +340,7 @@ class SageMakerClient(metaclass=SingletonMeta):
 
     @classmethod
     def reset(cls):
-        """Reset the singleton instance so the next call re-reads env vars."""
+        """Reset the singleton instance."""
         SingletonMeta._instances.pop(cls, None)
 
     def __init__(
@@ -368,49 +368,12 @@ class SageMakerClient(metaclass=SingletonMeta):
         self.config = Config(user_agent_extra=get_user_agent_extra_suffix())
         self.session = session
         self.region_name = region_name
-        # Read region from environment variable, default to us-west-2
-        import os
-        env_region = os.environ.get('SAGEMAKER_REGION', region_name)
-        env_stage = os.environ.get('SAGEMAKER_STAGE', 'prod')  # default to gamma
-        logger.info(f"Runs on sagemaker {env_stage}, region:{env_region}")
 
-        endpoint_url = os.environ.get('SAGEMAKER_ENDPOINT')
-        runtime_endpoint_url = os.environ.get('SAGEMAKER_RUNTIME_ENDPOINT')
-
-        # TODO: Remove post-launch. This loads a custom botocore service model
-        # (from the 'sample/' directory) that includes pre-GA Job APIs
-        # (CreateJob, DescribeJob, ListJobs, etc.) not yet in the public
-        # botocore release. Once these APIs ship in the official botocore
-        # service-2.json, this custom loader is unnecessary and the standard
-        # session.client("sagemaker", endpoint_url=...) path will work.
-        import botocore.loaders
-        import botocore.session as bc_session_mod
-        import pathlib
-
-        # Look for bundled service model inside the package first,
-        # fall back to source-tree layout (sample/ as sibling of src/)
-        _bundled = pathlib.Path(__file__).resolve().parent.parent / "data" / "sample"
-        _source_tree = pathlib.Path(__file__).resolve().parent.parent.parent.parent.parent / "sample"
-        sample_model_dir = str(_bundled if _bundled.exists() else _source_tree)
-        bc_session = bc_session_mod.get_session()
-        loader = botocore.loaders.Loader(
-            extra_search_paths=[sample_model_dir],
-            include_default_search_paths=True,
+        self.sagemaker_client = session.client(
+            "sagemaker", region_name, config=self.config
         )
-        bc_session.register_component('data_loader', loader)
-        custom_session = Session(botocore_session=bc_session, region_name=env_region)
-
-        self.sagemaker_client = custom_session.client(
-            "sagemaker",
-            region_name=env_region,
-            endpoint_url=endpoint_url,
-            config=self.config,
-        )
-
         self.sagemaker_runtime_client = session.client(
-            "sagemaker-runtime", region_name,
-            endpoint_url=runtime_endpoint_url,
-            config=self.config,
+            "sagemaker-runtime", region_name, config=self.config
         )
         self.sagemaker_featurestore_runtime_client = session.client(
             "sagemaker-featurestore-runtime", region_name, config=self.config

@@ -41,6 +41,7 @@ class _ConcreteTrainer(BaseTrainer):
             instance_count=4,
             volume_size_in_gb=100,
             keep_alive_period_in_seconds=None,
+            training_plan_arn=None,
         )
         self.networking = None
         self.stopping_condition = None
@@ -75,10 +76,18 @@ def _run_serverful_with_replicas(trainer, replicas_enum=None):
         "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
         return_value="s3://bucket/recipe.yaml",
     ), patch(
+        "sagemaker.train.base_trainer.get_recipe_s3_uri",
+        return_value="s3://bucket/recipe.yaml",
+    ), patch(
         "sagemaker.train.common_utils.finetune_utils.get_training_image",
         return_value="image:latest",
     ), patch(
+        "sagemaker.train.base_trainer.get_training_image",
+        return_value="image:latest",
+    ), patch(
         "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
+    ), patch(
+        "sagemaker.train.base_trainer._validate_hyperparameter_values"
     ), patch(
         "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
         return_value={},
@@ -88,6 +97,9 @@ def _run_serverful_with_replicas(trainer, replicas_enum=None):
     ), patch(
         "sagemaker.train.base_trainer._get_smhp_replicas_enum",
         return_value=replicas_enum,
+    ), patch(
+        "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
+        return_value=None,
     ), patch(
         "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
         side_effect=_capture_render,
@@ -236,10 +248,18 @@ class TestReplicasEnumInjection:
             "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
             return_value="s3://bucket/recipe.yaml",
         ), patch(
+            "sagemaker.train.base_trainer.get_recipe_s3_uri",
+            return_value="s3://bucket/recipe.yaml",
+        ), patch(
             "sagemaker.train.common_utils.finetune_utils.get_training_image",
             return_value="image:latest",
         ), patch(
+            "sagemaker.train.base_trainer.get_training_image",
+            return_value="image:latest",
+        ), patch(
             "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
+        ), patch(
+            "sagemaker.train.base_trainer._validate_hyperparameter_values"
         ), patch(
             "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
             return_value={},
@@ -249,6 +269,9 @@ class TestReplicasEnumInjection:
         ), patch(
             "sagemaker.train.base_trainer._get_smhp_replicas_enum",
             return_value=[4, 8],
+        ), patch(
+            "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
+            return_value=None,
         ), patch(
             "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
             side_effect=lambda c, s: c,
@@ -401,15 +424,29 @@ class TestDisableOutputCompression:
             "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
             return_value="s3://bucket/recipe.yaml",
         ), patch(
+            "sagemaker.train.base_trainer.get_recipe_s3_uri",
+            return_value="s3://bucket/recipe.yaml",
+        ), patch(
             "sagemaker.train.common_utils.finetune_utils.get_training_image",
             return_value="image:latest",
         ), patch(
+            "sagemaker.train.base_trainer.get_training_image",
+            return_value="image:latest",
+        ), patch(
             "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
+        ), patch(
+            "sagemaker.train.base_trainer._validate_hyperparameter_values"
         ), patch(
             "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
             return_value={},
         ), patch(
             "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
+            return_value=None,
+        ), patch(
+            "sagemaker.train.base_trainer._get_smhp_replicas_enum",
+            return_value=None,
+        ), patch(
+            "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
             return_value=None,
         ), patch(
             "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",
@@ -447,15 +484,29 @@ class TestDisableOutputCompression:
             "sagemaker.train.common_utils.finetune_utils.get_recipe_s3_uri",
             return_value="s3://bucket/recipe.yaml",
         ), patch(
+            "sagemaker.train.base_trainer.get_recipe_s3_uri",
+            return_value="s3://bucket/recipe.yaml",
+        ), patch(
             "sagemaker.train.common_utils.finetune_utils.get_training_image",
             return_value="image:latest",
         ), patch(
+            "sagemaker.train.base_trainer.get_training_image",
+            return_value="image:latest",
+        ), patch(
             "sagemaker.train.common_utils.finetune_utils._validate_hyperparameter_values"
+        ), patch(
+            "sagemaker.train.base_trainer._validate_hyperparameter_values"
         ), patch(
             "sagemaker.train.common_utils.finetune_utils._get_smtj_override_spec",
             return_value={},
         ), patch(
             "sagemaker.train.common_utils.finetune_utils._get_smhp_replicas_enum",
+            return_value=None,
+        ), patch(
+            "sagemaker.train.base_trainer._get_smhp_replicas_enum",
+            return_value=None,
+        ), patch(
+            "sagemaker.train.base_trainer._get_smhp_instance_type_enum",
             return_value=None,
         ), patch(
             "sagemaker.train.common_utils.finetune_utils._render_recipe_placeholders",

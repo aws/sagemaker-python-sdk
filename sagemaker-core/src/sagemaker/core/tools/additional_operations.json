@@ -459,6 +459,14 @@
             "method_type": "object",
             "service_name": "sagemaker-featurestore-runtime"
         },
+        "UpdateRecord": {
+            "operation_name": "UpdateRecord",
+            "resource_name": "FeatureGroup",
+            "method_name": "update_record",
+            "return_type": "None",
+            "method_type": "object",
+            "service_name": "sagemaker-featurestore-runtime"
+        },
         "DeleteRecord": {
             "operation_name": "DeleteRecord",
             "resource_name": "FeatureGroup",

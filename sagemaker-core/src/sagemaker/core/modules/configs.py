@@ -74,7 +74,7 @@ __all__ = [
     "MetricDefinition",
 ]
 
-from sagemaker.core.modules.utils import convert_unassigned_to_none
+from sagemaker.core.modules.utils import convert_unassigned_to_none, validate_instance_preferences
 
 
 class BaseConfig(BaseModel):
@@ -91,7 +91,10 @@ class SourceCode(BaseConfig):
 
     Parameters:
         source_dir (Optional[str]):
-            The local directory containing the source code to be used in the training job container.
+            The local directory, S3 URI, or path to a tar.gz file stored locally or in S3
+            that contains the source code to be used in the training job container.
+            When an S3 URI is provided, the source code is used directly from S3
+            without local packaging.
         requirements (Optional[str]):
             The path within ``source_dir`` to a ``requirements.txt`` file. If specified, the listed
             requirements will be installed in the training job container.
@@ -144,6 +147,11 @@ class Compute(shapes.ResourceConfig):
             subsequent training jobs.
         instance_groups (Optional[List[InstanceGroup]]):
             A list of instance groups for heterogeneous clusters to be used in the training job.
+        instance_preferences (Optional[List[InstancePreference]]):
+            An ordered list of candidate instance types (maximum 5). When set, the platform tries
+            each candidate in list order and launches the job on the first type with available
+            capacity. Mutually exclusive with ``instance_type``, ``instance_groups``, and
+            ``instance_placement_config``.
         enable_managed_spot_training (Optional[bool]):
             To train models using managed spot training, choose True. Managed spot training
             provides a fully managed and scalable infrastructure for training machine learning
@@ -156,8 +164,10 @@ class Compute(shapes.ResourceConfig):
 
     @model_validator(mode="after")
     def _model_validator(self) -> "Compute":
-        """Convert Unassigned values to None."""
-        return convert_unassigned_to_none(self)
+        """Convert Unassigned values to None and validate instance_preferences."""
+        converted = convert_unassigned_to_none(self)
+        validate_instance_preferences(converted)
+        return converted
 
     def _to_resource_config(self) -> shapes.ResourceConfig:
         """Convert to a sagemaker_core.shapes.ResourceConfig object."""
@@ -166,6 +176,11 @@ class Compute(shapes.ResourceConfig):
         filtered_dict = {
             k: v for k, v in compute_config_dict.items() if k in resource_config_fields
         }
+        # Preserve the nested InstancePreference model objects instead of the
+        # dumped dicts, so pydantic does not re-validate their optional scalar
+        # fields (e.g. an unset per-preference instance_count) as Unassigned().
+        if self.instance_preferences:
+            filtered_dict["instance_preferences"] = self.instance_preferences
         return shapes.ResourceConfig(**filtered_dict)
 
 

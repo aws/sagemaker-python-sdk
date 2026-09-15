@@ -1,4 +1,57 @@
 # Changelog
+
+## v1.22.0 (2026-09-14)
+
+### New Features
+
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(feature-store): register HubContent Dataset from DatasetBuilder CSV paths (#6212)
+
+### Tests
+
+- test(mlops): add PipelineSession integration coverage for V3 trainers (#6235)
+
+## v1.21.0 (2026-08-25)
+
+### Bug Fixes
+
+- fix(core,mlops): honor caller region in feature_store ingest_dataframe and stop telemetry from blocking SDK calls (#6197)
+
+
+## v1.20.0 (2026-08-14)
+
+### Bug Fixes
+
+- fix(mlops): Add pre-validation for Bedrock and MLflow role permissions (#6162)
+
+
+## v1.19.0 (2026-08-10)
+
+- Update module dependencies
+
+
+## v1.18.0 (2026-07-30)
+
+### New Features
+
+- feat(feature-store): Add lineage registration to DatasetBuilder (#6014)
+
+
+## v1.17.0 (2026-07-24)
+
+### New Features
+
+- feat: Wire BatchWriteRecord and ListRecords into ingest_dataframe (#6026)
+
+### Tests
+
+- test(feature-processor): Isolate pipeline names to fix flaky integ tests (#6095)
+- test(integ): absorb iam:SimulatePrincipalPolicy throttling across suites (#6081)
+- test(integ): let exhausted IAM throttling fail instead of skipping (#6094)
+
 ## v1.16.0 (2026-07-15)
 
 ### Tests

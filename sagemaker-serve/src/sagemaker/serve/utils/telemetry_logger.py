@@ -244,11 +244,16 @@ def _construct_url(
 
 
 def _requests_helper(url, timeout):
-    """Placeholder docstring"""
+    """Make a GET request to the given URL
+
+    ``timeout`` must be passed by keyword. ``requests.get`` takes ``params`` as
+    its second positional argument, so passing it positionally would append the
+    value to the query string and leave the request with no timeout at all.
+    """
 
     response = None
     try:
-        response = requests.get(url, timeout)
+        response = requests.get(url, timeout=timeout)
     except requests.exceptions.RequestException as e:
         logger.debug("Request exception: %s", str(e))
     return response

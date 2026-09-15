@@ -6,6 +6,9 @@ from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.common import TrainingType, CustomizationTechnique, JOB_TYPE
 from sagemaker.core.resources import TrainingJob, ModelPackageGroup, MlflowTrackingServer, ModelPackage
 from sagemaker.core.shapes import VpcConfig
+from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
+from sagemaker.core.utils.utils import serialize
+from sagemaker.core.apiutils._boto_functions import to_pascal_case
 from sagemaker.train.defaults import TrainDefaults
 from sagemaker.train.utils import _get_unique_name, _get_jumpstart_tags
 from sagemaker.ai_registry.dataset import DataSet
@@ -31,11 +34,10 @@ from sagemaker.train.common_utils.finetune_utils import (
     _validate_eula_for_gated_model,
     _validate_hyperparameter_values
 )
+from sagemaker.train.common_utils.data_utils import is_multimodal_data, load_file_content, validate_data_path_exists
 from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter, TelemetryParamType
 from sagemaker.train.common_utils.telemetry_params import BASE_TRAINER_TELEMETRY_PARAMS
-from sagemaker.train.common_utils.data_utils import is_multimodal_data, load_file_content
 from sagemaker.train.common_utils.rlvr_reward_verifier import verify_reward_function
-from sagemaker.core.telemetry.telemetry_logging import _telemetry_emitter
 from sagemaker.core.telemetry.constants import Feature
 from sagemaker.train.constants import get_sagemaker_hub_name
 
@@ -132,12 +134,20 @@ class RLVRTrainer(BaseTrainer):
         stopping_condition (Optional[StoppingCondition]):
             The stopping condition to override training runtime limit.
             If not specified, uses SageMaker service default (24 hours for serverless training).
+        sequence_length (Optional[str]):
+            The sequence length for the training job. Valid values are
+            "1K", "2K", "4K", "8K", "16K", "32K", "64K", "128K".
+            If not specified, the service will use default recipe selection behavior.
         is_multimodal (Optional[bool]):
             Whether the training dataset contains multimodal data. If None (default),
             auto-detected from the training dataset at train time.
         skip_reward_validation (bool):
             If True, skips the reward function verification step before submitting
             the training job. Defaults to False.
+        notifications (Optional[Dict[str, Any]]):
+            Configuration for SNS notifications on job status changes. Requires 'sns_topic_arn'.
+            Optional keys: 'events' ["Completed", "Failed", "Stopped"], 'event_bus_arn',
+            and 'job_name_prefix'. If not specified, no notifications are sent.
     """
 
     _customization_technique = CustomizationTechnique.RLVR.value
@@ -159,15 +169,17 @@ class RLVRTrainer(BaseTrainer):
         networking: Optional[VpcConfig] = None,
         accept_eula: bool = False,
         stopping_condition: Optional[StoppingCondition] = None,
+        sequence_length: Optional[str] = None,
         recipe: Optional[str] = None,
         overrides: Optional[dict] = None,
         is_multimodal: Optional[bool] = None,
         skip_reward_validation: bool = False,
         base_model_name: Optional[str] = None,
         disable_output_compression: Optional[bool] = False,
+        notifications: Optional[Dict[str, Any]] = None,
         **kwargs,
     ):
-        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, **kwargs)
+        super().__init__(base_model_name=base_model_name, disable_output_compression=disable_output_compression, notifications=notifications, **kwargs)
 
         self.model, self._model_name, self.model_source = _resolve_model_with_checkpoint(
             model, self.base_model_name, compute, self.sagemaker_session,
@@ -197,6 +209,7 @@ class RLVRTrainer(BaseTrainer):
         self.kms_key_id = kms_key_id
         self.networking = networking
         self.stopping_condition = stopping_condition
+        self.sequence_length = sequence_length
         self._recipe_path = recipe
         self._overrides = overrides
         self._recipe_resolver = None
@@ -211,6 +224,7 @@ class RLVRTrainer(BaseTrainer):
                                                                      self.sagemaker_session or TrainDefaults.get_sagemaker_session(
                                                                      sagemaker_session=self.sagemaker_session
                                                                     ),
+                                                                     sequence_length=self.sequence_length,
                                                                      compute=self.compute)
 
         # Remove constructor-handled hyperparameters
@@ -229,9 +243,6 @@ class RLVRTrainer(BaseTrainer):
             if hasattr(self.hyperparameters, 'reward_lambda_arn'):
                 delattr(self.hyperparameters, 'reward_lambda_arn')
                 self.hyperparameters._specs.pop('reward_lambda_arn', None)
-            if hasattr(self.hyperparameters, 'preset_reward_function'):
-                delattr(self.hyperparameters, 'preset_reward_function')
-                self.hyperparameters._specs.pop('preset_reward_function', None)
             if hasattr(self.hyperparameters, 'data_path'):
                 delattr(self.hyperparameters, 'data_path')
                 self.hyperparameters._specs.pop('data_path', None)
@@ -374,8 +385,9 @@ class RLVRTrainer(BaseTrainer):
         )
 
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="RLVRTrainer.train")
+    @runnable_by_pipeline
     def train(self, training_dataset: Optional[Union[str, DataSet]] = None,
-              validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5):
+              validation_dataset: Optional[Union[str, DataSet]] = None, wait: bool = True, wait_timeout: Optional[int] = None, poll: int = 5, dry_run: bool = False):
         """Execute the RLVR training job.
 
         Parameters:
@@ -392,10 +404,29 @@ class RLVRTrainer(BaseTrainer):
                 If None, uses the default timeout from the wait utility.
             poll (int):
                 Polling interval in seconds for checking training job status. Defaults to 5.
+            dry_run (bool):
+                If True, runs all validation (IAM, hyperparameters, infrastructure, data paths)
+                without submitting a job. Returns None on success, raises on validation failure.
+                Defaults to False.
 
         Returns:
-            TrainingJob: The SageMaker training job object.
+            TrainingJob: The SageMaker training job object, or None if dry_run=True.
+
+        Raises:
+            ValueError: If neither a custom reward function nor a preset reward
+                function hyperparameter is configured.
         """
+        # A reward signal is required: either a custom reward function (Lambda ARN,
+        # evaluator ARN, or Evaluator object) or the preset_reward_function hyperparameter.
+        preset_reward_function = getattr(self.hyperparameters, "preset_reward_function", None)
+        if not self.custom_reward_function and not preset_reward_function:
+            raise ValueError(
+                "RLVR training requires a reward signal. Provide either "
+                "'custom_reward_function' (a Lambda ARN, evaluator ARN, or Evaluator object) "
+                "when initializing RLVRTrainer, or set the 'preset_reward_function' "
+                "hyperparameter (e.g. trainer.hyperparameters.preset_reward_function = 'prime_code')."
+            )
+
         # Dispatch based on compute type
         if isinstance(self.compute, HyperPodCompute):
             return self._train_hyperpod(
@@ -404,6 +435,7 @@ class RLVRTrainer(BaseTrainer):
                 wait=wait,
                 wait_timeout=wait_timeout,
                 poll=poll,
+                dry_run=dry_run,
             )
         elif isinstance(self.compute, TrainingJobCompute):
             return self._train_serverful_smtj(
@@ -412,6 +444,7 @@ class RLVRTrainer(BaseTrainer):
                 wait=wait,
                 wait_timeout=wait_timeout,
                 poll=poll,
+                dry_run=dry_run,
             )
 
         # Default: serverless compute (None)
@@ -460,6 +493,7 @@ class RLVRTrainer(BaseTrainer):
                                                      training_type=self.training_type,
                                                      accept_eula=self.accept_eula,
                                                      evaluator_arn=evaluator_arn,
+                                                     sequence_length=self.sequence_length,
                                                      job_type=JOB_TYPE
                                                      )
         mlflow_config = _create_mlflow_config(
@@ -467,7 +501,11 @@ class RLVRTrainer(BaseTrainer):
             mlflow_resource_arn=self.mlflow_resource_arn,
             mlflow_experiment_name=self.mlflow_experiment_name,
             mlflow_run_name=self.mlflow_run_name,
+            dry_run=dry_run,
         )
+
+        # Enforce prompt + response fit the recipe's supported sequence length.
+        self.hyperparameters.validate_length_constraints()
 
         final_hyperparameters = self.hyperparameters.to_dict()
 
@@ -498,6 +536,9 @@ class RLVRTrainer(BaseTrainer):
         vpc_config = self.networking if self.networking else None
         tags = _get_jumpstart_tags(self._model_name, get_sagemaker_hub_name())
 
+        # Merge user-provided tags with the JumpStart tags
+        tags.extend(self.tags or [])
+
         # Build TrainingJob.create() arguments
         create_args = {
             "training_job_name": current_training_job_name,
@@ -517,6 +558,45 @@ class RLVRTrainer(BaseTrainer):
         # Only pass stopping_condition if explicitly provided by user
         if self.stopping_condition is not None:
             create_args["stopping_condition"] = self.stopping_condition
+
+        # If running within a PipelineSession, intercept the request and store
+        # step arguments instead of launching a training job.
+        # This must come before data path validation since in pipeline mode
+        # the data path may be a pipeline parameter that doesn't exist yet.
+        if isinstance(sagemaker_session, PipelineSession):
+            pipeline_args = {k: v for k, v in create_args.items()
+                            if k not in ("session", "region")}
+            pipeline_args.pop("training_job_name", None)
+            pipeline_request = {to_pascal_case(k): v for k, v in pipeline_args.items()}
+            # Normalize Tags to PascalCase dicts. JumpStart tags come as lowercase
+            # dicts; user-provided tags come as Tag pydantic objects (typed
+            # Optional[List[Tag]]). Handle both.
+            if "Tags" in pipeline_request and pipeline_request["Tags"]:
+                pipeline_request["Tags"] = [
+                    {"Key": t.get("key", t.get("Key")), "Value": t.get("value", t.get("Value"))}
+                    if isinstance(t, dict)
+                    else {"Key": t.key, "Value": t.value}
+                    for t in pipeline_request["Tags"]
+                ]
+            serialized_request = serialize(pipeline_request)
+            sagemaker_session._intercept_create_request(serialized_request, None, "train")
+            return
+
+        # Validate data paths exist before submission
+        effective_training = training_dataset or self.training_dataset
+        effective_validation = validation_dataset or self.validation_dataset
+        if effective_training:
+            validate_data_path_exists(
+                effective_training, sagemaker_session, label="training dataset"
+            )
+        if effective_validation:
+            validate_data_path_exists(
+                effective_validation, sagemaker_session, label="validation dataset"
+            )
+
+        if dry_run:
+            logger.info("Dry-run validation passed. No job submitted.")
+            return None
 
         try:
             training_job = TrainingJob.create(**create_args)

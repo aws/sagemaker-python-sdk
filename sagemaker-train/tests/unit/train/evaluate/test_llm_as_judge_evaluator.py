@@ -14,12 +14,63 @@
 from __future__ import absolute_import
 
 import json
+from datetime import datetime, timedelta, timezone
+
 import pytest
 from unittest.mock import patch, Mock
+from botocore.exceptions import ClientError
 from pydantic import ValidationError
 
 from sagemaker.train.evaluate.llm_as_judge_evaluator import LLMAsJudgeEvaluator
 from sagemaker.train.evaluate.constants import EvalType
+
+# Where the evaluator reads the supported-judge-models list from.
+_S3_READ_FILE_PATH = "sagemaker.core.s3.client.S3Downloader.read_file"
+
+
+def _configure_bedrock_get_model(mock_session, lifecycle=None, side_effect=None):
+    """Wire mock_session.boto_session.client('bedrock').get_foundation_model.
+
+    Args:
+        mock_session: Mock session whose boto_session is a Mock.
+        lifecycle: dict placed at modelDetails.modelLifecycle in the response.
+        side_effect: if set, raised by get_foundation_model instead of returning.
+    """
+    bedrock_client = Mock()
+    if side_effect is not None:
+        bedrock_client.get_foundation_model.side_effect = side_effect
+    else:
+        bedrock_client.get_foundation_model.return_value = {
+            "modelDetails": {"modelLifecycle": lifecycle or {"status": "ACTIVE"}}
+        }
+    mock_session.boto_session.client.return_value = bedrock_client
+    return bedrock_client
+
+
+def _supported_models_doc(model_ids):
+    """Build a supported-llmaj-judge-models.json body listing ``model_ids``."""
+    return json.dumps(
+        {
+            "schema_version": "1.0",
+            "supported_judge_models": [{"model_id": mid} for mid in model_ids],
+        }
+    )
+
+
+def _patch_supported_models(model_ids=None, side_effect=None):
+    """Patch S3Downloader.read_file to serve a supported-judge-models list.
+
+    Args:
+        model_ids: iterable of model_ids the list should contain.
+        side_effect: if provided, set as read_file's side_effect (e.g. an error)
+            instead of returning a document body.
+    """
+    if side_effect is not None:
+        return patch(_S3_READ_FILE_PATH, side_effect=side_effect)
+    return patch(
+        _S3_READ_FILE_PATH, return_value=_supported_models_doc(model_ids or [])
+    )
+
 
 # Test constants
 DEFAULT_REGION = "us-west-2"
@@ -877,89 +928,102 @@ def test_llm_as_judge_evaluator_valid_evaluator_models(mock_artifact, mock_resol
     mock_session.boto_region_name = "us-west-2"  # Region where all models including nova-pro are available
     mock_session.boto_session = Mock()
     mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
-    
-    for model in valid_models:
-        evaluator = LLMAsJudgeEvaluator(
-            model=DEFAULT_MODEL,
-            evaluator_model=model,
-            dataset=DEFAULT_DATASET,
-            builtin_metrics=["Correctness"],
-            s3_output_path=DEFAULT_S3_OUTPUT,
-            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
-            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
-            sagemaker_session=mock_session,
-        )
-        assert evaluator.evaluator_model == model
+
+    # The supported-judge-models list reports every model under test as supported.
+    with _patch_supported_models(model_ids=valid_models):
+        for model in valid_models:
+            evaluator = LLMAsJudgeEvaluator(
+                model=DEFAULT_MODEL,
+                evaluator_model=model,
+                dataset=DEFAULT_DATASET,
+                builtin_metrics=["Correctness"],
+                s3_output_path=DEFAULT_S3_OUTPUT,
+                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+                model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+                sagemaker_session=mock_session,
+            )
+            assert evaluator.evaluator_model == model
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
 @patch('sagemaker.core.resources.Artifact')
 def test_llm_as_judge_evaluator_invalid_evaluator_model(mock_artifact, mock_resolve):
-    """Test LLMAsJudgeEvaluator raises error for invalid evaluator model."""
+    """Test LLMAsJudgeEvaluator fails fast when the model is not in the supported list.
+
+    Covers both never-supported models and EOL models: neither appears in the
+    service-maintained supported-judge-models list, so construction raises.
+    """
     mock_info = Mock()
     mock_info.base_model_name = DEFAULT_MODEL
     mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
     mock_info.source_model_package_arn = None
     mock_resolve.return_value = mock_info
-    
+
     mock_artifact.get_all.return_value = iter([])
     mock_artifact_instance = Mock()
     mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
     mock_artifact.create.return_value = mock_artifact_instance
-    
+
     mock_session = Mock()
     mock_session.boto_region_name = DEFAULT_REGION
     mock_session.boto_session = Mock()
     mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
-    
-    with pytest.raises(ValidationError) as exc_info:
-        LLMAsJudgeEvaluator(
-            model=DEFAULT_MODEL,
-            evaluator_model="invalid-model",
-            dataset=DEFAULT_DATASET,
-            builtin_metrics=["Correctness"],
-            s3_output_path=DEFAULT_S3_OUTPUT,
-            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
-            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
-            sagemaker_session=mock_session,
-        )
-    assert "Invalid evaluator_model 'invalid-model'" in str(exc_info.value)
+
+    # The supported list contains real models, but not "invalid-model".
+    supported = [DEFAULT_EVALUATOR_MODEL, "anthropic.claude-3-haiku-20240307-v1:0"]
+    with _patch_supported_models(model_ids=supported):
+        with pytest.raises(ValidationError) as exc_info:
+            LLMAsJudgeEvaluator(
+                model=DEFAULT_MODEL,
+                evaluator_model="invalid-model",
+                dataset=DEFAULT_DATASET,
+                builtin_metrics=["Correctness"],
+                s3_output_path=DEFAULT_S3_OUTPUT,
+                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+                model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+                sagemaker_session=mock_session,
+            )
+    assert "is not a supported LLM-as-Judge model" in str(exc_info.value)
+    assert "invalid-model" in str(exc_info.value)
 
 
 @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
 @patch('sagemaker.core.resources.Artifact')
 def test_llm_as_judge_evaluator_region_restriction(mock_artifact, mock_resolve, mock_get_session):
-    """Test LLMAsJudgeEvaluator raises error for model not available in region."""
+    """Test LLMAsJudgeEvaluator raises when the model is absent from a region's list."""
     mock_info = Mock()
     mock_info.base_model_name = DEFAULT_MODEL
     mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
     mock_info.source_model_package_arn = None
     mock_resolve.return_value = mock_info
-    
+
     mock_artifact.get_all.return_value = iter([])
     mock_artifact_instance = Mock()
     mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
     mock_artifact.create.return_value = mock_artifact_instance
-    
+
     mock_session = Mock()
     mock_session.boto_region_name = "eu-central-1"  # Region not supported for nova-pro
     mock_session.boto_session = Mock()
     mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
     mock_get_session.return_value = mock_session
-    
-    with pytest.raises(ValidationError) as exc_info:
-        LLMAsJudgeEvaluator(
-            model=DEFAULT_MODEL,
-            evaluator_model="amazon.nova-pro-v1:0",
-            dataset=DEFAULT_DATASET,
-            builtin_metrics=["Correctness"],
-            s3_output_path=DEFAULT_S3_OUTPUT,
-            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
-            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
-            sagemaker_session=mock_session,
-        )
-    assert "not available in region" in str(exc_info.value)
+
+    # The eu-central-1 supported-judge-models list does not include nova-pro.
+    with _patch_supported_models(model_ids=["anthropic.claude-3-haiku-20240307-v1:0"]):
+        with pytest.raises(ValidationError) as exc_info:
+            LLMAsJudgeEvaluator(
+                model=DEFAULT_MODEL,
+                evaluator_model="amazon.nova-pro-v1:0",
+                dataset=DEFAULT_DATASET,
+                builtin_metrics=["Correctness"],
+                s3_output_path=DEFAULT_S3_OUTPUT,
+                mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+                model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+                sagemaker_session=mock_session,
+            )
+    assert "is not a supported LLM-as-Judge model" in str(exc_info.value)
+    assert "eu-central-1" in str(exc_info.value)
 
 
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
@@ -1033,11 +1097,11 @@ def test_non_nova_jumpstart_model_uses_existing_path(mock_artifact, mock_resolve
 @patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
 @patch('sagemaker.core.resources.Artifact')
 def test_nova_model_rejected_in_unsupported_region(mock_artifact, mock_resolve):
-    """Test that Nova model in unsupported region fails validation.
+    """Test that a Nova base model in an unsupported region fails validation.
 
-    In practice, the evaluator_model region validator fires first when both
-    the evaluator model and the Bedrock prefix are unsupported in a region.
-    This test verifies that construction fails with a region-related error.
+    evaluator_model validation degrades gracefully here (no Bedrock list is
+    available from the bare mock), so the Nova cross-region-inference
+    compatibility root-validator is what blocks construction.
     """
     mock_info = Mock()
     mock_info.base_model_name = "nova-textgeneration-lite"
@@ -1055,7 +1119,7 @@ def test_nova_model_rejected_in_unsupported_region(mock_artifact, mock_resolve):
     mock_session.boto_session = Mock()
     mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
 
-    with pytest.raises(ValueError, match="not available in region"):
+    with pytest.raises(ValueError, match="not supported for"):
         LLMAsJudgeEvaluator(
             evaluator_model=DEFAULT_EVALUATOR_MODEL,
             dataset=DEFAULT_DATASET,
@@ -1065,3 +1129,281 @@ def test_nova_model_rejected_in_unsupported_region(mock_artifact, mock_resolve):
             model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
             sagemaker_session=mock_session,
         )
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_evaluator_model_validation_degrades_when_list_unreadable(mock_artifact, mock_resolve):
+    """If the supported-judge-models list can't be read, construction must NOT block.
+
+    This is the degradation route (e.g. denied access or a missing object): we
+    warn that the model can't be verified but continue rather than block the user.
+    """
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+
+    # Reading the list fails (denied access / missing object / network error).
+    with _patch_supported_models(side_effect=Exception("access denied")):
+        evaluator = LLMAsJudgeEvaluator(
+            evaluator_model=DEFAULT_EVALUATOR_MODEL,
+            dataset=DEFAULT_DATASET,
+            model=DEFAULT_MODEL,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+    assert evaluator.evaluator_model == DEFAULT_EVALUATOR_MODEL
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_evaluator_model_validation_degrades_on_malformed_list(mock_artifact, mock_resolve):
+    """A malformed/unexpected list document must NOT block construction."""
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+
+    # File is present but not the expected shape (no supported_judge_models array).
+    with patch(_S3_READ_FILE_PATH, return_value=json.dumps({"unexpected": True})):
+        evaluator = LLMAsJudgeEvaluator(
+            evaluator_model=DEFAULT_EVALUATOR_MODEL,
+            dataset=DEFAULT_DATASET,
+            model=DEFAULT_MODEL,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+    assert evaluator.evaluator_model == DEFAULT_EVALUATOR_MODEL
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_evaluator_model_validation_degrades_without_region(mock_artifact, mock_resolve):
+    """No resolvable region means validation is skipped (non-blocking) with a warning."""
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    mock_session = Mock()
+    mock_session.boto_region_name = None  # No region resolvable from session
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+
+    with patch(_S3_READ_FILE_PATH) as mock_read_file:
+        evaluator = LLMAsJudgeEvaluator(
+            evaluator_model=DEFAULT_EVALUATOR_MODEL,
+            dataset=DEFAULT_DATASET,
+            model=DEFAULT_MODEL,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+    assert evaluator.evaluator_model == DEFAULT_EVALUATOR_MODEL
+    # The list should not be fetched when no region is available.
+    mock_read_file.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# _check_evaluator_model_lifecycle (evaluate()-time end-of-life check)
+# ---------------------------------------------------------------------------
+def _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session):
+    """Construct an evaluator (supported-model check stubbed out) for lifecycle tests."""
+    mock_info = Mock()
+    mock_info.base_model_name = DEFAULT_MODEL
+    mock_info.base_model_arn = DEFAULT_BASE_MODEL_ARN
+    mock_info.source_model_package_arn = None
+    mock_resolve.return_value = mock_info
+
+    mock_artifact.get_all.return_value = iter([])
+    mock_artifact_instance = Mock()
+    mock_artifact_instance.artifact_arn = DEFAULT_ARTIFACT_ARN
+    mock_artifact.create.return_value = mock_artifact_instance
+
+    with _patch_supported_models(model_ids=[DEFAULT_EVALUATOR_MODEL]):
+        return LLMAsJudgeEvaluator(
+            evaluator_model=DEFAULT_EVALUATOR_MODEL,
+            dataset=DEFAULT_DATASET,
+            model=DEFAULT_MODEL,
+            s3_output_path=DEFAULT_S3_OUTPUT,
+            mlflow_resource_arn=DEFAULT_MLFLOW_ARN,
+            model_package_group=DEFAULT_MODEL_PACKAGE_GROUP_ARN,
+            sagemaker_session=mock_session,
+        )
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_lifecycle_active_model_passes(mock_artifact, mock_resolve):
+    """An in-service (ACTIVE) judge model passes the lifecycle check."""
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
+
+    bedrock_client = _configure_bedrock_get_model(
+        mock_session, lifecycle={"status": "ACTIVE"}
+    )
+    evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
+
+    bedrock_client.get_foundation_model.assert_called_once_with(
+        modelIdentifier=DEFAULT_EVALUATOR_MODEL
+    )
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_lifecycle_future_eol_passes(mock_artifact, mock_resolve):
+    """A LEGACY model whose end-of-life is still in the future is still usable."""
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
+
+    future = datetime.now(timezone.utc) + timedelta(days=30)
+    _configure_bedrock_get_model(
+        mock_session, lifecycle={"status": "LEGACY", "endOfLifeTime": future}
+    )
+    evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_lifecycle_past_eol_raises(mock_artifact, mock_resolve):
+    """A model past its end-of-life fails fast before the job is submitted."""
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
+
+    past = datetime.now(timezone.utc) - timedelta(days=1)
+    _configure_bedrock_get_model(
+        mock_session, lifecycle={"status": "LEGACY", "endOfLifeTime": past}
+    )
+    with pytest.raises(ValueError, match="reached end of life"):
+        evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_lifecycle_model_not_found_raises(mock_artifact, mock_resolve):
+    """A model absent from the region (ResourceNotFound) fails fast."""
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
+
+    not_found = ClientError(
+        {"Error": {"Code": "ResourceNotFoundException", "Message": "no such model"}},
+        "GetFoundationModel",
+    )
+    _configure_bedrock_get_model(mock_session, side_effect=not_found)
+    with pytest.raises(ValueError, match="not available in region"):
+        evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_lifecycle_access_denied_warns_and_continues(mock_artifact, mock_resolve):
+    """AccessDenied from GetFoundationModel → warn about the permission, don't block.
+
+    We call Bedrock directly (no SimulatePrincipalPolicy pre-gate), so a missing —
+    including a scoped — permission surfaces here as AccessDenied and degrades.
+    """
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
+
+    denied = ClientError(
+        {"Error": {"Code": "AccessDeniedException", "Message": "not authorized"}},
+        "GetFoundationModel",
+    )
+    _configure_bedrock_get_model(mock_session, side_effect=denied)
+    # Should NOT raise — degrades with a permission-specific warning.
+    evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_lifecycle_transient_bedrock_error_does_not_block(mock_artifact, mock_resolve):
+    """A transient Bedrock error (e.g. throttling) must NOT block construction/submit."""
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
+
+    throttling = ClientError(
+        {"Error": {"Code": "ThrottlingException", "Message": "slow down"}},
+        "GetFoundationModel",
+    )
+    _configure_bedrock_get_model(mock_session, side_effect=throttling)
+    evaluator._check_evaluator_model_lifecycle(DEFAULT_REGION)  # no raise
+
+
+@patch('sagemaker.train.common_utils.model_resolution._resolve_base_model')
+@patch('sagemaker.core.resources.Artifact')
+def test_evaluate_invokes_lifecycle_check(mock_artifact, mock_resolve):
+    """evaluate() must call _check_evaluator_model_lifecycle with the resolved region."""
+    mock_session = Mock()
+    mock_session.boto_region_name = DEFAULT_REGION
+    mock_session.boto_session = Mock()
+    mock_session.get_caller_identity_arn.return_value = DEFAULT_ROLE
+    mock_session.sagemaker_config = None  # let the telemetry decorator resolve cleanly
+    evaluator = _build_lifecycle_evaluator(mock_artifact, mock_resolve, mock_session)
+
+    sentinel = RuntimeError("lifecycle-check-invoked")
+    aws_context = {
+        "role_arn": DEFAULT_ROLE,
+        "region": DEFAULT_REGION,
+        "account_id": "123456789012",
+    }
+    with patch.object(evaluator, "_get_resolved_model_info", return_value=None), \
+         patch.object(evaluator, "_get_aws_execution_context", return_value=aws_context), \
+         patch.object(
+             evaluator, "_check_evaluator_model_lifecycle", side_effect=sentinel
+         ) as mock_lifecycle:
+        with pytest.raises(RuntimeError, match="lifecycle-check-invoked"):
+            evaluator.evaluate()
+
+    mock_lifecycle.assert_called_once_with(DEFAULT_REGION)

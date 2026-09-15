@@ -92,6 +92,8 @@ def test_rlvr_trainer_lora_complete_workflow(sagemaker_session):
         accept_eula=True,
         base_job_name=f"rlvr-lora-integ-{unique_id}",
     )
+
+    rlvr_trainer.hyperparameters.preset_reward_function = "prime_code"
     
     # Create training job
     training_job = rlvr_trainer.train(wait=False)
@@ -352,4 +354,44 @@ def test_rlvr_trainer_nemotron_with_kl_and_recipe(sagemaker_session):
     assert training_job.training_job_status == "Completed"
     assert hasattr(training_job, 'output_model_package_arn')
     assert training_job.output_model_package_arn is not None
-    
+
+
+@pytest.mark.gpu_intensive
+def test_rlvr_trainer_lora_with_sequence_length(sagemaker_session):
+    """Test RLVR training workflow with LORA and sequence_length specified."""
+    unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
+
+    rlvr_trainer = RLVRTrainer(
+        model="huggingface-vlm-qwen3-5-9b",
+        training_type=TrainingType.LORA,
+        model_package_group="sdk-test-finetuned-models",
+        mlflow_experiment_name="test-rlvr-finetuned-models-exp",
+        mlflow_run_name="test-rlvr-finetuned-models-run",
+        training_dataset="s3://mc-flows-sdk-testing/input_data/rlvr-rlaif-test-data/train_285.jsonl",
+        s3_output_path="s3://mc-flows-sdk-testing/output/",
+        custom_reward_function="arn:aws:sagemaker:us-west-2:729646638167:hub-content/sdktest/JsonDoc/rlvr-test-rf/0.0.1",
+        accept_eula=True,
+        sequence_length="8K",
+        base_job_name=f"rlvr-seqlen-integ-{unique_id}",
+    )
+
+    training_job = rlvr_trainer.train(wait=False)
+    logger.info(f"Training job submitted: {training_job.training_job_arn}")
+
+    max_wait_time = 7200  # 2 hour timeout (sequence_length training takes >1 hour)
+    poll_interval = 30
+    start_time = time.time()
+
+    while time.time() - start_time < max_wait_time:
+        training_job.refresh()
+        status = training_job.training_job_status
+
+        if status in ["Completed", "Failed", "Stopped"]:
+            break
+
+        time.sleep(poll_interval)
+
+    assert training_job.training_job_status == "Completed"
+    assert hasattr(training_job, 'output_model_package_arn')
+    assert training_job.output_model_package_arn is not None
+

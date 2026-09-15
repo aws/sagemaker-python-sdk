@@ -38,6 +38,14 @@ def mb_class():
     return ModelBuilder
 
 
+def _mock_session():
+    """A mock SageMaker session whose ``sagemaker_config`` is a real dict, so the
+    full ``deploy()`` path (which validates that config) runs against a mock."""
+    session = MagicMock()
+    session.sagemaker_config = {}
+    return session
+
+
 def _rec_row(
     spec_name=None,
     model_package_arn="arn:aws:sm:us-west-2:1:model-package/p/1",
@@ -128,6 +136,41 @@ class TestDeployRecommendationRowSelection:
             # describe_model_package should have been called with row B's ARN.
             described_arn = sm_mock.describe_model_package.call_args.kwargs["ModelPackageName"]
             assert described_arn == "arn:.../p/B"
+        finally:
+            for p in patches:
+                p.stop()
+
+    def test_recommendation_row_selects_exact_row_against_describe(self, mb_class):
+        """Passing recommendation_row deploys that exact row's ModelPackage even
+        when another row shares its spec name — verified against the real
+        describe_model_package call, not just a forwarded kwarg."""
+        rows = [
+            _rec_row(spec_name="dup", model_package_arn="arn:.../p/0"),
+            _rec_row(spec_name="dup", model_package_arn="arn:.../p/1"),
+        ]
+        mb = self._make_builder_with_rows(mb_class, rows)
+        sm_mock = mb.sagemaker_session.sagemaker_client
+        sm_mock.describe_model_package.return_value = {"ModelApprovalStatus": "Approved"}
+
+        patches = self._patch_aws_calls()
+        for p in patches:
+            p.start()
+        try:
+            mb._deploy_recommendation(
+                recommendation_index=0,  # default; must be ignored in favor of the row
+                recommendation_spec_name=None,
+                recommendation_row=rows[1],
+                endpoint_name=None,
+                model_name=None,
+                endpoint_config_name=None,
+                role="arn:role",
+                instance_type=None,
+                initial_instance_count=None,
+                tags=None,
+                wait=False,
+            )
+            described_arn = sm_mock.describe_model_package.call_args.kwargs["ModelPackageName"]
+            assert described_arn == "arn:.../p/1"
         finally:
             for p in patches:
                 p.stop()
@@ -247,10 +290,11 @@ class TestDeployRecommendationRoleFallback:
 
 
 class TestDeployRecommendationSpeculativeDecoding:
-    """Speculative-decoding / kernel-tuning recommendations (ModelPackage carries
-    AdditionalModelDataSources) are collapsed to a single ModelDataSource +
-    OPTION_SPECULATIVE_DRAFT_MODEL env so the model can be hosted (Inference
-    Components reject AdditionalModelDataSources)."""
+    """Optimized recommendations (kernel tuning / speculative decoding) carry
+    the base weights and any draft model as AdditionalModelDataSources on the
+    ModelPackage. The hosting stack (including Inference Components) now resolves
+    those channels itself, so deploy just passes the ModelPackage through — no
+    client-side collapsing of the additional sources into a primary source."""
 
     def _make_builder(self, mb_class, described):
         mb = mb_class(sagemaker_session=MagicMock())
@@ -291,52 +335,22 @@ class TestDeployRecommendationSpeculativeDecoding:
             },
         }
 
-    def test_base_model_channel_promoted_to_primary_source(self, mb_class):
-        # Optimized recs put the weights in a base_model channel with an empty
-        # primary ModelDataSource; the base_model S3 uri becomes the primary source,
-        # and env vars that pointed at the old channel path are repointed to
-        # /opt/ml/model (where the primary source mounts).
+    def test_optimized_recommendation_deploys_via_model_package(self, mb_class):
+        # An optimized rec exposes base_model + draft_model as additional data
+        # sources; deploy no longer collapses them — it passes the ModelPackage
+        # through and lets the hosting stack resolve the channels.
+        #
+        # The AdditionalModelDataSources below are intentionally present as a
+        # regression guard: the current path reads only ModelApprovalStatus and
+        # ignores them, so the two negative assertions (no model_data_source /
+        # no additional_model_data_sources) only fail if the client-side
+        # collapse logic is ever re-introduced.
         described = {
             "ModelApprovalStatus": "Approved",
             "InferenceSpecification": {
                 "Containers": [
                     {
                         "Image": "123.dkr.ecr.us-west-2.amazonaws.com/djl-inference:latest",
-                        "Environment": {
-                            "OPTION_TENSOR_PARALLEL_DEGREE": "1",
-                            "HF_MODEL_ID": "/opt/ml/additional-model-data-sources/base_model",
-                            "option.model_id": "/opt/ml/additional-model-data-sources/base_model",
-                        },
-                        "AdditionalModelDataSources": [
-                            self._channel("base_model", "s3://base/weights/")
-                        ],
-                    }
-                ]
-            },
-        }
-        mb = self._make_builder(mb_class, described)
-        container = self._deploy(mb).call_args.kwargs["primary_container"]
-
-        # No AdditionalModelDataSources on the created model (IC would reject it).
-        assert not getattr(container, "additional_model_data_sources", None)
-        assert not getattr(container, "model_package_name", None)
-        # base_model weights promoted to the primary source.
-        assert container.model_data_source.s3_data_source.s3_uri == "s3://base/weights/"
-        # Env vars that referenced the old channel path now point at the primary mount.
-        assert container.environment["HF_MODEL_ID"] == "/opt/ml/model"
-        assert container.environment["option.model_id"] == "/opt/ml/model"
-        # No draft channel here, so no draft env.
-        assert "OPTION_SPECULATIVE_DRAFT_MODEL" not in container.environment
-        assert container.environment["OPTION_TENSOR_PARALLEL_DEGREE"] == "1"
-
-    def test_draft_model_channel_mounted_via_env(self, mb_class):
-        described = {
-            "ModelApprovalStatus": "Approved",
-            "InferenceSpecification": {
-                "Containers": [
-                    {
-                        "Image": "123.dkr.ecr.us-west-2.amazonaws.com/djl-inference:latest",
-                        "Environment": {},
                         "AdditionalModelDataSources": [
                             self._channel("base_model", "s3://base/weights/"),
                             self._channel("draft_model", "s3://draft/model/"),
@@ -348,19 +362,15 @@ class TestDeployRecommendationSpeculativeDecoding:
         mb = self._make_builder(mb_class, described)
         container = self._deploy(mb).call_args.kwargs["primary_container"]
 
-        # base_model is the primary source.
-        assert container.model_data_source.s3_data_source.s3_uri == "s3://base/weights/"
-        # The draft channel stays attached as an additional model data source so
-        # the speculative-decoding env path is actually populated at runtime
-        # (a model-based endpoint supports additional model data sources).
-        assert len(container.additional_model_data_sources) == 1
-        draft = container.additional_model_data_sources[0]
-        assert draft.channel_name == "draft_model"
-        assert draft.s3_data_source.s3_uri == "s3://draft/model/"
-        assert (
-            container.environment["OPTION_SPECULATIVE_DRAFT_MODEL"]
-            == "/opt/ml/additional-model-data-sources/draft_model/"
-        )
+        # Deployed straight from the ModelPackage — no client-side collapsing.
+        assert container.model_package_name == "arn:.../p/A"
+        # The row's inference_specification_name is threaded onto the container
+        # (guards the `if inference_specification_name:` branch from regressing).
+        assert container.inference_specification_name == "A"
+        # No collapse: the additional sources above must NOT become a primary
+        # model_data_source / additional_model_data_sources on the container.
+        assert not getattr(container, "model_data_source", None)
+        assert not getattr(container, "additional_model_data_sources", None)
 
     def test_no_additional_sources_uses_model_package(self, mb_class):
         described = {
@@ -370,7 +380,7 @@ class TestDeployRecommendationSpeculativeDecoding:
         mb = self._make_builder(mb_class, described)
         model_create = self._deploy(mb)
         container = model_create.call_args.kwargs["primary_container"]
-        # Plain (non-speculative-decoding) recommendation still deploys via the ModelPackage.
+        # Plain (non-optimized) recommendation also deploys via the ModelPackage.
         assert container.model_package_name == "arn:.../p/A"
 
 
@@ -505,9 +515,7 @@ class TestRegisterReturnsArn:
         with patch(
             "sagemaker.serve.model_builder.create_model_package_from_containers",
             return_value={"ModelPackageArn": arn},
-        ), patch(
-            "sagemaker.serve.model_builder.get_model_package_args", return_value={}
-        ), patch(
+        ), patch("sagemaker.serve.model_builder.get_model_package_args", return_value={}), patch(
             "sagemaker.serve.model_builder.update_container_with_inference_params",
             side_effect=lambda **kw: kw.get("container_def"),
         ), patch.object(
@@ -645,3 +653,84 @@ class TestDeployRecommendationSpecNameMultiMatch:
             )
         # First match (row A) is the one described/deployed.
         assert sm.describe_model_package.call_args.kwargs["ModelPackageName"] == "arn:.../p/A"
+
+
+class TestDeployRecommendationRowObject:
+    """deploy(recommendation=<row>) resolves a recommendation row to its
+    positional index — the exact-row identifier — instead of making callers
+    hand-copy a magic index. Forwarding the index (not the spec name) is what
+    guarantees the exact row passed is the one deployed, even when spec names
+    repeat."""
+
+    def _make_builder(self, mb_class):
+        mb = mb_class(sagemaker_session=_mock_session())
+        mb._recommendation_job = SimpleNamespace(
+            recommendations=[
+                _rec_row(spec_name="A", model_package_arn="arn:.../p/A"),
+                _rec_row(spec_name="B", model_package_arn="arn:.../p/B"),
+            ],
+            ai_recommendation_job_status="Completed",
+        )
+        return mb
+
+    def _row(self, mb, index):
+        # A real recommendation view row, as mb.recommendations[index] returns.
+        return mb.recommendations[index]
+
+    def test_best_row_forwards_its_raw_shape(self, mb_class):
+        mb = self._make_builder(mb_class)
+        with patch.object(mb_class, "_deploy_recommendation") as deploy_rec:
+            mb.deploy(recommendation=mb.recommendations.best)
+        # The row's underlying shape is passed through (not an index/spec name),
+        # so the exact row deploys regardless of list order or refresh.
+        assert deploy_rec.call_args.kwargs["recommendation_row"] is mb.recommendations.best.raw
+        assert deploy_rec.call_args.kwargs["recommendation_spec_name"] is None
+
+    def test_indexed_row_forwards_its_raw_shape(self, mb_class):
+        mb = self._make_builder(mb_class)
+        row = self._row(mb, 1)
+        with patch.object(mb_class, "_deploy_recommendation") as deploy_rec:
+            mb.deploy(recommendation=row)
+        assert deploy_rec.call_args.kwargs["recommendation_row"] is row.raw
+        assert deploy_rec.call_args.kwargs["recommendation_spec_name"] is None
+
+    def test_non_row_value_raises_type_error(self, mb_class):
+        """A spec-name string / raw shape / int / dict is not a row view; it
+        must raise rather than silently defaulting to row 0."""
+        mb = self._make_builder(mb_class)
+        for bad in ("B", 1, {"recommendation_spec_name": "B"}):
+            with pytest.raises(TypeError, match="recommendation must be a recommendation row"):
+                mb.deploy(recommendation=bad)
+
+    def test_duplicate_spec_deploys_the_exact_row_passed(self, mb_class):
+        """Two rows sharing an inference_specification_name (the normal fan-out
+        shape). Passing view[1] must carry row 1's shape — resolving by spec
+        name would pick matches[0] (row 0), the wrong hardware."""
+        mb = mb_class(sagemaker_session=_mock_session())
+        mb._recommendation_job = SimpleNamespace(
+            recommendations=[
+                _rec_row(spec_name="dup", model_package_arn="arn:.../p/0"),
+                _rec_row(spec_name="dup", model_package_arn="arn:.../p/1"),
+            ],
+            ai_recommendation_job_status="Completed",
+        )
+        row1 = mb.recommendations[1]
+        with patch.object(mb_class, "_deploy_recommendation") as deploy_rec:
+            mb.deploy(recommendation=row1)
+        # Row 1's exact shape flows through; the shared spec name is not used.
+        assert deploy_rec.call_args.kwargs["recommendation_row"] is row1.raw
+        assert (
+            deploy_rec.call_args.kwargs["recommendation_row"].model_details.model_package_arn
+            == "arn:.../p/1"
+        )
+        assert deploy_rec.call_args.kwargs["recommendation_spec_name"] is None
+
+    def test_recommendation_conflicts_with_index(self, mb_class):
+        mb = self._make_builder(mb_class)
+        with pytest.raises(ValueError, match="only one of"):
+            mb.deploy(recommendation=mb.recommendations.best, recommendation_index=1)
+
+    def test_recommendation_conflicts_with_spec_name(self, mb_class):
+        mb = self._make_builder(mb_class)
+        with pytest.raises(ValueError, match="only one of"):
+            mb.deploy(recommendation=mb.recommendations.best, recommendation_spec_name="B")

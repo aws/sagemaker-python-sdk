@@ -96,6 +96,12 @@ def _get_latest_model_package_arn():
     return summaries[0]["ModelPackageArn"]
 
 
+# Both tests in this class run a full evaluation pipeline to completion via
+# execution.wait(..., timeout=14400). Measured on the PR gate's own CodeBuild run:
+# 2783s and 2504s -- 88 minutes for the two of them, against the project's
+# 180-minute build timeout. Everything else in that serial pass finished in under
+# 92s, so these two were the entire tail.
+@pytest.mark.gpu_intensive
 @pytest.mark.serial
 class TestLLMAsJudgeBaseModelFix:
     """Integration test for base model fix in LLMAsJudgeEvaluator"""

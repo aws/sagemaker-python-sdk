@@ -119,4 +119,7 @@ def __getattr__(name):
     elif name == "HyperPodCompute":
         from sagemaker.core.training.configs import HyperPodCompute
         return HyperPodCompute
+    elif name == "list_hyperparameters":
+        from sagemaker.train.common_utils.finetune_utils import list_hyperparameters
+        return list_hyperparameters
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")

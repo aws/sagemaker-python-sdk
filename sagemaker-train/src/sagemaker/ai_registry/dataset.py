@@ -232,6 +232,7 @@ class DataSet(AIRHubEntity):
         role: Optional[str] = None,
         domain_id: Optional[str] = None,
         sagemaker_session: Optional[Session] = None,
+        content_metadata: Optional[dict] = None,
     ) -> "DataSet":
         """Create a new DataSet Hub AIR entity.
 
@@ -251,6 +252,9 @@ class DataSet(AIRHubEntity):
                 environment; supply it explicitly when creating datasets outside Studio
                 (e.g. from a laptop or CI) so they still appear in the target domain.
             sagemaker_session: Optional SageMaker session. If not provided, uses default session.
+            content_metadata: Optional metadata dict (PascalCase keys) to include in the
+                HubContent document. Used by Feature Store lineage to pass source FG ARNs.
+                When provided, file format validation is skipped.
 
         Returns:
             DataSet: The created dataset instance
@@ -268,13 +272,27 @@ class DataSet(AIRHubEntity):
         if domain_id is None:
             domain_id = _get_current_domain_id(sagemaker_session)
         
-        # Validate dataset file
-        cls._validate_dataset_file(source)
+        # Validate dataset file (skip for Feature Store metadata-only datasets)
+        if content_metadata is None:
+            cls._validate_dataset_file(source)
         sagemaker_session = TrainDefaults.get_sagemaker_session(sagemaker_session=sagemaker_session)
         role = TrainDefaults.get_role(role=role, sagemaker_session=sagemaker_session)
         
         # Parse S3 URL to extract bucket and prefix
-        if source.startswith("s3://"):
+        if content_metadata is not None:
+            # Feature Store datasets are CSVs, not LLM training formats — skip format validation
+            if source.startswith("s3://"):
+                parsed = urlparse(source)
+                bucket_name = parsed.netloc
+                s3_key = parsed.path.lstrip("/")
+                s3_prefix = s3_key
+                method = DataSetMethod.GENERATED
+            else:
+                bucket_name = _get_default_bucket()
+                s3_prefix = _get_default_s3_prefix(name)
+                method = DataSetMethod.UPLOADED
+                AIRHub.upload_to_s3(bucket_name, s3_prefix, source)
+        elif source.startswith("s3://"):
             parsed = urlparse(source)
             bucket_name = parsed.netloc
             s3_key = parsed.path.lstrip("/")
@@ -313,6 +331,7 @@ class DataSet(AIRHubEntity):
             conversation_id=DATASET_DEFAULT_CONVERSATION_ID,  # Required for now, needs cleanup
             conversation_checkpoint_id=DATASET_DEFAULT_CHECKPOINT_ID,
             dependencies=[],
+            content_metadata=content_metadata,
         )
         
         document_str = hub_content_document.to_json()

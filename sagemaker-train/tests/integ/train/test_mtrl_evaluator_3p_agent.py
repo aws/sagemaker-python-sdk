@@ -161,10 +161,6 @@ def _get_3p_test_config():
             "MTRL_3P_MLFLOW_ARN",
             f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
         ),
-        "role": os.environ.get(
-            "MTRL_3P_ROLE",
-            f"arn:aws:iam::{account_id}:role/Admin",
-        ),
         "region": os.environ.get("MTRL_3P_REGION", _REGION),
         "account_id": account_id,
     }
@@ -258,7 +254,6 @@ class TestMTRLEvaluator3PAgentIntegration:
             agent_config=lambda_agent_arn,
             s3_output_path=f'{test_config["s3_output_path"]}lambda-e2e/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             accept_eula=True,
         )
@@ -304,7 +299,6 @@ class TestMTRLEvaluator3PAgentIntegration:
             agent_config=agent,
             s3_output_path=f'{test_config["s3_output_path"]}lambda-object/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             accept_eula=True,
         )
@@ -323,7 +317,7 @@ class TestMTRLEvaluator3PAgentIntegration:
         from sagemaker.train.multi_turn_rl_trainer import MultiTurnRLTrainer
 
         attached_job = MultiTurnRLTrainer.attach(
-            "mock-oss-test-mtrl-20260616153024", session=boto3.Session(region_name=_REGION)
+            "mock-oss-test-mtrl-20260910094327", session=boto3.Session(region_name=_REGION)
         )
 
         evaluator = MultiTurnRLEvaluator(
@@ -332,7 +326,6 @@ class TestMTRLEvaluator3PAgentIntegration:
             agent_config=lambda_agent_arn,
             s3_output_path=f'{test_config["s3_output_path"]}attached-trainer/',
             mlflow_resource_arn=test_config["mlflow_resource_arn"],
-            role=test_config["role"],
             region=test_config["region"],
             accept_eula=True,
         )

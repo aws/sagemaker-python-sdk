@@ -98,6 +98,14 @@ class TestExtractTelemetryParams(unittest.TestCase):
         ])
         assert "isModelCustomization" not in result
 
+    def test_attr_call_skips_none(self):
+        instance = self._make_instance()
+        instance._jumpstart_model_id = Mock(return_value=None)
+        result = _extract_telemetry_params(instance, {}, [
+            ("_jumpstart_model_id", TelemetryParamType.ATTR_CALL),
+        ])
+        assert "jumpstartModelId" not in result
+
     def test_kwarg_value_emits_value(self):
         instance = self._make_instance()
         result = _extract_telemetry_params(instance, {"instance_type": "ml.g5.2xlarge"}, [

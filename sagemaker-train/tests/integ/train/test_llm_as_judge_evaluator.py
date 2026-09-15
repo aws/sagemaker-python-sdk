@@ -88,6 +88,9 @@ TEST_CONFIG = {
 class TestLLMAsJudgeEvaluatorIntegration:
     """Integration tests for LLMAsJudgeEvaluator"""
 
+    # Waits for a full evaluation pipeline (execution.wait, 4-hour ceiling). The
+    # two tests below it make no service call and stay on the gate.
+    @pytest.mark.gpu_intensive
     def test_llm_as_judge_evaluation_full_flow(self):
         """
         Test complete LLM-as-Judge evaluation flow with custom and built-in metrics.

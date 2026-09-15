@@ -139,7 +139,10 @@ class TrainDefaults:
                 volume_size_in_gb=DEFAULT_VOLUME_SIZE,
             )
             logger.info(f"Compute not provided. Using default:\n{compute}")
-        if not compute.instance_groups:
+        if not compute.instance_groups and not compute.instance_preferences:
+            # When instance_preferences is set, the top-level instance_type /
+            # instance_count must stay unset (mutually exclusive with the
+            # preference list; the uniform count, when used, is customer-set).
             if compute.instance_type is None:
                 compute.instance_type = DEFAULT_INSTANCE_TYPE
                 logger.info(f"Instance type not provided. Using default:\n{DEFAULT_INSTANCE_TYPE}")
@@ -164,10 +167,10 @@ class TrainDefaults:
                 max_pending_time_in_seconds=None,
                 max_wait_time_in_seconds=None,
             )
-            logger.info(f"StoppingCondition not provided. Using default:\n{stopping_condition}")
+            logger.debug(f"StoppingCondition not provided. Using default:\n{stopping_condition}")
         if stopping_condition.max_runtime_in_seconds is None:
             stopping_condition.max_runtime_in_seconds = DEFAULT_MAX_RUNTIME_IN_SECONDS
-            logger.info(
+            logger.debug(
                 "Max runtime not provided. Using default:\n"
                 f"{stopping_condition.max_runtime_in_seconds}"
             )
@@ -201,7 +204,7 @@ class TrainDefaults:
             )
         if output_data_config.compression_type is None:
             output_data_config.compression_type = "GZIP"
-            logger.info(
+            logger.debug(
                 f"OutputDataConfig compression type not provided. Using default:\n"
                 f"{output_data_config.compression_type}"
             )

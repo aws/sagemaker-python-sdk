@@ -36,6 +36,7 @@ import random
 import pytest
 from sagemaker.train.sft_trainer import SFTTrainer
 from sagemaker.train.common import TrainingType
+from sagemaker.train.base_trainer import BaseTrainer
 from sagemaker.train.data_mixing_config import DataMixingConfig
 from sagemaker.core.training.configs import HyperPodCompute
 
@@ -49,8 +50,8 @@ logger = logging.getLogger(__name__)
 REGION = "us-east-1"
 DATA_PREFIX = "test-sft-data-mixing-hyperpod-integ"
 NUM_TRAINING_SAMPLES = 300
-HYPERPOD_CLUSTER_NAME = "riv-rig"
-HYPERPOD_INSTANCE_TYPE = "ml.p5.48xlarge"
+HYPERPOD_CLUSTER_NAME = "pysdk-hp-integ-tests"
+HYPERPOD_INSTANCE_TYPE = "ml.g6.12xlarge"
 
 
 def _generate_training_data() -> str:
@@ -125,10 +126,10 @@ def training_resources(sagemaker_session_us_east_1):
 @pytest.mark.gpu_intensive
 @pytest.mark.us_east_1
 def test_sft_trainer_nova_micro_data_mixing_hyperpod(sagemaker_session_us_east_1, training_resources):
-    """Test SFT trainer with Nova Lite 2 model and data mixing on HyperPod.
+    """Test SFT trainer with Nova Micro model and data mixing on HyperPod.
 
     This end-to-end test submits a real HyperPod training job with DataMixingConfig
-    for Nova Lite 2. The SDK resolves the datamix recipe from SageMaker Hub, validates
+    for Nova Micro. The SDK resolves the datamix recipe from SageMaker Hub, validates
     categories, and includes the serialized config in the HyperPod override parameters.
     """
     unique_id = f"{int(time.time())}-{random.randint(1000, 9999)}"
@@ -184,4 +185,33 @@ def test_sft_trainer_nova_micro_data_mixing_hyperpod(sagemaker_session_us_east_1
     assert get_job_result.returncode == 0, (
         f"hyperpod get-job failed for '{job_name}': {get_job_result.stderr}"
     )
-    logger.info(f"Verified job '{job_name}' exists on the cluster.")
+    logger.info(f"Verified job '{job_name}' exists on the cluster using hp-cli.")
+
+    # Poll for job completion by checking for the manifest in S3.
+    # The manifest is written under {output_s3_path}/{job_name}/manifest.json
+    # once training finishes, so its presence confirms end-to-end completion.
+
+    output_s3_path = training_resources["s3_output_path"]
+    max_wait_time = 21600  # 6 hour timeout (HyperPod jobs can take longer)
+    poll_interval = 60  # Check every 60 seconds
+    start_time = time.time()
+    checkpoint_path = None
+
+    while time.time() - start_time < max_wait_time:
+        checkpoint_path = BaseTrainer._resolve_checkpoint_from_manifest(
+            job_name=job_name,
+            output_s3_path=output_s3_path,
+            sagemaker_session=sagemaker_session_us_east_1,
+        )
+        if checkpoint_path:
+            logger.info(f"Checkpoint resolved: {checkpoint_path}")
+            break
+
+        elapsed = int(time.time() - start_time)
+        logger.info(f"Waiting for manifest... ({elapsed}s elapsed)")
+        time.sleep(poll_interval)
+
+    assert checkpoint_path is not None, (
+        f"Job {job_name} did not produce a manifest within {max_wait_time}s"
+    )
+    logger.info(f"Training complete. Checkpoint: {checkpoint_path}")

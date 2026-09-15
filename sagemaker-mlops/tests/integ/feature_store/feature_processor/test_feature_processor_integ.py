@@ -33,6 +33,7 @@ from boto3 import client
 
 from tests.integ import DATA_DIR
 from sagemaker.core.helper.session_helper import Session, get_execution_role
+from sagemaker.core.common_utils import unique_name_from_base
 from sagemaker.core.s3 import S3Uploader
 from urllib.parse import urlparse
 from sagemaker.core.remote_function import remote
@@ -681,7 +682,7 @@ def test_to_pipeline_and_execute(
     pre_execution_commands,
     dependencies_path,
 ):
-    pipeline_name = "pipeline-name-01"
+    pipeline_name = unique_name_from_base("pipeline-name-01")
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_aggregated_feature_group_name = get_car_data_aggregated_feature_group_name()
     try:
@@ -791,18 +792,19 @@ def test_to_pipeline_and_execute(
         cleanup_feature_group(
             feature_groups["car_data_aggregated_feature_group"], sagemaker_session=sagemaker_session
         )
-        # cleanup_pipeline(pipeline_name="pipeline-name-01", sagemaker_session=sagemaker_session)
+        cleanup_pipeline(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
 
 
 # @pytest.mark.skipif(
 #     sys.version_info[:2] not in [(3, 9), (3, 12)],
 #     reason=f"SageMaker Spark image only supports Python 3.9 and 3.12, got {sys.version_info[:2]}",
 # )
-# @pytest.mark.skip(
-#     reason="Lake Formation credential vending (GetTemporaryGlueTableCredentials) requires "
-#     "full LF environment setup (resource registration, trust policy, data location grants) "
-#     "that is not configured in CI. See quip-amazon.com/S3FEAMMMuKm0 for details."
-# )
+@pytest.mark.skip(
+    reason="Lake Formation credential vending (GetTemporaryGlueTableCredentials) requires "
+    "full LF environment setup (resource registration, trust policy, data location grants) "
+    "that is not configured in CI. Test role permissions were modified from console. "
+    "See quip-amazon.com/S3FEAMMMuKm0 for details."
+)
 @pytest.mark.spark_py312
 @pytest.mark.slow_test
 def test_to_pipeline_and_execute_with_lake_formation(
@@ -810,7 +812,7 @@ def test_to_pipeline_and_execute_with_lake_formation(
     pre_execution_commands,
     dependencies_path,
 ):
-    pipeline_name = "pipeline-name-lf-01"
+    pipeline_name = unique_name_from_base("pipeline-name-lf-01")
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_fg = None
     try:
@@ -946,6 +948,7 @@ def test_to_pipeline_and_execute_with_lake_formation(
             except Exception as e:
                 logging.warning(f"Failed to delete Glue table: {e}")
             cleanup_feature_group(car_data_fg, sagemaker_session=sagemaker_session)
+        cleanup_pipeline(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
 
 
 # @pytest.mark.skipif(
@@ -959,7 +962,7 @@ def test_schedule_and_event_trigger(
     pre_execution_commands,
     dependencies_path,
 ):
-    pipeline_name = "pipeline-name-01"
+    pipeline_name = unique_name_from_base("pipeline-name-01")
     car_data_feature_group_name = get_car_data_feature_group_name()
     car_data_aggregated_feature_group_name = get_car_data_aggregated_feature_group_name()
     try:
@@ -1175,6 +1178,7 @@ def test_schedule_and_event_trigger(
         cleanup_feature_group(
             feature_groups["car_data_aggregated_feature_group"], sagemaker_session=sagemaker_session
         )
+        cleanup_pipeline(pipeline_name=pipeline_name, sagemaker_session=sagemaker_session)
 
 
 def get_car_data_feature_group_name():

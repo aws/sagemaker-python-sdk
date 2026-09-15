@@ -160,3 +160,38 @@ class TestDataSetHubContentDocument:
         parsed = json.loads(json_str)
         
         assert parsed["Dependencies"] == []
+
+    def test_to_json_with_content_metadata(self):
+        """Test JSON serialization includes ContentMetadata when provided."""
+        metadata = {
+            "SourceFeatureGroups": [
+                "arn:aws:sagemaker:us-west-2:123456789012:feature-group/my-fg"
+            ],
+            "ExtractionMethod": "FeatureStoreDatasetBuilder",
+            "AthenaQueryExecutionId": "abc-123",
+        }
+        doc = DataSetHubContentDocument(
+            dataset_s3_bucket="test-bucket",
+            dataset_s3_prefix="datasets/test.csv",
+            content_metadata=metadata,
+        )
+        json_str = doc.to_json()
+        parsed = json.loads(json_str)
+
+        assert "ContentMetadata" in parsed
+        assert parsed["ContentMetadata"]["SourceFeatureGroups"] == [
+            "arn:aws:sagemaker:us-west-2:123456789012:feature-group/my-fg"
+        ]
+        assert parsed["ContentMetadata"]["ExtractionMethod"] == "FeatureStoreDatasetBuilder"
+        assert parsed["ContentMetadata"]["AthenaQueryExecutionId"] == "abc-123"
+
+    def test_to_json_without_content_metadata(self):
+        """Test JSON serialization omits ContentMetadata when None."""
+        doc = DataSetHubContentDocument(
+            dataset_s3_bucket="test-bucket",
+            dataset_s3_prefix="datasets/test.csv",
+        )
+        json_str = doc.to_json()
+        parsed = json.loads(json_str)
+
+        assert "ContentMetadata" not in parsed

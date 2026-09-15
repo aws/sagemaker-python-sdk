@@ -386,10 +386,33 @@ class TestModelBuilderUploadCode(unittest.TestCase):
         
         self.assertIsNone(builder.uploaded_code)
 
-    @unittest.skip("Complex mocking required for repack_model with file system operations")
-    def test_upload_code_with_repack(self):
-        """Test _upload_code with repacking."""
-        pass
+    @patch("sagemaker.serve.model_builder.repack_model")
+    @patch("sagemaker.core.workflow.is_pipeline_variable", return_value=False)
+    @patch("sagemaker.core.s3.determine_bucket_and_prefix")
+    def test_upload_code_repack_uses_script_dependencies(
+        self, mock_determine, mock_is_pipeline, mock_repack
+    ):
+        """_upload_code(repack=True) must pass script_dependencies (a list) to
+        repack_model, not the deprecated self.dependencies auto-detect dict."""
+        mock_determine.return_value = ("test-bucket", "test-prefix")
+
+        builder = ModelBuilder(
+            model=Mock(),
+            role_arn="arn:aws:iam::123456789012:role/TestRole",
+            sagemaker_session=self.mock_session,
+        )
+        builder.bucket = None
+        builder.entry_point = "inference.py"
+        builder.source_dir = "/path/to/code"
+        builder.script_dependencies = ["/path/to/requirements.txt"]
+        builder.dependencies = {"auto": True}  # deprecated dict, must NOT be used
+        builder.s3_model_data_url = "s3://bucket/model.tar.gz"
+        builder.model_kms_key = None
+
+        builder._upload_code("test-prefix", repack=True)
+
+        mock_repack.assert_called_once()
+        assert mock_repack.call_args.kwargs["dependencies"] == ["/path/to/requirements.txt"]
 
     @unittest.skip("Complex file system mocking - os.stat requires real file paths")
     @patch('sagemaker.core.s3.determine_bucket_and_prefix')

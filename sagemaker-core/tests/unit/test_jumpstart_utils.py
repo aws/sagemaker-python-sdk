@@ -25,6 +25,7 @@ from sagemaker.core.jumpstart.types import (
     JumpStartBenchmarkStat,
     DeploymentConfigMetadata,
 )
+from sagemaker.core.jumpstart.exceptions import VulnerableJumpStartModelError
 from sagemaker.core.jumpstart.models import HubContentDocument
 from sagemaker.core.helper.pipeline_variable import PipelineVariable
 
@@ -1356,6 +1357,98 @@ class TestGetJumpstartConfigs:
         result = utils.get_jumpstart_configs("us-west-2", "test-model", "1.0.0")
         assert result == {}
 
+    @patch("sagemaker.core.jumpstart.utils.verify_model_region_and_return_specs")
+    def test_get_jumpstart_configs_does_not_tolerate_by_default(self, mock_verify):
+        """Test the model gate is left enabled when the caller asks for nothing"""
+        mock_specs = Mock()
+        mock_specs.inference_configs = None
+        mock_verify.return_value = mock_specs
+
+        utils.get_jumpstart_configs("us-west-2", "test-model", "1.0.0")
+
+        assert mock_verify.call_args.kwargs["tolerate_vulnerable_model"] is False
+        assert mock_verify.call_args.kwargs["tolerate_deprecated_model"] is False
+
+    @patch("sagemaker.core.jumpstart.utils.verify_model_region_and_return_specs")
+    def test_get_jumpstart_configs_forwards_tolerance(self, mock_verify):
+        """Test tolerance reaches the spec lookup that runs the model gate"""
+        mock_specs = Mock()
+        mock_specs.inference_configs = None
+        mock_verify.return_value = mock_specs
+
+        utils.get_jumpstart_configs(
+            "us-west-2",
+            "test-model",
+            "1.0.0",
+            tolerate_vulnerable_model=True,
+            tolerate_deprecated_model=True,
+        )
+
+        assert mock_verify.call_args.kwargs["tolerate_vulnerable_model"] is True
+        assert mock_verify.call_args.kwargs["tolerate_deprecated_model"] is True
+
+    @patch("sagemaker.core.jumpstart.utils.verify_model_region_and_return_specs")
+    def test_get_jumpstart_configs_forwards_tolerance_for_training_scope(self, mock_verify):
+        """Test tolerance reaches the spec lookup on the training scope too"""
+        mock_specs = Mock()
+        mock_specs.training_configs = None
+        mock_verify.return_value = mock_specs
+
+        utils.get_jumpstart_configs(
+            "us-west-2",
+            "test-model",
+            "1.0.0",
+            scope=enums.JumpStartScriptScope.TRAINING,
+            tolerate_vulnerable_model=True,
+            tolerate_deprecated_model=True,
+        )
+
+        assert mock_verify.call_args.kwargs["tolerate_vulnerable_model"] is True
+        assert mock_verify.call_args.kwargs["tolerate_deprecated_model"] is True
+
+    @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_vulnerable_model_raises_by_default(self, mock_get_specs):
+        """Test a vulnerable model still trips the gate when tolerance is not requested"""
+        model_specs = Mock(spec=JumpStartModelSpecs)
+        model_specs.deprecated = False
+        model_specs.inference_vulnerable = True
+        model_specs.inference_vulnerabilities = ["CVE-2024-11393"]
+        mock_get_specs.return_value = model_specs
+
+        with pytest.raises(VulnerableJumpStartModelError):
+            utils.get_jumpstart_configs("us-west-2", "test-model", "1.0.0")
+
+    @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_tolerates_vulnerable_model(self, mock_get_specs):
+        """Test a vulnerable model resolves configs instead of tripping the gate"""
+        model_specs = Mock(spec=JumpStartModelSpecs)
+        model_specs.deprecated = False
+        model_specs.inference_vulnerable = True
+        model_specs.inference_vulnerabilities = ["CVE-2024-11393"]
+        model_specs.inference_configs = None
+        mock_get_specs.return_value = model_specs
+
+        result = utils.get_jumpstart_configs(
+            "us-west-2", "test-model", "1.0.0", tolerate_vulnerable_model=True
+        )
+
+        assert result == {}
+
+    @patch("sagemaker.core.jumpstart.accessors.JumpStartModelsAccessor.get_model_specs")
+    def test_get_jumpstart_configs_tolerates_deprecated_model(self, mock_get_specs):
+        """Test a deprecated model resolves configs instead of tripping the gate"""
+        model_specs = Mock(spec=JumpStartModelSpecs)
+        model_specs.deprecated = True
+        model_specs.inference_vulnerable = False
+        model_specs.inference_configs = None
+        mock_get_specs.return_value = model_specs
+
+        result = utils.get_jumpstart_configs(
+            "us-west-2", "test-model", "1.0.0", tolerate_deprecated_model=True
+        )
+
+        assert result == {}
+
 
 class TestGetJumpstartUserAgentExtraSuffix:
     """Test cases for get_jumpstart_user_agent_extra_suffix function"""
@@ -1585,6 +1678,53 @@ class TestGetMetricsFromDeploymentConfigs:
         result = utils.get_metrics_from_deployment_configs([mock_config])
         assert "Instance Type" in result
         assert "Config Name" in result
+
+    def test_get_metrics_ragged_pricing_stays_equal_length_and_aligned(self):
+        """One instance with a pricing overlay, one without: columns stay equal
+        length and the rate stays aligned to its instance (None for the other)."""
+
+        def _stat(name, unit, value, concurrency):
+            stat = Mock()
+            stat.name = name
+            stat.unit = unit
+            stat.value = value
+            stat.concurrency = concurrency
+            return stat
+
+        mock_args = Mock()
+        mock_args.default_instance_type = "ml.g5.xlarge"
+        mock_args.instance_type = "ml.g5.xlarge"
+
+        mock_config = Mock(spec=DeploymentConfigMetadata)
+        mock_config.deployment_args = mock_args
+        mock_config.deployment_config_name = "config1"
+        # priced instance carries an "Instance Rate" stat; the other does not.
+        mock_config.benchmark_metrics = {
+            "ml.g5.xlarge": [
+                _stat("Latency", "ms", 100, "1"),
+                _stat("Instance Rate", "USD/Hr", 1.23, "1"),
+            ],
+            "ml.g5.2xlarge": [
+                _stat("Latency", "ms", 90, "1"),
+            ],
+        }
+
+        result = utils.get_metrics_from_deployment_configs([mock_config])
+
+        # Equal-length columns -> pd.DataFrame(result) will not raise.
+        lengths = {column: len(values) for column, values in result.items()}
+        assert len(set(lengths.values())) == 1, lengths
+
+        # Rate value stays on the priced row, None on the other (not shifted).
+        rate_cols = [c for c in result if "Instance Rate" in c]
+        assert rate_cols, result.keys()
+        rate_col = rate_cols[0]
+        by_instance = dict(zip(result["Instance Type"], result[rate_col]))
+        assert by_instance["ml.g5.xlarge (Default)"] == 1.23
+        assert by_instance["ml.g5.2xlarge"] is None
+
+        # Rate column stays last, after the metric columns (layout unchanged).
+        assert list(result).index(rate_col) == len(result) - 1
 
 
 class TestNormalizeBenchmarkMetricColumnName:

@@ -56,7 +56,6 @@ def test_resources():
     """Resolve account-specific resource ARNs lazily."""
     account_id = _get_account_id()
     return {
-        "role_arn": f"arn:aws:iam::{account_id}:role/Admin",
         "mlflow_arn": f"arn:aws:sagemaker:{_REGION}:{account_id}:mlflow-app/app-TTAUWUNMUHH6",
         "s3_input_path": f"s3://sagemaker-rft-{account_id}/prompts/gsm8k_small/prompts.parquet",
         "s3_output_path": f"s3://sagemaker-{_REGION}-{account_id}/model-evaluation/mtrl-trainer-integ/",
@@ -77,7 +76,6 @@ class TestMultiTurnRLTrainerBedrockAgent:
             training_dataset=test_resources["s3_input_path"],
             mlflow_app_arn=test_resources["mlflow_arn"],
             s3_output_path=test_resources["s3_output_path"],
-            role=test_resources["role_arn"],
             accept_eula=True,
             sagemaker_session=sagemaker_session,
         )
@@ -101,7 +99,6 @@ class TestMultiTurnRLTrainerBedrockAgent:
             agent_env=AGENT_RUNTIME_ID,
             training_dataset=test_resources["s3_input_path"],
             mlflow_app_arn=test_resources["mlflow_arn"],
-            role=test_resources["role_arn"],
             accept_eula=True,
             sagemaker_session=sagemaker_session,
         )
@@ -132,7 +129,6 @@ class TestMultiTurnRLTrainerLambdaAgent:
             mlflow_app_arn=test_resources["mlflow_arn"],
             s3_output_path=test_resources["s3_output_path"],
             accept_eula=True,
-            role=test_resources["role_arn"],
             sagemaker_session=sagemaker_session,
         )
         trainer.hyperparameters.global_batch_size = 32

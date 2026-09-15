@@ -31,9 +31,13 @@ from sagemaker.train.common_utils.finetune_utils import (
     _create_mlflow_config,
     _validate_eula_for_gated_model,
     _validate_model_region_availability,
-    _validate_s3_path_exists
+    _validate_model_in_hub,
+    _is_hub_content_not_found,
+    _validate_s3_path_exists,
+    _parse_sequence_length
 )
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
+from sagemaker.core.utils.utils import Unassigned
 from sagemaker.ai_registry.dataset import DataSet
 from sagemaker.train.common import TrainingType
 from sagemaker.train.configs import InputData
@@ -527,7 +531,7 @@ class TestFinetuneUtils:
         assert result == "extracted-group"
 
     def test__validate_and_resolve_model_package_group_missing_both(self):
-        with pytest.raises(ValueError, match="model_package_group_name must be provided"):
+        with pytest.raises(ValueError, match="model_package_group is required"):
             _validate_and_resolve_model_package_group("string-model", None)
 
     @patch('sagemaker.core.resources.ModelPackage.get')
@@ -632,7 +636,6 @@ class TestFinetuneUtils:
 
     def test__validate_eula_for_gated_model_with_model_package(self):
         """Test EULA validation returns True for ModelPackage input"""
-        from sagemaker.core.resources import ModelPackage
         model_package = Mock(spec=ModelPackage)
         
         result = _validate_eula_for_gated_model(model_package, False, True)
@@ -680,6 +683,92 @@ class TestFinetuneUtils:
         """Test open weights model validation fails for invalid region"""
         with pytest.raises(ValueError, match="Region 'us-west-1' does not support model customization"):
             _validate_model_region_availability("meta-textgeneration-llama-3-2-1b", "us-west-1")
+
+    def test__is_hub_content_not_found_botocore_code(self):
+        """ResourceNotFound service error code is treated as not-found."""
+        exc = Exception("boom")
+        exc.response = {"Error": {"Code": "ResourceNotFound", "Message": "nope"}}
+        assert _is_hub_content_not_found(exc) is True
+
+    def test__is_hub_content_not_found_by_message(self):
+        """A message that says the content does not exist is treated as not-found."""
+        assert _is_hub_content_not_found(Exception("Hub content does not exist")) is True
+        assert _is_hub_content_not_found(Exception("Content not found in hub")) is True
+
+    def test__is_hub_content_not_found_transient_error(self):
+        """Throttling / permission errors are NOT treated as not-found."""
+        exc = Exception("Rate exceeded")
+        exc.response = {"Error": {"Code": "ThrottlingException", "Message": "slow down"}}
+        assert _is_hub_content_not_found(exc) is False
+        assert _is_hub_content_not_found(Exception("AccessDeniedException")) is False
+
+    def test__validate_model_in_hub_no_session_skips(self):
+        """With no session there is no client to query; validation is skipped."""
+        with patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata') as mock_meta:
+            _validate_model_in_hub("meta-textgeneration-llama-3-2-1b", None)
+            mock_meta.assert_not_called()
+
+    def test__validate_model_in_hub_found_passes(self):
+        """A model that resolves in the Hub passes without error."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        with patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata') as mock_meta:
+            mock_meta.return_value = {"hub_content_document": {}}
+            _validate_model_in_hub("meta-textgeneration-llama-3-2-1b", mock_session)
+            mock_meta.assert_called_once()
+
+    def test__validate_model_in_hub_not_found_raises(self):
+        """A model missing from the Hub raises a clear ValueError."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        not_found = Exception("ResourceNotFound")
+        not_found.response = {"Error": {"Code": "ResourceNotFound", "Message": "no"}}
+        with patch(
+            'sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata',
+            side_effect=not_found,
+        ):
+            with pytest.raises(ValueError, match="is not available in SageMaker Hub"):
+                _validate_model_in_hub("bogus-model-name", mock_session)
+
+    def test__validate_model_in_hub_transient_error_does_not_block(self):
+        """Transient/permission errors are logged and do not block."""
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        throttle = Exception("Rate exceeded")
+        throttle.response = {"Error": {"Code": "ThrottlingException", "Message": "slow"}}
+        with patch(
+            'sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata',
+            side_effect=throttle,
+        ):
+            # Should not raise
+            _validate_model_in_hub("meta-textgeneration-llama-3-2-1b", mock_session)
+
+    def test__resolve_model_and_name_string_validates_hub(self):
+        """Raw model name with a session triggers a Hub existence check that can fail."""
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.boto_session.region_name = "us-west-2"
+        not_found = Exception("ResourceNotFound")
+        not_found.response = {"Error": {"Code": "ResourceNotFound", "Message": "no"}}
+        with patch(
+            'sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata',
+            side_effect=not_found,
+        ):
+            with pytest.raises(ValueError, match="is not available in SageMaker Hub"):
+                _resolve_model_and_name("meta-textgeneration-llama-3-2-1b", mock_session)
+
+    def test__resolve_model_and_name_string_hub_ok(self):
+        """Raw model name that exists in the Hub resolves normally."""
+        mock_session = Mock()
+        mock_session.boto_region_name = "us-west-2"
+        mock_session.boto_session.region_name = "us-west-2"
+        with patch(
+            'sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata',
+            return_value={"hub_content_document": {}},
+        ):
+            model, name = _resolve_model_and_name("meta-textgeneration-llama-3-2-1b", mock_session)
+            assert model == "meta-textgeneration-llama-3-2-1b"
+            assert name == "meta-textgeneration-llama-3-2-1b"
 
     def test__validate_s3_path_exists_invalid_format(self):
         """Test S3 path validation fails for invalid format"""
@@ -1033,6 +1122,144 @@ class TestResolveIntermediateCheckpointMpg:
         assert "max_steps" in options._specs
         assert "customer_data_percent" not in options._specs
 
+    def test__create_serverless_config_with_sequence_length(self):
+        config = _create_serverless_config("model-arn", "SFT", TrainingType.LORA, accept_eula=True, sequence_length="8K")
+
+        assert config.sequence_length == "8K"
+        assert config.base_model_arn == "model-arn"
+
+    def test__create_serverless_config_without_sequence_length(self):
+        config = _create_serverless_config("model-arn", "SFT", TrainingType.LORA, accept_eula=True)
+
+        assert config.sequence_length is None
+
+    def test__parse_sequence_length_with_k_suffix(self):
+        assert _parse_sequence_length("8K") == 8192
+        assert _parse_sequence_length("32K") == 32768
+        assert _parse_sequence_length("128K") == 131072
+
+    def test__parse_sequence_length_with_lowercase(self):
+        assert _parse_sequence_length("8k") == 8192
+
+    def test__parse_sequence_length_with_integer(self):
+        with pytest.raises(ValueError, match="Invalid sequence_length '4096'"):
+            _parse_sequence_length("4096")
+
+    def test__parse_sequence_length_with_none(self):
+        assert _parse_sequence_length(None) == 0
+
+    def test__parse_sequence_length_with_empty(self):
+        assert _parse_sequence_length("") == 0
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_filters_by_exact_sequence_length(self, mock_get_hub_content):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=b'{"max_length": {"default": 32768}}'))
+        }
+        mock_session.boto_session.client.return_value = mock_s3
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-4k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-4k.json",
+                        "Peft": True,
+                        "SequenceLength": "4K"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-32k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-32k.json",
+                        "Peft": True,
+                        "SequenceLength": "32K"
+                    }
+                ]
+            }
+        }
+
+        result = _get_fine_tuning_options_and_model_arn("test-model", "SFT", "LORA", mock_session, sequence_length="32K")
+
+        assert result is not None
+        options, model_arn, is_gated_model = result
+        # Should pick the recipe whose SequenceLength exactly matches the request.
+        mock_s3.get_object.assert_called_once()
+        call_args = mock_s3.get_object.call_args[1]
+        assert "params-32k" in call_args["Key"]
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_keeps_all_recipes_at_same_sequence_length(self, mock_get_hub_content):
+        # Multiple recipes share the same SequenceLength (LORA + FULL). Selection
+        # by training_type must resolve to the LORA one, not an arbitrary match.
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_s3 = Mock()
+        mock_s3.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=b'{"max_length": {"default": 32768}}'))
+        }
+        mock_session.boto_session.client.return_value = mock_s3
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-32k-full.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-32k-full.json",
+                        "Peft": False,
+                        "SequenceLength": "32K"
+                    },
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-32k-lora.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-32k-lora.json",
+                        "Peft": True,
+                        "SequenceLength": "32K"
+                    }
+                ]
+            }
+        }
+
+        result = _get_fine_tuning_options_and_model_arn("test-model", "SFT", "LORA", mock_session, sequence_length="32K")
+
+        assert result is not None
+        mock_s3.get_object.assert_called_once()
+        call_args = mock_s3.get_object.call_args[1]
+        assert "params-32k-lora" in call_args["Key"]
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    def test__get_fine_tuning_options_raises_when_no_exact_sequence_length(self, mock_get_hub_content):
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-east-1:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template-4k.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params-4k.json",
+                        "Peft": True,
+                        "SequenceLength": "4K"
+                    }
+                ]
+            }
+        }
+
+        # Requesting 128K but only 4K available — no exact match, should raise.
+        with pytest.raises(ValueError, match="No recipes found with SequenceLength == 128K"):
+            _get_fine_tuning_options_and_model_arn("test-model", "SFT", "LORA", mock_session, sequence_length="128K")
+
 
 # ===========================================================================
 # Hub recipe/image resolution helpers
@@ -1126,6 +1353,69 @@ class TestExtractRecipeFromHelmTemplate:
         template = "# training-config.yaml\nsomething: else\n"
         with pytest.raises(ValueError, match="template format may have changed"):
             fu._extract_recipe_from_helm_template(template)
+
+    def test_strips_task_type_storm_rbs(self):
+        """task_type: storm_rbs is internal RFT metadata and should be stripped."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      peft_scheme: lora\n"
+            "      lora_tuning:\n"
+            "        alpha: 32\n"
+            "      task_type: storm_rbs\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template, customization_technique="RLVR")
+
+        assert "task_type" not in extracted
+        assert "storm_rbs" not in extracted
+        assert "peft_scheme: lora" in extracted
+
+    def test_preserves_non_storm_rbs_task_type(self):
+        """task_type: other task types (used by OSS) should NOT be stripped."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      lora_tuning:\n"
+            "        task_type: OTHER_TASK\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template)
+
+        assert "task_type: OTHER_TASK" in extracted
+
+    def test_does_not_strip_task_type_for_non_rlvr(self):
+        """task_type: storm_rbs is preserved when technique is not RLVR/RFT."""
+        template = (
+            "---\n"
+            "# Source: grpo/templates/training-config.yaml\n"
+            "apiVersion: v1\n"
+            "data:\n"
+            "  config.yaml: |-\n"
+            "    run:\n"
+            "      name: test\n"
+            "    peft:\n"
+            "      task_type: storm_rbs\n"
+            "---\n"
+        )
+
+        extracted = fu._extract_recipe_from_helm_template(template, customization_technique="SFT")
+
+        assert "task_type: storm_rbs" in extracted
 
 
 class TestGetRecipeS3Uri:
@@ -1362,3 +1652,135 @@ class TestIsLambdaArn:
         # Both call sites must share the same compiled pattern, not copies.
         from sagemaker.train.common_utils import rlvr_reward_verifier
         assert fu.LAMBDA_ARN_REGEX is rlvr_reward_verifier.LAMBDA_ARN_REGEX
+
+
+class TestGetSmhpInstanceTypeEnum:
+    """Unit tests for _get_smhp_instance_type_enum (SMHP override-spec enum lookup)."""
+
+    def _call(self):
+        return fu._get_smhp_instance_type_enum(
+            model_name="my-model",
+            customization_technique="SFT",
+            training_type=TrainingType.LORA,
+            sagemaker_session=MagicMock(),
+        )
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_enum_when_present(self, mock_spec):
+        mock_spec.return_value = (
+            {},
+            {"instance_type": {"enum": ["ml.p5.48xlarge", "ml.p4d.24xlarge"]}},
+        )
+        assert self._call() == ["ml.p5.48xlarge", "ml.p4d.24xlarge"]
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_none_when_enum_missing(self, mock_spec):
+        mock_spec.return_value = ({}, {"instance_type": {}})
+        assert self._call() is None
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_none_when_instance_type_key_absent(self, mock_spec):
+        mock_spec.return_value = ({}, {})
+        assert self._call() is None
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_none_when_enum_empty_list(self, mock_spec):
+        mock_spec.return_value = ({}, {"instance_type": {"enum": []}})
+        assert self._call() is None
+
+    @patch.object(fu, "_get_recipe_entry_and_override_spec")
+    def test_returns_none_on_exception(self, mock_spec):
+        mock_spec.side_effect = RuntimeError("hub content unavailable")
+        assert self._call() is None
+
+
+class TestListHyperparameters:
+    """Tests for the list_hyperparameters public API."""
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    @patch('boto3.client')
+    def test_list_hyperparameters_returns_finetuning_options(self, mock_boto_client, mock_get_hub_content):
+        """list_hyperparameters returns a FineTuningOptions object with correct params."""
+        from sagemaker.train.common_utils.finetune_utils import list_hyperparameters
+        from sagemaker.train.common import FineTuningOptions
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-west-2:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "SFT",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params.json",
+                        "Peft": "LORA"
+                    }
+                ]
+            }
+        }
+
+        mock_s3_client = Mock()
+        mock_boto_client.return_value = mock_s3_client
+        mock_s3_client.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=json.dumps({
+                "learning_rate": {"type": "float", "default": 0.0001, "min": 5e-7, "max": 0.001, "required": True},
+                "global_batch_size": {"type": "integer", "default": 8, "required": True},
+                "max_epochs": {"type": "integer", "default": 5, "min": 1, "max": 100, "required": True},
+            }).encode()))
+        }
+
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        mock_session.boto_session.client.return_value = mock_s3_client
+
+        with patch('sagemaker.train.common_utils.finetune_utils.TrainDefaults.get_sagemaker_session', return_value=mock_session):
+            result = list_hyperparameters("test-model", "SFT", "LORA", sagemaker_session=mock_session)
+
+        assert isinstance(result, FineTuningOptions)
+        assert result.learning_rate == 0.0001
+        assert result.global_batch_size == 8
+        assert result.max_epochs == 5
+
+    @patch('sagemaker.train.common_utils.finetune_utils._get_hub_content_metadata')
+    @patch('boto3.client')
+    def test_list_hyperparameters_accepts_enum_values(self, mock_boto_client, mock_get_hub_content):
+        """list_hyperparameters accepts both string and enum values for technique/training_type."""
+        from sagemaker.train.common_utils.finetune_utils import list_hyperparameters
+        from sagemaker.train.common import CustomizationTechnique, TrainingType
+
+        mock_get_hub_content.return_value = {
+            'hub_content_arn': "arn:aws:sagemaker:us-west-2:123456789012:model/test-model",
+            'hub_content_document': {
+                "GatedBucket": False,
+                "RecipeCollection": [
+                    {
+                        "CustomizationTechnique": "DPO",
+                        "SmtjRecipeTemplateS3Uri": "s3://bucket/template.json",
+                        "SmtjOverrideParamsS3Uri": "s3://bucket/params.json",
+                        "Peft": "LORA"
+                    }
+                ]
+            }
+        }
+
+        mock_s3_client = Mock()
+        mock_boto_client.return_value = mock_s3_client
+        mock_s3_client.get_object.return_value = {
+            "Body": Mock(read=Mock(return_value=json.dumps({
+                "learning_rate": {"type": "float", "default": 0.0001, "required": True},
+            }).encode()))
+        }
+
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        mock_session.boto_session.client.return_value = mock_s3_client
+
+        with patch('sagemaker.train.common_utils.finetune_utils.TrainDefaults.get_sagemaker_session', return_value=mock_session):
+            result = list_hyperparameters(
+                "test-model",
+                CustomizationTechnique.DPO,
+                TrainingType.LORA,
+                sagemaker_session=mock_session,
+            )
+
+        assert result.learning_rate == 0.0001

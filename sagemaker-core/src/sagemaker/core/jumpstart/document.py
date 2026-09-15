@@ -11,6 +11,7 @@
 # ANY KIND, either express or implied. See the License for the specific
 # language governing permissions and limitations under the License.
 """This module contains utilites for JumpStart model metadata."""
+
 from __future__ import absolute_import
 
 import json
@@ -47,26 +48,54 @@ def get_hub_content_and_document(
         logger.debug("No sagemaker session provided. Using default session.")
 
     hub_name = jumpstart_config.hub_name if jumpstart_config.hub_name else SAGEMAKER_PUBLIC_HUB
-    hub_content_type = "Model" if hub_name == SAGEMAKER_PUBLIC_HUB else "ModelReference"
 
     region = sagemaker_session.boto_region_name
 
-    try:
-        hub_content = HubContent.get(
-            hub_name=hub_name,
-            hub_content_name=jumpstart_config.model_id,
-            hub_content_version=jumpstart_config.model_version,
-            hub_content_type=hub_content_type,
-            session=sagemaker_session.boto_session,
-            region=region,
-        )
-    except ClientError as e:
-        if e.response["Error"]["Code"] == "ResourceNotFound":
-            logger.error(
-                f"Hub content {jumpstart_config.model_id} not found in {hub_name}.\n"
-                "Please check that the Model ID is availble in the specified hub."
+    # The hub content may be filed under an alias that differs from the public
+    # model_id, so honor hub_content_name when provided.
+    hub_content_name = (
+        jumpstart_config.hub_content_name
+        if getattr(jumpstart_config, "hub_content_name", None)
+        else jumpstart_config.model_id
+    )
+
+    # A private hub can contain either a ModelReference (a pointer to a public
+    # JumpStart model) or a privately-owned Model authored directly into the
+    # hub. We cannot tell which from the name alone, so probe: try
+    # ModelReference first, then fall back to Model. The public hub only holds
+    # Models. This mirrors ModelBuilder's resolution in accessors.py.
+    if hub_name == SAGEMAKER_PUBLIC_HUB:
+        content_types_to_try = ["Model"]
+    else:
+        content_types_to_try = ["ModelReference", "Model"]
+
+    hub_content = None
+    last_error: Optional[ClientError] = None
+    for content_type in content_types_to_try:
+        try:
+            hub_content = HubContent.get(
+                hub_name=hub_name,
+                hub_content_name=hub_content_name,
+                hub_content_version=jumpstart_config.model_version,
+                hub_content_type=content_type,
+                session=sagemaker_session.boto_session,
+                region=region,
             )
-        raise e
+            break
+        except ClientError as e:
+            if e.response["Error"]["Code"] == "ResourceNotFound":
+                last_error = e
+                continue
+            raise e
+
+    if hub_content is None:
+        logger.error(
+            f"Hub content {hub_content_name} not found in {hub_name} as any of "
+            f"{content_types_to_try}.\n"
+            "Please check that the Model ID (or hub_content_name) is available "
+            "in the specified hub."
+        )
+        raise last_error
 
     logger.info(
         f"hub_content_name: {hub_content.hub_content_name}, "

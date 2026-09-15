@@ -14,31 +14,7 @@ Key Benefits of V3 ML Operations
 Quick Start Example
 -------------------
 
-Here's how ML Operations workflows are simplified in V3:
-
-**Traditional Pipeline Approach:**
-
-.. code-block:: python
-
-   from sagemaker.workflow.pipeline import Pipeline
-   from sagemaker.workflow.steps import TrainingStep, ProcessingStep
-   from sagemaker.sklearn.processing import SKLearnProcessor
-   
-   # Complex setup with multiple framework-specific classes
-   processor = SKLearnProcessor(
-       framework_version="0.23-1",
-       role=role,
-       instance_type="ml.m5.xlarge",
-       instance_count=1
-   )
-   
-   processing_step = ProcessingStep(
-       name="PreprocessData",
-       processor=processor,
-       # ... many configuration parameters
-   )
-
-**SageMaker V3 MLOps Approach:**
+Define a pipeline and add a processing step:
 
 .. code-block:: python
 
@@ -317,6 +293,32 @@ Run data preprocessing with ``ScriptProcessor`` (sklearn) or ``FrameworkProcesso
 
 :doc:`SKLearn example <../v3-examples/ml-ops-examples/v3-processing-job-sklearn>` · :doc:`PyTorch example <../v3-examples/ml-ops-examples/v3-processing-job-pytorch/v3-pytorch-processing-example>`
 
+**Instance Preferences:** pass an ordered list of candidate instance types and the platform runs the job on the first type with available capacity.
+
+.. code-block:: python
+
+   from sagemaker.core import image_uris
+   from sagemaker.core.processing import Processor
+
+   # Resolve the image from one of the candidates; every candidate must be able to run it.
+   processing_image = image_uris.retrieve(
+       framework="sklearn", region=region, version="1.2-1", instance_type="ml.m5.4xlarge"
+   )
+
+   processor = Processor(
+       role=role, image_uri=processing_image, volume_size_in_gb=100,
+       instance_preferences=[
+           {"InstanceType": "ml.m5.4xlarge", "InstanceCount": 2},
+           {"InstanceType": "ml.m5.2xlarge", "InstanceCount": 4},
+       ],
+   )
+
+   processor.run(job_name="instance-prefs-processing")
+
+Up to 5 candidates are allowed, each instance type at most once, and exactly one is selected; the list is mutually exclusive with ``instance_type``. Counts use exactly one of two modes — a top-level ``instance_count`` shared by whichever candidate wins, or an ``InstanceCount`` on every candidate — and mixed, partial, or omitted counts are rejected. Selection is based on capacity, not on workload fit, so list only types that can run the job's ``image_uri`` (the image is fixed at submission time; the instance type is not). The winner is reported as ``SelectedInstanceType`` / ``SelectedInstanceCount`` on the job's ``ClusterConfig``, and billing is for that type and count. Supported on ``Processor``, ``ScriptProcessor``, ``PySparkProcessor``, and ``SparkJarProcessor``; training plans are training-only and do not apply to processing.
+
+:doc:`Instance Preferences example <../v3-examples/ml-ops-examples/v3-processing-instance-preferences>`
+
 
 
 Batch Transform Jobs
@@ -545,6 +547,169 @@ Create and manage feature groups for storing, retrieving, and sharing ML feature
    for fg in feature_groups:
        print(f"{fg.feature_group_name}: {fg.feature_group_status}")
 
+**Ingesting data with BatchWriteRecord:**
+
+Use ``ingest_dataframe`` with ``use_batch_write_record=True`` to write records in batches of up to
+25 per API call, significantly improving throughput compared to single-record ``PutRecord`` calls.
+This requires both ``sagemaker:BatchWriteRecord`` and ``sagemaker:PutRecord`` IAM permissions.
+
+.. code-block:: python
+
+   import pandas as pd
+   from sagemaker.mlops.feature_store import ingest_dataframe
+
+   # Prepare your data
+   data = pd.DataFrame({
+       "customer_id": ["cust-1", "cust-2", "cust-3"],
+       "purchase_count": [10, 25, 3],
+       "avg_order_value": [45.99, 120.50, 15.00],
+       "event_time": ["2026-01-01T00:00:00Z"] * 3,
+   })
+
+   # Ingest using BatchWriteRecord (batches of 25 records per API call)
+   ingest_dataframe(
+       feature_group_name="customer-features",
+       data_frame=data,
+       max_workers=4,
+       max_processes=2,
+       use_batch_write_record=True,
+   )
+
+You can also ingest to specific target stores (``OnlineStore``, ``OfflineStore``, or both)
+using ``IngestionManagerPandas`` directly:
+
+.. code-block:: python
+
+   import pandas as pd
+   from sagemaker.mlops.feature_store import IngestionManagerPandas
+
+   data = pd.DataFrame({
+       "customer_id": ["cust-1", "cust-2", "cust-3"],
+       "purchase_count": [10, 25, 3],
+       "avg_order_value": [45.99, 120.50, 15.00],
+       "event_time": ["2026-01-01T00:00:00Z"] * 3,
+   })
+
+   manager = IngestionManagerPandas(
+       feature_group_name="customer-features",
+       feature_definitions={
+           "customer_id": {"FeatureType": "String", "CollectionType": None},
+           "purchase_count": {"FeatureType": "Integral", "CollectionType": None},
+           "avg_order_value": {"FeatureType": "Fractional", "CollectionType": None},
+           "event_time": {"FeatureType": "String", "CollectionType": None},
+       },
+       max_workers=4,
+       use_batch_write_record=True,
+   )
+   manager.run(data_frame=data, target_stores=["OnlineStore"])
+
+**Listing records from the OnlineStore:**
+
+Use ``list_records`` to retrieve record identifiers from a FeatureGroup's OnlineStore. Results are
+paginated — use the ``next_token`` from the response to fetch subsequent pages.
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import list_records
+
+   # List first page of records
+   response = list_records(
+       feature_group_name="customer-features",
+       max_results=10,
+       region="us-west-2",
+   )
+   print(response.record_identifiers)  # ['cust-1', 'cust-2', ...]
+
+   # Paginate through all records
+   next_token = response.next_token
+   while next_token:
+       response = list_records(
+           feature_group_name="customer-features",
+           max_results=100,
+           next_token=next_token,
+           region="us-west-2",
+       )
+       print(response.record_identifiers)
+       next_token = response.next_token
+
+To include soft-deleted records in the listing:
+
+.. code-block:: python
+
+   response = list_records(
+       feature_group_name="customer-features",
+       max_results=50,
+       include_soft_deleted_records=True,
+       region="us-west-2",
+   )
+
+**Feature-level writes with UpdateRecord (Standard_V2):**
+
+``UpdateRecord`` performs a partial write to a record in a feature group whose online store uses
+the ``Standard_V2`` or ``InMemory`` storage type. Only the features you supply are written; features
+you do not list are preserved. This avoids the ``GetRecord`` -> merge -> ``PutRecord`` round trip and
+prevents lost writes when independent pipelines own different features on the same record. The record
+must already exist in the online store (use ``PutRecord`` to create it).
+
+Create the feature group with ``Standard_V2`` storage (feature-level writes require ``Standard_V2``
+or ``InMemory``; they are not supported on the default ``Standard`` tier):
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import FeatureGroupManager, OnlineStoreStorageTypeEnum
+   from sagemaker.core.shapes import OnlineStoreConfig
+
+   feature_group = FeatureGroupManager.create(
+       feature_group_name="customer-features",
+       record_identifier_feature_name="customer_id",
+       event_time_feature_name="event_time",
+       feature_definitions=feature_definitions,
+       online_store_config=OnlineStoreConfig(
+           enable_online_store=True,
+           storage_type=OnlineStoreStorageTypeEnum.STANDARD_V2.value,
+       ),
+       role_arn=role,
+   )
+
+You can migrate an existing ``Standard`` feature group to ``Standard_V2`` with ``UpdateFeatureGroup``.
+This migration is one-way and cannot be reversed:
+
+.. code-block:: python
+
+   from sagemaker.core.resources import FeatureGroup
+   from sagemaker.core.shapes import OnlineStoreConfigUpdate
+
+   feature_group = FeatureGroup.get(feature_group_name="customer-features")
+   feature_group.update(
+       online_store_config=OnlineStoreConfigUpdate(storage_type="Standard_V2"),
+   )
+
+Use ``update_record`` to write only the features that changed. Pass ``EventTime`` as a feature
+(not a top-level parameter); features you do not include are preserved:
+
+.. code-block:: python
+
+   from sagemaker.mlops.feature_store import update_record
+
+   update_record(
+       feature_group_name="customer-features",
+       record_identifier_value_as_string="cust-1",
+       features=[
+           {"feature_name": "purchase_count", "value_as_string": "11"},
+           {"feature_name": "event_time", "value_as_string": "2026-01-02T00:00:00Z"},
+       ],
+       region="us-west-2",
+   )
+
+Notes:
+
+* Supply at most 100 features per call. If the supplied ``EventTime`` is not greater than the
+  record's current ``EventTime``, the update is rejected with a ``ConflictException``.
+* ``ttl_duration`` requires the record's event-time feature to be present in ``features``.
+  ``target_stores`` defaults to all stores on the feature group; a value resolving to the
+  ``OfflineStore`` only is rejected.
+* ``UpdateRecord`` is not supported on ``Standard`` (V1) feature groups.
+
 
 
 Migration from V2
@@ -632,5 +797,6 @@ Explore comprehensive MLOps examples:
    ../v3-examples/ml-ops-examples/v3-model-registry-example/v3-model-registry-example
    ../v3-examples/ml-ops-examples/v3-processing-job-pytorch/v3-pytorch-processing-example
    ../v3-examples/ml-ops-examples/v3-processing-job-sklearn
+   ../v3-examples/ml-ops-examples/v3-processing-instance-preferences
    ../v3-examples/ml-ops-examples/v3-emr-serverless-step-example
    ../v3-examples/ml-ops-examples/v3-mlflow-train-inference-e2e-example
