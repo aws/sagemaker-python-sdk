@@ -1,5 +1,26 @@
 # Changelog
 
+## v2.22.0 (2026-09-14)
+
+### New Features
+
+- feat(core): add InstancePreferences for multi-instance-type training and processing (#6249)
+- feat(feature-store): add UpdateRecord API and Standard_V2 storage type (#6247)
+
+### Bug Fixes
+
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+- fix(core): resolve default training role from sagemaker config (#6228)
+
+### Other
+
+- change(core): add image URI configs for DLC serving frameworks and Amazon Linux 2023 PyTorch (#6220)
+- change(core): add image URI configs for vLLM and SGLang (#6218)
+- ci(core): add botocore-sync workflows (#6226)
+- change(core): add TensorFlow inference 2.20 and training 2.21 image URI configs (#6230)
+- change(core): add Ray/llama-cpp CPU images and device-selectable DLC serving configs (#6229)
+- change(core): refresh generated image URI configs (55c2a9bd)
+
 ## v2.21.0 (2026-08-25)
 
 ### Bug Fixes
