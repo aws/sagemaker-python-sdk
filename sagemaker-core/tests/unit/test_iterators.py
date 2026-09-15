@@ -232,3 +232,26 @@ def test_line_iterator_incomplete_line_at_end():
     # After consuming all complete lines, should raise StopIteration
     with pytest.raises(StopIteration):
         next(iterator)
+
+
+def test_line_iterator_no_trailing_newline_at_end():
+    """Test LineIterator returns the final chunk even if it has no trailing "\n".
+
+    Regression test: previously this hung forever instead of returning or
+    raising, because the StopIteration handler for a leftover partial line
+    just did `continue`, re-reading the same unterminated line and calling
+    next() on an already-exhausted iterator every time.
+    """
+    mock_stream = [
+        {"PayloadPart": {"Bytes": b'{"outputs": [" first"]}\n'}},
+        {"PayloadPart": {"Bytes": b'{"outputs": [" second"]}'}},  # no trailing \n
+    ]
+    iterator = LineIterator(mock_stream)
+
+    line1 = next(iterator)
+    line2 = next(iterator)
+    assert line1 == b'{"outputs": [" first"]}'
+    assert line2 == b'{"outputs": [" second"]}'
+
+    with pytest.raises(StopIteration):
+        next(iterator)
