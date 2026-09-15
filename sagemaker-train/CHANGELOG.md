@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.22.0 (2026-09-14)
+
+### New Features
+
+- feat(train): add list_hyperparameters() for pre-trainer hyperparameter discovery (#6149)
+- feat(train): validate raw base model names in SageMaker Hub (#6227)
+- feat(train): add InstancePreferences for multi-instance-type training (#6249)
+
+### Bug Fixes
+
+- fix(train): add PipelineSession support to SFT, DPO, RLAIF, and RLVR trainers (#6213)
+- fix(train): resolve private Hub models and aliased references for ModelTrainer (#6201)
+- fix(train): validate evaluator models against the live supported-model list (#6217)
+- fix(train): complete PipelineSession support for SFT, DPO, RLAIF, and RLVR trainers (#6235)
+- fix(train): preserve training_plan_arn during serverful compute reconstruction (#6258)
+- fix(local): detect docker compose v2+ when version has no 'v' prefix (#6231)
+
+### Tests
+
+- fix(ci,train): stop integ tests from rerunning the shallow suite (#6216)
+- docs(train): add guidance for maintaining shallow integration tests (#6219)
+- fix(train): refresh MTRL attached-job integration fixtures (#6259)
+- fix(train): add training_plan_arn to serverful test fixtures (#6270)
+
 ## v1.21.0 (2026-08-25)
 
 ### New Features

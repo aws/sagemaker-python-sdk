@@ -38675,6 +38675,10 @@
         "TtlDuration":{
           "shape":"TtlDuration",
           "documentation":"<p>Time to live duration, where the record is hard deleted after the expiration time is reached; <code>ExpiresAt</code> = <code>EventTime</code> + <code>TtlDuration</code>. For information on HardDelete, see the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_feature_store_DeleteRecord.html\">DeleteRecord</a> API in the Amazon SageMaker API Reference guide.</p>"
+        },
+        "StorageType":{
+          "shape":"StorageType",
+          "documentation":"<p>The online store storage type to migrate the feature group to. Use this parameter to migrate an existing feature group from <code>Standard</code> to <code>Standard_V2</code> storage format, enabling support for the <a href=\"https://docs.aws.amazon.com/sagemaker/latest/APIReference/API_feature_store_UpdateRecord.html\">UpdateRecord</a> operation. Migration is a one-way operation and cannot be reversed.</p>"
         }
       },
       "documentation":"<p>Updates the feature group online store configuration.</p>"
@@ -45440,6 +45444,7 @@
       "type":"string",
       "enum":[
         "Standard",
+        "Standard_V2",
         "InMemory"
       ]
     },
