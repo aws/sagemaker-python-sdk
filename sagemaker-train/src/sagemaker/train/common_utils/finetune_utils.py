@@ -7,6 +7,7 @@ import logging
 import json
 from typing import Any, Dict, Optional, Union
 import boto3
+from botocore.exceptions import ClientError
 from sagemaker.core.resources import ModelPackage, ModelPackageGroup
 from sagemaker.core.helper.session_helper import Session
 from sagemaker.core.s3.utils import resolve_s3_uri_placeholders
@@ -422,6 +423,42 @@ def _wait_for_mlflow_app_ready_boto(sm_client, arn: str, timeout: int = 600) -> 
     return None
 
 
+def _default_bucket_name(region: str, account_id: str) -> str:
+    """Return the SDK-derived default bucket name ``sagemaker-{region}-{account_id}``."""
+    return f"sagemaker-{region}-{account_id}"
+
+
+def _verify_default_bucket_ownership(s3_client, bucket_name: str, account_id: str, region: str) -> None:
+    """Refuse to use the SDK-derived default bucket if another account owns it.
+
+    The default bucket name ``sagemaker-{region}-{account_id}`` is predictable, so a
+    third party could pre-create it in a region the account has not used yet and grant
+    the account access; the SDK would then silently read/write a foreign-owned bucket
+    (and, via the MLflow artifact store, expose a pickle-deserialization vector).
+
+    This check is applied ONLY when ``bucket_name`` matches the derived default, so
+    explicitly-provided (possibly cross-account) buckets are left untouched. A missing
+    bucket is allowed because the caller creates it in-account. A 403/AccessDenied from
+    the ownership-scoped ``head_bucket`` means the bucket exists under a different owner
+    and MUST NOT be used, so a clear error is raised instead of proceeding.
+    """
+    if bucket_name != _default_bucket_name(region, account_id):
+        return
+    try:
+        s3_client.head_bucket(Bucket=bucket_name, ExpectedBucketOwner=account_id)
+    except ClientError as e:
+        error_code = str(e.response.get("Error", {}).get("Code", ""))
+        if error_code in ("404", "NoSuchBucket", "NotFound"):
+            return  # Bucket does not exist yet; the caller creates it in-account.
+        if error_code in ("403", "AccessDenied"):
+            raise ValueError(
+                f"Refusing to use default bucket '{bucket_name}': it exists but is not "
+                f"owned by account {account_id}. Another account may have pre-created "
+                f"this predictable bucket name. Provide an explicit bucket you own."
+            ) from e
+        raise
+
+
 def _create_mlflow_app_as_upgrade(
     sagemaker_session, old_app: dict, domain_id: Optional[str]
 ) -> Optional[str]:
@@ -442,6 +479,16 @@ def _create_mlflow_app_as_upgrade(
 
         artifact_store_uri = old_app.get("ArtifactStoreUri") or \
             f"s3://sagemaker-{region}-{account_id}/mlflow-artifacts"
+        # If we fell back to the predictable default bucket, refuse it when another
+        # account owns it before registering it as the MLflow ArtifactStoreUri.
+        default_bucket = _default_bucket_name(region, account_id)
+        if artifact_store_uri == f"s3://{default_bucket}/mlflow-artifacts":
+            _verify_default_bucket_ownership(
+                sagemaker_session.boto_session.client("s3"),
+                default_bucket,
+                account_id,
+                region,
+            )
         role_arn = old_app.get("RoleArn") or \
             TrainDefaults.get_role(role=None, sagemaker_session=sagemaker_session)
         old_name = old_app.get("Name", "mlflow-app")
@@ -481,10 +528,22 @@ def _create_mlflow_app(sagemaker_session) -> Optional[str]:
         s3_client = sagemaker_session.boto_session.client('s3')
         bucket_name = f"sagemaker-{region}-{account_id}"
 
+        # Refuse the predictable default bucket if it exists under another owner.
+        _verify_default_bucket_ownership(s3_client, bucket_name, account_id, region)
+
         try:
-            response = s3_client.list_objects_v2(Bucket=bucket_name, Prefix="mlflow-artifacts/", MaxKeys=1)
+            response = s3_client.list_objects_v2(
+                Bucket=bucket_name,
+                Prefix="mlflow-artifacts/",
+                MaxKeys=1,
+                ExpectedBucketOwner=account_id,
+            )
             if 'Contents' not in response:
-                s3_client.put_object(Bucket=bucket_name, Key="mlflow-artifacts/")
+                s3_client.put_object(
+                    Bucket=bucket_name,
+                    Key="mlflow-artifacts/",
+                    ExpectedBucketOwner=account_id,
+                )
         except s3_client.exceptions.NoSuchBucket:
             if region == 'us-east-1':
                 s3_client.create_bucket(Bucket=bucket_name)
@@ -493,7 +552,11 @@ def _create_mlflow_app(sagemaker_session) -> Optional[str]:
                     Bucket=bucket_name,
                     CreateBucketConfiguration={'LocationConstraint': region}
                 )
-            s3_client.put_object(Bucket=bucket_name, Key="mlflow-artifacts/")
+            s3_client.put_object(
+                Bucket=bucket_name,
+                Key="mlflow-artifacts/",
+                ExpectedBucketOwner=account_id,
+            )
 
         resp = sm_client.create_mlflow_app(
             Name=app_name,
@@ -1306,7 +1369,20 @@ def _validate_s3_path_exists(s3_path: str, sagemaker_session):
     prefix = s3_parts[1] if len(s3_parts) > 1 else ""
     
     s3_client = sagemaker_session.boto_session.client('s3')
-    
+
+    # Refuse the predictable default bucket if another account owns it, before we
+    # create it or pass it to the training job as OutputDataConfig. The training
+    # write itself is performed service-side under the execution role, so
+    # ExpectedBucketOwner cannot be attached to it; verifying ownership of the
+    # derived bucket up front is the applicable guard.
+    try:
+        account_id = sagemaker_session.boto_session.client('sts').get_caller_identity()['Account']
+        region = sagemaker_session.boto_session.region_name
+    except Exception:  # pragma: no cover - identity resolution is best-effort
+        account_id = region = None
+    if account_id and region:
+        _verify_default_bucket_ownership(s3_client, bucket_name, account_id, region)
+
     try:
         # Check if bucket exists, create if it doesn't
         try:
