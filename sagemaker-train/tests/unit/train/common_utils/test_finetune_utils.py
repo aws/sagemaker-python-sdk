@@ -1784,3 +1784,127 @@ class TestListHyperparameters:
             )
 
         assert result.learning_rate == 0.0001
+
+
+class TestDefaultBucketOwnershipGuard:
+    """Bucket-ownership guard for the SDK-derived default bucket."""
+
+    def test_verify_ownership_foreign_bucket_raises(self):
+        from botocore.exceptions import ClientError
+        from sagemaker.train.common_utils.finetune_utils import _verify_default_bucket_ownership
+
+        s3 = Mock()
+        s3.head_bucket.side_effect = ClientError(
+            {"Error": {"Code": "403", "Message": "Forbidden"}}, "HeadBucket"
+        )
+        with pytest.raises(ValueError, match="not owned by account"):
+            _verify_default_bucket_ownership(
+                s3, "sagemaker-us-west-2-111122223333", "111122223333", "us-west-2"
+            )
+        s3.head_bucket.assert_called_once_with(
+            Bucket="sagemaker-us-west-2-111122223333", ExpectedBucketOwner="111122223333"
+        )
+
+    def test_verify_ownership_missing_bucket_ok(self):
+        from botocore.exceptions import ClientError
+        from sagemaker.train.common_utils.finetune_utils import _verify_default_bucket_ownership
+
+        s3 = Mock()
+        s3.head_bucket.side_effect = ClientError(
+            {"Error": {"Code": "404", "Message": "Not Found"}}, "HeadBucket"
+        )
+        # Missing bucket is allowed (caller creates it in-account); must not raise.
+        _verify_default_bucket_ownership(
+            s3, "sagemaker-us-west-2-111122223333", "111122223333", "us-west-2"
+        )
+
+    def test_verify_ownership_non_default_bucket_noop(self):
+        from sagemaker.train.common_utils.finetune_utils import _verify_default_bucket_ownership
+
+        s3 = Mock()
+        # Explicit / non-default bucket: guard is a no-op and never probes S3.
+        _verify_default_bucket_ownership(s3, "my-explicit-bucket", "111122223333", "us-west-2")
+        s3.head_bucket.assert_not_called()
+
+    @patch('sagemaker.train.common_utils.finetune_utils._wait_for_mlflow_app_ready_boto')
+    @patch('sagemaker.train.common_utils.finetune_utils.TrainDefaults.get_role')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_prod_sm_client')
+    def test_create_mlflow_app_passes_expected_owner(self, mock_get_client, mock_get_role, mock_wait):
+        from sagemaker.train.common_utils.finetune_utils import _create_mlflow_app
+
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_s3 = Mock()
+        mock_s3.list_objects_v2.return_value = {"Contents": [{"Key": "mlflow-artifacts/"}]}
+
+        def _client(service_name):
+            return mock_sts if service_name == "sts" else mock_s3
+
+        mock_session.boto_session.client.side_effect = _client
+        mock_get_role.return_value = "arn:aws:iam::123456789012:role/test-role"
+        mock_sm = Mock()
+        mock_sm.create_mlflow_app.return_value = {"Arn": "arn:app"}
+        mock_get_client.return_value = mock_sm
+        mock_wait.return_value = "arn:app"
+
+        _create_mlflow_app(mock_session)
+
+        mock_s3.head_bucket.assert_called_once_with(
+            Bucket="sagemaker-us-east-1-123456789012", ExpectedBucketOwner="123456789012"
+        )
+        mock_s3.list_objects_v2.assert_called_once_with(
+            Bucket="sagemaker-us-east-1-123456789012",
+            Prefix="mlflow-artifacts/",
+            MaxKeys=1,
+            ExpectedBucketOwner="123456789012",
+        )
+
+    @patch('sagemaker.train.common_utils.finetune_utils._wait_for_mlflow_app_ready_boto')
+    @patch('sagemaker.train.common_utils.finetune_utils.TrainDefaults.get_role')
+    @patch('sagemaker.train.common_utils.finetune_utils._get_prod_sm_client')
+    def test_create_mlflow_app_foreign_bucket_returns_none(self, mock_get_client, mock_get_role, mock_wait):
+        from botocore.exceptions import ClientError
+        from sagemaker.train.common_utils.finetune_utils import _create_mlflow_app
+
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-east-1"
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "123456789012"}
+        mock_s3 = Mock()
+        mock_s3.head_bucket.side_effect = ClientError({"Error": {"Code": "403"}}, "HeadBucket")
+
+        def _client(service_name):
+            return mock_sts if service_name == "sts" else mock_s3
+
+        mock_session.boto_session.client.side_effect = _client
+        mock_get_role.return_value = "arn:aws:iam::123456789012:role/test-role"
+        mock_sm = Mock()
+        mock_get_client.return_value = mock_sm
+
+        result = _create_mlflow_app(mock_session)
+
+        # Foreign-owned default bucket: app is NOT created; call fails safe.
+        assert result is None
+        mock_sm.create_mlflow_app.assert_not_called()
+
+    @patch('boto3.client')
+    def test_validate_s3_path_foreign_default_bucket_raises(self, _mock_boto_client):
+        from botocore.exceptions import ClientError
+        from sagemaker.train.common_utils.finetune_utils import _validate_s3_path_exists
+
+        mock_session = Mock()
+        mock_session.boto_session.region_name = "us-west-2"
+        mock_sts = Mock()
+        mock_sts.get_caller_identity.return_value = {"Account": "111122223333"}
+        mock_s3 = Mock()
+        mock_s3.head_bucket.side_effect = ClientError({"Error": {"Code": "403"}}, "HeadBucket")
+
+        def _client(service_name):
+            return mock_sts if service_name == "sts" else mock_s3
+
+        mock_session.boto_session.client.side_effect = _client
+
+        with pytest.raises(ValueError, match="not owned by account"):
+            _validate_s3_path_exists("s3://sagemaker-us-west-2-111122223333/output", mock_session)
