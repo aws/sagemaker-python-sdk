@@ -296,10 +296,27 @@ class TestDataSet:
             assert document['DatasetS3Prefix'] == 'path/to/dataset.jsonl'
             assert document['DatasetS3Bucket'] == 'test-bucket'
 
+    @patch('sagemaker.ai_registry.air_hub_entity.AIRHub.get_hub_name', return_value="test-hub")
+    @patch('sagemaker.ai_registry.dataset._get_default_bucket', return_value="test-bucket")
+    @patch('sagemaker.train.defaults.TrainDefaults.get_role', return_value="arn:aws:iam::123456789012:role/SageMakerRole")
+    @patch('sagemaker.train.defaults.TrainDefaults.get_sagemaker_session')
+    @patch('sagemaker.ai_registry.dataset._get_current_domain_id', return_value=None)
+    @patch('sagemaker.ai_registry.dataset.Session')
     @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_file')
     @patch('sagemaker.ai_registry.dataset.DataSet._validate_dataset_format')
     @patch('sagemaker.ai_registry.dataset.AIRHub')
-    def test_create_with_local_file(self, mock_air_hub, mock_validate_format, mock_validate_file):
+    def test_create_with_local_file(
+        self,
+        mock_air_hub,
+        mock_validate_format,
+        mock_validate_file,
+        mock_session,
+        mock_get_domain_id,
+        mock_get_session,
+        mock_get_role,
+        mock_default_bucket,
+        mock_get_hub_name,
+    ):
         mock_air_hub.upload_to_s3.return_value = "s3://bucket/path"
         mock_air_hub.import_hub_content.return_value = {"HubContentArn": "test-arn"}
         mock_air_hub.describe_hub_content.return_value = {
