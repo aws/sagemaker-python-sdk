@@ -143,24 +143,70 @@ class TestAIRHub:
     def test_upload_to_s3(self, mock_boto3):
         mock_s3_client = MagicMock()
         mock_boto3.client.return_value = mock_s3_client
-        
+
         AIRHub._s3_client = mock_s3_client
-        
+
         result = AIRHub.upload_to_s3("test-bucket", "test/key", "/local/path")
-        
+
         assert result == "s3://test-bucket/test/key"
-        mock_s3_client.upload_file.assert_called_once_with("/local/path", "test-bucket", "test/key")
+        # Non-default bucket: no ExpectedBucketOwner enforced (explicit buckets untouched).
+        mock_s3_client.upload_file.assert_called_once_with(
+            "/local/path", "test-bucket", "test/key", ExtraArgs=None
+        )
 
     @patch('sagemaker.ai_registry.air_hub.boto3')
     def test_download_from_s3(self, mock_boto3):
         mock_s3_client = MagicMock()
         mock_boto3.client.return_value = mock_s3_client
-        
+
         AIRHub._s3_client = mock_s3_client
-        
+
         AIRHub.download_from_s3("s3://test-bucket/test/key", "/local/path")
-        
-        mock_s3_client.download_file.assert_called_once_with("test-bucket", "test/key", "/local/path")
+
+        # Non-default bucket: no ExpectedBucketOwner enforced.
+        mock_s3_client.download_file.assert_called_once_with(
+            "test-bucket", "test/key", "/local/path", ExtraArgs=None
+        )
+
+    @patch('sagemaker.ai_registry.air_hub.boto3')
+    def test_upload_to_s3_default_bucket_enforces_owner(self, mock_boto3):
+        """Uploading to the SDK-derived default bucket passes ExpectedBucketOwner."""
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "111122223333"}
+        mock_boto3.client.return_value = mock_sts
+        mock_boto3.session.Session.return_value.region_name = "us-west-2"
+        mock_s3_client = MagicMock()
+        AIRHub._s3_client = mock_s3_client
+
+        default_bucket = "sagemaker-us-west-2-111122223333"
+        AIRHub.upload_to_s3(default_bucket, "test/key", "/local/path")
+
+        mock_s3_client.upload_file.assert_called_once_with(
+            "/local/path",
+            default_bucket,
+            "test/key",
+            ExtraArgs={"ExpectedBucketOwner": "111122223333"},
+        )
+
+    @patch('sagemaker.ai_registry.air_hub.boto3')
+    def test_download_from_s3_default_bucket_enforces_owner(self, mock_boto3):
+        """Downloading from the SDK-derived default bucket passes ExpectedBucketOwner."""
+        mock_sts = MagicMock()
+        mock_sts.get_caller_identity.return_value = {"Account": "111122223333"}
+        mock_boto3.client.return_value = mock_sts
+        mock_boto3.session.Session.return_value.region_name = "us-west-2"
+        mock_s3_client = MagicMock()
+        AIRHub._s3_client = mock_s3_client
+
+        default_bucket = "sagemaker-us-west-2-111122223333"
+        AIRHub.download_from_s3(f"s3://{default_bucket}/test/key", "/local/path")
+
+        mock_s3_client.download_file.assert_called_once_with(
+            default_bucket,
+            "test/key",
+            "/local/path",
+            ExtraArgs={"ExpectedBucketOwner": "111122223333"},
+        )
 
     def test_generate_hub_names_no_padding(self):
         """Test that generated hub names don't contain = padding characters."""

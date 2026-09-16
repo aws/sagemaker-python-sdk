@@ -143,6 +143,7 @@ from sagemaker.serve.constants import (
     LOCAL_MODES,
     SUPPORTED_MODEL_SERVERS,
     OMNI_TASKS,
+    VLLM_TASKS,
     Framework,
 )
 from sagemaker.core.workflow.pipeline_context import PipelineSession, runnable_by_pipeline
@@ -456,6 +457,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
     def __post_init__(self) -> None:
         """Initialize ModelBuilder after instantiation."""
         import warnings
+
+        self._built_model_was_reused = False
 
         if self.sagemaker_session is None:
             self.sagemaker_session = self._create_session_with_region()
@@ -3227,6 +3230,73 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
         return endpoint_names
 
+    def _resolve_lora_adapter_s3_uri(self, model_package: ModelPackage) -> str:
+        """Resolve the LoRA adapter URI for a supported model source."""
+        if isinstance(self.model, TrainingJob):
+            model_artifacts = getattr(self.model, "model_artifacts", None)
+            s3_uri = getattr(model_artifacts, "s3_model_artifacts", None)
+            suffix = "/checkpoints/hf/"
+        elif isinstance(self.model, ModelTrainer):
+            training_job = getattr(self.model, "_latest_training_job", None)
+            model_artifacts = getattr(training_job, "model_artifacts", None)
+            s3_uri = getattr(model_artifacts, "s3_model_artifacts", None)
+            suffix = "/checkpoints/hf/"
+        elif isinstance(self.model, (AgentRFTJob, ModelPackage)):
+            try:
+                s3_uri = (
+                    model_package.inference_specification.containers[
+                        0
+                    ].model_data_source.s3_data_source.s3_uri
+                )
+            except (AttributeError, IndexError, TypeError):
+                s3_uri = None
+            suffix = (
+                "/model/checkpoints/hf/"
+                if isinstance(self.model, ModelPackage)
+                else "/checkpoints/hf/"
+            )
+        else:
+            raise ValueError(
+                "Cannot resolve a LoRA adapter artifact URI from model source type "
+                f"'{type(self.model).__name__}'. Use a TrainingJob, ModelTrainer, "
+                "AgentRFTJob, or ModelPackage source."
+            )
+
+        if not isinstance(s3_uri, str) or not s3_uri:
+            raise ValueError(
+                "Cannot resolve the LoRA adapter artifact URI from the model source. "
+                "Ensure the training job or model package contains model artifacts."
+            )
+
+        if isinstance(self.model, (AgentRFTJob, ModelPackage)):
+            return s3_uri.rstrip("/") + suffix
+        return f"{s3_uri}{suffix}"
+
+    def _prepare_reused_model_customization_deployment_state(
+        self,
+        model_package: Optional[ModelPackage],
+        peft_type: Optional[str],
+        inference_config: Optional[ResourceRequirements],
+    ) -> None:
+        """Restore deployment state skipped when a customization Model was reused."""
+        if not getattr(self, "_built_model_was_reused", False):
+            return
+        if model_package is None or self._is_nova_model():
+            return
+
+        if inference_config is None and getattr(
+            self, "_cached_compute_requirements", None
+        ) is None:
+            self._fetch_and_cache_recipe_config()
+            if getattr(self, "_cached_compute_requirements", None) is None:
+                raise ValueError(
+                    "Cannot resolve compute requirements for the reused model. "
+                    "Provide ResourceRequirements explicitly."
+                )
+
+        if peft_type == "LORA" and not getattr(self, "_adapter_s3_uri", None):
+            self._adapter_s3_uri = self._resolve_lora_adapter_s3_uri(model_package)
+
     def _build_single_modelbuilder(
         self,
         mode: Optional[Mode] = None,
@@ -3398,25 +3468,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     },
                 )
                 # Store adapter path for use during deploy
-                if isinstance(self.model, TrainingJob):
-                    self._adapter_s3_uri = (
-                        f"{self.model.model_artifacts.s3_model_artifacts}/checkpoints/hf/"
-                    )
-                elif isinstance(self.model, ModelTrainer):
-                    self._adapter_s3_uri = (
-                        f"{self.model._latest_training_job.model_artifacts.s3_model_artifacts}"
-                        "/checkpoints/hf/"
-                    )
-                elif isinstance(self.model, AgentRFTJob):
-                    s3_uri = model_package.inference_specification.containers[
-                        0
-                    ].model_data_source.s3_data_source.s3_uri
-                    self._adapter_s3_uri = s3_uri.rstrip("/") + "/checkpoints/hf/"
-                elif isinstance(self.model, ModelPackage):
-                    s3_uri = model_package.inference_specification.containers[
-                        0
-                    ].model_data_source.s3_data_source.s3_uri
-                    self._adapter_s3_uri = s3_uri.rstrip("/") + "/model/checkpoints/hf/"
+                self._adapter_s3_uri = self._resolve_lora_adapter_s3_uri(model_package)
             else:
                 # Non-LORA: Model points at training output
                 from sagemaker.serve.utils.model_package_utils import get_s3_uri_from_inference_spec
@@ -3557,7 +3609,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     # Task-based auto-selection. SGLang is not auto-selected by task; it is
                     # opt-in only via model_server=ModelServer.SGLANG, which is handled earlier
                     # by the _build_for_model_server() short-circuit above.
-                    if model_task == "text-generation":
+                    if model_task in VLLM_TASKS:
                         self.built_model = self._build_for_vllm()
                         return self.built_model
                     elif model_task in OMNI_TASKS:
@@ -4240,6 +4292,10 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         # Core build state
         self.built_model = None
         self.secret_key = ""
+        self._built_model_was_reused = False
+        for attr in ["_cached_compute_requirements", "_adapter_s3_uri"]:
+            if hasattr(self, attr):
+                delattr(self, attr)
 
         # JumpStart preparation flags
         for attr in ["prepared_for_djl", "prepared_for_tgi", "prepared_for_mms"]:
@@ -4328,11 +4384,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 configuration chain. (Default: None).
             region (str, optional): The AWS region for deployment. If specified and different
                 from the current region, a new session will be created. (Default: None).
-            reuse_resources (bool, optional): If True, checks for an existing endpoint built
-                from the same model source (with matching deployment configuration) before
-                creating anything. On a match, build() creates no new resources and sets
-                ``built_model`` to the existing Model backing that endpoint; the subsequent
-                deploy() returns the existing endpoint. (Default: False).
+            reuse_resources (bool, optional): If True, checks for an existing Model built
+                from the same model source before creating one. On a match, build() creates
+                no new Model and sets ``built_model`` to the existing Model; on a miss, it
+                creates a new Model. Endpoint reuse is handled independently by passing
+                ``reuse_resources=True`` to deploy(). (Default: False).
 
         Returns:
             Union[Model, ModelBuilder, None]: A ``sagemaker.core.resources.Model`` resource
@@ -4345,6 +4401,8 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
             >>> endpoint = model_builder.deploy()  # Creates Endpoint resource
             >>> result = endpoint.invoke(data=input_data)
         """
+        self._built_model_was_reused = False
+
         if hasattr(self, "built_model") and self.built_model is not None:
             logger.warning(
                 "ModelBuilder.build() has already been called. "
@@ -4409,6 +4467,7 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                     reused_model.model_name,
                 )
                 self.built_model = reused_model
+                self._built_model_was_reused = True
                 return self.built_model
 
         deployables = {}
@@ -6279,8 +6338,61 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
                 endpoint.wait_for_status("InService")
             return endpoint
 
+        # Package-backed Nova models with explicit requirements continue through
+        # the single-IC path without generic LoRA or recipe preparation.
+        peft_type = (
+            self._fetch_peft() if model_package is not None and not is_nova else None
+        )
+        base_model_recipe_name = None
+        if peft_type == "LORA":
+            container = model_package.inference_specification.containers[0]
+            base_model_recipe_name = getattr(
+                getattr(container, "base_model", None), "recipe_name", None
+            )
+            if not base_model_recipe_name:
+                raise ValueError(
+                    "Cannot resolve the base model recipe for LoRA deployment. "
+                    "Ensure the model package contains base model metadata."
+                )
+
         if not endpoint_name:
             endpoint_name = f"endpoint-{uuid.uuid4().hex[:8]}"
+
+        self._prepare_reused_model_customization_deployment_state(
+            model_package=model_package,
+            peft_type=peft_type,
+            inference_config=inference_config,
+        )
+
+        if inference_config is not None:
+            compute_requirements = InferenceComponentComputeResourceRequirements(
+                min_memory_required_in_mb=inference_config.min_memory,
+                max_memory_required_in_mb=inference_config.max_memory,
+                number_of_cpu_cores_required=inference_config.num_cpus,
+                number_of_accelerator_devices_required=inference_config.num_accelerators,
+            )
+            copy_count = inference_config.copy_count
+        else:
+            compute_requirements = getattr(self, "_cached_compute_requirements", None)
+            if compute_requirements is None:
+                raise ValueError(
+                    "Cannot resolve compute requirements for model customization deployment. "
+                    "Provide ResourceRequirements explicitly."
+                )
+            copy_count = 1
+
+        adapter_s3_uri = None
+        if peft_type == "LORA":
+            adapter_s3_uri = getattr(self, "_adapter_s3_uri", None)
+            if not adapter_s3_uri and isinstance(
+                self.model, (TrainingJob, ModelTrainer, AgentRFTJob, ModelPackage)
+            ):
+                adapter_s3_uri = self._resolve_lora_adapter_s3_uri(model_package)
+                self._adapter_s3_uri = adapter_s3_uri
+            if not adapter_s3_uri and getattr(self, "_built_model_was_reused", False):
+                raise ValueError(
+                    "Cannot resolve the LoRA adapter artifact URI from the model source."
+                )
 
         # The endpoint config's network isolation must match the built Model, or
         # CreateInferenceComponent rejects the mismatch. Nova models are always
@@ -6326,16 +6438,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         else:
             endpoint = Endpoint.get(endpoint_name=endpoint_name)
 
-        # Without a model package (e.g. a Nova CPTTrainer or raw-S3 checkpoint)
-        # there is no PEFT/recipe metadata, so the deployment follows the
-        # single-IC path below.
-        peft_type = self._fetch_peft() if model_package is not None else None
-        base_model_recipe_name = (
-            model_package.inference_specification.containers[0].base_model.recipe_name
-            if model_package is not None
-            else None
-        )
-
         if peft_type == "LORA":
             # LORA deployment: base IC + adapter IC
 
@@ -6357,25 +6459,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
                 base_ic_spec = InferenceComponentSpecification(
                     model_name=self.built_model.model_name,
+                    compute_resource_requirements=compute_requirements,
                 )
-                if inference_config is not None:
-                    base_ic_spec.compute_resource_requirements = (
-                        InferenceComponentComputeResourceRequirements(
-                            min_memory_required_in_mb=inference_config.min_memory,
-                            max_memory_required_in_mb=inference_config.max_memory,
-                            number_of_cpu_cores_required=inference_config.num_cpus,
-                            number_of_accelerator_devices_required=inference_config.num_accelerators,
-                        )
-                    )
-                else:
-                    base_ic_spec.compute_resource_requirements = self._cached_compute_requirements
 
                 InferenceComponent.create(
                     inference_component_name=base_ic_name,
                     endpoint_name=endpoint_name,
                     variant_name=endpoint_name,
                     specification=base_ic_spec,
-                    runtime_config=InferenceComponentRuntimeConfig(copy_count=1),
+                    runtime_config=InferenceComponentRuntimeConfig(copy_count=copy_count),
                     tags=[{"key": "Base", "value": base_model_recipe_name}],
                 )
                 logger.info("Created base model InferenceComponent: '%s'", base_ic_name)
@@ -6389,7 +6481,6 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             # Deploy adapter IC
             adapter_ic_name = inference_component_name or f"{endpoint_name}-adapter"
-            adapter_s3_uri = getattr(self, "_adapter_s3_uri", None)
 
             adapter_ic_spec = InferenceComponentSpecification(
                 base_inference_component_name=base_ic_name,
@@ -6412,26 +6503,15 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
 
             ic_spec = InferenceComponentSpecification(
                 model_name=self.built_model.model_name,
+                compute_resource_requirements=compute_requirements,
             )
-
-            if inference_config is not None:
-                ic_spec.compute_resource_requirements = (
-                    InferenceComponentComputeResourceRequirements(
-                        min_memory_required_in_mb=inference_config.min_memory,
-                        max_memory_required_in_mb=inference_config.max_memory,
-                        number_of_cpu_cores_required=inference_config.num_cpus,
-                        number_of_accelerator_devices_required=inference_config.num_accelerators,
-                    )
-                )
-            else:
-                ic_spec.compute_resource_requirements = self._cached_compute_requirements
 
             InferenceComponent.create(
                 inference_component_name=inference_component_name,
                 endpoint_name=endpoint_name,
                 variant_name=endpoint_name,
                 specification=ic_spec,
-                runtime_config=InferenceComponentRuntimeConfig(copy_count=1),
+                runtime_config=InferenceComponentRuntimeConfig(copy_count=copy_count),
             )
 
         # Create lineage tracking for new endpoints. Lineage is keyed off the

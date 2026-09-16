@@ -41,6 +41,7 @@ class _ConcreteTrainer(BaseTrainer):
             instance_count=4,
             volume_size_in_gb=100,
             keep_alive_period_in_seconds=None,
+            training_plan_arn=None,
         )
         self.networking = None
         self.stopping_condition = None

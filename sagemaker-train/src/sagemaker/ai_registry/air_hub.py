@@ -260,6 +260,28 @@ class AIRHub:
         return client.delete_hub_content(**request)
 
     @staticmethod
+    def _default_bucket_expected_owner_args(bucket: str) -> dict:
+        """Return ExtraArgs enforcing bucket ownership for the SDK-derived default bucket.
+
+        The AI Registry derives a predictable default bucket name
+        ``sagemaker-{region}-{account_id}``. Because S3 bucket names are globally
+        unique, another account could pre-create that name and grant the caller
+        access; without a check the SDK would silently read from / write to that
+        foreign-owned bucket. Passing ``ExpectedBucketOwner`` makes S3 reject the
+        call with 403 instead. The guard is applied ONLY when ``bucket`` matches the
+        derived default, so explicitly-provided (possibly cross-account) buckets are
+        left untouched.
+        """
+        try:
+            account_id = boto3.client("sts").get_caller_identity()["Account"]
+            region = boto3.session.Session().region_name
+        except Exception:  # pragma: no cover - identity resolution is best-effort
+            return {}
+        if bucket == f"sagemaker-{region}-{account_id}":
+            return {"ExpectedBucketOwner": account_id}
+        return {}
+
+    @staticmethod
     @_telemetry_emitter(feature=Feature.MODEL_CUSTOMIZATION, func_name="AIRHub.upload_to_s3")
     def upload_to_s3(bucket: str, prefix: str, local_file_path: str) -> str:
         """Upload a local file to S3.
@@ -272,7 +294,10 @@ class AIRHub:
         Returns:
             S3 URI of uploaded file
         """
-        AIRHub._s3_client.upload_file(local_file_path, bucket, prefix)
+        extra_args = AIRHub._default_bucket_expected_owner_args(bucket)
+        AIRHub._s3_client.upload_file(
+            local_file_path, bucket, prefix, ExtraArgs=extra_args or None
+        )
         return f"s3://{bucket}/{prefix}"
 
     @staticmethod
@@ -287,4 +312,7 @@ class AIRHub:
         parsed = urlparse(s3_uri)
         bucket = parsed.netloc
         key = parsed.path.lstrip("/")
-        AIRHub._s3_client.download_file(bucket, key, local_path)
+        extra_args = AIRHub._default_bucket_expected_owner_args(bucket)
+        AIRHub._s3_client.download_file(
+            bucket, key, local_path, ExtraArgs=extra_args or None
+        )

@@ -14,27 +14,7 @@ Key Benefits of V3 Inference
 Quick Start Example
 -------------------
 
-Here's how inference has evolved from V2 to V3:
-
-**SageMaker Python SDK V2:**
-
-.. code-block:: python
-
-   from sagemaker.model import Model
-   from sagemaker.predictor import Predictor
-   
-   model = Model(
-       image_uri="my-inference-image",
-       model_data="s3://my-bucket/model.tar.gz",
-       role="arn:aws:iam::123456789012:role/SageMakerRole"
-   )
-   predictor = model.deploy(
-       initial_instance_count=1,
-       instance_type="ml.m5.xlarge"
-   )
-   result = predictor.predict(data)
-
-**SageMaker Python SDK V3:**
+Build, deploy, and invoke a model with ``ModelBuilder``:
 
 .. code-block:: python
 
