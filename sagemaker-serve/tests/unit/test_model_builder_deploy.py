@@ -191,6 +191,27 @@ class TestModelBuilderDeploy(unittest.TestCase):
         self.assertEqual(result, mock_endpoint)
         mock_deploy_local.assert_called_once()
 
+    def test_deploy_sagemaker_endpoint_maps_container_timeout(self):
+        """The public timeout controls the endpoint container startup health check."""
+        builder = Mock(spec=ModelBuilder)
+        builder.model_server = ModelServer.VLLM
+        builder.mode = Mode.SAGEMAKER_ENDPOINT
+        builder.built_model = Mock(spec=Model)
+        builder._deploy_core_endpoint = Mock(return_value=Mock(spec=Endpoint))
+        builder._get_deploy_wrapper = Mock(return_value=None)
+
+        result = ModelBuilder._deploy(
+            builder,
+            endpoint_name="test-endpoint",
+            container_timeout_in_seconds=900,
+        )
+
+        builder._deploy_core_endpoint.assert_called_once_with(
+            endpoint_name="test-endpoint",
+            container_startup_health_check_timeout=900,
+        )
+        self.assertIsInstance(result, Endpoint)
+
     @patch('sagemaker.serve.local_resources.LocalEndpoint.create')
     def test_deploy_in_process_mode(self, mock_local_endpoint):
         """Test _deploy with IN_PROCESS mode."""

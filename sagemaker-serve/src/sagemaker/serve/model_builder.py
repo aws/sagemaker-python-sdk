@@ -4188,6 +4188,11 @@ class ModelBuilder(_InferenceRecommenderMixin, _ModelBuilderServers, _ModelBuild
         if self.mode == Mode.LOCAL_CONTAINER:
             endpoint = self._deploy_local_endpoint(**kwargs)
         elif self.mode == Mode.SAGEMAKER_ENDPOINT:
+            if "container_timeout_in_seconds" in kwargs:
+                kwargs.setdefault(
+                    "container_startup_health_check_timeout",
+                    kwargs.pop("container_timeout_in_seconds"),
+                )
             endpoint = self._deploy_core_endpoint(**kwargs)
         elif self.mode == Mode.IN_PROCESS:
             endpoint = LocalEndpoint.create(

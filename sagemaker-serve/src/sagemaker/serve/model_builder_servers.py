@@ -76,6 +76,21 @@ JOB_NAME_PARAM_NAME = "sagemaker_job_name"
 MODEL_SERVER_WORKERS_PARAM_NAME = "sagemaker_model_server_workers"
 SAGEMAKER_REGION_PARAM_NAME = "sagemaker_region"
 SAGEMAKER_OUTPUT_LOCATION = "sagemaker_s3_output"
+_CUDA_13_INFERENCE_AMI = "al2023-ami-sagemaker-inference-gpu-4-1"
+_CUDA_13_INFERENCE_AMI_COMPATIBLE_FAMILIES = frozenset(
+    {
+        "ml.g4dn",
+        "ml.g5",
+        "ml.g6",
+        "ml.g6e",
+        "ml.p4d",
+        "ml.p4de",
+        "ml.p5",
+        "ml.p5e",
+        "ml.p5en",
+    }
+)
+
 
 
 class _ModelBuilderServers(object):
@@ -331,11 +346,10 @@ class _ModelBuilderServers(object):
         """Build a HuggingFace model for a hub-download serving container.
 
         Generic build path shared by the vLLM, SGLang, and vLLM-omni servers. It
-        configures the container to pull the model directly from the HuggingFace Hub
-        (HF_MODEL_ID), resolves the appropriate DLC image via _auto_detect_image_uri,
-        and prepares the model for the selected mode. Server-specific tuning (sharding,
-        tensor parallelism, MAX_* limits, etc.) is intentionally left to the container
-        defaults and will be added in a follow-up.
+        configures the container to pull the model directly from the HuggingFace Hub,
+        resolves the appropriate DLC image via _auto_detect_image_uri, and prepares the
+        model for the selected mode. Server-specific tuning (sharding, tensor parallelism,
+        MAX_* limits, etc.) remains configurable through environment variables.
 
         Args:
             model_server: The HuggingFace serving model server to build for
@@ -358,9 +372,10 @@ class _ModelBuilderServers(object):
         _create_dir_structure(self.model_path)
 
         if isinstance(self.model, str) and not self._is_jumpstart_model_id():
-            # These containers download the model directly from the HuggingFace Hub
-            # Todo: missing something?
+            # These containers download the model directly from the HuggingFace Hub.
             self.env_vars.setdefault("HF_MODEL_ID", self.model)
+            if model_server == ModelServer.VLLM:
+                self.env_vars.setdefault("SM_VLLM_MODEL", self.model)
 
             if self.env_vars.get("HUGGING_FACE_HUB_TOKEN"):
                 self.env_vars["HF_TOKEN"] = self.env_vars.get("HUGGING_FACE_HUB_TOKEN")
@@ -368,6 +383,17 @@ class _ModelBuilderServers(object):
             self.s3_upload_path = None
 
         self._auto_detect_image_uri()
+        if (
+            model_server == ModelServer.VLLM
+            and self.mode == Mode.SAGEMAKER_ENDPOINT
+            and isinstance(self.image_uri, str)
+            and isinstance(self.instance_type, str)
+            and "-cu130-" in self.image_uri
+            and self.instance_type.rsplit(".", 1)[0]
+            in _CUDA_13_INFERENCE_AMI_COMPATIBLE_FAMILIES
+            and not getattr(self, "inference_ami_version", None)
+        ):
+            self.inference_ami_version = _CUDA_13_INFERENCE_AMI
 
         if not self._optimizing:
             if self.mode in LOCAL_MODES:

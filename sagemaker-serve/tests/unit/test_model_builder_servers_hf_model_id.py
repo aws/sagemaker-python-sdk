@@ -292,6 +292,59 @@ def test_sets_default_hf_model_id_when_not_provided(
     )
 
 
+class TestBuildForVllmCompatibility:
+    """vLLM builds configure the model and host driver requirements."""
+
+    @staticmethod
+    def _build(builder: MagicMock) -> None:
+        patchers = _apply_patches(
+            [f"{_MOD}._get_nb_instance", _TGI_PREP],
+            [None, None],
+        )
+        try:
+            _ModelBuilderServers._build_for_hf_server(builder, ModelServer.VLLM)
+        finally:
+            _stop_patches(patchers)
+
+    def test_configures_model_and_cuda_13_inference_ami(
+        self,
+        mock_builder: MagicMock,
+    ) -> None:
+        """The current CUDA 13 vLLM DLC must use a compatible G5 host driver."""
+        builder = mock_builder
+        builder.image_uri = (
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+            "vllm:0.21.0-gpu-py312-cu130-ubuntu22.04"
+        )
+        builder.inference_ami_version = None
+
+        self._build(builder)
+
+        assert builder.env_vars["SM_VLLM_MODEL"] == DEFAULT_MODEL
+        assert (
+            builder.inference_ami_version
+            == "al2023-ami-sagemaker-inference-gpu-4-1"
+        )
+
+    def test_preserves_explicit_model_and_inference_ami(
+        self,
+        mock_builder: MagicMock,
+    ) -> None:
+        """Explicit vLLM model and host AMI settings take precedence."""
+        builder = mock_builder
+        builder.image_uri = (
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+            "vllm:0.21.0-gpu-py312-cu130-ubuntu22.04"
+        )
+        builder.env_vars["SM_VLLM_MODEL"] = S3_PATH
+        builder.inference_ami_version = "custom-inference-ami"
+
+        self._build(builder)
+
+        assert builder.env_vars["SM_VLLM_MODEL"] == S3_PATH
+        assert builder.inference_ami_version == "custom-inference-ami"
+
+
 # -----------------------------------------------------------
 # Transformers (MMS) — needs extra patches
 # -----------------------------------------------------------
