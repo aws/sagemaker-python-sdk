@@ -31,8 +31,6 @@ import uuid
 import pytest
 
 from sagemaker.core import image_uris
-from sagemaker.core.helper.session_helper import Session, get_execution_role
-from sagemaker.core.workflow.pipeline_context import PipelineSession
 from sagemaker.mlops.workflow.endpoint_step import EndpointConfigStep, EndpointStep
 from sagemaker.mlops.workflow.inference_component_step import InferenceComponentStep
 from sagemaker.mlops.workflow.pipeline import Pipeline
@@ -42,19 +40,10 @@ EXECUTION_TIMEOUT_SECONDS = 45 * 60
 POLL_SECONDS = 30
 
 
-@pytest.fixture
-def sagemaker_session():
-    return Session()
-
-
-@pytest.fixture
-def pipeline_session():
-    return PipelineSession()
-
-
-@pytest.fixture
-def role():
-    return get_execution_role()
+# sagemaker_session, pipeline_session and role come from tests/integ/conftest.py.
+# They build their sessions on a boto3.Session carrying an explicit region, which a
+# bare Session() would not have: CI runs the integ suite with AWS_DEFAULT_REGION
+# unset.
 
 
 def test_deployment_steps_execute_end_to_end(sagemaker_session, pipeline_session, role):
