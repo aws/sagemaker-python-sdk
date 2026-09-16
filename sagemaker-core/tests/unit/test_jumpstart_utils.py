@@ -1893,7 +1893,7 @@ class TestGetDraftModelContentBucket:
         assert result == "neo-bucket"
 
 
-class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresent:
+class TestRemoveEnvVarFromEstimatorKwargsIfAcceptEulaPresentValues:
     """Test cases for remove_env_var_from_estimator_kwargs_if_accept_eula_present function"""
 
     def test_remove_env_var_accept_eula_true(self):

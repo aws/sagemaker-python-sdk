@@ -505,10 +505,9 @@ class TestHostingContainer:
         mock_popen.assert_called_once()
 
     @patch("sagemaker.core.local.utils.kill_child_processes")
-    @patch("platform.system")
-    def test_hosting_container_down_unix(self, mock_platform, mock_kill):
+    @patch("sagemaker.core.local.image.os.name", "posix")
+    def test_hosting_container_down_unix(self, mock_kill):
         """Test _HostingContainer down method on Unix"""
-        mock_platform.return_value = "Linux"
         mock_process = Mock()
         mock_process.pid = 12345
 
@@ -519,16 +518,17 @@ class TestHostingContainer:
         mock_kill.assert_called_once_with(12345)
         mock_process.terminate.assert_called_once()
 
-    @patch("platform.system")
-    def test_hosting_container_down_windows(self, mock_platform):
+    @patch("sagemaker.core.local.utils.kill_child_processes")
+    @patch("sagemaker.core.local.image.os.name", "nt")
+    def test_hosting_container_down_windows(self, mock_kill):
         """Test _HostingContainer down method on Windows"""
-        mock_platform.return_value = "Windows"
         mock_process = Mock()
 
         container = _HostingContainer(["docker", "compose", "up"])
         container.process = mock_process
         container.down()
 
+        mock_kill.assert_not_called()
         mock_process.terminate.assert_called_once()
 
 
@@ -1134,7 +1134,7 @@ class TestHelperFunctions:
             assert mock_makedirs.call_count >= 1
 
 
-class TestVolume:
+class TestVolumeInit:
     """Test cases for _Volume class"""
 
     def test_init_with_host_and_container_dir(self):
@@ -1161,7 +1161,7 @@ class TestVolume:
         assert "/container/path" in result
 
 
-class TestHostingContainer:
+class TestHostingContainerLifecycle:
     """Test cases for _HostingContainer class"""
 
     def test_init(self):

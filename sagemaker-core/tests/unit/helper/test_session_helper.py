@@ -990,7 +990,7 @@ class TestExpandRole:
         assert result == "arn:aws:iam::123456789012:role/MyRole"
 
 
-class TestGenerateDefaultSagemakerBucketName:
+class TestGenerateDefaultSagemakerBucketNameRegions:
     """Test generate_default_sagemaker_bucket_name static method."""
 
     def test_generate_default_sagemaker_bucket_name_standard_region(
