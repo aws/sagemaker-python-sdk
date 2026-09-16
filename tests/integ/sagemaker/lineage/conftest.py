@@ -885,7 +885,7 @@ def _deploy_static_endpoint(execution_arn, sagemaker_session):
             model_package_arn=model_package_arn,
             sagemaker_session=sagemaker_session,
         )
-        model_package.deploy(1, "ml.t2.medium", endpoint_name=STATIC_ENDPOINT_NAME)
+        model_package.deploy(1, "ml.m5.xlarge", endpoint_name=STATIC_ENDPOINT_NAME)
         time.sleep(120)
     except ClientError as e:
         if e.response["Error"]["Code"] == "ValidationException":

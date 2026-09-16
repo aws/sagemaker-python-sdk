@@ -58,8 +58,6 @@ NO_P3_REGIONS = [
     "ap-south-1",  # no p3 availability
 ]
 
-NO_T2_REGIONS = ["eu-north-1", "ap-east-1", "me-south-1"]
-
 FRAMEWORKS_FOR_GENERATED_VERSION_FIXTURES = (
     "chainer",
     "coach_mxnet",
@@ -666,12 +664,11 @@ def ec2_instance_type(cpu_instance_type):
 
 @pytest.fixture(scope="session")
 def alternative_cpu_instance_type(sagemaker_session, request):
-    region = sagemaker_session.boto_session.region_name
-    if region in NO_T2_REGIONS:
-        # T3 is not supported by hosting yet
-        return "ml.c5.xlarge"
-    else:
-        return "ml.t2.medium"
+    # SageMaker hosting no longer accepts the T2 family (CreateEndpointConfig
+    # rejects it with 'Deprecated instance type "T2"'). ml.c5.xlarge is
+    # available in every region and differs from cpu_instance_type, which is
+    # all the update-endpoint tests need.
+    return "ml.c5.xlarge"
 
 
 @pytest.fixture(scope="session")
