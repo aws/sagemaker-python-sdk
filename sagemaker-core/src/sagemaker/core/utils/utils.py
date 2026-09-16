@@ -64,18 +64,6 @@ def convert_to_snake_case(entity_name):
     return re.sub("([a-z0-9])([A-Z])", r"\1_\2", snake_case).lower()
 
 
-def snake_to_pascal(snake_str):
-    """
-    Convert a snake_case string to PascalCase.
-    Args:
-        snake_str (str): The snake_case string to be converted.
-    Returns:
-        str: The PascalCase string.
-    """
-    components = snake_str.split("_")
-    return "".join(x.title() for x in components[0:])
-
-
 def reformat_file_with_black(filename):
     try:
         # Run black with specific options using subprocess
