@@ -36,11 +36,9 @@ import uuid
 
 import pytest
 
-from sagemaker.session import Session, get_execution_role
 from sagemaker.lineage.action import Action
 from sagemaker.lineage.artifact import Artifact
 from sagemaker.lineage.context import Context
-from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.lineage_step import (
     LineageAssociation,
     LineageEntityReference,
@@ -48,20 +46,10 @@ from sagemaker.workflow.lineage_step import (
 )
 from sagemaker.workflow.pipeline import Pipeline
 
-
-@pytest.fixture
-def sagemaker_session():
-    return Session()
-
-
-@pytest.fixture
-def pipeline_session():
-    return PipelineSession()
-
-
-@pytest.fixture
-def role():
-    return get_execution_role()
+# sagemaker_session and pipeline_session come from tests/conftest.py, and role from
+# the workflow conftest. They build their sessions on a boto3.Session carrying an
+# explicit region, which a bare Session() would not have: CI runs the integ suite
+# with AWS_DEFAULT_REGION unset.
 
 
 def test_lineage_step_execute_end_to_end(sagemaker_session, pipeline_session, role):

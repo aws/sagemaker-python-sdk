@@ -31,8 +31,6 @@ import uuid
 import pytest
 
 from sagemaker import image_uris
-from sagemaker.session import Session, get_execution_role
-from sagemaker.workflow.pipeline_context import PipelineSession
 from sagemaker.workflow.endpoint_step import EndpointConfigStep, EndpointStep
 from sagemaker.workflow.inference_component_step import InferenceComponentStep
 from sagemaker.workflow.pipeline import Pipeline
@@ -43,19 +41,10 @@ EXECUTION_TIMEOUT_SECONDS = 45 * 60
 POLL_SECONDS = 30
 
 
-@pytest.fixture
-def sagemaker_session():
-    return Session()
-
-
-@pytest.fixture
-def pipeline_session():
-    return PipelineSession()
-
-
-@pytest.fixture
-def role():
-    return get_execution_role()
+# sagemaker_session and pipeline_session come from tests/conftest.py, and role from
+# the workflow conftest. They build their sessions on a boto3.Session carrying an
+# explicit region, which a bare Session() would not have: CI runs the integ suite
+# with AWS_DEFAULT_REGION unset.
 
 
 def test_deployment_steps_execute_end_to_end(sagemaker_session, pipeline_session, role):
