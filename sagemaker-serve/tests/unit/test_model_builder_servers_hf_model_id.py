@@ -292,17 +292,20 @@ def test_sets_default_hf_model_id_when_not_provided(
     )
 
 
-class TestBuildForVllmCompatibility:
-    """vLLM builds configure the model and host driver requirements."""
+class TestBuildForCuda13Compatibility:
+    """CUDA 13 serving images configure compatible host drivers."""
 
     @staticmethod
-    def _build(builder: MagicMock) -> None:
+    def _build(
+        builder: MagicMock,
+        model_server: ModelServer = ModelServer.VLLM,
+    ) -> None:
         patchers = _apply_patches(
             [f"{_MOD}._get_nb_instance", _TGI_PREP],
             [None, None],
         )
         try:
-            _ModelBuilderServers._build_for_hf_server(builder, ModelServer.VLLM)
+            _ModelBuilderServers._build_for_hf_server(builder, model_server)
         finally:
             _stop_patches(patchers)
 
@@ -325,6 +328,27 @@ class TestBuildForVllmCompatibility:
             builder.inference_ami_version
             == "al2023-ami-sagemaker-inference-gpu-4-1"
         )
+
+    def test_configures_cuda_13_inference_ami_for_vllm_omni(
+        self,
+        mock_builder: MagicMock,
+    ) -> None:
+        """The CUDA 13 vLLM-omni DLC must use a compatible G5 host driver."""
+        builder = mock_builder
+        builder.image_uri = (
+            "123456789012.dkr.ecr.us-west-2.amazonaws.com/"
+            "huggingface-vllm-omni:0.20.0-gpu-py312-cu130-amzn2023"
+        )
+        builder.inference_ami_version = None
+
+        self._build(builder, ModelServer.VLLM_OMNI)
+
+        assert (
+            builder.inference_ami_version
+            == "al2023-ami-sagemaker-inference-gpu-4-1"
+        )
+        assert "SM_VLLM_MODEL" not in builder.env_vars
+
 
     def test_preserves_explicit_model_and_inference_ami(
         self,

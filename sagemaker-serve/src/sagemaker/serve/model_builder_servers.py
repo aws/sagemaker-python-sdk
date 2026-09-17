@@ -384,8 +384,7 @@ class _ModelBuilderServers(object):
 
         self._auto_detect_image_uri()
         if (
-            model_server == ModelServer.VLLM
-            and self.mode == Mode.SAGEMAKER_ENDPOINT
+            self.mode == Mode.SAGEMAKER_ENDPOINT
             and isinstance(self.image_uri, str)
             and isinstance(self.instance_type, str)
             and "-cu130-" in self.image_uri
