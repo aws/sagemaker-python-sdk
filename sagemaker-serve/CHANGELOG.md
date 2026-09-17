@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix: vllm and vllm-omni tasks in routing logic (#6007)
+- fix: restore model customization reuse state (#6264)
+
+
 ## v1.22.0 (2026-09-14)
 
 ### Other

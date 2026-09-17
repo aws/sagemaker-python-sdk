@@ -1,5 +1,21 @@
 # Changelog
 
+## v3.22.1 (2026-09-17)
+
+### Bug Fixes
+
+- fix(jumpstart): name JumpStart in the content bucket error (#6243)
+- fix(core): send NextToken when Hub.list_models pages through hub contents (#6263)
+- fix(train): enforce S3 ownership on ai_registry default bucket (#6275)
+- fix: vllm and vllm-omni tasks in routing logic (#6007)
+- fix: restore model customization reuse state (#6264)
+
+### Other
+
+- add: metadata for hf-vllm 0.22.1, 0.25.1, 0.26, 0.27.1 and 0.28 (#6060)
+- add sklearn 1.9-0 image URI config (#6037)
+
+
 ## v3.22.0 (2026-09-14)
 
 ### New Features
