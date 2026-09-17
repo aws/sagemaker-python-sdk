@@ -415,19 +415,28 @@ class TestModelBuilderHuggingFaceWorkflow(unittest.TestCase):
 
     @patch('sagemaker.serve.model_builder.ModelBuilder._is_huggingface_model')
     @patch('sagemaker.serve.model_builder.ModelBuilder.get_huggingface_model_metadata')
-    @patch('sagemaker.serve.model_builder.ModelBuilder._build_for_vllm_omni')
+    @patch('sagemaker.serve.model_builder.ModelBuilder._build_for_vllm')
     @patch('sagemaker.serve.model_builder.ModelBuilder._get_client_translators')
     @patch('sagemaker.serve.model_builder.ModelBuilder._is_jumpstart_model_id')
     @patch('sagemaker.serve.model_builder.ModelBuilder._use_jumpstart_equivalent')
     @patch('sagemaker.serve.model_builder.ModelBuilder._hf_schema_builder_init')
-    def test_build_single_with_hf_multimodal(self, mock_schema_init, mock_use_js, mock_is_js, mock_get_trans, mock_build_omni, mock_get_md, mock_is_hf):
-        """Test _build_single_modelbuilder routes HF multimodal models to vLLM-omni."""
+    def test_build_single_with_hf_multimodal(
+        self,
+        mock_schema_init,
+        mock_use_js,
+        mock_is_js,
+        mock_get_trans,
+        mock_build_vllm,
+        mock_get_md,
+        mock_is_hf,
+    ):
+        """Test _build_single_modelbuilder routes HF multimodal text models to vLLM."""
         mock_is_hf.return_value = True
         mock_is_js.return_value = False
         mock_use_js.return_value = False
         mock_get_md.return_value = {"pipeline_tag": "image-text-to-text"}
         mock_model = Mock(spec=Model)
-        mock_build_omni.return_value = mock_model
+        mock_build_vllm.return_value = mock_model
         mock_get_trans.return_value = (None, None)
 
         builder = ModelBuilder(
@@ -441,7 +450,7 @@ class TestModelBuilderHuggingFaceWorkflow(unittest.TestCase):
         result = builder._build_single_modelbuilder()
 
         self.assertEqual(result, mock_model)
-        mock_build_omni.assert_called_once()
+        mock_build_vllm.assert_called_once()
 
     @patch('sagemaker.serve.model_builder.ModelBuilder._is_huggingface_model')
     @patch('sagemaker.serve.model_builder.ModelBuilder._build_for_sglang')
