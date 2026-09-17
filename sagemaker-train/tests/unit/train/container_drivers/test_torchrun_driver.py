@@ -17,6 +17,7 @@ import os
 import sys
 import json
 
+import pytest
 from unittest.mock import patch, MagicMock
 
 sys.modules["utils"] = MagicMock()
@@ -146,3 +147,28 @@ def test_create_commands_multi_node(
 
     command = torchrun_driver.create_commands()
     assert command == expected_command
+
+
+@pytest.mark.parametrize("instance_type", ["ml.p5.48xlarge", "ml.p5e.48xlarge"])
+@patch.dict(
+    os.environ,
+    {
+        "SM_NETWORK_INTERFACE_NAME": "eth0",
+        "SM_HOST_COUNT": "2",
+        "SM_MASTER_ADDR": "algo-1",
+        "SM_MASTER_PORT": "7777",
+        "SM_CURRENT_HOST_RANK": "0",
+        "SM_HPS": json.dumps({}),
+        "SM_DISTRIBUTED_CONFIG": json.dumps(DUMMY_DISTRIBUTED),
+        "SM_ENTRY_SCRIPT": "script.py",
+    },
+)
+def test_p5_p5e_efa_environment_setup(instance_type):
+    """Test that P5 and P5e instances are in EFA instance lists."""
+    from sagemaker.train.container_drivers.common.utils import (
+        SM_EFA_NCCL_INSTANCES,
+        SM_EFA_RDMA_INSTANCES,
+    )
+
+    assert instance_type in SM_EFA_NCCL_INSTANCES
+    assert instance_type in SM_EFA_RDMA_INSTANCES
