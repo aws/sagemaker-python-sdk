@@ -74,8 +74,17 @@ class TestBucketUtils(TestCase):
     def test_get_jumpstart_content_bucket(self):
         bad_region = "bad_region"
         assert bad_region not in JUMPSTART_REGION_NAME_SET
-        with pytest.raises(ValueError):
+        with pytest.raises(
+            ValueError,
+            match=r"^Unable to get content bucket for JumpStart in bad_region region\.",
+        ):
             utils.get_jumpstart_content_bucket(bad_region)
+
+    def test_get_jumpstart_content_bucket_eusc(self):
+        assert (
+            utils.get_jumpstart_content_bucket("eusc-de-east-1")
+            == "jumpstart-cache-prod-eusc-de-east-1"
+        )
 
     def test_get_jumpstart_content_bucket_no_args(self):
         assert (
@@ -95,6 +104,12 @@ class TestBucketUtils(TestCase):
         assert bad_region not in JUMPSTART_REGION_NAME_SET
         with pytest.raises(ValueError):
             utils.get_jumpstart_gated_content_bucket(bad_region)
+
+    def test_get_jumpstart_gated_content_bucket_eusc(self):
+        assert (
+            utils.get_jumpstart_gated_content_bucket("eusc-de-east-1")
+            == "jumpstart-private-cache-prod-eusc-de-east-1"
+        )
 
     def test_get_jumpstart_gated_content_bucket_no_args(self):
         assert (
